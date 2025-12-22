@@ -1,7 +1,8 @@
 "use client";
 
-import { Calendar, Save, Trash2, Ban, Plus } from "lucide-react";
+import { Calendar, Save, Trash2, Ban, Plus, CalendarRange, Clock } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { format, addDays, parseISO, isBefore, isEqual } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,8 +32,9 @@ export function ScheduleManager() {
   const [initialInterval, setInitialInterval] = useState<number>(30);
   const [blockedPeriods, setBlockedPeriods] = useState<BlockedPeriod[]>([]);
   const [initialBlocked, setInitialBlocked] = useState<string>("");
-  const [newBlocked, setNewBlocked] = useState<Partial<BlockedPeriod>>({
+  const [newBlocked, setNewBlocked] = useState<Partial<BlockedPeriod & { endDate?: string }>>({
     date: "",
+    endDate: "",
     startTime: "",
     endTime: "",
     reason: "",
@@ -120,7 +122,7 @@ export function ScheduleManager() {
 
     const updated = [...blockedPeriods, blocked];
     setBlockedPeriods(updated);
-    setNewBlocked({ date: "", startTime: "", endTime: "", reason: "" });
+    setNewBlocked({ date: "", endDate: "", startTime: "", endTime: "", reason: "" });
   };
 
   const addFullDayBlock = () => {
@@ -141,7 +143,66 @@ export function ScheduleManager() {
 
     const updated = [...blockedPeriods, blocked];
     setBlockedPeriods(updated);
-    setNewBlocked({ date: "", startTime: "", endTime: "", reason: "" });
+    setNewBlocked({ date: "", endDate: "", startTime: "", endTime: "", reason: "" });
+  };
+
+  const addRangeBlock = () => {
+    if (!newBlocked.date || !newBlocked.endDate) {
+      toast({
+        title: "Erro",
+        description: "Selecione a data inicial e final para o bloqueio do período.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const start = parseISO(newBlocked.date);
+    const end = parseISO(newBlocked.endDate);
+
+    if (isBefore(end, start)) {
+      toast({
+        title: "Erro",
+        description: "A data final deve ser posterior à data inicial.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newBlocks: BlockedPeriod[] = [];
+    let current = start;
+
+    while (isBefore(current, end) || isEqual(current, end)) {
+      const dateStr = format(current, "yyyy-MM-dd");
+      
+      // Evitar duplicatas para a mesma data
+      if (!blockedPeriods.some(b => b.date === dateStr)) {
+        newBlocks.push({
+          id: Math.random().toString(36).substr(2, 9),
+          date: dateStr,
+          reason: newBlocked.reason || "Período bloqueado",
+        });
+      }
+      
+      current = addDays(current, 1);
+    }
+
+    if (newBlocks.length === 0) {
+      toast({
+        title: "Aviso",
+        description: "Todas as datas selecionadas já estão bloqueadas.",
+      });
+      return;
+    }
+
+    const updated = [...blockedPeriods, ...newBlocks];
+    setBlockedPeriods(updated);
+    setNewBlocked({ date: "", endDate: "", startTime: "", endTime: "", reason: "" });
+    
+    toast({
+      title: "Período Bloqueado!",
+      description: `${newBlocks.length} dias foram adicionados aos bloqueios.`,
+      className: "bg-orange-600 text-white border-none",
+    });
   };
 
   const removeBlockedPeriod = (id: string) => {
@@ -438,18 +499,51 @@ export function ScheduleManager() {
               Bloqueie datas específicas ou horários em que você não estará disponível.
             </p>
           </CardHeader>
-          <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+          <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
-                  <Label>Data</Label>
+                  <Label className="text-sm font-semibold flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-primary" />
+                    Data Inicial / Única
+                  </Label>
                   <Input 
                     type="date" 
                     value={newBlocked.date} 
                     onChange={e => setNewBlocked(prev => ({ ...prev, date: e.target.value }))}
+                    className="focus:ring-primary"
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label>Início (opcional)</Label>
+                  <Label className="text-sm font-semibold flex items-center gap-2">
+                    <CalendarRange className="w-4 h-4 text-primary" />
+                    Data Final (Para Período)
+                  </Label>
+                  <Input 
+                    type="date" 
+                    value={newBlocked.endDate} 
+                    onChange={e => setNewBlocked(prev => ({ ...prev, endDate: e.target.value }))}
+                    className="focus:ring-primary"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold flex items-center gap-2">
+                    <Ban className="w-4 h-4 text-primary" />
+                    Motivo do Bloqueio
+                  </Label>
+                  <Input 
+                    placeholder="Ex: Feriado, Férias..." 
+                    value={newBlocked.reason}
+                    onChange={e => setNewBlocked(prev => ({ ...prev, reason: e.target.value }))}
+                    className="focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-border/50">
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground">Início (opcional)</Label>
                   <Input 
                     type="time" 
                     value={newBlocked.startTime} 
@@ -457,31 +551,28 @@ export function ScheduleManager() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Fim (opcional)</Label>
+                  <Label className="text-xs font-medium text-muted-foreground">Fim (opcional)</Label>
                   <Input 
                     type="time" 
                     value={newBlocked.endTime} 
                     onChange={e => setNewBlocked(prev => ({ ...prev, endTime: e.target.value }))}
                   />
                 </div>
-                <Button onClick={addBlockedPeriod} variant="outline" className="w-full">
-                  <Ban className="w-4 h-4 mr-2" />
-                  Bloquear Horário
-                </Button>
-                <Button onClick={addFullDayBlock} className="w-full bg-destructive hover:bg-destructive/90 text-white">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Bloquear Dia Inteiro
-                </Button>
+                <div className="flex items-end gap-2 lg:col-span-2">
+                  <Button onClick={addBlockedPeriod} variant="outline" className="flex-1">
+                    <Clock className="w-4 h-4 mr-2" />
+                    Bloquear Horário
+                  </Button>
+                  <Button onClick={addFullDayBlock} variant="secondary" className="flex-1">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Bloquear Dia
+                  </Button>
+                  <Button onClick={addRangeBlock} className="flex-1 bg-destructive hover:bg-destructive/90 text-white shadow-md">
+                    <CalendarRange className="w-4 h-4 mr-2" />
+                    Bloquear Período
+                  </Button>
+                </div>
               </div>
-            <div className="mt-4">
-              <Label>Motivo (opcional)</Label>
-              <Input 
-                placeholder="Ex: Feriado, Consulta médica..." 
-                value={newBlocked.reason}
-                onChange={e => setNewBlocked(prev => ({ ...prev, reason: e.target.value }))}
-                className="mt-1"
-              />
-            </div>
           </CardContent>
         </Card>
 

@@ -112,6 +112,7 @@ export function BookingFlow() {
           date={selectedDate}
           onTimeSelect={handleTimeSelect}
           onBack={() => setCurrentStep("date")}
+          onDateChange={(date) => setSelectedDate(date)}
         />
       )}
 
