@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 const galleryImages = [
   { id: 1, query: "professional+eyebrow+design+before+after" },
@@ -8,16 +8,19 @@ const galleryImages = [
   { id: 4, query: "henna+eyebrow+tinting+result" },
   { id: 5, query: "eyebrow+lamination+before+after" },
   { id: 6, query: "perfect+eyebrow+shape+design" },
-]
+];
 
 export function GalleryPreview() {
   return (
     <section className="py-20 md:py-32 bg-secondary/30">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4 text-balance">Nossos Trabalhos</h2>
+          <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4 text-balance">
+            Nossos Trabalhos
+          </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty leading-relaxed">
-            Veja alguns dos resultados incríveis que alcançamos com nossas clientes
+            Veja alguns dos resultados incríveis que alcançamos com nossas
+            clientes
           </p>
         </div>
 
@@ -43,5 +46,5 @@ export function GalleryPreview() {
         </div>
       </div>
     </section>
-  )
+  );
 }

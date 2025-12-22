@@ -1,24 +1,27 @@
-"use client"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Upload, ImageIcon } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+"use client";
+import { ImageIcon, Upload } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 export function GalleryManager() {
-  const { toast } = useToast()
+  const { toast } = useToast();
 
   const handleUpload = () => {
     toast({
       title: "Upload de imagem",
-      description: "Funcionalidade de upload será implementada com integração de storage",
-    })
-  }
+      description:
+        "Funcionalidade de upload será implementada com integração de storage",
+    });
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold mb-2">Gerenciar Galeria</h2>
-        <p className="text-muted-foreground">Adicione e organize as fotos dos seus trabalhos</p>
+        <p className="text-muted-foreground">
+          Adicione e organize as fotos dos seus trabalhos
+        </p>
       </div>
 
       <Card>
@@ -28,7 +31,9 @@ export function GalleryManager() {
         <CardContent className="space-y-4">
           <div className="border-2 border-dashed border-border rounded-lg p-12 text-center">
             <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">Arraste imagens aqui ou clique para selecionar</p>
+            <p className="text-muted-foreground mb-4">
+              Arraste imagens aqui ou clique para selecionar
+            </p>
             <Button onClick={handleUpload}>
               <Upload className="w-4 h-4 mr-2" />
               Selecionar Imagens
@@ -53,11 +58,12 @@ export function GalleryManager() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Para habilitar o upload de imagens, você precisa configurar uma integração de storage como Vercel Blob,
-            Cloudinary ou AWS S3. Entre em contato com o suporte para mais informações.
+            Para habilitar o upload de imagens, você precisa configurar uma
+            integração de storage como Vercel Blob, Cloudinary ou AWS S3. Entre
+            em contato com o suporte para mais informações.
           </p>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

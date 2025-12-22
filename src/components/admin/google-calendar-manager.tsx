@@ -1,51 +1,62 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { getGoogleCalendarSettings, saveGoogleCalendarSettings, type GoogleCalendarSettings } from "@/lib/booking-data"
-import { Calendar, RefreshCw, Save, ExternalLink, CheckCircle2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import {
+  Calendar,
+  CheckCircle2,
+  ExternalLink,
+  RefreshCw,
+  Save,
+} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import {
+  type GoogleCalendarSettings,
+  getGoogleCalendarSettings,
+  saveGoogleCalendarSettings,
+} from "@/lib/booking-data";
 
 export function GoogleCalendarManager() {
   const [settings, setSettings] = useState<GoogleCalendarSettings>({
     enabled: false,
     calendarUrl: "",
     lastSync: null,
-  })
-  const { toast } = useToast()
+  });
+  const { toast } = useToast();
+
+  const loadSettings = useCallback(() => {
+    const saved = getGoogleCalendarSettings();
+    setSettings(saved);
+  }, []);
 
   useEffect(() => {
-    loadSettings()
-  }, [])
-
-  const loadSettings = () => {
-    const saved = getGoogleCalendarSettings()
-    setSettings(saved)
-  }
+    loadSettings();
+  }, [loadSettings]);
 
   const saveSettings = () => {
-    saveGoogleCalendarSettings(settings)
+    saveGoogleCalendarSettings(settings);
     toast({
       title: "Configuração salva",
       description: "As configurações do Google Calendar foram atualizadas",
-    })
-  }
+    });
+  };
 
   const syncNow = () => {
     const newSettings = {
       ...settings,
       lastSync: new Date().toISOString(),
-    }
-    setSettings(newSettings)
-    saveGoogleCalendarSettings(newSettings)
+    };
+    setSettings(newSettings);
+    saveGoogleCalendarSettings(newSettings);
     toast({
       title: "Sincronização iniciada",
-      description: "Seus agendamentos estão sendo sincronizados com o Google Calendar",
-    })
-  }
+      description:
+        "Seus agendamentos estão sendo sincronizados com o Google Calendar",
+    });
+  };
 
   return (
     <div>
@@ -81,12 +92,15 @@ export function GoogleCalendarManager() {
                 </a>
               </p>
               <p>
-                <span className="font-medium">2.</span> No lado esquerdo, encontre sua agenda e clique nos{" "}
+                <span className="font-medium">2.</span> No lado esquerdo,
+                encontre sua agenda e clique nos{" "}
                 <span className="font-semibold">três pontinhos (:)</span>
               </p>
               <p>
                 <span className="font-medium">3.</span> Selecione{" "}
-                <span className="font-semibold">"Configurações e compartilhamento"</span>
+                <span className="font-semibold">
+                  "Configurações e compartilhamento"
+                </span>
               </p>
               <p>
                 <span className="font-medium">4.</span> Role até a seção{" "}
@@ -94,11 +108,14 @@ export function GoogleCalendarManager() {
               </p>
               <p>
                 <span className="font-medium">5.</span> Procure por{" "}
-                <span className="font-semibold">"Endereço secreto no formato iCal"</span>
+                <span className="font-semibold">
+                  "Endereço secreto no formato iCal"
+                </span>
               </p>
               <p>
-                <span className="font-medium">6.</span> Copie a URL completa que termina com{" "}
-                <span className="font-semibold">".ics"</span> e cole aqui
+                <span className="font-medium">6.</span> Copie a URL completa que
+                termina com <span className="font-semibold">".ics"</span> e cole
+                aqui
               </p>
             </div>
           </CardContent>
@@ -107,13 +124,17 @@ export function GoogleCalendarManager() {
         <Card>
           <CardContent className="pt-6 space-y-4">
             <div>
-              <Label htmlFor="calendarUrl">URL do iCal do Google Calendar</Label>
+              <Label htmlFor="calendarUrl">
+                URL do iCal do Google Calendar
+              </Label>
               <Input
                 id="calendarUrl"
                 type="url"
                 value={settings.calendarUrl}
-                onChange={(e) => setSettings({ ...settings, calendarUrl: e.target.value })}
-                placeholder="https://calendar.google.com/calendar/ical/lucassa1324%40gmail.com/private-99804ac747841dc9ada97484e68fa705/basic.ics"
+                onChange={(e) =>
+                  setSettings({ ...settings, calendarUrl: e.target.value })
+                }
+                placeholder="https://calendar.google.com/calendar/ical/usuario@gmail.com/private-99804ac747841dc9ada39484e68fa503/basic.ics"
                 className="mt-2"
               />
               <p className="text-xs text-muted-foreground mt-2">
@@ -122,7 +143,10 @@ export function GoogleCalendarManager() {
             </div>
 
             <div className="flex gap-3">
-              <Button onClick={saveSettings} className="bg-primary hover:bg-primary/90 flex-1">
+              <Button
+                onClick={saveSettings}
+                className="bg-primary hover:bg-primary/90 flex-1"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 Salvar Configuração
               </Button>
@@ -139,7 +163,8 @@ export function GoogleCalendarManager() {
 
             {settings.lastSync && (
               <p className="text-xs text-muted-foreground text-center">
-                Última sincronização: {new Date(settings.lastSync).toLocaleString("pt-BR")}
+                Última sincronização:{" "}
+                {new Date(settings.lastSync).toLocaleString("pt-BR")}
               </p>
             )}
           </CardContent>
@@ -147,33 +172,39 @@ export function GoogleCalendarManager() {
 
         <Card className="bg-yellow-50 border-yellow-200">
           <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">💡 Como funciona</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              💡 Como funciona
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
               <p>
-                <span className="font-semibold">Agendamentos criados aqui:</span> Clique em "Exportar p/ Google" para
-                adicionar ao seu Google Calendar
+                <span className="font-semibold">
+                  Agendamentos criados aqui:
+                </span>{" "}
+                Clique em "Exportar p/ Google" para adicionar ao seu Google
+                Calendar
               </p>
             </div>
             <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
               <p>
-                <span className="font-semibold">Agendamentos do Google:</span> Serão importados automaticamente quando
-                você sincronizar
+                <span className="font-semibold">Agendamentos do Google:</span>{" "}
+                Serão importados automaticamente quando você sincronizar
               </p>
             </div>
             <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
               <p>
-                <span className="font-semibold">Offline:</span> Agende no Google Calendar pelo celular, depois
-                sincronize aqui quando tiver internet
+                <span className="font-semibold">Offline:</span> Agende no Google
+                Calendar pelo celular, depois sincronize aqui quando tiver
+                internet
               </p>
             </div>
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }

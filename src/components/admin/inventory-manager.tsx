@@ -1,25 +1,38 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Package, Plus, AlertCircle } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { AlertCircle, Package, Plus } from "lucide-react";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface InventoryItem {
-  id: string
-  name: string
-  quantity: number
-  minQuantity: number
-  unit: string
-  lastUpdate: string
+  id: string;
+  name: string;
+  quantity: number;
+  minQuantity: number;
+  unit: string;
+  lastUpdate: string;
 }
 
 export function InventoryManager() {
-  const [inventory, setInventory] = useState<InventoryItem[]>([
+  const [inventory, _setInventory] = useState<InventoryItem[]>([
     {
       id: "1",
       name: "Henna para Sobrancelhas - Castanho",
@@ -28,8 +41,22 @@ export function InventoryManager() {
       unit: "unidades",
       lastUpdate: "2024-01-15",
     },
-    { id: "2", name: "Pinça Profissional", quantity: 3, minQuantity: 3, unit: "unidades", lastUpdate: "2024-01-10" },
-    { id: "3", name: "Algodão", quantity: 120, minQuantity: 50, unit: "unidades", lastUpdate: "2024-01-12" },
+    {
+      id: "2",
+      name: "Pinça Profissional",
+      quantity: 3,
+      minQuantity: 3,
+      unit: "unidades",
+      lastUpdate: "2024-01-10",
+    },
+    {
+      id: "3",
+      name: "Algodão",
+      quantity: 120,
+      minQuantity: 50,
+      unit: "unidades",
+      lastUpdate: "2024-01-12",
+    },
     {
       id: "4",
       name: "Lápis para Sobrancelhas - Preto",
@@ -38,17 +65,26 @@ export function InventoryManager() {
       unit: "unidades",
       lastUpdate: "2024-01-14",
     },
-    { id: "5", name: "Gel Fixador", quantity: 6, minQuantity: 8, unit: "unidades", lastUpdate: "2024-01-08" },
-  ])
+    {
+      id: "5",
+      name: "Gel Fixador",
+      quantity: 6,
+      minQuantity: 8,
+      unit: "unidades",
+      lastUpdate: "2024-01-08",
+    },
+  ]);
 
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [showAddForm, setShowAddForm] = useState(false);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h3 className="text-lg font-semibold">Produtos em Estoque</h3>
-          <p className="text-sm text-muted-foreground">Controle de entrada e saída de produtos</p>
+          <p className="text-sm text-muted-foreground">
+            Controle de entrada e saída de produtos
+          </p>
         </div>
         <Button onClick={() => setShowAddForm(!showAddForm)}>
           <Plus className="w-4 h-4 mr-2" />
@@ -66,7 +102,10 @@ export function InventoryManager() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="product-name">Nome do Produto</Label>
-                <Input id="product-name" placeholder="Ex: Henna para Sobrancelhas" />
+                <Input
+                  id="product-name"
+                  placeholder="Ex: Henna para Sobrancelhas"
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="quantity">Quantidade</Label>
@@ -115,18 +154,30 @@ export function InventoryManager() {
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>
-                    <span className={item.quantity <= item.minQuantity ? "text-red-600 font-semibold" : ""}>
+                    <span
+                      className={
+                        item.quantity <= item.minQuantity
+                          ? "text-red-600 font-semibold"
+                          : ""
+                      }
+                    >
                       {item.quantity}
                     </span>
                   </TableCell>
                   <TableCell>{item.unit}</TableCell>
                   <TableCell>
                     {item.quantity > item.minQuantity ? (
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      <Badge
+                        variant="outline"
+                        className="bg-green-50 text-green-700 border-green-200"
+                      >
                         Em estoque
                       </Badge>
                     ) : (
-                      <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                      <Badge
+                        variant="outline"
+                        className="bg-red-50 text-red-700 border-red-200"
+                      >
                         <AlertCircle className="w-3 h-3 mr-1" />
                         Baixo
                       </Badge>
@@ -147,5 +198,5 @@ export function InventoryManager() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

@@ -1,90 +1,101 @@
-"use client"
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: useEffect dependencies are managed manually */
+"use client";
 
-import { useEffect, useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { getSettingsFromStorage, type Service } from "@/lib/booking-data"
-import { Plus, Pencil, Trash2, Save, X, Clock } from "lucide-react"
+import { Clock, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { getSettingsFromStorage, type Service } from "@/lib/booking-data";
 
 export function ServicesManager() {
-  const [services, setServices] = useState<Service[]>([])
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [isAdding, setIsAdding] = useState(false)
-  const [formData, setFormData] = useState<Partial<Service>>({})
+  const [services, setServices] = useState<Service[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [formData, setFormData] = useState<Partial<Service>>({});
 
   useEffect(() => {
-    loadServices()
-  }, [])
+    loadServices();
+  }, []);
 
   const loadServices = () => {
-    const settings = getSettingsFromStorage()
-    setServices(settings.services)
-  }
+    const settings = getSettingsFromStorage();
+    setServices(settings.services);
+  };
 
   const saveSettings = (updatedServices: Service[]) => {
-    const settings = getSettingsFromStorage()
-    settings.services = updatedServices
-    localStorage.setItem("studioSettings", JSON.stringify(settings))
-    setServices(updatedServices)
-  }
+    const settings = getSettingsFromStorage();
+    settings.services = updatedServices;
+    localStorage.setItem("studioSettings", JSON.stringify(settings));
+    setServices(updatedServices);
+  };
 
   const handleAdd = () => {
-    setIsAdding(true)
+    setIsAdding(true);
     setFormData({
       id: Date.now().toString(),
       name: "",
       description: "",
       duration: 60,
       price: 0,
-    })
-  }
+    });
+  };
 
   const handleEdit = (service: Service) => {
-    setEditingId(service.id)
-    setFormData(service)
-  }
+    setEditingId(service.id);
+    setFormData(service);
+  };
 
   const handleSave = () => {
-    if (!formData.name || !formData.description || !formData.duration || !formData.price) {
-      alert("Preencha todos os campos")
-      return
+    if (
+      !formData.name ||
+      !formData.description ||
+      !formData.duration ||
+      !formData.price
+    ) {
+      alert("Preencha todos os campos");
+      return;
     }
 
-    let updatedServices: Service[]
+    let updatedServices: Service[];
     if (isAdding) {
-      updatedServices = [...services, formData as Service]
+      updatedServices = [...services, formData as Service];
     } else {
-      updatedServices = services.map((s) => (s.id === editingId ? (formData as Service) : s))
+      updatedServices = services.map((s) =>
+        s.id === editingId ? (formData as Service) : s,
+      );
     }
 
-    saveSettings(updatedServices)
-    setIsAdding(false)
-    setEditingId(null)
-    setFormData({})
-  }
+    saveSettings(updatedServices);
+    setIsAdding(false);
+    setEditingId(null);
+    setFormData({});
+  };
 
   const handleCancel = () => {
-    setIsAdding(false)
-    setEditingId(null)
-    setFormData({})
-  }
+    setIsAdding(false);
+    setEditingId(null);
+    setFormData({});
+  };
 
   const handleDelete = (serviceId: string) => {
     if (confirm("Tem certeza que deseja excluir este serviço?")) {
-      const updatedServices = services.filter((s) => s.id !== serviceId)
-      saveSettings(updatedServices)
+      const updatedServices = services.filter((s) => s.id !== serviceId);
+      saveSettings(updatedServices);
     }
-  }
+  };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-serif text-2xl font-bold">Gerenciar Serviços</h2>
         {!isAdding && !editingId && (
-          <Button onClick={handleAdd} className="bg-accent hover:bg-accent/90">
+          <Button
+            onClick={handleAdd}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Adicionar Serviço
           </Button>
@@ -94,7 +105,9 @@ export function ServicesManager() {
       {(isAdding || editingId) && (
         <Card className="mb-6 border-accent/20">
           <CardHeader>
-            <CardTitle>{isAdding ? "Novo Serviço" : "Editar Serviço"}</CardTitle>
+            <CardTitle>
+              {isAdding ? "Novo Serviço" : "Editar Serviço"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -102,7 +115,9 @@ export function ServicesManager() {
               <Input
                 id="name"
                 value={formData.name || ""}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="Ex: Design de Sobrancelhas"
               />
             </div>
@@ -112,7 +127,9 @@ export function ServicesManager() {
               <Textarea
                 id="description"
                 value={formData.description || ""}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 placeholder="Descreva o serviço"
                 rows={3}
               />
@@ -128,12 +145,19 @@ export function ServicesManager() {
                   id="duration"
                   type="number"
                   value={formData.duration || ""}
-                  onChange={(e) => setFormData({ ...formData, duration: Number.parseInt(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      duration: Number.parseInt(e.target.value, 10),
+                    })
+                  }
                   placeholder="60"
                   min="15"
                   step="15"
                 />
-                <p className="text-xs text-muted-foreground mt-1">Tempo necessário para realizar o procedimento</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tempo necessário para realizar o procedimento
+                </p>
               </div>
 
               <div>
@@ -142,7 +166,12 @@ export function ServicesManager() {
                   id="price"
                   type="number"
                   value={formData.price || ""}
-                  onChange={(e) => setFormData({ ...formData, price: Number.parseFloat(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      price: Number.parseFloat(e.target.value),
+                    })
+                  }
                   placeholder="100"
                   min="0"
                   step="0.01"
@@ -151,7 +180,10 @@ export function ServicesManager() {
             </div>
 
             <div className="flex gap-2">
-              <Button onClick={handleSave} className="bg-accent hover:bg-accent/90">
+              <Button
+                onClick={handleSave}
+                className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              >
                 <Save className="w-4 h-4 mr-2" />
                 Salvar
               </Button>
@@ -170,18 +202,28 @@ export function ServicesManager() {
             <CardContent className="p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  <h3 className="font-serif text-lg font-semibold mb-1">{service.name}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
+                  <h3 className="font-serif text-lg font-semibold mb-1">
+                    {service.name}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    {service.description}
+                  </p>
                   <div className="flex items-center gap-4 text-sm">
                     <span className="text-muted-foreground flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {service.duration} min
                     </span>
-                    <span className="text-accent font-semibold">R$ {service.price.toFixed(2)}</span>
+                    <span className="text-accent font-semibold">
+                      R$ {service.price.toFixed(2)}
+                    </span>
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(service)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(service)}
+                  >
                     <Pencil className="w-4 h-4" />
                   </Button>
                   <Button
@@ -199,5 +241,5 @@ export function ServicesManager() {
         ))}
       </div>
     </div>
-  )
+  );
 }

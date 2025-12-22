@@ -1,58 +1,60 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { ServiceSelector } from "@/components/service-selector"
-import { BookingCalendar } from "@/components/booking-calendar"
-import { TimeSlotSelector } from "@/components/time-slot-selector"
-import { BookingForm } from "@/components/booking-form"
-import { BookingConfirmation } from "@/components/booking-confirmation"
-import type { Service, Booking } from "@/lib/booking-data"
-import { Card } from "@/components/ui/card"
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle2 } from "lucide-react";
+import { useState } from "react";
+import { BookingCalendar } from "@/components/booking-calendar";
+import { BookingConfirmation } from "@/components/booking-confirmation";
+import { BookingForm } from "@/components/booking-form";
+import { ServiceSelector } from "@/components/service-selector";
+import { TimeSlotSelector } from "@/components/time-slot-selector";
+import { Card } from "@/components/ui/card";
+import type { Booking, Service } from "@/lib/booking-data";
 
-type BookingStep = "service" | "date" | "time" | "form" | "confirmation"
+type BookingStep = "service" | "date" | "time" | "form" | "confirmation";
 
 export function BookingFlow() {
-  const [currentStep, setCurrentStep] = useState<BookingStep>("service")
-  const [selectedService, setSelectedService] = useState<Service | null>(null)
-  const [selectedDate, setSelectedDate] = useState<string>("")
-  const [selectedTime, setSelectedTime] = useState<string>("")
-  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null)
+  const [currentStep, setCurrentStep] = useState<BookingStep>("service");
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedTime, setSelectedTime] = useState<string>("");
+  const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(
+    null,
+  );
 
   const steps = [
     { id: "service", label: "Serviço", completed: !!selectedService },
     { id: "date", label: "Data", completed: !!selectedDate },
     { id: "time", label: "Horário", completed: !!selectedTime },
     { id: "form", label: "Dados", completed: !!confirmedBooking },
-  ]
+  ];
 
   const handleServiceSelect = (service: Service) => {
-    setSelectedService(service)
-    setCurrentStep("date")
-  }
+    setSelectedService(service);
+    setCurrentStep("date");
+  };
 
   const handleDateSelect = (date: string) => {
-    setSelectedDate(date)
-    setCurrentStep("time")
-  }
+    setSelectedDate(date);
+    setCurrentStep("time");
+  };
 
   const handleTimeSelect = (time: string) => {
-    setSelectedTime(time)
-    setCurrentStep("form")
-  }
+    setSelectedTime(time);
+    setCurrentStep("form");
+  };
 
   const handleBookingConfirm = (booking: Booking) => {
-    setConfirmedBooking(booking)
-    setCurrentStep("confirmation")
-  }
+    setConfirmedBooking(booking);
+    setCurrentStep("confirmation");
+  };
 
   const handleReset = () => {
-    setCurrentStep("service")
-    setSelectedService(null)
-    setSelectedDate(null)
-    setSelectedTime("")
-    setConfirmedBooking(null)
-  }
+    setCurrentStep("service");
+    setSelectedService(null);
+    setSelectedDate("");
+    setSelectedTime("");
+    setConfirmedBooking(null);
+  };
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -72,7 +74,11 @@ export function BookingFlow() {
                           : "border-border text-muted-foreground"
                     }`}
                   >
-                    {step.completed ? <CheckCircle2 className="w-5 h-5" /> : index + 1}
+                    {step.completed ? (
+                      <CheckCircle2 className="w-5 h-5" />
+                    ) : (
+                      index + 1
+                    )}
                   </div>
                   <span className="text-xs mt-2 font-medium">{step.label}</span>
                 </div>
@@ -88,7 +94,9 @@ export function BookingFlow() {
       )}
 
       {/* Step Content */}
-      {currentStep === "service" && <ServiceSelector onSelect={handleServiceSelect} />}
+      {currentStep === "service" && (
+        <ServiceSelector onSelect={handleServiceSelect} />
+      )}
 
       {currentStep === "date" && selectedService && (
         <BookingCalendar
@@ -107,19 +115,28 @@ export function BookingFlow() {
         />
       )}
 
-      {currentStep === "form" && selectedService && selectedDate && selectedTime && (
-        <BookingForm
-          service={selectedService}
-          date={selectedDate}
-          time={selectedTime}
-          onConfirm={handleBookingConfirm}
-          onBack={() => setCurrentStep("time")}
-        />
-      )}
+      {currentStep === "form" &&
+        selectedService &&
+        selectedDate &&
+        selectedTime && (
+          <BookingForm
+            service={selectedService}
+            date={selectedDate}
+            time={selectedTime}
+            onConfirm={handleBookingConfirm}
+            onBack={() => setCurrentStep("time")}
+          />
+        )}
 
-      {currentStep === "confirmation" && confirmedBooking && selectedService && (
-        <BookingConfirmation booking={confirmedBooking} service={selectedService} onReset={handleReset} />
-      )}
+      {currentStep === "confirmation" &&
+        confirmedBooking &&
+        selectedService && (
+          <BookingConfirmation
+            booking={confirmedBooking}
+            service={selectedService}
+            onReset={handleReset}
+          />
+        )}
     </div>
-  )
+  );
 }

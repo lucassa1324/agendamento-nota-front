@@ -1,36 +1,41 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { loginAdmin } from "@/lib/admin-auth"
-import { Lock, User } from "lucide-react"
+import { Lock, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import type React from "react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { loginAdmin } from "@/lib/admin-auth";
 
 export function LoginForm() {
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
+    e.preventDefault();
+    setError("");
+    setIsLoading(true);
 
     if (loginAdmin(username, password)) {
-      router.push("/admin/dashboard")
+      router.push("/admin/dashboard");
     } else {
-      setError("Usuário ou senha incorretos")
-      setPassword("")
-      setIsLoading(false)
+      setError("Usuário ou senha incorretos");
+      setPassword("");
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Card className="shadow-lg">
@@ -39,7 +44,9 @@ export function LoginForm() {
           <Lock className="w-6 h-6 text-primary" />
           Login Administrativo
         </CardTitle>
-        <CardDescription>Entre com suas credenciais para acessar o painel</CardDescription>
+        <CardDescription>
+          Entre com suas credenciais para acessar o painel
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -83,7 +90,11 @@ export function LoginForm() {
             </div>
           )}
 
-          <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full bg-primary hover:bg-primary/90"
+            disabled={isLoading}
+          >
             {isLoading ? "Entrando..." : "Entrar"}
           </Button>
 
@@ -96,5 +107,5 @@ export function LoginForm() {
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

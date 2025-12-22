@@ -1,25 +1,33 @@
-"use client"
+"use client";
 
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { ChevronLeft } from "lucide-react"
-import { getAvailableTimeSlots, type Service } from "@/lib/booking-data"
+import { ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { getAvailableTimeSlots, type Service } from "@/lib/booking-data";
 
 type TimeSlotSelectorProps = {
-  service: Service
-  date: string
-  onTimeSelect: (time: string) => void
-  onBack: () => void
-}
+  service: Service;
+  date: string;
+  onTimeSelect: (time: string) => void;
+  onBack: () => void;
+};
 
-export function TimeSlotSelector({ service, date, onTimeSelect, onBack }: TimeSlotSelectorProps) {
-  const timeSlots = getAvailableTimeSlots(date, service.duration)
-  const formattedDate = new Date(date + "T00:00:00").toLocaleDateString("pt-BR", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+export function TimeSlotSelector({
+  service,
+  date,
+  onTimeSelect,
+  onBack,
+}: TimeSlotSelectorProps) {
+  const timeSlots = getAvailableTimeSlots(date, service.duration);
+  const formattedDate = new Date(`${date}T00:00:00`).toLocaleDateString(
+    "pt-BR",
+    {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    },
+  );
 
   return (
     <div>
@@ -31,13 +39,19 @@ export function TimeSlotSelector({ service, date, onTimeSelect, onBack }: TimeSl
         <Card className="border-accent/20 bg-accent/5 p-4">
           <div className="text-sm">
             <div className="font-semibold">{service.name}</div>
-            <div className="text-muted-foreground capitalize">{formattedDate}</div>
-            <div className="text-muted-foreground mt-1">Duração: {service.duration} minutos</div>
+            <div className="text-muted-foreground capitalize">
+              {formattedDate}
+            </div>
+            <div className="text-muted-foreground mt-1">
+              Duração: {service.duration} minutos
+            </div>
           </div>
         </Card>
       </div>
 
-      <h2 className="font-serif text-2xl font-bold mb-6 text-center">Escolha o Horário</h2>
+      <h2 className="font-serif text-2xl font-bold mb-6 text-center">
+        Escolha o Horário
+      </h2>
 
       <Card>
         <CardContent className="p-6">
@@ -59,13 +73,18 @@ export function TimeSlotSelector({ service, date, onTimeSelect, onBack }: TimeSl
             ))}
           </div>
           {timeSlots.length === 0 && (
-            <p className="text-center text-muted-foreground mt-4">Estúdio fechado nesta data.</p>
+            <p className="text-center text-muted-foreground mt-4">
+              Estúdio fechado nesta data.
+            </p>
           )}
-          {timeSlots.length > 0 && timeSlots.every((slot) => !slot.available) && (
-            <p className="text-center text-muted-foreground mt-4">Nenhum horário disponível para esta data.</p>
-          )}
+          {timeSlots.length > 0 &&
+            timeSlots.every((slot) => !slot.available) && (
+              <p className="text-center text-muted-foreground mt-4">
+                Nenhum horário disponível para esta data.
+              </p>
+            )}
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

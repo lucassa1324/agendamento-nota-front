@@ -1,26 +1,27 @@
-"use client"
+/** biome-ignore-all lint/a11y/useButtonType: custom button implementation */
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Menu, X } from "lucide-react"
-import { useState } from "react"
+import { Menu, X } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export function Navigation() {
-  const pathname = usePathname()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isActive = (path: string) => pathname === path
+  const isActive = (path: string) => pathname === path;
 
   const navLinks = [
     { href: "/", label: "Início" },
     { href: "/galeria", label: "Galeria" },
     { href: "/sobre", label: "Sobre Nós" },
     { href: "/agendamento", label: "Agendar" },
-  ]
+  ];
 
   return (
-    <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
+    <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="font-serif text-2xl font-bold text-primary">
@@ -46,13 +47,20 @@ export function Navigation() {
             >
               Acesse sua conta
             </Link>
-            <Button asChild className="bg-accent hover:bg-accent/90">
+            <Button
+              asChild
+              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+            >
               <Link href="/agendamento">Agende Agora</Link>
             </Button>
           </div>
 
           {/* Mobile Menu Button */}
-          <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Toggle menu">
+          <button
+            className="md:hidden p-2"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
@@ -67,7 +75,9 @@ export function Navigation() {
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={`text-sm font-medium transition-colors hover:text-primary ${
-                    isActive(link.href) ? "text-primary" : "text-muted-foreground"
+                    isActive(link.href)
+                      ? "text-primary"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {link.label}
@@ -80,8 +90,14 @@ export function Navigation() {
               >
                 Acesse sua conta
               </Link>
-              <Button asChild className="bg-accent hover:bg-accent/90 w-full">
-                <Link href="/agendamento" onClick={() => setMobileMenuOpen(false)}>
+              <Button
+                asChild
+                className="bg-accent hover:bg-accent/90 text-accent-foreground w-full"
+              >
+                <Link
+                  href="/agendamento"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   Agende Agora
                 </Link>
               </Button>
@@ -90,5 +106,5 @@ export function Navigation() {
         )}
       </div>
     </nav>
-  )
+  );
 }

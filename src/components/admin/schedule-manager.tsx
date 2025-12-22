@@ -1,40 +1,58 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getWeekSchedule, saveWeekSchedule, type DaySchedule } from "@/lib/booking-data"
-import { Calendar, Save } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Calendar, Save } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/hooks/use-toast";
+import {
+  type DaySchedule,
+  getWeekSchedule,
+  saveWeekSchedule,
+} from "@/lib/booking-data";
 
 export function ScheduleManager() {
-  const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([])
-  const { toast } = useToast()
+  const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([]);
+  const { toast } = useToast();
+
+  const loadSchedule = useCallback(() => {
+    const schedule = getWeekSchedule();
+    setWeekSchedule(schedule);
+  }, []);
 
   useEffect(() => {
-    loadSchedule()
-  }, [])
-
-  const loadSchedule = () => {
-    const schedule = getWeekSchedule()
-    setWeekSchedule(schedule)
-  }
+    loadSchedule();
+  }, [loadSchedule]);
 
   const saveSchedule = () => {
-    saveWeekSchedule(weekSchedule)
+    saveWeekSchedule(weekSchedule);
     toast({
       title: "Configurações salvas",
       description: "Os horários foram atualizados com sucesso",
-    })
-  }
+    });
+  };
 
-  const updateDaySchedule = (dayOfWeek: number, field: keyof DaySchedule, value: any) => {
-    setWeekSchedule((prev) => prev.map((day) => (day.dayOfWeek === dayOfWeek ? { ...day, [field]: value } : day)))
-  }
+  const updateDaySchedule = (
+    dayOfWeek: number,
+    field: keyof DaySchedule,
+    value: string | boolean | number,
+  ) => {
+    setWeekSchedule((prev) =>
+      prev.map((day) =>
+        day.dayOfWeek === dayOfWeek ? { ...day, [field]: value } : day,
+      ),
+    );
+  };
 
   const applyToAllDays = (sourceDay: DaySchedule) => {
     setWeekSchedule((prev) =>
@@ -50,21 +68,26 @@ export function ScheduleManager() {
               interval: sourceDay.interval,
             },
       ),
-    )
+    );
     toast({
       title: "Aplicado a todos os dias",
       description: "As configurações foram aplicadas aos dias úteis",
-    })
-  }
+    });
+  };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold">Configurações da Agenda</h2>
-          <p className="text-sm text-muted-foreground">Configure horários de funcionamento, intervalos e almoço</p>
+          <p className="text-sm text-muted-foreground">
+            Configure horários de funcionamento, intervalos e almoço
+          </p>
         </div>
-        <Button onClick={saveSchedule} className="bg-primary hover:bg-primary/90">
+        <Button
+          onClick={saveSchedule}
+          className="bg-primary hover:bg-primary/90"
+        >
           <Save className="w-4 h-4 mr-2" />
           Salvar Todas
         </Button>
@@ -81,15 +104,23 @@ export function ScheduleManager() {
                 </div>
                 <div className="flex items-center gap-4">
                   {day.dayOfWeek >= 1 && day.dayOfWeek <= 5 && (
-                    <Button variant="outline" size="sm" onClick={() => applyToAllDays(day)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyToAllDays(day)}
+                    >
                       Aplicar a todos
                     </Button>
                   )}
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{day.isOpen ? "Aberto" : "Fechado"}</span>
+                    <span className="text-sm font-medium">
+                      {day.isOpen ? "Aberto" : "Fechado"}
+                    </span>
                     <Switch
                       checked={day.isOpen}
-                      onCheckedChange={(checked) => updateDaySchedule(day.dayOfWeek, "isOpen", checked)}
+                      onCheckedChange={(checked) =>
+                        updateDaySchedule(day.dayOfWeek, "isOpen", checked)
+                      }
                     />
                   </div>
                 </div>
@@ -109,7 +140,13 @@ export function ScheduleManager() {
                       id={`open-${day.dayOfWeek}`}
                       type="time"
                       value={day.openTime}
-                      onChange={(e) => updateDaySchedule(day.dayOfWeek, "openTime", e.target.value)}
+                      onChange={(e) =>
+                        updateDaySchedule(
+                          day.dayOfWeek,
+                          "openTime",
+                          e.target.value,
+                        )
+                      }
                       className="mt-1"
                     />
                   </div>
@@ -126,7 +163,13 @@ export function ScheduleManager() {
                       id={`lunch-start-${day.dayOfWeek}`}
                       type="time"
                       value={day.lunchStart}
-                      onChange={(e) => updateDaySchedule(day.dayOfWeek, "lunchStart", e.target.value)}
+                      onChange={(e) =>
+                        updateDaySchedule(
+                          day.dayOfWeek,
+                          "lunchStart",
+                          e.target.value,
+                        )
+                      }
                       className="mt-1"
                     />
                   </div>
@@ -143,7 +186,13 @@ export function ScheduleManager() {
                       id={`lunch-end-${day.dayOfWeek}`}
                       type="time"
                       value={day.lunchEnd}
-                      onChange={(e) => updateDaySchedule(day.dayOfWeek, "lunchEnd", e.target.value)}
+                      onChange={(e) =>
+                        updateDaySchedule(
+                          day.dayOfWeek,
+                          "lunchEnd",
+                          e.target.value,
+                        )
+                      }
                       className="mt-1"
                     />
                   </div>
@@ -160,7 +209,13 @@ export function ScheduleManager() {
                       id={`close-${day.dayOfWeek}`}
                       type="time"
                       value={day.closeTime}
-                      onChange={(e) => updateDaySchedule(day.dayOfWeek, "closeTime", e.target.value)}
+                      onChange={(e) =>
+                        updateDaySchedule(
+                          day.dayOfWeek,
+                          "closeTime",
+                          e.target.value,
+                        )
+                      }
                       className="mt-1"
                     />
                   </div>
@@ -175,9 +230,18 @@ export function ScheduleManager() {
                     </Label>
                     <Select
                       value={day.interval.toString()}
-                      onValueChange={(value) => updateDaySchedule(day.dayOfWeek, "interval", Number.parseInt(value))}
+                      onValueChange={(value) =>
+                        updateDaySchedule(
+                          day.dayOfWeek,
+                          "interval",
+                          Number.parseInt(value, 10),
+                        )
+                      }
                     >
-                      <SelectTrigger id={`interval-${day.dayOfWeek}`} className="mt-1">
+                      <SelectTrigger
+                        id={`interval-${day.dayOfWeek}`}
+                        className="mt-1"
+                      >
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -194,5 +258,5 @@ export function ScheduleManager() {
         ))}
       </div>
     </div>
-  )
+  );
 }

@@ -1,39 +1,51 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { ChevronLeft } from "lucide-react"
-import { saveBookingToStorage, sendBookingNotifications, type Service, type Booking } from "@/lib/booking-data"
+import { ChevronLeft } from "lucide-react";
+import { type FormEvent, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  type Booking,
+  type Service,
+  saveBookingToStorage,
+  sendBookingNotifications,
+} from "@/lib/booking-data";
 
 type BookingFormProps = {
-  service: Service
-  date: string
-  time: string
-  onConfirm: (booking: Booking) => void
-  onBack: () => void
-}
+  service: Service;
+  date: string;
+  time: string;
+  onConfirm: (booking: Booking) => void;
+  onBack: () => void;
+};
 
-export function BookingForm({ service, date, time, onConfirm, onBack }: BookingFormProps) {
+export function BookingForm({
+  service,
+  date,
+  time,
+  onConfirm,
+  onBack,
+}: BookingFormProps) {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-  })
+  });
 
-  const formattedDate = new Date(date + "T00:00:00").toLocaleDateString("pt-BR", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+  const formattedDate = new Date(`${date}T00:00:00`).toLocaleDateString(
+    "pt-BR",
+    {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    },
+  );
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
 
     const booking: Booking = {
       id: Date.now().toString(),
@@ -52,14 +64,14 @@ export function BookingForm({ service, date, time, onConfirm, onBack }: BookingF
         email: false,
         whatsapp: false,
       },
-    }
+    };
 
-    saveBookingToStorage(booking)
+    saveBookingToStorage(booking);
 
-    await sendBookingNotifications(booking)
+    await sendBookingNotifications(booking);
 
-    onConfirm(booking)
-  }
+    onConfirm(booking);
+  };
 
   return (
     <div>
@@ -71,15 +83,23 @@ export function BookingForm({ service, date, time, onConfirm, onBack }: BookingF
         <Card className="border-accent/20 bg-accent/5 p-4">
           <div className="text-sm space-y-1">
             <div className="font-semibold">{service.name}</div>
-            <div className="text-muted-foreground capitalize">{formattedDate}</div>
+            <div className="text-muted-foreground capitalize">
+              {formattedDate}
+            </div>
             <div className="text-muted-foreground">{time}</div>
-            <div className="text-muted-foreground">Duração: {service.duration} minutos</div>
-            <div className="font-semibold text-accent">R$ {service.price.toFixed(2)}</div>
+            <div className="text-muted-foreground">
+              Duração: {service.duration} minutos
+            </div>
+            <div className="font-semibold text-accent">
+              R$ {service.price.toFixed(2)}
+            </div>
           </div>
         </Card>
       </div>
 
-      <h2 className="font-serif text-2xl font-bold mb-6 text-center">Seus Dados</h2>
+      <h2 className="font-serif text-2xl font-bold mb-6 text-center">
+        Seus Dados
+      </h2>
 
       <Card>
         <CardContent className="p-6">
@@ -91,19 +111,23 @@ export function BookingForm({ service, date, time, onConfirm, onBack }: BookingF
                 type="text"
                 required
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="Seu nome completo"
               />
             </div>
 
             <div>
-              <Label htmlFor="email">E-mail *</Label>
+              <Label htmlFor="email">E-mail </Label>
               <Input
                 id="email"
                 type="email"
-                required
+                
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 placeholder="seu@email.com"
               />
             </div>
@@ -115,17 +139,22 @@ export function BookingForm({ service, date, time, onConfirm, onBack }: BookingF
                 type="tel"
                 required
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
                 placeholder="(11) 99999-9999"
               />
             </div>
 
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90">
+            <Button
+              type="submit"
+              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+            >
               Confirmar Agendamento
             </Button>
           </form>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

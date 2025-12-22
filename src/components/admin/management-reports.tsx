@@ -1,9 +1,28 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { BarChart3, TrendingUp, DollarSign, Users, Download, Calendar } from "lucide-react"
+import {
+  BarChart3,
+  Calendar,
+  DollarSign,
+  Download,
+  TrendingUp,
+  Users,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function ManagementReports() {
   return (
@@ -14,7 +33,9 @@ export function ManagementReports() {
             <BarChart3 className="w-5 h-5" />
             Gerar Relatórios
           </CardTitle>
-          <CardDescription>Selecione o período e tipo de relatório</CardDescription>
+          <CardDescription>
+            Selecione o período e tipo de relatório
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -65,7 +86,9 @@ export function ManagementReports() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Receita Total</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Receita Total
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
@@ -83,7 +106,9 @@ export function ManagementReports() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Atendimentos</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Atendimentos
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
@@ -101,7 +126,9 @@ export function ManagementReports() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Novos Clientes</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Novos Clientes
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
@@ -119,7 +146,9 @@ export function ManagementReports() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Ticket Médio</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Ticket Médio
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
@@ -136,5 +165,5 @@ export function ManagementReports() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

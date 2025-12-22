@@ -11,13 +11,15 @@ export function AboutHero() {
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-3xl mx-auto text-center">
-          <h1 className="font-serif text-5xl md:text-7xl font-bold mb-6 text-balance">Sobre Nós</h1>
+          <h1 className="font-serif text-5xl md:text-7xl font-bold mb-6 text-balance">
+            Sobre Nós
+          </h1>
           <p className="text-xl text-muted-foreground text-pretty leading-relaxed">
-            Dedicadas a realçar a beleza natural de cada cliente através de técnicas especializadas e atendimento
-            personalizado
+            Dedicadas a realçar a beleza natural de cada cliente através de
+            técnicas especializadas e atendimento personalizado
           </p>
         </div>
       </div>
     </section>
-  )
+  );
 }

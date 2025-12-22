@@ -1,61 +1,67 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { checkAdminAuth, logoutAdmin, getAdminUser } from "@/lib/admin-auth"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
 import {
-  Home,
-  LogOut,
-  Calendar,
-  Briefcase,
-  Clock,
   BarChart3,
-  ImageIcon,
   Bell,
+  Briefcase,
+  Calendar,
   CalendarIcon,
-  User,
-  Settings,
+  Clock,
+  Home,
+  ImageIcon,
+  LogOut,
   Package,
   PieChart,
   Plug,
-} from "lucide-react"
+  Settings,
+  User,
+} from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type React from "react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { checkAdminAuth, getAdminUser, logoutAdmin } from "@/lib/admin-auth";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-  const [adminUser, setAdminUser] = useState<{ username: string; name: string } | null>(null)
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [adminUser, setAdminUser] = useState<{
+    username: string;
+    name: string;
+  } | null>(null);
 
   useEffect(() => {
-    const authenticated = checkAdminAuth()
+    const authenticated = checkAdminAuth();
     if (!authenticated) {
-      router.push("/admin")
+      router.push("/admin");
     } else {
-      setIsAuthenticated(true)
-      setAdminUser(getAdminUser())
+      setIsAuthenticated(true);
+      setAdminUser(getAdminUser());
     }
-    setIsLoading(false)
-  }, [router])
+    setIsLoading(false);
+  }, [router]);
 
   const handleLogout = () => {
-    logoutAdmin()
-    router.push("/admin")
-  }
+    logoutAdmin();
+    router.push("/admin");
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p>Carregando...</p>
       </div>
-    )
+    );
   }
 
   if (!isAuthenticated) {
-    return null
+    return null;
   }
 
   return (
@@ -63,10 +69,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="w-64 bg-card border-r border-border flex flex-col">
         {/* Sidebar Header */}
         <div className="p-6 border-b border-border">
-          <Link href="/admin/dashboard" className="font-serif text-xl font-bold text-primary block">
+          <Link
+            href="/admin/dashboard"
+            className="font-serif text-xl font-bold text-primary block"
+          >
             Brow Studio
           </Link>
-          <p className="text-xs text-muted-foreground mt-1">Painel Administrativo</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Painel Administrativo
+          </p>
         </div>
 
         {/* Sidebar Navigation */}
@@ -157,17 +168,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <User className="w-4 h-4 text-muted-foreground" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{adminUser.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{adminUser.username}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {adminUser.username}
+                </p>
               </div>
             </div>
           )}
-          <Button asChild variant="outline" size="sm" className="w-full justify-start bg-transparent">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="w-full justify-start bg-transparent"
+          >
             <Link href="/">
               <Home className="w-4 h-4 mr-2" />
               Ver Site
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" className="w-full justify-start" onClick={handleLogout}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start"
+            onClick={handleLogout}
+          >
             <LogOut className="w-4 h-4 mr-2" />
             Sair
           </Button>
@@ -178,7 +201,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex-1 flex flex-col">
         {/* Top Bar */}
         <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
-          <h1 className="font-sans text-lg font-semibold">Dashboard Administrativo</h1>
+          <h1 className="font-sans text-lg font-semibold">
+            Dashboard Administrativo
+          </h1>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
               {new Date().toLocaleDateString("pt-BR", {
@@ -195,5 +220,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
     </div>
-  )
+  );
 }
