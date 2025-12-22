@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getWeekSchedule, type Service } from "@/lib/booking-data";
+import { getWeekSchedule, getBlockedPeriods, type Service } from "@/lib/booking-data";
 
 type BookingCalendarProps = {
   service: Service;
@@ -19,6 +19,7 @@ export function BookingCalendar({
 }: BookingCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const weekSchedule = getWeekSchedule();
+  const blockedPeriods = getBlockedPeriods();
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -76,6 +77,12 @@ export function BookingCalendar({
     today.setHours(0, 0, 0, 0);
 
     if (selected < today) return true;
+
+    const dateString = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    
+    // Verificar se a data está bloqueada totalmente
+    const isBlocked = blockedPeriods.some(b => b.date === dateString && !b.startTime && !b.endTime);
+    if (isBlocked) return true;
 
     const dayOfWeek = selected.getDay();
     const daySchedule = weekSchedule.find((d) => d.dayOfWeek === dayOfWeek);

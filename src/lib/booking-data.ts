@@ -36,6 +36,14 @@ export type Booking = {
   };
 };
 
+export type BlockedPeriod = {
+  id: string;
+  date: string; // YYYY-MM-DD
+  startTime?: string; // opcional, se for o dia todo
+  endTime?: string; // opcional
+  reason?: string;
+};
+
 export type BusinessHours = {
   openTime: string; // ex: "09:00"
   lunchStart: string; // ex: "12:00"
@@ -251,6 +259,7 @@ export function getAvailableTimeSlots(
 ): TimeSlot[] {
   const allSlots = generateTimeSlotsForDate(date);
   const bookings = getBookingsFromStorage();
+  const blockedPeriods = getBlockedPeriods();
   const dateObj = new Date(`${date}T00:00:00`);
   const dayOfWeek = dateObj.getDay();
   const weekSchedule = getWeekSchedule();
@@ -259,6 +268,9 @@ export function getAvailableTimeSlots(
   if (!daySchedule || !daySchedule.isOpen) {
     return [];
   }
+
+  // Filtrar bloqueios para este dia específico
+  const dayBlocks = blockedPeriods.filter(b => b.date === date);
 
   const dayBookings = bookings.filter(
     (b) => b.date === date && b.status !== "cancelado",
@@ -270,6 +282,7 @@ export function getAvailableTimeSlots(
       serviceDuration,
       dayBookings,
       daySchedule,
+      dayBlocks,
     );
     return { time, available };
   });
@@ -280,6 +293,7 @@ function isTimeSlotAvailable(
   duration: number,
   bookings: Booking[],
   daySchedule: DaySchedule,
+  dayBlocks: BlockedPeriod[] = [],
 ): boolean {
   const timeToMinutes = (t: string) => {
     const [hours, minutes] = t.split(":").map(Number);
@@ -289,17 +303,36 @@ function isTimeSlotAvailable(
   const startMinutes = timeToMinutes(time);
   const endMinutes = startMinutes + duration;
 
-  // Verificar se não ultrapassa horário de fechamento
+  // 1. Verificar se o dia todo está bloqueado
+  const fullDayBlock = dayBlocks.find(b => !b.startTime && !b.endTime);
+  if (fullDayBlock) return false;
+
+  // 2. Verificar bloqueios de horário parcial
+  for (const block of dayBlocks) {
+    if (block.startTime && block.endTime) {
+      const blockStart = timeToMinutes(block.startTime);
+      const blockEnd = timeToMinutes(block.endTime);
+
+      // Verificação rigorosa de interseção:
+      // Um slot está indisponível se o seu início ocorre antes do fim do bloqueio
+      // E o seu fim (início + duração do serviço) ocorre depois do início do bloqueio
+      if (startMinutes < blockEnd && endMinutes > blockStart) {
+        return false;
+      }
+    }
+  }
+
+  // 3. Verificar se não ultrapassa horário de fechamento
   const closeMinutes = timeToMinutes(daySchedule.closeTime);
   if (endMinutes > closeMinutes) return false;
 
-  // Verificar se não conflita com horário de almoço
+  // 4. Verificar se não conflita com horário de almoço
   const lunchStartMinutes = timeToMinutes(daySchedule.lunchStart);
   const lunchEndMinutes = timeToMinutes(daySchedule.lunchEnd);
   if (startMinutes < lunchEndMinutes && endMinutes > lunchStartMinutes)
     return false;
 
-  // Verificar conflitos com outros agendamentos
+  // 5. Verificar conflitos com outros agendamentos
   for (const booking of bookings) {
     const bookingStart = timeToMinutes(booking.time);
     const bookingEnd = bookingStart + booking.serviceDuration;
@@ -359,10 +392,10 @@ export function getSettingsFromStorage() {
   return settings
     ? JSON.parse(settings)
     : {
-        agendaAberta: true,
-        services: services,
-        scheduleSettings: defaultScheduleSettings,
-      };
+      agendaAberta: true,
+      services: services,
+      scheduleSettings: defaultScheduleSettings,
+    };
 }
 
 export function getScheduleSettings(): ScheduleSettings {
@@ -378,6 +411,16 @@ export function getWeekSchedule(): WeekSchedule {
 
 export function saveWeekSchedule(schedule: WeekSchedule): void {
   localStorage.setItem("weekSchedule", JSON.stringify(schedule));
+}
+
+export function getBlockedPeriods(): BlockedPeriod[] {
+  if (typeof window === "undefined") return [];
+  const blocked = localStorage.getItem("blockedPeriods");
+  return blocked ? JSON.parse(blocked) : [];
+}
+
+export function saveBlockedPeriods(blocked: BlockedPeriod[]): void {
+  localStorage.setItem("blockedPeriods", JSON.stringify(blocked));
 }
 
 export function getNotificationSettings(): NotificationSettings {
