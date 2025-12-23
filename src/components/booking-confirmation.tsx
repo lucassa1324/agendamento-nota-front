@@ -10,12 +10,14 @@ type BookingConfirmationProps = {
   booking: Booking;
   service: Service;
   onReset: () => void;
+  isUpdate?: boolean;
 };
 
 export function BookingConfirmation({
   booking,
   service,
   onReset,
+  isUpdate = false,
 }: BookingConfirmationProps) {
   const formattedDate = new Date(`${booking.date}T00:00:00`).toLocaleDateString(
     "pt-BR",
@@ -34,7 +36,7 @@ export function BookingConfirmation({
           <CheckCircle2 className="w-10 h-10 text-accent" />
         </div>
         <h2 className="font-serif text-3xl font-bold mb-2">
-          Agendamento Confirmado!
+          {isUpdate ? "Agendamento Atualizado!" : "Agendamento Confirmado!"}
         </h2>
         <p className="text-muted-foreground">
           Enviamos uma confirmação para o seu e-mail
@@ -110,7 +112,7 @@ export function BookingConfirmation({
           onClick={onReset}
           className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
         >
-          Fazer Novo Agendamento
+          {isUpdate ? "Concluir" : "Fazer Novo Agendamento"}
         </Button>
       </div>
     </div>

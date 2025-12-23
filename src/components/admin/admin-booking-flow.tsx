@@ -13,19 +13,34 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
 import { AdminCalendar } from "@/components/admin/admin-calendar";
 import { BookingConfirmation } from "@/components/booking-confirmation";
 import { BookingForm } from "@/components/booking-form";
 import { ServiceSelector } from "@/components/service-selector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Booking, Service } from "@/lib/booking-data";
+import {
+  type Booking,
+  getSettingsFromStorage,
+  type Service,
+} from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
 type BookingStep = "service" | "date" | "calendar" | "form" | "confirmation";
 
-export function AdminBookingFlow() {
+type AdminBookingFlowProps = {
+  initialBooking?: Booking;
+  onComplete?: () => void;
+  mode?: "reschedule" | "edit";
+};
+
+export function AdminBookingFlow({
+  initialBooking,
+  onComplete,
+  mode = "reschedule",
+}: AdminBookingFlowProps) {
   const [currentStep, setCurrentStep] = useState<BookingStep>("service");
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -33,6 +48,25 @@ export function AdminBookingFlow() {
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(
     null,
   );
+
+  useEffect(() => {
+    if (initialBooking) {
+      const settings = getSettingsFromStorage();
+      const allServices = settings.services as Service[];
+      const bookingServiceIds = Array.isArray(initialBooking.serviceId)
+        ? initialBooking.serviceId
+        : [initialBooking.serviceId];
+
+      const selected = allServices.filter((s) =>
+        bookingServiceIds.includes(s.id),
+      );
+      setSelectedServices(selected);
+      setSelectedDate(initialBooking.date);
+      setSelectedTime(initialBooking.time);
+      // Se for edição, começa nos serviços. Se for adiamento, começa na data.
+      setCurrentStep(mode === "edit" ? "service" : "date");
+    }
+  }, [initialBooking, mode]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const slotInterval = 10;
   const defaultServiceDuration = 30;
@@ -373,6 +407,7 @@ export function AdminBookingFlow() {
               time={selectedTime}
               onConfirm={handleBookingConfirm}
               onBack={() => setCurrentStep("calendar")}
+              initialBooking={initialBooking}
             />
           </div>
         )}
@@ -381,7 +416,8 @@ export function AdminBookingFlow() {
         <BookingConfirmation
           booking={confirmedBooking}
           service={totalService}
-          onReset={handleReset}
+          onReset={onComplete || handleReset}
+          isUpdate={!!initialBooking}
         />
       )}
     </div>

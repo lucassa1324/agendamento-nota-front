@@ -1,24 +1,54 @@
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: useEffect dependencies are managed manually */
 "use client";
 
-import { AlertTriangle, Clock, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Clock,
+  Pencil,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import { getSettingsFromStorage, type Service } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
 export function ServicesManager() {
   const [services, setServices] = useState<Service[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isAdding, setIsAdding] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
   const [formData, setFormData] = useState<Partial<Service>>({});
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [conflictSearch, setConflictSearch] = useState("");
+  const { toast } = useToast();
 
   useEffect(() => {
     loadServices();
@@ -37,7 +67,7 @@ export function ServicesManager() {
   };
 
   const handleAdd = () => {
-    setIsAdding(true);
+    setEditingId(null);
     setFormData({
       id: Date.now().toString(),
       name: "",
@@ -47,6 +77,8 @@ export function ServicesManager() {
       conflictGroupId: "",
       conflictingServiceIds: [],
     });
+    setErrors({});
+    setIsModalOpen(true);
   };
 
   const handleEdit = (service: Service) => {
@@ -56,16 +88,26 @@ export function ServicesManager() {
       conflictGroupId: service.conflictGroupId || "",
       conflictingServiceIds: service.conflictingServiceIds || [],
     });
+    setErrors({});
+    setIsModalOpen(true);
   };
 
   const handleSave = () => {
-    if (
-      !formData.name ||
-      !formData.description ||
-      !formData.duration ||
-      !formData.price
-    ) {
-      alert("Preencha todos os campos");
+    const newErrors: Record<string, boolean> = {
+      name: !formData.name?.trim(),
+      description: !formData.description?.trim(),
+      duration: !formData.duration || Number.isNaN(formData.duration) || formData.duration < 15,
+      price: formData.price === undefined || Number.isNaN(formData.price) || formData.price < 0,
+    };
+
+    setErrors(newErrors);
+
+    if (Object.values(newErrors).some((v) => v)) {
+      toast({
+        title: "Campos Obrigatórios",
+        description: "Por favor, preencha todos os campos destacados em vermelho corretamente.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -76,7 +118,7 @@ export function ServicesManager() {
     } as Service;
 
     let updatedServices: Service[];
-    if (isAdding) {
+    if (!editingId) {
       updatedServices = [...services, serviceToSave];
     } else {
       updatedServices = services.map((s) =>
@@ -85,10 +127,15 @@ export function ServicesManager() {
     }
 
     saveSettings(updatedServices);
-    setIsAdding(false);
+    setIsModalOpen(false);
     setEditingId(null);
     setFormData({});
     setConflictSearch("");
+    
+    toast({
+      title: editingId ? "Serviço Atualizado" : "Serviço Adicionado",
+      description: `O serviço "${serviceToSave.name}" foi salvo com sucesso.`,
+    });
   };
 
   const toggleConflict = (serviceId: string) => {
@@ -104,69 +151,90 @@ export function ServicesManager() {
   };
 
   const handleCancel = () => {
-    setIsAdding(false);
+    setIsModalOpen(false);
     setEditingId(null);
     setFormData({});
+    setErrors({});
   };
 
-  const handleDelete = (serviceId: string) => {
-    if (confirm("Tem certeza que deseja excluir este serviço?")) {
-      const updatedServices = services.filter((s) => s.id !== serviceId);
-      saveSettings(updatedServices);
-    }
+  const handleDeleteClick = (service: Service) => {
+    setServiceToDelete(service);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (!serviceToDelete) return;
+    
+    const updatedServices = services.filter((s) => s.id !== serviceToDelete.id);
+    saveSettings(updatedServices);
+    setIsDeleteConfirmOpen(false);
+    setServiceToDelete(null);
+    
+    toast({
+      title: "Serviço Excluído",
+      description: `O serviço "${serviceToDelete.name}" foi removido com sucesso.`,
+      variant: "destructive",
+    });
   };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-serif text-2xl font-bold">Gerenciar Serviços</h2>
-        {!isAdding && !editingId && (
-          <Button
-            onClick={handleAdd}
-            className="bg-accent hover:bg-accent/90 text-accent-foreground"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Adicionar Serviço
-          </Button>
-        )}
+        <Button
+          onClick={handleAdd}
+          className="bg-accent hover:bg-accent/90 text-accent-foreground"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Adicionar Serviço
+        </Button>
       </div>
 
-      {(isAdding || editingId) && (
-        <Card className="mb-6 border-accent/20">
-          <CardHeader>
-            <CardTitle>
-              {isAdding ? "Novo Serviço" : "Editar Serviço"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {editingId ? "Editar Serviço" : "Novo Serviço"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="name">Nome do Serviço</Label>
+              <Label htmlFor="name" className={cn(errors.name && "text-destructive")}>
+                Nome do Serviço
+              </Label>
               <Input
                 id="name"
                 value={formData.name || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value });
+                  if (errors.name) setErrors({ ...errors, name: false });
+                }}
                 placeholder="Ex: Design de Sobrancelhas"
+                className={cn(errors.name && "border-destructive focus-visible:ring-destructive")}
               />
             </div>
 
             <div>
-              <Label htmlFor="description">Descrição</Label>
+              <Label htmlFor="description" className={cn(errors.description && "text-destructive")}>
+                Descrição
+              </Label>
               <Textarea
                 id="description"
                 value={formData.description || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, description: e.target.value });
+                  if (errors.description) setErrors({ ...errors, description: false });
+                }}
                 placeholder="Descreva o serviço"
                 rows={3}
+                className={cn(errors.description && "border-destructive focus-visible:ring-destructive")}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="duration" className="flex items-center gap-2">
+                <Label htmlFor="duration" className={cn("flex items-center gap-2", errors.duration && "text-destructive")}>
                   <Clock className="w-4 h-4" />
                   Duração (minutos)
                 </Label>
@@ -174,36 +242,39 @@ export function ServicesManager() {
                   id="duration"
                   type="number"
                   value={formData.duration || ""}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       duration: Number.parseInt(e.target.value, 10),
-                    })
-                  }
+                    });
+                    if (errors.duration) setErrors({ ...errors, duration: false });
+                  }}
                   placeholder="60"
                   min="15"
                   step="15"
+                  className={cn(errors.duration && "border-destructive focus-visible:ring-destructive")}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Tempo necessário para realizar o procedimento
-                </p>
               </div>
 
               <div>
-                <Label htmlFor="price">Preço (R$)</Label>
+                <Label htmlFor="price" className={cn(errors.price && "text-destructive")}>
+                  Preço (R$)
+                </Label>
                 <Input
                   id="price"
                   type="number"
                   value={formData.price || ""}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setFormData({
                       ...formData,
                       price: Number.parseFloat(e.target.value),
-                    })
-                  }
+                    });
+                    if (errors.price) setErrors({ ...errors, price: false });
+                  }}
                   placeholder="100"
                   min="0"
                   step="0.01"
+                  className={cn(errors.price && "border-destructive focus-visible:ring-destructive")}
                 />
               </div>
             </div>
@@ -227,9 +298,6 @@ export function ServicesManager() {
                   }
                   placeholder="Ex: sobrancelhas"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Serviços do mesmo grupo são bloqueados automaticamente.
-                </p>
               </div>
 
               <div className="space-y-3">
@@ -287,39 +355,58 @@ export function ServicesManager() {
                             >
                               {service.name}
                             </Label>
-                            <p className="text-[10px] text-muted-foreground">
-                              ID: {service.id}
-                            </p>
                           </button>
                         </div>
                       ))}
-                    {services.filter((s) => s.id !== editingId).length ===
-                      0 && (
-                      <p className="text-center text-sm text-muted-foreground py-4">
-                        Nenhum outro serviço cadastrado.
-                      </p>
-                    )}
                   </div>
                 </ScrollArea>
               </div>
             </div>
+          </div>
 
-            <div className="flex gap-2 pt-4 border-t border-accent/10">
-              <Button
-                onClick={handleSave}
-                className="bg-accent hover:bg-accent/90 text-accent-foreground"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                Salvar
-              </Button>
-              <Button onClick={handleCancel} variant="outline">
-                <X className="w-4 h-4 mr-2" />
-                Cancelar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancel}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSave}
+              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Confirmar Exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription className="py-2 text-base">
+              Tem certeza que deseja excluir o serviço{" "}
+              <span className="font-bold text-foreground">
+                "{serviceToDelete?.name}"
+              </span>
+              ? Esta ação não pode ser desfeita e removerá permanentemente o serviço do sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel onClick={() => setServiceToDelete(null)}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Sim, Excluir Serviço
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <div className="grid md:grid-cols-2 gap-4">
         {services.map((service) => (
@@ -343,23 +430,23 @@ export function ServicesManager() {
                     </span>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEdit(service)}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(service.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(service)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteClick(service)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
               </div>
             </CardContent>
           </Card>

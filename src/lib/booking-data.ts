@@ -370,6 +370,14 @@ export function updateBookingStatus(
   localStorage.setItem("bookings", JSON.stringify(updated));
 }
 
+export function updateBooking(updatedBooking: Booking): void {
+  const bookings = getBookingsFromStorage();
+  const updated = bookings.map((b) =>
+    b.id === updatedBooking.id ? updatedBooking : b,
+  );
+  localStorage.setItem("bookings", JSON.stringify(updated));
+}
+
 export function markNotificationsSent(
   bookingId: string,
   type: "email" | "whatsapp",

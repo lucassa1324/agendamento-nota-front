@@ -11,6 +11,7 @@ import {
   type Service,
   saveBookingToStorage,
   sendBookingNotifications,
+  updateBooking,
 } from "@/lib/booking-data";
 
 type BookingFormProps = {
@@ -19,6 +20,7 @@ type BookingFormProps = {
   time: string;
   onConfirm: (booking: Booking) => void;
   onBack: () => void;
+  initialBooking?: Booking;
 };
 
 export function BookingForm({
@@ -27,11 +29,13 @@ export function BookingForm({
   time,
   onConfirm,
   onBack,
+  initialBooking,
 }: BookingFormProps) {
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
+    name: initialBooking?.clientName || "",
+    email: initialBooking?.clientEmail || "",
+    phone: initialBooking?.clientPhone || "",
+    price: initialBooking?.servicePrice ?? service.price,
   });
 
   const formattedDate = new Date(`${date}T00:00:00`).toLocaleDateString(
@@ -48,25 +52,29 @@ export function BookingForm({
     e.preventDefault();
 
     const booking: Booking = {
-      id: Date.now().toString(),
+      id: initialBooking?.id || Date.now().toString(),
       serviceId: service.id.includes(",") ? service.id.split(",") : service.id,
       serviceName: service.name,
       serviceDuration: service.duration,
-      servicePrice: service.price,
+      servicePrice: formData.price,
       date,
       time,
       clientName: formData.name,
       clientEmail: formData.email,
       clientPhone: formData.phone,
-      status: "pendente",
-      createdAt: new Date().toISOString(),
-      notificationsSent: {
+      status: initialBooking?.status || "pendente",
+      createdAt: initialBooking?.createdAt || new Date().toISOString(),
+      notificationsSent: initialBooking?.notificationsSent || {
         email: false,
         whatsapp: false,
       },
     };
 
-    saveBookingToStorage(booking);
+    if (initialBooking) {
+      updateBooking(booking);
+    } else {
+      saveBookingToStorage(booking);
+    }
 
     await sendBookingNotifications(booking);
 
@@ -91,7 +99,7 @@ export function BookingForm({
               Duração: {service.duration} minutos
             </div>
             <div className="font-semibold text-accent">
-              R$ {service.price.toFixed(2)}
+              R$ {formData.price.toFixed(2)}
             </div>
           </div>
         </Card>
@@ -145,11 +153,25 @@ export function BookingForm({
               />
             </div>
 
+            <div>
+              <Label htmlFor="price">Valor do Procedimento (R$)</Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                value={formData.price}
+                onChange={(e) =>
+                  setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })
+                }
+                placeholder="0.00"
+              />
+            </div>
+
             <Button
               type="submit"
               className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
             >
-              Confirmar Agendamento
+              {initialBooking ? "Salvar Alterações" : "Confirmar Agendamento"}
             </Button>
           </form>
         </CardContent>

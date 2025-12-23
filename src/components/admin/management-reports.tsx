@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/a11y/noLabelWithoutControl: False positive for a11y linting rules */
 "use client";
 
 import {

@@ -4,11 +4,11 @@ import {
   BarChart3,
   Bell,
   Briefcase,
-  Calendar,
   CalendarIcon,
   Clock,
   Home,
   ImageIcon,
+  ListTodo,
   LogOut,
   Package,
   PieChart,
@@ -86,7 +86,7 @@ export default function AdminLayout({
             href="/admin/dashboard?tab=agendamentos"
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
           >
-            <Calendar className="w-4 h-4" />
+            <ListTodo className="w-4 h-4" />
             Agendamentos
           </Link>
           <Link
