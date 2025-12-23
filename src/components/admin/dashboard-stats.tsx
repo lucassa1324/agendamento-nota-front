@@ -34,10 +34,7 @@ export function DashboardStats() {
         );
       })
       .reduce((sum, booking) => {
-        const service = settings.services.find(
-          (s: any) => s.id === booking.serviceId,
-        );
-        return sum + (service?.price || 0);
+        return sum + (booking.servicePrice || 0);
       }, 0);
 
     setStats({
@@ -77,10 +74,10 @@ export function DashboardStats() {
 
   return (
     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {statCards.map((stat, index) => {
+      {statCards.map((stat) => {
         const Icon = stat.icon;
         return (
-          <Card key={index}>
+          <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}

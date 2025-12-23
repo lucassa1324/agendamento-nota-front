@@ -17,8 +17,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   getBookingsFromStorage,
-  getSettingsFromStorage,
-  type Service,
 } from "@/lib/booking-data";
 
 export function Reports() {
@@ -31,14 +29,10 @@ export function Reports() {
 
   const generateReports = useCallback(() => {
     const bookings = getBookingsFromStorage();
-    const settings = getSettingsFromStorage();
 
     // Total de faturamento
     const totalRevenue = bookings.reduce((sum, booking) => {
-      const service = settings.services.find(
-        (s: Service) => s.id === booking.serviceId,
-      );
-      return sum + (service?.price || 0);
+      return sum + (booking.servicePrice || 0);
     }, 0);
 
     // Faturamento mensal (últimos 6 meses)
@@ -61,11 +55,8 @@ export function Reports() {
     bookings.forEach((booking) => {
       const date = new Date(booking.date);
       const monthKey = `${monthNames[date.getMonth()]}/${date.getFullYear().toString().slice(-2)}`;
-      const service = settings.services.find(
-        (s: Service) => s.id === booking.serviceId,
-      );
       monthlyData[monthKey] =
-        (monthlyData[monthKey] || 0) + (service?.price || 0);
+        (monthlyData[monthKey] || 0) + (booking.servicePrice || 0);
     });
 
     const monthlyRevenue = Object.entries(monthlyData)
@@ -75,12 +66,13 @@ export function Reports() {
     // Distribuição por serviço
     const serviceCount: { [key: string]: number } = {};
     bookings.forEach((booking) => {
-      const service = settings.services.find(
-        (s: Service) => s.id === booking.serviceId,
-      );
-      if (service) {
-        serviceCount[service.name] = (serviceCount[service.name] || 0) + 1;
-      }
+      // Se for um array de IDs, contamos cada serviço individualmente se possível, 
+      // mas como o serviceName já é combinado, vamos usar os nomes individuais se soubermos separar.
+      // O padrão usado é "Service 1 + Service 2".
+      const serviceNames = booking.serviceName.split(" + ");
+      serviceNames.forEach(name => {
+        serviceCount[name] = (serviceCount[name] || 0) + 1;
+      });
     });
 
     const serviceDistribution = Object.entries(serviceCount).map(

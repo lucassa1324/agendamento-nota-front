@@ -1,20 +1,24 @@
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: useEffect dependencies are managed manually */
 "use client";
 
-import { Clock, Pencil, Plus, Save, Trash2, X } from "lucide-react";
+import { AlertTriangle, Clock, Pencil, Plus, Save, Search, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { getSettingsFromStorage, type Service } from "@/lib/booking-data";
+import { cn } from "@/lib/utils";
 
 export function ServicesManager() {
   const [services, setServices] = useState<Service[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState<Partial<Service>>({});
+  const [conflictSearch, setConflictSearch] = useState("");
 
   useEffect(() => {
     loadServices();
@@ -40,12 +44,18 @@ export function ServicesManager() {
       description: "",
       duration: 60,
       price: 0,
+      conflictGroupId: "",
+      conflictingServiceIds: [],
     });
   };
 
   const handleEdit = (service: Service) => {
     setEditingId(service.id);
-    setFormData(service);
+    setFormData({
+      ...service,
+      conflictGroupId: service.conflictGroupId || "",
+      conflictingServiceIds: service.conflictingServiceIds || [],
+    });
   };
 
   const handleSave = () => {
@@ -59,12 +69,18 @@ export function ServicesManager() {
       return;
     }
 
+    const serviceToSave = {
+      ...formData,
+      conflictGroupId: formData.conflictGroupId?.trim() || undefined,
+      conflictingServiceIds: formData.conflictingServiceIds || [],
+    } as Service;
+
     let updatedServices: Service[];
     if (isAdding) {
-      updatedServices = [...services, formData as Service];
+      updatedServices = [...services, serviceToSave];
     } else {
       updatedServices = services.map((s) =>
-        s.id === editingId ? (formData as Service) : s,
+        s.id === editingId ? serviceToSave : s,
       );
     }
 
@@ -72,6 +88,19 @@ export function ServicesManager() {
     setIsAdding(false);
     setEditingId(null);
     setFormData({});
+    setConflictSearch("");
+  };
+
+  const toggleConflict = (serviceId: string) => {
+    const currentIds = formData.conflictingServiceIds || [];
+    const isChecked = currentIds.includes(serviceId);
+    const newIds = isChecked
+      ? currentIds.filter((id) => id !== serviceId)
+      : [...currentIds, serviceId];
+    setFormData({
+      ...formData,
+      conflictingServiceIds: newIds,
+    });
   };
 
   const handleCancel = () => {
@@ -179,7 +208,103 @@ export function ServicesManager() {
               </div>
             </div>
 
-            <div className="flex gap-2">
+            <div className="space-y-4 pt-4 border-t border-accent/10">
+              <div className="flex items-center gap-2 text-accent font-semibold">
+                <AlertTriangle className="w-5 h-5" />
+                <h3>Configuração de Conflitos</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Selecione os serviços que NÃO podem ser realizados junto com este.
+              </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="conflictGroup">Grupo de Conflito (Opcional)</Label>
+                <Input
+                  id="conflictGroup"
+                  value={formData.conflictGroupId || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, conflictGroupId: e.target.value })
+                  }
+                  placeholder="Ex: sobrancelhas"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Serviços do mesmo grupo são bloqueados automaticamente.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <Label>Bloqueio Individual de Serviços</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    className="pl-9"
+                    placeholder="Pesquisar serviço para conflito..."
+                    value={conflictSearch}
+                    onChange={(e) => setConflictSearch(e.target.value)}
+                  />
+                </div>
+
+                <ScrollArea className="h-50 border rounded-md p-4">
+                  <div className="space-y-3">
+                    {services
+                      .filter(
+                        (s) =>
+                          s.id !== editingId &&
+                          (s.name
+                            .toLowerCase()
+                            .includes(conflictSearch.toLowerCase()) ||
+                            s.id
+                              .toLowerCase()
+                              .includes(conflictSearch.toLowerCase())),
+                      )
+                      .map((service) => (
+                        <div
+                          key={service.id}
+                          className={cn(
+                            "flex items-start space-x-3 p-3 rounded-lg border transition-colors",
+                            formData.conflictingServiceIds?.includes(service.id)
+                              ? "bg-accent/5 border-accent/20"
+                              : "hover:bg-muted/50 border-transparent",
+                          )}
+                        >
+                          <Checkbox
+                            id={`conflict-${service.id}`}
+                            checked={formData.conflictingServiceIds?.includes(
+                              service.id,
+                            )}
+                            onCheckedChange={() => toggleConflict(service.id)}
+                            className="mt-1"
+                          />
+                          
+                          <button 
+                            type="button"
+                            className="grid gap-1.5 leading-none cursor-pointer text-left w-full" 
+                            onClick={() => toggleConflict(service.id)}
+                          >
+                            <Label
+                              htmlFor={`conflict-${service.id}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {service.name}
+                            </Label>
+                            <p className="text-[10px] text-muted-foreground">
+                              ID: {service.id}
+                            </p>
+                          </button>
+                        </div>
+                      ))}
+                    {services.filter((s) => s.id !== editingId).length ===
+                      0 && (
+                      <p className="text-center text-sm text-muted-foreground py-4">
+                        Nenhum outro serviço cadastrado.
+                      </p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-4 border-t border-accent/10">
               <Button
                 onClick={handleSave}
                 className="bg-accent hover:bg-accent/90 text-accent-foreground"

@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { BookingCalendar } from "@/components/booking-calendar";
 import { BookingConfirmation } from "@/components/booking-confirmation";
 import { BookingForm } from "@/components/booking-form";
@@ -14,7 +14,7 @@ type BookingStep = "service" | "date" | "time" | "form" | "confirmation";
 
 export function BookingFlow() {
   const [currentStep, setCurrentStep] = useState<BookingStep>("service");
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(
@@ -22,14 +22,14 @@ export function BookingFlow() {
   );
 
   const steps = [
-    { id: "service", label: "Serviço", completed: !!selectedService },
+    { id: "service", label: "Serviço", completed: selectedServices.length > 0 },
     { id: "date", label: "Data", completed: !!selectedDate },
     { id: "time", label: "Horário", completed: !!selectedTime },
     { id: "form", label: "Dados", completed: !!confirmedBooking },
   ];
 
-  const handleServiceSelect = (service: Service) => {
-    setSelectedService(service);
+  const handleServiceSelect = (services: Service[]) => {
+    setSelectedServices(services);
     setCurrentStep("date");
   };
 
@@ -50,11 +50,22 @@ export function BookingFlow() {
 
   const handleReset = () => {
     setCurrentStep("service");
-    setSelectedService(null);
+    setSelectedServices([]);
     setSelectedDate("");
     setSelectedTime("");
     setConfirmedBooking(null);
   };
+
+  const totalService = useMemo(() => {
+    if (selectedServices.length === 0) return null;
+    return {
+      id: selectedServices.map(s => s.id).join(','),
+      name: selectedServices.map(s => s.name).join(' + '),
+      price: selectedServices.reduce((acc, s) => acc + s.price, 0),
+      duration: selectedServices.reduce((acc, s) => acc + s.duration, 0),
+      description: selectedServices.map(s => s.name).join(', ')
+    } as Service;
+  }, [selectedServices]);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -95,20 +106,20 @@ export function BookingFlow() {
 
       {/* Step Content */}
       {currentStep === "service" && (
-        <ServiceSelector onSelect={handleServiceSelect} />
+        <ServiceSelector onSelect={handleServiceSelect} selectedServices={selectedServices} />
       )}
 
-      {currentStep === "date" && selectedService && (
+      {currentStep === "date" && totalService && (
         <BookingCalendar
-          service={selectedService}
+          service={totalService}
           onDateSelect={handleDateSelect}
           onBack={() => setCurrentStep("service")}
         />
       )}
 
-      {currentStep === "time" && selectedService && selectedDate && (
+      {currentStep === "time" && totalService && selectedDate && (
         <TimeSlotSelector
-          service={selectedService}
+          service={totalService}
           date={selectedDate}
           onTimeSelect={handleTimeSelect}
           onBack={() => setCurrentStep("date")}
@@ -117,11 +128,11 @@ export function BookingFlow() {
       )}
 
       {currentStep === "form" &&
-        selectedService &&
+        totalService &&
         selectedDate &&
         selectedTime && (
           <BookingForm
-            service={selectedService}
+            service={totalService}
             date={selectedDate}
             time={selectedTime}
             onConfirm={handleBookingConfirm}
@@ -131,10 +142,10 @@ export function BookingFlow() {
 
       {currentStep === "confirmation" &&
         confirmedBooking &&
-        selectedService && (
+        totalService && (
           <BookingConfirmation
             booking={confirmedBooking}
-            service={selectedService}
+            service={totalService}
             onReset={handleReset}
           />
         )}

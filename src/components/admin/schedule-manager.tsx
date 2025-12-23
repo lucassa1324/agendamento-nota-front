@@ -1,8 +1,15 @@
 "use client";
 
-import { Calendar, Save, Trash2, Ban, Plus, CalendarRange, Clock } from "lucide-react";
+import { addDays, format, isBefore, isEqual, parseISO } from "date-fns";
+import {
+  Ban,
+  Calendar,
+  CalendarRange,
+  Clock,
+  Save,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { format, addDays, parseISO, isBefore, isEqual } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,12 +24,12 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import {
-  type DaySchedule,
-  getWeekSchedule,
-  saveWeekSchedule,
-  getBlockedPeriods,
-  saveBlockedPeriods,
   type BlockedPeriod,
+  type DaySchedule,
+  getBlockedPeriods,
+  getWeekSchedule,
+  saveBlockedPeriods,
+  saveWeekSchedule,
 } from "@/lib/booking-data";
 
 export function ScheduleManager() {
@@ -32,7 +39,9 @@ export function ScheduleManager() {
   const [initialInterval, setInitialInterval] = useState<number>(30);
   const [blockedPeriods, setBlockedPeriods] = useState<BlockedPeriod[]>([]);
   const [initialBlocked, setInitialBlocked] = useState<string>("");
-  const [newBlocked, setNewBlocked] = useState<Partial<BlockedPeriod & { endDate?: string }>>({
+  const [newBlocked, setNewBlocked] = useState<
+    Partial<BlockedPeriod & { endDate?: string }>
+  >({
     date: "",
     endDate: "",
     startTime: "",
@@ -48,9 +57,9 @@ export function ScheduleManager() {
     setInitialSchedule(JSON.stringify(schedule));
     setBlockedPeriods(blocked);
     setInitialBlocked(JSON.stringify(blocked));
-    
+
     // Pegar o intervalo do primeiro dia aberto como padrão para o select global
-    const firstOpenDay = schedule.find(d => d.isOpen);
+    const firstOpenDay = schedule.find((d) => d.isOpen);
     if (firstOpenDay) {
       setGlobalInterval(firstOpenDay.interval);
       setInitialInterval(firstOpenDay.interval);
@@ -62,15 +71,15 @@ export function ScheduleManager() {
   }, [loadSchedule]);
 
   const saveInterval = () => {
-    const updatedSchedule = weekSchedule.map(day => ({
+    const updatedSchedule = weekSchedule.map((day) => ({
       ...day,
-      interval: globalInterval
+      interval: globalInterval,
     }));
     saveWeekSchedule(updatedSchedule);
     setWeekSchedule(updatedSchedule);
     setInitialSchedule(JSON.stringify(updatedSchedule));
     setInitialInterval(globalInterval);
-    
+
     toast({
       title: "Intervalo Atualizado!",
       description: `O intervalo de ${globalInterval} minutos foi aplicado e salvo.`,
@@ -83,7 +92,8 @@ export function ScheduleManager() {
     setInitialSchedule(JSON.stringify(weekSchedule));
     toast({
       title: "Horários Salvos!",
-      description: "As configurações de abertura e fechamento foram atualizadas.",
+      description:
+        "As configurações de abertura e fechamento foram atualizadas.",
       className: "bg-green-600 text-white border-none",
     });
   };
@@ -113,7 +123,7 @@ export function ScheduleManager() {
     }
 
     const blocked: BlockedPeriod = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).slice(2, 11),
       date: newBlocked.date as string,
       startTime: newBlocked.startTime,
       endTime: newBlocked.endTime,
@@ -122,7 +132,13 @@ export function ScheduleManager() {
 
     const updated = [...blockedPeriods, blocked];
     setBlockedPeriods(updated);
-    setNewBlocked({ date: "", endDate: "", startTime: "", endTime: "", reason: "" });
+    setNewBlocked({
+      date: "",
+      endDate: "",
+      startTime: "",
+      endTime: "",
+      reason: "",
+    });
   };
 
   const addFullDayBlock = () => {
@@ -136,21 +152,28 @@ export function ScheduleManager() {
     }
 
     const blocked: BlockedPeriod = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: Math.random().toString(36).slice(2, 11),
       date: newBlocked.date as string,
       reason: newBlocked.reason || "Dia todo bloqueado",
     };
 
     const updated = [...blockedPeriods, blocked];
     setBlockedPeriods(updated);
-    setNewBlocked({ date: "", endDate: "", startTime: "", endTime: "", reason: "" });
+    setNewBlocked({
+      date: "",
+      endDate: "",
+      startTime: "",
+      endTime: "",
+      reason: "",
+    });
   };
 
   const addRangeBlock = () => {
     if (!newBlocked.date || !newBlocked.endDate) {
       toast({
         title: "Erro",
-        description: "Selecione a data inicial e final para o bloqueio do período.",
+        description:
+          "Selecione a data inicial e final para o bloqueio do período.",
         variant: "destructive",
       });
       return;
@@ -173,16 +196,16 @@ export function ScheduleManager() {
 
     while (isBefore(current, end) || isEqual(current, end)) {
       const dateStr = format(current, "yyyy-MM-dd");
-      
+
       // Evitar duplicatas para a mesma data
-      if (!blockedPeriods.some(b => b.date === dateStr)) {
+      if (!blockedPeriods.some((b) => b.date === dateStr)) {
         newBlocks.push({
-          id: Math.random().toString(36).substr(2, 9),
+          id: Math.random().toString(36).slice(2, 11),
           date: dateStr,
           reason: newBlocked.reason || "Período bloqueado",
         });
       }
-      
+
       current = addDays(current, 1);
     }
 
@@ -196,8 +219,14 @@ export function ScheduleManager() {
 
     const updated = [...blockedPeriods, ...newBlocks];
     setBlockedPeriods(updated);
-    setNewBlocked({ date: "", endDate: "", startTime: "", endTime: "", reason: "" });
-    
+    setNewBlocked({
+      date: "",
+      endDate: "",
+      startTime: "",
+      endTime: "",
+      reason: "",
+    });
+
     toast({
       title: "Período Bloqueado!",
       description: `${newBlocks.length} dias foram adicionados aos bloqueios.`,
@@ -206,7 +235,7 @@ export function ScheduleManager() {
   };
 
   const removeBlockedPeriod = (id: string) => {
-    setBlockedPeriods(prev => prev.filter(p => p.id !== id));
+    setBlockedPeriods((prev) => prev.filter((p) => p.id !== id));
   };
 
   const updateDaySchedule = (
@@ -274,8 +303,8 @@ export function ScheduleManager() {
           onClick={saveSchedule}
           disabled={!isScheduleDirty}
           className={`transition-all duration-300 ${
-            isScheduleDirty 
-              ? "bg-green-600 hover:bg-green-700 text-white shadow-lg scale-105" 
+            isScheduleDirty
+              ? "bg-green-600 hover:bg-green-700 text-white shadow-lg scale-105"
               : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
           }`}
         >
@@ -284,7 +313,6 @@ export function ScheduleManager() {
         </Button>
       </div>
 
-      
       <div className="mb-8 bg-card/50 p-6 rounded-xl border border-border shadow-sm">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-2 h-6 bg-primary rounded-full" />
@@ -293,13 +321,18 @@ export function ScheduleManager() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
           <div className="space-y-2">
-            <Label htmlFor="global-interval" className="text-sm font-medium text-muted-foreground">
+            <Label
+              htmlFor="global-interval"
+              className="text-sm font-medium text-muted-foreground"
+            >
               Tempo entre agendamentos (minutos)
             </Label>
             <div className="flex gap-2">
-              <Select 
-                value={globalInterval.toString()} 
-                onValueChange={(value) => setGlobalInterval(Number.parseInt(value, 10))}
+              <Select
+                value={globalInterval.toString()}
+                onValueChange={(value) =>
+                  setGlobalInterval(Number.parseInt(value, 10))
+                }
               >
                 <SelectTrigger id="global-interval" className="w-full">
                   <SelectValue placeholder="Selecione" />
@@ -313,12 +346,12 @@ export function ScheduleManager() {
                   <SelectItem value="60">60 min</SelectItem>
                 </SelectContent>
               </Select>
-              <Button 
+              <Button
                 onClick={saveInterval}
                 disabled={!isIntervalDirty}
                 className={`transition-all duration-300 ${
-                  isIntervalDirty 
-                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md" 
+                  isIntervalDirty
+                    ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md"
                     : "bg-muted text-muted-foreground opacity-50"
                 }`}
               >
@@ -482,97 +515,137 @@ export function ScheduleManager() {
             onClick={saveBlocked}
             disabled={!isBlockedDirty}
             className={`transition-all duration-300 ${
-              isBlockedDirty 
-                ? "bg-orange-600 hover:bg-orange-700 text-white shadow-lg scale-105" 
+              isBlockedDirty
+                ? "bg-orange-600 hover:bg-orange-700 text-white shadow-lg scale-105"
                 : "bg-muted text-muted-foreground opacity-50 cursor-not-allowed"
             }`}
           >
             <Save className="w-4 h-4 mr-2" />
-            {isBlockedDirty ? "Salvar Alterações de Bloqueio" : "Bloqueios Salvos"}
+            {isBlockedDirty
+              ? "Salvar Alterações de Bloqueio"
+              : "Bloqueios Salvos"}
           </Button>
         </div>
-        
+
         <Card className="bg-card/50 border-destructive/20">
           <CardHeader>
             <CardTitle className="text-lg">Adicionar Novo Bloqueio</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Bloqueie datas específicas ou horários em que você não estará disponível.
+              Bloqueie datas específicas ou horários em que você não estará
+              disponível.
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-primary" />
-                    Data Inicial / Única
-                  </Label>
-                  <Input 
-                    type="date" 
-                    value={newBlocked.date} 
-                    onChange={e => setNewBlocked(prev => ({ ...prev, date: e.target.value }))}
-                    className="focus:ring-primary"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold flex items-center gap-2">
-                    <CalendarRange className="w-4 h-4 text-primary" />
-                    Data Final (Para Período)
-                  </Label>
-                  <Input 
-                    type="date" 
-                    value={newBlocked.endDate} 
-                    onChange={e => setNewBlocked(prev => ({ ...prev, endDate: e.target.value }))}
-                    className="focus:ring-primary"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold flex items-center gap-2">
-                    <Ban className="w-4 h-4 text-primary" />
-                    Motivo do Bloqueio
-                  </Label>
-                  <Input 
-                    placeholder="Ex: Feriado, Férias..." 
-                    value={newBlocked.reason}
-                    onChange={e => setNewBlocked(prev => ({ ...prev, reason: e.target.value }))}
-                    className="focus:ring-primary"
-                  />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  Data Inicial / Única
+                </Label>
+                <Input
+                  type="date"
+                  value={newBlocked.date}
+                  onChange={(e) =>
+                    setNewBlocked((prev) => ({ ...prev, date: e.target.value }))
+                  }
+                  className="focus:ring-primary"
+                />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-border/50">
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium text-muted-foreground">Início (opcional)</Label>
-                  <Input 
-                    type="time" 
-                    value={newBlocked.startTime} 
-                    onChange={e => setNewBlocked(prev => ({ ...prev, startTime: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-medium text-muted-foreground">Fim (opcional)</Label>
-                  <Input 
-                    type="time" 
-                    value={newBlocked.endTime} 
-                    onChange={e => setNewBlocked(prev => ({ ...prev, endTime: e.target.value }))}
-                  />
-                </div>
-                <div className="flex items-end gap-2 lg:col-span-2">
-                  <Button onClick={addBlockedPeriod} variant="outline" className="flex-1">
-                    <Clock className="w-4 h-4 mr-2" />
-                    Bloquear Horário
-                  </Button>
-                  <Button onClick={addFullDayBlock} variant="secondary" className="flex-1">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Bloquear Dia
-                  </Button>
-                  <Button onClick={addRangeBlock} className="flex-1 bg-destructive hover:bg-destructive/90 text-white shadow-md">
-                    <CalendarRange className="w-4 h-4 mr-2" />
-                    Bloquear Período
-                  </Button>
-                </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <CalendarRange className="w-4 h-4 text-primary" />
+                  Data Final (Para Período)
+                </Label>
+                <Input
+                  type="date"
+                  value={newBlocked.endDate}
+                  onChange={(e) =>
+                    setNewBlocked((prev) => ({
+                      ...prev,
+                      endDate: e.target.value,
+                    }))
+                  }
+                  className="focus:ring-primary"
+                />
               </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Ban className="w-4 h-4 text-primary" />
+                  Motivo do Bloqueio
+                </Label>
+                <Input
+                  placeholder="Ex: Feriado, Férias..."
+                  value={newBlocked.reason}
+                  onChange={(e) =>
+                    setNewBlocked((prev) => ({
+                      ...prev,
+                      reason: e.target.value,
+                    }))
+                  }
+                  className="focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-border/50">
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Início (opcional)
+                </Label>
+                <Input
+                  type="time"
+                  value={newBlocked.startTime}
+                  onChange={(e) =>
+                    setNewBlocked((prev) => ({
+                      ...prev,
+                      startTime: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Fim (opcional)
+                </Label>
+                <Input
+                  type="time"
+                  value={newBlocked.endTime}
+                  onChange={(e) =>
+                    setNewBlocked((prev) => ({
+                      ...prev,
+                      endTime: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="flex items-end gap-2 lg:col-span-2">
+                <Button
+                  onClick={addBlockedPeriod}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <Clock className="w-4 h-4 mr-2" />
+                  Bloquear Horário
+                </Button>
+                <Button
+                  onClick={addFullDayBlock}
+                  variant="secondary"
+                  className="flex-1"
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Bloquear Dia
+                </Button>
+                <Button
+                  onClick={addRangeBlock}
+                  className="flex-1 bg-destructive hover:bg-destructive/90 text-white shadow-md"
+                >
+                  <CalendarRange className="w-4 h-4 mr-2" />
+                  Bloquear Período
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -582,40 +655,47 @@ export function ScheduleManager() {
               Nenhum bloqueio configurado.
             </p>
           ) : (
-            blockedPeriods.sort((a, b) => a.date.localeCompare(b.date)).map(block => (
-              <Card key={block.id} className="bg-background/50 overflow-hidden">
-                <div className="flex items-center justify-between p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="bg-destructive/10 p-2 rounded-full">
-                      <Ban className="w-4 h-4 text-destructive" />
+            blockedPeriods
+              .sort((a, b) => a.date.localeCompare(b.date))
+              .map((block) => (
+                <Card
+                  key={block.id}
+                  className="bg-background/50 overflow-hidden"
+                >
+                  <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-destructive/10 p-2 rounded-full">
+                        <Ban className="w-4 h-4 text-destructive" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">
+                          {new Date(
+                            `${block.date}T00:00:00`,
+                          ).toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "long",
+                            year: "numeric",
+                          })}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {block.startTime && block.endTime
+                            ? `Das ${block.startTime} até ${block.endTime}`
+                            : "O dia todo"}
+                          {block.reason && ` • ${block.reason}`}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold">
-                        {new Date(block.date + "T00:00:00").toLocaleDateString('pt-BR', {
-                          day: '2-digit',
-                          month: 'long',
-                          year: 'numeric'
-                        })}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {block.startTime && block.endTime 
-                          ? `Das ${block.startTime} até ${block.endTime}` 
-                          : "O dia todo"}
-                        {block.reason && ` • ${block.reason}`}
-                      </p>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeBlockedPeriod(block.id)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    onClick={() => removeBlockedPeriod(block.id)}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </Card>
-            ))
+                </Card>
+              ))
           )}
         </div>
       </div>

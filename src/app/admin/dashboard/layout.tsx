@@ -90,6 +90,13 @@ export default function AdminLayout({
             Agendamentos
           </Link>
           <Link
+            href="/admin/dashboard?tab=calendario"
+            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          >
+            <CalendarIcon className="w-4 h-4" />
+            Calendário Admin
+          </Link>
+          <Link
             href="/admin/dashboard?tab=servicos"
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
           >
@@ -217,7 +224,7 @@ export default function AdminLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6 overflow-auto">{children}</main>
+        <main className="flex-1 p-6">{children}</main>
       </div>
     </div>
   );

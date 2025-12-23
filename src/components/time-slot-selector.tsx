@@ -1,12 +1,24 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
-import { format, addDays, subDays, parseISO, isBefore, startOfDay, isSameDay } from "date-fns";
+import {
+  addDays,
+  format,
+  isBefore,
+  isSameDay,
+  parseISO,
+  startOfDay,
+  subDays,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
+import {
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import { getAvailableTimeSlots, type Service } from "@/lib/booking-data";
+import { cn } from "@/lib/utils";
 
 type TimeSlotSelectorProps = {
   service: Service;
@@ -30,7 +42,8 @@ export function TimeSlotSelector({
   });
 
   const today = startOfDay(new Date());
-  const isPreviousDayDisabled = isSameDay(currentDate, today) || isBefore(currentDate, today);
+  const isPreviousDayDisabled =
+    isSameDay(currentDate, today) || isBefore(currentDate, today);
 
   const handlePreviousDay = () => {
     if (isPreviousDayDisabled) return;
@@ -62,9 +75,9 @@ export function TimeSlotSelector({
             disabled={isPreviousDayDisabled}
             className={cn(
               "h-12 w-12 rounded-xl transition-all duration-200",
-              isPreviousDayDisabled 
-                ? "opacity-20 cursor-not-allowed" 
-                : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:scale-105 active:scale-95"
+              isPreviousDayDisabled
+                ? "opacity-20 cursor-not-allowed"
+                : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:scale-105 active:scale-95",
             )}
             title="Dia anterior"
           >
@@ -77,7 +90,9 @@ export function TimeSlotSelector({
               {service.name}
             </h3>
             <div className="text-base font-medium capitalize text-foreground/80">
-              {format(currentDate, "eeee, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+              {format(currentDate, "eeee, d 'de' MMMM 'de' yyyy", {
+                locale: ptBR,
+              })}
             </div>
             <div className="text-sm text-muted-foreground flex items-center gap-2">
               <span className="flex items-center gap-1">
@@ -117,7 +132,7 @@ export function TimeSlotSelector({
                   "h-12 text-base font-medium transition-all duration-200",
                   slot.available
                     ? "hover:bg-primary hover:text-primary-foreground hover:border-primary hover:scale-105 shadow-sm"
-                    : "opacity-40 cursor-not-allowed bg-muted/30"
+                    : "opacity-40 cursor-not-allowed bg-muted/30",
                 )}
               >
                 {slot.time}

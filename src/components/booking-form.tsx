@@ -49,7 +49,7 @@ export function BookingForm({
 
     const booking: Booking = {
       id: Date.now().toString(),
-      serviceId: service.id,
+      serviceId: service.id.includes(",") ? service.id.split(",") : service.id,
       serviceName: service.name,
       serviceDuration: service.duration,
       servicePrice: service.price,
@@ -58,7 +58,7 @@ export function BookingForm({
       clientName: formData.name,
       clientEmail: formData.email,
       clientPhone: formData.phone,
-      status: "confirmado",
+      status: "pendente",
       createdAt: new Date().toISOString(),
       notificationsSent: {
         email: false,
@@ -123,7 +123,6 @@ export function BookingForm({
               <Input
                 id="email"
                 type="email"
-                
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })

@@ -4,6 +4,8 @@ export type Service = {
   description: string;
   duration: number; // em minutos
   price: number;
+  conflictGroupId?: string;
+  conflictingServiceIds?: string[];
 };
 
 export type TimeSlot = {
@@ -19,7 +21,7 @@ export type BookingStatus =
 
 export type Booking = {
   id: string;
-  serviceId: string;
+  serviceId: string | string[];
   serviceName: string;
   serviceDuration: number;
   servicePrice: number;
@@ -270,7 +272,7 @@ export function getAvailableTimeSlots(
   }
 
   // Filtrar bloqueios para este dia específico
-  const dayBlocks = blockedPeriods.filter(b => b.date === date);
+  const dayBlocks = blockedPeriods.filter((b) => b.date === date);
 
   const dayBookings = bookings.filter(
     (b) => b.date === date && b.status !== "cancelado",
@@ -304,7 +306,7 @@ function isTimeSlotAvailable(
   const endMinutes = startMinutes + duration;
 
   // 1. Verificar se o dia todo está bloqueado
-  const fullDayBlock = dayBlocks.find(b => !b.startTime && !b.endTime);
+  const fullDayBlock = dayBlocks.find((b) => !b.startTime && !b.endTime);
   if (fullDayBlock) return false;
 
   // 2. Verificar bloqueios de horário parcial
@@ -392,10 +394,10 @@ export function getSettingsFromStorage() {
   return settings
     ? JSON.parse(settings)
     : {
-      agendaAberta: true,
-      services: services,
-      scheduleSettings: defaultScheduleSettings,
-    };
+        agendaAberta: true,
+        services: services,
+        scheduleSettings: defaultScheduleSettings,
+      };
 }
 
 export function getScheduleSettings(): ScheduleSettings {
