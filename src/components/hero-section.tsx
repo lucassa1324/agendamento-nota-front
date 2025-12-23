@@ -1,9 +1,23 @@
+"use client";
+
 import { Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { getSiteProfile, type SiteProfile } from "@/lib/booking-data";
 
 export function HeroSection() {
+  const [profile, setProfile] = useState<SiteProfile | null>(null);
+
+  useEffect(() => {
+    setProfile(getSiteProfile());
+  }, []);
+
+  const description =
+    profile?.description ||
+    "Transforme seu olhar com técnicas profissionais de design de sobrancelhas. Atendimento personalizado para destacar sua beleza única.";
+
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
       {/* Background Image */}
@@ -33,9 +47,7 @@ export function HeroSection() {
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground mb-8 text-pretty leading-relaxed max-w-2xl mx-auto">
-            Transforme seu olhar com técnicas profissionais de design de
-            sobrancelhas. Atendimento personalizado para destacar sua beleza
-            única.
+            {description}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

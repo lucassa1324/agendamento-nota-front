@@ -15,9 +15,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  getBookingsFromStorage,
-} from "@/lib/booking-data";
+import { getBookingsFromStorage } from "@/lib/booking-data";
 
 export function Reports() {
   const [reportData, setReportData] = useState({
@@ -66,11 +64,11 @@ export function Reports() {
     // Distribuição por serviço
     const serviceCount: { [key: string]: number } = {};
     bookings.forEach((booking) => {
-      // Se for um array de IDs, contamos cada serviço individualmente se possível, 
+      // Se for um array de IDs, contamos cada serviço individualmente se possível,
       // mas como o serviceName já é combinado, vamos usar os nomes individuais se soubermos separar.
       // O padrão usado é "Service 1 + Service 2".
       const serviceNames = booking.serviceName.split(" + ");
-      serviceNames.forEach(name => {
+      serviceNames.forEach((name) => {
         serviceCount[name] = (serviceCount[name] || 0) + 1;
       });
     });

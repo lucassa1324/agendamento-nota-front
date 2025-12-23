@@ -1,11 +1,14 @@
+import Image from "next/image";
+
 export function AboutHero() {
   return (
     <section className="relative py-20 md:py-32 overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <img
+        <Image
           src="/beauty-salon-professional-workspace.jpg"
           alt="Studio"
-          className="w-full h-full object-cover opacity-10"
+          fill
+          className="object-cover opacity-10"
         />
       </div>
 

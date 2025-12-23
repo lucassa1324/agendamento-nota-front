@@ -59,11 +59,11 @@ export function BookingFlow() {
   const totalService = useMemo(() => {
     if (selectedServices.length === 0) return null;
     return {
-      id: selectedServices.map(s => s.id).join(','),
-      name: selectedServices.map(s => s.name).join(' + '),
+      id: selectedServices.map((s) => s.id).join(","),
+      name: selectedServices.map((s) => s.name).join(" + "),
       price: selectedServices.reduce((acc, s) => acc + s.price, 0),
       duration: selectedServices.reduce((acc, s) => acc + s.duration, 0),
-      description: selectedServices.map(s => s.name).join(', ')
+      description: selectedServices.map((s) => s.name).join(", "),
     } as Service;
   }, [selectedServices]);
 
@@ -106,7 +106,10 @@ export function BookingFlow() {
 
       {/* Step Content */}
       {currentStep === "service" && (
-        <ServiceSelector onSelect={handleServiceSelect} selectedServices={selectedServices} />
+        <ServiceSelector
+          onSelect={handleServiceSelect}
+          selectedServices={selectedServices}
+        />
       )}
 
       {currentStep === "date" && totalService && (
@@ -140,15 +143,13 @@ export function BookingFlow() {
           />
         )}
 
-      {currentStep === "confirmation" &&
-        confirmedBooking &&
-        totalService && (
-          <BookingConfirmation
-            booking={confirmedBooking}
-            service={totalService}
-            onReset={handleReset}
-          />
-        )}
+      {currentStep === "confirmation" && confirmedBooking && totalService && (
+        <BookingConfirmation
+          booking={confirmedBooking}
+          service={totalService}
+          onReset={handleReset}
+        />
+      )}
     </div>
   );
 }

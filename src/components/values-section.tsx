@@ -43,10 +43,10 @@ export function ValuesSection() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {values.map((value, index) => {
+          {values.map((value) => {
             const Icon = value.icon;
             return (
-              <Card key={index} className="border-border text-center">
+              <Card key={value.title} className="border-border text-center">
                 <CardContent className="p-6">
                   <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
                     <Icon className="w-8 h-8 text-accent" />

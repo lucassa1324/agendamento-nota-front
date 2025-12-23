@@ -107,19 +107,22 @@ export function AdminCalendar({
     if (!newBooking.clientName || newBooking.serviceIds.length === 0) {
       toast({
         title: "Erro",
-        description: "Preencha o nome do cliente e selecione pelo menos um serviço.",
+        description:
+          "Preencha o nome do cliente e selecione pelo menos um serviço.",
         variant: "destructive",
       });
       return;
     }
 
-    const selectedServices = services.filter((s) => newBooking.serviceIds.includes(s.id));
+    const selectedServices = services.filter((s) =>
+      newBooking.serviceIds.includes(s.id),
+    );
     if (selectedServices.length === 0) return;
 
     const booking: Booking = {
       id: Date.now().toString(),
-      serviceId: selectedServices.map(s => s.id),
-      serviceName: selectedServices.map(s => s.name).join(" + "),
+      serviceId: selectedServices.map((s) => s.id),
+      serviceName: selectedServices.map((s) => s.name).join(" + "),
       serviceDuration: selectedServices.reduce((acc, s) => acc + s.duration, 0),
       servicePrice: selectedServices.reduce((acc, s) => acc + s.price, 0),
       date: dateStr,
@@ -229,7 +232,7 @@ export function AdminCalendar({
       const bStart = bH * 60 + bM;
       const bEnd = bStart + b.serviceDuration;
 
-      // Verifica sobreposição: o agendamento que começaria em 'time' 
+      // Verifica sobreposição: o agendamento que começaria em 'time'
       // entraria no espaço de um agendamento já existente?
       return currStart < bEnd && bStart < currEnd;
     });
@@ -258,7 +261,8 @@ export function AdminCalendar({
               {occupiedSlots > 0 && (
                 <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground ml-8">
                   <Clock className="w-3 h-3" />
-                  Este procedimento ocupará {occupiedSlots} espaços de {SLOT_INTERVAL} min
+                  Este procedimento ocupará {occupiedSlots} espaços de{" "}
+                  {SLOT_INTERVAL} min
                 </div>
               )}
             </div>

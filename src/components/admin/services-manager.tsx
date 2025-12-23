@@ -64,6 +64,7 @@ export function ServicesManager() {
     settings.services = updatedServices;
     localStorage.setItem("studioSettings", JSON.stringify(settings));
     setServices(updatedServices);
+    window.dispatchEvent(new Event("studioSettingsUpdated"));
   };
 
   const handleAdd = () => {
@@ -74,6 +75,7 @@ export function ServicesManager() {
       description: "",
       duration: 60,
       price: 0,
+      showOnHome: false,
       conflictGroupId: "",
       conflictingServiceIds: [],
     });
@@ -96,8 +98,14 @@ export function ServicesManager() {
     const newErrors: Record<string, boolean> = {
       name: !formData.name?.trim(),
       description: !formData.description?.trim(),
-      duration: !formData.duration || Number.isNaN(formData.duration) || formData.duration < 15,
-      price: formData.price === undefined || Number.isNaN(formData.price) || formData.price < 0,
+      duration:
+        !formData.duration ||
+        Number.isNaN(formData.duration) ||
+        formData.duration < 15,
+      price:
+        formData.price === undefined ||
+        Number.isNaN(formData.price) ||
+        formData.price < 0,
     };
 
     setErrors(newErrors);
@@ -105,7 +113,8 @@ export function ServicesManager() {
     if (Object.values(newErrors).some((v) => v)) {
       toast({
         title: "Campos Obrigatórios",
-        description: "Por favor, preencha todos os campos destacados em vermelho corretamente.",
+        description:
+          "Por favor, preencha todos os campos destacados em vermelho corretamente.",
         variant: "destructive",
       });
       return;
@@ -131,7 +140,7 @@ export function ServicesManager() {
     setEditingId(null);
     setFormData({});
     setConflictSearch("");
-    
+
     toast({
       title: editingId ? "Serviço Atualizado" : "Serviço Adicionado",
       description: `O serviço "${serviceToSave.name}" foi salvo com sucesso.`,
@@ -164,12 +173,12 @@ export function ServicesManager() {
 
   const confirmDelete = () => {
     if (!serviceToDelete) return;
-    
+
     const updatedServices = services.filter((s) => s.id !== serviceToDelete.id);
     saveSettings(updatedServices);
     setIsDeleteConfirmOpen(false);
     setServiceToDelete(null);
-    
+
     toast({
       title: "Serviço Excluído",
       description: `O serviço "${serviceToDelete.name}" foi removido com sucesso.`,
@@ -200,7 +209,10 @@ export function ServicesManager() {
 
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="name" className={cn(errors.name && "text-destructive")}>
+              <Label
+                htmlFor="name"
+                className={cn(errors.name && "text-destructive")}
+              >
                 Nome do Serviço
               </Label>
               <Input
@@ -211,12 +223,18 @@ export function ServicesManager() {
                   if (errors.name) setErrors({ ...errors, name: false });
                 }}
                 placeholder="Ex: Design de Sobrancelhas"
-                className={cn(errors.name && "border-destructive focus-visible:ring-destructive")}
+                className={cn(
+                  errors.name &&
+                    "border-destructive focus-visible:ring-destructive",
+                )}
               />
             </div>
 
             <div>
-              <Label htmlFor="description" className={cn(errors.description && "text-destructive")}>
+              <Label
+                htmlFor="description"
+                className={cn(errors.description && "text-destructive")}
+              >
                 Descrição
               </Label>
               <Textarea
@@ -224,17 +242,27 @@ export function ServicesManager() {
                 value={formData.description || ""}
                 onChange={(e) => {
                   setFormData({ ...formData, description: e.target.value });
-                  if (errors.description) setErrors({ ...errors, description: false });
+                  if (errors.description)
+                    setErrors({ ...errors, description: false });
                 }}
                 placeholder="Descreva o serviço"
                 rows={3}
-                className={cn(errors.description && "border-destructive focus-visible:ring-destructive")}
+                className={cn(
+                  errors.description &&
+                    "border-destructive focus-visible:ring-destructive",
+                )}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="duration" className={cn("flex items-center gap-2", errors.duration && "text-destructive")}>
+                <Label
+                  htmlFor="duration"
+                  className={cn(
+                    "flex items-center gap-2",
+                    errors.duration && "text-destructive",
+                  )}
+                >
                   <Clock className="w-4 h-4" />
                   Duração (minutos)
                 </Label>
@@ -247,17 +275,24 @@ export function ServicesManager() {
                       ...formData,
                       duration: Number.parseInt(e.target.value, 10),
                     });
-                    if (errors.duration) setErrors({ ...errors, duration: false });
+                    if (errors.duration)
+                      setErrors({ ...errors, duration: false });
                   }}
                   placeholder="60"
                   min="15"
                   step="15"
-                  className={cn(errors.duration && "border-destructive focus-visible:ring-destructive")}
+                  className={cn(
+                    errors.duration &&
+                      "border-destructive focus-visible:ring-destructive",
+                  )}
                 />
               </div>
 
               <div>
-                <Label htmlFor="price" className={cn(errors.price && "text-destructive")}>
+                <Label
+                  htmlFor="price"
+                  className={cn(errors.price && "text-destructive")}
+                >
                   Preço (R$)
                 </Label>
                 <Input
@@ -274,8 +309,32 @@ export function ServicesManager() {
                   placeholder="100"
                   min="0"
                   step="0.01"
-                  className={cn(errors.price && "border-destructive focus-visible:ring-destructive")}
+                  className={cn(
+                    errors.price &&
+                      "border-destructive focus-visible:ring-destructive",
+                  )}
                 />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox
+                id="showOnHome"
+                checked={formData.showOnHome || false}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, showOnHome: checked === true })
+                }
+              />
+              <div className="grid gap-1.5 leading-none">
+                <Label
+                  htmlFor="showOnHome"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Mostrar na página inicial
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Este serviço aparecerá na seção "Nossos Serviços" da home page.
+                </p>
               </div>
             </div>
 
@@ -285,16 +344,22 @@ export function ServicesManager() {
                 <h3>Configuração de Conflitos</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                Selecione os serviços que NÃO podem ser realizados junto com este.
+                Selecione os serviços que NÃO podem ser realizados junto com
+                este.
               </p>
 
               <div className="space-y-2">
-                <Label htmlFor="conflictGroup">Grupo de Conflito (Opcional)</Label>
+                <Label htmlFor="conflictGroup">
+                  Grupo de Conflito (Opcional)
+                </Label>
                 <Input
                   id="conflictGroup"
                   value={formData.conflictGroupId || ""}
                   onChange={(e) =>
-                    setFormData({ ...formData, conflictGroupId: e.target.value })
+                    setFormData({
+                      ...formData,
+                      conflictGroupId: e.target.value,
+                    })
                   }
                   placeholder="Ex: sobrancelhas"
                 />
@@ -343,10 +408,10 @@ export function ServicesManager() {
                             onCheckedChange={() => toggleConflict(service.id)}
                             className="mt-1"
                           />
-                          
-                          <button 
+
+                          <button
                             type="button"
-                            className="grid gap-1.5 leading-none cursor-pointer text-left w-full" 
+                            className="grid gap-1.5 leading-none cursor-pointer text-left w-full"
                             onClick={() => toggleConflict(service.id)}
                           >
                             <Label
@@ -379,7 +444,10 @@ export function ServicesManager() {
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+      <AlertDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+      >
         <AlertDialogContent className="sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-destructive">
@@ -391,7 +459,8 @@ export function ServicesManager() {
               <span className="font-bold text-foreground">
                 "{serviceToDelete?.name}"
               </span>
-              ? Esta ação não pode ser desfeita e removerá permanentemente o serviço do sistema.
+              ? Esta ação não pode ser desfeita e removerá permanentemente o
+              serviço do sistema.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0">
@@ -430,23 +499,23 @@ export function ServicesManager() {
                     </span>
                   </div>
                 </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(service)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteClick(service)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEdit(service)}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDeleteClick(service)}
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

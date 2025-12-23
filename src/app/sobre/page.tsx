@@ -1,5 +1,4 @@
 import { AboutHero } from "@/components/about-hero";
-import { Footer } from "@/components/footer";
 import { StorySection } from "@/components/story-section";
 import { TeamSection } from "@/components/team-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
@@ -19,7 +18,6 @@ export default function SobrePage() {
       <ValuesSection />
       <TeamSection />
       <TestimonialsSection />
-      <Footer />
     </main>
   );
 }

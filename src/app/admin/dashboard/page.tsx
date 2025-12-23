@@ -14,6 +14,7 @@ import { ProfileManager } from "@/components/admin/profile-manager";
 import { Reports } from "@/components/admin/reports";
 import { ScheduleManager } from "@/components/admin/schedule-manager";
 import { ServicesManager } from "@/components/admin/services-manager";
+import { SiteCustomizer } from "@/components/admin/site-customizer";
 
 export default function DashboardPage() {
   const searchParams = useSearchParams();
@@ -109,13 +110,27 @@ export default function DashboardPage() {
         <div className="space-y-6">
           <div>
             <h2 className="font-sans text-3xl font-bold mb-2 text-primary">
-              Perfil do Site
+              Perfil
             </h2>
             <p className="text-muted-foreground">
-              Configure nome, cores, logo e estética do site
+              Informações do studio e redes sociais
             </p>
           </div>
           <ProfileManager />
+        </div>
+      )}
+
+      {activeTab === "personalizacao" && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="font-sans text-3xl font-bold mb-2 text-primary">
+              Personalização
+            </h2>
+            <p className="text-muted-foreground">
+              Personalize o visual do seu site
+            </p>
+          </div>
+          <SiteCustomizer />
         </div>
       )}
 

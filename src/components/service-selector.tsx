@@ -12,7 +12,10 @@ type ServiceSelectorProps = {
   selectedServices?: Service[];
 };
 
-export function ServiceSelector({ onSelect, selectedServices: initialSelected = [] }: ServiceSelectorProps) {
+export function ServiceSelector({
+  onSelect,
+  selectedServices: initialSelected = [],
+}: ServiceSelectorProps) {
   const [services, setServices] = useState<Service[]>([]);
   const [selected, setSelected] = useState<Service[]>(initialSelected);
 
@@ -70,13 +73,17 @@ export function ServiceSelector({ onSelect, selectedServices: initialSelected = 
         <h2 className="font-serif text-2xl font-bold mb-2">
           Escolha os Serviços
         </h2>
-        <p className="text-muted-foreground">Você pode selecionar mais de um serviço</p>
+        <p className="text-muted-foreground">
+          Você pode selecionar mais de um serviço
+        </p>
       </div>
-      
+
       <div className="grid md:grid-cols-2 gap-4">
         {services.map((service) => {
           const isSelected = selected.some((s) => s.id === service.id);
-          const conflictMessage = !isSelected ? checkConflict(service, selected) : null;
+          const conflictMessage = !isSelected
+            ? checkConflict(service, selected)
+            : null;
           const isConflicting = !!conflictMessage;
 
           return (
@@ -85,7 +92,8 @@ export function ServiceSelector({ onSelect, selectedServices: initialSelected = 
               className={cn(
                 "border-border cursor-pointer transition-all hover:border-accent/50 relative overflow-hidden",
                 isSelected && "border-accent bg-accent/5 ring-1 ring-accent",
-                isConflicting && "opacity-60 grayscale-[0.5] border-destructive/20 cursor-not-allowed"
+                isConflicting &&
+                  "opacity-60 grayscale-[0.5] border-destructive/20 cursor-not-allowed",
               )}
               onClick={() => toggleService(service)}
             >
@@ -130,10 +138,15 @@ export function ServiceSelector({ onSelect, selectedServices: initialSelected = 
           <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="text-sm">
               <p className="font-medium">
-                {selected.length} {selected.length === 1 ? 'serviço selecionado' : 'serviços selecionados'}
+                {selected.length}{" "}
+                {selected.length === 1
+                  ? "serviço selecionado"
+                  : "serviços selecionados"}
               </p>
               <p className="text-muted-foreground">
-                Total: <span className="text-accent font-bold">R$ {totalPrice}</span> • {totalDuration} min
+                Total:{" "}
+                <span className="text-accent font-bold">R$ {totalPrice}</span> •{" "}
+                {totalDuration} min
               </p>
             </div>
             <Button

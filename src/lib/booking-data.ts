@@ -4,6 +4,7 @@ export type Service = {
   description: string;
   duration: number; // em minutos
   price: number;
+  showOnHome?: boolean;
   conflictGroupId?: string;
   conflictingServiceIds?: string[];
 };
@@ -85,6 +86,27 @@ export type ScheduleSettings = {
   businessHours: BusinessHours;
 };
 
+export type SiteProfile = {
+  name: string;
+  description: string;
+  logoUrl?: string;
+  instagram?: string;
+  whatsapp?: string;
+  facebook?: string;
+  tiktok?: string;
+  linkedin?: string;
+  x?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  showInstagram: boolean;
+  showWhatsapp: boolean;
+  showFacebook: boolean;
+  showTiktok: boolean;
+  showLinkedin: boolean;
+  showX: boolean;
+};
+
 export const services: Service[] = [
   {
     id: "design",
@@ -92,6 +114,7 @@ export const services: Service[] = [
     description: "Modelagem personalizada que valoriza seu formato de rosto",
     duration: 45,
     price: 80,
+    showOnHome: true,
   },
   {
     id: "coloracao",
@@ -99,6 +122,7 @@ export const services: Service[] = [
     description: "Técnicas de coloração para sobrancelhas mais definidas",
     duration: 60,
     price: 100,
+    showOnHome: true,
   },
   {
     id: "micropigmentacao",
@@ -106,6 +130,7 @@ export const services: Service[] = [
     description: "Resultado natural e duradouro com técnicas avançadas",
     duration: 180,
     price: 450,
+    showOnHome: true,
   },
   {
     id: "laminacao",
@@ -113,6 +138,7 @@ export const services: Service[] = [
     description: "Fios alinhados e volumosos por até 8 semanas",
     duration: 90,
     price: 150,
+    showOnHome: true,
   },
 ];
 
@@ -211,6 +237,28 @@ export const defaultGoogleCalendarSettings: GoogleCalendarSettings = {
   enabled: false,
   calendarUrl: "",
   lastSync: null,
+};
+
+export const defaultSiteProfile: SiteProfile = {
+  name: "Brow Studio",
+  description:
+    "Especialistas em design de sobrancelhas, dedicados a realçar sua beleza natural.",
+  logoUrl: "",
+  instagram: "browstudio",
+  whatsapp: "5511999999999",
+  facebook: "browstudio",
+  tiktok: "",
+  linkedin: "",
+  x: "",
+  phone: "(11) 99999-9999",
+  email: "contato@browstudio.com",
+  address: "São Paulo, SP",
+  showInstagram: true,
+  showWhatsapp: true,
+  showFacebook: true,
+  showTiktok: false,
+  showLinkedin: false,
+  showX: false,
 };
 
 export function generateTimeSlotsForDate(date: string): string[] {
@@ -453,6 +501,20 @@ export function saveGoogleCalendarSettings(
   settings: GoogleCalendarSettings,
 ): void {
   localStorage.setItem("googleCalendarSettings", JSON.stringify(settings));
+}
+
+export function getSiteProfile(): SiteProfile {
+  if (typeof window === "undefined") return defaultSiteProfile;
+  const profile = localStorage.getItem("siteProfile");
+  return profile ? JSON.parse(profile) : defaultSiteProfile;
+}
+
+export function saveSiteProfile(profile: SiteProfile): void {
+  localStorage.setItem("siteProfile", JSON.stringify(profile));
+  // Dispatch custom event so components can update immediately
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("siteProfileUpdated"));
+  }
 }
 
 export async function sendBookingNotifications(

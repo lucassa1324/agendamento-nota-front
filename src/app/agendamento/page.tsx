@@ -1,5 +1,4 @@
 import { BookingFlow } from "@/components/booking-flow";
-import { Footer } from "@/components/footer";
 
 export const metadata = {
   title: "Agendar Horário | Brow Studio",
@@ -24,7 +23,6 @@ export default function AgendamentoPage() {
           <BookingFlow />
         </div>
       </section>
-      <Footer />
     </main>
   );
 }

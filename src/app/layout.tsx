@@ -2,8 +2,11 @@ import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import type React from "react";
-import "./globals.css";
+import { FaviconUpdater } from "@/components/favicon-updater";
+import { Footer } from "@/components/footer";
 import { Navigation } from "@/components/navigation";
+import { Toaster } from "@/components/ui/toaster";
+import "./globals.css";
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
@@ -32,8 +35,11 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${inter.variable} ${playfair.variable}`}>
       <body className={`font-sans antialiased`}>
+        <FaviconUpdater />
         <Navigation />
         {children}
+        <Footer />
+        <Toaster />
         <Analytics />
       </body>
     </html>

@@ -93,14 +93,19 @@ export function EditBookingModal({
           <div className="space-y-4">
             {/* Nome da Cliente */}
             <div className="space-y-2">
-              <Label htmlFor="clientName" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Label
+                htmlFor="clientName"
+                className="text-sm font-semibold text-gray-700 flex items-center gap-2"
+              >
                 <User className="w-4 h-4 text-purple-600" />
                 Nome da cliente
               </Label>
               <Input
                 id="clientName"
                 value={formData.clientName}
-                onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, clientName: e.target.value })
+                }
                 placeholder="Ex.: Maria Silva"
                 className="h-11 bg-gray-50/50 border-gray-200 focus:bg-white transition-all"
               />
@@ -108,21 +113,29 @@ export function EditBookingModal({
 
             {/* Procedimento */}
             <div className="space-y-2">
-              <Label htmlFor="serviceName" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Label
+                htmlFor="serviceName"
+                className="text-sm font-semibold text-gray-700 flex items-center gap-2"
+              >
                 <Scissors className="w-4 h-4 text-purple-600" />
                 Procedimento
               </Label>
               <Input
                 id="serviceName"
                 value={formData.serviceName}
-                onChange={(e) => setFormData({ ...formData, serviceName: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, serviceName: e.target.value })
+                }
                 className="h-11 bg-gray-50/50 border-gray-200 focus:bg-white transition-all"
               />
             </div>
 
             {/* Valor */}
             <div className="space-y-2">
-              <Label htmlFor="servicePrice" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Label
+                htmlFor="servicePrice"
+                className="text-sm font-semibold text-gray-700 flex items-center gap-2"
+              >
                 <DollarSign className="w-4 h-4 text-purple-600" />
                 Valor (R$)
               </Label>
@@ -131,14 +144,22 @@ export function EditBookingModal({
                 type="number"
                 step="0.01"
                 value={formData.servicePrice}
-                onChange={(e) => setFormData({ ...formData, servicePrice: parseFloat(e.target.value) || 0 })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    servicePrice: parseFloat(e.target.value) || 0,
+                  })
+                }
                 className="h-11 bg-gray-50/50 border-gray-200 focus:bg-white transition-all"
               />
             </div>
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="clientEmail" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Label
+                htmlFor="clientEmail"
+                className="text-sm font-semibold text-gray-700 flex items-center gap-2"
+              >
                 <Mail className="w-4 h-4 text-purple-600" />
                 E-mail
               </Label>
@@ -146,7 +167,9 @@ export function EditBookingModal({
                 id="clientEmail"
                 type="email"
                 value={formData.clientEmail}
-                onChange={(e) => setFormData({ ...formData, clientEmail: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, clientEmail: e.target.value })
+                }
                 placeholder="Ex.: cliente@email.com"
                 className="h-11 bg-gray-50/50 border-gray-200 focus:bg-white transition-all"
               />
@@ -154,14 +177,19 @@ export function EditBookingModal({
 
             {/* Telefone */}
             <div className="space-y-2">
-              <Label htmlFor="clientPhone" className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+              <Label
+                htmlFor="clientPhone"
+                className="text-sm font-semibold text-gray-700 flex items-center gap-2"
+              >
                 <Phone className="w-4 h-4 text-purple-600" />
                 Telefone / WhatsApp
               </Label>
               <Input
                 id="clientPhone"
                 value={formData.clientPhone}
-                onChange={(e) => setFormData({ ...formData, clientPhone: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, clientPhone: e.target.value })
+                }
                 placeholder="Ex.: (11) 99999-9999"
                 className="h-11 bg-gray-50/50 border-gray-200 focus:bg-white transition-all"
               />
@@ -169,7 +197,9 @@ export function EditBookingModal({
 
             {/* Detalhes de Data e Hora (Apenas visualização no modal de edição rápida) */}
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-gray-700">Agendamento</Label>
+              <Label className="text-sm font-semibold text-gray-700">
+                Agendamento
+              </Label>
               <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 flex justify-between">
                 <div className="flex items-center gap-3 text-sm text-gray-600">
                   <Calendar className="w-4 h-4 text-purple-400" />

@@ -1,4 +1,3 @@
-import { Footer } from "@/components/footer";
 import { GalleryGrid } from "@/components/gallery-grid";
 
 export const metadata = {
@@ -25,7 +24,6 @@ export default function GaleriaPage() {
           <GalleryGrid />
         </div>
       </section>
-      <Footer />
     </main>
   );
 }

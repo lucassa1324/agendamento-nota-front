@@ -2,14 +2,31 @@
 "use client";
 
 import { Menu, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { getSiteProfile, type SiteProfile } from "@/lib/booking-data";
 
 export function Navigation() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profile, setProfile] = useState<SiteProfile | null>(null);
+
+  useEffect(() => {
+    setProfile(getSiteProfile());
+
+    const handleProfileUpdate = () => {
+      setProfile(getSiteProfile());
+    };
+
+    window.addEventListener("siteProfileUpdated", handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
+    };
+  }, []);
 
   const isActive = (path: string) => pathname === path;
 
@@ -20,12 +37,27 @@ export function Navigation() {
     { href: "/agendamento", label: "Agendar" },
   ];
 
+  const siteName = profile?.name || "Brow Studio";
+
   return (
     <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <Link href="/" className="font-serif text-2xl font-bold text-primary">
-            Brow Studio
+          <Link
+            href="/"
+            className="font-serif text-2xl font-bold text-primary flex items-center gap-3"
+          >
+            {profile?.logoUrl ? (
+              <Image
+                src={profile.logoUrl}
+                alt={siteName}
+                width={100}
+                height={40}
+                className="h-10 w-auto object-contain"
+                unoptimized
+              />
+            ) : null}
+            <span>{siteName}</span>
           </Link>
 
           {/* Desktop Navigation */}

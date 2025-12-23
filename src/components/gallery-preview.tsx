@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -30,9 +31,11 @@ export function GalleryPreview() {
               key={image.id}
               className="aspect-square rounded-lg overflow-hidden hover:scale-105 transition-transform"
             >
-              <img
+              <Image
                 src={`/.jpg?height=400&width=400&query=${image.query}`}
                 alt={`Trabalho ${image.id}`}
+                width={400}
+                height={400}
                 className="w-full h-full object-cover"
               />
             </div>
