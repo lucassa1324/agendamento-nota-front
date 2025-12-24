@@ -18,11 +18,12 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { checkAdminAuth, getAdminUser, logoutAdmin } from "@/lib/admin-auth";
+import { cn } from "@/lib/utils";
 
 export default function AdminLayout({
   children,
@@ -30,6 +31,8 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab") || "agendamentos";
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [adminUser, setAdminUser] = useState<{
@@ -85,91 +88,156 @@ export default function AdminLayout({
         <nav className="flex-1 p-4 space-y-1">
           <Link
             href="/admin/dashboard?tab=agendamentos"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "agendamentos"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <ListTodo className="w-4 h-4" />
             Agendamentos
           </Link>
           <Link
             href="/admin/dashboard?tab=calendario"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "calendario"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <CalendarIcon className="w-4 h-4" />
             Calendário Admin
           </Link>
           <Link
             href="/admin/dashboard?tab=servicos"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "servicos"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <Briefcase className="w-4 h-4" />
             Serviços
           </Link>
           <Link
             href="/admin/dashboard?tab=horarios"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "horarios"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <Clock className="w-4 h-4" />
             Horários
           </Link>
           <Link
             href="/admin/dashboard?tab=integracoes"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "integracoes"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <Plug className="w-4 h-4" />
             Integrações
           </Link>
           <Link
             href="/admin/dashboard?tab=perfil"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "perfil"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <Settings className="w-4 h-4" />
             Perfil
           </Link>
           <Link
             href="/admin/dashboard?tab=personalizacao"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "personalizacao"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <Palette className="w-4 h-4" />
             Personalização
           </Link>
           <Link
             href="/admin/dashboard?tab=gerenciamento"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "gerenciamento"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <PieChart className="w-4 h-4" />
             Gerenciamento
           </Link>
           <Link
             href="/admin/dashboard?tab=estoque"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "estoque"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <Package className="w-4 h-4" />
             Estoque
           </Link>
           <Link
             href="/admin/dashboard?tab=google"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "google"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <CalendarIcon className="w-4 h-4" />
             Google Calendar
           </Link>
           <Link
             href="/admin/dashboard?tab=notificacoes"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "notificacoes"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <Bell className="w-4 h-4" />
             Notificações
           </Link>
           <Link
             href="/admin/dashboard?tab=galeria"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "galeria"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <ImageIcon className="w-4 h-4" />
             Galeria
           </Link>
           <Link
             href="/admin/dashboard?tab=relatorios"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              activeTab === "relatorios"
+                ? "bg-primary text-primary-foreground"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            )}
           >
             <BarChart3 className="w-4 h-4" />
             Relatórios
@@ -232,7 +300,14 @@ export default function AdminLayout({
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-6">{children}</main>
+        <main
+          className={cn(
+            "flex-1 overflow-hidden flex flex-col",
+            activeTab === "personalizacao" ? "p-0" : "p-6",
+          )}
+        >
+          {children}
+        </main>
       </div>
     </div>
   );

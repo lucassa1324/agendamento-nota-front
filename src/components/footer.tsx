@@ -11,30 +11,45 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getSiteProfile, type SiteProfile } from "@/lib/booking-data";
+import { getPageVisibility, getSiteProfile, type SiteProfile } from "@/lib/booking-data";
 
 export function Footer() {
+  const searchParams = useSearchParams();
   const [profile, setProfile] = useState<SiteProfile | null>(null);
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(() => getPageVisibility());
+
+  const only = searchParams.get("only");
 
   useEffect(() => {
     setProfile(getSiteProfile());
+    setPageVisibility(getPageVisibility());
 
     const handleProfileUpdate = () => {
       setProfile(getSiteProfile());
     };
 
+    const handleVisibilityUpdate = () => {
+      setPageVisibility(getPageVisibility());
+    };
+
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
+    window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
+      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
     };
   }, []);
+
+  // Se estivermos isolando algo que não seja o footer, escondemos o footer
+  if (only && only !== "footer") return null;
 
   if (!profile) return null;
 
   return (
-    <footer className="bg-secondary/30 border-t border-border">
+    <footer id="footer" className="bg-secondary/30 border-t border-border">
       <div className="container mx-auto px-4 py-12">
         <div className="grid md:grid-cols-4 gap-8">
           <div>
@@ -61,38 +76,46 @@ export function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Links Rápidos</h4>
             <ul className="space-y-2 text-sm">
-              <li>
-                <Link
-                  href="/"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Início
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/galeria"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Galeria
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/sobre"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Sobre Nós
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/agendamento"
-                  className="text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Agendar
-                </Link>
-              </li>
+              {pageVisibility.inicio !== false && (
+                <li>
+                  <Link
+                    href="/"
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Início
+                  </Link>
+                </li>
+              )}
+              {pageVisibility.galeria !== false && (
+                <li>
+                  <Link
+                    href="/galeria"
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Galeria
+                  </Link>
+                </li>
+              )}
+              {pageVisibility.sobre !== false && (
+                <li>
+                  <Link
+                    href="/sobre"
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Sobre Nós
+                  </Link>
+                </li>
+              )}
+              {pageVisibility.agendar !== false && (
+                <li>
+                  <Link
+                    href="/agendamento"
+                    className="text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    Agendar
+                  </Link>
+                </li>
+              )}
             </ul>
           </div>
 

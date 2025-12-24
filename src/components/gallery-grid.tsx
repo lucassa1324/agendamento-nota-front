@@ -105,7 +105,7 @@ export function GalleryGrid() {
       : galleryImages.filter((img) => img.category === selectedCategory);
 
   return (
-    <>
+    <div id="gallery-grid">
       {/* Category Filter */}
       <div className="flex flex-wrap justify-center gap-2 mb-12">
         {categories.map((category) => (
@@ -153,6 +153,6 @@ export function GalleryGrid() {
           onClose={() => setSelectedImage(null)}
         />
       )}
-    </>
+    </div>
   );
 }

@@ -15,13 +15,19 @@ import { Reports } from "@/components/admin/reports";
 import { ScheduleManager } from "@/components/admin/schedule-manager";
 import { ServicesManager } from "@/components/admin/services-manager";
 import { SiteCustomizer } from "@/components/admin/site-customizer";
+import { cn } from "@/lib/utils";
 
 export default function DashboardPage() {
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div
+      className={cn(
+        "mx-auto",
+        activeTab === "personalizacao" ? "max-w-none h-full" : "max-w-7xl",
+      )}
+    >
       {activeTab === "overview" && (
         <div className="space-y-6">
           <div>
@@ -121,16 +127,10 @@ export default function DashboardPage() {
       )}
 
       {activeTab === "personalizacao" && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="font-sans text-3xl font-bold mb-2 text-primary">
-              Personalização
-            </h2>
-            <p className="text-muted-foreground">
-              Personalize o visual do seu site
-            </p>
+        <div className="flex flex-col h-full">
+          <div className="flex-1 min-h-0">
+            <SiteCustomizer />
           </div>
-          <SiteCustomizer />
         </div>
       )}
 

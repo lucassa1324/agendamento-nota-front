@@ -2,7 +2,10 @@ import Image from "next/image";
 
 export function AboutHero() {
   return (
-    <section className="relative py-20 md:py-32 overflow-hidden">
+    <section
+      id="about-hero"
+      className="relative py-20 md:py-32 overflow-hidden"
+    >
       <div className="absolute inset-0 z-0">
         <Image
           src="/beauty-salon-professional-workspace.jpg"

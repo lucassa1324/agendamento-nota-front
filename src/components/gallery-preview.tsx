@@ -1,6 +1,10 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { getPageVisibility } from "@/lib/booking-data";
 
 const galleryImages = [
   { id: 1, query: "professional+eyebrow+design+before+after" },
@@ -12,8 +16,24 @@ const galleryImages = [
 ];
 
 export function GalleryPreview() {
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(() => getPageVisibility());
+
+  useEffect(() => {
+    const handleVisibilityUpdate = () => {
+      setPageVisibility(getPageVisibility());
+    };
+
+    window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+
+    return () => {
+      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+    };
+  }, []);
+
+  if (pageVisibility.galeria === false) return null;
+
   return (
-    <section className="py-20 md:py-32 bg-secondary/30">
+    <section id="gallery-preview" className="py-20 md:py-32 bg-secondary/30">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4 text-balance">

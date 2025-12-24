@@ -5,6 +5,7 @@ import type React from "react";
 import { FaviconUpdater } from "@/components/favicon-updater";
 import { Footer } from "@/components/footer";
 import { Navigation } from "@/components/navigation";
+import { PreviewStyleManager } from "@/components/preview-style-manager";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
@@ -35,6 +36,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${inter.variable} ${playfair.variable}`}>
       <body className={`font-sans antialiased`}>
+        <PreviewStyleManager />
         <FaviconUpdater />
         <Navigation />
         {children}

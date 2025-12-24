@@ -5,6 +5,7 @@ export type Service = {
   duration: number; // em minutos
   price: number;
   showOnHome?: boolean;
+  icon?: string;
   conflictGroupId?: string;
   conflictingServiceIds?: string[];
 };
@@ -105,6 +106,59 @@ export type SiteProfile = {
   showTiktok: boolean;
   showLinkedin: boolean;
   showX: boolean;
+};
+
+export type HeroSettings = {
+  badge: string;
+  showBadge: boolean;
+  badgeIcon: string;
+  badgeColor: string;
+  badgeTextColor: string;
+  title: string;
+  subtitle: string;
+  primaryButton: string;
+  secondaryButton: string;
+  bgType: "color" | "image";
+  bgColor: string;
+  bgImage: string;
+  imageOpacity: number;
+  overlayOpacity: number;
+  imageScale: number;
+  imageX: number;
+  imageY: number;
+  titleFont: string;
+  subtitleFont: string;
+  badgeFont: string;
+  primaryButtonColor: string;
+  secondaryButtonColor: string;
+  primaryButtonTextColor: string;
+  secondaryButtonTextColor: string;
+  titleColor: string;
+  subtitleColor: string;
+  primaryButtonFont: string;
+  secondaryButtonFont: string;
+};
+
+export type StorySettings = {
+  title: string;
+  titleColor: string;
+  content: string;
+  contentColor: string;
+  image: string;
+};
+
+export const defaultStorySettings: StorySettings = {
+  title: "Nossa História",
+  titleColor: "",
+  content:
+    "O Brow Studio nasceu da paixão por realçar a beleza natural de cada pessoa através do design de sobrancelhas. Com mais de 10 anos de experiência no mercado, nos especializamos em técnicas avançadas que valorizam a individualidade de cada cliente.\n\nNossa missão é proporcionar não apenas um serviço de qualidade, mas uma experiência transformadora. Acreditamos que sobrancelhas bem feitas têm o poder de elevar a autoestima e destacar a beleza única de cada pessoa.\n\nInvestimos constantemente em capacitação e nas melhores técnicas do mercado para garantir resultados excepcionais e a satisfação total de nossas clientes.",
+  contentColor: "",
+  image: "/professional-eyebrow-artist-at-work.jpg",
+};
+
+export type FontSettings = {
+  headingFont: string;
+  bodyFont: string;
 };
 
 export const services: Service[] = [
@@ -259,6 +313,43 @@ export const defaultSiteProfile: SiteProfile = {
   showTiktok: false,
   showLinkedin: false,
   showX: false,
+};
+
+export const defaultHeroSettings: HeroSettings = {
+  badge: "Especialistas em Design de Sobrancelhas",
+  showBadge: true,
+  badgeIcon: "Sparkles",
+  badgeColor: "",
+  badgeTextColor: "",
+  title: "Realce Sua Beleza Natural",
+  subtitle:
+    "Especialistas em design de sobrancelhas, dedicados a realçar sua beleza natural.",
+  primaryButton: "Agendar Horário",
+  secondaryButton: "Ver Trabalhos",
+  bgType: "image",
+  bgColor: "#ffffff",
+  bgImage: "",
+  imageOpacity: 0.2,
+  overlayOpacity: 0.8,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  badgeFont: "Inter",
+  primaryButtonColor: "",
+  secondaryButtonColor: "",
+  primaryButtonTextColor: "",
+  secondaryButtonTextColor: "",
+  titleColor: "",
+  subtitleColor: "",
+  primaryButtonFont: "Inter",
+  secondaryButtonFont: "Inter",
+};
+
+export const defaultFontSettings: FontSettings = {
+  headingFont: "Playfair Display",
+  bodyFont: "Inter",
 };
 
 export function generateTimeSlotsForDate(date: string): string[] {
@@ -514,6 +605,72 @@ export function saveSiteProfile(profile: SiteProfile): void {
   // Dispatch custom event so components can update immediately
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("siteProfileUpdated"));
+  }
+}
+
+export function getHeroSettings(): HeroSettings {
+  if (typeof window === "undefined") return defaultHeroSettings;
+  const settings = localStorage.getItem("heroSettings");
+  return settings ? JSON.parse(settings) : defaultHeroSettings;
+}
+
+export function saveHeroSettings(settings: HeroSettings): void {
+  localStorage.setItem("heroSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("heroSettingsUpdated"));
+  }
+}
+
+export function getStorySettings(): StorySettings {
+  if (typeof window === "undefined") return defaultStorySettings;
+  const settings = localStorage.getItem("storySettings");
+  return settings ? JSON.parse(settings) : defaultStorySettings;
+}
+
+export function saveStorySettings(settings: StorySettings): void {
+  localStorage.setItem("storySettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("storySettingsUpdated"));
+  }
+}
+
+export function getFontSettings(): FontSettings {
+  if (typeof window === "undefined") return defaultFontSettings;
+  const settings = localStorage.getItem("fontSettings");
+  return settings ? JSON.parse(settings) : defaultFontSettings;
+}
+
+export function saveFontSettings(settings: FontSettings): void {
+  localStorage.setItem("fontSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("fontSettingsUpdated"));
+  }
+}
+
+export function getPageVisibility(): Record<string, boolean> {
+  if (typeof window === "undefined") {
+    return {
+      inicio: true,
+      galeria: true,
+      sobre: true,
+      agendar: true,
+    };
+  }
+  const visibility = localStorage.getItem("pageVisibility");
+  if (visibility) return JSON.parse(visibility);
+
+  return {
+    inicio: true,
+    galeria: true,
+    sobre: true,
+    agendar: true,
+  };
+}
+
+export function savePageVisibility(visibility: Record<string, boolean>): void {
+  localStorage.setItem("pageVisibility", JSON.stringify(visibility));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("pageVisibilityUpdated"));
   }
 }
 

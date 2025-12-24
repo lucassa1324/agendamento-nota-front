@@ -1,10 +1,30 @@
+"use client";
+
 import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { getPageVisibility } from "@/lib/booking-data";
 
 export function CTASection() {
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(() => getPageVisibility());
+
+  useEffect(() => {
+    const handleVisibilityUpdate = () => {
+      setPageVisibility(getPageVisibility());
+    };
+
+    window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+
+    return () => {
+      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+    };
+  }, []);
+
+  if (pageVisibility.agendar === false) return null;
+
   return (
-    <section className="py-20 md:py-32">
+    <section id="cta" className="py-20 md:py-32">
       <div className="container mx-auto px-4">
         <div className="max-w-4xl mx-auto bg-linear-to-br from-accent/10 to-primary/10 rounded-2xl p-8 md:p-16 text-center border border-accent/20">
           <Calendar className="w-16 h-16 text-accent mx-auto mb-6" />

@@ -1,9 +1,72 @@
 "use client";
 
-import { Palette, Scissors, Sparkles, Star } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { getSettingsFromStorage, type Service } from "@/lib/booking-data";
+import {
+  Palette,
+  Scissors,
+  Sparkles,
+  Star,
+  Award,
+  Crown,
+  Flower2,
+  Gem,
+  Heart,
+  Moon,
+  Smile,
+  Sun,
+  Users,
+  Medal,
+  Briefcase,
+  Coffee,
+  Utensils,
+  Laptop,
+  Smartphone,
+  Camera,
+  Music,
+  Dumbbell,
+  Plane,
+  Car,
+  ShoppingBag,
+  Stethoscope,
+  Code,
+  Brush,
+  Wind,
+  type LucideIcon,
+} from "lucide-react";
+
+const iconMap: Record<string, LucideIcon> = {
+  Sparkles,
+  Scissors,
+  Palette,
+  Star,
+  Award,
+  Crown,
+  Flower2,
+  Gem,
+  Heart,
+  Moon,
+  Smile,
+  Sun,
+  Users,
+  Medal,
+  Briefcase,
+  Coffee,
+  Utensils,
+  Laptop,
+  Smartphone,
+  Camera,
+  Music,
+  Dumbbell,
+  Plane,
+  Car,
+  ShoppingBag,
+  Stethoscope,
+  Code,
+  Brush,
+  Wind,
+};
 
 export function ServicesSection() {
   const [services, setServices] = useState<Service[]>([]);
@@ -26,7 +89,7 @@ export function ServicesSection() {
   if (services.length === 0) return null;
 
   return (
-    <section className="py-20 md:py-32">
+    <section id="services" className="py-20 md:py-32">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4 text-balance">
@@ -39,14 +102,19 @@ export function ServicesSection() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {services.map((service) => {
-            // Lógica simples para escolher ícone baseado no nome
+          {services.map((service: Service) => {
+            // Usa o ícone definido no serviço ou tenta inferir pelo nome
             let Icon = Sparkles;
-            const name = service.name.toLowerCase();
-            if (name.includes("design")) Icon = Scissors;
-            else if (name.includes("color") || name.includes("henna"))
-              Icon = Palette;
-            else if (name.includes("lamina")) Icon = Star;
+            
+            if (service.icon && iconMap[service.icon]) {
+              Icon = iconMap[service.icon];
+            } else {
+              const name = service.name.toLowerCase();
+              if (name.includes("design")) Icon = Scissors;
+              else if (name.includes("color") || name.includes("henna"))
+                Icon = Palette;
+              else if (name.includes("lamina")) Icon = Star;
+            }
 
             return (
               <Card

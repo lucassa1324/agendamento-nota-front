@@ -30,7 +30,7 @@ const values = [
 
 export function ValuesSection() {
   return (
-    <section className="py-20 md:py-32 bg-secondary/30">
+    <section id="values" className="py-20 md:py-32 bg-secondary/30">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4 text-balance">

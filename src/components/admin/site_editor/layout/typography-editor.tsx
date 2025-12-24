@@ -1,0 +1,174 @@
+"use client";
+
+import { Plus } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface TypographyEditorProps {
+  settings: {
+    headingFont: string;
+    bodyFont: string;
+  };
+  onUpdate: (updates: Partial<TypographyEditorProps["settings"]>) => void;
+  onHighlight?: (id: string) => void;
+  hasChanges?: boolean;
+  onSave?: () => void;
+}
+
+export function TypographyEditor({
+  settings,
+  onUpdate,
+  onHighlight,
+  hasChanges,
+  onSave,
+}: TypographyEditorProps) {
+  const handleAccordionChange = (value: string) => {
+    if (value && onHighlight) {
+      const highlightMap: Record<string, string> = {
+        "item-headings": "hero-title",
+        "item-body": "hero-subtitle",
+      };
+      if (highlightMap[value]) {
+        onHighlight(highlightMap[value]);
+      }
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      <Accordion
+        type="single"
+        collapsible
+        className="w-full space-y-2 border-none"
+        onValueChange={handleAccordionChange}
+      >
+        <AccordionItem
+          value="item-headings"
+          className="border rounded-lg bg-muted/20 px-3 overflow-hidden border-border/50"
+        >
+          <AccordionTrigger className="hover:no-underline py-3">
+            <div className="flex items-center gap-2">
+              <Plus className="w-3 h-3 text-primary" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Fonte dos Títulos (Serif)
+              </span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4 space-y-4">
+            <div className="space-y-2 pt-1">
+              <Label className="text-[10px] font-medium text-muted-foreground ml-1">
+                Selecione a fonte principal
+              </Label>
+              <Select
+                value={settings.headingFont}
+                onValueChange={(val) => onUpdate({ headingFont: val })}
+              >
+                <SelectTrigger className="h-9 text-sm bg-background">
+                  <SelectValue placeholder="Selecione uma fonte" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Playfair Display">
+                    Playfair Display
+                  </SelectItem>
+                  <SelectItem value="Lora">Lora</SelectItem>
+                  <SelectItem value="Merriweather">Merriweather</SelectItem>
+                  <SelectItem value="Cormorant Garamond">
+                    Cormorant Garamond
+                  </SelectItem>
+                  <SelectItem value="Cinzel">Cinzel</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem
+          value="item-body"
+          className="border rounded-lg bg-muted/20 px-3 overflow-hidden border-border/50"
+        >
+          <AccordionTrigger className="hover:no-underline py-3">
+            <div className="flex items-center gap-2">
+              <Plus className="w-3 h-3 text-primary" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Fonte do Corpo (Sans)
+              </span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4 space-y-4">
+            <div className="space-y-2 pt-1">
+              <Label className="text-[10px] font-medium text-muted-foreground ml-1">
+                Selecione a fonte para textos
+              </Label>
+              <Select
+                value={settings.bodyFont}
+                onValueChange={(val) => onUpdate({ bodyFont: val })}
+              >
+                <SelectTrigger className="h-9 text-sm bg-background">
+                  <SelectValue placeholder="Selecione uma fonte" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Inter">Inter</SelectItem>
+                  <SelectItem value="Montserrat">Montserrat</SelectItem>
+                  <SelectItem value="Poppins">Poppins</SelectItem>
+                  <SelectItem value="Roboto">Roboto</SelectItem>
+                  <SelectItem value="Open Sans">Open Sans</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      <div className="p-4 rounded-lg bg-background border border-border space-y-3">
+        <div className="p-4 rounded-lg bg-background border border-border space-y-3">
+          <Label className="text-[9px] text-muted-foreground uppercase">
+            Prévia
+          </Label>
+          <div className="space-y-1">
+            <h4
+              className="text-lg font-bold"
+              style={{ fontFamily: settings.headingFont }}
+            >
+              Exemplo de Título
+            </h4>
+            <p
+              className="text-xs text-muted-foreground"
+              style={{ fontFamily: settings.bodyFont }}
+            >
+              Este é um exemplo de como o seu texto ficará com as fontes
+              selecionadas.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="pt-2">
+        <Button
+          type="button"
+          disabled={!hasChanges}
+          onClick={onSave}
+          className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
+            hasChanges
+              ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+              : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+          }`}
+        >
+          {hasChanges ? "Aplicar Fontes" : "Nenhuma alteração"}
+        </Button>
+      </div>
+    </div>
+  );
+}

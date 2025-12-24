@@ -1,51 +1,69 @@
-/** biome-ignore-all lint/a11y/useButtonType: custom button implementation */
 "use client";
 
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getSiteProfile, type SiteProfile } from "@/lib/booking-data";
+import { getPageVisibility, getSiteProfile, type SiteProfile } from "@/lib/booking-data";
 
 export function Navigation() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profile, setProfile] = useState<SiteProfile | null>(null);
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(() => getPageVisibility());
+
+  const only = searchParams.get("only");
 
   useEffect(() => {
     setProfile(getSiteProfile());
+    setPageVisibility(getPageVisibility());
 
     const handleProfileUpdate = () => {
       setProfile(getSiteProfile());
     };
 
+    const handleVisibilityUpdate = () => {
+      setPageVisibility(getPageVisibility());
+    };
+
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
+    window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
+      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
     };
   }, []);
 
+  // Se estivermos isolando algo que não seja o header, escondemos o navigation
+  if (only && only !== "header") return null;
+
   const isActive = (path: string) => pathname === path;
 
-  const navLinks = [
-    { href: "/", label: "Início" },
-    { href: "/galeria", label: "Galeria" },
-    { href: "/sobre", label: "Sobre Nós" },
-    { href: "/agendamento", label: "Agendar" },
+  const allNavLinks = [
+    { id: "inicio", href: "/", label: "Início" },
+    { id: "galeria", href: "/galeria", label: "Galeria" },
+    { id: "sobre", href: "/sobre", label: "Sobre Nós" },
+    { id: "agendar", href: "/agendamento", label: "Agendar" },
   ];
+
+  const navLinks = allNavLinks.filter(link => pageVisibility[link.id] !== false);
 
   const siteName = profile?.name || "Brow Studio";
 
   return (
-    <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 border-b border-border">
+    <nav
+      id="header"
+      className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 border-b border-border"
+    >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link
             href="/"
-            className="font-serif text-2xl font-bold text-primary flex items-center gap-3"
+            className="font-serif text-xl lg:text-2xl font-bold text-primary flex items-center gap-2 lg:gap-3"
           >
             {profile?.logoUrl ? (
               <Image
@@ -53,20 +71,22 @@ export function Navigation() {
                 alt={siteName}
                 width={100}
                 height={40}
-                className="h-10 w-auto object-contain"
+                className="h-8 lg:h-10 w-auto object-contain"
                 unoptimized
               />
             ) : null}
-            <span>{siteName}</span>
+            <span className="truncate max-w-37.5 lg:max-w-none">
+              {siteName}
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex items-center gap-4 lg:gap-8">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`text-sm font-medium transition-colors hover:text-primary ${
+                className={`text-xs lg:text-sm font-medium transition-colors hover:text-primary ${
                   isActive(link.href) ? "text-primary" : "text-muted-foreground"
                 }`}
               >
@@ -75,20 +95,24 @@ export function Navigation() {
             ))}
             <Link
               href="/admin"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+              className="text-xs lg:text-sm font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap"
             >
               Acesse sua conta
             </Link>
-            <Button
-              asChild
-              className="bg-accent hover:bg-accent/90 text-accent-foreground"
-            >
-              <Link href="/agendamento">Agende Agora</Link>
-            </Button>
+            {pageVisibility.agendar !== false && (
+              <Button
+                asChild
+                size="sm"
+                className="bg-accent hover:bg-accent/90 text-accent-foreground px-3 lg:px-4 text-xs lg:text-sm h-9 lg:h-10"
+              >
+                <Link href="/agendamento">Agende Agora</Link>
+              </Button>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
           <button
+            type="button"
             className="md:hidden p-2"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
@@ -122,17 +146,19 @@ export function Navigation() {
               >
                 Acesse sua conta
               </Link>
-              <Button
-                asChild
-                className="bg-accent hover:bg-accent/90 text-accent-foreground w-full"
-              >
-                <Link
-                  href="/agendamento"
-                  onClick={() => setMobileMenuOpen(false)}
+              {pageVisibility.agendar !== false && (
+                <Button
+                  asChild
+                  className="bg-accent hover:bg-accent/90 text-accent-foreground w-full"
                 >
-                  Agende Agora
-                </Link>
-              </Button>
+                  <Link
+                    href="/agendamento"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Agende Agora
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         )}

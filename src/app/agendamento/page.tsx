@@ -1,28 +1,52 @@
+"use client";
+
 import { BookingFlow } from "@/components/booking-flow";
+import { useEffect, useState, use } from "react";
+import { getPageVisibility } from "@/lib/booking-data";
+import { useRouter } from "next/navigation";
 
-export const metadata = {
-  title: "Agendar Horário | Brow Studio",
-  description: "Agende seu horário e escolha o melhor serviço para você",
-};
+export default function AgendamentoPage({
+  searchParams: searchParamsPromise,
+}: {
+  searchParams: Promise<{ only?: string }>;
+}) {
+  const router = useRouter();
+  const searchParams = use(searchParamsPromise);
+  const only = searchParams.only;
+  const [isVisible, setIsVisible] = useState<boolean | null>(null);
 
-export default function AgendamentoPage() {
+  useEffect(() => {
+    const visibility = getPageVisibility();
+    if (visibility.agendar === false) {
+      setIsVisible(false);
+      router.push("/");
+    } else {
+      setIsVisible(true);
+    }
+  }, [router]);
+
+  if (isVisible === false) return null;
+  if (isVisible === null) return null;
+
   return (
     <main>
-      <section className="py-20 md:py-32 min-h-screen">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h1 className="font-serif text-4xl md:text-6xl font-bold mb-4 text-balance">
-              Agende Seu Horário
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty leading-relaxed">
-              Escolha o serviço, data e horário que melhor se encaixam na sua
-              rotina
-            </p>
-          </div>
+      {(!only || only === "booking") && (
+        <section className="py-20 md:py-32 min-h-screen">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h1 className="font-serif text-4xl md:text-6xl font-bold mb-4 text-balance">
+                Agende Seu Horário
+              </h1>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty leading-relaxed">
+                Escolha o serviço, data e horário que melhor se encaixam na sua
+                rotina
+              </p>
+            </div>
 
-          <BookingFlow />
-        </div>
-      </section>
+            <BookingFlow />
+          </div>
+        </section>
+      )}
     </main>
   );
 }
