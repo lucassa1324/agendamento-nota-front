@@ -47,6 +47,8 @@ export function PreviewStyleManager() {
     loadAllFonts();
 
     const handleMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+
       if (event.data.type === "UPDATE_FONTS") {
         setFonts((prev) => ({
           ...prev,

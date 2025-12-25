@@ -66,6 +66,8 @@ export function HeroSection() {
     setPageVisibility(getPageVisibility());
 
     const handleMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+
       if (
         event.data.type === "UPDATE_HERO_BG" ||
         event.data.type === "UPDATE_HERO_CONTENT"

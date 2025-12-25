@@ -183,6 +183,7 @@ export function SiteCustomizer() {
     "desktop",
   );
   const [manualScale, setManualScale] = useState(1);
+  const [isAutoZoom, setIsAutoZoom] = useState(true);
   const [manualWidth, setManualWidth] = useState<number | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const { toast } = useToast();
@@ -191,7 +192,15 @@ export function SiteCustomizer() {
     useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    setHeaderPortalTarget(document.getElementById("header-actions"));
+    const target = document.getElementById("header-actions");
+    if (target) {
+      setHeaderPortalTarget(target);
+    } else {
+      const timeout = setTimeout(() => {
+        setHeaderPortalTarget(document.getElementById("header-actions"));
+      }, 500);
+      return () => clearTimeout(timeout);
+    }
   }, []);
 
   // Estado para controlar a visibilidade das páginas
@@ -395,10 +404,8 @@ export function SiteCustomizer() {
     containerSize.height > 0
       ? Math.max(0.1, (containerSize.height - 24) / 850)
       : 1;
-  const desktopScale = Math.min(
-    1.5,
-    Math.min(1, widthScale, heightScale) * manualScale,
-  );
+  const fitScaleDesktop = Math.min(1, widthScale, heightScale);
+  const desktopScale = isAutoZoom ? fitScaleDesktop : manualScale;
 
   const mobileWidthScale =
     containerSize.width > 0
@@ -408,10 +415,8 @@ export function SiteCustomizer() {
     containerSize.height > 0
       ? Math.max(0.1, (containerSize.height - 24) / 750)
       : 1;
-  const mobileScale = Math.min(
-    1.5,
-    Math.min(1, mobileWidthScale, mobileHeightScale) * manualScale,
-  );
+  const fitScaleMobile = Math.min(1, mobileWidthScale, mobileHeightScale);
+  const mobileScale = isAutoZoom ? fitScaleMobile : manualScale;
 
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
@@ -465,6 +470,19 @@ export function SiteCustomizer() {
       );
     }
   };
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+
+      if (event.data.type === "HIGHLIGHT_SECTION") {
+        setActiveSection(event.data.sectionId);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
 
   const reloadPreview = () => setPreviewKey((prev) => prev + 1);
 
@@ -727,7 +745,8 @@ export function SiteCustomizer() {
     });
   };
 
-  const HeaderControls = () => (
+  // HeaderControls movido para fora do componente principal ou memorizado para evitar remounts
+  const headerControls = (
     <div className="flex items-center bg-muted/50 rounded-full p-1 gap-1 ml-2 shrink-0">
       <div className="flex items-center gap-0.5 mr-1 lg:mr-2">
         <Button
@@ -735,12 +754,17 @@ export function SiteCustomizer() {
           variant="ghost"
           size="icon"
           className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
-          onClick={() => setManualScale((prev) => Math.max(0.2, prev - 0.1))}
+          onClick={() => {
+            const currentScale =
+              previewMode === "mobile" ? mobileScale : desktopScale;
+            setManualScale(Math.max(0.1, currentScale - 0.1));
+            setIsAutoZoom(false);
+          }}
           title="Diminuir Zoom"
         >
           <ZoomOut className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
         </Button>
-        <span className="text-[10px] lg:text-xs font-bold min-w-8.75 text-center">
+        <span className="text-[10px] lg:text-xs font-bold min-w-10 text-center">
           {Math.round(
             (previewMode === "mobile" ? mobileScale : desktopScale) * 100,
           )}
@@ -751,18 +775,26 @@ export function SiteCustomizer() {
           variant="ghost"
           size="icon"
           className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
-          onClick={() => setManualScale((prev) => Math.min(2, prev + 0.1))}
+          onClick={() => {
+            const currentScale =
+              previewMode === "mobile" ? mobileScale : desktopScale;
+            setManualScale(Math.min(2, currentScale + 0.1));
+            setIsAutoZoom(false);
+          }}
           title="Aumentar Zoom"
         >
           <ZoomIn className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
         </Button>
         <Button
           type="button"
-          variant="ghost"
+          variant={isAutoZoom ? "secondary" : "ghost"}
           size="icon"
-          className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
-          onClick={() => setManualScale(1)}
-          title="Resetar Zoom"
+          className={cn(
+            "rounded-full w-7 h-7 lg:w-8 lg:h-8",
+            isAutoZoom && "bg-background shadow-sm",
+          )}
+          onClick={() => setIsAutoZoom(true)}
+          title="Ajustar à Tela (Auto)"
         >
           <Maximize className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
         </Button>
@@ -822,8 +854,7 @@ export function SiteCustomizer() {
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
-      {headerPortalTarget &&
-        createPortal(<HeaderControls />, headerPortalTarget)}
+      {headerPortalTarget && createPortal(headerControls, headerPortalTarget)}
       {/* Mobile: Sidebar (Sheet) */}
       <Sheet open={isMobile && isSidebarOpen} onOpenChange={onToggleSidebar}>
         <SheetContent side="left" className="p-0 w-[85%] sm:w-80 lg:hidden">

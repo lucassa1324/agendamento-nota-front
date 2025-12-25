@@ -96,6 +96,8 @@ export function ServicesSection() {
     loadData();
 
     const handleMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+
       if (event.data.type === "UPDATE_SERVICES_CONTENT") {
         setSettings((prev) =>
           prev ? { ...prev, ...event.data.settings } : prev,
