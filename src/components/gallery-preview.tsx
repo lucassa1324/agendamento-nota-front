@@ -16,11 +16,17 @@ const galleryImages = [
 ];
 
 export function GalleryPreview() {
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
-    () => getPageVisibility(),
-  );
+  const [isMounted, setIsMounted] = useState(false);
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
+    inicio: true,
+    galeria: true,
+    sobre: true,
+    agendar: true,
+  });
 
   useEffect(() => {
+    setIsMounted(true);
+    setPageVisibility(getPageVisibility());
     const handleVisibilityUpdate = () => {
       setPageVisibility(getPageVisibility());
     };
@@ -35,6 +41,7 @@ export function GalleryPreview() {
     };
   }, []);
 
+  if (!isMounted) return null;
   if (pageVisibility.galeria === false) return null;
 
   return (

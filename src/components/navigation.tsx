@@ -15,11 +15,17 @@ import {
 export function Navigation() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  if (pathname?.startsWith("/admin")) return null;
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profile, setProfile] = useState<SiteProfile | null>(null);
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
-    () => getPageVisibility(),
-  );
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
+    inicio: true,
+    galeria: true,
+    sobre: true,
+    agendar: true,
+  });
 
   const only = searchParams.get("only");
 

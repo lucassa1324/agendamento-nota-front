@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   getPageVisibility,
@@ -20,11 +20,18 @@ import {
 } from "@/lib/booking-data";
 
 export function Footer() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  if (pathname?.startsWith("/admin")) return null;
+
   const [profile, setProfile] = useState<SiteProfile | null>(null);
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
-    () => getPageVisibility(),
-  );
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
+    inicio: true,
+    galeria: true,
+    sobre: true,
+    agendar: true,
+  });
 
   const only = searchParams.get("only");
 

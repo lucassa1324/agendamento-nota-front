@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { checkAdminAuth, getAdminUser, logoutAdmin } from "@/lib/admin-auth";
 import { cn } from "@/lib/utils";
+import { SidebarProvider, useSidebar } from "@/context/sidebar-context";
 
 const Sidebar = ({
   activeTab,
@@ -249,6 +250,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || "agendamentos";
+  const { isSidebarOpen, setIsSidebarOpen } = useSidebar();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [adminUser, setAdminUser] = useState<{
@@ -300,7 +302,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Top Bar */}
         <header className="h-16 border-b border-border bg-card px-4 lg:px-6 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-4">
-            {/* Sidebar Mobile */}
+            {/* Sidebar Mobile Trigger (Dashboard Main Menu) */}
             <div className="lg:hidden">
               <Sheet>
                 <SheetTrigger asChild>
@@ -317,9 +319,37 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 </SheetContent>
               </Sheet>
             </div>
-            <h1 className="font-sans text-base lg:text-lg font-semibold truncate">
-              Dashboard Administrativo
-            </h1>
+
+            {/* Site Customizer Sidebar Trigger (Sandwich Menu) */}
+            {activeTab === "personalizacao" && (
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  setIsSidebarOpen(!isSidebarOpen);
+                }}
+                className={cn(
+                  "h-10 w-10 transition-all duration-300",
+                  isSidebarOpen 
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm" 
+                    : "bg-background text-foreground hover:bg-muted"
+                )}
+                title={isSidebarOpen ? "Fechar Menu de Personalização" : "Abrir Menu de Personalização"}
+              >
+                <Menu className={cn("h-5 w-5 transition-transform duration-300", isSidebarOpen && "rotate-90")} />
+              </Button>
+            )}
+
+            <div className="flex flex-col min-w-0">
+              <h1 className="font-sans text-base lg:text-lg font-semibold truncate leading-tight">
+                {activeTab === "personalizacao" ? "Personalização do Site" : "Dashboard Administrativo"}
+              </h1>
+              {activeTab === "personalizacao" && (
+                <p className="text-[10px] lg:text-xs text-muted-foreground truncate">
+                  Personalize o visual do seu site
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs lg:text-sm text-muted-foreground hidden sm:inline-block">
@@ -354,7 +384,9 @@ export default function AdminLayout({
 }) {
   return (
     <Suspense fallback={<div>Carregando...</div>}>
-      <AdminLayoutContent>{children}</AdminLayoutContent>
+      <SidebarProvider>
+        <AdminLayoutContent>{children}</AdminLayoutContent>
+      </SidebarProvider>
     </Suspense>
   );
 }

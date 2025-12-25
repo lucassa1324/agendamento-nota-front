@@ -43,14 +43,20 @@ import { cn } from "@/lib/utils";
 export function HeroSection() {
   const [profile, setProfile] = useState<SiteProfile | null>(null);
   const [customStyles, setCustomStyles] = useState<Partial<HeroSettings>>({});
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
-    () => getPageVisibility(),
-  );
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
+    inicio: true,
+    galeria: true,
+    sobre: true,
+    agendar: true,
+  });
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
   );
 
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
+    setIsMounted(true);
     setProfile(getSiteProfile());
 
     // Carregar configurações iniciais
@@ -113,6 +119,18 @@ export function HeroSection() {
     customStyles.bgType === "color"
       ? { backgroundColor: customStyles.bgColor || "transparent" }
       : {};
+
+  if (!isMounted) {
+    return (
+      <section id="hero" className="relative min-h-[90vh] flex items-center justify-center bg-background">
+        <div className="container mx-auto px-4 text-center">
+          <div className="max-w-3xl mx-auto">
+            <h1 className="font-serif text-5xl md:text-7xl font-bold mb-6">Realce Sua Beleza Natural</h1>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section

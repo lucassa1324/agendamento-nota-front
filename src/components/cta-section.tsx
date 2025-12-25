@@ -7,11 +7,17 @@ import { Button } from "@/components/ui/button";
 import { getPageVisibility } from "@/lib/booking-data";
 
 export function CTASection() {
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
-    () => getPageVisibility(),
-  );
+  const [isMounted, setIsMounted] = useState(false);
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
+    inicio: true,
+    galeria: true,
+    sobre: true,
+    agendar: true,
+  });
 
   useEffect(() => {
+    setIsMounted(true);
+    setPageVisibility(getPageVisibility());
     const handleVisibilityUpdate = () => {
       setPageVisibility(getPageVisibility());
     };
@@ -26,6 +32,7 @@ export function CTASection() {
     };
   }, []);
 
+  if (!isMounted) return null;
   if (pageVisibility.agendar === false) return null;
 
   return (

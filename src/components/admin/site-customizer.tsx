@@ -15,9 +15,17 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { SidebarNav } from "./site_editor/sidebar-nav";
+
+import { useSidebar } from "@/context/sidebar-context";
 
 interface PageItem {
   id: string;
@@ -149,6 +157,18 @@ const sections = {
 };
 
 export function SiteCustomizer() {
+  const { isSidebarOpen, setIsSidebarOpen: onToggleSidebar } = useSidebar();
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
   const [activePage, setActivePage] = useState("layout");
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [expandedPages, setExpandedPages] = useState<string[]>([
@@ -163,9 +183,16 @@ export function SiteCustomizer() {
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
 
   // Estado para controlar a visibilidade das páginas
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
-    () => getPageVisibility(),
-  );
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
+    inicio: true,
+    galeria: true,
+    sobre: true,
+    agendar: true,
+  });
+
+  useEffect(() => {
+    setPageVisibility(getPageVisibility());
+  }, []);
 
   const handlePageVisibilityChange = (pageId: string, isVisible: boolean) => {
     setPageVisibility((prev) => ({
@@ -180,43 +207,42 @@ export function SiteCustomizer() {
   }, [pageVisibility]);
 
   // Estados de customização (inicializados do storage)
-  const [heroSettings, setHeroSettings] = useState<HeroSettings>(() =>
-    getHeroSettings(),
-  );
-  const [fontSettings, setFontSettings] = useState<FontSettings>(() =>
-    getFontSettings(),
-  );
-  const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(
-    () => getServicesSettings(),
-  );
-  const [valuesSettings, setValuesSettings] = useState<ValuesSettings>(() =>
-    getValuesSettings(),
-  );
+  const [heroSettings, setHeroSettings] = useState<HeroSettings>(defaultHeroSettings);
+  const [fontSettings, setFontSettings] = useState<FontSettings>(defaultFontSettings);
+  const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(defaultServicesSettings);
+  const [valuesSettings, setValuesSettings] = useState<ValuesSettings>(defaultValuesSettings);
 
   // Estados para controle de botões (Aplicar vs Salvar)
-  const [lastAppliedHero, setLastAppliedHero] = useState<HeroSettings>(() =>
-    getHeroSettings(),
-  );
-  const [lastAppliedFont, setLastAppliedFont] = useState<FontSettings>(() =>
-    getFontSettings(),
-  );
-  const [lastAppliedServices, setLastAppliedServices] =
-    useState<ServicesSettings>(() => getServicesSettings());
-  const [lastAppliedValues, setLastAppliedValues] = useState<ValuesSettings>(
-    () => getValuesSettings(),
-  );
-  const [lastSavedHero, setLastSavedHero] = useState<HeroSettings>(() =>
-    getHeroSettings(),
-  );
-  const [lastSavedFont, setLastSavedFont] = useState<FontSettings>(() =>
-    getFontSettings(),
-  );
-  const [lastSavedServices, setLastSavedServices] = useState<ServicesSettings>(
-    () => getServicesSettings(),
-  );
-  const [lastSavedValues, setLastSavedValues] = useState<ValuesSettings>(() =>
-    getValuesSettings(),
-  );
+  const [lastAppliedHero, setLastAppliedHero] = useState<HeroSettings>(defaultHeroSettings);
+  const [lastAppliedFont, setLastAppliedFont] = useState<FontSettings>(defaultFontSettings);
+  const [lastAppliedServices, setLastAppliedServices] = useState<ServicesSettings>(defaultServicesSettings);
+  const [lastAppliedValues, setLastAppliedValues] = useState<ValuesSettings>(defaultValuesSettings);
+  const [lastSavedHero, setLastSavedHero] = useState<HeroSettings>(defaultHeroSettings);
+  const [lastSavedFont, setLastSavedFont] = useState<FontSettings>(defaultFontSettings);
+  const [lastSavedServices, setLastSavedServices] = useState<ServicesSettings>(defaultServicesSettings);
+  const [lastSavedValues, setLastSavedValues] = useState<ValuesSettings>(defaultValuesSettings);
+
+  useEffect(() => {
+    const loadedHero = getHeroSettings();
+    const loadedFont = getFontSettings();
+    const loadedServices = getServicesSettings();
+    const loadedValues = getValuesSettings();
+
+    setHeroSettings(loadedHero);
+    setFontSettings(loadedFont);
+    setServicesSettings(loadedServices);
+    setValuesSettings(loadedValues);
+
+    setLastAppliedHero(loadedHero);
+    setLastAppliedFont(loadedFont);
+    setLastAppliedServices(loadedServices);
+    setLastAppliedValues(loadedValues);
+
+    setLastSavedHero(loadedHero);
+    setLastSavedFont(loadedFont);
+    setLastSavedServices(loadedServices);
+    setLastSavedValues(loadedValues);
+  }, []);
 
   // Booleans para habilitar/desabilitar botões
   const hasHeroChanges =
@@ -330,21 +356,21 @@ export function SiteCustomizer() {
 
   const widthScale =
     containerSize.width > 0
-      ? Math.max(0.1, (containerSize.width - 40) / 1280)
+      ? Math.max(0.1, (containerSize.width - 32) / 1280)
       : 1;
   const heightScale =
     containerSize.height > 0
-      ? Math.max(0.1, (containerSize.height - 40) / 850)
+      ? Math.max(0.1, (containerSize.height - 32) / 850)
       : 1;
   const desktopScale = Math.min(1, widthScale, heightScale);
 
   const mobileWidthScale =
     containerSize.width > 0
-      ? Math.max(0.1, (containerSize.width - 40) / 375)
+      ? Math.max(0.1, (containerSize.width - 32) / 375)
       : 1;
   const mobileHeightScale =
     containerSize.height > 0
-      ? Math.max(0.1, (containerSize.height - 40) / 750)
+      ? Math.max(0.1, (containerSize.height - 32) / 750)
       : 1;
   const mobileScale = Math.min(1, mobileWidthScale, mobileHeightScale);
 
@@ -413,6 +439,164 @@ export function SiteCustomizer() {
   const previewUrl = activePageData?.path
     ? `${activePageData.path}${activeSection ? `?only=${activeSection}` : ""}`
     : "";
+
+  const SidebarContent = () => (
+    <div className="flex flex-col h-full text-[clamp(0.75rem,1vw,0.875rem)]">
+      <div className="p-3 xl:p-6 pb-3 border-b border-border/50 shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-primary font-bold">
+            <Settings2 className="w-4 h-4 xl:w-5 xl:h-5" />
+            <span className="text-[10px] xl:text-sm tracking-wide uppercase">Editor</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetSettings}
+            className="h-7 xl:h-8 px-2 xl:px-3 gap-1 xl:gap-1.5 text-[9px] xl:text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors shrink-0"
+          >
+            <RotateCcw className="w-2.5 h-2.5 xl:w-3 xl:h-3" />
+            <span>Resetar</span>
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3 xl:p-6 custom-scrollbar min-w-0">
+        {activeSection ? (
+          /* Editor de Seção (Placeholder) */
+          <div className="space-y-4 xl:space-y-6 animate-in slide-in-from-left duration-300">
+            <div className="flex items-center gap-2 mb-3 xl:mb-4">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveSection(null)}
+                className="h-7 w-7 xl:h-8 xl:w-8 rounded-full p-0"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 xl:w-4 xl:h-4" />
+              </Button>
+              <div>
+                <h3 className="text-xs xl:text-sm font-bold text-primary truncate max-w-[150px] xl:max-w-none">
+                  {activeSectionData?.name}
+                </h3>
+                <p className="text-[9px] xl:text-[10px] text-muted-foreground">
+                  Editando seção
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 xl:space-y-4 p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
+              {/* --- LAYOUT GLOBAL --- */}
+              {activeSection === "typography" && (
+                <TypographyEditor
+                  settings={fontSettings}
+                  onUpdate={(updates) =>
+                    setFontSettings((prev) => ({ ...prev, ...updates }))
+                  }
+                  onHighlight={handleHighlight}
+                  hasChanges={hasFontChanges}
+                  onSave={handleApplyTypography}
+                />
+              )}
+
+              {/* --- PÁGINA: INÍCIO (HOME) --- */}
+              {activeSection === "hero" && (
+                <HeroEditor
+                  settings={heroSettings}
+                  onUpdate={(updates) =>
+                    setHeroSettings((prev) => ({ ...prev, ...updates }))
+                  }
+                  onHighlight={handleHighlight}
+                  hasChanges={hasHeroChanges}
+                  onSave={handleApplyHero}
+                />
+              )}
+              {activeSection === "story" && (
+                <HistoryEditor hasChanges={false} onSave={() => {}} />
+              )}
+              {activeSection === "services" && (
+                <ServicesEditor
+                  settings={servicesSettings}
+                  onUpdate={(updates) =>
+                    setServicesSettings((prev) => ({ ...prev, ...updates }))
+                  }
+                  hasChanges={hasServicesChanges}
+                  onSave={handleApplyServices}
+                />
+              )}
+              {activeSection === "values" && (
+                <ValuesEditor
+                  settings={valuesSettings}
+                  onUpdate={(updates) =>
+                    setValuesSettings((prev) => ({ ...prev, ...updates }))
+                  }
+                  hasChanges={hasValuesChanges}
+                  onSave={handleApplyValues}
+                />
+              )}
+
+              {/* --- FALLBACK PARA SEÇÕES EM DESENVOLVIMENTO --- */}
+              {!["typography", "hero", "story", "services", "values"].includes(
+                activeSection,
+              ) && (
+                <div className="py-12 text-center">
+                  <Settings2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+                  <p className="text-sm text-muted-foreground">
+                    O editor para esta seção será implementado em breve.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <SidebarNav
+            pages={pages}
+            sections={sections}
+            activePage={activePage}
+            activeSection={activeSection}
+            expandedPages={expandedPages}
+            visibleSections={visibleSections}
+            onPageToggle={togglePageExpansion}
+            onSectionSelect={scrollToSection}
+            onSectionVisibilityToggle={toggleSection}
+            pageVisibility={pageVisibility}
+            onPageVisibilityChange={handlePageVisibilityChange}
+          />
+        )}
+      </div>
+
+      <div className="p-6 pt-4 border-t border-border bg-background">
+        <Button
+          type="button"
+          disabled={
+            !hasUnsavedGlobalChanges &&
+            !hasHeroChanges &&
+            !hasFontChanges &&
+            !hasServicesChanges &&
+            !hasValuesChanges
+          }
+          onClick={handleSaveGlobal}
+          className={cn(
+            "w-full font-bold py-6 rounded-xl transition-all duration-300",
+            hasUnsavedGlobalChanges ||
+              hasHeroChanges ||
+              hasFontChanges ||
+              hasServicesChanges ||
+              hasValuesChanges
+              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+              : "bg-muted text-muted-foreground cursor-not-allowed"
+          )}
+        >
+          {hasUnsavedGlobalChanges ||
+          hasHeroChanges ||
+          hasFontChanges ||
+          hasServicesChanges ||
+          hasValuesChanges
+            ? "Publicar Alterações"
+            : "Tudo Atualizado"}
+        </Button>
+      </div>
+    </div>
+  );
 
   const handleApplyHero = () => {
     setLastAppliedHero(heroSettings);
@@ -504,219 +688,104 @@ export function SiteCustomizer() {
 
   return (
     <div className="flex flex-col lg:flex-row h-full w-full items-stretch overflow-hidden">
-      {/* Coluna da Esquerda: Navegação / Editor */}
-      <div className="w-full lg:w-[400px] flex flex-col h-full shrink-0 border-r border-border bg-card/50">
-        <div className="p-6 pb-2 flex items-center justify-between">
-          <div>
-            <h2 className="font-sans text-2xl font-bold text-primary leading-none mb-1">
-              Personalização
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Personalize o visual do seu site
-            </p>
+      {/* Mobile: Header com Botão Sanduíche - Removido pois agora está no layout global */}
+
+      {/* Mobile: Sheet (Hambúrguer) - Agora controlado pelo estado externo e detecção de mobile */}
+      <Sheet open={isMobile && isSidebarOpen} onOpenChange={onToggleSidebar}>
+        <SheetContent side="left" className="p-0 w-[85%] sm:w-80 lg:hidden">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Personalização</SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col h-full">
+            <SidebarContent />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={resetSettings}
-            className="h-8 gap-2 text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors"
-          >
-            <RotateCcw className="w-3 h-3" />
-            Resetar
-          </Button>
-        </div>
+        </SheetContent>
+      </Sheet>
 
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-          {activeSection ? (
-            /* Editor de Seção (Placeholder) */
-            <div className="space-y-6 animate-in slide-in-from-left duration-300">
-              <div className="flex items-center gap-2 mb-4">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setActiveSection(null)}
-                  className="h-8 w-8 rounded-full p-0"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-                <div>
-                  <h3 className="text-sm font-bold text-primary">
-                    {activeSectionData?.name}
-                  </h3>
-                  <p className="text-[10px] text-muted-foreground">
-                    Editando seção
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4 p-4 rounded-xl bg-muted/30 border border-border">
-                {/* --- LAYOUT GLOBAL --- */}
-                {activeSection === "typography" && (
-                  <TypographyEditor
-                    settings={fontSettings}
-                    onUpdate={(updates) =>
-                      setFontSettings((prev) => ({ ...prev, ...updates }))
-                    }
-                    onHighlight={handleHighlight}
-                    hasChanges={hasFontChanges}
-                    onSave={handleApplyTypography}
-                  />
-                )}
-
-                {/* --- PÁGINA: INÍCIO (HOME) --- */}
-                {activeSection === "hero" && (
-                  <HeroEditor
-                    settings={heroSettings}
-                    onUpdate={(updates) =>
-                      setHeroSettings((prev) => ({ ...prev, ...updates }))
-                    }
-                    onHighlight={handleHighlight}
-                    hasChanges={hasHeroChanges}
-                    onSave={handleApplyHero}
-                  />
-                )}
-                {activeSection === "story" && (
-                  <HistoryEditor hasChanges={false} onSave={() => {}} />
-                )}
-                {activeSection === "services" && (
-                  <ServicesEditor
-                    settings={servicesSettings}
-                    onUpdate={(updates) =>
-                      setServicesSettings((prev) => ({ ...prev, ...updates }))
-                    }
-                    hasChanges={hasServicesChanges}
-                    onSave={handleApplyServices}
-                  />
-                )}
-                {activeSection === "values" && (
-                  <ValuesEditor
-                    settings={valuesSettings}
-                    onUpdate={(updates) =>
-                      setValuesSettings((prev) => ({ ...prev, ...updates }))
-                    }
-                    hasChanges={hasValuesChanges}
-                    onSave={handleApplyValues}
-                  />
-                )}
-
-                {/* --- FALLBACK PARA SEÇÕES EM DESENVOLVIMENTO --- */}
-                {![
-                  "typography",
-                  "hero",
-                  "story",
-                  "services",
-                  "values",
-                ].includes(activeSection) && (
-                  <>
-                    <p className="text-xs text-muted-foreground italic">
-                      Os controles de edição para a seção "
-                      {activeSectionData?.name}" aparecerão aqui em breve.
-                    </p>
-                    <div className="h-32 rounded-lg border-2 border-dashed border-border flex items-center justify-center">
-                      <Settings2 className="w-8 h-8 text-muted-foreground/20" />
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          ) : (
-            /* Lista de Páginas e Seções (Accordion) */
-            <SidebarNav
-              pages={pages}
-              sections={sections}
-              activePage={activePage}
-              activeSection={activeSection}
-              expandedPages={expandedPages}
-              visibleSections={visibleSections}
-              onPageToggle={togglePageExpansion}
-              onSectionSelect={scrollToSection}
-              onSectionVisibilityToggle={toggleSection}
-              pageVisibility={pageVisibility}
-              onPageVisibilityChange={handlePageVisibilityChange}
-            />
+      {/* Desktop: Sidebar Colapsável */}
+      <div
+        className={cn(
+          "hidden lg:flex flex-col h-full border-r border-border bg-card/50 transition-all duration-300 ease-in-out overflow-hidden shrink-0",
+          isSidebarOpen 
+            ? "w-64 xl:w-80 2xl:w-96 opacity-100" 
+            : "w-0 opacity-0 border-r-0"
+        )}
+      >
+        <div 
+          className={cn(
+            "flex flex-col h-full w-64 xl:w-80 2xl:w-96 transition-opacity duration-300",
+            isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
           )}
-        </div>
-
-        <div className="p-6 pt-4 border-t border-border bg-background">
-          <Button
-            type="button"
-            disabled={
-              !hasUnsavedGlobalChanges &&
-              !hasHeroChanges &&
-              !hasFontChanges &&
-              !hasServicesChanges &&
-              !hasValuesChanges
-            }
-            onClick={handleSaveGlobal}
-            className={cn(
-              "w-full font-bold py-6 rounded-xl transition-all duration-300",
-              hasUnsavedGlobalChanges ||
-                hasHeroChanges ||
-                hasFontChanges ||
-                hasServicesChanges ||
-                hasValuesChanges
-                ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]"
-                : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
-            )}
-          >
-            {hasUnsavedGlobalChanges ||
-            hasHeroChanges ||
-            hasFontChanges ||
-            hasServicesChanges ||
-            hasValuesChanges
-              ? "Salvar Alterações"
-              : "Nenhuma alteração"}
-          </Button>
+        >
+          <SidebarContent />
         </div>
       </div>
 
       {/* Coluna da Direita: Preview em Tempo Real */}
-      <div className="flex-1 w-full h-full flex flex-col p-4 lg:p-6 min-w-0">
-        <Card className="border-border shadow-2xl overflow-hidden bg-muted/20 rounded-[1.5rem] border flex-1 flex flex-col h-full min-w-0">
-          <CardHeader className="bg-card border-b border-border px-6 py-3 flex flex-row items-center justify-between space-y-0 shrink-0 h-16">
-            <div className="flex items-center gap-3">
-              <div className="h-8 px-4 rounded-full bg-muted/50 flex items-center gap-2 text-[10px] font-bold tracking-widest text-muted-foreground min-w-40 uppercase">
-                <Layout className="w-3 h-3" />
-                {activePageData?.path}
+      <div className="flex-1 w-full h-full flex flex-col p-2 lg:p-6 min-w-0 transition-all duration-300">
+        <div className="flex items-center justify-between mb-2 lg:hidden">
+          <h2 className="font-serif text-base font-bold text-primary">
+            Preview do Site
+          </h2>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setPreviewMode(previewMode === "desktop" ? "mobile" : "desktop")}
+              className="h-8 w-8"
+            >
+              {previewMode === "desktop" ? (
+                <Smartphone className="w-4 h-4" />
+              ) : (
+                <Monitor className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+        <Card className="border-border shadow-2xl overflow-hidden bg-muted/20 rounded-xl lg:rounded-[1.5rem] border flex-1 flex flex-col h-full min-w-0">
+          <CardHeader className="bg-card border-b border-border px-3 lg:px-6 py-2 lg:py-3 flex flex-row items-center justify-between space-y-0 shrink-0 h-12 lg:h-16">
+            <div className="flex items-center gap-2 lg:gap-3">
+              <div className="h-6 lg:h-8 px-2 lg:px-4 rounded-full bg-muted/50 flex items-center gap-1.5 lg:gap-2 text-[8px] lg:text-[10px] font-bold tracking-widest text-muted-foreground min-w-[100px] lg:min-w-40 uppercase">
+                <Layout className="w-2.5 h-2.5 lg:w-3 lg:h-3" />
+                <span className="truncate">{activePageData?.path}</span>
               </div>
             </div>
 
-            <div className="flex items-center bg-muted/50 rounded-full p-1 gap-1">
+            <div className="flex items-center bg-muted/50 rounded-full p-0.5 lg:p-1 gap-0.5 lg:gap-1">
               <Button
                 type="button"
                 variant={previewMode === "desktop" ? "secondary" : "ghost"}
                 size="icon"
-                className="rounded-full w-8 h-8"
+                className="rounded-full w-6 h-6 lg:w-8 lg:h-8"
                 onClick={() => setPreviewMode("desktop")}
               >
-                <Monitor className="w-4 h-4" />
+                <Monitor className="w-3 h-3 lg:w-4 lg:h-4" />
               </Button>
               <Button
                 type="button"
                 variant={previewMode === "mobile" ? "secondary" : "ghost"}
                 size="icon"
-                className="rounded-full w-8 h-8"
+                className="rounded-full w-6 h-6 lg:w-8 lg:h-8"
                 onClick={() => setPreviewMode("mobile")}
               >
-                <Smartphone className="w-4 h-4" />
+                <Smartphone className="w-3 h-3 lg:w-4 lg:h-4" />
               </Button>
-              <div className="w-px h-4 bg-border mx-1" />
+              <div className="w-px h-3 lg:h-4 bg-border mx-0.5 lg:mx-1" />
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="rounded-full w-8 h-8"
+                className="rounded-full w-6 h-6 lg:w-8 lg:h-8"
                 onClick={reloadPreview}
               >
-                <RotateCcw className="w-4 h-4" />
+                <RotateCcw className="w-3 h-3 lg:w-4 lg:h-4" />
               </Button>
             </div>
           </CardHeader>
 
           <div
             ref={containerRef}
-            className="flex-1 bg-muted/10 relative flex items-center justify-center overflow-hidden p-4 lg:p-6"
+            className="flex-1 bg-muted/10 relative flex items-center justify-center overflow-hidden p-2 lg:p-6"
           >
             {/* Monitor / Browser Wrapper */}
             <div

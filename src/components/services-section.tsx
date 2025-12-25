@@ -75,6 +75,7 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export function ServicesSection() {
+  const [isMounted, setIsMounted] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [settings, setSettings] = useState<ServicesSettings | null>(null);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
@@ -91,6 +92,7 @@ export function ServicesSection() {
   }, []);
 
   useEffect(() => {
+    setIsMounted(true);
     loadData();
 
     const handleMessage = (event: MessageEvent) => {
@@ -121,6 +123,16 @@ export function ServicesSection() {
   }, [loadData]);
 
   if (services.length === 0 || !settings) return null;
+
+  if (!isMounted) {
+    return (
+      <section id="servicos" className="py-24 bg-background">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="font-serif text-4xl font-bold mb-4">Nossos Serviços</h2>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section

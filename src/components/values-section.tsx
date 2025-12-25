@@ -70,6 +70,7 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export function ValuesSection() {
+  const [isMounted, setIsMounted] = useState(false);
   const [settings, setSettings] = useState<ValuesSettings | null>(null);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
@@ -80,6 +81,7 @@ export function ValuesSection() {
   }, []);
 
   useEffect(() => {
+    setIsMounted(true);
     loadData();
 
     const handleMessage = (event: MessageEvent) => {
@@ -108,6 +110,7 @@ export function ValuesSection() {
   }, [loadData]);
 
   if (!settings) return null;
+  if (!isMounted) return null;
 
   return (
     <section
