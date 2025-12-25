@@ -17,12 +17,14 @@ const galleryImages = [
 
 export function GalleryPreview() {
   const [isMounted, setIsMounted] = useState(false);
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
-    inicio: true,
-    galeria: true,
-    sobre: true,
-    agendar: true,
-  });
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
+    {
+      inicio: true,
+      galeria: true,
+      sobre: true,
+      agendar: true,
+    },
+  );
 
   useEffect(() => {
     setIsMounted(true);

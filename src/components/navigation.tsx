@@ -18,19 +18,23 @@ export function Navigation() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profile, setProfile] = useState<SiteProfile | null>(null);
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
-    inicio: true,
-    galeria: true,
-    sobre: true,
-    agendar: true,
-  });
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
+    {
+      inicio: true,
+      galeria: true,
+      sobre: true,
+      agendar: true,
+    },
+  );
 
   const only = searchParams.get("only");
 
   useEffect(() => {
-    if (pathname?.startsWith("/admin")) return;
+    // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     setProfile(getSiteProfile());
     setPageVisibility(getPageVisibility());
+
+    if (pathname?.startsWith("/admin")) return;
 
     const handleProfileUpdate = () => {
       setProfile(getSiteProfile());

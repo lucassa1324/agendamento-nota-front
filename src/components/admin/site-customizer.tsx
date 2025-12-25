@@ -1,21 +1,21 @@
 "use client";
 
 import {
-  ChevronLeft,
-  ChevronRight,
   ArrowLeft,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   ImageIcon,
   Info,
   Layout,
   type LucideIcon,
+  Maximize,
   Monitor,
   RotateCcw,
   Settings2,
   Smartphone,
   ZoomIn,
   ZoomOut,
-  Maximize
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -26,11 +26,10 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useSidebar } from "@/context/sidebar-context";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { SidebarNav } from "./site_editor/sidebar-nav";
-
-import { useSidebar } from "@/context/sidebar-context";
 
 interface PageItem {
   id: string;
@@ -188,19 +187,22 @@ export function SiteCustomizer() {
   const [previewKey, setPreviewKey] = useState(0);
   const { toast } = useToast();
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const [headerPortalTarget, setHeaderPortalTarget] = useState<HTMLElement | null>(null);
+  const [headerPortalTarget, setHeaderPortalTarget] =
+    useState<HTMLElement | null>(null);
 
   useEffect(() => {
     setHeaderPortalTarget(document.getElementById("header-actions"));
   }, []);
 
   // Estado para controlar a visibilidade das páginas
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
-    inicio: true,
-    galeria: true,
-    sobre: true,
-    agendar: true,
-  });
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
+    {
+      inicio: true,
+      galeria: true,
+      sobre: true,
+      agendar: true,
+    },
+  );
 
   useEffect(() => {
     setPageVisibility(getPageVisibility());
@@ -219,20 +221,37 @@ export function SiteCustomizer() {
   }, [pageVisibility]);
 
   // Estados de customização (inicializados do storage)
-  const [heroSettings, setHeroSettings] = useState<HeroSettings>(defaultHeroSettings);
-  const [fontSettings, setFontSettings] = useState<FontSettings>(defaultFontSettings);
-  const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(defaultServicesSettings);
-  const [valuesSettings, setValuesSettings] = useState<ValuesSettings>(defaultValuesSettings);
+  const [heroSettings, setHeroSettings] =
+    useState<HeroSettings>(defaultHeroSettings);
+  const [fontSettings, setFontSettings] =
+    useState<FontSettings>(defaultFontSettings);
+  const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(
+    defaultServicesSettings,
+  );
+  const [valuesSettings, setValuesSettings] = useState<ValuesSettings>(
+    defaultValuesSettings,
+  );
 
   // Estados para controle de botões (Aplicar vs Salvar)
-  const [lastAppliedHero, setLastAppliedHero] = useState<HeroSettings>(defaultHeroSettings);
-  const [lastAppliedFont, setLastAppliedFont] = useState<FontSettings>(defaultFontSettings);
-  const [lastAppliedServices, setLastAppliedServices] = useState<ServicesSettings>(defaultServicesSettings);
-  const [lastAppliedValues, setLastAppliedValues] = useState<ValuesSettings>(defaultValuesSettings);
-  const [lastSavedHero, setLastSavedHero] = useState<HeroSettings>(defaultHeroSettings);
-  const [lastSavedFont, setLastSavedFont] = useState<FontSettings>(defaultFontSettings);
-  const [lastSavedServices, setLastSavedServices] = useState<ServicesSettings>(defaultServicesSettings);
-  const [lastSavedValues, setLastSavedValues] = useState<ValuesSettings>(defaultValuesSettings);
+  const [lastAppliedHero, setLastAppliedHero] =
+    useState<HeroSettings>(defaultHeroSettings);
+  const [lastAppliedFont, setLastAppliedFont] =
+    useState<FontSettings>(defaultFontSettings);
+  const [lastAppliedServices, setLastAppliedServices] =
+    useState<ServicesSettings>(defaultServicesSettings);
+  const [lastAppliedValues, setLastAppliedValues] = useState<ValuesSettings>(
+    defaultValuesSettings,
+  );
+  const [lastSavedHero, setLastSavedHero] =
+    useState<HeroSettings>(defaultHeroSettings);
+  const [lastSavedFont, setLastSavedFont] =
+    useState<FontSettings>(defaultFontSettings);
+  const [lastSavedServices, setLastSavedServices] = useState<ServicesSettings>(
+    defaultServicesSettings,
+  );
+  const [lastSavedValues, setLastSavedValues] = useState<ValuesSettings>(
+    defaultValuesSettings,
+  );
 
   useEffect(() => {
     const loadedHero = getHeroSettings();
@@ -376,7 +395,10 @@ export function SiteCustomizer() {
     containerSize.height > 0
       ? Math.max(0.1, (containerSize.height - 24) / 850)
       : 1;
-  const desktopScale = Math.min(1.5, (Math.min(1, widthScale, heightScale)) * manualScale);
+  const desktopScale = Math.min(
+    1.5,
+    Math.min(1, widthScale, heightScale) * manualScale,
+  );
 
   const mobileWidthScale =
     containerSize.width > 0
@@ -386,7 +408,10 @@ export function SiteCustomizer() {
     containerSize.height > 0
       ? Math.max(0.1, (containerSize.height - 24) / 750)
       : 1;
-  const mobileScale = Math.min(1.5, (Math.min(1, mobileWidthScale, mobileHeightScale)) * manualScale);
+  const mobileScale = Math.min(
+    1.5,
+    Math.min(1, mobileWidthScale, mobileHeightScale) * manualScale,
+  );
 
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
@@ -460,7 +485,9 @@ export function SiteCustomizer() {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 text-primary font-bold">
             <Settings2 className="w-4 h-4 xl:w-5 xl:h-5" />
-            <span className="text-[10px] xl:text-sm tracking-wide uppercase">Editor</span>
+            <span className="text-[10px] xl:text-sm tracking-wide uppercase">
+              Editor
+            </span>
           </div>
           <Button
             variant="outline"
@@ -489,7 +516,7 @@ export function SiteCustomizer() {
                 <ArrowLeft className="w-3.5 h-3.5 xl:w-4 xl:h-4" />
               </Button>
               <div>
-                <h3 className="text-xs xl:text-sm font-bold text-primary truncate max-w-[150px] xl:max-w-none">
+                <h3 className="text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
                   {activeSectionData?.name}
                 </h3>
                 <p className="text-[9px] xl:text-[10px] text-muted-foreground">
@@ -597,7 +624,7 @@ export function SiteCustomizer() {
               hasServicesChanges ||
               hasValuesChanges
               ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
-              : "bg-muted text-muted-foreground cursor-not-allowed"
+              : "bg-muted text-muted-foreground cursor-not-allowed",
           )}
         >
           {hasUnsavedGlobalChanges ||
@@ -618,11 +645,11 @@ export function SiteCustomizer() {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         { type: "UPDATE_HERO_BG", ...heroSettings },
-        "*"
+        "*",
       );
       iframeRef.current.contentWindow.postMessage(
         { type: "UPDATE_HERO_CONTENT", ...heroSettings },
-        "*"
+        "*",
       );
     }
     toast({
@@ -637,7 +664,7 @@ export function SiteCustomizer() {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         { type: "UPDATE_FONTS", ...fontSettings },
-        "*"
+        "*",
       );
     }
     toast({
@@ -652,7 +679,7 @@ export function SiteCustomizer() {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         { type: "UPDATE_SERVICES_CONTENT", settings: servicesSettings },
-        "*"
+        "*",
       );
     }
     toast({
@@ -667,7 +694,7 @@ export function SiteCustomizer() {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         { type: "UPDATE_VALUES_CONTENT", settings: valuesSettings },
-        "*"
+        "*",
       );
     }
     toast({
@@ -708,20 +735,23 @@ export function SiteCustomizer() {
           variant="ghost"
           size="icon"
           className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
-          onClick={() => setManualScale(prev => Math.max(0.2, prev - 0.1))}
+          onClick={() => setManualScale((prev) => Math.max(0.2, prev - 0.1))}
           title="Diminuir Zoom"
         >
           <ZoomOut className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
         </Button>
-        <span className="text-[10px] lg:text-xs font-bold min-w-[35px] text-center">
-          {Math.round((previewMode === "mobile" ? mobileScale : desktopScale) * 100)}%
+        <span className="text-[10px] lg:text-xs font-bold min-w-8.75 text-center">
+          {Math.round(
+            (previewMode === "mobile" ? mobileScale : desktopScale) * 100,
+          )}
+          %
         </span>
         <Button
           type="button"
           variant="ghost"
           size="icon"
           className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
-          onClick={() => setManualScale(prev => Math.min(2, prev + 0.1))}
+          onClick={() => setManualScale((prev) => Math.min(2, prev + 0.1))}
           title="Aumentar Zoom"
         >
           <ZoomIn className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
@@ -747,7 +777,7 @@ export function SiteCustomizer() {
           size="icon"
           className={cn(
             "rounded-full w-7 h-7 lg:w-8 lg:h-8",
-            previewMode === "desktop" && "bg-background shadow-sm"
+            previewMode === "desktop" && "bg-background shadow-sm",
           )}
           onClick={() => {
             setPreviewMode("desktop");
@@ -763,7 +793,7 @@ export function SiteCustomizer() {
           size="icon"
           className={cn(
             "rounded-full w-7 h-7 lg:w-8 lg:h-8",
-            previewMode === "mobile" && "bg-background shadow-sm"
+            previewMode === "mobile" && "bg-background shadow-sm",
           )}
           onClick={() => {
             setPreviewMode("mobile");
@@ -776,7 +806,7 @@ export function SiteCustomizer() {
       </div>
 
       <div className="w-px h-4 bg-border mx-1" />
-      
+
       <Button
         type="button"
         variant="ghost"
@@ -792,7 +822,8 @@ export function SiteCustomizer() {
 
   return (
     <div className="flex h-full w-full overflow-hidden bg-background">
-      {headerPortalTarget && createPortal(<HeaderControls />, headerPortalTarget)}
+      {headerPortalTarget &&
+        createPortal(<HeaderControls />, headerPortalTarget)}
       {/* Mobile: Sidebar (Sheet) */}
       <Sheet open={isMobile && isSidebarOpen} onOpenChange={onToggleSidebar}>
         <SheetContent side="left" className="p-0 w-[85%] sm:w-80 lg:hidden">
@@ -809,15 +840,17 @@ export function SiteCustomizer() {
       <div
         className={cn(
           "hidden lg:flex flex-col h-full border-r border-border bg-card/50 transition-all duration-300 ease-in-out overflow-hidden shrink-0",
-          isSidebarOpen 
-            ? "w-64 xl:w-80 2xl:w-96 opacity-100" 
-            : "w-0 opacity-0 border-r-0"
+          isSidebarOpen
+            ? "w-64 xl:w-80 2xl:w-96 opacity-100"
+            : "w-0 opacity-0 border-r-0",
         )}
       >
-        <div 
+        <div
           className={cn(
             "flex flex-col h-full w-64 xl:w-80 2xl:w-96 transition-opacity duration-300",
-            isSidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+            isSidebarOpen
+              ? "opacity-100 pointer-events-auto"
+              : "opacity-0 pointer-events-none",
           )}
         >
           <SidebarContent />
@@ -835,7 +868,9 @@ export function SiteCustomizer() {
               variant="ghost"
               size="icon"
               onClick={() => {
-                setPreviewMode(previewMode === "desktop" ? "mobile" : "desktop");
+                setPreviewMode(
+                  previewMode === "desktop" ? "mobile" : "desktop",
+                );
                 setManualWidth(null);
               }}
               className="h-8 w-8"
@@ -851,7 +886,7 @@ export function SiteCustomizer() {
         <div className="flex-1 flex flex-col h-full min-w-0 bg-muted/5 overflow-hidden">
           <div className="bg-card border-b border-border px-3 lg:px-6 py-2 lg:py-3 flex flex-row items-center justify-between space-y-0 shrink-0 h-12 lg:h-16 shadow-sm z-10">
             <div className="flex items-center gap-2 lg:gap-3">
-              <div className="h-6 lg:h-8 px-2 lg:px-4 rounded-full bg-muted/50 flex items-center gap-1.5 lg:gap-2 text-[8px] lg:text-[10px] font-bold tracking-widest text-muted-foreground min-w-[100px] lg:min-w-40 uppercase">
+              <div className="h-6 lg:h-8 px-2 lg:px-4 rounded-full bg-muted/50 flex items-center gap-1.5 lg:gap-2 text-[8px] lg:text-[10px] font-bold tracking-widest text-muted-foreground min-w-25 lg:min-w-40 uppercase">
                 <Layout className="w-2.5 h-2.5 lg:w-3 lg:h-3" />
                 <span className="truncate">{activePageData?.path}</span>
               </div>
@@ -869,7 +904,12 @@ export function SiteCustomizer() {
                 variant="secondary"
                 size="icon"
                 className="w-8 h-8 lg:w-10 lg:h-10 rounded-full shadow-lg pointer-events-auto bg-[#FFD6D6] hover:bg-[#FFC1C1] text-black border-none transition-all hover:scale-110 active:scale-95"
-                onClick={() => setManualWidth(prev => (prev || (previewMode === "mobile" ? 375 : 1280)) - 50)}
+                onClick={() =>
+                  setManualWidth(
+                    (prev) =>
+                      (prev || (previewMode === "mobile" ? 375 : 1280)) - 50,
+                  )
+                }
                 title="Diminuir Largura"
               >
                 <ChevronLeft className="w-5 h-5 lg:w-6 lg:h-6" />
@@ -882,7 +922,12 @@ export function SiteCustomizer() {
                 variant="secondary"
                 size="icon"
                 className="w-8 h-8 lg:w-10 lg:h-10 rounded-full shadow-lg pointer-events-auto bg-[#FFD6D6] hover:bg-[#FFC1C1] text-black border-none transition-all hover:scale-110 active:scale-95"
-                onClick={() => setManualWidth(prev => (prev || (previewMode === "mobile" ? 375 : 1280)) + 50)}
+                onClick={() =>
+                  setManualWidth(
+                    (prev) =>
+                      (prev || (previewMode === "mobile" ? 375 : 1280)) + 50,
+                  )
+                }
                 title="Aumentar Largura"
               >
                 <ChevronRight className="w-5 h-5 lg:w-6 lg:h-6" />
@@ -890,14 +935,18 @@ export function SiteCustomizer() {
             </div>
 
             {/* Monitor / Browser Wrapper */}
-            <div 
-              style={{ 
-                width: currentWidth * (previewMode === "mobile" ? mobileScale : desktopScale),
-                height: (previewMode === "mobile" ? 750 : 850) * (previewMode === "mobile" ? mobileScale : desktopScale),
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative'
+            <div
+              style={{
+                width:
+                  currentWidth *
+                  (previewMode === "mobile" ? mobileScale : desktopScale),
+                height:
+                  (previewMode === "mobile" ? 750 : 850) *
+                  (previewMode === "mobile" ? mobileScale : desktopScale),
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                position: "relative",
               }}
             >
               <div
@@ -914,80 +963,80 @@ export function SiteCustomizer() {
                   transformOrigin: "center center",
                 }}
               >
-              {/* Browser Header (Desktop Only) */}
-              {previewMode === "desktop" && (
-                <div className="h-10 bg-[#F1F3F4] border-b border-border flex items-center px-4 gap-4 shrink-0">
-                  <div className="flex gap-2">
-                    <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-                    <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-                    <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
+                {/* Browser Header (Desktop Only) */}
+                {previewMode === "desktop" && (
+                  <div className="h-10 bg-[#F1F3F4] border-b border-border flex items-center px-4 gap-4 shrink-0">
+                    <div className="flex gap-2">
+                      <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
+                      <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
+                      <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
+                    </div>
+                    <div className="flex-1 max-w-md bg-white h-6 rounded-md border border-border flex items-center px-3 gap-2 overflow-hidden">
+                      <div className="w-2 h-2 rounded-full bg-muted-foreground/20 shrink-0" />
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {window.location.origin}
+                        {activePageData?.path}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-1 max-w-md bg-white h-6 rounded-md border border-border flex items-center px-3 gap-2 overflow-hidden">
-                    <div className="w-2 h-2 rounded-full bg-muted-foreground/20 shrink-0" />
-                    <span className="text-[10px] text-muted-foreground truncate">
-                      {window.location.origin}
-                      {activePageData?.path}
-                    </span>
-                  </div>
+                )}
+
+                {/* Iframe Content Area */}
+                <div className="flex-1 w-full overflow-hidden bg-white">
+                  <iframe
+                    ref={iframeRef}
+                    key={`${activePage}-${previewKey}-${activeSection}`}
+                    src={previewUrl}
+                    className="w-full h-full border-none"
+                    title="Preview"
+                    onLoad={() => {
+                      // Re-enviar o estado atual quando o iframe carregar
+                      if (iframeRef.current?.contentWindow) {
+                        const win = iframeRef.current.contentWindow;
+                        // Hero
+                        win.postMessage(
+                          { type: "UPDATE_HERO_BG", ...heroSettings },
+                          "*",
+                        );
+                        win.postMessage(
+                          { type: "UPDATE_HERO_CONTENT", ...heroSettings },
+                          "*",
+                        );
+                        // Serviços
+                        win.postMessage(
+                          {
+                            type: "UPDATE_SERVICES_CONTENT",
+                            settings: servicesSettings,
+                          },
+                          "*",
+                        );
+                        // Valores
+                        win.postMessage(
+                          {
+                            type: "UPDATE_VALUES_CONTENT",
+                            settings: valuesSettings,
+                          },
+                          "*",
+                        );
+                        // Fontes
+                        win.postMessage(
+                          { type: "UPDATE_FONTS", ...fontSettings },
+                          "*",
+                        );
+                      }
+                    }}
+                  />
                 </div>
-              )}
 
-              {/* Iframe Content Area */}
-              <div className="flex-1 w-full overflow-hidden bg-white">
-                <iframe
-                  ref={iframeRef}
-                  key={`${activePage}-${previewKey}-${activeSection}`}
-                  src={previewUrl}
-                  className="w-full h-full border-none"
-                  title="Preview"
-                  onLoad={() => {
-                    // Re-enviar o estado atual quando o iframe carregar
-                    if (iframeRef.current?.contentWindow) {
-                      const win = iframeRef.current.contentWindow;
-                      // Hero
-                      win.postMessage(
-                        { type: "UPDATE_HERO_BG", ...heroSettings },
-                        "*"
-                      );
-                      win.postMessage(
-                        { type: "UPDATE_HERO_CONTENT", ...heroSettings },
-                        "*"
-                      );
-                      // Serviços
-                      win.postMessage(
-                        {
-                          type: "UPDATE_SERVICES_CONTENT",
-                          settings: servicesSettings,
-                        },
-                        "*"
-                      );
-                      // Valores
-                      win.postMessage(
-                        {
-                          type: "UPDATE_VALUES_CONTENT",
-                          settings: valuesSettings,
-                        },
-                        "*"
-                      );
-                      // Fontes
-                      win.postMessage(
-                        { type: "UPDATE_FONTS", ...fontSettings },
-                        "*"
-                      );
-                    }
-                  }}
-                />
+                {/* Mobile Home Indicator */}
+                {previewMode === "mobile" && (
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-black/20 rounded-full" />
+                )}
               </div>
-
-              {/* Mobile Home Indicator */}
-              {previewMode === "mobile" && (
-                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-32 h-1 bg-black/20 rounded-full" />
-              )}
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
 }

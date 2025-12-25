@@ -24,9 +24,9 @@ import type React from "react";
 import { Suspense, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { SidebarProvider, useSidebar } from "@/context/sidebar-context";
 import { checkAdminAuth, getAdminUser, logoutAdmin } from "@/lib/admin-auth";
 import { cn } from "@/lib/utils";
-import { SidebarProvider, useSidebar } from "@/context/sidebar-context";
 
 const Sidebar = ({
   activeTab,
@@ -46,7 +46,9 @@ const Sidebar = ({
       >
         Brow Studio
       </Link>
-      <p className="text-xs text-muted-foreground mt-1">Painel Administrativo</p>
+      <p className="text-xs text-muted-foreground mt-1">
+        Painel Administrativo
+      </p>
     </div>
 
     {/* Sidebar Navigation */}
@@ -330,20 +332,31 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 }}
                 className={cn(
                   "h-10 w-10 transition-all duration-300",
-                  isSidebarOpen 
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm" 
-                    : "bg-background text-foreground hover:bg-muted"
+                  isSidebarOpen
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-background text-foreground hover:bg-muted",
                 )}
-                title={isSidebarOpen ? "Fechar Menu de Personalização" : "Abrir Menu de Personalização"}
+                title={
+                  isSidebarOpen
+                    ? "Fechar Menu de Personalização"
+                    : "Abrir Menu de Personalização"
+                }
               >
-                <Menu className={cn("h-5 w-5 transition-transform duration-300", isSidebarOpen && "rotate-90")} />
+                <Menu
+                  className={cn(
+                    "h-5 w-5 transition-transform duration-300",
+                    isSidebarOpen && "rotate-90",
+                  )}
+                />
               </Button>
             )}
 
             <div className="flex items-center gap-2 lg:gap-4 min-w-0">
               <div className="flex flex-col min-w-0 shrink-0">
                 <h1 className="font-sans text-sm lg:text-lg font-semibold truncate leading-tight">
-                  {activeTab === "personalizacao" ? "Personalização do Site" : "Dashboard Administrativo"}
+                  {activeTab === "personalizacao"
+                    ? "Personalização do Site"
+                    : "Dashboard Administrativo"}
                 </h1>
                 {activeTab === "personalizacao" && (
                   <p className="hidden xs:block text-[8px] lg:text-xs text-muted-foreground truncate">
@@ -353,7 +366,10 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               </div>
 
               {/* Portal para ações do header (ex: controles do customizer) */}
-              <div id="header-actions" className="flex items-center min-w-0 overflow-x-auto no-scrollbar" />
+              <div
+                id="header-actions"
+                className="flex items-center min-w-0 overflow-x-auto no-scrollbar"
+              />
             </div>
           </div>
           <div className="flex items-center gap-2">

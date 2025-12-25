@@ -38,10 +38,6 @@ import {
   Utensils,
   Wind,
 } from "lucide-react";
-
-import type { ValueItem, ValuesSettings } from "@/lib/booking-data";
-import { cn } from "@/lib/utils";
-
 import {
   Accordion,
   AccordionContent,
@@ -61,6 +57,8 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
+import type { ValueItem, ValuesSettings } from "@/lib/booking-data";
+import { cn } from "@/lib/utils";
 
 const fonts = [
   { name: "Playfair Display", type: "serif" },

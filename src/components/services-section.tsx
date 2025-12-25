@@ -128,7 +128,9 @@ export function ServicesSection() {
     return (
       <section id="servicos" className="py-24 bg-background">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="font-serif text-4xl font-bold mb-4">Nossos Serviços</h2>
+          <h2 className="font-serif text-4xl font-bold mb-4">
+            Nossos Serviços
+          </h2>
         </div>
       </section>
     );

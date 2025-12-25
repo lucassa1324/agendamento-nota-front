@@ -8,12 +8,14 @@ import { getPageVisibility } from "@/lib/booking-data";
 
 export function CTASection() {
   const [isMounted, setIsMounted] = useState(false);
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
-    inicio: true,
-    galeria: true,
-    sobre: true,
-    agendar: true,
-  });
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
+    {
+      inicio: true,
+      galeria: true,
+      sobre: true,
+      agendar: true,
+    },
+  );
 
   useEffect(() => {
     setIsMounted(true);

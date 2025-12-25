@@ -67,20 +67,20 @@ export function SidebarNav({
             )}
           >
             <div
-                role="button"
-                tabIndex={0}
-                onClick={() => onPageToggle(page.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    onPageToggle(page.id);
-                  }
-                }}
-                className={cn(
-                  "w-full flex items-center justify-between px-3 xl:px-5 py-3 xl:py-4 transition-all duration-300 group cursor-pointer",
-                  isActive ? "text-primary" : "text-foreground",
-                )}
-              >
+              role="button"
+              tabIndex={0}
+              onClick={() => onPageToggle(page.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onPageToggle(page.id);
+                }
+              }}
+              className={cn(
+                "w-full flex items-center justify-between px-3 xl:px-5 py-3 xl:py-4 transition-all duration-300 group cursor-pointer",
+                isActive ? "text-primary" : "text-foreground",
+              )}
+            >
               <div className="flex items-center gap-2 xl:gap-4">
                 <div
                   className={cn(
@@ -128,7 +128,7 @@ export function SidebarNav({
                   )}
                 </div>
               </div>
-              </div>
+            </div>
 
             {isExpanded && (
               <div className="px-2 xl:px-3 pb-3 xl:pb-4 space-y-1.5 xl:space-y-2 animate-in slide-in-from-top-4 duration-300">
