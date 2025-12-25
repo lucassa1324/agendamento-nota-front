@@ -298,7 +298,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-screen">
         {/* Top Bar */}
         <header className="h-16 border-b border-border bg-card px-4 lg:px-6 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-4">
@@ -340,15 +340,20 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               </Button>
             )}
 
-            <div className="flex flex-col min-w-0">
-              <h1 className="font-sans text-base lg:text-lg font-semibold truncate leading-tight">
-                {activeTab === "personalizacao" ? "Personalização do Site" : "Dashboard Administrativo"}
-              </h1>
-              {activeTab === "personalizacao" && (
-                <p className="text-[10px] lg:text-xs text-muted-foreground truncate">
-                  Personalize o visual do seu site
-                </p>
-              )}
+            <div className="flex items-center gap-2 lg:gap-4 min-w-0">
+              <div className="flex flex-col min-w-0 shrink-0">
+                <h1 className="font-sans text-sm lg:text-lg font-semibold truncate leading-tight">
+                  {activeTab === "personalizacao" ? "Personalização do Site" : "Dashboard Administrativo"}
+                </h1>
+                {activeTab === "personalizacao" && (
+                  <p className="hidden xs:block text-[8px] lg:text-xs text-muted-foreground truncate">
+                    Personalize o visual do seu site
+                  </p>
+                )}
+              </div>
+
+              {/* Portal para ações do header (ex: controles do customizer) */}
+              <div id="header-actions" className="flex items-center min-w-0 overflow-x-auto no-scrollbar" />
             </div>
           </div>
           <div className="flex items-center gap-2">

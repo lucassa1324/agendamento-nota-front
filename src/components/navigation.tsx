@@ -16,8 +16,6 @@ export function Navigation() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  if (pathname?.startsWith("/admin")) return null;
-
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profile, setProfile] = useState<SiteProfile | null>(null);
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
@@ -30,6 +28,7 @@ export function Navigation() {
   const only = searchParams.get("only");
 
   useEffect(() => {
+    if (pathname?.startsWith("/admin")) return;
     setProfile(getSiteProfile());
     setPageVisibility(getPageVisibility());
 
@@ -51,7 +50,9 @@ export function Navigation() {
         handleVisibilityUpdate,
       );
     };
-  }, []);
+  }, [pathname]);
+
+  if (pathname?.startsWith("/admin")) return null;
 
   // Se estivermos isolando algo que não seja o header, escondemos o navigation
   if (only && only !== "header") return null;

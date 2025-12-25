@@ -23,8 +23,6 @@ export function Footer() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  if (pathname?.startsWith("/admin")) return null;
-
   const [profile, setProfile] = useState<SiteProfile | null>(null);
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
     inicio: true,
@@ -36,6 +34,7 @@ export function Footer() {
   const only = searchParams.get("only");
 
   useEffect(() => {
+    if (pathname?.startsWith("/admin")) return;
     setProfile(getSiteProfile());
     setPageVisibility(getPageVisibility());
 
@@ -57,7 +56,9 @@ export function Footer() {
         handleVisibilityUpdate,
       );
     };
-  }, []);
+  }, [pathname]);
+
+  if (pathname?.startsWith("/admin")) return null;
 
   // Se estivermos isolando algo que não seja o footer, escondemos o footer
   if (only && only !== "footer") return null;

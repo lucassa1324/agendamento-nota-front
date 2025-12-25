@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  ChevronLeft,
+  ChevronRight,
   ArrowLeft,
   Calendar,
   ImageIcon,
@@ -11,10 +13,13 @@ import {
   RotateCcw,
   Settings2,
   Smartphone,
+  ZoomIn,
+  ZoomOut,
+  Maximize
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader } from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -178,9 +183,16 @@ export function SiteCustomizer() {
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">(
     "desktop",
   );
+  const [manualScale, setManualScale] = useState(1);
+  const [manualWidth, setManualWidth] = useState<number | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const { toast } = useToast();
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [headerPortalTarget, setHeaderPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setHeaderPortalTarget(document.getElementById("header-actions"));
+  }, []);
 
   // Estado para controlar a visibilidade das páginas
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
@@ -354,25 +366,27 @@ export function SiteCustomizer() {
     return () => resizeObserver.disconnect();
   }, []);
 
+  const currentWidth = manualWidth || (previewMode === "mobile" ? 375 : 1280);
+
   const widthScale =
     containerSize.width > 0
-      ? Math.max(0.1, (containerSize.width - 32) / 1280)
+      ? Math.max(0.1, (containerSize.width - 24) / currentWidth)
       : 1;
   const heightScale =
     containerSize.height > 0
-      ? Math.max(0.1, (containerSize.height - 32) / 850)
+      ? Math.max(0.1, (containerSize.height - 24) / 850)
       : 1;
-  const desktopScale = Math.min(1, widthScale, heightScale);
+  const desktopScale = Math.min(1.5, (Math.min(1, widthScale, heightScale)) * manualScale);
 
   const mobileWidthScale =
     containerSize.width > 0
-      ? Math.max(0.1, (containerSize.width - 32) / 375)
+      ? Math.max(0.1, (containerSize.width - 24) / (manualWidth || 375))
       : 1;
   const mobileHeightScale =
     containerSize.height > 0
-      ? Math.max(0.1, (containerSize.height - 32) / 750)
+      ? Math.max(0.1, (containerSize.height - 24) / 750)
       : 1;
-  const mobileScale = Math.min(1, mobileWidthScale, mobileHeightScale);
+  const mobileScale = Math.min(1.5, (Math.min(1, mobileWidthScale, mobileHeightScale)) * manualScale);
 
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
@@ -686,11 +700,100 @@ export function SiteCustomizer() {
     });
   };
 
-  return (
-    <div className="flex flex-col lg:flex-row h-full w-full items-stretch overflow-hidden">
-      {/* Mobile: Header com Botão Sanduíche - Removido pois agora está no layout global */}
+  const HeaderControls = () => (
+    <div className="flex items-center bg-muted/50 rounded-full p-1 gap-1 ml-2 shrink-0">
+      <div className="flex items-center gap-0.5 mr-1 lg:mr-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
+          onClick={() => setManualScale(prev => Math.max(0.2, prev - 0.1))}
+          title="Diminuir Zoom"
+        >
+          <ZoomOut className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+        </Button>
+        <span className="text-[10px] lg:text-xs font-bold min-w-[35px] text-center">
+          {Math.round((previewMode === "mobile" ? mobileScale : desktopScale) * 100)}%
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
+          onClick={() => setManualScale(prev => Math.min(2, prev + 0.1))}
+          title="Aumentar Zoom"
+        >
+          <ZoomIn className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
+          onClick={() => setManualScale(1)}
+          title="Resetar Zoom"
+        >
+          <Maximize className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+        </Button>
+      </div>
 
-      {/* Mobile: Sheet (Hambúrguer) - Agora controlado pelo estado externo e detecção de mobile */}
+      <div className="w-px h-4 bg-border mx-1" />
+
+      <div className="flex items-center gap-1 px-1">
+        <Button
+          type="button"
+          variant={previewMode === "desktop" ? "secondary" : "ghost"}
+          size="icon"
+          className={cn(
+            "rounded-full w-7 h-7 lg:w-8 lg:h-8",
+            previewMode === "desktop" && "bg-background shadow-sm"
+          )}
+          onClick={() => {
+            setPreviewMode("desktop");
+            setManualWidth(null);
+          }}
+          title="Visualização Desktop"
+        >
+          <Monitor className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+        </Button>
+        <Button
+          type="button"
+          variant={previewMode === "mobile" ? "secondary" : "ghost"}
+          size="icon"
+          className={cn(
+            "rounded-full w-7 h-7 lg:w-8 lg:h-8",
+            previewMode === "mobile" && "bg-background shadow-sm"
+          )}
+          onClick={() => {
+            setPreviewMode("mobile");
+            setManualWidth(null);
+          }}
+          title="Visualização Mobile"
+        >
+          <Smartphone className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+        </Button>
+      </div>
+
+      <div className="w-px h-4 bg-border mx-1" />
+      
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
+        onClick={reloadPreview}
+        title="Recarregar Preview"
+      >
+        <RotateCcw className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+      </Button>
+    </div>
+  );
+
+  return (
+    <div className="flex h-full w-full overflow-hidden bg-background">
+      {headerPortalTarget && createPortal(<HeaderControls />, headerPortalTarget)}
+      {/* Mobile: Sidebar (Sheet) */}
       <Sheet open={isMobile && isSidebarOpen} onOpenChange={onToggleSidebar}>
         <SheetContent side="left" className="p-0 w-[85%] sm:w-80 lg:hidden">
           <SheetHeader className="sr-only">
@@ -722,8 +825,8 @@ export function SiteCustomizer() {
       </div>
 
       {/* Coluna da Direita: Preview em Tempo Real */}
-      <div className="flex-1 w-full h-full flex flex-col p-2 lg:p-6 min-w-0 transition-all duration-300">
-        <div className="flex items-center justify-between mb-2 lg:hidden">
+      <div className="flex-1 w-full h-full flex flex-col min-w-0 transition-all duration-300">
+        <div className="flex items-center justify-between mb-2 lg:hidden px-4 pt-4">
           <h2 className="font-serif text-base font-bold text-primary">
             Preview do Site
           </h2>
@@ -731,7 +834,10 @@ export function SiteCustomizer() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setPreviewMode(previewMode === "desktop" ? "mobile" : "desktop")}
+              onClick={() => {
+                setPreviewMode(previewMode === "desktop" ? "mobile" : "desktop");
+                setManualWidth(null);
+              }}
               className="h-8 w-8"
             >
               {previewMode === "desktop" ? (
@@ -742,66 +848,72 @@ export function SiteCustomizer() {
             </Button>
           </div>
         </div>
-        <Card className="border-border shadow-2xl overflow-hidden bg-muted/20 rounded-xl lg:rounded-[1.5rem] border flex-1 flex flex-col h-full min-w-0">
-          <CardHeader className="bg-card border-b border-border px-3 lg:px-6 py-2 lg:py-3 flex flex-row items-center justify-between space-y-0 shrink-0 h-12 lg:h-16">
+        <div className="flex-1 flex flex-col h-full min-w-0 bg-muted/5 overflow-hidden">
+          <div className="bg-card border-b border-border px-3 lg:px-6 py-2 lg:py-3 flex flex-row items-center justify-between space-y-0 shrink-0 h-12 lg:h-16 shadow-sm z-10">
             <div className="flex items-center gap-2 lg:gap-3">
               <div className="h-6 lg:h-8 px-2 lg:px-4 rounded-full bg-muted/50 flex items-center gap-1.5 lg:gap-2 text-[8px] lg:text-[10px] font-bold tracking-widest text-muted-foreground min-w-[100px] lg:min-w-40 uppercase">
                 <Layout className="w-2.5 h-2.5 lg:w-3 lg:h-3" />
                 <span className="truncate">{activePageData?.path}</span>
               </div>
             </div>
-
-            <div className="flex items-center bg-muted/50 rounded-full p-0.5 lg:p-1 gap-0.5 lg:gap-1">
-              <Button
-                type="button"
-                variant={previewMode === "desktop" ? "secondary" : "ghost"}
-                size="icon"
-                className="rounded-full w-6 h-6 lg:w-8 lg:h-8"
-                onClick={() => setPreviewMode("desktop")}
-              >
-                <Monitor className="w-3 h-3 lg:w-4 lg:h-4" />
-              </Button>
-              <Button
-                type="button"
-                variant={previewMode === "mobile" ? "secondary" : "ghost"}
-                size="icon"
-                className="rounded-full w-6 h-6 lg:w-8 lg:h-8"
-                onClick={() => setPreviewMode("mobile")}
-              >
-                <Smartphone className="w-3 h-3 lg:w-4 lg:h-4" />
-              </Button>
-              <div className="w-px h-3 lg:h-4 bg-border mx-0.5 lg:mx-1" />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="rounded-full w-6 h-6 lg:w-8 lg:h-8"
-                onClick={reloadPreview}
-              >
-                <RotateCcw className="w-3 h-3 lg:w-4 lg:h-4" />
-              </Button>
-            </div>
-          </CardHeader>
+          </div>
 
           <div
             ref={containerRef}
-            className="flex-1 bg-muted/10 relative flex items-center justify-center overflow-hidden p-2 lg:p-6"
+            className="flex-1 bg-muted/10 relative flex items-center justify-center overflow-auto p-2 lg:p-4 group"
           >
+            {/* Setas de Ajuste Manual */}
+            <div className="absolute inset-y-0 left-2 lg:left-4 flex items-center pointer-events-none z-20">
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="w-8 h-8 lg:w-10 lg:h-10 rounded-full shadow-lg pointer-events-auto bg-[#FFD6D6] hover:bg-[#FFC1C1] text-black border-none transition-all hover:scale-110 active:scale-95"
+                onClick={() => setManualWidth(prev => (prev || (previewMode === "mobile" ? 375 : 1280)) - 50)}
+                title="Diminuir Largura"
+              >
+                <ChevronLeft className="w-5 h-5 lg:w-6 lg:h-6" />
+              </Button>
+            </div>
+
+            <div className="absolute inset-y-0 right-2 lg:right-4 flex items-center pointer-events-none z-20">
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="w-8 h-8 lg:w-10 lg:h-10 rounded-full shadow-lg pointer-events-auto bg-[#FFD6D6] hover:bg-[#FFC1C1] text-black border-none transition-all hover:scale-110 active:scale-95"
+                onClick={() => setManualWidth(prev => (prev || (previewMode === "mobile" ? 375 : 1280)) + 50)}
+                title="Aumentar Largura"
+              >
+                <ChevronRight className="w-5 h-5 lg:w-6 lg:h-6" />
+              </Button>
+            </div>
+
             {/* Monitor / Browser Wrapper */}
-            <div
-              className={cn(
-                "transition-all duration-500 ease-in-out shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden bg-white flex flex-col shrink-0",
-                previewMode === "desktop"
-                  ? "rounded-xl border border-border"
-                  : "rounded-[3rem] border-12 border-black",
-              )}
-              style={{
-                width: previewMode === "mobile" ? "375px" : "1280px",
-                height: previewMode === "mobile" ? "750px" : "850px",
-                transform: `scale(${previewMode === "mobile" ? mobileScale : desktopScale})`,
-                transformOrigin: "center",
+            <div 
+              style={{ 
+                width: currentWidth * (previewMode === "mobile" ? mobileScale : desktopScale),
+                height: (previewMode === "mobile" ? 750 : 850) * (previewMode === "mobile" ? mobileScale : desktopScale),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative'
               }}
             >
+              <div
+                className={cn(
+                  "transition-all duration-500 ease-in-out shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden bg-white flex flex-col shrink-0 will-change-transform",
+                  previewMode === "desktop"
+                    ? "rounded-xl border border-border"
+                    : "rounded-[3rem] border-12 border-black",
+                )}
+                style={{
+                  width: `${currentWidth}px`,
+                  height: previewMode === "mobile" ? "750px" : "850px",
+                  transform: `scale(${previewMode === "mobile" ? mobileScale : desktopScale})`,
+                  transformOrigin: "center center",
+                }}
+              >
               {/* Browser Header (Desktop Only) */}
               {previewMode === "desktop" && (
                 <div className="h-10 bg-[#F1F3F4] border-b border-border flex items-center px-4 gap-4 shrink-0">
@@ -873,8 +985,9 @@ export function SiteCustomizer() {
               )}
             </div>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
-  );
+  </div>
+);
 }

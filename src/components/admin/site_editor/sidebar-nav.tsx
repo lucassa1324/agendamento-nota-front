@@ -92,11 +92,11 @@ export function SidebarNav({
                 >
                   <page.icon className="w-4 h-4 xl:w-5 xl:h-5" />
                 </div>
-                <div className="text-left">
-                  <span className="block font-bold text-sm xl:text-base leading-tight">
+                <div className="flex-1 min-w-0">
+                  <span className="block font-bold text-xs xl:text-sm 2xl:text-base leading-tight truncate">
                     {page.label}
                   </span>
-                  <span className="text-[9px] xl:text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
+                  <span className="text-[8px] xl:text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
                     {sections[page.id]?.length || 0} Seções
                   </span>
                 </div>
@@ -166,7 +166,9 @@ export function SidebarNav({
                                 : "bg-destructive/50",
                             )}
                           />
-                          <span className="truncate max-w-[120px] xl:max-w-none">{section.name}</span>
+                          <span className="truncate max-w-25 xl:max-w-none text-[10px] xl:text-xs">
+                            {section.name}
+                          </span>
                         </div>
 
                         <div className="flex items-center gap-0.5 xl:gap-1 relative z-10">
