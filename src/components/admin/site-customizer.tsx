@@ -330,21 +330,21 @@ export function SiteCustomizer() {
 
   const widthScale =
     containerSize.width > 0
-      ? Math.max(0.1, (containerSize.width - 48) / 1280)
+      ? Math.max(0.1, (containerSize.width - 40) / 1280)
       : 1;
   const heightScale =
     containerSize.height > 0
-      ? Math.max(0.1, (containerSize.height - 48) / 850)
+      ? Math.max(0.1, (containerSize.height - 40) / 850)
       : 1;
   const desktopScale = Math.min(1, widthScale, heightScale);
 
   const mobileWidthScale =
     containerSize.width > 0
-      ? Math.max(0.1, (containerSize.width - 48) / 375)
+      ? Math.max(0.1, (containerSize.width - 40) / 375)
       : 1;
   const mobileHeightScale =
     containerSize.height > 0
-      ? Math.max(0.1, (containerSize.height - 48) / 750)
+      ? Math.max(0.1, (containerSize.height - 40) / 750)
       : 1;
   const mobileScale = Math.min(1, mobileWidthScale, mobileHeightScale);
 
@@ -503,9 +503,9 @@ export function SiteCustomizer() {
   };
 
   return (
-    <div className="flex flex-col xl:flex-row h-full w-full items-stretch overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-full w-full items-stretch overflow-hidden">
       {/* Coluna da Esquerda: Navegação / Editor */}
-      <div className="w-full xl:w-87.5 flex flex-col h-full shrink-0 border-r border-border bg-card/50">
+      <div className="w-full lg:w-[400px] flex flex-col h-full shrink-0 border-r border-border bg-card/50">
         <div className="p-6 pb-2 flex items-center justify-between">
           <div>
             <h2 className="font-sans text-2xl font-bold text-primary leading-none mb-1">
@@ -672,8 +672,8 @@ export function SiteCustomizer() {
       </div>
 
       {/* Coluna da Direita: Preview em Tempo Real */}
-      <div className="flex-1 w-full h-full flex flex-col p-6">
-        <Card className="border-border shadow-2xl overflow-hidden bg-muted/20 rounded-[1.5rem] border flex-1 flex flex-col h-full">
+      <div className="flex-1 w-full h-full flex flex-col p-4 lg:p-6 min-w-0">
+        <Card className="border-border shadow-2xl overflow-hidden bg-muted/20 rounded-[1.5rem] border flex-1 flex flex-col h-full min-w-0">
           <CardHeader className="bg-card border-b border-border px-6 py-3 flex flex-row items-center justify-between space-y-0 shrink-0 h-16">
             <div className="flex items-center gap-3">
               <div className="h-8 px-4 rounded-full bg-muted/50 flex items-center gap-2 text-[10px] font-bold tracking-widest text-muted-foreground min-w-40 uppercase">
@@ -716,7 +716,7 @@ export function SiteCustomizer() {
 
           <div
             ref={containerRef}
-            className="flex-1 bg-muted/10 relative flex items-center justify-center overflow-hidden p-6"
+            className="flex-1 bg-muted/10 relative flex items-center justify-center overflow-hidden p-4 lg:p-6"
           >
             {/* Monitor / Browser Wrapper */}
             <div
@@ -741,8 +741,8 @@ export function SiteCustomizer() {
                     <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
                     <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
                   </div>
-                  <div className="flex-1 max-w-md bg-white h-6 rounded-md border border-border flex items-center px-3 gap-2">
-                    <div className="w-2 h-2 rounded-full bg-muted-foreground/20" />
+                  <div className="flex-1 max-w-md bg-white h-6 rounded-md border border-border flex items-center px-3 gap-2 overflow-hidden">
+                    <div className="w-2 h-2 rounded-full bg-muted-foreground/20 shrink-0" />
                     <span className="text-[10px] text-muted-foreground truncate">
                       {window.location.origin}
                       {activePageData?.path}
