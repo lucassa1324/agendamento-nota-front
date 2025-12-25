@@ -1,25 +1,30 @@
 "use client";
 
 import { ImageIcon, Palette, Type } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { useEffect, useState } from "react";
 import {
   getStorySettings,
-  saveStorySettings,
   type StorySettings,
+  saveStorySettings,
 } from "@/lib/booking-data";
+import { cn } from "@/lib/utils";
 
 interface HistoryEditorProps {
   onSave?: () => void;
+  hasChanges?: boolean;
 }
 
-export function HistoryEditor({ onSave: externalOnSave }: HistoryEditorProps) {
+export function HistoryEditor({
+  onSave: externalOnSave,
+  hasChanges: externalHasChanges,
+}: HistoryEditorProps) {
   const [settings, setSettings] = useState<StorySettings | null>(null);
-  const [hasChanges, setHasChanges] = useState(false);
+  const [internalHasChanges, setInternalHasChanges] = useState(false);
+  const hasChanges = externalHasChanges ?? internalHasChanges;
 
   useEffect(() => {
     setSettings(getStorySettings());
@@ -29,22 +34,25 @@ export function HistoryEditor({ onSave: externalOnSave }: HistoryEditorProps) {
     if (!settings) return;
     const newSettings = { ...settings, ...updates };
     setSettings(newSettings);
-    setHasChanges(true);
+    setInternalHasChanges(true);
 
     // Notificar iframe para preview em tempo real
-    const iframe = document.querySelector('iframe');
+    const iframe = document.querySelector("iframe");
     if (iframe?.contentWindow) {
-      iframe.contentWindow.postMessage({
-        type: 'UPDATE_STORY_CONTENT',
-        settings: newSettings
-      }, '*');
+      iframe.contentWindow.postMessage(
+        {
+          type: "UPDATE_STORY_CONTENT",
+          settings: newSettings,
+        },
+        "*",
+      );
     }
   };
 
   const handleSave = () => {
     if (settings) {
       saveStorySettings(settings);
-      setHasChanges(false);
+      setInternalHasChanges(false);
       if (externalOnSave) externalOnSave();
     }
   };
@@ -95,7 +103,9 @@ export function HistoryEditor({ onSave: externalOnSave }: HistoryEditorProps) {
               <Type className="w-2.5 h-2.5" /> Descrição da História
             </Label>
             <div className="flex items-center gap-2">
-              <Label className="text-[10px] uppercase text-muted-foreground">Cor</Label>
+              <Label className="text-[10px] uppercase text-muted-foreground">
+                Cor
+              </Label>
               <Input
                 type="color"
                 value={settings.contentColor || "#666666"}

@@ -1,13 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
 import { AboutHero } from "@/components/about-hero";
 import { StorySection } from "@/components/story-section";
 import { TeamSection } from "@/components/team-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
 import { ValuesSection } from "@/components/values-section";
-import { useEffect, useState, use } from "react";
 import { getPageVisibility } from "@/lib/booking-data";
-import { useRouter } from "next/navigation";
 
 export default function SobrePage({
   searchParams: searchParamsPromise,

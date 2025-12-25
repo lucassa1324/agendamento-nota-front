@@ -1,9 +1,9 @@
 "use client";
 
-import { GalleryGrid } from "@/components/gallery-grid";
-import { useEffect, useState } from "react";
-import { getPageVisibility } from "@/lib/booking-data";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { GalleryGrid } from "@/components/gallery-grid";
+import { getPageVisibility } from "@/lib/booking-data";
 
 export default function GaleriaPage({
   searchParams: searchParamsPromise,

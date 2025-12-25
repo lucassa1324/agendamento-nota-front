@@ -1,40 +1,46 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { getSettingsFromStorage, type Service } from "@/lib/booking-data";
 import {
-  Palette,
-  Scissors,
-  Sparkles,
-  Star,
   Award,
+  Briefcase,
+  Brush,
+  Camera,
+  Car,
+  Code,
+  Coffee,
   Crown,
+  Dumbbell,
   Flower2,
   Gem,
   Heart,
+  Laptop,
+  type LucideIcon,
+  Medal,
   Moon,
+  Music,
+  Palette,
+  Plane,
+  Scissors,
+  ShoppingBag,
+  Smartphone,
   Smile,
+  Sparkles,
+  Star,
+  Stethoscope,
   Sun,
   Users,
-  Medal,
-  Briefcase,
-  Coffee,
   Utensils,
-  Laptop,
-  Smartphone,
-  Camera,
-  Music,
-  Dumbbell,
-  Plane,
-  Car,
-  ShoppingBag,
-  Stethoscope,
-  Code,
-  Brush,
   Wind,
-  type LucideIcon,
 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  getServicesSettings,
+  getSettingsFromStorage,
+  type Service,
+  type ServicesSettings,
+} from "@/lib/booking-data";
+import { cn } from "@/lib/utils";
 
 const iconMap: Record<string, LucideIcon> = {
   Sparkles,
@@ -70,34 +76,117 @@ const iconMap: Record<string, LucideIcon> = {
 
 export function ServicesSection() {
   const [services, setServices] = useState<Service[]>([]);
+  const [settings, setSettings] = useState<ServicesSettings | null>(null);
+  const [highlightedElement, setHighlightedElement] = useState<string | null>(
+    null,
+  );
 
-  const loadServices = useCallback(() => {
-    const settings = getSettingsFromStorage();
-    const homeServices = settings.services.filter((s: Service) => s.showOnHome);
+  const loadData = useCallback(() => {
+    const studioSettings = getSettingsFromStorage();
+    const homeServices = studioSettings.services.filter(
+      (s: Service) => s.showOnHome,
+    );
     setServices(homeServices);
+    setSettings(getServicesSettings());
   }, []);
 
   useEffect(() => {
-    loadServices();
+    loadData();
 
-    window.addEventListener("studioSettingsUpdated", loadServices);
-    return () => {
-      window.removeEventListener("studioSettingsUpdated", loadServices);
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === "UPDATE_SERVICES_CONTENT") {
+        setSettings((prev) =>
+          prev ? { ...prev, ...event.data.settings } : prev,
+        );
+      }
+
+      if (
+        event.data.type === "HIGHLIGHT_SECTION" &&
+        event.data.sectionId === "services"
+      ) {
+        setHighlightedElement("services");
+        setTimeout(() => setHighlightedElement(null), 2000);
+      }
     };
-  }, [loadServices]);
 
-  if (services.length === 0) return null;
+    window.addEventListener("message", handleMessage);
+    window.addEventListener("studioSettingsUpdated", loadData);
+    window.addEventListener("servicesSettingsUpdated", loadData);
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("studioSettingsUpdated", loadData);
+      window.removeEventListener("servicesSettingsUpdated", loadData);
+    };
+  }, [loadData]);
+
+  if (services.length === 0 || !settings) return null;
 
   return (
-    <section id="services" className="py-20 md:py-32">
-      <div className="container mx-auto px-4">
+    <section
+      id="services"
+      className={cn(
+        "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
+        highlightedElement === "services" &&
+          "ring-8 ring-inset ring-primary/30 bg-primary/5",
+      )}
+    >
+      {/* Background Color Layer (Always present if bgType is color) */}
+      <div
+        className="absolute inset-0 z-0 transition-colors duration-500"
+        style={{
+          backgroundColor:
+            settings.bgType === "color"
+              ? settings.bgColor || "white"
+              : "transparent",
+        }}
+      />
+
+      {/* Background Image Layer */}
+      {settings.bgType === "image" && settings.bgImage && (
+        <div
+          className="absolute inset-0 z-0 transition-all duration-500"
+          style={{
+            backgroundImage: `url(${settings.bgImage})`,
+            backgroundSize: "cover",
+            backgroundPosition: `${settings.imageX}% ${settings.imageY}%`,
+            transform: `scale(${settings.imageScale})`,
+            opacity: settings.imageOpacity,
+          }}
+        />
+      )}
+
+      {/* Overlay/Gradient Layer (Always present, works for both color and image) */}
+      <div
+        className="absolute inset-0 z-1 bg-linear-to-b from-black/20 via-black/50 to-black transition-opacity duration-500 pointer-events-none"
+        style={{
+          opacity: settings.overlayOpacity,
+        }}
+      />
+
+      <div className="container relative z-10 mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4 text-balance">
-            Nossos Serviços
+          <h2
+            className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
+            style={{
+              color: settings.titleColor || undefined,
+              fontFamily: settings.titleFont
+                ? `'${settings.titleFont}', serif`
+                : undefined,
+            }}
+          >
+            {settings.title}
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty leading-relaxed">
-            Oferecemos uma variedade de tratamentos especializados para realçar
-            sua beleza
+          <p
+            className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
+            style={{
+              color: settings.subtitleColor || undefined,
+              fontFamily: settings.subtitleFont
+                ? `'${settings.subtitleFont}', sans-serif`
+                : undefined,
+            }}
+          >
+            {settings.subtitle}
           </p>
         </div>
 
@@ -105,7 +194,7 @@ export function ServicesSection() {
           {services.map((service: Service) => {
             // Usa o ícone definido no serviço ou tenta inferir pelo nome
             let Icon = Sparkles;
-            
+
             if (service.icon && iconMap[service.icon]) {
               Icon = iconMap[service.icon];
             } else {
@@ -119,19 +208,54 @@ export function ServicesSection() {
             return (
               <Card
                 key={service.id}
-                className="border-border hover:border-accent transition-colors"
+                className="border-border hover:border-accent transition-colors overflow-hidden"
+                style={{ backgroundColor: settings.cardBgColor || undefined }}
               >
                 <CardContent className="p-6">
-                  <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mb-4">
-                    <Icon className="w-6 h-6 text-accent" />
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center mb-4 transition-colors"
+                    style={{
+                      backgroundColor: settings.cardIconColor
+                        ? `${settings.cardIconColor}1a`
+                        : undefined,
+                    }}
+                  >
+                    <Icon
+                      className="w-6 h-6 transition-colors"
+                      style={{ color: settings.cardIconColor || undefined }}
+                    />
                   </div>
-                  <h3 className="font-serif text-xl font-semibold mb-2">
+                  <h3
+                    className="text-xl font-semibold mb-2"
+                    style={{
+                      color: settings.cardTitleColor || undefined,
+                      fontFamily: settings.cardTitleFont
+                        ? `'${settings.cardTitleFont}', serif`
+                        : undefined,
+                    }}
+                  >
                     {service.name}
                   </h3>
-                  <p className="text-muted-foreground text-sm mb-4 leading-relaxed">
+                  <p
+                    className="text-sm mb-4 leading-relaxed opacity-80"
+                    style={{
+                      color: settings.cardDescriptionColor || undefined,
+                      fontFamily: settings.cardDescriptionFont
+                        ? `'${settings.cardDescriptionFont}', sans-serif`
+                        : undefined,
+                    }}
+                  >
                     {service.description}
                   </p>
-                  <p className="text-accent font-semibold">
+                  <p
+                    className="font-semibold"
+                    style={{
+                      color: settings.cardPriceColor || undefined,
+                      fontFamily: settings.cardPriceFont
+                        ? `'${settings.cardPriceFont}', sans-serif`
+                        : undefined,
+                    }}
+                  >
                     A partir de R$ {service.price.toFixed(2)}
                   </p>
                 </CardContent>

@@ -3,94 +3,146 @@
 
 import {
   AlertTriangle,
-  Clock,
-  Pencil,
-  Plus,
-  Save,
-  Search,
-  Trash2,
-  Sparkles,
-  Scissors,
-  Palette,
-  Star,
   Award,
+  Briefcase,
+  Brush,
+  Camera,
+  Car,
+  Clock,
+  Code,
+  Coffee,
   Crown,
+  Dumbbell,
   Flower2,
   Gem,
   Heart,
-  Moon,
-  Smile,
-  Sun,
-  Users,
-  Medal,
-  Briefcase,
-  Coffee,
-  Utensils,
   Laptop,
-  Smartphone,
-  Camera,
+  Medal,
+  Moon,
   Music,
-  Dumbbell,
+  Palette,
+  Pencil,
   Plane,
-  Car,
+  Plus,
+  Save,
+  Scissors,
+  Search,
   ShoppingBag,
+  Smartphone,
+  Smile,
+  Sparkles,
+  Star,
   Stethoscope,
-  Code,
-  Brush,
+  Sun,
+  Trash2,
+  Users,
+  Utensils,
   Wind,
-  type LucideIcon,
 } from "lucide-react";
 
 const availableIcons = [
   // Beleza & Estética
-  { id: "Sparkles", Icon: Sparkles, label: "Brilho / Especial", category: "Beleza" },
-  { id: "Scissors", Icon: Scissors, label: "Corte / Design", category: "Beleza" },
-  { id: "Palette", Icon: Palette, label: "Cor / Maquiagem", category: "Beleza" },
+  {
+    id: "Sparkles",
+    Icon: Sparkles,
+    label: "Brilho / Especial",
+    category: "Beleza",
+  },
+  {
+    id: "Scissors",
+    Icon: Scissors,
+    label: "Corte / Design",
+    category: "Beleza",
+  },
+  {
+    id: "Palette",
+    Icon: Palette,
+    label: "Cor / Maquiagem",
+    category: "Beleza",
+  },
   { id: "Brush", Icon: Brush, label: "Pincel / Estética", category: "Beleza" },
   { id: "Wind", Icon: Wind, label: "Sopro / Secagem", category: "Beleza" },
-  { id: "Flower2", Icon: Flower2, label: "Natural / Floral", category: "Beleza" },
-  
+  {
+    id: "Flower2",
+    Icon: Flower2,
+    label: "Natural / Floral",
+    category: "Beleza",
+  },
+
   // Saúde & Bem-estar
   { id: "Heart", Icon: Heart, label: "Cuidado / Amor", category: "Saúde" },
-  { id: "Stethoscope", Icon: Stethoscope, label: "Médico / Saúde", category: "Saúde" },
-  { id: "Dumbbell", Icon: Dumbbell, label: "Fitness / Treino", category: "Saúde" },
+  {
+    id: "Stethoscope",
+    Icon: Stethoscope,
+    label: "Médico / Saúde",
+    category: "Saúde",
+  },
+  {
+    id: "Dumbbell",
+    Icon: Dumbbell,
+    label: "Fitness / Treino",
+    category: "Saúde",
+  },
   { id: "Smile", Icon: Smile, label: "Bem-estar / Sorriso", category: "Saúde" },
-  
+
   // Negócios & Geral
-  { id: "Briefcase", Icon: Briefcase, label: "Negócios / Consultoria", category: "Geral" },
+  {
+    id: "Briefcase",
+    Icon: Briefcase,
+    label: "Negócios / Consultoria",
+    category: "Geral",
+  },
   { id: "Users", Icon: Users, label: "Equipe / Grupo", category: "Geral" },
   { id: "Star", Icon: Star, label: "Estrela / Favorito", category: "Geral" },
   { id: "Award", Icon: Award, label: "Prêmio / Qualidade", category: "Geral" },
   { id: "Medal", Icon: Medal, label: "Medalha / Conquista", category: "Geral" },
   { id: "Crown", Icon: Crown, label: "Premium / VIP", category: "Geral" },
   { id: "Gem", Icon: Gem, label: "Luxo / Joia", category: "Geral" },
-  
+
   // Alimentação & Lazer
-  { id: "Coffee", Icon: Coffee, label: "Café / Pausa", category: "Alimentação" },
-  { id: "Utensils", Icon: Utensils, label: "Restaurante / Comida", category: "Alimentação" },
-  { id: "Camera", Icon: Camera, label: "Fotografia / Mídia", category: "Lazer" },
+  {
+    id: "Coffee",
+    Icon: Coffee,
+    label: "Café / Pausa",
+    category: "Alimentação",
+  },
+  {
+    id: "Utensils",
+    Icon: Utensils,
+    label: "Restaurante / Comida",
+    category: "Alimentação",
+  },
+  {
+    id: "Camera",
+    Icon: Camera,
+    label: "Fotografia / Mídia",
+    category: "Lazer",
+  },
   { id: "Music", Icon: Music, label: "Música / Eventos", category: "Lazer" },
-  
+
   // Tecnologia
   { id: "Laptop", Icon: Laptop, label: "TI / Online", category: "Tecnologia" },
-  { id: "Smartphone", Icon: Smartphone, label: "Mobile / App", category: "Tecnologia" },
+  {
+    id: "Smartphone",
+    Icon: Smartphone,
+    label: "Mobile / App",
+    category: "Tecnologia",
+  },
   { id: "Code", Icon: Code, label: "Desenvolvimento", category: "Tecnologia" },
-  
+
   // Outros
   { id: "Plane", Icon: Plane, label: "Viagem / Turismo", category: "Outros" },
   { id: "Car", Icon: Car, label: "Transporte / Auto", category: "Outros" },
-  { id: "ShoppingBag", Icon: ShoppingBag, label: "Vendas / Loja", category: "Outros" },
+  {
+    id: "ShoppingBag",
+    Icon: ShoppingBag,
+    label: "Vendas / Loja",
+    category: "Outros",
+  },
   { id: "Sun", Icon: Sun, label: "Dia / Externo", category: "Outros" },
   { id: "Moon", Icon: Moon, label: "Noite / Relax", category: "Outros" },
 ];
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  SelectGroup,
-} from "@/components/ui/select";
+
 import { useEffect, useState } from "react";
 import {
   AlertDialog,
@@ -115,6 +167,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { getSettingsFromStorage, type Service } from "@/lib/booking-data";
@@ -346,13 +406,15 @@ export function ServicesManager() {
                   <SelectValue placeholder="Selecione um ícone" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Array.from(new Set(availableIcons.map(i => i.category))).map(category => (
+                  {Array.from(
+                    new Set(availableIcons.map((i) => i.category)),
+                  ).map((category) => (
                     <SelectGroup key={category}>
                       <div className="text-[10px] uppercase text-muted-foreground px-2 py-1.5 font-bold tracking-wider">
                         {category}
                       </div>
                       {availableIcons
-                        .filter(icon => icon.category === category)
+                        .filter((icon) => icon.category === category)
                         .map(({ id, Icon, label }) => (
                           <SelectItem key={id} value={id}>
                             <div className="flex items-center gap-2">
@@ -366,7 +428,8 @@ export function ServicesManager() {
                 </SelectContent>
               </Select>
               <p className="text-[10px] text-muted-foreground mt-1.5 italic">
-                O ícone selecionado será exibido nos cartões de serviços da página inicial.
+                O ícone selecionado será exibido nos cartões de serviços da
+                página inicial.
               </p>
             </div>
 

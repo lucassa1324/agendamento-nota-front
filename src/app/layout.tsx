@@ -2,6 +2,7 @@ import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import type React from "react";
+import { Suspense } from "react";
 import { FaviconUpdater } from "@/components/favicon-updater";
 import { Footer } from "@/components/footer";
 import { Navigation } from "@/components/navigation";
@@ -38,9 +39,21 @@ export default function RootLayout({
       <body className={`font-sans antialiased`}>
         <PreviewStyleManager />
         <FaviconUpdater />
-        <Navigation />
+        <Suspense
+          fallback={
+            <div className="h-16 border-b border-border bg-background" />
+          }
+        >
+          <Navigation />
+        </Suspense>
         {children}
-        <Footer />
+        <Suspense
+          fallback={
+            <div className="h-32 bg-secondary/30 border-t border-border" />
+          }
+        >
+          <Footer />
+        </Suspense>
         <Toaster />
         <Analytics />
       </body>

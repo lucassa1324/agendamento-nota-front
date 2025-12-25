@@ -1,9 +1,9 @@
 "use client";
 
-import { BookingFlow } from "@/components/booking-flow";
-import { useEffect, useState, use } from "react";
-import { getPageVisibility } from "@/lib/booking-data";
 import { useRouter } from "next/navigation";
+import { use, useEffect, useState } from "react";
+import { BookingFlow } from "@/components/booking-flow";
+import { getPageVisibility } from "@/lib/booking-data";
 
 export default function AgendamentoPage({
   searchParams: searchParamsPromise,

@@ -30,20 +30,29 @@ interface PageItem {
 import {
   defaultFontSettings,
   defaultHeroSettings,
+  defaultServicesSettings,
+  defaultValuesSettings,
   type FontSettings,
   getFontSettings,
   getHeroSettings,
   getPageVisibility,
+  getServicesSettings,
+  getValuesSettings,
+  type HeroSettings,
+  type ServicesSettings,
   saveFontSettings,
   saveHeroSettings,
   savePageVisibility,
-  type HeroSettings,
+  saveServicesSettings,
+  saveValuesSettings,
+  type ValuesSettings,
 } from "@/lib/booking-data";
 // Importações Modulares (Nova Arquitetura)
 import { TypographyEditor } from "./site_editor/layout/typography-editor";
 import { HeroEditor } from "./site_editor/pages/home/hero-editor";
 import { HistoryEditor } from "./site_editor/pages/home/history-editor";
 import { ServicesEditor } from "./site_editor/pages/home/services-editor";
+import { ValuesEditor } from "./site_editor/pages/home/values-editor";
 
 const pages: PageItem[] = [
   { id: "layout", label: "Layout Global", icon: Settings2, path: "/" },
@@ -177,6 +186,12 @@ export function SiteCustomizer() {
   const [fontSettings, setFontSettings] = useState<FontSettings>(() =>
     getFontSettings(),
   );
+  const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(
+    () => getServicesSettings(),
+  );
+  const [valuesSettings, setValuesSettings] = useState<ValuesSettings>(() =>
+    getValuesSettings(),
+  );
 
   // Estados para controle de botões (Aplicar vs Salvar)
   const [lastAppliedHero, setLastAppliedHero] = useState<HeroSettings>(() =>
@@ -185,11 +200,22 @@ export function SiteCustomizer() {
   const [lastAppliedFont, setLastAppliedFont] = useState<FontSettings>(() =>
     getFontSettings(),
   );
+  const [lastAppliedServices, setLastAppliedServices] =
+    useState<ServicesSettings>(() => getServicesSettings());
+  const [lastAppliedValues, setLastAppliedValues] = useState<ValuesSettings>(
+    () => getValuesSettings(),
+  );
   const [lastSavedHero, setLastSavedHero] = useState<HeroSettings>(() =>
     getHeroSettings(),
   );
   const [lastSavedFont, setLastSavedFont] = useState<FontSettings>(() =>
     getFontSettings(),
+  );
+  const [lastSavedServices, setLastSavedServices] = useState<ServicesSettings>(
+    () => getServicesSettings(),
+  );
+  const [lastSavedValues, setLastSavedValues] = useState<ValuesSettings>(() =>
+    getValuesSettings(),
   );
 
   // Booleans para habilitar/desabilitar botões
@@ -197,10 +223,16 @@ export function SiteCustomizer() {
     JSON.stringify(heroSettings) !== JSON.stringify(lastAppliedHero);
   const hasFontChanges =
     JSON.stringify(fontSettings) !== JSON.stringify(lastAppliedFont);
+  const hasServicesChanges =
+    JSON.stringify(servicesSettings) !== JSON.stringify(lastAppliedServices);
+  const hasValuesChanges =
+    JSON.stringify(valuesSettings) !== JSON.stringify(lastAppliedValues);
 
   const hasUnsavedGlobalChanges =
     JSON.stringify(lastAppliedHero) !== JSON.stringify(lastSavedHero) ||
-    JSON.stringify(lastAppliedFont) !== JSON.stringify(lastSavedFont);
+    JSON.stringify(lastAppliedFont) !== JSON.stringify(lastSavedFont) ||
+    JSON.stringify(lastAppliedServices) !== JSON.stringify(lastSavedServices) ||
+    JSON.stringify(lastAppliedValues) !== JSON.stringify(lastSavedValues);
 
   const resetSettings = () => {
     if (
@@ -210,6 +242,8 @@ export function SiteCustomizer() {
     ) {
       setHeroSettings(defaultHeroSettings);
       setFontSettings(defaultFontSettings);
+      setServicesSettings(defaultServicesSettings);
+      setValuesSettings(defaultValuesSettings);
     }
   };
 
@@ -236,6 +270,32 @@ export function SiteCustomizer() {
       );
     }
   }, [heroSettings]);
+
+  // Envia atualizações para o iframe quando as configurações de Serviços mudarem
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_SERVICES_CONTENT",
+          settings: servicesSettings,
+        },
+        "*",
+      );
+    }
+  }, [servicesSettings]);
+
+  // Envia atualizações para o iframe quando as configurações de Valores mudarem
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_VALUES_CONTENT",
+          settings: valuesSettings,
+        },
+        "*",
+      );
+    }
+  }, [valuesSettings]);
 
   // Envia atualizações de fonte para o iframe
   useEffect(() => {
@@ -356,6 +416,17 @@ export function SiteCustomizer() {
 
   const handleApplyHero = () => {
     setLastAppliedHero(heroSettings);
+    // Forçar atualização do preview
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_HERO_BG", ...heroSettings },
+        "*"
+      );
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_HERO_CONTENT", ...heroSettings },
+        "*"
+      );
+    }
     toast({
       title: "Preview atualizado!",
       description: "As mudanças do Hero foram aplicadas ao rascunho.",
@@ -364,22 +435,65 @@ export function SiteCustomizer() {
 
   const handleApplyTypography = () => {
     setLastAppliedFont(fontSettings);
+    // Forçar atualização do preview
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_FONTS", ...fontSettings },
+        "*"
+      );
+    }
     toast({
       title: "Preview atualizado!",
       description: "As mudanças de tipografia foram aplicadas ao rascunho.",
     });
   };
 
+  const handleApplyServices = () => {
+    setLastAppliedServices(servicesSettings);
+    // Forçar atualização do preview
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_SERVICES_CONTENT", settings: servicesSettings },
+        "*"
+      );
+    }
+    toast({
+      title: "Preview atualizado!",
+      description: "As mudanças dos serviços foram aplicadas ao rascunho.",
+    });
+  };
+
+  const handleApplyValues = () => {
+    setLastAppliedValues(valuesSettings);
+    // Forçar atualização do preview
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_VALUES_CONTENT", settings: valuesSettings },
+        "*"
+      );
+    }
+    toast({
+      title: "Preview atualizado!",
+      description: "As mudanças dos valores foram aplicadas ao rascunho.",
+    });
+  };
+
   const handleSaveGlobal = () => {
     // 1. Salva no localStorage (Produção)
-    saveHeroSettings(heroSettings);
-    saveFontSettings(fontSettings);
+    saveHeroSettings(lastAppliedHero);
+    saveFontSettings(lastAppliedFont);
+    saveServicesSettings(lastAppliedServices);
+    saveValuesSettings(lastAppliedValues);
 
     // 2. Atualiza estados de controle
-    setLastSavedHero(heroSettings);
-    setLastSavedFont(fontSettings);
-    setLastAppliedHero(heroSettings);
-    setLastAppliedFont(fontSettings);
+    setLastSavedHero(lastAppliedHero);
+    setLastSavedFont(lastAppliedFont);
+    setLastSavedServices(lastAppliedServices);
+    setLastSavedValues(lastAppliedValues);
+    setLastAppliedHero(lastAppliedHero);
+    setLastAppliedFont(lastAppliedFont);
+    setLastAppliedServices(lastAppliedServices);
+    setLastAppliedValues(lastAppliedValues);
 
     toast({
       title: "Site Publicado!",
@@ -466,13 +580,34 @@ export function SiteCustomizer() {
                   <HistoryEditor hasChanges={false} onSave={() => {}} />
                 )}
                 {activeSection === "services" && (
-                  <ServicesEditor hasChanges={false} onSave={() => {}} />
+                  <ServicesEditor
+                    settings={servicesSettings}
+                    onUpdate={(updates) =>
+                      setServicesSettings((prev) => ({ ...prev, ...updates }))
+                    }
+                    hasChanges={hasServicesChanges}
+                    onSave={handleApplyServices}
+                  />
+                )}
+                {activeSection === "values" && (
+                  <ValuesEditor
+                    settings={valuesSettings}
+                    onUpdate={(updates) =>
+                      setValuesSettings((prev) => ({ ...prev, ...updates }))
+                    }
+                    hasChanges={hasValuesChanges}
+                    onSave={handleApplyValues}
+                  />
                 )}
 
                 {/* --- FALLBACK PARA SEÇÕES EM DESENVOLVIMENTO --- */}
-                {!["typography", "hero", "story", "services"].includes(
-                  activeSection,
-                ) && (
+                {![
+                  "typography",
+                  "hero",
+                  "story",
+                  "services",
+                  "values",
+                ].includes(activeSection) && (
                   <>
                     <p className="text-xs text-muted-foreground italic">
                       Os controles de edição para a seção "
@@ -507,17 +642,29 @@ export function SiteCustomizer() {
           <Button
             type="button"
             disabled={
-              !hasUnsavedGlobalChanges && !hasHeroChanges && !hasFontChanges
+              !hasUnsavedGlobalChanges &&
+              !hasHeroChanges &&
+              !hasFontChanges &&
+              !hasServicesChanges &&
+              !hasValuesChanges
             }
             onClick={handleSaveGlobal}
             className={cn(
               "w-full font-bold py-6 rounded-xl transition-all duration-300",
-              hasUnsavedGlobalChanges || hasHeroChanges || hasFontChanges
+              hasUnsavedGlobalChanges ||
+                hasHeroChanges ||
+                hasFontChanges ||
+                hasServicesChanges ||
+                hasValuesChanges
                 ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]"
                 : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
             )}
           >
-            {hasUnsavedGlobalChanges || hasHeroChanges || hasFontChanges
+            {hasUnsavedGlobalChanges ||
+            hasHeroChanges ||
+            hasFontChanges ||
+            hasServicesChanges ||
+            hasValuesChanges
               ? "Salvar Alterações"
               : "Nenhuma alteração"}
           </Button>
@@ -615,19 +762,36 @@ export function SiteCustomizer() {
                   onLoad={() => {
                     // Re-enviar o estado atual quando o iframe carregar
                     if (iframeRef.current?.contentWindow) {
-                      iframeRef.current.contentWindow.postMessage(
-                        {
-                          type: "UPDATE_HERO_BG",
-                          ...heroSettings,
-                        },
-                        "*",
+                      const win = iframeRef.current.contentWindow;
+                      // Hero
+                      win.postMessage(
+                        { type: "UPDATE_HERO_BG", ...heroSettings },
+                        "*"
                       );
-                      iframeRef.current.contentWindow.postMessage(
+                      win.postMessage(
+                        { type: "UPDATE_HERO_CONTENT", ...heroSettings },
+                        "*"
+                      );
+                      // Serviços
+                      win.postMessage(
                         {
-                          type: "UPDATE_HERO_CONTENT",
-                          ...heroSettings,
+                          type: "UPDATE_SERVICES_CONTENT",
+                          settings: servicesSettings,
                         },
-                        "*",
+                        "*"
+                      );
+                      // Valores
+                      win.postMessage(
+                        {
+                          type: "UPDATE_VALUES_CONTENT",
+                          settings: valuesSettings,
+                        },
+                        "*"
+                      );
+                      // Fontes
+                      win.postMessage(
+                        { type: "UPDATE_FONTS", ...fontSettings },
+                        "*"
                       );
                     }
                   }}

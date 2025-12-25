@@ -122,7 +122,7 @@ export function HeroEditor({
 
       // Se for multiple, values será um array
       const activeValues = Array.isArray(values) ? values : [values];
-      
+
       // Destaca o último item aberto
       const lastValue = activeValues[activeValues.length - 1];
       if (lastValue && highlightMap[lastValue]) {
@@ -184,7 +184,9 @@ export function HeroEditor({
                 {settings.showBadge && (
                   <div className="space-y-4 animate-in fade-in duration-300">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] text-muted-foreground">Texto da Tag</Label>
+                      <Label className="text-[10px] text-muted-foreground">
+                        Texto da Tag
+                      </Label>
                       <Input
                         id="hero-badge"
                         value={settings.badge}
@@ -197,36 +199,36 @@ export function HeroEditor({
                     </div>
 
                     <div className="space-y-1.5">
-                              <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                Selecionar Ícone
-                              </Label>
-                              <Select
-                                value={settings.badgeIcon || "Sparkles"}
-                                onValueChange={(val: string) =>
-                                  onUpdate({ badgeIcon: val })
-                                }
-                              >
-                                <SelectTrigger className="h-8 text-[10px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {availableIcons.map((item) => (
-                                    <SelectItem
-                                      key={item.name}
-                                      value={item.name}
-                                      className="text-[10px]"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <item.icon className="w-3 h-3" />
-                                        {item.name}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
+                      <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        Selecionar Ícone
+                      </Label>
+                      <Select
+                        value={settings.badgeIcon || "Sparkles"}
+                        onValueChange={(val: string) =>
+                          onUpdate({ badgeIcon: val })
+                        }
+                      >
+                        <SelectTrigger className="h-8 text-[10px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableIcons.map((item) => (
+                            <SelectItem
+                              key={item.name}
+                              value={item.name}
+                              className="text-[10px]"
+                            >
+                              <div className="flex items-center gap-2">
+                                <item.icon className="w-3 h-3" />
+                                {item.name}
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
 
-                            <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
                           Cor do Ícone
@@ -236,13 +238,17 @@ export function HeroEditor({
                             type="color"
                             value={settings.badgeColor || "#ec4899"}
                             className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50"
-                            onChange={(e) => onUpdate({ badgeColor: e.target.value })}
+                            onChange={(e) =>
+                              onUpdate({ badgeColor: e.target.value })
+                            }
                           />
                           <Input
                             value={settings.badgeColor || ""}
                             placeholder="#HEX"
                             className="h-8 text-[10px] flex-1 uppercase"
-                            onChange={(e) => onUpdate({ badgeColor: e.target.value })}
+                            onChange={(e) =>
+                              onUpdate({ badgeColor: e.target.value })
+                            }
                           />
                         </div>
                       </div>
@@ -256,13 +262,17 @@ export function HeroEditor({
                             type="color"
                             value={settings.badgeTextColor || "#ec4899"}
                             className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50"
-                            onChange={(e) => onUpdate({ badgeTextColor: e.target.value })}
+                            onChange={(e) =>
+                              onUpdate({ badgeTextColor: e.target.value })
+                            }
                           />
                           <Input
                             value={settings.badgeTextColor || ""}
                             placeholder="#HEX"
                             className="h-8 text-[10px] flex-1 uppercase"
-                            onChange={(e) => onUpdate({ badgeTextColor: e.target.value })}
+                            onChange={(e) =>
+                              onUpdate({ badgeTextColor: e.target.value })
+                            }
                           />
                         </div>
                       </div>
@@ -357,13 +367,17 @@ export function HeroEditor({
                         type="color"
                         value={settings.titleColor || "#000000"}
                         className="w-7 h-7 p-0.5 rounded-full bg-transparent border-border/50"
-                        onChange={(e) => onUpdate({ titleColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ titleColor: e.target.value })
+                        }
                       />
                       <Input
                         value={settings.titleColor || ""}
                         placeholder="#HEX"
                         className="h-7 text-[10px] flex-1 uppercase"
-                        onChange={(e) => onUpdate({ titleColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ titleColor: e.target.value })
+                        }
                       />
                     </div>
                   </div>
@@ -429,13 +443,17 @@ export function HeroEditor({
                         type="color"
                         value={settings.subtitleColor || "#4b5563"}
                         className="w-7 h-7 p-0.5 rounded-full bg-transparent border-border/50"
-                        onChange={(e) => onUpdate({ subtitleColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ subtitleColor: e.target.value })
+                        }
                       />
                       <Input
                         value={settings.subtitleColor || ""}
                         placeholder="#HEX"
                         className="h-7 text-[10px] flex-1 uppercase"
-                        onChange={(e) => onUpdate({ subtitleColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ subtitleColor: e.target.value })
+                        }
                       />
                     </div>
                   </div>
@@ -502,7 +520,9 @@ export function HeroEditor({
                             type="color"
                             value={settings.primaryButtonTextColor || "#FFFFFF"}
                             onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                              onUpdate({ primaryButtonTextColor: e.target.value })
+                              onUpdate({
+                                primaryButtonTextColor: e.target.value,
+                              })
                             }
                             className="w-7 h-7 p-0.5 cursor-pointer rounded-full overflow-hidden"
                           />
@@ -511,7 +531,9 @@ export function HeroEditor({
                             placeholder="Texto"
                             className="h-7 text-[10px] font-mono w-16"
                             onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                              onUpdate({ primaryButtonTextColor: e.target.value })
+                              onUpdate({
+                                primaryButtonTextColor: e.target.value,
+                              })
                             }
                           />
                         </div>
@@ -587,9 +609,13 @@ export function HeroEditor({
                         <div className="flex gap-1">
                           <Input
                             type="color"
-                            value={settings.secondaryButtonTextColor || "#FFFFFF"}
+                            value={
+                              settings.secondaryButtonTextColor || "#FFFFFF"
+                            }
                             onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                              onUpdate({ secondaryButtonTextColor: e.target.value })
+                              onUpdate({
+                                secondaryButtonTextColor: e.target.value,
+                              })
                             }
                             className="w-7 h-7 p-0.5 cursor-pointer rounded-full overflow-hidden"
                           />
@@ -598,7 +624,9 @@ export function HeroEditor({
                             placeholder="Texto"
                             className="h-7 text-[10px] font-mono w-16"
                             onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                              onUpdate({ secondaryButtonTextColor: e.target.value })
+                              onUpdate({
+                                secondaryButtonTextColor: e.target.value,
+                              })
                             }
                           />
                         </div>

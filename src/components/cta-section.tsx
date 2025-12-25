@@ -2,12 +2,14 @@
 
 import { Calendar } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { getPageVisibility } from "@/lib/booking-data";
 
 export function CTASection() {
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(() => getPageVisibility());
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
+    () => getPageVisibility(),
+  );
 
   useEffect(() => {
     const handleVisibilityUpdate = () => {
@@ -17,7 +19,10 @@ export function CTASection() {
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
 
     return () => {
-      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+      window.removeEventListener(
+        "pageVisibilityUpdated",
+        handleVisibilityUpdate,
+      );
     };
   }, []);
 

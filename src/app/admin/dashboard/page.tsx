@@ -1,6 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { AdminBookingFlow } from "@/components/admin/admin-booking-flow";
 import { BookingsManager } from "@/components/admin/bookings-manager";
 import { DashboardStats } from "@/components/admin/dashboard-stats";
@@ -17,7 +18,7 @@ import { ServicesManager } from "@/components/admin/services-manager";
 import { SiteCustomizer } from "@/components/admin/site-customizer";
 import { cn } from "@/lib/utils";
 
-export default function DashboardPage() {
+function DashboardContent() {
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") || "overview";
 
@@ -218,5 +219,13 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

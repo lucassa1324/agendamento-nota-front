@@ -147,6 +147,89 @@ export type StorySettings = {
   image: string;
 };
 
+export type ValueItem = {
+  id: string;
+  icon: string;
+  title: string;
+  description: string;
+};
+
+export type ValuesSettings = {
+  title: string;
+  subtitle: string;
+  titleColor: string;
+  subtitleColor: string;
+  titleFont: string;
+  subtitleFont: string;
+  bgType: "color" | "image";
+  bgColor: string;
+  bgImage: string;
+  imageOpacity: number;
+  overlayOpacity: number;
+  imageScale: number;
+  imageX: number;
+  imageY: number;
+  // Card specific styles
+  cardBgColor: string;
+  cardTitleColor: string;
+  cardDescriptionColor: string;
+  cardIconColor: string;
+  cardTitleFont: string;
+  cardDescriptionFont: string;
+  items: ValueItem[];
+};
+
+export type ServicesSettings = {
+  title: string;
+  subtitle: string;
+  titleColor: string;
+  subtitleColor: string;
+  titleFont: string;
+  subtitleFont: string;
+  bgType: "color" | "image";
+  bgColor: string;
+  bgImage: string;
+  imageOpacity: number;
+  overlayOpacity: number;
+  imageScale: number;
+  imageX: number;
+  imageY: number;
+  // Card specific styles
+  cardBgColor: string;
+  cardTitleColor: string;
+  cardDescriptionColor: string;
+  cardPriceColor: string;
+  cardIconColor: string;
+  cardTitleFont: string;
+  cardDescriptionFont: string;
+  cardPriceFont: string;
+};
+
+export const defaultServicesSettings: ServicesSettings = {
+  title: "Nossos Serviços",
+  subtitle: "Tratamentos especializados para realçar seu olhar",
+  titleColor: "",
+  subtitleColor: "",
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  bgType: "color",
+  bgColor: "",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0.5,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
+  cardBgColor: "",
+  cardTitleColor: "",
+  cardDescriptionColor: "",
+  cardPriceColor: "",
+  cardIconColor: "",
+  cardTitleFont: "Playfair Display",
+  cardDescriptionFont: "Inter",
+  cardPriceFont: "Inter",
+};
+
 export const defaultStorySettings: StorySettings = {
   title: "Nossa História",
   titleColor: "",
@@ -154,6 +237,60 @@ export const defaultStorySettings: StorySettings = {
     "O Brow Studio nasceu da paixão por realçar a beleza natural de cada pessoa através do design de sobrancelhas. Com mais de 10 anos de experiência no mercado, nos especializamos em técnicas avançadas que valorizam a individualidade de cada cliente.\n\nNossa missão é proporcionar não apenas um serviço de qualidade, mas uma experiência transformadora. Acreditamos que sobrancelhas bem feitas têm o poder de elevar a autoestima e destacar a beleza única de cada pessoa.\n\nInvestimos constantemente em capacitação e nas melhores técnicas do mercado para garantir resultados excepcionais e a satisfação total de nossas clientes.",
   contentColor: "",
   image: "/professional-eyebrow-artist-at-work.jpg",
+};
+
+export const defaultValuesSettings: ValuesSettings = {
+  title: "Nossos Valores",
+  subtitle:
+    "Os princípios que guiam nosso trabalho e relacionamento com cada cliente",
+  titleColor: "",
+  subtitleColor: "",
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  bgType: "color",
+  bgColor: "",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0.5,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
+  cardBgColor: "",
+  cardTitleColor: "",
+  cardDescriptionColor: "",
+  cardIconColor: "",
+  cardTitleFont: "Playfair Display",
+  cardDescriptionFont: "Inter",
+  items: [
+    {
+      id: "1",
+      icon: "Heart",
+      title: "Paixão pelo que Fazemos",
+      description:
+        "Cada atendimento é realizado com dedicação e amor pela arte de realçar a beleza natural.",
+    },
+    {
+      id: "2",
+      icon: "Award",
+      title: "Excelência e Qualidade",
+      description:
+        "Utilizamos apenas produtos de alta qualidade e técnicas comprovadas para resultados perfeitos.",
+    },
+    {
+      id: "3",
+      icon: "Users",
+      title: "Atendimento Personalizado",
+      description:
+        "Cada cliente é única e merece um design exclusivo que valorize suas características.",
+    },
+    {
+      id: "4",
+      icon: "Sparkles",
+      title: "Inovação Constante",
+      description:
+        "Sempre atualizadas com as últimas tendências e técnicas do mercado de beleza.",
+    },
+  ],
 };
 
 export type FontSettings = {
@@ -631,6 +768,32 @@ export function saveStorySettings(settings: StorySettings): void {
   localStorage.setItem("storySettings", JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("storySettingsUpdated"));
+  }
+}
+
+export function getValuesSettings(): ValuesSettings {
+  if (typeof window === "undefined") return defaultValuesSettings;
+  const settings = localStorage.getItem("valuesSettings");
+  return settings ? JSON.parse(settings) : defaultValuesSettings;
+}
+
+export function saveValuesSettings(settings: ValuesSettings): void {
+  localStorage.setItem("valuesSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("valuesSettingsUpdated"));
+  }
+}
+
+export function getServicesSettings(): ServicesSettings {
+  if (typeof window === "undefined") return defaultServicesSettings;
+  const settings = localStorage.getItem("servicesSettings");
+  return settings ? JSON.parse(settings) : defaultServicesSettings;
+}
+
+export function saveServicesSettings(settings: ServicesSettings): void {
+  localStorage.setItem("servicesSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("servicesSettingsUpdated"));
   }
 }
 

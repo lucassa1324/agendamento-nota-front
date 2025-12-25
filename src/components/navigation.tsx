@@ -6,14 +6,20 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getPageVisibility, getSiteProfile, type SiteProfile } from "@/lib/booking-data";
+import {
+  getPageVisibility,
+  getSiteProfile,
+  type SiteProfile,
+} from "@/lib/booking-data";
 
 export function Navigation() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profile, setProfile] = useState<SiteProfile | null>(null);
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(() => getPageVisibility());
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
+    () => getPageVisibility(),
+  );
 
   const only = searchParams.get("only");
 
@@ -34,7 +40,10 @@ export function Navigation() {
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
-      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+      window.removeEventListener(
+        "pageVisibilityUpdated",
+        handleVisibilityUpdate,
+      );
     };
   }, []);
 
@@ -50,7 +59,9 @@ export function Navigation() {
     { id: "agendar", href: "/agendamento", label: "Agendar" },
   ];
 
-  const navLinks = allNavLinks.filter(link => pageVisibility[link.id] !== false);
+  const navLinks = allNavLinks.filter(
+    (link) => pageVisibility[link.id] !== false,
+  );
 
   const siteName = profile?.name || "Brow Studio";
 

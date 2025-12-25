@@ -13,12 +13,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getPageVisibility, getSiteProfile, type SiteProfile } from "@/lib/booking-data";
+import {
+  getPageVisibility,
+  getSiteProfile,
+  type SiteProfile,
+} from "@/lib/booking-data";
 
 export function Footer() {
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<SiteProfile | null>(null);
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(() => getPageVisibility());
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
+    () => getPageVisibility(),
+  );
 
   const only = searchParams.get("only");
 
@@ -39,7 +45,10 @@ export function Footer() {
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
-      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+      window.removeEventListener(
+        "pageVisibilityUpdated",
+        handleVisibilityUpdate,
+      );
     };
   }, []);
 

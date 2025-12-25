@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { getPageVisibility } from "@/lib/booking-data";
 
 const galleryImages = [
@@ -16,7 +16,9 @@ const galleryImages = [
 ];
 
 export function GalleryPreview() {
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(() => getPageVisibility());
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
+    () => getPageVisibility(),
+  );
 
   useEffect(() => {
     const handleVisibilityUpdate = () => {
@@ -26,7 +28,10 @@ export function GalleryPreview() {
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
 
     return () => {
-      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+      window.removeEventListener(
+        "pageVisibilityUpdated",
+        handleVisibilityUpdate,
+      );
     };
   }, []);
 

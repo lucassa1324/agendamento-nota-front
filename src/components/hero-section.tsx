@@ -6,6 +6,7 @@ import {
   Flower2,
   Gem,
   Heart,
+  type LucideIcon,
   Moon,
   Smile,
   Sparkles,
@@ -17,7 +18,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, LucideIcon> = {
   Sparkles,
   Star,
   Heart,
@@ -29,6 +30,7 @@ const iconMap: Record<string, any> = {
   Smile,
   Award,
 };
+
 import {
   getHeroSettings,
   getPageVisibility,
@@ -41,7 +43,9 @@ import { cn } from "@/lib/utils";
 export function HeroSection() {
   const [profile, setProfile] = useState<SiteProfile | null>(null);
   const [customStyles, setCustomStyles] = useState<Partial<HeroSettings>>({});
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(() => getPageVisibility());
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
+    () => getPageVisibility(),
+  );
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
   );
@@ -88,7 +92,10 @@ export function HeroSection() {
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("heroSettingsUpdated", handleSettingsUpdate);
-      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+      window.removeEventListener(
+        "pageVisibilityUpdated",
+        handleVisibilityUpdate,
+      );
     };
   }, []);
 
@@ -175,7 +182,12 @@ export function HeroSection() {
               })()}
               <span
                 className="text-sm font-medium"
-                style={{ color: customStyles.badgeTextColor || customStyles.badgeColor || undefined }}
+                style={{
+                  color:
+                    customStyles.badgeTextColor ||
+                    customStyles.badgeColor ||
+                    undefined,
+                }}
               >
                 {customStyles.badge ||
                   "Especialistas em Design de Sobrancelhas"}
@@ -188,9 +200,9 @@ export function HeroSection() {
               "font-serif text-5xl md:text-7xl font-bold mb-6 text-balance leading-tight transition-all duration-300",
               getHighlightClass("hero-title"),
             )}
-            style={{ 
+            style={{
               fontFamily: customStyles.titleFont,
-              color: customStyles.titleColor || undefined 
+              color: customStyles.titleColor || undefined,
             }}
           >
             {customStyles.title || "Realce Sua Beleza Natural"}
@@ -202,9 +214,9 @@ export function HeroSection() {
               !customStyles.subtitleColor && "text-muted-foreground",
               getHighlightClass("hero-subtitle"),
             )}
-            style={{ 
+            style={{
               fontFamily: customStyles.subtitleFont,
-              color: customStyles.subtitleColor || undefined
+              color: customStyles.subtitleColor || undefined,
             }}
           >
             {customStyles.subtitle || description}
@@ -239,7 +251,10 @@ export function HeroSection() {
                 size="lg"
                 className="h-14 px-8 text-base font-bold rounded-full bg-background/50 backdrop-blur-sm border-border hover:bg-background/80 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
                 style={{
-                  color: customStyles.secondaryButtonTextColor || customStyles.secondaryButtonColor || undefined,
+                  color:
+                    customStyles.secondaryButtonTextColor ||
+                    customStyles.secondaryButtonColor ||
+                    undefined,
                   borderColor: customStyles.secondaryButtonColor || undefined,
                   fontFamily: customStyles.secondaryButtonFont,
                 }}
