@@ -45,14 +45,20 @@ import {
   defaultFontSettings,
   defaultGallerySettings,
   defaultHeroSettings,
+  defaultHeaderSettings,
+  defaultFooterSettings,
   defaultServicesSettings,
   defaultValuesSettings,
   type FontSettings,
   type GallerySettings,
+  type HeaderSettings,
+  type FooterSettings,
   getCTASettings,
   getFontSettings,
   getGallerySettings,
   getHeroSettings,
+  getHeaderSettings,
+  getFooterSettings,
   getPageVisibility,
   getServicesSettings,
   getValuesSettings,
@@ -63,6 +69,8 @@ import {
   saveFontSettings,
   saveGallerySettings,
   saveHeroSettings,
+  saveHeaderSettings,
+  saveFooterSettings,
   savePageVisibility,
   saveServicesSettings,
   saveValuesSettings,
@@ -70,6 +78,8 @@ import {
   type ValuesSettings,
 } from "@/lib/booking-data";
 import { TypographyEditor } from "./site_editor/layout/typography-editor";
+import { HeaderEditor } from "./site_editor/layout/header-editor";
+import { FooterEditor } from "./site_editor/layout/footer-editor";
 import { CTAEditor } from "./site_editor/pages/home/cta-editor";
 import { GalleryEditor } from "./site_editor/pages/home/gallery-editor";
 import { HeroEditor } from "./site_editor/pages/home/hero-editor";
@@ -302,6 +312,12 @@ export function SiteCustomizer() {
   );
   const [ctaSettings, setCTASettings] =
     useState<CTASettings>(defaultCTASettings);
+  const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(
+    defaultHeaderSettings,
+  );
+  const [footerSettings, setFooterSettings] = useState<FooterSettings>(
+    defaultFooterSettings,
+  );
 
   // Estados para controle de botões (Aplicar vs Salvar)
   const [lastAppliedHero, setLastAppliedHero] =
@@ -318,6 +334,12 @@ export function SiteCustomizer() {
   );
   const [lastAppliedCTA, setLastAppliedCTA] =
     useState<CTASettings>(defaultCTASettings);
+  const [lastAppliedHeader, setLastAppliedHeader] = useState<HeaderSettings>(
+    defaultHeaderSettings,
+  );
+  const [lastAppliedFooter, setLastAppliedFooter] = useState<FooterSettings>(
+    defaultFooterSettings,
+  );
 
   const [lastSavedHero, setLastSavedHero] =
     useState<HeroSettings>(defaultHeroSettings);
@@ -334,6 +356,12 @@ export function SiteCustomizer() {
   );
   const [lastSavedCTA, setLastSavedCTA] =
     useState<CTASettings>(defaultCTASettings);
+  const [lastSavedHeader, setLastSavedHeader] = useState<HeaderSettings>(
+    defaultHeaderSettings,
+  );
+  const [lastSavedFooter, setLastSavedFooter] = useState<FooterSettings>(
+    defaultFooterSettings,
+  );
 
   const [lastSavedPageVisibility, setLastSavedPageVisibility] = useState<
     Record<string, boolean>
@@ -373,6 +401,14 @@ export function SiteCustomizer() {
     setCTASettings((prev) => ({ ...prev, ...updates }));
   }, []);
 
+  const handleUpdateHeader = useCallback((updates: Partial<HeaderSettings>) => {
+    setHeaderSettings((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleUpdateFooter = useCallback((updates: Partial<FooterSettings>) => {
+    setFooterSettings((prev) => ({ ...prev, ...updates }));
+  }, []);
+
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
   >({});
@@ -384,6 +420,8 @@ export function SiteCustomizer() {
     const loadedValues = getValuesSettings();
     const loadedGallery = getGallerySettings();
     const loadedCTA = getCTASettings();
+    const loadedHeader = getHeaderSettings();
+    const loadedFooter = getFooterSettings();
 
     setHeroSettings(loadedHero);
     setFontSettings(loadedFont);
@@ -391,6 +429,8 @@ export function SiteCustomizer() {
     setValuesSettings(loadedValues);
     setGallerySettings(loadedGallery);
     setCTASettings(loadedCTA);
+    setHeaderSettings(loadedHeader);
+    setFooterSettings(loadedFooter);
 
     setLastAppliedHero(loadedHero);
     setLastAppliedFont(loadedFont);
@@ -398,6 +438,8 @@ export function SiteCustomizer() {
     setLastAppliedValues(loadedValues);
     setLastAppliedGallery(loadedGallery);
     setLastAppliedCTA(loadedCTA);
+    setLastAppliedHeader(loadedHeader);
+    setLastAppliedFooter(loadedFooter);
 
     setLastSavedHero(loadedHero);
     setLastSavedFont(loadedFont);
@@ -405,6 +447,8 @@ export function SiteCustomizer() {
     setLastSavedValues(loadedValues);
     setLastSavedGallery(loadedGallery);
     setLastSavedCTA(loadedCTA);
+    setLastSavedHeader(loadedHeader);
+    setLastSavedFooter(loadedFooter);
 
     const loadedPageVisibility = getPageVisibility();
     const loadedVisibleSections = getVisibleSections();
@@ -430,6 +474,10 @@ export function SiteCustomizer() {
     JSON.stringify(gallerySettings) !== JSON.stringify(lastAppliedGallery);
   const hasCTAChanges =
     JSON.stringify(ctaSettings) !== JSON.stringify(lastAppliedCTA);
+  const hasHeaderChanges =
+    JSON.stringify(headerSettings) !== JSON.stringify(lastAppliedHeader);
+  const hasFooterChanges =
+    JSON.stringify(footerSettings) !== JSON.stringify(lastAppliedFooter);
 
   const hasUnsavedGlobalChanges = useMemo(() => {
     const heroChanged =
@@ -444,6 +492,10 @@ export function SiteCustomizer() {
       JSON.stringify(lastAppliedGallery) !== JSON.stringify(lastSavedGallery);
     const ctaChanged =
       JSON.stringify(lastAppliedCTA) !== JSON.stringify(lastSavedCTA);
+    const headerChanged =
+      JSON.stringify(lastAppliedHeader) !== JSON.stringify(lastSavedHeader);
+    const footerChanged =
+      JSON.stringify(lastAppliedFooter) !== JSON.stringify(lastSavedFooter);
 
     // Comparação baseada no estado efetivo de visibilidade (tratando undefined como true)
     const pageVisibilityChanged = pages.some((page) => {
@@ -467,6 +519,8 @@ export function SiteCustomizer() {
       valuesChanged ||
       galleryChanged ||
       ctaChanged ||
+      headerChanged ||
+      footerChanged ||
       pageVisibilityChanged ||
       visibleSectionsChanged
     );
@@ -483,7 +537,11 @@ export function SiteCustomizer() {
     lastSavedGallery,
     lastAppliedCTA,
     lastSavedCTA,
-    pageVisibility,
+      lastAppliedHeader,
+      lastSavedHeader,
+      lastAppliedFooter,
+      lastSavedFooter,
+      pageVisibility,
     lastSavedPageVisibility,
     visibleSections,
     lastSavedVisibleSections,
@@ -501,6 +559,8 @@ export function SiteCustomizer() {
       setValuesSettings(defaultValuesSettings);
       setGallerySettings(defaultGallerySettings);
       setCTASettings(defaultCTASettings);
+      setHeaderSettings(defaultHeaderSettings);
+      setFooterSettings(defaultFooterSettings);
     }
   }, []);
 
@@ -512,6 +572,12 @@ export function SiteCustomizer() {
         )
       ) {
         switch (sectionId) {
+          case "header":
+            setHeaderSettings(defaultHeaderSettings);
+            break;
+          case "footer":
+            setFooterSettings(defaultFooterSettings);
+            break;
           case "hero":
             setHeroSettings(defaultHeroSettings);
             break;
@@ -632,6 +698,34 @@ export function SiteCustomizer() {
     }
   }, [ctaSettings]);
 
+  // Envia atualizações para o cabeçalho
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      console.log("Customizer: Enviando atualização de Header para o Iframe");
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_HEADER_SETTINGS",
+          settings: headerSettings,
+        },
+        "*",
+      );
+    }
+  }, [headerSettings]);
+
+  // Envia atualizações para o rodapé
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      console.log("Customizer: Enviando atualização de Footer para o Iframe");
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_FOOTER_SETTINGS",
+          settings: footerSettings,
+        },
+        "*",
+      );
+    }
+  }, [footerSettings]);
+
   const activePageData = pages.find((p) => p.id === activePage);
 
   useEffect(() => {
@@ -747,11 +841,36 @@ export function SiteCustomizer() {
       if (event.data.type === "HIGHLIGHT_SECTION") {
         setActiveSection(event.data.sectionId);
       }
+
+      if (event.data.type === "COMPONENT_READY") {
+        console.log(`Admin: Componente ${event.data.component} no iframe está pronto!`);
+        if (iframeRef.current?.contentWindow) {
+          const win = iframeRef.current.contentWindow;
+          
+          // Enviar todas as configurações relevantes para garantir sincronia total
+          win.postMessage({ type: "UPDATE_HEADER_SETTINGS", settings: headerSettings }, "*");
+          win.postMessage({ type: "UPDATE_FOOTER_SETTINGS", settings: footerSettings }, "*");
+          win.postMessage({ type: "UPDATE_FONTS", ...fontSettings }, "*");
+          win.postMessage({ type: "UPDATE_PAGE_VISIBILITY", visibility: pageVisibility }, "*");
+          win.postMessage({ type: "UPDATE_VISIBLE_SECTIONS", sections: visibleSections }, "*");
+          
+          // Se for o componente Hero (implícito no início)
+          win.postMessage({ type: "UPDATE_HERO_BG", ...heroSettings }, "*");
+          win.postMessage({ type: "UPDATE_HERO_CONTENT", ...heroSettings }, "*");
+        }
+      }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [
+    headerSettings,
+    footerSettings,
+    fontSettings,
+    pageVisibility,
+    visibleSections,
+    heroSettings,
+  ]);
 
   const reloadPreview = () => setPreviewKey((prev) => prev + 1);
 
@@ -860,33 +979,69 @@ export function SiteCustomizer() {
     });
   }, [ctaSettings, toast]);
 
+  const handleApplyHeader = useCallback(() => {
+    setLastAppliedHeader({ ...headerSettings });
+    // Forçar atualização do preview
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_HEADER_SETTINGS", settings: { ...headerSettings } },
+        "*",
+      );
+    }
+    toast({
+      title: "Preview atualizado!",
+      description: "As mudanças do cabeçalho foram aplicadas ao rascunho.",
+    });
+  }, [headerSettings, toast]);
+
+  const handleApplyFooter = useCallback(() => {
+    setLastAppliedFooter({ ...footerSettings });
+    // Forçar atualização do preview
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_FOOTER_SETTINGS", settings: { ...footerSettings } },
+        "*",
+      );
+    }
+    toast({
+      title: "Preview atualizado!",
+      description: "As mudanças do rodapé foram aplicadas ao rascunho.",
+    });
+  }, [footerSettings, toast]);
+
   const handleSaveGlobal = () => {
     // 1. Salva no localStorage (Produção)
-    saveHeroSettings(lastAppliedHero);
-    saveFontSettings(lastAppliedFont);
-    saveServicesSettings(lastAppliedServices);
-    saveValuesSettings(lastAppliedValues);
-    saveGallerySettings(lastAppliedGallery);
-    saveCTASettings(lastAppliedCTA);
+    saveHeroSettings(heroSettings);
+    saveFontSettings(fontSettings);
+    saveServicesSettings(servicesSettings);
+    saveValuesSettings(valuesSettings);
+    saveGallerySettings(gallerySettings);
+    saveCTASettings(ctaSettings);
+    saveHeaderSettings(headerSettings);
+    saveFooterSettings(footerSettings);
     savePageVisibility(pageVisibility);
     saveVisibleSections(visibleSections);
 
     // 2. Atualiza estados de controle
-    setLastSavedHero(lastAppliedHero);
-    setLastSavedFont(lastAppliedFont);
-    setLastSavedServices(lastAppliedServices);
-    setLastSavedValues(lastAppliedValues);
-    setLastSavedGallery(lastAppliedGallery);
-    setLastSavedCTA(lastAppliedCTA);
+    setLastSavedHero(heroSettings);
+    setLastSavedFont(fontSettings);
+    setLastSavedServices(servicesSettings);
+    setLastSavedValues(valuesSettings);
+    setLastSavedGallery(gallerySettings);
+    setLastSavedCTA(ctaSettings);
+    setLastSavedHeader(headerSettings);
+    setLastSavedFooter(footerSettings);
     setLastSavedPageVisibility(pageVisibility);
     setLastSavedVisibleSections(visibleSections);
 
-    setLastAppliedHero(lastAppliedHero);
-    setLastAppliedFont(lastAppliedFont);
-    setLastAppliedServices(lastAppliedServices);
-    setLastAppliedValues(lastAppliedValues);
-    setLastAppliedGallery(lastAppliedGallery);
-    setLastAppliedCTA(lastAppliedCTA);
+    setLastAppliedHero(heroSettings);
+    setLastAppliedFont(fontSettings);
+    setLastAppliedServices(servicesSettings);
+    setLastAppliedValues(valuesSettings);
+    setLastAppliedGallery(gallerySettings);
+    setLastAppliedCTA(ctaSettings);
+    setLastAppliedHeader(headerSettings);
+    setLastAppliedFooter(footerSettings);
 
     toast({
       title: "Site Publicado!",
@@ -1022,24 +1177,32 @@ export function SiteCustomizer() {
               valuesSettings={valuesSettings}
               gallerySettings={gallerySettings}
               ctaSettings={ctaSettings}
+              headerSettings={headerSettings}
+              footerSettings={footerSettings}
               onUpdateFont={handleUpdateFont}
               onUpdateHero={handleUpdateHero}
               onUpdateServices={handleUpdateServices}
               onUpdateValues={handleUpdateValues}
               onUpdateGallery={handleUpdateGallery}
               onUpdateCTA={handleUpdateCTA}
+              onUpdateHeader={handleUpdateHeader}
+              onUpdateFooter={handleUpdateFooter}
               onSaveFont={handleApplyTypography}
               onSaveHero={handleApplyHero}
               onSaveServices={handleApplyServices}
               onSaveValues={handleApplyValues}
               onSaveGallery={handleApplyGallery}
               onSaveCTA={handleApplyCTA}
+              onSaveHeader={handleApplyHeader}
+              onSaveFooter={handleApplyFooter}
               hasFontChanges={hasFontChanges}
               hasHeroChanges={hasHeroChanges}
               hasServicesChanges={hasServicesChanges}
               hasValuesChanges={hasValuesChanges}
               hasGalleryChanges={hasGalleryChanges}
               hasCTAChanges={hasCTAChanges}
+              hasHeaderChanges={hasHeaderChanges}
+              hasFooterChanges={hasFooterChanges}
               onHighlight={handleHighlight}
               activePage={activePage}
               expandedPages={expandedPages}
@@ -1076,24 +1239,32 @@ export function SiteCustomizer() {
             valuesSettings={valuesSettings}
             gallerySettings={gallerySettings}
             ctaSettings={ctaSettings}
+            headerSettings={headerSettings}
+            footerSettings={footerSettings}
             onUpdateFont={handleUpdateFont}
             onUpdateHero={handleUpdateHero}
             onUpdateServices={handleUpdateServices}
             onUpdateValues={handleUpdateValues}
             onUpdateGallery={handleUpdateGallery}
             onUpdateCTA={handleUpdateCTA}
+            onUpdateHeader={handleUpdateHeader}
+            onUpdateFooter={handleUpdateFooter}
             onSaveFont={handleApplyTypography}
             onSaveHero={handleApplyHero}
             onSaveServices={handleApplyServices}
             onSaveValues={handleApplyValues}
             onSaveGallery={handleApplyGallery}
             onSaveCTA={handleApplyCTA}
+            onSaveHeader={handleApplyHeader}
+            onSaveFooter={handleApplyFooter}
             hasFontChanges={hasFontChanges}
             hasHeroChanges={hasHeroChanges}
             hasServicesChanges={hasServicesChanges}
             hasValuesChanges={hasValuesChanges}
             hasGalleryChanges={hasGalleryChanges}
             hasCTAChanges={hasCTAChanges}
+            hasHeaderChanges={hasHeaderChanges}
+            hasFooterChanges={hasFooterChanges}
             onHighlight={handleHighlight}
             activePage={activePage}
             expandedPages={expandedPages}
@@ -1303,6 +1474,22 @@ export function SiteCustomizer() {
                           },
                           "*",
                         );
+                        // Header
+                        win.postMessage(
+                          {
+                            type: "UPDATE_HEADER_SETTINGS",
+                            settings: headerSettings,
+                          },
+                          "*",
+                        );
+                        // Footer
+                        win.postMessage(
+                          {
+                            type: "UPDATE_FOOTER_SETTINGS",
+                            settings: footerSettings,
+                          },
+                          "*",
+                        );
                       }
                     }}
                   />
@@ -1321,15 +1508,9 @@ export function SiteCustomizer() {
   );
 }
 
-interface SectionData {
-  id: string;
-  name: string;
-  description: string;
-}
-
 interface SidebarContentProps {
   activeSection: string | null;
-  activeSectionData: SectionData | null;
+  activeSectionData: (typeof sections.layout)[0] | null;
   setActiveSection: (id: string | null) => void;
   resetSettings: () => void;
   fontSettings: FontSettings;
@@ -1338,24 +1519,32 @@ interface SidebarContentProps {
   valuesSettings: ValuesSettings;
   gallerySettings: GallerySettings;
   ctaSettings: CTASettings;
+  headerSettings: HeaderSettings;
+  footerSettings: FooterSettings;
   onUpdateFont: (updates: Partial<FontSettings>) => void;
   onUpdateHero: (updates: Partial<HeroSettings>) => void;
   onUpdateServices: (updates: Partial<ServicesSettings>) => void;
   onUpdateValues: (updates: Partial<ValuesSettings>) => void;
   onUpdateGallery: (updates: Partial<GallerySettings>) => void;
   onUpdateCTA: (updates: Partial<CTASettings>) => void;
+  onUpdateHeader: (updates: Partial<HeaderSettings>) => void;
+  onUpdateFooter: (updates: Partial<FooterSettings>) => void;
   onSaveFont: () => void;
   onSaveHero: () => void;
   onSaveServices: () => void;
   onSaveValues: () => void;
   onSaveGallery: () => void;
   onSaveCTA: () => void;
+  onSaveHeader: () => void;
+  onSaveFooter: () => void;
   hasFontChanges: boolean;
   hasHeroChanges: boolean;
   hasServicesChanges: boolean;
   hasValuesChanges: boolean;
   hasGalleryChanges: boolean;
   hasCTAChanges: boolean;
+  hasHeaderChanges: boolean;
+  hasFooterChanges: boolean;
   onHighlight: (id: string) => void;
   activePage: string;
   expandedPages: string[];
@@ -1365,7 +1554,7 @@ interface SidebarContentProps {
   onSectionVisibilityToggle: (id: string) => void;
   onSectionReset: (id: string) => void;
   pageVisibility: Record<string, boolean>;
-  onPageVisibilityChange: (id: string, visible: boolean) => void;
+  onPageVisibilityChange: (id: string, isVisible: boolean) => void;
   onSaveGlobal: () => void;
   hasUnsavedGlobalChanges: boolean;
 }
@@ -1382,24 +1571,32 @@ const SidebarContent = memo(
     valuesSettings,
     gallerySettings,
     ctaSettings,
+    headerSettings,
+    footerSettings,
     onUpdateFont,
     onUpdateHero,
     onUpdateServices,
     onUpdateValues,
     onUpdateGallery,
     onUpdateCTA,
+    onUpdateHeader,
+    onUpdateFooter,
     onSaveFont,
     onSaveHero,
     onSaveServices,
     onSaveValues,
     onSaveGallery,
     onSaveCTA,
+    onSaveHeader,
+    onSaveFooter,
     hasFontChanges,
     hasHeroChanges,
     hasServicesChanges,
     hasValuesChanges,
     hasGalleryChanges,
     hasCTAChanges,
+    hasHeaderChanges,
+    hasFooterChanges,
     onHighlight,
     activePage,
     expandedPages,
@@ -1461,6 +1658,22 @@ const SidebarContent = memo(
 
               <div className="space-y-3 xl:space-y-4 p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
                 {/* --- LAYOUT GLOBAL --- */}
+                {activeSection === "header" && (
+                  <HeaderEditor
+                    settings={headerSettings}
+                    onUpdate={onUpdateHeader}
+                    hasChanges={hasHeaderChanges}
+                    onSave={onSaveHeader}
+                  />
+                )}
+                {activeSection === "footer" && (
+                  <FooterEditor
+                    settings={footerSettings}
+                    onUpdate={onUpdateFooter}
+                    hasChanges={hasFooterChanges}
+                    onSave={onSaveFooter}
+                  />
+                )}
                 {activeSection === "typography" && (
                   <TypographyEditor
                     settings={fontSettings}
@@ -1521,6 +1734,7 @@ const SidebarContent = memo(
 
                 {/* --- FALLBACK PARA SEÇÕES EM DESENVOLVIMENTO --- */}
                 {![
+                  "header",
                   "typography",
                   "hero",
                   "story",
@@ -1566,7 +1780,9 @@ const SidebarContent = memo(
               !hasServicesChanges &&
               !hasValuesChanges &&
               !hasGalleryChanges &&
-              !hasCTAChanges
+              !hasCTAChanges &&
+              !hasHeaderChanges &&
+              !hasFooterChanges
             }
             onClick={onSaveGlobal}
             className={cn(
@@ -1577,7 +1793,9 @@ const SidebarContent = memo(
                 hasServicesChanges ||
                 hasValuesChanges ||
                 hasGalleryChanges ||
-                hasCTAChanges
+                hasCTAChanges ||
+                hasHeaderChanges ||
+                hasFooterChanges
                 ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
                 : "bg-muted text-muted-foreground cursor-not-allowed",
             )}
@@ -1588,7 +1806,9 @@ const SidebarContent = memo(
             hasServicesChanges ||
             hasValuesChanges ||
             hasGalleryChanges ||
-            hasCTAChanges
+            hasCTAChanges ||
+            hasHeaderChanges ||
+            hasFooterChanges
               ? "Publicar Site"
               : "Tudo Atualizado"}
           </Button>

@@ -16,7 +16,10 @@ import { useEffect, useState } from "react";
 import {
   getPageVisibility,
   getSiteProfile,
+  getFooterSettings,
+  defaultFooterSettings,
   type SiteProfile,
+  type FooterSettings,
 } from "@/lib/booking-data";
 
 export function Footer() {
@@ -24,6 +27,7 @@ export function Footer() {
   const searchParams = useSearchParams();
 
   const [profile, setProfile] = useState<SiteProfile | null>(null);
+  const [footerSettings, setFooterSettings] = useState<FooterSettings>(defaultFooterSettings);
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
     {
       inicio: true,
@@ -39,8 +43,31 @@ export function Footer() {
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     setProfile(getSiteProfile());
     setPageVisibility(getPageVisibility());
+    setFooterSettings(getFooterSettings());
 
-    if (pathname?.startsWith("/admin")) return;
+    // Notificar o pai (admin) que o componente de rodapé está pronto
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: "COMPONENT_READY", component: "footer" }, "*");
+    }
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
+        setPageVisibility(event.data.visibility);
+      }
+      if (event.data?.type === "UPDATE_FOOTER_SETTINGS") {
+        console.log("Footer: Recebendo novas configurações", event.data.settings);
+        setFooterSettings(event.data.settings);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+
+    // Se estivermos no admin propriamente dito, não precisamos dos outros listeners
+    if (pathname?.startsWith("/admin")) {
+      return () => {
+        window.removeEventListener("message", handleMessage);
+      };
+    }
 
     const handleProfileUpdate = () => {
       setProfile(getSiteProfile());
@@ -50,15 +77,13 @@ export function Footer() {
       setPageVisibility(getPageVisibility());
     };
 
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
-        setPageVisibility(event.data.visibility);
-      }
+    const handleFooterUpdate = () => {
+      setFooterSettings(getFooterSettings());
     };
 
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
-    window.addEventListener("message", handleMessage);
+    window.addEventListener("footerSettingsUpdated", handleFooterUpdate);
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
@@ -66,6 +91,7 @@ export function Footer() {
         "pageVisibilityUpdated",
         handleVisibilityUpdate,
       );
+      window.removeEventListener("footerSettingsUpdated", handleFooterUpdate);
       window.removeEventListener("message", handleMessage);
     };
   }, [pathname]);
@@ -75,8 +101,36 @@ export function Footer() {
 
   if (!profile) return null;
 
+  const footerStyle = {
+    backgroundColor: footerSettings.bgColor || undefined,
+    fontFamily: footerSettings.bodyFont || undefined,
+  };
+
+  const titleStyle = {
+    color: footerSettings.titleColor || undefined,
+    fontFamily: footerSettings.titleFont || undefined,
+  };
+
+  const textStyle = {
+    color: footerSettings.textColor || undefined,
+  };
+
+  const iconStyle = {
+    color: footerSettings.iconColor || undefined,
+  };
+
+  const iconBgStyle = {
+    backgroundColor: footerSettings.iconColor
+      ? `${footerSettings.iconColor}1a` // 1a is 10% opacity in hex
+      : undefined,
+  };
+
   return (
-    <footer id="footer" className="bg-secondary/30 border-t border-border">
+    <footer
+      id="footer"
+      className={`border-t border-border transition-colors duration-300 ${!footerSettings.bgColor ? "bg-secondary/30" : ""}`}
+      style={footerStyle}
+    >
       <div className="container mx-auto px-4 py-12">
         <div className="grid md:grid-cols-4 gap-8">
           <div>
@@ -91,23 +145,29 @@ export function Footer() {
                   unoptimized
                 />
               )}
-              <h3 className="font-serif text-2xl font-bold text-primary">
+              <h3 className="font-serif text-2xl font-bold" style={titleStyle}>
                 {profile.name}
               </h3>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+            <p
+              className={`text-sm leading-relaxed ${!footerSettings.textColor ? "text-muted-foreground" : ""}`}
+              style={textStyle}
+            >
               {profile.description}
             </p>
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Links Rápidos</h4>
+            <h4 className="font-semibold mb-4" style={titleStyle}>
+              Links Rápidos
+            </h4>
             <ul className="space-y-2 text-sm">
               {pageVisibility.inicio !== false && (
                 <li>
                   <Link
                     href="/"
-                    className="text-muted-foreground hover:text-primary transition-colors"
+                    className={`transition-colors hover:opacity-80 ${!footerSettings.textColor ? "text-muted-foreground" : ""}`}
+                    style={textStyle}
                   >
                     Início
                   </Link>
@@ -117,7 +177,8 @@ export function Footer() {
                 <li>
                   <Link
                     href="/galeria"
-                    className="text-muted-foreground hover:text-primary transition-colors"
+                    className={`transition-colors hover:opacity-80 ${!footerSettings.textColor ? "text-muted-foreground" : ""}`}
+                    style={textStyle}
                   >
                     Galeria
                   </Link>
@@ -127,7 +188,8 @@ export function Footer() {
                 <li>
                   <Link
                     href="/sobre"
-                    className="text-muted-foreground hover:text-primary transition-colors"
+                    className={`transition-colors hover:opacity-80 ${!footerSettings.textColor ? "text-muted-foreground" : ""}`}
+                    style={textStyle}
                   >
                     Sobre Nós
                   </Link>
@@ -137,7 +199,8 @@ export function Footer() {
                 <li>
                   <Link
                     href="/agendamento"
-                    className="text-muted-foreground hover:text-primary transition-colors"
+                    className={`transition-colors hover:opacity-80 ${!footerSettings.textColor ? "text-muted-foreground" : ""}`}
+                    style={textStyle}
                   >
                     Agendar
                   </Link>
@@ -147,23 +210,25 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Contato</h4>
-            <ul className="space-y-2 text-sm text-muted-foreground">
+            <h4 className="font-semibold mb-4" style={titleStyle}>
+              Contato
+            </h4>
+            <ul className={`space-y-2 text-sm ${!footerSettings.textColor ? "text-muted-foreground" : ""}`}>
               {profile.phone && (
-                <li className="flex items-center gap-2">
-                  <Phone className="w-4 h-4" />
+                <li className="flex items-center gap-2" style={textStyle}>
+                  <Phone className="w-4 h-4" style={iconStyle} />
                   <span>{profile.phone}</span>
                 </li>
               )}
               {profile.email && (
-                <li className="flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
+                <li className="flex items-center gap-2" style={textStyle}>
+                  <Mail className="w-4 h-4" style={iconStyle} />
                   <span>{profile.email}</span>
                 </li>
               )}
               {profile.address && (
-                <li className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
+                <li className="flex items-center gap-2" style={textStyle}>
+                  <MapPin className="w-4 h-4" style={iconStyle} />
                   <span>{profile.address}</span>
                 </li>
               )}
@@ -171,16 +236,22 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-semibold mb-4">Redes Sociais</h4>
+            <h4 className="font-semibold mb-4" style={titleStyle}>
+              Redes Sociais
+            </h4>
             <div className="flex gap-4">
               {profile.showInstagram && profile.instagram && (
                 <a
                   href={`https://instagram.com/${profile.instagram}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center hover:bg-accent/20 transition-colors"
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:opacity-80 ${!footerSettings.iconColor ? "bg-accent/10" : ""}`}
+                  style={footerSettings.iconColor ? iconBgStyle : undefined}
                 >
-                  <Instagram className="w-5 h-5 text-accent" />
+                  <Instagram
+                    className="w-5 h-5"
+                    style={iconStyle || { color: "var(--accent)" }}
+                  />
                 </a>
               )}
               {profile.showFacebook && profile.facebook && (
@@ -188,9 +259,13 @@ export function Footer() {
                   href={`https://facebook.com/${profile.facebook}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center hover:bg-accent/20 transition-colors"
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:opacity-80 ${!footerSettings.iconColor ? "bg-accent/10" : ""}`}
+                  style={footerSettings.iconColor ? iconBgStyle : undefined}
                 >
-                  <Facebook className="w-5 h-5 text-accent" />
+                  <Facebook
+                    className="w-5 h-5"
+                    style={iconStyle || { color: "var(--accent)" }}
+                  />
                 </a>
               )}
               {profile.showWhatsapp && profile.whatsapp && (
@@ -198,9 +273,13 @@ export function Footer() {
                   href={`https://wa.me/${profile.whatsapp}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center hover:bg-accent/20 transition-colors"
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:opacity-80 ${!footerSettings.iconColor ? "bg-accent/10" : ""}`}
+                  style={footerSettings.iconColor ? iconBgStyle : undefined}
                 >
-                  <MessageCircle className="w-5 h-5 text-accent" />
+                  <MessageCircle
+                    className="w-5 h-5"
+                    style={iconStyle || { color: "var(--accent)" }}
+                  />
                 </a>
               )}
               {profile.showTiktok && profile.tiktok && (
@@ -209,11 +288,17 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="TikTok"
-                  className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center hover:bg-accent/20 transition-colors"
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:opacity-80 ${!footerSettings.iconColor ? "bg-accent/10" : ""}`}
+                  style={footerSettings.iconColor ? iconBgStyle : undefined}
                 >
                   <svg
                     viewBox="0 0 24 24"
-                    className="w-5 h-5 fill-accent"
+                    className="w-5 h-5"
+                    style={
+                      iconStyle
+                        ? { fill: footerSettings.iconColor }
+                        : { fill: "var(--accent)" }
+                    }
                     xmlns="http://www.w3.org/2000/svg"
                   >
                     <title>TikTok</title>
@@ -227,9 +312,13 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="LinkedIn"
-                  className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center hover:bg-accent/20 transition-colors"
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:opacity-80 ${!footerSettings.iconColor ? "bg-accent/10" : ""}`}
+                  style={footerSettings.iconColor ? iconBgStyle : undefined}
                 >
-                  <Linkedin className="w-5 h-5 text-accent" />
+                  <Linkedin
+                    className="w-5 h-5"
+                    style={iconStyle || { color: "var(--accent)" }}
+                  />
                 </a>
               )}
               {profile.showX && profile.x && (
@@ -238,11 +327,17 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="X (Twitter)"
-                  className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center hover:bg-accent/20 transition-colors"
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:opacity-80 ${!footerSettings.iconColor ? "bg-accent/10" : ""}`}
+                  style={footerSettings.iconColor ? iconBgStyle : undefined}
                 >
                   <svg
                     viewBox="0 0 24 24"
-                    className="w-5 h-5 fill-accent"
+                    className="w-5 h-5"
+                    style={
+                      iconStyle
+                        ? { fill: footerSettings.iconColor }
+                        : { fill: "var(--accent)" }
+                    }
                     xmlns="http://www.w3.org/2000/svg"
                   >
                     <title>X (Twitter)</title>
@@ -254,7 +349,10 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-border mt-8 pt-8 text-center text-sm text-muted-foreground">
+        <div
+          className={`mt-8 border-t border-border pt-8 text-center text-sm ${!footerSettings.textColor ? "text-muted-foreground" : ""}`}
+          style={textStyle}
+        >
           <p>
             &copy; {new Date().getFullYear()} {profile.name}. Todos os direitos
             reservados.

@@ -10,7 +10,10 @@ import {
   getPageVisibility,
   getVisibleSections,
   getSiteProfile,
+  getHeaderSettings,
+  defaultHeaderSettings,
   type SiteProfile,
+  type HeaderSettings,
 } from "@/lib/booking-data";
 
 export function Navigation() {
@@ -19,6 +22,7 @@ export function Navigation() {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profile, setProfile] = useState<SiteProfile | null>(null);
+  const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(defaultHeaderSettings);
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
     {
       inicio: true,
@@ -36,8 +40,34 @@ export function Navigation() {
     setProfile(getSiteProfile());
     setPageVisibility(getPageVisibility());
     setVisibleSections(getVisibleSections());
+    setHeaderSettings(getHeaderSettings());
 
-    if (pathname?.startsWith("/admin")) return;
+    // Notificar o pai (admin) que o componente de navegação está pronto
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: "COMPONENT_READY", component: "header" }, "*");
+    }
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
+        setPageVisibility(event.data.visibility);
+      }
+      if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
+        setVisibleSections(event.data.sections);
+      }
+      if (event.data?.type === "UPDATE_HEADER_SETTINGS") {
+        console.log("Header: Recebendo novas configurações", event.data.settings);
+        setHeaderSettings(event.data.settings);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+
+    // Se estivermos no admin propriamente dito, não precisamos dos outros listeners
+    if (pathname?.startsWith("/admin")) {
+      return () => {
+        window.removeEventListener("message", handleMessage);
+      };
+    }
 
     const handleProfileUpdate = () => {
       setProfile(getSiteProfile());
@@ -51,19 +81,14 @@ export function Navigation() {
       setVisibleSections(getVisibleSections());
     };
 
-    const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
-        setPageVisibility(event.data.visibility);
-      }
-      if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
-        setVisibleSections(event.data.sections);
-      }
+    const handleHeaderUpdate = () => {
+      setHeaderSettings(getHeaderSettings());
     };
 
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
     window.addEventListener("visibleSectionsUpdated", handleSectionsUpdate);
-    window.addEventListener("message", handleMessage);
+    window.addEventListener("headerSettingsUpdated", handleHeaderUpdate);
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
@@ -72,6 +97,7 @@ export function Navigation() {
         handleVisibilityUpdate,
       );
       window.removeEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+      window.removeEventListener("headerSettingsUpdated", handleHeaderUpdate);
       window.removeEventListener("message", handleMessage);
     };
   }, [pathname]);
@@ -97,16 +123,38 @@ export function Navigation() {
 
   const siteName = profile?.name || "Brow Studio";
 
+  // Estilos dinâmicos para o Glassmorphism
+  const headerStyle = {
+    backgroundColor: headerSettings.bgColor
+      ? `${headerSettings.bgColor}${Math.round(headerSettings.opacity * 255)
+          .toString(16)
+          .padStart(2, "0")}`
+      : undefined,
+    backdropFilter: `blur(${headerSettings.blurAmount}px)`,
+    WebkitBackdropFilter: `blur(${headerSettings.blurAmount}px)`,
+  };
+
+  const textStyle = headerSettings.textColor
+    ? { color: headerSettings.textColor }
+    : {};
+
+  const buttonStyle = {
+    backgroundColor: headerSettings.buttonBgColor || undefined,
+    color: headerSettings.buttonTextColor || undefined,
+  };
+
   return (
     <nav
       id="header"
-      className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80 border-b border-border"
+      className="sticky top-0 z-50 border-b border-border/50 transition-all duration-300"
+      style={headerStyle}
     >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link
             href="/"
-            className="font-serif text-xl lg:text-2xl font-bold text-primary flex items-center gap-2 lg:gap-3"
+            className="font-serif text-xl lg:text-2xl font-bold flex items-center gap-2 lg:gap-3"
+            style={textStyle}
           >
             {profile?.logoUrl ? (
               <Image
@@ -129,16 +177,18 @@ export function Navigation() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`text-xs lg:text-sm font-medium transition-colors hover:text-primary ${
-                  isActive(link.href) ? "text-primary" : "text-muted-foreground"
+                className={`text-xs lg:text-sm font-medium transition-colors hover:opacity-80 ${
+                  isActive(link.href) ? "" : "opacity-70"
                 }`}
+                style={textStyle}
               >
                 {link.label}
               </Link>
             ))}
             <Link
               href="/admin"
-              className="text-xs lg:text-sm font-medium text-muted-foreground transition-colors hover:text-primary whitespace-nowrap"
+              className="text-xs lg:text-sm font-medium opacity-70 transition-colors hover:opacity-100 whitespace-nowrap"
+              style={textStyle}
             >
               Acesse sua conta
             </Link>
@@ -146,7 +196,8 @@ export function Navigation() {
               <Button
                 asChild
                 size="sm"
-                className="bg-accent hover:bg-accent/90 text-accent-foreground px-3 lg:px-4 text-xs lg:text-sm h-9 lg:h-10"
+                className="px-3 lg:px-4 text-xs lg:text-sm h-9 lg:h-10 shadow-sm"
+                style={buttonStyle}
               >
                 <Link href="/agendamento">Agende Agora</Link>
               </Button>
@@ -159,6 +210,7 @@ export function Navigation() {
             className="md:hidden p-2"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
+            style={textStyle}
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -166,18 +218,17 @@ export function Navigation() {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-border">
+          <div className="md:hidden py-4 border-t border-border/50">
             <div className="flex flex-col gap-4">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    isActive(link.href)
-                      ? "text-primary"
-                      : "text-muted-foreground"
+                  className={`text-sm font-medium transition-colors hover:opacity-80 ${
+                    isActive(link.href) ? "" : "opacity-70"
                   }`}
+                  style={textStyle}
                 >
                   {link.label}
                 </Link>
@@ -185,14 +236,16 @@ export function Navigation() {
               <Link
                 href="/admin"
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+                className="text-sm font-medium opacity-70 transition-colors hover:opacity-100"
+                style={textStyle}
               >
                 Acesse sua conta
               </Link>
               {pageVisibility.agendar !== false && (
                 <Button
                   asChild
-                  className="bg-accent hover:bg-accent/90 text-accent-foreground w-full"
+                  className="w-full shadow-sm"
+                  style={buttonStyle}
                 >
                   <Link
                     href="/agendamento"

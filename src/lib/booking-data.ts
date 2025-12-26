@@ -108,6 +108,42 @@ export type SiteProfile = {
   showX: boolean;
 };
 
+export type HeaderSettings = {
+  bgColor: string;
+  opacity: number;
+  textColor: string;
+  buttonBgColor: string;
+  buttonTextColor: string;
+  blurAmount: number; // para o efeito glassmorphism
+};
+
+export type FooterSettings = {
+  bgColor: string;
+  textColor: string;
+  titleColor: string;
+  iconColor: string;
+  titleFont: string;
+  bodyFont: string;
+};
+
+export const defaultHeaderSettings: HeaderSettings = {
+  bgColor: "#ffffff",
+  opacity: 0.8,
+  textColor: "",
+  buttonBgColor: "",
+  buttonTextColor: "",
+  blurAmount: 8,
+};
+
+export const defaultFooterSettings: FooterSettings = {
+  bgColor: "", // vindo de secondary/30 por padrão no componente
+  textColor: "", // text-muted-foreground
+  titleColor: "", // text-primary
+  iconColor: "", // text-accent
+  titleFont: "Playfair Display",
+  bodyFont: "Inter",
+};
+
 export type HeroSettings = {
   badge: string;
   showBadge: boolean;
@@ -959,6 +995,32 @@ export function saveCTASettings(settings: CTASettings): void {
   localStorage.setItem("ctaSettings", JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("ctaSettingsUpdated"));
+  }
+}
+
+export function getHeaderSettings(): HeaderSettings {
+  if (typeof window === "undefined") return defaultHeaderSettings;
+  const settings = localStorage.getItem("headerSettings");
+  return settings ? JSON.parse(settings) : defaultHeaderSettings;
+}
+
+export function saveHeaderSettings(settings: HeaderSettings): void {
+  localStorage.setItem("headerSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("headerSettingsUpdated"));
+  }
+}
+
+export function getFooterSettings(): FooterSettings {
+  if (typeof window === "undefined") return defaultFooterSettings;
+  const settings = localStorage.getItem("footerSettings");
+  return settings ? JSON.parse(settings) : defaultFooterSettings;
+}
+
+export function saveFooterSettings(settings: FooterSettings): void {
+  localStorage.setItem("footerSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("footerSettingsUpdated"));
   }
 }
 
