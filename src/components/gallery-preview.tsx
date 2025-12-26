@@ -4,19 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { getPageVisibility } from "@/lib/booking-data";
-
-const galleryImages = [
-  { id: 1, query: "professional+eyebrow+design+before+after" },
-  { id: 2, query: "beautiful+shaped+eyebrows+close+up" },
-  { id: 3, query: "eyebrow+microblading+result" },
-  { id: 4, query: "henna+eyebrow+tinting+result" },
-  { id: 5, query: "eyebrow+lamination+before+after" },
-  { id: 6, query: "perfect+eyebrow+shape+design" },
-];
+import { getPageVisibility, getGalleryImages, type GalleryImage as GalleryImageType } from "@/lib/booking-data";
 
 export function GalleryPreview() {
   const [isMounted, setIsMounted] = useState(false);
+  const [images, setImages] = useState<GalleryImageType[]>([]);
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
     {
       inicio: true,
@@ -29,17 +21,27 @@ export function GalleryPreview() {
   useEffect(() => {
     setIsMounted(true);
     setPageVisibility(getPageVisibility());
+    
+    const loadImages = () => {
+      const allImages = getGalleryImages();
+      setImages(allImages.filter(img => img.showOnHome).slice(0, 6));
+    };
+    
+    loadImages();
+
     const handleVisibilityUpdate = () => {
       setPageVisibility(getPageVisibility());
     };
 
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+    window.addEventListener("galleryUpdated", loadImages);
 
     return () => {
       window.removeEventListener(
         "pageVisibilityUpdated",
         handleVisibilityUpdate,
       );
+      window.removeEventListener("galleryUpdated", loadImages);
     };
   }, []);
 
@@ -59,22 +61,27 @@ export function GalleryPreview() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-          {galleryImages.map((image) => (
-            <div
-              key={image.id}
-              className="aspect-square rounded-lg overflow-hidden hover:scale-105 transition-transform"
-            >
-              <Image
-                src={`/.jpg?height=400&width=400&query=${image.query}`}
-                alt={`Trabalho ${image.id}`}
-                width={400}
-                height={400}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ))}
-        </div>
+        {images.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+            {images.map((image) => (
+              <div
+                key={image.id}
+                className="aspect-square rounded-lg overflow-hidden hover:scale-105 transition-transform relative"
+              >
+                <Image
+                  src={image.url}
+                  alt={image.title}
+                  fill
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10 text-muted-foreground italic">
+            Nenhum trabalho em destaque no momento.
+          </div>
+        )}
 
         <div className="text-center">
           <Button asChild size="lg" variant="outline">

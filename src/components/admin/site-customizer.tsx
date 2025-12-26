@@ -179,12 +179,44 @@ export function SiteCustomizer() {
     "layout",
     "inicio",
   ]);
-  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">(
-    "desktop",
-  );
-  const [manualScale, setManualScale] = useState(1);
-  const [isAutoZoom, setIsAutoZoom] = useState(true);
-  const [manualWidth, setManualWidth] = useState<number | null>(null);
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">(() => {
+    const saved = localStorage.getItem("sc_preview_mode");
+    return (saved === "desktop" || saved === "mobile") ? saved : "desktop";
+  });
+  const [manualScale, setManualScale] = useState(() => {
+    const saved = localStorage.getItem("sc_manual_scale");
+    return saved ? parseFloat(saved) : 1;
+  });
+  const [isAutoZoom, setIsAutoZoom] = useState(() => {
+    const saved = localStorage.getItem("sc_is_auto_zoom");
+    return saved !== null ? saved === "true" : true;
+  });
+  const [manualWidth, setManualWidth] = useState<number | null>(() => {
+    const saved = localStorage.getItem("sc_manual_width");
+    return saved ? parseInt(saved, 10) : null;
+  });
+
+  // Persistência de estados no localStorage
+  useEffect(() => {
+    localStorage.setItem("sc_preview_mode", previewMode);
+  }, [previewMode]);
+
+  useEffect(() => {
+    localStorage.setItem("sc_manual_scale", manualScale.toString());
+  }, [manualScale]);
+
+  useEffect(() => {
+    localStorage.setItem("sc_is_auto_zoom", isAutoZoom.toString());
+  }, [isAutoZoom]);
+
+  useEffect(() => {
+    if (manualWidth !== null) {
+      localStorage.setItem("sc_manual_width", manualWidth.toString());
+    } else {
+      localStorage.removeItem("sc_manual_width");
+    }
+  }, [manualWidth]);
+
   const [previewKey, setPreviewKey] = useState(0);
   const { toast } = useToast();
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -381,6 +413,13 @@ export function SiteCustomizer() {
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Inicialização imediata do tamanho para evitar saltos
+    const initialRect = containerRef.current.getBoundingClientRect();
+    setContainerSize({
+      width: initialRect.width,
+      height: initialRect.height,
+    });
+
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setContainerSize({
@@ -394,7 +433,7 @@ export function SiteCustomizer() {
     return () => resizeObserver.disconnect();
   }, []);
 
-  const currentWidth = manualWidth || (previewMode === "mobile" ? 375 : 1280);
+  const currentWidth = manualWidth || (previewMode === "mobile" ? 375 : (isAutoZoom ? containerSize.width : 1280));
 
   const widthScale =
     containerSize.width > 0
@@ -405,7 +444,7 @@ export function SiteCustomizer() {
       ? Math.max(0.1, (containerSize.height - 24) / 850)
       : 1;
   const fitScaleDesktop = Math.min(1, widthScale, heightScale);
-  const desktopScale = isAutoZoom ? fitScaleDesktop : manualScale;
+  const desktopScale = isAutoZoom ? (previewMode === "desktop" ? 1 : fitScaleDesktop) : manualScale;
 
   const mobileWidthScale =
     containerSize.width > 0
@@ -853,7 +892,7 @@ export function SiteCustomizer() {
   );
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-background">
+    <div className="flex h-screen w-full overflow-hidden bg-background">
       {headerPortalTarget && createPortal(headerControls, headerPortalTarget)}
       {/* Mobile: Sidebar (Sheet) */}
       <Sheet open={isMobile && isSidebarOpen} onOpenChange={onToggleSidebar}>
@@ -926,7 +965,7 @@ export function SiteCustomizer() {
 
           <div
             ref={containerRef}
-            className="flex-1 bg-muted/10 relative flex items-center justify-center overflow-auto p-2 lg:p-4 group"
+            className="flex-1 bg-muted/10 relative flex items-center justify-center overflow-hidden p-2 lg:p-4 group min-w-0"
           >
             {/* Setas de Ajuste Manual */}
             <div className="absolute inset-y-0 left-2 lg:left-4 flex items-center pointer-events-none z-20">
@@ -968,12 +1007,12 @@ export function SiteCustomizer() {
             {/* Monitor / Browser Wrapper */}
             <div
               style={{
-                width:
-                  currentWidth *
-                  (previewMode === "mobile" ? mobileScale : desktopScale),
-                height:
-                  (previewMode === "mobile" ? 750 : 850) *
-                  (previewMode === "mobile" ? mobileScale : desktopScale),
+                width: (previewMode === "desktop" && isAutoZoom)
+                  ? "100%"
+                  : currentWidth * (previewMode === "mobile" ? mobileScale : desktopScale),
+                height: (previewMode === "desktop" && isAutoZoom)
+                  ? "100%"
+                  : (previewMode === "mobile" ? 750 : 850) * (previewMode === "mobile" ? mobileScale : desktopScale),
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -989,8 +1028,8 @@ export function SiteCustomizer() {
                 )}
                 style={{
                   width: `${currentWidth}px`,
-                  height: previewMode === "mobile" ? "750px" : "850px",
-                  transform: `scale(${previewMode === "mobile" ? mobileScale : desktopScale})`,
+                  height: (previewMode === "desktop" && isAutoZoom) ? "100%" : (previewMode === "mobile" ? "750px" : "850px"),
+                  transform: (previewMode === "desktop" && isAutoZoom) ? "none" : `scale(${previewMode === "mobile" ? mobileScale : desktopScale})`,
                   transformOrigin: "center center",
                 }}
               >
@@ -1012,13 +1051,12 @@ export function SiteCustomizer() {
                   </div>
                 )}
 
-                {/* Iframe Content Area */}
-                <div className="flex-1 w-full overflow-hidden bg-white">
+                <div className="flex-1 w-full overflow-hidden bg-white relative">
                   <iframe
                     ref={iframeRef}
                     key={`${activePage}-${previewKey}-${activeSection}`}
                     src={previewUrl}
-                    className="w-full h-full border-none"
+                    className="absolute inset-0 w-full h-full border-none overflow-hidden"
                     title="Preview"
                     onLoad={() => {
                       // Re-enviar o estado atual quando o iframe carregar

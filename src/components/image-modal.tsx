@@ -6,8 +6,9 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 
 type GalleryImage = {
-  id: number;
-  query: string;
+  id: string | number;
+  url?: string;
+  query?: string;
   title: string;
   category: string;
 };
@@ -30,6 +31,8 @@ export function ImageModal({ image, onClose }: ImageModalProps) {
       document.body.style.overflow = "unset";
     };
   }, [onClose]);
+
+  const imageUrl = image.url || `https://images.unsplash.com/photo-1560750588-73207b1ef5b8?auto=format&fit=crop&q=80&w=800&h=800&query=${image.query}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -55,18 +58,22 @@ export function ImageModal({ image, onClose }: ImageModalProps) {
           <X className="w-6 h-6" />
         </Button>
 
-        <div className="relative aspect-video w-full">
+        <div className="relative aspect-square md:aspect-video w-full max-h-[80vh]">
           <Image
-            src={`https://images.unsplash.com/photo-1560750588-73207b1ef5b8?auto=format&fit=crop&q=80&w=800&h=800&query=${image.query}`}
+            src={imageUrl}
             alt={image.title}
             fill
             className="object-contain rounded-lg"
+            unoptimized
           />
         </div>
         <div className="mt-4 text-center">
           <h3 id="modal-title" className="text-white text-xl font-semibold">
             {image.title}
           </h3>
+          <p className="text-white/60 text-sm mt-1 uppercase tracking-wider">
+            {image.category}
+          </p>
         </div>
       </div>
     </div>

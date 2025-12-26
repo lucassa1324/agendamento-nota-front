@@ -551,7 +551,7 @@ export function getAvailableTimeSlots(
   const dayBlocks = blockedPeriods.filter((b) => b.date === date);
 
   const dayBookings = bookings.filter(
-    (b) => b.date === date && b.status !== "cancelado",
+    (b: Booking) => b.date === date && b.status !== "cancelado",
   );
 
   return allSlots.map((time) => {
@@ -671,7 +671,7 @@ export function getSettingsFromStorage() {
   if (typeof window === "undefined")
     return {
       agendaAberta: true,
-      services: services,
+      services: [],
       scheduleSettings: defaultScheduleSettings,
     };
   const settings = localStorage.getItem("studioSettings");
@@ -679,7 +679,7 @@ export function getSettingsFromStorage() {
     ? JSON.parse(settings)
     : {
         agendaAberta: true,
-        services: services,
+        services: [],
         scheduleSettings: defaultScheduleSettings,
       };
 }
@@ -699,10 +699,48 @@ export function saveWeekSchedule(schedule: WeekSchedule): void {
   localStorage.setItem("weekSchedule", JSON.stringify(schedule));
 }
 
+export type GalleryImage = {
+  id: string;
+  url: string;
+  title: string;
+  category: string;
+  createdAt: string;
+  showOnHome: boolean;
+};
+
+export function getGalleryImages(): GalleryImage[] {
+  if (typeof window === "undefined") return [];
+  const images = localStorage.getItem("galleryImages");
+  return images ? JSON.parse(images) : [];
+}
+
+export function saveGalleryImages(images: GalleryImage[]): void {
+  localStorage.setItem("galleryImages", JSON.stringify(images));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("galleryUpdated"));
+  }
+}
+
 export function getBlockedPeriods(): BlockedPeriod[] {
   if (typeof window === "undefined") return [];
   const blocked = localStorage.getItem("blockedPeriods");
   return blocked ? JSON.parse(blocked) : [];
+}
+
+export function getServices(): Service[] {
+  const settings = getSettingsFromStorage();
+  return settings.services || [];
+}
+
+export function saveServices(newServices: Service[]): void {
+  const settings = getSettingsFromStorage();
+  settings.services = newServices;
+  localStorage.setItem("studioSettings", JSON.stringify(settings));
+  localStorage.setItem("services", JSON.stringify(newServices));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("studioSettingsUpdated"));
+    window.dispatchEvent(new Event("servicesUpdated"));
+  }
 }
 
 export function saveBlockedPeriods(blocked: BlockedPeriod[]): void {
@@ -853,11 +891,11 @@ export async function sendBookingNotifications(
 
 async function sendEmailNotification(
   booking: Booking,
-  settings: NotificationSettings,
+  _settings: NotificationSettings,
 ): Promise<void> {
   // Simulação de envio de email
-  console.log("[v0] Enviando email para:", booking.clientEmail);
-  console.log("[v0] Cópia para admin:", settings.adminEmail);
+  // console.log("[v0] Enviando email para:", booking.clientEmail);
+  // console.log("[v0] Cópia para admin:", settings.adminEmail);
   // Em produção, integrar com serviço de email (SendGrid, Resend, etc.)
   markNotificationsSent(booking.id, "email");
 }
@@ -867,9 +905,9 @@ async function sendWhatsAppNotification(
   _settings: NotificationSettings,
 ): Promise<void> {
   // Simulação de envio de WhatsApp
-  const message = `Olá ${booking.clientName}! Seu agendamento de ${booking.serviceName} foi confirmado para ${new Date(booking.date).toLocaleDateString("pt-BR")} às ${booking.time}. Estúdio de Sobrancelhas.`;
-  console.log("[v0] Enviando WhatsApp para:", booking.clientPhone);
-  console.log("[v0] Mensagem:", message);
+  // const message = `Olá ${booking.clientName}! Seu agendamento de ${booking.serviceName} foi confirmado para ${new Date(booking.date).toLocaleDateString("pt-BR")} às ${booking.time}. Estúdio de Sobrancelhas.`;
+  // console.log("[v0] Enviando WhatsApp para:", booking.clientPhone);
+  // console.log("[v0] Mensagem:", message);
   // Em produção, integrar com API do WhatsApp Business
   markNotificationsSent(booking.id, "whatsapp");
 }

@@ -56,8 +56,6 @@ export function Navigation() {
     };
   }, [pathname]);
 
-  if (pathname?.startsWith("/admin")) return null;
-
   // Se estivermos isolando algo que não seja o header, escondemos o navigation
   if (only && only !== "header") return null;
 

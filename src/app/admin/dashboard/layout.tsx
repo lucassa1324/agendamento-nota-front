@@ -37,7 +37,7 @@ const Sidebar = ({
   adminUser: { name: string; username: string } | null;
   handleLogout: () => void;
 }) => (
-  <aside className="w-64 bg-card border-r border-border flex flex-col h-full">
+  <aside className="w-64 bg-card border-r border-border flex flex-col h-full lg:h-[calc(100vh-64px)] lg:sticky lg:top-16">
     {/* Sidebar Header */}
     <div className="p-6 border-b border-border">
       <Link
@@ -300,9 +300,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-screen">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
-        <header className="h-16 border-b border-border bg-card px-4 lg:px-6 flex items-center justify-between shrink-0">
+        <header className="h-16 border-b border-border bg-card px-4 lg:px-6 flex items-center justify-between shrink-0 sticky top-16 z-30">
           <div className="flex items-center gap-4">
             {/* Sidebar Mobile Trigger (Dashboard Main Menu) */}
             <div className="lg:hidden">
@@ -387,7 +387,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Page Content */}
         <main
           className={cn(
-            "flex-1 overflow-hidden flex flex-col",
+            "flex-1 flex flex-col",
             activeTab === "personalizacao" ? "p-0" : "p-4 lg:p-6",
           )}
         >

@@ -1,4 +1,5 @@
 // Sistema de notificações via Email e WhatsApp
+/** biome-ignore-all lint/correctness/noUnusedVariables: <explanation> */
 export type NotificationType = "confirmation" | "reminder" | "cancellation";
 
 export interface NotificationData {
@@ -18,7 +19,7 @@ export async function sendEmailNotification(
   type: NotificationType,
 ): Promise<{ success: boolean; message: string }> {
   // Em produção, integrar com serviço como SendGrid, Resend, etc.
-  console.log("[v0] Enviando email:", { to: data.clientEmail, type, data });
+  // console.log("[v0] Enviando email:", { to: data.clientEmail, type, data });
 
   // Simulação de envio
   return new Promise((resolve) => {
@@ -37,7 +38,7 @@ export async function sendWhatsAppNotification(
   type: NotificationType,
 ): Promise<{ success: boolean; message: string }> {
   // Em produção, integrar com WhatsApp Business API ou serviço como Twilio
-  console.log("[v0] Enviando WhatsApp:", { to: data.clientPhone, type, data });
+  // console.log("[v0] Enviando WhatsApp:", { to: data.clientPhone, type, data });
 
   // Formatar mensagem
   const messages = {
@@ -65,7 +66,7 @@ export async function sendAdminNotification(
   const adminEmail = "admin@browstudio.com"; // Configurar email do admin
   const adminPhone = "5511999999999"; // Configurar telefone do admin
 
-  console.log("[v0] Notificando admin:", { type, data });
+  // console.log("[v0] Notificando admin:", { type, data });
 
   // Enviar para admin
   await Promise.all([
@@ -85,19 +86,20 @@ function formatDate(dateString: string): string {
 
 // Função para agendar lembretes automáticos
 export function scheduleReminder(
-  bookingId: string,
   date: string,
   time: string,
 ): void {
   // Em produção, usar um sistema de agendamento como cron jobs ou serviço de fila
-  console.log("[v0] Lembrete agendado para:", { bookingId, date, time });
+  // console.log("[v0] Lembrete agendado para:", { bookingId, date, time });
 
   // Calcular quando enviar o lembrete (24h antes)
   const bookingDate = new Date(`${date}T${time}`);
   const reminderDate = new Date(bookingDate.getTime() - 24 * 60 * 60 * 1000);
 
+  /*
   console.log(
     "[v0] Lembrete será enviado em:",
     reminderDate.toLocaleString("pt-BR"),
   );
+  */
 }

@@ -62,8 +62,6 @@ export function Footer() {
     };
   }, [pathname]);
 
-  if (pathname?.startsWith("/admin")) return null;
-
   // Se estivermos isolando algo que não seja o footer, escondemos o footer
   if (only && only !== "footer") return null;
 
