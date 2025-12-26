@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   getPageVisibility,
+  getVisibleSections,
   getSiteProfile,
   type SiteProfile,
 } from "@/lib/booking-data";
@@ -26,6 +27,7 @@ export function Navigation() {
       agendar: true,
     },
   );
+  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
 
   const only = searchParams.get("only");
 
@@ -33,6 +35,7 @@ export function Navigation() {
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     setProfile(getSiteProfile());
     setPageVisibility(getPageVisibility());
+    setVisibleSections(getVisibleSections());
 
     if (pathname?.startsWith("/admin")) return;
 
@@ -44,8 +47,23 @@ export function Navigation() {
       setPageVisibility(getPageVisibility());
     };
 
+    const handleSectionsUpdate = () => {
+      setVisibleSections(getVisibleSections());
+    };
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
+        setPageVisibility(event.data.visibility);
+      }
+      if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
+        setVisibleSections(event.data.sections);
+      }
+    };
+
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+    window.addEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+    window.addEventListener("message", handleMessage);
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
@@ -53,11 +71,16 @@ export function Navigation() {
         "pageVisibilityUpdated",
         handleVisibilityUpdate,
       );
+      window.removeEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+      window.removeEventListener("message", handleMessage);
     };
   }, [pathname]);
 
   // Se estivermos isolando algo que não seja o header, escondemos o navigation
   if (only && only !== "header") return null;
+
+  // Se o header estiver desativado nas seções visíveis, e não estivermos isolando ele
+  if (!only && visibleSections.header === false) return null;
 
   const isActive = (path: string) => pathname === path;
 

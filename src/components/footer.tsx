@@ -50,8 +50,15 @@ export function Footer() {
       setPageVisibility(getPageVisibility());
     };
 
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
+        setPageVisibility(event.data.visibility);
+      }
+    };
+
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+    window.addEventListener("message", handleMessage);
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
@@ -59,6 +66,7 @@ export function Footer() {
         "pageVisibilityUpdated",
         handleVisibilityUpdate,
       );
+      window.removeEventListener("message", handleMessage);
     };
   }, [pathname]);
 

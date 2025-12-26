@@ -989,6 +989,47 @@ export function savePageVisibility(visibility: Record<string, boolean>): void {
   }
 }
 
+export function getVisibleSections(): Record<string, boolean> {
+  if (typeof window === "undefined") {
+    return {
+      header: true,
+      footer: true,
+      hero: true,
+      story: true,
+      services: true,
+      values: true,
+      "gallery-preview": true,
+      cta: true,
+      "gallery-grid": true,
+      "about-hero": true,
+      booking: true,
+    };
+  }
+  const sections = localStorage.getItem("visibleSections");
+  if (sections) return JSON.parse(sections);
+
+  return {
+    header: true,
+    footer: true,
+    hero: true,
+    story: true,
+    services: true,
+    values: true,
+    "gallery-preview": true,
+    cta: true,
+    "gallery-grid": true,
+    "about-hero": true,
+    booking: true,
+  };
+}
+
+export function saveVisibleSections(sections: Record<string, boolean>): void {
+  localStorage.setItem("visibleSections", JSON.stringify(sections));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("visibleSectionsUpdated"));
+  }
+}
+
 export async function sendBookingNotifications(
   booking: Booking,
 ): Promise<void> {

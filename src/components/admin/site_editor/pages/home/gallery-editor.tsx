@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageIcon, Type, LayoutGrid, SlidersHorizontal } from "lucide-react";
+import { ImageIcon, LayoutGrid, SlidersHorizontal, Type } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -10,9 +10,9 @@ import {
 import { Button } from "@/components/ui/button";
 import type { GallerySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { SectionTitleEditor } from "../../components/SectionTitleEditor";
-import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
+import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
 interface GalleryEditorProps {
   settings: GallerySettings;
@@ -55,8 +55,12 @@ export function GalleryEditor({
               onUpdate={(updates) =>
                 onUpdate({
                   ...(updates.title !== undefined && { title: updates.title }),
-                  ...(updates.font !== undefined && { titleFont: updates.font }),
-                  ...(updates.color !== undefined && { titleColor: updates.color }),
+                  ...(updates.font !== undefined && {
+                    titleFont: updates.font,
+                  }),
+                  ...(updates.color !== undefined && {
+                    titleColor: updates.color,
+                  }),
                 })
               }
             />
@@ -80,9 +84,15 @@ export function GalleryEditor({
               color={settings.subtitleColor}
               onUpdate={(updates) =>
                 onUpdate({
-                  ...(updates.subtitle !== undefined && { subtitle: updates.subtitle }),
-                  ...(updates.font !== undefined && { subtitleFont: updates.font }),
-                  ...(updates.color !== undefined && { subtitleColor: updates.color }),
+                  ...(updates.subtitle !== undefined && {
+                    subtitle: updates.subtitle,
+                  }),
+                  ...(updates.font !== undefined && {
+                    subtitleFont: updates.font,
+                  }),
+                  ...(updates.color !== undefined && {
+                    subtitleColor: updates.color,
+                  }),
                 })
               }
             />

@@ -2,7 +2,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { Eye, EyeOff, Minus, Plus } from "lucide-react";
+import { Eye, EyeOff, Minus, Plus, RotateCcw } from "lucide-react";
 import type { MouseEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -32,6 +32,7 @@ interface SidebarNavProps {
   onPageToggle: (id: string) => void;
   onSectionSelect: (id: string) => void;
   onSectionVisibilityToggle: (id: string) => void;
+  onSectionReset: (id: string) => void;
   pageVisibility: Record<string, boolean>;
   onPageVisibilityChange: (pageId: string, isVisible: boolean) => void;
 }
@@ -46,6 +47,7 @@ export function SidebarNav({
   onPageToggle,
   onSectionSelect,
   onSectionVisibilityToggle,
+  onSectionReset,
   pageVisibility,
   onPageVisibilityChange,
 }: SidebarNavProps) {
@@ -140,7 +142,7 @@ export function SidebarNav({
 
                     return (
                       <div
-                        key={section.id}
+                        key={`${page.id}-${section.id}`}
                         role="button"
                         tabIndex={0}
                         onClick={() => onSectionSelect(section.id)}
@@ -176,6 +178,25 @@ export function SidebarNav({
                             type="button"
                             variant="ghost"
                             size="icon"
+                            title="Resetar seção"
+                            className={cn(
+                              "h-6 w-6 xl:h-7 xl:w-7 rounded-lg transition-all",
+                              isSectionActive
+                                ? "text-primary-foreground hover:bg-white/20"
+                                : "text-muted-foreground hover:bg-background/80",
+                            )}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSectionReset(section.id);
+                            }}
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 xl:w-4 xl:h-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            title={isVisible ? "Ocultar seção" : "Mostrar seção"}
                             className={cn(
                               "h-6 w-6 xl:h-7 xl:w-7 rounded-lg transition-all",
                               isSectionActive

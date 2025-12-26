@@ -17,7 +17,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,41 +39,43 @@ interface PageItem {
   hidden?: boolean;
 }
 
-import { TypographyEditor } from "./site_editor/layout/typography-editor";
-import { GalleryEditor } from "./site_editor/pages/home/gallery-editor";
-import { HeroEditor } from "./site_editor/pages/home/hero-editor";
-import { HistoryEditor } from "./site_editor/pages/home/history-editor";
-import { ServicesEditor } from "./site_editor/pages/home/services-editor";
-import { ValuesEditor } from "./site_editor/pages/home/values-editor";
-import { CTAEditor } from "./site_editor/pages/home/cta-editor";
 import {
+  type CTASettings,
+  defaultCTASettings,
   defaultFontSettings,
   defaultGallerySettings,
   defaultHeroSettings,
   defaultServicesSettings,
   defaultValuesSettings,
-  defaultCTASettings,
   type FontSettings,
   type GallerySettings,
+  getCTASettings,
   getFontSettings,
   getGallerySettings,
   getHeroSettings,
   getPageVisibility,
   getServicesSettings,
   getValuesSettings,
-  getCTASettings,
+  getVisibleSections,
   type HeroSettings,
   type ServicesSettings,
+  saveCTASettings,
   saveFontSettings,
   saveGallerySettings,
   saveHeroSettings,
   savePageVisibility,
   saveServicesSettings,
   saveValuesSettings,
-  saveCTASettings,
+  saveVisibleSections,
   type ValuesSettings,
-  type CTASettings,
 } from "@/lib/booking-data";
+import { TypographyEditor } from "./site_editor/layout/typography-editor";
+import { CTAEditor } from "./site_editor/pages/home/cta-editor";
+import { GalleryEditor } from "./site_editor/pages/home/gallery-editor";
+import { HeroEditor } from "./site_editor/pages/home/hero-editor";
+import { HistoryEditor } from "./site_editor/pages/home/history-editor";
+import { ServicesEditor } from "./site_editor/pages/home/services-editor";
+import { ValuesEditor } from "./site_editor/pages/home/values-editor";
 
 const pages: PageItem[] = [
   { id: "layout", label: "Layout Global", icon: Settings2, path: "/" },
@@ -188,22 +190,35 @@ export function SiteCustomizer() {
     "layout",
     "inicio",
   ]);
-  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">(() => {
-    const saved = localStorage.getItem("sc_preview_mode");
-    return (saved === "desktop" || saved === "mobile") ? saved : "desktop";
-  });
-  const [manualScale, setManualScale] = useState(() => {
-    const saved = localStorage.getItem("sc_manual_scale");
-    return saved ? parseFloat(saved) : 1;
-  });
-  const [isAutoZoom, setIsAutoZoom] = useState(() => {
-    const saved = localStorage.getItem("sc_is_auto_zoom");
-    return saved !== null ? saved === "true" : true;
-  });
-  const [manualWidth, setManualWidth] = useState<number | null>(() => {
-    const saved = localStorage.getItem("sc_manual_width");
-    return saved ? parseInt(saved, 10) : null;
-  });
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">(
+    "desktop",
+  );
+  const [manualScale, setManualScale] = useState(1);
+  const [isAutoZoom, setIsAutoZoom] = useState(true);
+  const [manualWidth, setManualWidth] = useState<number | null>(null);
+
+  // Carregamento inicial do localStorage (apenas no cliente)
+  useEffect(() => {
+    const savedPreviewMode = localStorage.getItem("sc_preview_mode");
+    if (savedPreviewMode === "desktop" || savedPreviewMode === "mobile") {
+      setPreviewMode(savedPreviewMode);
+    }
+
+    const savedManualScale = localStorage.getItem("sc_manual_scale");
+    if (savedManualScale) {
+      setManualScale(parseFloat(savedManualScale));
+    }
+
+    const savedIsAutoZoom = localStorage.getItem("sc_is_auto_zoom");
+    if (savedIsAutoZoom !== null) {
+      setIsAutoZoom(savedIsAutoZoom === "true");
+    }
+
+    const savedManualWidth = localStorage.getItem("sc_manual_width");
+    if (savedManualWidth) {
+      setManualWidth(parseInt(savedManualWidth, 10));
+    }
+  }, []);
 
   // Persistência de estados no localStorage
   useEffect(() => {
@@ -246,17 +261,10 @@ export function SiteCustomizer() {
 
   // Estado para controlar a visibilidade das páginas
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
-    {
-      inicio: true,
-      galeria: true,
-      sobre: true,
-      agendar: true,
-    },
+    {},
   );
 
-  useEffect(() => {
-    setPageVisibility(getPageVisibility());
-  }, []);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handlePageVisibilityChange = (pageId: string, isVisible: boolean) => {
     setPageVisibility((prev) => ({
@@ -265,9 +273,17 @@ export function SiteCustomizer() {
     }));
   };
 
-  // Efeito para salvar a visibilidade das páginas no localStorage
+  // Notificamos o iframe sobre a mudança de visibilidade das páginas
   useEffect(() => {
-    savePageVisibility(pageVisibility);
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_PAGE_VISIBILITY",
+          visibility: pageVisibility,
+        },
+        "*",
+      );
+    }
   }, [pageVisibility]);
 
   // Estados de customização (inicializados do storage)
@@ -284,9 +300,8 @@ export function SiteCustomizer() {
   const [gallerySettings, setGallerySettings] = useState<GallerySettings>(
     defaultGallerySettings,
   );
-  const [ctaSettings, setCTASettings] = useState<CTASettings>(
-    defaultCTASettings,
-  );
+  const [ctaSettings, setCTASettings] =
+    useState<CTASettings>(defaultCTASettings);
 
   // Estados para controle de botões (Aplicar vs Salvar)
   const [lastAppliedHero, setLastAppliedHero] =
@@ -301,9 +316,8 @@ export function SiteCustomizer() {
   const [lastAppliedGallery, setLastAppliedGallery] = useState<GallerySettings>(
     defaultGallerySettings,
   );
-  const [lastAppliedCTA, setLastAppliedCTA] = useState<CTASettings>(
-    defaultCTASettings,
-  );
+  const [lastAppliedCTA, setLastAppliedCTA] =
+    useState<CTASettings>(defaultCTASettings);
 
   const [lastSavedHero, setLastSavedHero] =
     useState<HeroSettings>(defaultHeroSettings);
@@ -318,9 +332,16 @@ export function SiteCustomizer() {
   const [lastSavedGallery, setLastSavedGallery] = useState<GallerySettings>(
     defaultGallerySettings,
   );
-  const [lastSavedCTA, setLastSavedCTA] = useState<CTASettings>(
-    defaultCTASettings,
-  );
+  const [lastSavedCTA, setLastSavedCTA] =
+    useState<CTASettings>(defaultCTASettings);
+
+  const [lastSavedPageVisibility, setLastSavedPageVisibility] = useState<
+    Record<string, boolean>
+  >({});
+
+  const [lastSavedVisibleSections, setLastSavedVisibleSections] = useState<
+    Record<string, boolean>
+  >({});
 
   const handleUpdateHero = useCallback((updates: Partial<HeroSettings>) => {
     setHeroSettings((prev) => ({ ...prev, ...updates }));
@@ -330,21 +351,31 @@ export function SiteCustomizer() {
     setFontSettings((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const handleUpdateServices = useCallback((updates: Partial<ServicesSettings>) => {
-    setServicesSettings((prev) => ({ ...prev, ...updates }));
-  }, []);
+  const handleUpdateServices = useCallback(
+    (updates: Partial<ServicesSettings>) => {
+      setServicesSettings((prev) => ({ ...prev, ...updates }));
+    },
+    [],
+  );
 
   const handleUpdateValues = useCallback((updates: Partial<ValuesSettings>) => {
     setValuesSettings((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const handleUpdateGallery = useCallback((updates: Partial<GallerySettings>) => {
-    setGallerySettings((prev) => ({ ...prev, ...updates }));
-  }, []);
+  const handleUpdateGallery = useCallback(
+    (updates: Partial<GallerySettings>) => {
+      setGallerySettings((prev) => ({ ...prev, ...updates }));
+    },
+    [],
+  );
 
   const handleUpdateCTA = useCallback((updates: Partial<CTASettings>) => {
     setCTASettings((prev) => ({ ...prev, ...updates }));
   }, []);
+
+  const [visibleSections, setVisibleSections] = useState<
+    Record<string, boolean>
+  >({});
 
   useEffect(() => {
     const loadedHero = getHeroSettings();
@@ -374,6 +405,16 @@ export function SiteCustomizer() {
     setLastSavedValues(loadedValues);
     setLastSavedGallery(loadedGallery);
     setLastSavedCTA(loadedCTA);
+
+    const loadedPageVisibility = getPageVisibility();
+    const loadedVisibleSections = getVisibleSections();
+
+    // Inicializar os estados de "último salvo" para comparação correta
+    setLastSavedPageVisibility(loadedPageVisibility);
+    setLastSavedVisibleSections(loadedVisibleSections);
+
+    setPageVisibility(loadedPageVisibility);
+    setVisibleSections(loadedVisibleSections);
   }, []);
 
   // Booleans para habilitar/desabilitar botões
@@ -390,13 +431,63 @@ export function SiteCustomizer() {
   const hasCTAChanges =
     JSON.stringify(ctaSettings) !== JSON.stringify(lastAppliedCTA);
 
-  const hasUnsavedGlobalChanges =
-    JSON.stringify(lastAppliedHero) !== JSON.stringify(lastSavedHero) ||
-    JSON.stringify(lastAppliedFont) !== JSON.stringify(lastSavedFont) ||
-    JSON.stringify(lastAppliedServices) !== JSON.stringify(lastSavedServices) ||
-    JSON.stringify(lastAppliedValues) !== JSON.stringify(lastSavedValues) ||
-    JSON.stringify(lastAppliedGallery) !== JSON.stringify(lastSavedGallery) ||
-    JSON.stringify(lastAppliedCTA) !== JSON.stringify(lastSavedCTA);
+  const hasUnsavedGlobalChanges = useMemo(() => {
+    const heroChanged =
+      JSON.stringify(lastAppliedHero) !== JSON.stringify(lastSavedHero);
+    const fontChanged =
+      JSON.stringify(lastAppliedFont) !== JSON.stringify(lastSavedFont);
+    const servicesChanged =
+      JSON.stringify(lastAppliedServices) !== JSON.stringify(lastSavedServices);
+    const valuesChanged =
+      JSON.stringify(lastAppliedValues) !== JSON.stringify(lastSavedValues);
+    const galleryChanged =
+      JSON.stringify(lastAppliedGallery) !== JSON.stringify(lastSavedGallery);
+    const ctaChanged =
+      JSON.stringify(lastAppliedCTA) !== JSON.stringify(lastSavedCTA);
+
+    // Comparação baseada no estado efetivo de visibilidade (tratando undefined como true)
+    const pageVisibilityChanged = pages.some((page) => {
+      const current = pageVisibility[page.id] !== false;
+      const saved = lastSavedPageVisibility[page.id] !== false;
+      return current !== saved;
+    });
+
+    const visibleSectionsChanged = Object.values(sections)
+      .flat()
+      .some((section) => {
+        const current = visibleSections[section.id] !== false;
+        const saved = lastSavedVisibleSections[section.id] !== false;
+        return current !== saved;
+      });
+
+    return (
+      heroChanged ||
+      fontChanged ||
+      servicesChanged ||
+      valuesChanged ||
+      galleryChanged ||
+      ctaChanged ||
+      pageVisibilityChanged ||
+      visibleSectionsChanged
+    );
+  }, [
+    lastAppliedHero,
+    lastSavedHero,
+    lastAppliedFont,
+    lastSavedFont,
+    lastAppliedServices,
+    lastSavedServices,
+    lastAppliedValues,
+    lastSavedValues,
+    lastAppliedGallery,
+    lastSavedGallery,
+    lastAppliedCTA,
+    lastSavedCTA,
+    pageVisibility,
+    lastSavedPageVisibility,
+    visibleSections,
+    lastSavedVisibleSections,
+  ]);
 
   const resetSettings = useCallback(() => {
     if (
@@ -413,7 +504,46 @@ export function SiteCustomizer() {
     }
   }, []);
 
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const handleSectionReset = useCallback(
+    (sectionId: string) => {
+      if (
+        confirm(
+          `Deseja resetar as configurações da seção "${sectionId}" para o padrão?`,
+        )
+      ) {
+        switch (sectionId) {
+          case "hero":
+            setHeroSettings(defaultHeroSettings);
+            break;
+          case "typography":
+            setFontSettings(defaultFontSettings);
+            break;
+          case "services":
+            setServicesSettings(defaultServicesSettings);
+            break;
+          case "values":
+            setValuesSettings(defaultValuesSettings);
+            break;
+          case "gallery-preview":
+          case "gallery-grid":
+            setGallerySettings(defaultGallerySettings);
+            break;
+          case "cta":
+            setCTASettings(defaultCTASettings);
+            break;
+          default:
+            toast({
+              title: "Aviso",
+              description:
+                "Esta seção não possui configurações customizáveis para resetar.",
+            });
+            break;
+        }
+      }
+    },
+    [toast],
+  );
+
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Envia atualizações para o iframe quando as configurações do Hero mudarem
@@ -527,7 +657,9 @@ export function SiteCustomizer() {
     return () => resizeObserver.disconnect();
   }, []);
 
-  const currentWidth = manualWidth || (previewMode === "mobile" ? 375 : (isAutoZoom ? containerSize.width : 1280));
+  const currentWidth =
+    manualWidth ||
+    (previewMode === "mobile" ? 375 : isAutoZoom ? containerSize.width : 1280);
 
   const widthScale =
     containerSize.width > 0
@@ -538,7 +670,11 @@ export function SiteCustomizer() {
       ? Math.max(0.1, (containerSize.height - 24) / 850)
       : 1;
   const fitScaleDesktop = Math.min(1, widthScale, heightScale);
-  const desktopScale = isAutoZoom ? (previewMode === "desktop" ? 1 : fitScaleDesktop) : manualScale;
+  const desktopScale = isAutoZoom
+    ? previewMode === "desktop"
+      ? 1
+      : fitScaleDesktop
+    : manualScale;
 
   const mobileWidthScale =
     containerSize.width > 0
@@ -551,21 +687,18 @@ export function SiteCustomizer() {
   const fitScaleMobile = Math.min(1, mobileWidthScale, mobileHeightScale);
   const mobileScale = isAutoZoom ? fitScaleMobile : manualScale;
 
-  const [visibleSections, setVisibleSections] = useState<
-    Record<string, boolean>
-  >({
-    header: true,
-    footer: true,
-    hero: true,
-    story: true,
-    services: true,
-    values: true,
-    "gallery-preview": true,
-    cta: true,
-    "gallery-grid": true,
-    "about-hero": true,
-    booking: true,
-  });
+  useEffect(() => {
+    // Notificamos o iframe sobre a mudança de visibilidade das seções
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_VISIBLE_SECTIONS",
+          sections: visibleSections,
+        },
+        "*",
+      );
+    }
+  }, [visibleSections]);
 
   const togglePageExpansion = (id: string) => {
     setExpandedPages((prev) =>
@@ -575,7 +708,10 @@ export function SiteCustomizer() {
   };
 
   const toggleSection = (id: string) => {
-    setVisibleSections((prev) => ({ ...prev, [id]: !prev[id] }));
+    setVisibleSections((prev) => {
+      const isCurrentlyVisible = prev[id] !== false;
+      return { ...prev, [id]: !isCurrentlyVisible };
+    });
   };
 
   const scrollToSection = (sectionId: string) => {
@@ -629,8 +765,6 @@ export function SiteCustomizer() {
   const previewUrl = activePageData?.path
     ? `${activePageData.path}${activeSection ? `?only=${activeSection}` : ""}`
     : "";
-
-
 
   const handleApplyHero = useCallback(() => {
     setLastAppliedHero(heroSettings);
@@ -734,6 +868,8 @@ export function SiteCustomizer() {
     saveValuesSettings(lastAppliedValues);
     saveGallerySettings(lastAppliedGallery);
     saveCTASettings(lastAppliedCTA);
+    savePageVisibility(pageVisibility);
+    saveVisibleSections(visibleSections);
 
     // 2. Atualiza estados de controle
     setLastSavedHero(lastAppliedHero);
@@ -742,6 +878,8 @@ export function SiteCustomizer() {
     setLastSavedValues(lastAppliedValues);
     setLastSavedGallery(lastAppliedGallery);
     setLastSavedCTA(lastAppliedCTA);
+    setLastSavedPageVisibility(pageVisibility);
+    setLastSavedVisibleSections(visibleSections);
 
     setLastAppliedHero(lastAppliedHero);
     setLastAppliedFont(lastAppliedFont);
@@ -751,7 +889,7 @@ export function SiteCustomizer() {
     setLastAppliedCTA(lastAppliedCTA);
 
     toast({
-      title: "Sucesso",
+      title: "Site Publicado!",
       description: "Todas as alterações foram salvas permanentemente.",
     });
   };
@@ -909,6 +1047,7 @@ export function SiteCustomizer() {
               onPageToggle={togglePageExpansion}
               onSectionSelect={scrollToSection}
               onSectionVisibilityToggle={toggleSection}
+              onSectionReset={handleSectionReset}
               pageVisibility={pageVisibility}
               onPageVisibilityChange={handlePageVisibilityChange}
               onSaveGlobal={handleSaveGlobal}
@@ -922,9 +1061,7 @@ export function SiteCustomizer() {
       <div
         className={cn(
           "hidden lg:flex flex-col h-full border-r border-border bg-card transition-all duration-300 ease-in-out overflow-hidden shrink-0 z-20",
-          isSidebarOpen
-            ? "w-64 xl:w-80 2xl:w-96"
-            : "w-0 border-r-0",
+          isSidebarOpen ? "w-64 xl:w-80 2xl:w-96" : "w-0 border-r-0",
         )}
       >
         <div className="flex flex-col h-full w-64 xl:w-80 2xl:w-96">
@@ -964,6 +1101,7 @@ export function SiteCustomizer() {
             onPageToggle={togglePageExpansion}
             onSectionSelect={scrollToSection}
             onSectionVisibilityToggle={toggleSection}
+            onSectionReset={handleSectionReset}
             pageVisibility={pageVisibility}
             onPageVisibilityChange={handlePageVisibilityChange}
             onSaveGlobal={handleSaveGlobal}
@@ -1052,12 +1190,16 @@ export function SiteCustomizer() {
             {/* Monitor / Browser Wrapper */}
             <div
               style={{
-                width: (previewMode === "desktop" && isAutoZoom)
-                  ? "100%"
-                  : currentWidth * (previewMode === "mobile" ? mobileScale : desktopScale),
-                height: (previewMode === "desktop" && isAutoZoom)
-                  ? "100%"
-                  : (previewMode === "mobile" ? 750 : 850) * (previewMode === "mobile" ? mobileScale : desktopScale),
+                width:
+                  previewMode === "desktop" && isAutoZoom
+                    ? "100%"
+                    : currentWidth *
+                      (previewMode === "mobile" ? mobileScale : desktopScale),
+                height:
+                  previewMode === "desktop" && isAutoZoom
+                    ? "100%"
+                    : (previewMode === "mobile" ? 750 : 850) *
+                      (previewMode === "mobile" ? mobileScale : desktopScale),
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1073,8 +1215,16 @@ export function SiteCustomizer() {
                 )}
                 style={{
                   width: `${currentWidth}px`,
-                  height: (previewMode === "desktop" && isAutoZoom) ? "100%" : (previewMode === "mobile" ? "750px" : "850px"),
-                  transform: (previewMode === "desktop" && isAutoZoom) ? "none" : `scale(${previewMode === "mobile" ? mobileScale : desktopScale})`,
+                  height:
+                    previewMode === "desktop" && isAutoZoom
+                      ? "100%"
+                      : previewMode === "mobile"
+                        ? "750px"
+                        : "850px",
+                  transform:
+                    previewMode === "desktop" && isAutoZoom
+                      ? "none"
+                      : `scale(${previewMode === "mobile" ? mobileScale : desktopScale})`,
                   transformOrigin: "center center",
                 }}
               >
@@ -1213,133 +1363,136 @@ interface SidebarContentProps {
   onPageToggle: (id: string) => void;
   onSectionSelect: (id: string) => void;
   onSectionVisibilityToggle: (id: string) => void;
+  onSectionReset: (id: string) => void;
   pageVisibility: Record<string, boolean>;
   onPageVisibilityChange: (id: string, visible: boolean) => void;
   onSaveGlobal: () => void;
   hasUnsavedGlobalChanges: boolean;
 }
 
-const SidebarContent = memo(({
-  activeSection,
-  activeSectionData,
-  setActiveSection,
-  resetSettings,
-  fontSettings,
-  heroSettings,
-  servicesSettings,
-  valuesSettings,
-  gallerySettings,
-  ctaSettings,
-  onUpdateFont,
-  onUpdateHero,
-  onUpdateServices,
-  onUpdateValues,
-  onUpdateGallery,
-  onUpdateCTA,
-  onSaveFont,
-  onSaveHero,
-  onSaveServices,
-  onSaveValues,
-  onSaveGallery,
-  onSaveCTA,
-  hasFontChanges,
-  hasHeroChanges,
-  hasServicesChanges,
-  hasValuesChanges,
-  hasGalleryChanges,
-  hasCTAChanges,
-  onHighlight,
-  activePage,
-  expandedPages,
-  visibleSections,
-  onPageToggle,
-  onSectionSelect,
-  onSectionVisibilityToggle,
-  pageVisibility,
-  onPageVisibilityChange,
-  onSaveGlobal,
-  hasUnsavedGlobalChanges,
-}: SidebarContentProps) => {
-  return (
-    <div className="flex flex-col h-full text-[clamp(0.75rem,1vw,0.875rem)]">
-      <div className="p-3 xl:p-6 pb-3 border-b border-border/50 shrink-0">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-primary font-bold">
-            <Settings2 className="w-4 h-4 xl:w-5 xl:h-5" />
-            <span className="text-[10px] xl:text-sm tracking-wide uppercase">
-              Editor
-            </span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={resetSettings}
-            className="h-7 xl:h-8 px-2 xl:px-3 gap-1 xl:gap-1.5 text-[9px] xl:text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors shrink-0"
-          >
-            <RotateCcw className="w-2.5 h-2.5 xl:w-3 xl:h-3" />
-            <span>Resetar</span>
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto p-3 xl:p-6 custom-scrollbar min-w-0">
-        {activeSection ? (
-          /* Editor de Seção (Placeholder) */
-          <div className="space-y-4 xl:space-y-6">
-            <div className="flex items-center gap-2 mb-3 xl:mb-4">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveSection(null)}
-                className="h-7 w-7 xl:h-8 xl:w-8 rounded-full p-0"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 xl:w-4 xl:h-4" />
-              </Button>
-              <div>
-                <h3 className="text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
-                  {activeSectionData?.name}
-                </h3>
-                <p className="text-[9px] xl:text-[10px] text-muted-foreground">
-                  Editando seção
-                </p>
-              </div>
+const SidebarContent = memo(
+  ({
+    activeSection,
+    activeSectionData,
+    setActiveSection,
+    resetSettings,
+    fontSettings,
+    heroSettings,
+    servicesSettings,
+    valuesSettings,
+    gallerySettings,
+    ctaSettings,
+    onUpdateFont,
+    onUpdateHero,
+    onUpdateServices,
+    onUpdateValues,
+    onUpdateGallery,
+    onUpdateCTA,
+    onSaveFont,
+    onSaveHero,
+    onSaveServices,
+    onSaveValues,
+    onSaveGallery,
+    onSaveCTA,
+    hasFontChanges,
+    hasHeroChanges,
+    hasServicesChanges,
+    hasValuesChanges,
+    hasGalleryChanges,
+    hasCTAChanges,
+    onHighlight,
+    activePage,
+    expandedPages,
+    visibleSections,
+    onPageToggle,
+    onSectionSelect,
+    onSectionVisibilityToggle,
+    onSectionReset,
+    pageVisibility,
+    onPageVisibilityChange,
+    onSaveGlobal,
+    hasUnsavedGlobalChanges,
+  }: SidebarContentProps) => {
+    return (
+      <div className="flex flex-col h-full text-[clamp(0.75rem,1vw,0.875rem)]">
+        <div className="p-3 xl:p-6 pb-3 border-b border-border/50 shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-primary font-bold">
+              <Settings2 className="w-4 h-4 xl:w-5 xl:h-5" />
+              <span className="text-[10px] xl:text-sm tracking-wide uppercase">
+                Editor
+              </span>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={resetSettings}
+              className="h-7 xl:h-8 px-2 xl:px-3 gap-1 xl:gap-1.5 text-[9px] xl:text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors shrink-0"
+            >
+              <RotateCcw className="w-2.5 h-2.5 xl:w-3 xl:h-3" />
+              <span>Resetar</span>
+            </Button>
+          </div>
+        </div>
 
-            <div className="space-y-3 xl:space-y-4 p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
-              {/* --- LAYOUT GLOBAL --- */}
-              {activeSection === "typography" && (
-                <TypographyEditor
-                  settings={fontSettings}
-                  onUpdate={onUpdateFont}
-                  onHighlight={onHighlight}
-                  hasChanges={hasFontChanges}
-                  onSave={onSaveFont}
-                />
-              )}
+        <div className="flex-1 overflow-y-auto p-3 xl:p-6 custom-scrollbar min-w-0">
+          {activeSection ? (
+            /* Editor de Seção (Placeholder) */
+            <div className="space-y-4 xl:space-y-6">
+              <div className="flex items-center gap-2 mb-3 xl:mb-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveSection(null)}
+                  className="h-7 w-7 xl:h-8 xl:w-8 rounded-full p-0"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5 xl:w-4 xl:h-4" />
+                </Button>
+                <div>
+                  <h3 className="text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
+                    {activeSectionData?.name}
+                  </h3>
+                  <p className="text-[9px] xl:text-[10px] text-muted-foreground">
+                    Editando seção
+                  </p>
+                </div>
+              </div>
 
-              {/* --- PÁGINA: INÍCIO (HOME) --- */}
-              {activeSection === "hero" && (
-                <HeroEditor
-                  settings={heroSettings}
-                  onUpdate={onUpdateHero}
-                  onHighlight={onHighlight}
-                  hasChanges={hasHeroChanges}
-                  onSave={onSaveHero}
-                />
-              )}
-              {activeSection === "story" && (
-                <HistoryEditor hasChanges={false} onSave={() => {}} />
-              )}
-              {activeSection === "services" && (
-                <ServicesEditor
-                  settings={servicesSettings}
-                  onUpdate={onUpdateServices}
-                  hasChanges={hasServicesChanges}
-                  onSave={onSaveServices}
-                />
-              )}
-              {activeSection === "values" && (
+              <div className="space-y-3 xl:space-y-4 p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
+                {/* --- LAYOUT GLOBAL --- */}
+                {activeSection === "typography" && (
+                  <TypographyEditor
+                    settings={fontSettings}
+                    onUpdate={onUpdateFont}
+                    onHighlight={onHighlight}
+                    hasChanges={hasFontChanges}
+                    onSave={onSaveFont}
+                  />
+                )}
+
+                {/* --- PÁGINA: INÍCIO (HOME) --- */}
+                {activeSection === "hero" && (
+                  <HeroEditor
+                    settings={heroSettings}
+                    onUpdate={onUpdateHero}
+                    onHighlight={onHighlight}
+                    hasChanges={hasHeroChanges}
+                    onSave={onSaveHero}
+                  />
+                )}
+                {activeSection === "story" && (
+                  <HistoryEditor hasChanges={false} onSave={() => {}} />
+                )}
+                {activeSection === "services" && (
+                  <ServicesEditor
+                    settings={servicesSettings}
+                    onUpdate={onUpdateServices}
+                    hasChanges={hasServicesChanges}
+                    onSave={onSaveServices}
+                  />
+                )}
+                {activeSection === "values" && (
                   <ValuesEditor
                     settings={valuesSettings}
                     onUpdate={onUpdateValues}
@@ -1366,73 +1519,81 @@ const SidebarContent = memo(({
                   />
                 )}
 
-              {/* --- FALLBACK PARA SEÇÕES EM DESENVOLVIMENTO --- */}
-              {!["typography", "hero", "story", "services", "values", "gallery-preview", "cta"].includes(
-                activeSection,
-              ) && (
-                <div className="py-12 text-center">
-                  <Settings2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
-                  <p className="text-sm text-muted-foreground">
-                    O editor para esta seção será implementado em breve.
-                  </p>
-                </div>
-              )}
+                {/* --- FALLBACK PARA SEÇÕES EM DESENVOLVIMENTO --- */}
+                {![
+                  "typography",
+                  "hero",
+                  "story",
+                  "services",
+                  "values",
+                  "gallery-preview",
+                  "cta",
+                ].includes(activeSection) && (
+                  <div className="py-12 text-center">
+                    <Settings2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+                    <p className="text-sm text-muted-foreground">
+                      O editor para esta seção será implementado em breve.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        ) : (
-          <SidebarNav
-            pages={pages}
-            sections={sections}
-            activePage={activePage}
-            activeSection={activeSection}
-            expandedPages={expandedPages}
-            visibleSections={visibleSections}
-            onPageToggle={onPageToggle}
-            onSectionSelect={onSectionSelect}
-            onSectionVisibilityToggle={onSectionVisibilityToggle}
-            pageVisibility={pageVisibility}
-            onPageVisibilityChange={onPageVisibilityChange}
-          />
-        )}
-      </div>
-
-      <div className="p-6 pt-4 border-t border-border bg-background">
-        <Button
-          type="button"
-          disabled={
-            !hasUnsavedGlobalChanges &&
-            !hasHeroChanges &&
-            !hasFontChanges &&
-            !hasServicesChanges &&
-            !hasValuesChanges &&
-            !hasGalleryChanges &&
-            !hasCTAChanges
-          }
-          onClick={onSaveGlobal}
-          className={cn(
-            "w-full font-bold py-6 rounded-xl transition-all duration-300",
-            hasUnsavedGlobalChanges ||
-              hasHeroChanges ||
-              hasFontChanges ||
-              hasServicesChanges ||
-              hasValuesChanges ||
-              hasGalleryChanges ||
-              hasCTAChanges
-              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
-              : "bg-muted text-muted-foreground cursor-not-allowed",
+          ) : (
+            <SidebarNav
+              pages={pages}
+              sections={sections}
+              activePage={activePage}
+              activeSection={activeSection}
+              expandedPages={expandedPages}
+              visibleSections={visibleSections}
+              onPageToggle={onPageToggle}
+              onSectionSelect={onSectionSelect}
+              onSectionVisibilityToggle={onSectionVisibilityToggle}
+              onSectionReset={onSectionReset}
+              pageVisibility={pageVisibility}
+              onPageVisibilityChange={onPageVisibilityChange}
+            />
           )}
-        >
-          {hasUnsavedGlobalChanges ||
-          hasHeroChanges ||
-          hasFontChanges ||
-          hasServicesChanges ||
-          hasValuesChanges ||
-          hasGalleryChanges ||
-          hasCTAChanges
-            ? "Publicar Alterações"
-            : "Tudo Atualizado"}
-        </Button>
+        </div>
+
+        <div className="p-6 pt-4 border-t border-border bg-background">
+          <Button
+            type="button"
+            disabled={
+              !hasUnsavedGlobalChanges &&
+              !hasHeroChanges &&
+              !hasFontChanges &&
+              !hasServicesChanges &&
+              !hasValuesChanges &&
+              !hasGalleryChanges &&
+              !hasCTAChanges
+            }
+            onClick={onSaveGlobal}
+            className={cn(
+              "w-full font-bold py-6 rounded-xl transition-all duration-300",
+              hasUnsavedGlobalChanges ||
+                hasHeroChanges ||
+                hasFontChanges ||
+                hasServicesChanges ||
+                hasValuesChanges ||
+                hasGalleryChanges ||
+                hasCTAChanges
+                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+                : "bg-muted text-muted-foreground cursor-not-allowed",
+            )}
+          >
+            {hasUnsavedGlobalChanges ||
+            hasHeroChanges ||
+            hasFontChanges ||
+            hasServicesChanges ||
+            hasValuesChanges ||
+            hasGalleryChanges ||
+            hasCTAChanges
+              ? "Publicar Site"
+              : "Tudo Atualizado"}
+          </Button>
+        </div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);

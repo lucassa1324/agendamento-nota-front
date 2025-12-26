@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import { BookingFlow } from "@/components/booking-flow";
-import { getPageVisibility } from "@/lib/booking-data";
+import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
 
 export default function AgendamentoPage({
   searchParams: searchParamsPromise,
@@ -14,23 +14,54 @@ export default function AgendamentoPage({
   const searchParams = use(searchParamsPromise);
   const only = searchParams.only;
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
+  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    const visibility = getPageVisibility();
-    if (visibility.agendar === false) {
-      setIsVisible(false);
-      router.push("/");
-    } else {
-      setIsVisible(true);
-    }
+    const checkVisibility = (visibility: Record<string, boolean>) => {
+      if (visibility.agendar === false) {
+        setIsVisible(false);
+        router.push("/");
+      } else {
+        setIsVisible(true);
+      }
+    };
+
+    checkVisibility(getPageVisibility());
+    setVisibleSections(getVisibleSections());
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
+        checkVisibility(event.data.visibility);
+      }
+      if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
+        setVisibleSections(event.data.sections);
+      }
+    };
+
+    const handleSectionsUpdate = () => {
+      setVisibleSections(getVisibleSections());
+    };
+
+    window.addEventListener("message", handleMessage);
+    window.addEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+    
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+    };
   }, [router]);
 
   if (isVisible === false) return null;
   if (isVisible === null) return null;
 
+  const isSectionVisible = (id: string) => {
+    if (only) return only === id;
+    return visibleSections[id] !== false;
+  };
+
   return (
     <main>
-      {(!only || only === "booking") && (
+      {isSectionVisible("booking") && (
         <section className="py-20 md:py-32 min-h-screen">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">

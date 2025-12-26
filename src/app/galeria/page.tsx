@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { GalleryGrid } from "@/components/gallery-grid";
-import { getPageVisibility } from "@/lib/booking-data";
+import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
 
 export default function GaleriaPage({
   searchParams: searchParamsPromise,
@@ -13,6 +13,7 @@ export default function GaleriaPage({
   const router = useRouter();
   const [only, setOnly] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
+  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     // Resolver searchParams
@@ -21,21 +22,51 @@ export default function GaleriaPage({
     });
 
     // Verificar visibilidade
-    const visibility = getPageVisibility();
-    if (visibility.galeria === false) {
-      setIsVisible(false);
-      router.push("/");
-    } else {
-      setIsVisible(true);
-    }
+    const checkVisibility = (visibility: Record<string, boolean>) => {
+      if (visibility.galeria === false) {
+        setIsVisible(false);
+        router.push("/");
+      } else {
+        setIsVisible(true);
+      }
+    };
+
+    checkVisibility(getPageVisibility());
+    setVisibleSections(getVisibleSections());
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
+        checkVisibility(event.data.visibility);
+      }
+      if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
+        setVisibleSections(event.data.sections);
+      }
+    };
+
+    const handleSectionsUpdate = () => {
+      setVisibleSections(getVisibleSections());
+    };
+
+    window.addEventListener("message", handleMessage);
+    window.addEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+    
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+    };
   }, [searchParamsPromise, router]);
 
   if (isVisible === false) return null;
   if (isVisible === null) return null; // Loading state
 
+  const isSectionVisible = (id: string) => {
+    if (only) return only === id;
+    return visibleSections[id] !== false;
+  };
+
   return (
     <main>
-      {(!only || only === "gallery-grid") && (
+      {isSectionVisible("gallery-grid") && (
         <section className="py-20 md:py-32">
           <div className="container mx-auto px-4">
             <div className="text-center mb-16">
