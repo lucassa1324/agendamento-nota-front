@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { getPageVisibility, getGalleryImages, getGallerySettings, type GalleryImage as GalleryImageType, type GallerySettings } from "@/lib/booking-data";
 
 export function GalleryPreview() {
@@ -148,21 +155,55 @@ export function GalleryPreview() {
         </div>
 
         {images.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-            {images.map((image) => (
-              <div
-                key={image.id}
-                className="aspect-square rounded-lg overflow-hidden hover:scale-105 transition-transform relative"
+          settings.layout === "grid" ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+              {images.map((image) => (
+                <div
+                  key={image.id}
+                  className="aspect-square rounded-lg overflow-hidden hover:scale-105 transition-transform relative"
+                >
+                  <Image
+                    src={image.url}
+                    alt={image.title}
+                    fill
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-4 md:px-12 mb-8">
+              <Carousel
+                opts={{
+                  align: "start",
+                  loop: true,
+                }}
+                className="w-full"
               >
-                <Image
-                  src={image.url}
-                  alt={image.title}
-                  fill
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ))}
-          </div>
+                <CarouselContent className="-ml-2 md:-ml-4">
+                  {images.map((image) => (
+                    <CarouselItem
+                      key={image.id}
+                      className="pl-2 md:pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4"
+                    >
+                      <div className="aspect-square rounded-lg overflow-hidden relative group">
+                        <Image
+                          src={image.url}
+                          alt={image.title}
+                          fill
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                      </div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                <div className="hidden md:block">
+                  <CarouselPrevious className="-left-6 bg-background/80 backdrop-blur-sm border-primary/20 hover:bg-primary hover:text-primary-foreground transition-all" />
+                  <CarouselNext className="-right-6 bg-background/80 backdrop-blur-sm border-primary/20 hover:bg-primary hover:text-primary-foreground transition-all" />
+                </div>
+              </Carousel>
+            </div>
+          )
         ) : (
           <div className="text-center py-10 text-muted-foreground italic">
             Nenhum trabalho em destaque no momento.

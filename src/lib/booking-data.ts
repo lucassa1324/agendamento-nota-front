@@ -300,6 +300,7 @@ export type GallerySettings = {
   subtitleColor: string;
   titleFont: string;
   subtitleFont: string;
+  layout: "grid" | "carousel";
   bgType: "color" | "image";
   bgColor: string;
   bgImage: string;
@@ -317,6 +318,7 @@ export const defaultGallerySettings: GallerySettings = {
   subtitleColor: "",
   titleFont: "Playfair Display",
   subtitleFont: "Inter",
+  layout: "grid",
   bgType: "color",
   bgColor: "",
   bgImage: "",

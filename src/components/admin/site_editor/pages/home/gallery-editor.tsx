@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageIcon, Type } from "lucide-react";
+import { ImageIcon, Type, LayoutGrid, SlidersHorizontal } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -86,6 +86,53 @@ export function GalleryEditor({
                 })
               }
             />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Estilo de Exibição */}
+        <AccordionItem
+          value="layout"
+          className="border rounded-lg px-4 bg-card/50"
+        >
+          <AccordionTrigger className="hover:no-underline py-4">
+            <div className="flex items-center gap-2 text-primary font-serif italic text-sm">
+              <LayoutGrid className="w-4 h-4" /> ESTILO DE EXIBIÇÃO
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4">
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => onUpdate({ layout: "grid" })}
+                className={cn(
+                  "flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300",
+                  settings.layout === "grid"
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-border hover:border-primary/30 hover:bg-muted/50",
+                )}
+              >
+                <div className="w-full aspect-video rounded-lg bg-muted border border-dashed border-border flex items-center justify-center">
+                  <LayoutGrid className="w-8 h-8 text-muted-foreground/40" />
+                </div>
+                <span className="text-xs font-bold">Grade (Padrão)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onUpdate({ layout: "carousel" })}
+                className={cn(
+                  "flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300",
+                  settings.layout === "carousel"
+                    ? "border-primary bg-primary/5 shadow-sm"
+                    : "border-border hover:border-primary/30 hover:bg-muted/50",
+                )}
+              >
+                <div className="w-full aspect-video rounded-lg bg-muted border border-dashed border-border flex items-center justify-center">
+                  <SlidersHorizontal className="w-8 h-8 text-muted-foreground/40" />
+                </div>
+                <span className="text-xs font-bold">Slide (Carrossel)</span>
+              </button>
+            </div>
           </AccordionContent>
         </AccordionItem>
 
