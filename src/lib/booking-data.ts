@@ -293,6 +293,40 @@ export const defaultValuesSettings: ValuesSettings = {
   ],
 };
 
+export type GallerySettings = {
+  title: string;
+  subtitle: string;
+  titleColor: string;
+  subtitleColor: string;
+  titleFont: string;
+  subtitleFont: string;
+  bgType: "color" | "image";
+  bgColor: string;
+  bgImage: string;
+  imageOpacity: number;
+  overlayOpacity: number;
+  imageScale: number;
+  imageX: number;
+  imageY: number;
+};
+
+export const defaultGallerySettings: GallerySettings = {
+  title: "Nossos Trabalhos",
+  subtitle: "Veja alguns dos resultados incríveis que alcançamos com nossas clientes",
+  titleColor: "",
+  subtitleColor: "",
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  bgType: "color",
+  bgColor: "",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0.5,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
+};
+
 export type FontSettings = {
   headingFont: string;
   bodyFont: string;
@@ -845,6 +879,19 @@ export function saveFontSettings(settings: FontSettings): void {
   localStorage.setItem("fontSettings", JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("fontSettingsUpdated"));
+  }
+}
+
+export function getGallerySettings(): GallerySettings {
+  if (typeof window === "undefined") return defaultGallerySettings;
+  const settings = localStorage.getItem("gallerySettings");
+  return settings ? JSON.parse(settings) : defaultGallerySettings;
+}
+
+export function saveGallerySettings(settings: GallerySettings): void {
+  localStorage.setItem("gallerySettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("gallerySettingsUpdated"));
   }
 }
 

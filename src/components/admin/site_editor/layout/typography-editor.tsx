@@ -68,10 +68,16 @@ export function TypographyEditor({
             </div>
           </AccordionTrigger>
           <AccordionContent className="pb-4 space-y-4">
-            <div className="space-y-2 pt-1">
-              <Label className="text-[10px] font-medium text-muted-foreground ml-1">
+            <fieldset 
+              className="space-y-1.5 border-none p-0 m-0 pt-1" 
+              onPointerDown={(e) => e.stopPropagation()} 
+              onMouseDown={(e) => e.stopPropagation()} 
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 ml-1">
                 Selecione a fonte principal
-              </Label>
+              </legend>
               <Select
                 value={settings.headingFont}
                 onValueChange={(val) => onUpdate({ headingFont: val })}
@@ -91,7 +97,7 @@ export function TypographyEditor({
                   <SelectItem value="Cinzel">Cinzel</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </fieldset>
           </AccordionContent>
         </AccordionItem>
 
@@ -108,10 +114,16 @@ export function TypographyEditor({
             </div>
           </AccordionTrigger>
           <AccordionContent className="pb-4 space-y-4">
-            <div className="space-y-2 pt-1">
-              <Label className="text-[10px] font-medium text-muted-foreground ml-1">
+            <fieldset 
+              className="space-y-1.5 border-none p-0 m-0 pt-1" 
+              onPointerDown={(e) => e.stopPropagation()} 
+              onMouseDown={(e) => e.stopPropagation()} 
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 ml-1">
                 Selecione a fonte para textos
-              </Label>
+              </legend>
               <Select
                 value={settings.bodyFont}
                 onValueChange={(val) => onUpdate({ bodyFont: val })}
@@ -127,7 +139,7 @@ export function TypographyEditor({
                   <SelectItem value="Open Sans">Open Sans</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
+            </fieldset>
           </AccordionContent>
         </AccordionItem>
       </Accordion>

@@ -37,7 +37,7 @@ const Sidebar = ({
   adminUser: { name: string; username: string } | null;
   handleLogout: () => void;
 }) => (
-  <aside className="w-64 bg-card border-r border-border flex flex-col h-full lg:h-[calc(100vh-64px)] lg:sticky lg:top-16">
+  <aside className="w-64 bg-card border-r border-border flex flex-col h-full lg:h-[calc(100vh-64px)] lg:sticky lg:top-16 z-50 shadow-xl">
     {/* Sidebar Header */}
     <div className="p-6 border-b border-border">
       <Link

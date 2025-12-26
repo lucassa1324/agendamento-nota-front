@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/a11y/useSemanticElements: <explanation> */
+/** biome-ignore-all lint/a11y/useSemanticElements: Elementos de layout complexos para gerenciamento de mídia e arraste */
 "use client";
 
 import {

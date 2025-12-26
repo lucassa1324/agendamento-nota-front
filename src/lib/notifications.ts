@@ -1,5 +1,5 @@
 // Sistema de notificações via Email e WhatsApp
-/** biome-ignore-all lint/correctness/noUnusedVariables: <explanation> */
+/** biome-ignore-all lint/correctness/noUnusedVariables: Variáveis de notificação que serão integradas com serviços de mensageria futuramente */
 export type NotificationType = "confirmation" | "reminder" | "cancellation";
 
 export interface NotificationData {

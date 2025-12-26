@@ -16,7 +16,6 @@ import {
   Star,
   Sun,
   Type,
-  Upload,
 } from "lucide-react";
 import type { ChangeEvent } from "react";
 import {
@@ -36,8 +35,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { EDITOR_FONTS } from "../../components/editor-constants";
+import { SectionTitleEditor } from "../../components/SectionTitleEditor";
+import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
+import { BackgroundEditor } from "../../components/BackgroundEditor";
 
 const availableIcons = [
   { name: "Sparkles", icon: Sparkles },
@@ -50,19 +52,6 @@ const availableIcons = [
   { name: "Gem", icon: Gem },
   { name: "Smile", icon: Smile },
   { name: "Award", icon: Award },
-];
-
-const fonts = [
-  { name: "Playfair Display", type: "serif" },
-  { name: "Lora", type: "serif" },
-  { name: "Merriweather", type: "serif" },
-  { name: "Cormorant Garamond", type: "serif" },
-  { name: "Cinzel", type: "serif" },
-  { name: "Inter", type: "sans" },
-  { name: "Montserrat", type: "sans" },
-  { name: "Poppins", type: "sans" },
-  { name: "Roboto", type: "sans" },
-  { name: "Open Sans", type: "sans" },
 ];
 
 interface HeroEditorProps {
@@ -163,7 +152,14 @@ export function HeroEditor({
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-0 pb-4 space-y-4">
-                <div className="flex items-center justify-between border-t border-border/50 pt-4">
+                  {/* biome-ignore lint/a11y/noStaticElementInteractions: Necessário para evitar propagação em componentes de UI */}
+                  <div 
+                    className="flex items-center justify-between border-t border-border/50 pt-4" 
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
                   <Label className="text-[10px] text-muted-foreground">
                     Mostrar Tag
                   </Label>
@@ -183,10 +179,16 @@ export function HeroEditor({
 
                 {settings.showBadge && (
                   <div className="space-y-4 animate-in fade-in duration-300">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] text-muted-foreground">
+                    <fieldset 
+                      className="space-y-1.5 border-none p-0 m-0" 
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
                         Texto da Tag
-                      </Label>
+                      </legend>
                       <Input
                         id="hero-badge"
                         value={settings.badge}
@@ -196,12 +198,18 @@ export function HeroEditor({
                           onUpdate({ badge: e.target.value })
                         }
                       />
-                    </div>
+                    </fieldset>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <fieldset 
+                      className="space-y-1.5 border-none p-0 m-0" 
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                         Selecionar Ícone
-                      </Label>
+                      </legend>
                       <Select
                         value={settings.badgeIcon || "Sparkles"}
                         onValueChange={(val: string) =>
@@ -226,18 +234,24 @@ export function HeroEditor({
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </fieldset>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <fieldset 
+                        className="space-y-1.5 border-none p-0 m-0" 
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                           Cor do Ícone
-                        </Label>
+                        </legend>
                         <div className="flex gap-2">
                           <Input
                             type="color"
                             value={settings.badgeColor || "#ec4899"}
-                            className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50"
+                            className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
                             onChange={(e) =>
                               onUpdate({ badgeColor: e.target.value })
                             }
@@ -251,17 +265,23 @@ export function HeroEditor({
                             }
                           />
                         </div>
-                      </div>
+                      </fieldset>
 
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <fieldset 
+                        className="space-y-1.5 border-none p-0 m-0" 
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                           Cor do Texto
-                        </Label>
+                        </legend>
                         <div className="flex gap-2">
                           <Input
                             type="color"
                             value={settings.badgeTextColor || "#ec4899"}
-                            className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50"
+                            className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
                             onChange={(e) =>
                               onUpdate({ badgeTextColor: e.target.value })
                             }
@@ -275,13 +295,19 @@ export function HeroEditor({
                             }
                           />
                         </div>
-                      </div>
+                      </fieldset>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <fieldset 
+                      className="space-y-1.5 border-none p-0 m-0" 
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                         <Type className="w-2 h-2" /> Fonte
-                      </Label>
+                      </legend>
                       <Select
                         value={settings.badgeFont}
                         onValueChange={(val: string) =>
@@ -292,18 +318,18 @@ export function HeroEditor({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {fonts.map((f) => (
+                          {EDITOR_FONTS.map((f) => (
                             <SelectItem
                               key={f.name}
                               value={f.name}
                               className="text-[10px]"
                             >
-                              {f.name}
+                              <span style={{ fontFamily: f.name }}>{f.name}</span>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
+                    </fieldset>
                   </div>
                 )}
               </AccordionContent>
@@ -322,66 +348,19 @@ export function HeroEditor({
                   </span>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="pb-4 space-y-4 border-t border-border/50 pt-4">
-                <Input
-                  id="hero-title"
-                  value={settings.title}
-                  className="h-9 text-sm font-serif"
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    onUpdate({ title: e.target.value })
+              <AccordionContent className="pb-4 border-t border-border/50 pt-4">
+                <SectionTitleEditor
+                  title={settings.title}
+                  font={settings.titleFont}
+                  color={settings.titleColor}
+                  onUpdate={(updates) =>
+                    onUpdate({
+                      ...(updates.title !== undefined && { title: updates.title }),
+                      ...(updates.font !== undefined && { titleFont: updates.font }),
+                      ...(updates.color !== undefined && { titleColor: updates.color }),
+                    })
                   }
                 />
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-[9px] uppercase text-muted-foreground flex items-center gap-1">
-                      <Type className="w-2 h-2" /> Fonte do Título
-                    </Label>
-                    <Select
-                      value={settings.titleFont}
-                      onValueChange={(val: string) =>
-                        onUpdate({ titleFont: val })
-                      }
-                    >
-                      <SelectTrigger className="h-7 text-[10px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {fonts.map((f) => (
-                          <SelectItem
-                            key={f.name}
-                            value={f.name}
-                            className="text-[10px]"
-                          >
-                            {f.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[9px] uppercase text-muted-foreground flex items-center gap-1">
-                      <Palette className="w-2 h-2" /> Cor do Título
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="color"
-                        value={settings.titleColor || "#000000"}
-                        className="w-7 h-7 p-0.5 rounded-full bg-transparent border-border/50"
-                        onChange={(e) =>
-                          onUpdate({ titleColor: e.target.value })
-                        }
-                      />
-                      <Input
-                        value={settings.titleColor || ""}
-                        placeholder="#HEX"
-                        className="h-7 text-[10px] flex-1 uppercase"
-                        onChange={(e) =>
-                          onUpdate({ titleColor: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
               </AccordionContent>
             </AccordionItem>
 
@@ -398,66 +377,19 @@ export function HeroEditor({
                   </span>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="pb-4 space-y-4 border-t border-border/50 pt-4">
-                <Textarea
-                  id="hero-subtitle"
-                  value={settings.subtitle}
-                  className="min-h-15 text-sm resize-none"
-                  onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-                    onUpdate({ subtitle: e.target.value })
+              <AccordionContent className="pb-4 border-t border-border/50 pt-4">
+                <SectionSubtitleEditor
+                  subtitle={settings.subtitle}
+                  font={settings.subtitleFont}
+                  color={settings.subtitleColor}
+                  onUpdate={(updates) =>
+                    onUpdate({
+                      ...(updates.subtitle !== undefined && { subtitle: updates.subtitle }),
+                      ...(updates.font !== undefined && { subtitleFont: updates.font }),
+                      ...(updates.color !== undefined && { subtitleColor: updates.color }),
+                    })
                   }
                 />
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-[9px] uppercase text-muted-foreground flex items-center gap-1">
-                      <Type className="w-2 h-2" /> Fonte do Subtítulo
-                    </Label>
-                    <Select
-                      value={settings.subtitleFont}
-                      onValueChange={(val: string) =>
-                        onUpdate({ subtitleFont: val })
-                      }
-                    >
-                      <SelectTrigger className="h-7 text-[10px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {fonts.map((f) => (
-                          <SelectItem
-                            key={f.name}
-                            value={f.name}
-                            className="text-[10px]"
-                          >
-                            {f.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[9px] uppercase text-muted-foreground flex items-center gap-1">
-                      <Palette className="w-2 h-2" /> Cor do Subtítulo
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="color"
-                        value={settings.subtitleColor || "#4b5563"}
-                        className="w-7 h-7 p-0.5 rounded-full bg-transparent border-border/50"
-                        onChange={(e) =>
-                          onUpdate({ subtitleColor: e.target.value })
-                        }
-                      />
-                      <Input
-                        value={settings.subtitleColor || ""}
-                        placeholder="#HEX"
-                        className="h-7 text-[10px] flex-1 uppercase"
-                        onChange={(e) =>
-                          onUpdate({ subtitleColor: e.target.value })
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
               </AccordionContent>
             </AccordionItem>
 
@@ -476,10 +408,16 @@ export function HeroEditor({
               </AccordionTrigger>
               <AccordionContent className="pb-4 space-y-6 border-t border-border/50 pt-4">
                 <div className="space-y-4">
-                  <div className="space-y-3 p-3 rounded-lg bg-background/50 border border-border/50">
-                    <Label className="text-[9px] font-bold uppercase text-primary">
+                  <fieldset 
+                    className="space-y-3 p-3 rounded-lg bg-background/50 border border-border/50" 
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
                       Botão Principal
-                    </Label>
+                    </legend>
                     <Input
                       value={settings.primaryButton}
                       className="h-8 text-xs"
@@ -488,10 +426,10 @@ export function HeroEditor({
                       }
                     />
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-[9px] uppercase text-muted-foreground flex items-center gap-1">
+                      <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                           <Palette className="w-2 h-2" /> Cor de Fundo
-                        </Label>
+                        </legend>
                         <div className="flex gap-1">
                           <Input
                             type="color"
@@ -510,11 +448,11 @@ export function HeroEditor({
                             }
                           />
                         </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[9px] uppercase text-muted-foreground flex items-center gap-1">
+                      </fieldset>
+                      <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                           <Palette className="w-2 h-2" /> Cor do Texto
-                        </Label>
+                        </legend>
                         <div className="flex gap-1">
                           <Input
                             type="color"
@@ -537,12 +475,12 @@ export function HeroEditor({
                             }
                           />
                         </div>
-                      </div>
+                      </fieldset>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[9px] uppercase text-muted-foreground flex items-center gap-1">
+                    <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                         <Type className="w-2 h-2" /> Fonte do Botão
-                      </Label>
+                      </legend>
                       <Select
                         value={settings.primaryButtonFont}
                         onValueChange={(val: string) =>
@@ -553,24 +491,30 @@ export function HeroEditor({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {fonts.map((f) => (
+                          {EDITOR_FONTS.map((f) => (
                             <SelectItem
                               key={f.name}
                               value={f.name}
                               className="text-[10px]"
                             >
-                              {f.name}
+                              <span style={{ fontFamily: f.name }}>{f.name}</span>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                  </div>
+                    </fieldset>
+                  </fieldset>
 
-                  <div className="space-y-3 p-3 rounded-lg bg-background/50 border border-border/50">
-                    <Label className="text-[9px] font-bold uppercase text-primary">
+                  <fieldset 
+                    className="space-y-3 p-3 rounded-lg bg-background/50 border border-border/50" 
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
                       Botão Secundário
-                    </Label>
+                    </legend>
                     <Input
                       value={settings.secondaryButton}
                       className="h-8 text-xs"
@@ -579,10 +523,10 @@ export function HeroEditor({
                       }
                     />
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-[9px] uppercase text-muted-foreground flex items-center gap-1">
+                      <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                           <Palette className="w-2 h-2" /> Cor de Fundo
-                        </Label>
+                        </legend>
                         <div className="flex gap-1">
                           <Input
                             type="color"
@@ -601,11 +545,11 @@ export function HeroEditor({
                             }
                           />
                         </div>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-[9px] uppercase text-muted-foreground flex items-center gap-1">
+                      </fieldset>
+                      <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                           <Palette className="w-2 h-2" /> Cor do Texto
-                        </Label>
+                        </legend>
                         <div className="flex gap-1">
                           <Input
                             type="color"
@@ -630,12 +574,12 @@ export function HeroEditor({
                             }
                           />
                         </div>
-                      </div>
+                      </fieldset>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-[9px] uppercase text-muted-foreground flex items-center gap-1">
+                    <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                         <Type className="w-2 h-2" /> Fonte do Botão
-                      </Label>
+                      </legend>
                       <Select
                         value={settings.secondaryButtonFont}
                         onValueChange={(val: string) =>
@@ -646,19 +590,19 @@ export function HeroEditor({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {fonts.map((f) => (
+                          {EDITOR_FONTS.map((f) => (
                             <SelectItem
                               key={f.name}
                               value={f.name}
                               className="text-[10px]"
                             >
-                              {f.name}
+                              <span style={{ fontFamily: f.name }}>{f.name}</span>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                    </div>
-                  </div>
+                    </fieldset>
+                  </fieldset>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -684,230 +628,15 @@ export function HeroEditor({
                   </span>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="pb-4 space-y-4 border-t border-border/50 pt-4">
-                <Tabs
-                  defaultValue={settings.bgType}
-                  onValueChange={(val: string) =>
-                    onUpdate({ bgType: val as "color" | "image" })
-                  }
-                >
-                  <TabsList className="grid w-full grid-cols-2 h-8">
-                    <TabsTrigger value="color" className="text-[10px]">
-                      Cor Sólida
-                    </TabsTrigger>
-                    <TabsTrigger value="image" className="text-[10px]">
-                      Imagem
-                    </TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="color" className="space-y-2 mt-2">
-                    <div className="flex gap-2 items-center">
-                      <Input
-                        id="hero-bg-color"
-                        type="color"
-                        value={settings.bgColor}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                          onUpdate({ bgColor: e.target.value })
-                        }
-                        className="w-12 h-9 p-1 cursor-pointer"
-                      />
-                      <Input
-                        id="hero-bg-color-hex"
-                        type="text"
-                        value={settings.bgColor}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                          onUpdate({ bgColor: e.target.value })
-                        }
-                        className="flex-1 h-9 text-xs font-mono"
-                      />
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="image" className="space-y-3 mt-2">
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="hero-image-url"
-                        className="text-[9px] text-muted-foreground uppercase"
-                      >
-                        URL da Imagem
-                      </Label>
-                      <Input
-                        id="hero-image-url"
-                        type="text"
-                        placeholder="https://exemplo.com/imagem.jpg"
-                        value={settings.bgImage}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                          onUpdate({ bgImage: e.target.value })
-                        }
-                        className="h-9 text-xs"
-                      />
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full h-9 text-xs gap-2 border-dashed"
-                      onClick={() => {
-                        const input = document.createElement("input");
-                        input.type = "file";
-                        input.accept = "image/*";
-                        input.onchange = (event: Event) => {
-                          const file = (event.target as HTMLInputElement)
-                            .files?.[0];
-                          if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (re: ProgressEvent<FileReader>) => {
-                              onUpdate({
-                                bgImage: re.target?.result as string,
-                              });
-                            };
-                            reader.readAsDataURL(file);
-                          }
-                        };
-                        input.click();
-                      }}
-                    >
-                      <Upload className="w-3 h-3" />
-                      Fazer Upload
-                    </Button>
-
-                    <div className="space-y-2 pt-2">
-                      <div className="flex justify-between items-center">
-                        <Label className="text-[9px] text-muted-foreground uppercase">
-                          Opacidade da Imagem
-                        </Label>
-                        <span className="text-[10px] font-mono">
-                          {Math.round(settings.imageOpacity * 100)}%
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.05"
-                        value={settings.imageOpacity}
-                        onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                          onUpdate({
-                            imageOpacity: Number.parseFloat(e.target.value),
-                          })
-                        }
-                        className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-                      />
-                    </div>
-
-                    <div className="space-y-4 pt-2 border-t border-border/50">
-                      <Label className="text-[9px] text-muted-foreground uppercase font-bold">
-                        Ajuste Manual da Imagem
-                      </Label>
-
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <Label className="text-[9px] text-muted-foreground">
-                            Zoom (Escala)
-                          </Label>
-                          <span className="text-[10px] font-mono">
-                            {settings.imageScale.toFixed(2)}x
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min="1"
-                          max="3"
-                          step="0.01"
-                          value={settings.imageScale}
-                          onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                            onUpdate({
-                              imageScale: Number.parseFloat(e.target.value),
-                            })
-                          }
-                          className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <Label className="text-[9px] text-muted-foreground">
-                              Posição X
-                            </Label>
-                            <span className="text-[10px] font-mono">
-                              {settings.imageX}%
-                            </span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="1"
-                            value={settings.imageX}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                              onUpdate({
-                                imageX: Number.parseInt(e.target.value, 10),
-                              })
-                            }
-                            className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <Label className="text-[9px] text-muted-foreground">
-                              Posição Y
-                            </Label>
-                            <span className="text-[10px] font-mono">
-                              {settings.imageY}%
-                            </span>
-                          </div>
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="1"
-                            value={settings.imageY}
-                            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                              onUpdate({
-                                imageY: Number.parseInt(e.target.value, 10),
-                              })
-                            }
-                            className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-                          />
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="w-full h-7 text-[9px] uppercase font-bold text-muted-foreground hover:text-primary"
-                        onClick={() =>
-                          onUpdate({ imageScale: 1, imageX: 50, imageY: 50 })
-                        }
-                      >
-                        Resetar Ajustes
-                      </Button>
-                    </div>
-                  </TabsContent>
-                </Tabs>
+              <AccordionContent className="pb-4 border-t border-border/50">
+                <BackgroundEditor
+                  settings={settings}
+                  onUpdate={(updates) => onUpdate({ ...updates })}
+                  sectionId="hero"
+                />
               </AccordionContent>
             </AccordionItem>
           </Accordion>
-
-          <div className="space-y-2 pt-2 border-t border-border">
-            <div className="flex justify-between items-center">
-              <Label className="text-[9px] text-muted-foreground uppercase">
-                Intensidade do Gradiente
-              </Label>
-              <span className="text-[10px] font-mono">
-                {Math.round(settings.overlayOpacity * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={settings.overlayOpacity}
-              onChange={(e) =>
-                onUpdate({ overlayOpacity: Number.parseFloat(e.target.value) })
-              }
-              className="w-full h-1.5 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
-            />
-          </div>
         </TabsContent>
       </Tabs>
 

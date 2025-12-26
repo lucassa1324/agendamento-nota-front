@@ -17,7 +17,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,11 +41,14 @@ interface PageItem {
 
 import {
   defaultFontSettings,
+  defaultGallerySettings,
   defaultHeroSettings,
   defaultServicesSettings,
   defaultValuesSettings,
   type FontSettings,
+  type GallerySettings,
   getFontSettings,
+  getGallerySettings,
   getHeroSettings,
   getPageVisibility,
   getServicesSettings,
@@ -53,6 +56,7 @@ import {
   type HeroSettings,
   type ServicesSettings,
   saveFontSettings,
+  saveGallerySettings,
   saveHeroSettings,
   savePageVisibility,
   saveServicesSettings,
@@ -61,6 +65,7 @@ import {
 } from "@/lib/booking-data";
 // Importações Modulares (Nova Arquitetura)
 import { TypographyEditor } from "./site_editor/layout/typography-editor";
+import { GalleryEditor } from "./site_editor/pages/home/gallery-editor";
 import { HeroEditor } from "./site_editor/pages/home/hero-editor";
 import { HistoryEditor } from "./site_editor/pages/home/history-editor";
 import { ServicesEditor } from "./site_editor/pages/home/services-editor";
@@ -272,6 +277,9 @@ export function SiteCustomizer() {
   const [valuesSettings, setValuesSettings] = useState<ValuesSettings>(
     defaultValuesSettings,
   );
+  const [gallerySettings, setGallerySettings] = useState<GallerySettings>(
+    defaultGallerySettings,
+  );
 
   // Estados para controle de botões (Aplicar vs Salvar)
   const [lastAppliedHero, setLastAppliedHero] =
@@ -283,6 +291,9 @@ export function SiteCustomizer() {
   const [lastAppliedValues, setLastAppliedValues] = useState<ValuesSettings>(
     defaultValuesSettings,
   );
+  const [lastAppliedGallery, setLastAppliedGallery] = useState<GallerySettings>(
+    defaultGallerySettings,
+  );
   const [lastSavedHero, setLastSavedHero] =
     useState<HeroSettings>(defaultHeroSettings);
   const [lastSavedFont, setLastSavedFont] =
@@ -293,27 +304,54 @@ export function SiteCustomizer() {
   const [lastSavedValues, setLastSavedValues] = useState<ValuesSettings>(
     defaultValuesSettings,
   );
+  const [lastSavedGallery, setLastSavedGallery] = useState<GallerySettings>(
+    defaultGallerySettings,
+  );
+
+  const handleUpdateHero = useCallback((updates: Partial<HeroSettings>) => {
+    setHeroSettings((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleUpdateFont = useCallback((updates: Partial<FontSettings>) => {
+    setFontSettings((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleUpdateServices = useCallback((updates: Partial<ServicesSettings>) => {
+    setServicesSettings((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleUpdateValues = useCallback((updates: Partial<ValuesSettings>) => {
+    setValuesSettings((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleUpdateGallery = useCallback((updates: Partial<GallerySettings>) => {
+    setGallerySettings((prev) => ({ ...prev, ...updates }));
+  }, []);
 
   useEffect(() => {
     const loadedHero = getHeroSettings();
     const loadedFont = getFontSettings();
     const loadedServices = getServicesSettings();
     const loadedValues = getValuesSettings();
+    const loadedGallery = getGallerySettings();
 
     setHeroSettings(loadedHero);
     setFontSettings(loadedFont);
     setServicesSettings(loadedServices);
     setValuesSettings(loadedValues);
+    setGallerySettings(loadedGallery);
 
     setLastAppliedHero(loadedHero);
     setLastAppliedFont(loadedFont);
     setLastAppliedServices(loadedServices);
     setLastAppliedValues(loadedValues);
+    setLastAppliedGallery(loadedGallery);
 
     setLastSavedHero(loadedHero);
     setLastSavedFont(loadedFont);
     setLastSavedServices(loadedServices);
     setLastSavedValues(loadedValues);
+    setLastSavedGallery(loadedGallery);
   }, []);
 
   // Booleans para habilitar/desabilitar botões
@@ -325,14 +363,17 @@ export function SiteCustomizer() {
     JSON.stringify(servicesSettings) !== JSON.stringify(lastAppliedServices);
   const hasValuesChanges =
     JSON.stringify(valuesSettings) !== JSON.stringify(lastAppliedValues);
+  const hasGalleryChanges =
+    JSON.stringify(gallerySettings) !== JSON.stringify(lastAppliedGallery);
 
   const hasUnsavedGlobalChanges =
     JSON.stringify(lastAppliedHero) !== JSON.stringify(lastSavedHero) ||
     JSON.stringify(lastAppliedFont) !== JSON.stringify(lastSavedFont) ||
     JSON.stringify(lastAppliedServices) !== JSON.stringify(lastSavedServices) ||
-    JSON.stringify(lastAppliedValues) !== JSON.stringify(lastSavedValues);
+    JSON.stringify(lastAppliedValues) !== JSON.stringify(lastSavedValues) ||
+    JSON.stringify(lastAppliedGallery) !== JSON.stringify(lastSavedGallery);
 
-  const resetSettings = () => {
+  const resetSettings = useCallback(() => {
     if (
       confirm(
         "Tem certeza que deseja resetar todas as configurações para o padrão original?",
@@ -342,8 +383,9 @@ export function SiteCustomizer() {
       setFontSettings(defaultFontSettings);
       setServicesSettings(defaultServicesSettings);
       setValuesSettings(defaultValuesSettings);
+      setGallerySettings(defaultGallerySettings);
     }
-  };
+  }, []);
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -407,6 +449,19 @@ export function SiteCustomizer() {
       );
     }
   }, [fontSettings]);
+
+  // Envia atualizações para a galeria
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_GALLERY_SETTINGS",
+          settings: gallerySettings,
+        },
+        "*",
+      );
+    }
+  }, [gallerySettings]);
 
   const activePageData = pages.find((p) => p.id === activePage);
 
@@ -536,167 +591,9 @@ export function SiteCustomizer() {
     ? `${activePageData.path}${activeSection ? `?only=${activeSection}` : ""}`
     : "";
 
-  const SidebarContent = () => (
-    <div className="flex flex-col h-full text-[clamp(0.75rem,1vw,0.875rem)]">
-      <div className="p-3 xl:p-6 pb-3 border-b border-border/50 shrink-0">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 text-primary font-bold">
-            <Settings2 className="w-4 h-4 xl:w-5 xl:h-5" />
-            <span className="text-[10px] xl:text-sm tracking-wide uppercase">
-              Editor
-            </span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={resetSettings}
-            className="h-7 xl:h-8 px-2 xl:px-3 gap-1 xl:gap-1.5 text-[9px] xl:text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors shrink-0"
-          >
-            <RotateCcw className="w-2.5 h-2.5 xl:w-3 xl:h-3" />
-            <span>Resetar</span>
-          </Button>
-        </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto p-3 xl:p-6 custom-scrollbar min-w-0">
-        {activeSection ? (
-          /* Editor de Seção (Placeholder) */
-          <div className="space-y-4 xl:space-y-6 animate-in slide-in-from-left duration-300">
-            <div className="flex items-center gap-2 mb-3 xl:mb-4">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setActiveSection(null)}
-                className="h-7 w-7 xl:h-8 xl:w-8 rounded-full p-0"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 xl:w-4 xl:h-4" />
-              </Button>
-              <div>
-                <h3 className="text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
-                  {activeSectionData?.name}
-                </h3>
-                <p className="text-[9px] xl:text-[10px] text-muted-foreground">
-                  Editando seção
-                </p>
-              </div>
-            </div>
 
-            <div className="space-y-3 xl:space-y-4 p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
-              {/* --- LAYOUT GLOBAL --- */}
-              {activeSection === "typography" && (
-                <TypographyEditor
-                  settings={fontSettings}
-                  onUpdate={(updates) =>
-                    setFontSettings((prev) => ({ ...prev, ...updates }))
-                  }
-                  onHighlight={handleHighlight}
-                  hasChanges={hasFontChanges}
-                  onSave={handleApplyTypography}
-                />
-              )}
-
-              {/* --- PÁGINA: INÍCIO (HOME) --- */}
-              {activeSection === "hero" && (
-                <HeroEditor
-                  settings={heroSettings}
-                  onUpdate={(updates) =>
-                    setHeroSettings((prev) => ({ ...prev, ...updates }))
-                  }
-                  onHighlight={handleHighlight}
-                  hasChanges={hasHeroChanges}
-                  onSave={handleApplyHero}
-                />
-              )}
-              {activeSection === "story" && (
-                <HistoryEditor hasChanges={false} onSave={() => {}} />
-              )}
-              {activeSection === "services" && (
-                <ServicesEditor
-                  settings={servicesSettings}
-                  onUpdate={(updates) =>
-                    setServicesSettings((prev) => ({ ...prev, ...updates }))
-                  }
-                  hasChanges={hasServicesChanges}
-                  onSave={handleApplyServices}
-                />
-              )}
-              {activeSection === "values" && (
-                <ValuesEditor
-                  settings={valuesSettings}
-                  onUpdate={(updates) =>
-                    setValuesSettings((prev) => ({ ...prev, ...updates }))
-                  }
-                  hasChanges={hasValuesChanges}
-                  onSave={handleApplyValues}
-                />
-              )}
-
-              {/* --- FALLBACK PARA SEÇÕES EM DESENVOLVIMENTO --- */}
-              {!["typography", "hero", "story", "services", "values"].includes(
-                activeSection,
-              ) && (
-                <div className="py-12 text-center">
-                  <Settings2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
-                  <p className="text-sm text-muted-foreground">
-                    O editor para esta seção será implementado em breve.
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <SidebarNav
-            pages={pages}
-            sections={sections}
-            activePage={activePage}
-            activeSection={activeSection}
-            expandedPages={expandedPages}
-            visibleSections={visibleSections}
-            onPageToggle={togglePageExpansion}
-            onSectionSelect={scrollToSection}
-            onSectionVisibilityToggle={toggleSection}
-            pageVisibility={pageVisibility}
-            onPageVisibilityChange={handlePageVisibilityChange}
-          />
-        )}
-      </div>
-
-      <div className="p-6 pt-4 border-t border-border bg-background">
-        <Button
-          type="button"
-          disabled={
-            !hasUnsavedGlobalChanges &&
-            !hasHeroChanges &&
-            !hasFontChanges &&
-            !hasServicesChanges &&
-            !hasValuesChanges
-          }
-          onClick={handleSaveGlobal}
-          className={cn(
-            "w-full font-bold py-6 rounded-xl transition-all duration-300",
-            hasUnsavedGlobalChanges ||
-              hasHeroChanges ||
-              hasFontChanges ||
-              hasServicesChanges ||
-              hasValuesChanges
-              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
-              : "bg-muted text-muted-foreground cursor-not-allowed",
-          )}
-        >
-          {hasUnsavedGlobalChanges ||
-          hasHeroChanges ||
-          hasFontChanges ||
-          hasServicesChanges ||
-          hasValuesChanges
-            ? "Publicar Alterações"
-            : "Tudo Atualizado"}
-        </Button>
-      </div>
-    </div>
-  );
-
-  const handleApplyHero = () => {
+  const handleApplyHero = useCallback(() => {
     setLastAppliedHero(heroSettings);
     // Forçar atualização do preview
     if (iframeRef.current?.contentWindow) {
@@ -713,9 +610,9 @@ export function SiteCustomizer() {
       title: "Preview atualizado!",
       description: "As mudanças do Hero foram aplicadas ao rascunho.",
     });
-  };
+  }, [heroSettings, toast]);
 
-  const handleApplyTypography = () => {
+  const handleApplyTypography = useCallback(() => {
     setLastAppliedFont(fontSettings);
     // Forçar atualização do preview
     if (iframeRef.current?.contentWindow) {
@@ -728,9 +625,9 @@ export function SiteCustomizer() {
       title: "Preview atualizado!",
       description: "As mudanças de tipografia foram aplicadas ao rascunho.",
     });
-  };
+  }, [fontSettings, toast]);
 
-  const handleApplyServices = () => {
+  const handleApplyServices = useCallback(() => {
     setLastAppliedServices(servicesSettings);
     // Forçar atualização do preview
     if (iframeRef.current?.contentWindow) {
@@ -743,9 +640,9 @@ export function SiteCustomizer() {
       title: "Preview atualizado!",
       description: "As mudanças dos serviços foram aplicadas ao rascunho.",
     });
-  };
+  }, [servicesSettings, toast]);
 
-  const handleApplyValues = () => {
+  const handleApplyValues = useCallback(() => {
     setLastAppliedValues(valuesSettings);
     // Forçar atualização do preview
     if (iframeRef.current?.contentWindow) {
@@ -758,7 +655,22 @@ export function SiteCustomizer() {
       title: "Preview atualizado!",
       description: "As mudanças dos valores foram aplicadas ao rascunho.",
     });
-  };
+  }, [valuesSettings, toast]);
+
+  const handleApplyGallery = useCallback(() => {
+    setLastAppliedGallery(gallerySettings);
+    // Forçar atualização do preview
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_GALLERY_SETTINGS", settings: gallerySettings },
+        "*",
+      );
+    }
+    toast({
+      title: "Preview atualizado!",
+      description: "As mudanças da galeria foram aplicadas ao rascunho.",
+    });
+  }, [gallerySettings, toast]);
 
   const handleSaveGlobal = () => {
     // 1. Salva no localStorage (Produção)
@@ -766,21 +678,24 @@ export function SiteCustomizer() {
     saveFontSettings(lastAppliedFont);
     saveServicesSettings(lastAppliedServices);
     saveValuesSettings(lastAppliedValues);
+    saveGallerySettings(lastAppliedGallery);
 
     // 2. Atualiza estados de controle
     setLastSavedHero(lastAppliedHero);
     setLastSavedFont(lastAppliedFont);
     setLastSavedServices(lastAppliedServices);
     setLastSavedValues(lastAppliedValues);
+    setLastSavedGallery(lastAppliedGallery);
+
     setLastAppliedHero(lastAppliedHero);
     setLastAppliedFont(lastAppliedFont);
     setLastAppliedServices(lastAppliedServices);
     setLastAppliedValues(lastAppliedValues);
+    setLastAppliedGallery(lastAppliedGallery);
 
     toast({
-      title: "Site Publicado!",
-      description: "Todas as alterações foram salvas e estão ao vivo.",
-      variant: "default",
+      title: "Sucesso",
+      description: "Todas as alterações foram salvas permanentemente.",
     });
   };
 
@@ -892,7 +807,7 @@ export function SiteCustomizer() {
   );
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background">
+    <div className="flex h-screen w-full overflow-hidden bg-background relative">
       {headerPortalTarget && createPortal(headerControls, headerPortalTarget)}
       {/* Mobile: Sidebar (Sheet) */}
       <Sheet open={isMobile && isSidebarOpen} onOpenChange={onToggleSidebar}>
@@ -901,34 +816,99 @@ export function SiteCustomizer() {
             <SheetTitle>Personalização</SheetTitle>
           </SheetHeader>
           <div className="flex flex-col h-full">
-            <SidebarContent />
+            <SidebarContent
+              activeSection={activeSection}
+              activeSectionData={activeSectionData || null}
+              setActiveSection={setActiveSection}
+              resetSettings={resetSettings}
+              fontSettings={fontSettings}
+              heroSettings={heroSettings}
+              servicesSettings={servicesSettings}
+              valuesSettings={valuesSettings}
+              gallerySettings={gallerySettings}
+              onUpdateFont={handleUpdateFont}
+              onUpdateHero={handleUpdateHero}
+              onUpdateServices={handleUpdateServices}
+              onUpdateValues={handleUpdateValues}
+              onUpdateGallery={handleUpdateGallery}
+              onSaveFont={handleApplyTypography}
+              onSaveHero={handleApplyHero}
+              onSaveServices={handleApplyServices}
+              onSaveValues={handleApplyValues}
+              onSaveGallery={handleApplyGallery}
+              hasFontChanges={hasFontChanges}
+              hasHeroChanges={hasHeroChanges}
+              hasServicesChanges={hasServicesChanges}
+              hasValuesChanges={hasValuesChanges}
+              hasGalleryChanges={hasGalleryChanges}
+              onHighlight={handleHighlight}
+              activePage={activePage}
+              expandedPages={expandedPages}
+              visibleSections={visibleSections}
+              onPageToggle={togglePageExpansion}
+              onSectionSelect={scrollToSection}
+              onSectionVisibilityToggle={toggleSection}
+              pageVisibility={pageVisibility}
+              onPageVisibilityChange={handlePageVisibilityChange}
+              onSaveGlobal={handleSaveGlobal}
+              hasUnsavedGlobalChanges={hasUnsavedGlobalChanges}
+            />
           </div>
         </SheetContent>
       </Sheet>
 
-      {/* Desktop: Sidebar Colapsável */}
+      {/* Desktop: Sidebar Colapsável (Editor Panel) */}
       <div
         className={cn(
-          "hidden lg:flex flex-col h-full border-r border-border bg-card/50 transition-all duration-300 ease-in-out overflow-hidden shrink-0",
+          "hidden lg:flex flex-col h-full border-r border-border bg-card transition-all duration-300 ease-in-out overflow-hidden shrink-0 z-20",
           isSidebarOpen
-            ? "w-64 xl:w-80 2xl:w-96 opacity-100"
-            : "w-0 opacity-0 border-r-0",
+            ? "w-64 xl:w-80 2xl:w-96"
+            : "w-0 border-r-0",
         )}
       >
-        <div
-          className={cn(
-            "flex flex-col h-full w-64 xl:w-80 2xl:w-96 transition-opacity duration-300",
-            isSidebarOpen
-              ? "opacity-100 pointer-events-auto"
-              : "opacity-0 pointer-events-none",
-          )}
-        >
-          <SidebarContent />
+        <div className="flex flex-col h-full w-64 xl:w-80 2xl:w-96">
+          <SidebarContent
+            activeSection={activeSection}
+            activeSectionData={activeSectionData || null}
+            setActiveSection={setActiveSection}
+            resetSettings={resetSettings}
+            fontSettings={fontSettings}
+            heroSettings={heroSettings}
+            servicesSettings={servicesSettings}
+            valuesSettings={valuesSettings}
+            gallerySettings={gallerySettings}
+            onUpdateFont={handleUpdateFont}
+            onUpdateHero={handleUpdateHero}
+            onUpdateServices={handleUpdateServices}
+            onUpdateValues={handleUpdateValues}
+            onUpdateGallery={handleUpdateGallery}
+            onSaveFont={handleApplyTypography}
+            onSaveHero={handleApplyHero}
+            onSaveServices={handleApplyServices}
+            onSaveValues={handleApplyValues}
+            onSaveGallery={handleApplyGallery}
+            hasFontChanges={hasFontChanges}
+            hasHeroChanges={hasHeroChanges}
+            hasServicesChanges={hasServicesChanges}
+            hasValuesChanges={hasValuesChanges}
+            hasGalleryChanges={hasGalleryChanges}
+            onHighlight={handleHighlight}
+            activePage={activePage}
+            expandedPages={expandedPages}
+            visibleSections={visibleSections}
+            onPageToggle={togglePageExpansion}
+            onSectionSelect={scrollToSection}
+            onSectionVisibilityToggle={toggleSection}
+            pageVisibility={pageVisibility}
+            onPageVisibilityChange={handlePageVisibilityChange}
+            onSaveGlobal={handleSaveGlobal}
+            hasUnsavedGlobalChanges={hasUnsavedGlobalChanges}
+          />
         </div>
       </div>
 
-      {/* Coluna da Direita: Preview em Tempo Real */}
-      <div className="flex-1 w-full h-full flex flex-col min-w-0 transition-all duration-300">
+      {/* Preview do Site (Ocupa o restante à direita) */}
+      <div className="flex-1 w-full h-full flex flex-col min-w-0 transition-all duration-300 relative z-0">
         <div className="flex items-center justify-between mb-2 lg:hidden px-4 pt-4">
           <h2 className="font-serif text-base font-bold text-primary">
             Preview do Site
@@ -1054,7 +1034,7 @@ export function SiteCustomizer() {
                 <div className="flex-1 w-full overflow-hidden bg-white relative">
                   <iframe
                     ref={iframeRef}
-                    key={`${activePage}-${previewKey}-${activeSection}`}
+                    key={`${activePage}-${previewKey}`}
                     src={previewUrl}
                     className="absolute inset-0 w-full h-full border-none overflow-hidden"
                     title="Preview"
@@ -1092,6 +1072,14 @@ export function SiteCustomizer() {
                           { type: "UPDATE_FONTS", ...fontSettings },
                           "*",
                         );
+                        // Galeria
+                        win.postMessage(
+                          {
+                            type: "UPDATE_GALLERY_SETTINGS",
+                            settings: gallerySettings,
+                          },
+                          "*",
+                        );
                       }
                     }}
                   />
@@ -1109,3 +1097,249 @@ export function SiteCustomizer() {
     </div>
   );
 }
+
+interface SectionData {
+  id: string;
+  name: string;
+  description: string;
+}
+
+interface SidebarContentProps {
+  activeSection: string | null;
+  activeSectionData: SectionData | null;
+  setActiveSection: (id: string | null) => void;
+  resetSettings: () => void;
+  fontSettings: FontSettings;
+  heroSettings: HeroSettings;
+  servicesSettings: ServicesSettings;
+  valuesSettings: ValuesSettings;
+  gallerySettings: GallerySettings;
+  onUpdateFont: (updates: Partial<FontSettings>) => void;
+  onUpdateHero: (updates: Partial<HeroSettings>) => void;
+  onUpdateServices: (updates: Partial<ServicesSettings>) => void;
+  onUpdateValues: (updates: Partial<ValuesSettings>) => void;
+  onUpdateGallery: (updates: Partial<GallerySettings>) => void;
+  onSaveFont: () => void;
+  onSaveHero: () => void;
+  onSaveServices: () => void;
+  onSaveValues: () => void;
+  onSaveGallery: () => void;
+  hasFontChanges: boolean;
+  hasHeroChanges: boolean;
+  hasServicesChanges: boolean;
+  hasValuesChanges: boolean;
+  hasGalleryChanges: boolean;
+  onHighlight: (id: string) => void;
+  activePage: string;
+  expandedPages: string[];
+  visibleSections: Record<string, boolean>;
+  onPageToggle: (id: string) => void;
+  onSectionSelect: (id: string) => void;
+  onSectionVisibilityToggle: (id: string) => void;
+  pageVisibility: Record<string, boolean>;
+  onPageVisibilityChange: (id: string, visible: boolean) => void;
+  onSaveGlobal: () => void;
+  hasUnsavedGlobalChanges: boolean;
+}
+
+const SidebarContent = memo(({
+  activeSection,
+  activeSectionData,
+  setActiveSection,
+  resetSettings,
+  fontSettings,
+  heroSettings,
+  servicesSettings,
+  valuesSettings,
+  gallerySettings,
+  onUpdateFont,
+  onUpdateHero,
+  onUpdateServices,
+  onUpdateValues,
+  onUpdateGallery,
+  onSaveFont,
+  onSaveHero,
+  onSaveServices,
+  onSaveValues,
+  onSaveGallery,
+  hasFontChanges,
+  hasHeroChanges,
+  hasServicesChanges,
+  hasValuesChanges,
+  hasGalleryChanges,
+  onHighlight,
+  activePage,
+  expandedPages,
+  visibleSections,
+  onPageToggle,
+  onSectionSelect,
+  onSectionVisibilityToggle,
+  pageVisibility,
+  onPageVisibilityChange,
+  onSaveGlobal,
+  hasUnsavedGlobalChanges,
+}: SidebarContentProps) => {
+  return (
+    <div className="flex flex-col h-full text-[clamp(0.75rem,1vw,0.875rem)]">
+      <div className="p-3 xl:p-6 pb-3 border-b border-border/50 shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-primary font-bold">
+            <Settings2 className="w-4 h-4 xl:w-5 xl:h-5" />
+            <span className="text-[10px] xl:text-sm tracking-wide uppercase">
+              Editor
+            </span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetSettings}
+            className="h-7 xl:h-8 px-2 xl:px-3 gap-1 xl:gap-1.5 text-[9px] xl:text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors shrink-0"
+          >
+            <RotateCcw className="w-2.5 h-2.5 xl:w-3 xl:h-3" />
+            <span>Resetar</span>
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3 xl:p-6 custom-scrollbar min-w-0">
+        {activeSection ? (
+          /* Editor de Seção (Placeholder) */
+          <div className="space-y-4 xl:space-y-6">
+            <div className="flex items-center gap-2 mb-3 xl:mb-4">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveSection(null)}
+                className="h-7 w-7 xl:h-8 xl:w-8 rounded-full p-0"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 xl:w-4 xl:h-4" />
+              </Button>
+              <div>
+                <h3 className="text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
+                  {activeSectionData?.name}
+                </h3>
+                <p className="text-[9px] xl:text-[10px] text-muted-foreground">
+                  Editando seção
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 xl:space-y-4 p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
+              {/* --- LAYOUT GLOBAL --- */}
+              {activeSection === "typography" && (
+                <TypographyEditor
+                  settings={fontSettings}
+                  onUpdate={onUpdateFont}
+                  onHighlight={onHighlight}
+                  hasChanges={hasFontChanges}
+                  onSave={onSaveFont}
+                />
+              )}
+
+              {/* --- PÁGINA: INÍCIO (HOME) --- */}
+              {activeSection === "hero" && (
+                <HeroEditor
+                  settings={heroSettings}
+                  onUpdate={onUpdateHero}
+                  onHighlight={onHighlight}
+                  hasChanges={hasHeroChanges}
+                  onSave={onSaveHero}
+                />
+              )}
+              {activeSection === "story" && (
+                <HistoryEditor hasChanges={false} onSave={() => {}} />
+              )}
+              {activeSection === "services" && (
+                <ServicesEditor
+                  settings={servicesSettings}
+                  onUpdate={onUpdateServices}
+                  hasChanges={hasServicesChanges}
+                  onSave={onSaveServices}
+                />
+              )}
+              {activeSection === "values" && (
+                  <ValuesEditor
+                    settings={valuesSettings}
+                    onUpdate={onUpdateValues}
+                    onSave={onSaveValues}
+                    hasChanges={hasValuesChanges}
+                  />
+                )}
+
+                {activeSection === "gallery-preview" && (
+                  <GalleryEditor
+                    settings={gallerySettings}
+                    onUpdate={onUpdateGallery}
+                    onSave={onSaveGallery}
+                    hasChanges={hasGalleryChanges}
+                  />
+                )}
+
+              {/* --- FALLBACK PARA SEÇÕES EM DESENVOLVIMENTO --- */}
+              {!["typography", "hero", "story", "services", "values", "gallery-preview"].includes(
+                activeSection,
+              ) && (
+                <div className="py-12 text-center">
+                  <Settings2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
+                  <p className="text-sm text-muted-foreground">
+                    O editor para esta seção será implementado em breve.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <SidebarNav
+            pages={pages}
+            sections={sections}
+            activePage={activePage}
+            activeSection={activeSection}
+            expandedPages={expandedPages}
+            visibleSections={visibleSections}
+            onPageToggle={onPageToggle}
+            onSectionSelect={onSectionSelect}
+            onSectionVisibilityToggle={onSectionVisibilityToggle}
+            pageVisibility={pageVisibility}
+            onPageVisibilityChange={onPageVisibilityChange}
+          />
+        )}
+      </div>
+
+      <div className="p-6 pt-4 border-t border-border bg-background">
+        <Button
+          type="button"
+          disabled={
+            !hasUnsavedGlobalChanges &&
+            !hasHeroChanges &&
+            !hasFontChanges &&
+            !hasServicesChanges &&
+            !hasValuesChanges &&
+            !hasGalleryChanges
+          }
+          onClick={onSaveGlobal}
+          className={cn(
+            "w-full font-bold py-6 rounded-xl transition-all duration-300",
+            hasUnsavedGlobalChanges ||
+              hasHeroChanges ||
+              hasFontChanges ||
+              hasServicesChanges ||
+              hasValuesChanges ||
+              hasGalleryChanges
+              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+              : "bg-muted text-muted-foreground cursor-not-allowed",
+          )}
+        >
+          {hasUnsavedGlobalChanges ||
+          hasHeroChanges ||
+          hasFontChanges ||
+          hasServicesChanges ||
+          hasValuesChanges ||
+          hasGalleryChanges
+            ? "Publicar Alterações"
+            : "Tudo Atualizado"}
+        </Button>
+      </div>
+    </div>
+  );
+});

@@ -64,21 +64,33 @@ export function HistoryEditor({
       {/* Título e Cor */}
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase text-muted-foreground flex items-center gap-1">
+          <fieldset 
+            className="space-y-1.5 border-none p-0 m-0" 
+            onPointerDown={(e) => e.stopPropagation()} 
+            onMouseDown={(e) => e.stopPropagation()} 
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
               <Type className="w-2.5 h-2.5" /> Título da Seção
-            </Label>
+            </legend>
             <Input
               value={settings.title}
               onChange={(e) => onUpdate({ title: e.target.value })}
               className="h-8 text-xs"
               placeholder="Ex: Nossa História"
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-[10px] uppercase text-muted-foreground flex items-center gap-1">
+          </fieldset>
+          <fieldset 
+            className="space-y-1.5 border-none p-0 m-0" 
+            onPointerDown={(e) => e.stopPropagation()} 
+            onMouseDown={(e) => e.stopPropagation()} 
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
+            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
               <Palette className="w-2.5 h-2.5" /> Cor do Título
-            </Label>
+            </legend>
             <div className="flex gap-2">
               <Input
                 type="color"
@@ -93,16 +105,22 @@ export function HistoryEditor({
                 onChange={(e) => onUpdate({ titleColor: e.target.value })}
               />
             </div>
-          </div>
+          </fieldset>
         </div>
 
         {/* Conteúdo e Cor */}
-        <div className="space-y-1.5">
+        <fieldset 
+          className="space-y-1.5 border-none p-0 m-0" 
+          onPointerDown={(e) => e.stopPropagation()} 
+          onMouseDown={(e) => e.stopPropagation()} 
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           <div className="flex justify-between items-center">
-            <Label className="text-[10px] uppercase text-muted-foreground flex items-center gap-1">
+            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
               <Type className="w-2.5 h-2.5" /> Descrição da História
-            </Label>
-            <div className="flex items-center gap-2">
+            </legend>
+            <div className="flex items-center gap-2 mb-1.5">
               <Label className="text-[10px] uppercase text-muted-foreground">
                 Cor
               </Label>
@@ -120,13 +138,19 @@ export function HistoryEditor({
             className="min-h-37.5 text-xs resize-none"
             placeholder="Conte a trajetória do seu studio..."
           />
-        </div>
+        </fieldset>
 
         {/* Imagem */}
-        <div className="space-y-1.5">
-          <Label className="text-[10px] uppercase text-muted-foreground flex items-center gap-1">
+        <fieldset 
+          className="space-y-1.5 border-none p-0 m-0" 
+          onPointerDown={(e) => e.stopPropagation()} 
+          onMouseDown={(e) => e.stopPropagation()} 
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
+          <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
             <ImageIcon className="w-2.5 h-2.5" /> URL da Imagem
-          </Label>
+          </legend>
           <div className="flex gap-2">
             <Input
               value={settings.image}
@@ -141,7 +165,7 @@ export function HistoryEditor({
           <p className="text-[9px] text-muted-foreground italic">
             Recomendado: 600x400px ou proporção 3:2
           </p>
-        </div>
+        </fieldset>
       </div>
 
       <div className="pt-2">
