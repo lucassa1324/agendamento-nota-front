@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 import {
   Carousel,
   CarouselContent,
@@ -96,41 +97,7 @@ export function GalleryPreview() {
           "ring-4 ring-primary ring-inset z-50",
       )}
     >
-      {/* Background Color Layer */}
-      <div
-        className="absolute inset-0 z-0 transition-colors duration-500"
-        style={{
-          backgroundColor:
-            settings.bgType === "color"
-              ? settings.bgColor || "transparent"
-              : "transparent",
-        }}
-      />
-
-      {/* Background Image Layer */}
-      {settings.bgType === "image" && settings.bgImage && (
-        <div className="absolute inset-0 z-0">
-          <Image
-            src={settings.bgImage}
-            alt="Background"
-            fill
-            className="object-cover"
-            style={{
-              opacity: settings.imageOpacity,
-              transform: `scale(${settings.imageScale || 1})`,
-              objectPosition: `${settings.imageX || 50}% ${settings.imageY || 50}%`,
-            }}
-          />
-        </div>
-      )}
-
-      {/* Overlay/Gradient Layer */}
-      <div
-        className="absolute inset-0 z-0 bg-linear-to-b from-black/20 via-black/50 to-black transition-opacity duration-500 pointer-events-none"
-        style={{
-          opacity: settings.overlayOpacity,
-        }}
-      />
+      <SectionBackground settings={settings} />
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">

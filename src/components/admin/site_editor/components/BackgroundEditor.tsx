@@ -226,7 +226,7 @@ export function BackgroundEditor({
       <fieldset className="space-y-1.5 border-none p-0 m-0 pt-4 border-t border-border/30">
         <div className="flex justify-between items-center">
           <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
-            Intensidade do Gradiente
+            {settings.bgType === "image" ? "Intensidade do Gradiente" : "Sobreposição de Cor"}
           </legend>
           <span className="text-[10px] font-mono">
             {Math.round((settings.overlayOpacity || 0) * 100)}%
@@ -239,6 +239,11 @@ export function BackgroundEditor({
           step={1}
           onValueChange={([v]) => onUpdate({ overlayOpacity: v / 100 })}
         />
+        <p className="text-[9px] text-muted-foreground mt-1">
+          {settings.bgType === "image" 
+            ? "Cria um degradê suave para melhorar a leitura do texto sobre a imagem." 
+            : "Aplica uma camada de cor extra sobre o fundo escolhido."}
+        </p>
       </fieldset>
     </fieldset>
   );

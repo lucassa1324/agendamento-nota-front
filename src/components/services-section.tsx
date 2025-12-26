@@ -41,6 +41,7 @@ import {
   type ServicesSettings,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 
 const iconMap: Record<string, LucideIcon> = {
   Sparkles,
@@ -147,38 +148,7 @@ export function ServicesSection() {
           "ring-8 ring-inset ring-primary/30 bg-primary/5",
       )}
     >
-      {/* Background Color Layer (Always present if bgType is color) */}
-      <div
-        className="absolute inset-0 z-0 transition-colors duration-500"
-        style={{
-          backgroundColor:
-            settings.bgType === "color"
-              ? settings.bgColor || "white"
-              : "transparent",
-        }}
-      />
-
-      {/* Background Image Layer */}
-      {settings.bgType === "image" && settings.bgImage && (
-        <div
-          className="absolute inset-0 z-0 transition-all duration-500"
-          style={{
-            backgroundImage: `url(${settings.bgImage})`,
-            backgroundSize: "cover",
-            backgroundPosition: `${settings.imageX}% ${settings.imageY}%`,
-            transform: `scale(${settings.imageScale})`,
-            opacity: settings.imageOpacity,
-          }}
-        />
-      )}
-
-      {/* Overlay/Gradient Layer (Always present, works for both color and image) */}
-      <div
-        className="absolute inset-0 z-1 bg-linear-to-b from-black/20 via-black/50 to-black transition-opacity duration-500 pointer-events-none"
-        style={{
-          opacity: settings.overlayOpacity,
-        }}
-      />
+      <SectionBackground settings={settings} />
 
       <div className="container relative z-10 mx-auto px-4">
         <div className="text-center mb-16">

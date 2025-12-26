@@ -39,12 +39,20 @@ interface PageItem {
   hidden?: boolean;
 }
 
+import { TypographyEditor } from "./site_editor/layout/typography-editor";
+import { GalleryEditor } from "./site_editor/pages/home/gallery-editor";
+import { HeroEditor } from "./site_editor/pages/home/hero-editor";
+import { HistoryEditor } from "./site_editor/pages/home/history-editor";
+import { ServicesEditor } from "./site_editor/pages/home/services-editor";
+import { ValuesEditor } from "./site_editor/pages/home/values-editor";
+import { CTAEditor } from "./site_editor/pages/home/cta-editor";
 import {
   defaultFontSettings,
   defaultGallerySettings,
   defaultHeroSettings,
   defaultServicesSettings,
   defaultValuesSettings,
+  defaultCTASettings,
   type FontSettings,
   type GallerySettings,
   getFontSettings,
@@ -53,6 +61,7 @@ import {
   getPageVisibility,
   getServicesSettings,
   getValuesSettings,
+  getCTASettings,
   type HeroSettings,
   type ServicesSettings,
   saveFontSettings,
@@ -61,15 +70,10 @@ import {
   savePageVisibility,
   saveServicesSettings,
   saveValuesSettings,
+  saveCTASettings,
   type ValuesSettings,
+  type CTASettings,
 } from "@/lib/booking-data";
-// Importações Modulares (Nova Arquitetura)
-import { TypographyEditor } from "./site_editor/layout/typography-editor";
-import { GalleryEditor } from "./site_editor/pages/home/gallery-editor";
-import { HeroEditor } from "./site_editor/pages/home/hero-editor";
-import { HistoryEditor } from "./site_editor/pages/home/history-editor";
-import { ServicesEditor } from "./site_editor/pages/home/services-editor";
-import { ValuesEditor } from "./site_editor/pages/home/values-editor";
 
 const pages: PageItem[] = [
   { id: "layout", label: "Layout Global", icon: Settings2, path: "/" },
@@ -280,6 +284,9 @@ export function SiteCustomizer() {
   const [gallerySettings, setGallerySettings] = useState<GallerySettings>(
     defaultGallerySettings,
   );
+  const [ctaSettings, setCTASettings] = useState<CTASettings>(
+    defaultCTASettings,
+  );
 
   // Estados para controle de botões (Aplicar vs Salvar)
   const [lastAppliedHero, setLastAppliedHero] =
@@ -294,6 +301,10 @@ export function SiteCustomizer() {
   const [lastAppliedGallery, setLastAppliedGallery] = useState<GallerySettings>(
     defaultGallerySettings,
   );
+  const [lastAppliedCTA, setLastAppliedCTA] = useState<CTASettings>(
+    defaultCTASettings,
+  );
+
   const [lastSavedHero, setLastSavedHero] =
     useState<HeroSettings>(defaultHeroSettings);
   const [lastSavedFont, setLastSavedFont] =
@@ -306,6 +317,9 @@ export function SiteCustomizer() {
   );
   const [lastSavedGallery, setLastSavedGallery] = useState<GallerySettings>(
     defaultGallerySettings,
+  );
+  const [lastSavedCTA, setLastSavedCTA] = useState<CTASettings>(
+    defaultCTASettings,
   );
 
   const handleUpdateHero = useCallback((updates: Partial<HeroSettings>) => {
@@ -328,30 +342,38 @@ export function SiteCustomizer() {
     setGallerySettings((prev) => ({ ...prev, ...updates }));
   }, []);
 
+  const handleUpdateCTA = useCallback((updates: Partial<CTASettings>) => {
+    setCTASettings((prev) => ({ ...prev, ...updates }));
+  }, []);
+
   useEffect(() => {
     const loadedHero = getHeroSettings();
     const loadedFont = getFontSettings();
     const loadedServices = getServicesSettings();
     const loadedValues = getValuesSettings();
     const loadedGallery = getGallerySettings();
+    const loadedCTA = getCTASettings();
 
     setHeroSettings(loadedHero);
     setFontSettings(loadedFont);
     setServicesSettings(loadedServices);
     setValuesSettings(loadedValues);
     setGallerySettings(loadedGallery);
+    setCTASettings(loadedCTA);
 
     setLastAppliedHero(loadedHero);
     setLastAppliedFont(loadedFont);
     setLastAppliedServices(loadedServices);
     setLastAppliedValues(loadedValues);
     setLastAppliedGallery(loadedGallery);
+    setLastAppliedCTA(loadedCTA);
 
     setLastSavedHero(loadedHero);
     setLastSavedFont(loadedFont);
     setLastSavedServices(loadedServices);
     setLastSavedValues(loadedValues);
     setLastSavedGallery(loadedGallery);
+    setLastSavedCTA(loadedCTA);
   }, []);
 
   // Booleans para habilitar/desabilitar botões
@@ -365,13 +387,16 @@ export function SiteCustomizer() {
     JSON.stringify(valuesSettings) !== JSON.stringify(lastAppliedValues);
   const hasGalleryChanges =
     JSON.stringify(gallerySettings) !== JSON.stringify(lastAppliedGallery);
+  const hasCTAChanges =
+    JSON.stringify(ctaSettings) !== JSON.stringify(lastAppliedCTA);
 
   const hasUnsavedGlobalChanges =
     JSON.stringify(lastAppliedHero) !== JSON.stringify(lastSavedHero) ||
     JSON.stringify(lastAppliedFont) !== JSON.stringify(lastSavedFont) ||
     JSON.stringify(lastAppliedServices) !== JSON.stringify(lastSavedServices) ||
     JSON.stringify(lastAppliedValues) !== JSON.stringify(lastSavedValues) ||
-    JSON.stringify(lastAppliedGallery) !== JSON.stringify(lastSavedGallery);
+    JSON.stringify(lastAppliedGallery) !== JSON.stringify(lastSavedGallery) ||
+    JSON.stringify(lastAppliedCTA) !== JSON.stringify(lastSavedCTA);
 
   const resetSettings = useCallback(() => {
     if (
@@ -384,6 +409,7 @@ export function SiteCustomizer() {
       setServicesSettings(defaultServicesSettings);
       setValuesSettings(defaultValuesSettings);
       setGallerySettings(defaultGallerySettings);
+      setCTASettings(defaultCTASettings);
     }
   }, []);
 
@@ -462,6 +488,19 @@ export function SiteCustomizer() {
       );
     }
   }, [gallerySettings]);
+
+  // Envia atualizações para a seção CTA
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_CTA_SETTINGS",
+          settings: ctaSettings,
+        },
+        "*",
+      );
+    }
+  }, [ctaSettings]);
 
   const activePageData = pages.find((p) => p.id === activePage);
 
@@ -672,6 +711,21 @@ export function SiteCustomizer() {
     });
   }, [gallerySettings, toast]);
 
+  const handleApplyCTA = useCallback(() => {
+    setLastAppliedCTA(ctaSettings);
+    // Forçar atualização do preview
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_CTA_SETTINGS", settings: ctaSettings },
+        "*",
+      );
+    }
+    toast({
+      title: "Preview atualizado!",
+      description: "As mudanças da chamada foram aplicadas ao rascunho.",
+    });
+  }, [ctaSettings, toast]);
+
   const handleSaveGlobal = () => {
     // 1. Salva no localStorage (Produção)
     saveHeroSettings(lastAppliedHero);
@@ -679,6 +733,7 @@ export function SiteCustomizer() {
     saveServicesSettings(lastAppliedServices);
     saveValuesSettings(lastAppliedValues);
     saveGallerySettings(lastAppliedGallery);
+    saveCTASettings(lastAppliedCTA);
 
     // 2. Atualiza estados de controle
     setLastSavedHero(lastAppliedHero);
@@ -686,12 +741,14 @@ export function SiteCustomizer() {
     setLastSavedServices(lastAppliedServices);
     setLastSavedValues(lastAppliedValues);
     setLastSavedGallery(lastAppliedGallery);
+    setLastSavedCTA(lastAppliedCTA);
 
     setLastAppliedHero(lastAppliedHero);
     setLastAppliedFont(lastAppliedFont);
     setLastAppliedServices(lastAppliedServices);
     setLastAppliedValues(lastAppliedValues);
     setLastAppliedGallery(lastAppliedGallery);
+    setLastAppliedCTA(lastAppliedCTA);
 
     toast({
       title: "Sucesso",
@@ -826,21 +883,25 @@ export function SiteCustomizer() {
               servicesSettings={servicesSettings}
               valuesSettings={valuesSettings}
               gallerySettings={gallerySettings}
+              ctaSettings={ctaSettings}
               onUpdateFont={handleUpdateFont}
               onUpdateHero={handleUpdateHero}
               onUpdateServices={handleUpdateServices}
               onUpdateValues={handleUpdateValues}
               onUpdateGallery={handleUpdateGallery}
+              onUpdateCTA={handleUpdateCTA}
               onSaveFont={handleApplyTypography}
               onSaveHero={handleApplyHero}
               onSaveServices={handleApplyServices}
               onSaveValues={handleApplyValues}
               onSaveGallery={handleApplyGallery}
+              onSaveCTA={handleApplyCTA}
               hasFontChanges={hasFontChanges}
               hasHeroChanges={hasHeroChanges}
               hasServicesChanges={hasServicesChanges}
               hasValuesChanges={hasValuesChanges}
               hasGalleryChanges={hasGalleryChanges}
+              hasCTAChanges={hasCTAChanges}
               onHighlight={handleHighlight}
               activePage={activePage}
               expandedPages={expandedPages}
@@ -877,21 +938,25 @@ export function SiteCustomizer() {
             servicesSettings={servicesSettings}
             valuesSettings={valuesSettings}
             gallerySettings={gallerySettings}
+            ctaSettings={ctaSettings}
             onUpdateFont={handleUpdateFont}
             onUpdateHero={handleUpdateHero}
             onUpdateServices={handleUpdateServices}
             onUpdateValues={handleUpdateValues}
             onUpdateGallery={handleUpdateGallery}
+            onUpdateCTA={handleUpdateCTA}
             onSaveFont={handleApplyTypography}
             onSaveHero={handleApplyHero}
             onSaveServices={handleApplyServices}
             onSaveValues={handleApplyValues}
             onSaveGallery={handleApplyGallery}
+            onSaveCTA={handleApplyCTA}
             hasFontChanges={hasFontChanges}
             hasHeroChanges={hasHeroChanges}
             hasServicesChanges={hasServicesChanges}
             hasValuesChanges={hasValuesChanges}
             hasGalleryChanges={hasGalleryChanges}
+            hasCTAChanges={hasCTAChanges}
             onHighlight={handleHighlight}
             activePage={activePage}
             expandedPages={expandedPages}
@@ -1080,6 +1145,14 @@ export function SiteCustomizer() {
                           },
                           "*",
                         );
+                        // CTA
+                        win.postMessage(
+                          {
+                            type: "UPDATE_CTA_SETTINGS",
+                            settings: ctaSettings,
+                          },
+                          "*",
+                        );
                       }
                     }}
                   />
@@ -1114,21 +1187,25 @@ interface SidebarContentProps {
   servicesSettings: ServicesSettings;
   valuesSettings: ValuesSettings;
   gallerySettings: GallerySettings;
+  ctaSettings: CTASettings;
   onUpdateFont: (updates: Partial<FontSettings>) => void;
   onUpdateHero: (updates: Partial<HeroSettings>) => void;
   onUpdateServices: (updates: Partial<ServicesSettings>) => void;
   onUpdateValues: (updates: Partial<ValuesSettings>) => void;
   onUpdateGallery: (updates: Partial<GallerySettings>) => void;
+  onUpdateCTA: (updates: Partial<CTASettings>) => void;
   onSaveFont: () => void;
   onSaveHero: () => void;
   onSaveServices: () => void;
   onSaveValues: () => void;
   onSaveGallery: () => void;
+  onSaveCTA: () => void;
   hasFontChanges: boolean;
   hasHeroChanges: boolean;
   hasServicesChanges: boolean;
   hasValuesChanges: boolean;
   hasGalleryChanges: boolean;
+  hasCTAChanges: boolean;
   onHighlight: (id: string) => void;
   activePage: string;
   expandedPages: string[];
@@ -1152,21 +1229,25 @@ const SidebarContent = memo(({
   servicesSettings,
   valuesSettings,
   gallerySettings,
+  ctaSettings,
   onUpdateFont,
   onUpdateHero,
   onUpdateServices,
   onUpdateValues,
   onUpdateGallery,
+  onUpdateCTA,
   onSaveFont,
   onSaveHero,
   onSaveServices,
   onSaveValues,
   onSaveGallery,
+  onSaveCTA,
   hasFontChanges,
   hasHeroChanges,
   hasServicesChanges,
   hasValuesChanges,
   hasGalleryChanges,
+  hasCTAChanges,
   onHighlight,
   activePage,
   expandedPages,
@@ -1276,8 +1357,17 @@ const SidebarContent = memo(({
                   />
                 )}
 
+                {activeSection === "cta" && (
+                  <CTAEditor
+                    settings={ctaSettings}
+                    onUpdate={onUpdateCTA}
+                    onSave={onSaveCTA}
+                    hasChanges={hasCTAChanges}
+                  />
+                )}
+
               {/* --- FALLBACK PARA SEÇÕES EM DESENVOLVIMENTO --- */}
-              {!["typography", "hero", "story", "services", "values", "gallery-preview"].includes(
+              {!["typography", "hero", "story", "services", "values", "gallery-preview", "cta"].includes(
                 activeSection,
               ) && (
                 <div className="py-12 text-center">
@@ -1315,7 +1405,8 @@ const SidebarContent = memo(({
             !hasFontChanges &&
             !hasServicesChanges &&
             !hasValuesChanges &&
-            !hasGalleryChanges
+            !hasGalleryChanges &&
+            !hasCTAChanges
           }
           onClick={onSaveGlobal}
           className={cn(
@@ -1325,7 +1416,8 @@ const SidebarContent = memo(({
               hasFontChanges ||
               hasServicesChanges ||
               hasValuesChanges ||
-              hasGalleryChanges
+              hasGalleryChanges ||
+              hasCTAChanges
               ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
               : "bg-muted text-muted-foreground cursor-not-allowed",
           )}
@@ -1335,7 +1427,8 @@ const SidebarContent = memo(({
           hasFontChanges ||
           hasServicesChanges ||
           hasValuesChanges ||
-          hasGalleryChanges
+          hasGalleryChanges ||
+          hasCTAChanges
             ? "Publicar Alterações"
             : "Tudo Atualizado"}
         </Button>

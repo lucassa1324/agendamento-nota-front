@@ -329,6 +329,48 @@ export const defaultGallerySettings: GallerySettings = {
   imageY: 50,
 };
 
+export type CTASettings = {
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  titleColor: string;
+  subtitleColor: string;
+  buttonColor: string;
+  buttonTextColor: string;
+  titleFont: string;
+  subtitleFont: string;
+  buttonFont: string;
+  bgType: "color" | "image";
+  bgColor: string;
+  bgImage: string;
+  imageOpacity: number;
+  overlayOpacity: number;
+  imageScale: number;
+  imageX: number;
+  imageY: number;
+};
+
+export const defaultCTASettings: CTASettings = {
+  title: "Pronta Para Transformar Seu Olhar?",
+  subtitle: "Agende seu horário agora e descubra como sobrancelhas bem feitas podem realçar toda sua beleza",
+  buttonText: "Agendar Agora",
+  titleColor: "",
+  subtitleColor: "",
+  buttonColor: "",
+  buttonTextColor: "",
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  buttonFont: "Inter",
+  bgType: "color",
+  bgColor: "",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0.1,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
+};
+
 export type FontSettings = {
   headingFont: string;
   bodyFont: string;
@@ -365,6 +407,14 @@ export const services: Service[] = [
     description: "Fios alinhados e volumosos por até 8 semanas",
     duration: 90,
     price: 150,
+    showOnHome: true,
+  },
+  {
+    id: "lash-lifting-90",
+    name: "Lash Lifting Completo",
+    description: "Tratamento completo de lifting de cílios com duração de 90 minutos",
+    duration: 90,
+    price: 180,
     showOnHome: true,
   },
 ];
@@ -707,7 +757,7 @@ export function getSettingsFromStorage() {
   if (typeof window === "undefined")
     return {
       agendaAberta: true,
-      services: [],
+      services: services,
       scheduleSettings: defaultScheduleSettings,
     };
   const settings = localStorage.getItem("studioSettings");
@@ -715,7 +765,7 @@ export function getSettingsFromStorage() {
     ? JSON.parse(settings)
     : {
         agendaAberta: true,
-        services: [],
+        services: services,
         scheduleSettings: defaultScheduleSettings,
       };
 }
@@ -765,7 +815,9 @@ export function getBlockedPeriods(): BlockedPeriod[] {
 
 export function getServices(): Service[] {
   const settings = getSettingsFromStorage();
-  return settings.services || [];
+  return settings.services && settings.services.length > 0 
+    ? settings.services 
+    : services;
 }
 
 export function saveServices(newServices: Service[]): void {
@@ -894,6 +946,19 @@ export function saveGallerySettings(settings: GallerySettings): void {
   localStorage.setItem("gallerySettings", JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("gallerySettingsUpdated"));
+  }
+}
+
+export function getCTASettings(): CTASettings {
+  if (typeof window === "undefined") return defaultCTASettings;
+  const settings = localStorage.getItem("ctaSettings");
+  return settings ? JSON.parse(settings) : defaultCTASettings;
+}
+
+export function saveCTASettings(settings: CTASettings): void {
+  localStorage.setItem("ctaSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("ctaSettingsUpdated"));
   }
 }
 

@@ -13,10 +13,11 @@ import {
   Star,
   Sun,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+
+import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 
 const iconMap: Record<string, LucideIcon> = {
   Sparkles,
@@ -119,11 +120,6 @@ export function HeroSection() {
     profile?.description ||
     "Transforme seu olhar com técnicas profissionais de design de sobrancelhas. Atendimento personalizado para destacar sua beleza única.";
 
-  const bgStyle =
-    customStyles.bgType === "color"
-      ? { backgroundColor: customStyles.bgColor || "transparent" }
-      : {};
-
   if (!isMounted) {
     return (
       <section
@@ -149,34 +145,21 @@ export function HeroSection() {
         (highlightedElement === "hero-bg" || highlightedElement === "hero") &&
           "ring-8 ring-inset ring-primary/30",
       )}
-      style={bgStyle}
     >
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
-        {(customStyles.bgType === "image" ||
-          (!customStyles.bgType && true)) && (
-          <Image
-            src={
-              customStyles.bgImage ||
-              "/elegant-eyebrow-studio-interior-with-soft-lighting.jpg"
-            }
-            alt="Studio"
-            fill
-            className="object-cover"
-            style={{
-              opacity: customStyles.imageOpacity ?? 0.2,
-              transform: `scale(${customStyles.imageScale ?? 1})`,
-              objectPosition: `${customStyles.imageX ?? 50}% ${customStyles.imageY ?? 50}%`,
-            }}
-            priority
-            unoptimized={!!customStyles.bgImage}
-          />
-        )}
-        <div
-          className="absolute inset-0 bg-linear-to-b from-background/50 via-background/80 to-background"
-          style={{ opacity: customStyles.overlayOpacity ?? 1 }}
-        />
-      </div>
+      <SectionBackground
+        settings={{
+          bgType: customStyles.bgType as "color" | "image",
+          bgColor: customStyles.bgColor,
+          bgImage: customStyles.bgImage,
+          imageOpacity: customStyles.imageOpacity,
+          overlayOpacity: customStyles.overlayOpacity,
+          imageScale: customStyles.imageScale,
+          imageX: customStyles.imageX,
+          imageY: customStyles.imageY,
+        }}
+        defaultImage="/elegant-eyebrow-studio-interior-with-soft-lighting.jpg"
+        gradientClassName="bg-linear-to-b from-background/50 via-background/80 to-background"
+      />
 
       {/* Content */}
       <div className="container mx-auto px-4 relative z-10">

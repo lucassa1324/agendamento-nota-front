@@ -1,0 +1,259 @@
+"use client";
+
+import { Type, MousePointer2, Image as ImageIcon } from "lucide-react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import type { CTASettings } from "@/lib/booking-data";
+import { SectionTitleEditor } from "../../components/SectionTitleEditor";
+import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
+import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { EDITOR_FONTS } from "../../components/editor-constants";
+
+interface CTAEditorProps {
+  settings: CTASettings;
+  onUpdate: (updates: Partial<CTASettings>) => void;
+  onSave?: () => void;
+  hasChanges?: boolean;
+}
+
+export function CTAEditor({ 
+  settings, 
+  onUpdate,
+  onSave,
+  hasChanges,
+}: CTAEditorProps) {
+  if (!settings) return null;
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+      <Accordion
+        type="single"
+        collapsible
+        defaultValue="title"
+        className="w-full space-y-4 border-none"
+      >
+        {/* Título */}
+        <AccordionItem
+          value="title"
+          className="border rounded-lg px-4 bg-card/50"
+        >
+          <AccordionTrigger className="hover:no-underline py-4">
+            <div className="flex items-center gap-2 text-primary font-serif italic text-sm">
+              <Type className="w-4 h-4" /> TÍTULO DA SEÇÃO
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4">
+            <SectionTitleEditor
+              title={settings.title}
+              font={settings.titleFont}
+              color={settings.titleColor}
+              onUpdate={(updates) =>
+                onUpdate({
+                  ...(updates.title !== undefined && { title: updates.title }),
+                  ...(updates.font !== undefined && { titleFont: updates.font }),
+                  ...(updates.color !== undefined && { titleColor: updates.color }),
+                })
+              }
+            />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Subtítulo */}
+        <AccordionItem
+          value="subtitle"
+          className="border rounded-lg px-4 bg-card/50"
+        >
+          <AccordionTrigger className="hover:no-underline py-4">
+            <div className="flex items-center gap-2 text-primary font-serif italic text-sm">
+              <Type className="w-4 h-4" /> SUBTÍTULO DA SEÇÃO
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4">
+            <SectionSubtitleEditor
+              subtitle={settings.subtitle}
+              font={settings.subtitleFont}
+              color={settings.subtitleColor}
+              onUpdate={(updates) =>
+                onUpdate({
+                  ...(updates.subtitle !== undefined && { subtitle: updates.subtitle }),
+                  ...(updates.font !== undefined && { subtitleFont: updates.font }),
+                  ...(updates.color !== undefined && { subtitleColor: updates.color }),
+                })
+              }
+            />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Botão */}
+        <AccordionItem
+          value="button"
+          className="border rounded-lg px-4 bg-card/50"
+        >
+          <AccordionTrigger className="hover:no-underline py-4">
+            <div className="flex items-center gap-2 text-primary font-serif italic text-sm">
+              <MousePointer2 className="w-4 h-4" /> BOTÃO DE AÇÃO
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4 space-y-4">
+            <fieldset 
+              className="space-y-1.5 border-none p-0 m-0"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                Texto do Botão
+              </legend>
+              <Input
+                value={settings.buttonText}
+                onChange={(e) => onUpdate({ buttonText: e.target.value })}
+                className="h-8 text-xs"
+              />
+            </fieldset>
+
+            <div className="grid grid-cols-2 gap-4">
+              <fieldset 
+                className="space-y-1.5 border-none p-0 m-0"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                  Fonte do Botão
+                </legend>
+                <Select
+                  value={settings.buttonFont}
+                  onValueChange={(v) => onUpdate({ buttonFont: v })}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Fonte" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDITOR_FONTS.map((f) => (
+                      <SelectItem
+                        key={f.name}
+                        value={f.name}
+                        className="text-xs"
+                      >
+                        <span style={{ fontFamily: f.name }}>{f.name}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </fieldset>
+
+              <div className="space-y-4">
+                <fieldset 
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                    Cor do Botão
+                  </legend>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={settings.buttonColor || "#000000"}
+                      className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
+                      onChange={(e) => onUpdate({ buttonColor: e.target.value })}
+                    />
+                    <Input
+                      value={settings.buttonColor || ""}
+                      placeholder="#HEX"
+                      className="h-8 text-[10px] flex-1 uppercase"
+                      onChange={(e) => onUpdate({ buttonColor: e.target.value })}
+                    />
+                  </div>
+                </fieldset>
+
+                <fieldset 
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                    Cor do Texto
+                  </legend>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={settings.buttonTextColor || "#FFFFFF"}
+                      className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
+                      onChange={(e) => onUpdate({ buttonTextColor: e.target.value })}
+                    />
+                    <Input
+                      value={settings.buttonTextColor || ""}
+                      placeholder="#HEX"
+                      className="h-8 text-[10px] flex-1 uppercase"
+                      onChange={(e) => onUpdate({ buttonTextColor: e.target.value })}
+                    />
+                  </div>
+                </fieldset>
+              </div>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Fundo */}
+        <AccordionItem
+          value="background"
+          className="border rounded-lg px-4 bg-card/50"
+        >
+          <AccordionTrigger className="hover:no-underline py-4">
+            <div className="flex items-center gap-2 text-primary font-serif italic text-sm">
+              <ImageIcon className="w-4 h-4" /> FUNDO DA SEÇÃO
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4">
+            <BackgroundEditor
+              settings={{
+                bgType: settings.bgType,
+                bgColor: settings.bgColor,
+                bgImage: settings.bgImage,
+                imageOpacity: settings.imageOpacity,
+                overlayOpacity: settings.overlayOpacity,
+                imageScale: settings.imageScale,
+                imageX: settings.imageX,
+                imageY: settings.imageY,
+              }}
+              onUpdate={(updates) =>
+                onUpdate({
+                  ...(updates.bgType !== undefined && { bgType: updates.bgType }),
+                  ...(updates.bgColor !== undefined && { bgColor: updates.bgColor }),
+                  ...(updates.bgImage !== undefined && { bgImage: updates.bgImage }),
+                  ...(updates.imageOpacity !== undefined && { imageOpacity: updates.imageOpacity }),
+                  ...(updates.overlayOpacity !== undefined && { overlayOpacity: updates.overlayOpacity }),
+                  ...(updates.imageScale !== undefined && { imageScale: updates.imageScale }),
+                  ...(updates.imageX !== undefined && { imageX: updates.imageX }),
+                  ...(updates.imageY !== undefined && { imageY: updates.imageY }),
+                })
+              }
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      {/* Botão de Aplicar (Sincronizar com o Preview) */}
+      <div className="pt-4 border-t border-border/50">
+        <Button
+          onClick={onSave}
+          disabled={!hasChanges}
+          className="w-full bg-primary/10 hover:bg-primary/20 text-primary border-none h-10 font-medium"
+        >
+          {hasChanges ? "Aplicar Alterações" : "Sem Alterações"}
+        </Button>
+        <p className="text-[10px] text-center text-muted-foreground mt-2">
+          As alterações serão refletidas no preview lateral
+        </p>
+      </div>
+    </div>
+  );
+}
