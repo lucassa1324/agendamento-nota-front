@@ -1,7 +1,31 @@
 /**
- * Hook para gerenciar o estado global das configurações do site.
- * Lida com a persistência no localStorage, sincronização com o iframe
- * e controle de alterações (dirty states) para cada seção.
+ * useSiteEditor: Hook de Orquestração do Estado do Site
+ * 
+ * Este é o hook "cérebro" do editor de site. Ele gerencia todo o estado das configurações 
+ * visíveis no painel e garante que essas mudanças sejam persistidas e refletidas no preview.
+ * 
+ * Responsabilidades principais:
+ * 
+ * 1. Gestão de Estados de Seção:
+ *    - Mantém os dados atuais de cada seção do site (Hero, Serviços, Galeria, etc.).
+ *    - Gerencia estados temporários de edição (o que o usuário está digitando no momento).
+ *    - Controla os estados "Dirty" (compara o estado atual com o último salvo para habilitar botões).
+ * 
+ * 2. Persistência de Dados:
+ *    - Ao carregar, recupera as configurações salvas do `localStorage`.
+ *    - Ao clicar em 'Salvar', grava as alterações permanentemente no armazenamento do navegador.
+ * 
+ * 3. Sincronização em Tempo Real (PostMessage):
+ *    - Possui um mecanismo que envia mensagens (`postMessage`) para o iframe do preview sempre 
+ *      que qualquer configuração é alterada. Isso permite que o usuário veja as mudanças 
+ *      instantaneamente enquanto digita, sem precisar recarregar.
+ * 
+ * 4. Controle de Visibilidade:
+ *    - Gerencia quais páginas e quais seções específicas do site estão ativas ou ocultas.
+ * 
+ * 5. Sistema de Feedback:
+ *    - Integrado com o sistema de `Toast` para notificar o usuário sobre o sucesso ou falha 
+ *      ao salvar as alterações.
  */
 
 import { type RefObject, useCallback, useEffect, useMemo, useState } from "react";
@@ -131,43 +155,43 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
   // Handlers de atualização
   const handleUpdateHero = useCallback((updates: Partial<HeroSettings>) => {
-    setHeroSettings((prev) => ({ ...prev, ...updates }));
+    setHeroSettings((prev: HeroSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateFont = useCallback((updates: Partial<FontSettings>) => {
-    setFontSettings((prev) => ({ ...prev, ...updates }));
+    setFontSettings((prev: FontSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateServices = useCallback((updates: Partial<ServicesSettings>) => {
-    setServicesSettings((prev) => ({ ...prev, ...updates }));
+    setServicesSettings((prev: ServicesSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateValues = useCallback((updates: Partial<ValuesSettings>) => {
-    setValuesSettings((prev) => ({ ...prev, ...updates }));
+    setValuesSettings((prev: ValuesSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateGallery = useCallback((updates: Partial<GallerySettings>) => {
-    setGallerySettings((prev) => ({ ...prev, ...updates }));
+    setGallerySettings((prev: GallerySettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateCTA = useCallback((updates: Partial<CTASettings>) => {
-    setCTASettings((prev) => ({ ...prev, ...updates }));
+    setCTASettings((prev: CTASettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateHeader = useCallback((updates: Partial<HeaderSettings>) => {
-    setHeaderSettings((prev) => ({ ...prev, ...updates }));
+    setHeaderSettings((prev: HeaderSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateFooter = useCallback((updates: Partial<FooterSettings>) => {
-    setFooterSettings((prev) => ({ ...prev, ...updates }));
+    setFooterSettings((prev: FooterSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handlePageVisibilityChange = useCallback((pageId: string, isVisible: boolean) => {
-    setPageVisibility((prev) => ({ ...prev, [pageId]: isVisible }));
+    setPageVisibility((prev: Record<string, boolean>) => ({ ...prev, [pageId]: isVisible }));
   }, []);
 
   const handleSectionVisibilityToggle = useCallback((sectionId: string) => {
-    setVisibleSections((prev) => ({
+    setVisibleSections((prev: Record<string, boolean>) => ({
       ...prev,
       
       [sectionId]: prev[sectionId] === false ? true : false,
@@ -186,6 +210,19 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       );
     }
   }, [pageVisibility, iframeRef]);
+
+  // Notificamos o iframe sobre a mudança de visibilidade das seções
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_VISIBLE_SECTIONS",
+          sections: visibleSections,
+        },
+        "*"
+      );
+    }
+  }, [visibleSections, iframeRef]);
 
   // Sincronização com o iframe
   useEffect(() => {
@@ -225,6 +262,44 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     }
   }, [ctaSettings, iframeRef]);
 
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: "UPDATE_HEADER_SETTINGS", settings: headerSettings }, "*");
+    }
+  }, [headerSettings, iframeRef]);
+
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: "UPDATE_FOOTER_SETTINGS", settings: footerSettings }, "*");
+    }
+  }, [footerSettings, iframeRef]);
+
+  // Notificamos o iframe sobre mudanças em tempo real em qualquer seção
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      const win = iframeRef.current.contentWindow;
+      win.postMessage({ type: "UPDATE_HERO_CONTENT", ...heroSettings }, "*");
+      win.postMessage({ type: "UPDATE_HERO_BG", ...heroSettings }, "*");
+      win.postMessage({ type: "UPDATE_SERVICES_CONTENT", settings: servicesSettings }, "*");
+      win.postMessage({ type: "UPDATE_VALUES_CONTENT", settings: valuesSettings }, "*");
+      win.postMessage({ type: "UPDATE_GALLERY_SETTINGS", settings: gallerySettings }, "*");
+      win.postMessage({ type: "UPDATE_CTA_SETTINGS", settings: ctaSettings }, "*");
+      win.postMessage({ type: "UPDATE_HEADER_SETTINGS", settings: headerSettings }, "*");
+      win.postMessage({ type: "UPDATE_FOOTER_SETTINGS", settings: footerSettings }, "*");
+      win.postMessage({ type: "UPDATE_TYPOGRAPHY", settings: fontSettings }, "*");
+    }
+  }, [
+    heroSettings, 
+    servicesSettings, 
+    valuesSettings, 
+    gallerySettings, 
+    ctaSettings, 
+    headerSettings, 
+    footerSettings, 
+    fontSettings, 
+    iframeRef
+  ]);
+
   // Aplicar mudanças (atualizar estados applied e notificar iframe)
   const handleApplyHero = useCallback(() => {
     setLastAppliedHero({ ...heroSettings });
@@ -261,6 +336,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage({ type: "UPDATE_HEADER_SETTINGS", settings: { ...headerSettings } }, "*");
     }
+    // Forçar persistência temporária no localStorage para o preview ler em caso de refresh
+    saveHeaderSettings(headerSettings);
     toast({ title: "Preview atualizado!", description: "As mudanças do cabeçalho foram aplicadas ao rascunho." });
   }, [headerSettings, toast, iframeRef]);
 
@@ -269,6 +346,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage({ type: "UPDATE_FOOTER_SETTINGS", settings: { ...footerSettings } }, "*");
     }
+    // Forçar persistência temporária no localStorage para o preview ler em caso de refresh
+    saveFooterSettings(footerSettings);
     toast({ title: "Preview atualizado!", description: "As mudanças do rodapé foram aplicadas ao rascunho." });
   }, [footerSettings, toast, iframeRef]);
 

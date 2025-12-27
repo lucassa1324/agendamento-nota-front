@@ -16,31 +16,40 @@ import {
   type SiteProfile,
 } from "@/lib/booking-data";
 
-export function Navigation() {
+export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?: HeaderSettings }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profile, setProfile] = useState<SiteProfile | null>(null);
-  const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(defaultHeaderSettings);
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
-    {
-      inicio: true,
-      galeria: true,
-      sobre: true,
-      agendar: true,
-    },
+  const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(
+    externalHeaderSettings || defaultHeaderSettings,
   );
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
+    inicio: true,
+    galeria: true,
+    sobre: true,
+    agendar: true,
+  });
   const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
 
   const only = searchParams.get("only");
+
+  useEffect(() => {
+    if (externalHeaderSettings) {
+      setHeaderSettings(externalHeaderSettings);
+    }
+  }, [externalHeaderSettings]);
 
   useEffect(() => {
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     setProfile(getSiteProfile());
     setPageVisibility(getPageVisibility());
     setVisibleSections(getVisibleSections());
-    setHeaderSettings(getHeaderSettings());
+    
+    if (!externalHeaderSettings) {
+      setHeaderSettings(getHeaderSettings());
+    }
 
     // Notificar o pai (admin) que o componente de navegação está pronto
     if (window.self !== window.top) {
@@ -92,15 +101,12 @@ export function Navigation() {
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
-      window.removeEventListener(
-        "pageVisibilityUpdated",
-        handleVisibilityUpdate,
-      );
+      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
       window.removeEventListener("visibleSectionsUpdated", handleSectionsUpdate);
       window.removeEventListener("headerSettingsUpdated", handleHeaderUpdate);
       window.removeEventListener("message", handleMessage);
     };
-  }, [pathname]);
+  }, [pathname, externalHeaderSettings]);
 
   // Se estivermos isolando algo que não seja o header, escondemos o navigation
   if (only && only !== "header") return null;

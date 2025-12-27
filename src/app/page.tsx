@@ -13,8 +13,9 @@ export default function Home({
 }: {
   searchParams: Promise<{ only?: string }>;
 }) {
-  const { only } = use(searchParams);
+  const { only: initialOnly } = use(searchParams);
   const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
+  const [isolatedSection, setIsolatedSection] = useState<string | null>(initialOnly || null);
 
   useEffect(() => {
     // Inicializa a visibilidade
@@ -28,6 +29,14 @@ export default function Home({
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
         setVisibleSections(event.data.sections);
+      } else if (event.data?.type === "UPDATE_HEADER_SETTINGS") {
+        // Notifica o sistema de eventos global para o Header no LayoutClientWrapper
+        window.dispatchEvent(new CustomEvent("headerSettingsUpdated", { detail: event.data.settings }));
+      } else if (event.data?.type === "UPDATE_FOOTER_SETTINGS") {
+        // Notifica o sistema de eventos global para o Footer no LayoutClientWrapper
+        window.dispatchEvent(new CustomEvent("footerSettingsUpdated", { detail: event.data.settings }));
+      } else if (event.data?.type === "SET_ISOLATED_SECTION") {
+        setIsolatedSection(event.data.sectionId);
       }
     };
 
@@ -41,8 +50,8 @@ export default function Home({
   }, []);
 
   const isVisible = (id: string) => {
-    // Se estivermos em modo "only" (preview de seção única), ignoramos o visibleSections
-    if (only) return only === id;
+    // Se houver uma seção isolada, apenas ela deve aparecer
+    if (isolatedSection) return isolatedSection === id;
     // Caso contrário, verificamos se a seção está marcada como visível (default é true)
     return visibleSections[id] !== false;
   };

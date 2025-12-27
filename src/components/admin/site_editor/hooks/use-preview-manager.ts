@@ -1,7 +1,31 @@
 /**
- * Hook responsável por gerenciar a lógica de visualização do preview.
- * Controla o modo (Desktop/Mobile), escala de zoom, largura manual
- * e detecção de redimensionamento do container.
+ * usePreviewManager: Hook de Controle do Visualizador (Preview)
+ * 
+ * Este hook gerencia a experiência de visualização do site dentro do iframe no painel administrativo.
+ * Ele permite que o administrador simule como o site aparecerá em diferentes dispositivos e condições.
+ * 
+ * Funcionalidades principais:
+ * 
+ * 1. Modos de Dispositivo:
+ *    - Alterna entre visualização 'Desktop' (larga) e 'Mobile' (estreita).
+ *    - Ajusta a largura do iframe para corresponder aos breakpoints do site.
+ * 
+ * 2. Gerenciamento de Escala e Zoom:
+ *    - `isAutoZoom`: Calcula automaticamente a escala necessária para que o preview caiba 
+ *      no espaço disponível da tela, sem cortes.
+ *    - `manualScale`: Permite que o usuário defina um zoom personalizado (ex: 50%, 75%, 100%).
+ * 
+ * 3. Persistência de Preferências:
+ *    - Salva as preferências de modo (Desktop/Mobile) e zoom no `localStorage`, garantindo 
+ *      que a visualização seja mantida após recarregar a página.
+ * 
+ * 4. Monitoramento de Layout:
+ *    - Utiliza um `ResizeObserver` para detectar mudanças no tamanho do container do editor, 
+ *      recalculando o zoom automático sempre que o painel lateral é aberto ou fechado.
+ * 
+ * 5. Ciclo de Vida do Iframe:
+ *    - Fornece a função `reloadPreview`, que utiliza uma chave (`previewKey`) para forçar 
+ *      o recarregamento do iframe quando necessário.
  */
 import { type RefObject, useCallback, useEffect, useState } from "react";
 
@@ -54,7 +78,9 @@ export function usePreviewManager(containerRef: RefObject<HTMLDivElement | null>
   const desktopScale = isAutoZoom ? Math.min(1, (containerWidth - 48) / desktopWidth) : manualScale;
   const mobileScale = isAutoZoom ? Math.min(1, (containerWidth - 48) / mobileWidth) : manualScale;
 
-  const reloadPreview = useCallback(() => setPreviewKey((prev) => prev + 1), []);
+  const reloadPreview = useCallback(() => {
+    setPreviewKey((prev) => prev + 1);
+  }, []);
 
   return {
     previewMode,

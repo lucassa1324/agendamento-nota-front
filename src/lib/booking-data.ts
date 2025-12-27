@@ -386,6 +386,48 @@ export type CTASettings = {
   imageY: number;
 };
 
+export type TeamMember = {
+  id: string;
+  name: string;
+  role: string;
+  image: string;
+  description: string;
+};
+
+export type TeamSettings = {
+  title: string;
+  subtitle: string;
+  titleColor: string;
+  subtitleColor: string;
+  titleFont: string;
+  subtitleFont: string;
+  cardBgColor: string;
+  cardTitleColor: string;
+  cardRoleColor: string;
+  cardDescriptionColor: string;
+  members: TeamMember[];
+};
+
+export type Testimonial = {
+  id: string;
+  name: string;
+  text: string;
+  rating: number;
+};
+
+export type TestimonialsSettings = {
+  title: string;
+  subtitle: string;
+  titleColor: string;
+  subtitleColor: string;
+  titleFont: string;
+  subtitleFont: string;
+  cardBgColor: string;
+  cardNameColor: string;
+  cardTextColor: string;
+  testimonials: Testimonial[];
+};
+
 export const defaultCTASettings: CTASettings = {
   title: "Pronta Para Transformar Seu Olhar?",
   subtitle: "Agende seu horário agora e descubra como sobrancelhas bem feitas podem realçar toda sua beleza",
@@ -405,6 +447,61 @@ export const defaultCTASettings: CTASettings = {
   imageScale: 1,
   imageX: 50,
   imageY: 50,
+};
+
+export const defaultTeamSettings: TeamSettings = {
+  title: "Nossa Equipe",
+  subtitle: "Conheça as profissionais especialistas que cuidarão do seu olhar",
+  titleColor: "",
+  subtitleColor: "",
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  cardBgColor: "",
+  cardTitleColor: "",
+  cardRoleColor: "",
+  cardDescriptionColor: "",
+  members: [
+    {
+      id: "1",
+      name: "Ana Silva",
+      role: "Master Designer",
+      image: "/professional-eyebrow-artist-at-work.jpg",
+      description: "Especialista em micropigmentação e design personalizado com mais de 8 anos de experiência.",
+    },
+    {
+      id: "2",
+      name: "Beatriz Costa",
+      role: "Designer & Lash Artist",
+      image: "/professional-eyebrow-artist-at-work.jpg",
+      description: "Especialista em lash lifting e design de sobrancelhas com foco em naturalidade.",
+    },
+  ],
+};
+
+export const defaultTestimonialsSettings: TestimonialsSettings = {
+  title: "O Que Dizem Nossas Clientes",
+  subtitle: "A satisfação de nossas clientes é nossa maior conquista",
+  titleColor: "",
+  subtitleColor: "",
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  cardBgColor: "",
+  cardNameColor: "",
+  cardTextColor: "",
+  testimonials: [
+    {
+      id: "1",
+      name: "Maria Oliveira",
+      text: "Simplesmente perfeito! A Ana entendeu exatamente o que eu queria e o resultado ficou incrível.",
+      rating: 5,
+    },
+    {
+      id: "2",
+      name: "Fernanda Lima",
+      text: "Profissionais extremamente capacitadas e atenciosas. O ambiente é acolhedor e o resultado superou minhas expectativas.",
+      rating: 5,
+    },
+  ],
 };
 
 export type FontSettings = {

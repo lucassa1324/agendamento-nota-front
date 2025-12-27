@@ -19,31 +19,43 @@ import {
   getFooterSettings,
   getPageVisibility,
   getSiteProfile,
+  getVisibleSections,
   type SiteProfile,
 } from "@/lib/booking-data";
 
-export function Footer() {
+export function Footer({ externalFooterSettings }: { externalFooterSettings?: FooterSettings }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [profile, setProfile] = useState<SiteProfile | null>(null);
-  const [footerSettings, setFooterSettings] = useState<FooterSettings>(defaultFooterSettings);
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
-    {
-      inicio: true,
-      galeria: true,
-      sobre: true,
-      agendar: true,
-    },
+  const [footerSettings, setFooterSettings] = useState<FooterSettings>(
+    externalFooterSettings || defaultFooterSettings,
   );
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
+    inicio: true,
+    galeria: true,
+    sobre: true,
+    agendar: true,
+  });
+  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
 
   const only = searchParams.get("only");
+
+  useEffect(() => {
+    if (externalFooterSettings) {
+      setFooterSettings(externalFooterSettings);
+    }
+  }, [externalFooterSettings]);
 
   useEffect(() => {
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     setProfile(getSiteProfile());
     setPageVisibility(getPageVisibility());
-    setFooterSettings(getFooterSettings());
+    setVisibleSections(getVisibleSections());
+    
+    if (!externalFooterSettings) {
+      setFooterSettings(getFooterSettings());
+    }
 
     // Notificar o pai (admin) que o componente de rodapé está pronto
     if (window.self !== window.top) {
@@ -53,6 +65,9 @@ export function Footer() {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
         setPageVisibility(event.data.visibility);
+      }
+      if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
+        setVisibleSections(event.data.sections);
       }
       if (event.data?.type === "UPDATE_FOOTER_SETTINGS") {
         console.log("Footer: Recebendo novas configurações", event.data.settings);
@@ -77,27 +92,33 @@ export function Footer() {
       setPageVisibility(getPageVisibility());
     };
 
+    const handleSectionsUpdate = () => {
+      setVisibleSections(getVisibleSections());
+    };
+
     const handleFooterUpdate = () => {
       setFooterSettings(getFooterSettings());
     };
 
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+    window.addEventListener("visibleSectionsUpdated", handleSectionsUpdate);
     window.addEventListener("footerSettingsUpdated", handleFooterUpdate);
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
-      window.removeEventListener(
-        "pageVisibilityUpdated",
-        handleVisibilityUpdate,
-      );
+      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+      window.removeEventListener("visibleSectionsUpdated", handleSectionsUpdate);
       window.removeEventListener("footerSettingsUpdated", handleFooterUpdate);
       window.removeEventListener("message", handleMessage);
     };
-  }, [pathname]);
+  }, [pathname, externalFooterSettings]);
 
   // Se estivermos isolando algo que não seja o footer, escondemos o footer
   if (only && only !== "footer") return null;
+
+  // Se o footer estiver desativado nas seções visíveis, e não estivermos isolando ele
+  if (!only && visibleSections.footer === false) return null;
 
   if (!profile) return null;
 
