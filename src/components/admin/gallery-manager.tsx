@@ -2,16 +2,16 @@
 "use client";
 
 import {
+  Home,
   ImageIcon,
   Link as LinkIcon,
   Plus,
+  Search,
   Trash2,
   Upload,
-  Home,
-  Search,
 } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -31,11 +31,11 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
-  getGalleryImages,
-  saveGalleryImages,
-  getServices,
   type GalleryImage,
+  getGalleryImages,
+  getServices,
   type Service,
+  saveGalleryImages,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 

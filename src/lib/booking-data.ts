@@ -896,7 +896,9 @@ export function saveGoogleCalendarSettings(
 export function getSiteProfile(): SiteProfile {
   if (typeof window === "undefined") return defaultSiteProfile;
   const profile = localStorage.getItem("siteProfile");
-  return profile ? JSON.parse(profile) : defaultSiteProfile;
+  return profile
+    ? { ...defaultSiteProfile, ...JSON.parse(profile) }
+    : defaultSiteProfile;
 }
 
 export function saveSiteProfile(profile: SiteProfile): void {

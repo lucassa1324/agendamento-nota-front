@@ -43,43 +43,43 @@ import {
   type CTASettings,
   defaultCTASettings,
   defaultFontSettings,
-  defaultGallerySettings,
-  defaultHeroSettings,
-  defaultHeaderSettings,
   defaultFooterSettings,
+  defaultGallerySettings,
+  defaultHeaderSettings,
+  defaultHeroSettings,
   defaultServicesSettings,
   defaultValuesSettings,
   type FontSettings,
-  type GallerySettings,
-  type HeaderSettings,
   type FooterSettings,
+  type GallerySettings,
   getCTASettings,
   getFontSettings,
-  getGallerySettings,
-  getHeroSettings,
-  getHeaderSettings,
   getFooterSettings,
+  getGallerySettings,
+  getHeaderSettings,
+  getHeroSettings,
   getPageVisibility,
   getServicesSettings,
   getValuesSettings,
   getVisibleSections,
+  type HeaderSettings,
   type HeroSettings,
   type ServicesSettings,
   saveCTASettings,
   saveFontSettings,
-  saveGallerySettings,
-  saveHeroSettings,
-  saveHeaderSettings,
   saveFooterSettings,
+  saveGallerySettings,
+  saveHeaderSettings,
+  saveHeroSettings,
   savePageVisibility,
   saveServicesSettings,
   saveValuesSettings,
   saveVisibleSections,
   type ValuesSettings,
 } from "@/lib/booking-data";
-import { TypographyEditor } from "./site_editor/layout/typography-editor";
-import { HeaderEditor } from "./site_editor/layout/header-editor";
 import { FooterEditor } from "./site_editor/layout/footer-editor";
+import { HeaderEditor } from "./site_editor/layout/header-editor";
+import { TypographyEditor } from "./site_editor/layout/typography-editor";
 import { CTAEditor } from "./site_editor/pages/home/cta-editor";
 import { GalleryEditor } from "./site_editor/pages/home/gallery-editor";
 import { HeroEditor } from "./site_editor/pages/home/hero-editor";
@@ -809,7 +809,19 @@ export function SiteCustomizer() {
   };
 
   const scrollToSection = (sectionId: string) => {
+    // Encontrar a página que contém esta seção
+    const pageId = Object.entries(sections).find(([_, pageSections]) =>
+      pageSections.some((s) => s.id === sectionId),
+    )?.[0];
+
+    // Se a seção pertencer a uma página específica (não layout) e não for a página atual, navegamos
+    if (pageId && pageId !== "layout" && pageId !== activePage) {
+      setActivePage(pageId);
+    }
+
     setActiveSection(sectionId);
+    console.log("scrollToSection: activePage set to", pageId);
+    console.log("scrollToSection: activeSection set to", sectionId);
     // Notificamos o iframe para destacar a seção
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
@@ -884,6 +896,7 @@ export function SiteCustomizer() {
   const previewUrl = activePageData?.path
     ? `${activePageData.path}${activeSection ? `?only=${activeSection}` : ""}`
     : "";
+  console.log("Generated previewUrl:", previewUrl);
 
   const handleApplyHero = useCallback(() => {
     setLastAppliedHero(heroSettings);

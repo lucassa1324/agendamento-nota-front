@@ -55,10 +55,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { ValueItem, ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { EDITOR_FONTS } from "../../components/editor-constants";
-import { SectionTitleEditor } from "../../components/SectionTitleEditor";
-import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { EDITOR_FONTS } from "../../components/editor-constants";
+import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
+import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
 const icons = [
   { name: "Heart", icon: Heart },

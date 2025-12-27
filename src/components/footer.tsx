@@ -14,12 +14,12 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
+  defaultFooterSettings,
+  type FooterSettings,
+  getFooterSettings,
   getPageVisibility,
   getSiteProfile,
-  getFooterSettings,
-  defaultFooterSettings,
   type SiteProfile,
-  type FooterSettings,
 } from "@/lib/booking-data";
 
 export function Footer() {

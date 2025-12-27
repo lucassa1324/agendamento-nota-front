@@ -4,13 +4,13 @@ import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  type CTASettings,
+  getCTASettings,
+  getPageVisibility,
+} from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
-import {
-  getPageVisibility,
-  getCTASettings,
-  type CTASettings,
-} from "@/lib/booking-data";
 
 export function CTASection() {
   const [isMounted, setIsMounted] = useState(false);

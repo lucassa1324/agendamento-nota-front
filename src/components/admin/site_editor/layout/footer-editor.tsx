@@ -1,6 +1,6 @@
 "use client";
 
-import { Palette, Type, Layout } from "lucide-react";
+import { Layout, Palette, Type } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -8,8 +8,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,

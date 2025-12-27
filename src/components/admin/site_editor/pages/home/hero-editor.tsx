@@ -36,10 +36,10 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { EDITOR_FONTS } from "../../components/editor-constants";
-import { SectionTitleEditor } from "../../components/SectionTitleEditor";
-import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { EDITOR_FONTS } from "../../components/editor-constants";
+import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
+import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
 const availableIcons = [
   { name: "Sparkles", icon: Sparkles },

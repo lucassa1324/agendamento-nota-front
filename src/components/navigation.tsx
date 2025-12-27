@@ -7,13 +7,13 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  getPageVisibility,
-  getVisibleSections,
-  getSiteProfile,
-  getHeaderSettings,
   defaultHeaderSettings,
-  type SiteProfile,
+  getHeaderSettings,
+  getPageVisibility,
+  getSiteProfile,
+  getVisibleSections,
   type HeaderSettings,
+  type SiteProfile,
 } from "@/lib/booking-data";
 
 export function Navigation() {

@@ -1,11 +1,11 @@
 "use client";
 
+import { use, useEffect, useState } from "react";
 import { CTASection } from "@/components/cta-section";
 import { GalleryPreview } from "@/components/gallery-preview";
 import { HeroSection } from "@/components/hero-section";
 import { ServicesSection } from "@/components/services-section";
 import { ValuesSection } from "@/components/values-section";
-import { useEffect, useState, use } from "react";
 import { getVisibleSections } from "@/lib/booking-data";
 
 export default function Home({

@@ -19,10 +19,10 @@ import {
 } from "@/components/ui/select";
 import type { ServicesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { SectionTitleEditor } from "../../components/SectionTitleEditor";
-import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
+import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
 interface ServicesEditorProps {
   settings: ServicesSettings;

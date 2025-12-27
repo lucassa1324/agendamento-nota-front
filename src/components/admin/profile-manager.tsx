@@ -140,7 +140,7 @@ export function ProfileManager() {
             <Label htmlFor="site-name">Nome do Site</Label>
             <Input
               id="site-name"
-              value={profile.name}
+              value={profile.name || ""}
               onChange={(e) => updateField("name", e.target.value)}
               placeholder="Ex: Brow Studio"
             />
@@ -149,7 +149,7 @@ export function ProfileManager() {
             <Label htmlFor="site-description">Descrição</Label>
             <Textarea
               id="site-description"
-              value={profile.description}
+              value={profile.description || ""}
               onChange={(e) => updateField("description", e.target.value)}
               placeholder="Descreva seu studio de sobrancelhas..."
               rows={4}
@@ -189,7 +189,7 @@ export function ProfileManager() {
                 </span>
                 <Input
                   id="instagram"
-                  value={profile.instagram}
+                  value={profile.instagram || ""}
                   onChange={(e) => updateField("instagram", e.target.value)}
                   placeholder="usuario"
                   disabled={!profile.showInstagram}
@@ -218,7 +218,7 @@ export function ProfileManager() {
                 </span>
                 <Input
                   id="whatsapp"
-                  value={profile.whatsapp}
+                  value={profile.whatsapp || ""}
                   onChange={(e) => updateField("whatsapp", e.target.value)}
                   placeholder="11999999999"
                   disabled={!profile.showWhatsapp}
@@ -243,7 +243,7 @@ export function ProfileManager() {
               </div>
               <Input
                 id="facebook"
-                value={profile.facebook}
+                value={profile.facebook || ""}
                 onChange={(e) => updateField("facebook", e.target.value)}
                 placeholder="nome.da.pagina"
                 disabled={!profile.showFacebook}
@@ -271,7 +271,7 @@ export function ProfileManager() {
                 </span>
                 <Input
                   id="tiktok"
-                  value={profile.tiktok}
+                  value={profile.tiktok || ""}
                   onChange={(e) => updateField("tiktok", e.target.value)}
                   placeholder="usuario"
                   disabled={!profile.showTiktok}
@@ -296,7 +296,7 @@ export function ProfileManager() {
               </div>
               <Input
                 id="linkedin"
-                value={profile.linkedin}
+                value={profile.linkedin || ""}
                 onChange={(e) => updateField("linkedin", e.target.value)}
                 placeholder="in/usuario"
                 disabled={!profile.showLinkedin}
@@ -322,7 +322,7 @@ export function ProfileManager() {
                 </span>
                 <Input
                   id="x"
-                  value={profile.x}
+                  value={profile.x || ""}
                   onChange={(e) => updateField("x", e.target.value)}
                   placeholder="usuario"
                   disabled={!profile.showX}
@@ -347,7 +347,7 @@ export function ProfileManager() {
               <Label htmlFor="phone">Telefone de Contato</Label>
               <Input
                 id="phone"
-                value={profile.phone}
+                value={profile.phone || ""}
                 onChange={(e) => updateField("phone", e.target.value)}
                 placeholder="(11) 99999-9999"
               />
@@ -357,7 +357,7 @@ export function ProfileManager() {
               <Input
                 id="email"
                 type="email"
-                value={profile.email}
+                value={profile.email || ""}
                 onChange={(e) => updateField("email", e.target.value)}
                 placeholder="contato@exemplo.com"
               />
@@ -366,7 +366,7 @@ export function ProfileManager() {
               <Label htmlFor="address">Endereço / Localização</Label>
               <Input
                 id="address"
-                value={profile.address}
+                value={profile.address || ""}
                 onChange={(e) => updateField("address", e.target.value)}
                 placeholder="São Paulo, SP"
               />

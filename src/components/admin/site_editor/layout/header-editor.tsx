@@ -1,6 +1,6 @@
 "use client";
 
-import { Type, MousePointer2, Layout } from "lucide-react";
+import { Layout, MousePointer2, Type } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -8,8 +8,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import type { HeaderSettings } from "@/lib/booking-data";
 
