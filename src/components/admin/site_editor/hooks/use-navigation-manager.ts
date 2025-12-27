@@ -22,57 +22,126 @@
  * Este hook é essencial para garantir que o que o administrador vê no painel lateral esteja 
  * sincronizado com o que o iframe do site está exibindo.
  */
-import { type RefObject, useCallback, useEffect, useMemo, useState } from "react";
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { pages, sections, type PageItem, type SectionItem } from "../components/editor-constants";
 
 export function useNavigationManager(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const [activePage, setActivePage] = useState("layout");
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [expandedPages, setExpandedPages] = useState<string[]>(["layout", "inicio"]);
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [isPageReady, setIsPageReady] = useState(true);
+  const lastIframePath = useRef<string | null>(null);
+
+  const activePageData = pages.find((p: PageItem) => p.id === activePage);
+  const activeSectionData = Object.values(sections).flat().find((s: SectionItem) => s.id === activeSection);
+  
+  const previewUrl = useMemo(() => {
+    // Se estivermos em 'layout', usamos o último path do iframe ou a home.
+    // Isso evita que o iframe fique em branco ao selecionar Layout Global.
+    const path = activePage === "layout" 
+      ? (lastIframePath.current || "/") 
+      : (activePageData?.path || "/");
+    
+    const baseUrl = path === "/" ? "/?preview=true" : `${path}?preview=true`;
+    
+    // Adicionamos o parâmetro 'only' na URL inicial para garantir que o 
+    // primeiro render já venha isolado, evitando o flash da home inteira.
+    return activeSection ? `${baseUrl}&only=${activeSection}` : baseUrl;
+  }, [activePage, activePageData, activeSection]);
 
   const togglePageExpansion = useCallback((pageId: string) => {
     setExpandedPages((prev: string[]) => 
       prev.includes(pageId) ? prev.filter((id: string) => id !== pageId) : [...prev, pageId]
     );
+    
+    // Ao expandir uma página, definimos como ativa
     const page = pages.find((p: PageItem) => p.id === pageId);
-    if (page) setActivePage(pageId);
-  }, []);
+    if (page) {
+      if (pageId !== activePage) {
+        setIsPageReady(false);
+      }
+      setActivePage(pageId);
+      // Ao mudar de página via menu, limpamos a seção ativa para evitar isolamento órfão
+      setActiveSection(null);
+    }
+  }, [activePage]);
 
-  const scrollToSection = useCallback((sectionId: string) => {
+  const scrollToSection = useCallback((sectionId: string, pageId?: string) => {
+    if (pageId && pageId !== activePage) {
+      setIsPageReady(false);
+      setActivePage(pageId);
+      // Se mudar de página, garantimos que a nova página carregue antes de isolar
+      // (o useEffect de load cuidará disso)
+    }
     setActiveSection(sectionId);
-  }, []);
+  }, [activePage]);
+
+  // Efeito para lidar com a navegação de página e carregamento do iframe
+  useEffect(() => {
+    if (activePage === "layout") {
+      setIsNavigating(false);
+    } else if (activePageData) {
+      setIsNavigating(true);
+    }
+
+    const iframe = iframeRef.current;
+    if (iframe) {
+      const handleLoad = () => {
+        setIsPageReady(true);
+        setIsNavigating(false);
+        if (iframe.contentWindow && activeSection) {
+          iframe.contentWindow.postMessage({
+            type: "SET_ISOLATED_SECTION",
+            sectionId: activeSection,
+          }, "*");
+        }
+      };
+
+      iframe.addEventListener("load", handleLoad);
+      return () => {
+        iframe.removeEventListener("load", handleLoad);
+      };
+    }
+  }, [activePage, activePageData, iframeRef, activeSection]);
 
   // Sincronizar isolamento de seção com o iframe
   useEffect(() => {
-    if (iframeRef.current?.contentWindow) {
-      if (activeSection) {
-        iframeRef.current.contentWindow.postMessage({ 
-          type: "SET_ISOLATED_SECTION", 
-          sectionId: activeSection 
-        }, "*");
-      } else {
-        iframeRef.current.contentWindow.postMessage({ 
-          type: "SET_ISOLATED_SECTION", 
-          sectionId: null 
-        }, "*");
-      }
+    if (isPageReady && !isNavigating && iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ 
+        type: "SET_ISOLATED_SECTION", 
+        sectionId: activeSection 
+      }, "*");
     }
-  }, [activeSection, iframeRef]);
+  }, [activeSection, iframeRef, isNavigating, isPageReady]);
+
+  // Escutar mensagens de navegação do iframe para sincronizar o menu lateral
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "PAGE_NAVIGATED") {
+        const path = event.data.path;
+        lastIframePath.current = path; // Sincroniza o path atual do iframe
+        
+        const page = pages.find(p => p.path === path && p.id !== "layout");
+        // Só muda a página ativa automaticamente se não estivermos no modo Layout Global
+        if (page && page.id !== activePage && activePage !== "layout") {
+          setActivePage(page.id);
+          setActiveSection(null); // Limpa seção ao navegar manualmente
+          if (!expandedPages.includes(page.id)) {
+            setExpandedPages(prev => [...prev, page.id]);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [activePage, expandedPages]);
 
   const handleHighlight = useCallback(() => {
     // A lógica de destaque pode ser implementada diretamente no preview
     // ou via CSS condicional baseada no activeSection
   }, []);
-
-  const activePageData = pages.find((p: PageItem) => p.id === activePage);
-  const activeSectionData = Object.values(sections).flat().find((s: SectionItem) => s.id === activeSection);
-  const previewUrl = useMemo(() => {
-    let url = activePageData?.path === "/" ? "/?preview=true" : `${activePageData?.path}?preview=true`;
-    if (activeSection) {
-      url += `&only=${activeSection}`;
-    }
-    return url;
-  }, [activePageData, activeSection]);
 
   return {
     activePage,

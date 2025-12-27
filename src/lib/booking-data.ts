@@ -1019,6 +1019,28 @@ export function saveHeroSettings(settings: HeroSettings): void {
   }
 }
 
+export const defaultAboutHeroSettings: HeroSettings = {
+  ...defaultHeroSettings,
+  badge: "Sobre Nós",
+  title: "Nossa Paixão é Realçar Sua Beleza",
+  subtitle: "Conheça a história por trás do Studio e nossa dedicação à excelência.",
+  primaryButton: "Nossos Serviços",
+  secondaryButton: "Agendar Agora",
+};
+
+export function getAboutHeroSettings(): HeroSettings {
+  if (typeof window === "undefined") return defaultAboutHeroSettings;
+  const settings = localStorage.getItem("aboutHeroSettings");
+  return settings ? JSON.parse(settings) : defaultAboutHeroSettings;
+}
+
+export function saveAboutHeroSettings(settings: HeroSettings): void {
+  localStorage.setItem("aboutHeroSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("aboutHeroSettingsUpdated"));
+  }
+}
+
 export function getStorySettings(): StorySettings {
   if (typeof window === "undefined") return defaultStorySettings;
   const settings = localStorage.getItem("storySettings");

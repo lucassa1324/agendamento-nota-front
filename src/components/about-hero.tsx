@@ -1,31 +1,166 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { getAboutHeroSettings, type HeroSettings } from "@/lib/booking-data";
+import { cn } from "@/lib/utils";
+import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export function AboutHero() {
+  const [settings, setSettings] = useState<HeroSettings | null>(null);
+  const [highlightedElement, setHighlightedElement] = useState<string | null>(null);
+
+  useEffect(() => {
+    setSettings(getAboutHeroSettings());
+
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+
+      if (
+        event.data.type === "UPDATE_ABOUT_HERO_BG" ||
+        event.data.type === "UPDATE_ABOUT_HERO_CONTENT"
+      ) {
+        setSettings((prev) => (prev ? { ...prev, ...event.data } : prev));
+      }
+
+      if (event.data.type === "HIGHLIGHT_SECTION") {
+        setHighlightedElement(event.data.sectionId);
+        setTimeout(() => setHighlightedElement(null), 2000);
+      }
+    };
+
+    const handleUpdate = () => {
+      setSettings(getAboutHeroSettings());
+    };
+
+    window.addEventListener("message", handleMessage);
+    window.addEventListener("aboutHeroSettingsUpdated", handleUpdate);
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("aboutHeroSettingsUpdated", handleUpdate);
+    };
+  }, []);
+
+  if (!settings) return null;
+
+  const getHighlightClass = (id: string) => {
+    return highlightedElement === id
+      ? "ring-4 ring-primary ring-offset-4 rounded-lg transition-all duration-500 scale-[1.02] z-20 relative"
+      : "transition-all duration-500 relative";
+  };
+
   return (
     <section
       id="about-hero"
-      className="relative py-20 md:py-32 overflow-hidden"
+      className={cn(
+        "relative py-20 md:py-32 overflow-hidden transition-all duration-700",
+        (highlightedElement === "about-hero-bg" || highlightedElement === "about-hero") &&
+          "ring-8 ring-inset ring-primary/30",
+      )}
     >
-      <div className="absolute inset-0 z-0">
-        <Image
-          src="/beauty-salon-professional-workspace.jpg"
-          alt="Studio"
-          fill
-          className="object-cover opacity-10"
-        />
-      </div>
+      <SectionBackground
+        settings={{
+          bgType: settings.bgType as "color" | "image",
+          bgColor: settings.bgColor,
+          bgImage: settings.bgImage,
+          imageOpacity: settings.imageOpacity,
+          overlayOpacity: settings.overlayOpacity,
+          imageScale: settings.imageScale,
+          imageX: settings.imageX,
+          imageY: settings.imageY,
+        }}
+        defaultImage="/beauty-salon-professional-workspace.jpg"
+        gradientClassName="bg-linear-to-b from-background/50 via-background/80 to-background"
+      />
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-3xl mx-auto text-center">
-          <h1 className="font-serif text-5xl md:text-7xl font-bold mb-6 text-balance">
-            Sobre Nós
+          {settings.showBadge !== false && (
+            <div
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6",
+                getHighlightClass("about-hero-badge"),
+              )}
+              style={{
+                fontFamily: settings.badgeFont,
+                color: settings.badgeColor || undefined,
+                borderColor: settings.badgeColor ? `${settings.badgeColor}33` : undefined,
+              }}
+            >
+              <span className="text-sm font-medium">
+                {settings.badge || "Sobre Nós"}
+              </span>
+            </div>
+          )}
+
+          <h1
+            className={cn(
+              "font-serif text-5xl md:text-7xl font-bold mb-6 text-balance leading-tight transition-all duration-300",
+              getHighlightClass("about-hero-title"),
+            )}
+            style={{
+              fontFamily: settings.titleFont,
+              color: settings.titleColor || undefined,
+            }}
+          >
+            {settings.title}
           </h1>
-          <p className="text-xl text-muted-foreground text-pretty leading-relaxed">
-            Dedicadas a realçar a beleza natural de cada cliente através de
-            técnicas especializadas e atendimento personalizado
+
+          <p
+            className={cn(
+              "text-lg md:text-xl mb-8 text-pretty leading-relaxed max-w-2xl mx-auto transition-all duration-300",
+              !settings.subtitleColor && "text-muted-foreground",
+              getHighlightClass("about-hero-subtitle"),
+            )}
+            style={{
+              fontFamily: settings.subtitleFont,
+              color: settings.subtitleColor || undefined,
+            }}
+          >
+            {settings.subtitle}
           </p>
+
+          <div
+            className={cn(
+              "flex flex-col sm:flex-row gap-4 justify-center",
+              getHighlightClass("about-hero-buttons"),
+            )}
+          >
+            <Button
+              asChild
+              size="lg"
+              className="h-14 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                backgroundColor: settings.primaryButtonColor || undefined,
+                color: settings.primaryButtonTextColor || undefined,
+                fontFamily: settings.primaryButtonFont,
+              }}
+            >
+              <Link href="/agendamento">
+                {settings.primaryButton || "Nossos Serviços"}
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="h-14 px-8 text-base font-bold rounded-full bg-background/50 backdrop-blur-sm border-border hover:bg-background/80 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                color: settings.secondaryButtonTextColor || settings.secondaryButtonColor || undefined,
+                borderColor: settings.secondaryButtonColor || undefined,
+                fontFamily: settings.secondaryButtonFont,
+              }}
+            >
+              <Link href="/agendamento">
+                {settings.secondaryButton || "Agendar Agora"}
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     </section>
   );
 }
+

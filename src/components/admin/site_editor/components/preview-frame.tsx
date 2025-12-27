@@ -177,8 +177,8 @@ export function PreviewFrame({
               <div className="flex-1 w-full overflow-hidden bg-white relative">
                 <iframe
                   ref={iframeRef}
-                  key={`${activePageData?.id}-${previewKey}`}
-                  src={previewUrl}
+                  key={previewKey}
+                  src={previewUrl || undefined}
                   className="absolute inset-0 w-full h-full border-none overflow-hidden"
                   title="Preview"
                 />

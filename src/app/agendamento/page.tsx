@@ -15,6 +15,7 @@ export default function AgendamentoPage({
   const only = searchParams.only;
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
   const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
+  const [isolatedSection, setIsolatedSection] = useState<string | null>(only || null);
 
   useEffect(() => {
     const checkVisibility = (visibility: Record<string, boolean>) => {
@@ -36,6 +37,9 @@ export default function AgendamentoPage({
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
         setVisibleSections(event.data.sections);
       }
+      if (event.data?.type === "SET_ISOLATED_SECTION") {
+        setIsolatedSection(event.data.sectionId);
+      }
     };
 
     const handleSectionsUpdate = () => {
@@ -55,7 +59,7 @@ export default function AgendamentoPage({
   if (isVisible === null) return null;
 
   const isSectionVisible = (id: string) => {
-    if (only) return only === id;
+    if (isolatedSection) return isolatedSection === id;
     return visibleSections[id] !== false;
   };
 

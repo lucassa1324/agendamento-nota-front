@@ -46,6 +46,8 @@ export const sections: Record<string, SectionItem[]> = {
     { id: "about-hero", name: "Banner Sobre Nós", description: "Título e introdução da página" },
     { id: "story", name: "Nossa História", description: "Trajetória detalhada" },
     { id: "values", name: "Nossos Valores", description: "Pilares do studio" },
+    { id: "team", name: "Nossa Equipe", description: "Profissionais do studio" },
+    { id: "testimonials", name: "O que dizem nossas clientes", description: "Depoimentos e avaliações" },
   ],
   agendar: [
     { id: "booking", name: "Fluxo de Agendamento", description: "Calendário e seleção de serviços" },

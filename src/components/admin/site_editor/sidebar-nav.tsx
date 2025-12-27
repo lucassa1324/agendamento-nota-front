@@ -30,7 +30,7 @@ interface SidebarNavProps {
   expandedPages: string[];
   visibleSections: Record<string, boolean>;
   onPageToggle: (id: string) => void;
-  onSectionSelect: (id: string) => void;
+  onSectionSelect: (sectionId: string, pageId: string) => void;
   onSectionVisibilityToggle: (id: string) => void;
   onSectionReset: (id: string) => void;
   pageVisibility: Record<string, boolean>;
@@ -145,11 +145,11 @@ export function SidebarNav({
                         key={`${page.id}-${section.id}`}
                         role="button"
                         tabIndex={0}
-                        onClick={() => onSectionSelect(section.id)}
+                        onClick={() => onSectionSelect(section.id, page.id)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            onSectionSelect(section.id);
+                            onSectionSelect(section.id, page.id);
                           }
                         }}
                         className={cn(

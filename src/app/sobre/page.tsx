@@ -19,6 +19,7 @@ export default function SobrePage({
   const only = searchParams.only;
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
   const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
+  const [isolatedSection, setIsolatedSection] = useState<string | null>(only || null);
 
   useEffect(() => {
     const checkVisibility = (visibility: Record<string, boolean>) => {
@@ -41,6 +42,9 @@ export default function SobrePage({
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
         setVisibleSections(event.data.sections);
       }
+      if (event.data?.type === "SET_ISOLATED_SECTION") {
+        setIsolatedSection(event.data.sectionId);
+      }
     };
 
     const handleSectionsUpdate = () => {
@@ -49,32 +53,28 @@ export default function SobrePage({
 
     window.addEventListener("message", handleMessage);
     window.addEventListener("visibleSectionsUpdated", handleSectionsUpdate);
-    
+
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("visibleSectionsUpdated", handleSectionsUpdate);
     };
   }, [router]);
 
-  if (isVisible === false) return null;
-  if (isVisible === null) return null;
-
-  const isSectionVisible = (id: string) => {
-    if (only) return only === id;
-    return visibleSections[id] !== false;
+  const isSectionVisible = (sectionId: string) => {
+    if (isolatedSection) return isolatedSection === sectionId;
+    return visibleSections[sectionId] !== false;
   };
+
+  if (isVisible === null) return null;
+  if (!isVisible) return null;
 
   return (
     <main>
       {isSectionVisible("about-hero") && <AboutHero />}
       {isSectionVisible("story") && <StorySection />}
       {isSectionVisible("values") && <ValuesSection />}
-      {!only && (
-        <>
-          <TeamSection />
-          <TestimonialsSection />
-        </>
-      )}
+      {isSectionVisible("team") && <TeamSection />}
+      {isSectionVisible("testimonials") && <TestimonialsSection />}
     </main>
   );
 }

@@ -18,6 +18,7 @@ import type {
   HeaderSettings, 
   HeroSettings, 
   ServicesSettings, 
+  StorySettings, 
   ValuesSettings 
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,7 @@ import { TypographyEditor } from "../layout/typography-editor";
 import { CTAEditor } from "../pages/home/cta-editor";
 import { GalleryEditor } from "../pages/home/gallery-editor";
 import { HeroEditor } from "../pages/home/hero-editor";
-import { HistoryEditor } from "../pages/home/history-editor";
+import { HistoryEditor } from "../pages/about/history-editor";
 import { ServicesEditor } from "../pages/home/services-editor";
 import { ValuesEditor } from "../pages/home/values-editor";
 import { SidebarNav } from "../sidebar-nav";
@@ -40,6 +41,8 @@ interface SidebarContentProps {
   resetSettings: () => void;
   fontSettings: FontSettings;
   heroSettings: HeroSettings;
+  aboutHeroSettings: HeroSettings;
+  storySettings: StorySettings;
   servicesSettings: ServicesSettings;
   valuesSettings: ValuesSettings;
   gallerySettings: GallerySettings;
@@ -48,6 +51,8 @@ interface SidebarContentProps {
   footerSettings: FooterSettings;
   onUpdateFont: (updates: Partial<FontSettings>) => void;
   onUpdateHero: (updates: Partial<HeroSettings>) => void;
+  onUpdateAboutHero: (updates: Partial<HeroSettings>) => void;
+  onUpdateStory: (updates: Partial<StorySettings>) => void;
   onUpdateServices: (updates: Partial<ServicesSettings>) => void;
   onUpdateValues: (updates: Partial<ValuesSettings>) => void;
   onUpdateGallery: (updates: Partial<GallerySettings>) => void;
@@ -56,6 +61,8 @@ interface SidebarContentProps {
   onUpdateFooter: (updates: Partial<FooterSettings>) => void;
   onSaveFont: () => void;
   onSaveHero: () => void;
+  onSaveAboutHero: () => void;
+  onSaveStory: () => void;
   onSaveServices: () => void;
   onSaveValues: () => void;
   onSaveGallery: () => void;
@@ -64,6 +71,8 @@ interface SidebarContentProps {
   onSaveFooter: () => void;
   hasFontChanges: boolean;
   hasHeroChanges: boolean;
+  hasAboutHeroChanges: boolean;
+  hasStoryChanges: boolean;
   hasServicesChanges: boolean;
   hasValuesChanges: boolean;
   hasGalleryChanges: boolean;
@@ -75,7 +84,7 @@ interface SidebarContentProps {
   expandedPages: string[];
   visibleSections: Record<string, boolean>;
   onPageToggle: (id: string) => void;
-  onSectionSelect: (id: string) => void;
+  onSectionSelect: (sectionId: string, pageId: string) => void;
   onSectionVisibilityToggle: (id: string) => void;
   onSectionReset: (id: string) => void;
   pageVisibility: Record<string, boolean>;
@@ -94,6 +103,8 @@ export const SidebarContent = memo(
     resetSettings,
     fontSettings,
     heroSettings,
+    aboutHeroSettings,
+    storySettings,
     servicesSettings,
     valuesSettings,
     gallerySettings,
@@ -102,6 +113,8 @@ export const SidebarContent = memo(
     footerSettings,
     onUpdateFont,
     onUpdateHero,
+    onUpdateAboutHero,
+    onUpdateStory,
     onUpdateServices,
     onUpdateValues,
     onUpdateGallery,
@@ -110,6 +123,8 @@ export const SidebarContent = memo(
     onUpdateFooter,
     onSaveFont,
     onSaveHero,
+    onSaveAboutHero,
+    onSaveStory,
     onSaveServices,
     onSaveValues,
     onSaveGallery,
@@ -118,6 +133,8 @@ export const SidebarContent = memo(
     onSaveFooter,
     hasFontChanges,
     hasHeroChanges,
+    hasAboutHeroChanges,
+    hasStoryChanges,
     hasServicesChanges,
     hasValuesChanges,
     hasGalleryChanges,
@@ -220,8 +237,22 @@ export const SidebarContent = memo(
                     onSave={onSaveHero}
                   />
                 )}
+                {activeSection === "about-hero" && (
+                  <HeroEditor
+                    settings={aboutHeroSettings}
+                    onUpdate={onUpdateAboutHero}
+                    onHighlight={onHighlight}
+                    hasChanges={hasAboutHeroChanges}
+                    onSave={onSaveAboutHero}
+                  />
+                )}
                 {activeSection === "story" && (
-                  <HistoryEditor hasChanges={false} onSave={() => {}} />
+                  <HistoryEditor 
+                    settings={storySettings}
+                    onUpdate={onUpdateStory}
+                    hasChanges={hasStoryChanges} 
+                    onSave={onSaveStory} 
+                  />
                 )}
                 {activeSection === "services" && (
                   <ServicesEditor
@@ -260,8 +291,10 @@ export const SidebarContent = memo(
 
                 {![
                   "header",
+                  "footer",
                   "typography",
                   "hero",
+                  "about-hero",
                   "story",
                   "services",
                   "values",
@@ -302,6 +335,8 @@ export const SidebarContent = memo(
             disabled={
               !hasUnsavedGlobalChanges &&
               !hasHeroChanges &&
+              !hasAboutHeroChanges &&
+              !hasStoryChanges &&
               !hasFontChanges &&
               !hasServicesChanges &&
               !hasValuesChanges &&
@@ -315,6 +350,8 @@ export const SidebarContent = memo(
               "w-full font-bold py-6 rounded-xl transition-all duration-300",
               hasUnsavedGlobalChanges ||
                 hasHeroChanges ||
+                hasAboutHeroChanges ||
+                hasStoryChanges ||
                 hasFontChanges ||
                 hasServicesChanges ||
                 hasValuesChanges ||
@@ -328,6 +365,8 @@ export const SidebarContent = memo(
           >
             {hasUnsavedGlobalChanges ||
             hasHeroChanges ||
+            hasAboutHeroChanges ||
+            hasStoryChanges ||
             hasFontChanges ||
             hasServicesChanges ||
             hasValuesChanges ||

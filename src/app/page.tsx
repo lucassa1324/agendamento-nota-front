@@ -13,9 +13,17 @@ export default function Home({
 }: {
   searchParams: Promise<{ only?: string }>;
 }) {
-  const { only: initialOnly } = use(searchParams);
+  const params = use(searchParams);
+  const initialOnly = params?.only;
   const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
   const [isolatedSection, setIsolatedSection] = useState<string | null>(initialOnly || null);
+
+  useEffect(() => {
+    // Se o parâmetro 'only' mudar na URL, atualizamos o estado de isolamento
+    if (initialOnly) {
+      setIsolatedSection(initialOnly);
+    }
+  }, [initialOnly]);
 
   useEffect(() => {
     // Inicializa a visibilidade

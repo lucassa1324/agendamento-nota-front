@@ -38,6 +38,8 @@ import {
   defaultGallerySettings,
   defaultHeaderSettings,
   defaultHeroSettings,
+  defaultAboutHeroSettings,
+  defaultStorySettings,
   defaultServicesSettings,
   defaultValuesSettings,
   type FontSettings,
@@ -49,12 +51,15 @@ import {
   getGallerySettings,
   getHeaderSettings,
   getHeroSettings,
+  getAboutHeroSettings,
+  getStorySettings,
   getPageVisibility,
   getServicesSettings,
   getValuesSettings,
   getVisibleSections,
   type HeaderSettings,
   type HeroSettings,
+  type StorySettings,
   type ServicesSettings,
   saveCTASettings,
   saveFontSettings,
@@ -62,6 +67,8 @@ import {
   saveGallerySettings,
   saveHeaderSettings,
   saveHeroSettings,
+  saveAboutHeroSettings,
+  saveStorySettings,
   savePageVisibility,
   saveServicesSettings,
   saveValuesSettings,
@@ -74,6 +81,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
   // Estados de customização (inicializados do storage)
   const [heroSettings, setHeroSettings] = useState<HeroSettings>(defaultHeroSettings);
+  const [aboutHeroSettings, setAboutHeroSettings] = useState<HeroSettings>(defaultAboutHeroSettings);
+  const [storySettings, setStorySettings] = useState<StorySettings>(defaultStorySettings);
   const [fontSettings, setFontSettings] = useState<FontSettings>(defaultFontSettings);
   const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(defaultServicesSettings);
   const [valuesSettings, setValuesSettings] = useState<ValuesSettings>(defaultValuesSettings);
@@ -88,6 +97,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
   // Estados para controle de botões (Aplicar vs Salvar)
   const [lastAppliedHero, setLastAppliedHero] = useState<HeroSettings>(defaultHeroSettings);
+  const [lastAppliedAboutHero, setLastAppliedAboutHero] = useState<HeroSettings>(defaultAboutHeroSettings);
+  const [lastAppliedStory, setLastAppliedStory] = useState<StorySettings>(defaultStorySettings);
   const [lastAppliedFont, setLastAppliedFont] = useState<FontSettings>(defaultFontSettings);
   const [lastAppliedServices, setLastAppliedServices] = useState<ServicesSettings>(defaultServicesSettings);
   const [lastAppliedValues, setLastAppliedValues] = useState<ValuesSettings>(defaultValuesSettings);
@@ -97,6 +108,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const [lastAppliedFooter, setLastAppliedFooter] = useState<FooterSettings>(defaultFooterSettings);
 
   const [lastSavedHero, setLastSavedHero] = useState<HeroSettings>(defaultHeroSettings);
+  const [lastSavedAboutHero, setLastSavedAboutHero] = useState<HeroSettings>(defaultAboutHeroSettings);
+  const [lastSavedStory, setLastSavedStory] = useState<StorySettings>(defaultStorySettings);
   const [lastSavedFont, setLastSavedFont] = useState<FontSettings>(defaultFontSettings);
   const [lastSavedServices, setLastSavedServices] = useState<ServicesSettings>(defaultServicesSettings);
   const [lastSavedValues, setLastSavedValues] = useState<ValuesSettings>(defaultValuesSettings);
@@ -111,6 +124,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   // Carregamento inicial
   useEffect(() => {
     const loadedHero = getHeroSettings();
+    const loadedAboutHero = getAboutHeroSettings();
+    const loadedStory = getStorySettings();
     const loadedFont = getFontSettings();
     const loadedServices = getServicesSettings();
     const loadedValues = getValuesSettings();
@@ -122,6 +137,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     const loadedVisibleSections = getVisibleSections();
 
     setHeroSettings(loadedHero);
+    setAboutHeroSettings(loadedAboutHero);
+    setStorySettings(loadedStory);
     setFontSettings(loadedFont);
     setServicesSettings(loadedServices);
     setValuesSettings(loadedValues);
@@ -133,6 +150,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setVisibleSections(loadedVisibleSections);
 
     setLastAppliedHero(loadedHero);
+    setLastAppliedAboutHero(loadedAboutHero);
+    setLastAppliedStory(loadedStory);
     setLastAppliedFont(loadedFont);
     setLastAppliedServices(loadedServices);
     setLastAppliedValues(loadedValues);
@@ -142,6 +161,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastAppliedFooter(loadedFooter);
 
     setLastSavedHero(loadedHero);
+    setLastSavedAboutHero(loadedAboutHero);
+    setLastSavedStory(loadedStory);
     setLastSavedFont(loadedFont);
     setLastSavedServices(loadedServices);
     setLastSavedValues(loadedValues);
@@ -156,6 +177,14 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   // Handlers de atualização
   const handleUpdateHero = useCallback((updates: Partial<HeroSettings>) => {
     setHeroSettings((prev: HeroSettings) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleUpdateAboutHero = useCallback((updates: Partial<HeroSettings>) => {
+    setAboutHeroSettings((prev: HeroSettings) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleUpdateStory = useCallback((updates: Partial<StorySettings>) => {
+    setStorySettings((prev: StorySettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateFont = useCallback((updates: Partial<FontSettings>) => {
@@ -234,6 +263,19 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: "UPDATE_ABOUT_HERO_BG", ...aboutHeroSettings }, "*");
+      iframeRef.current.contentWindow.postMessage({ type: "UPDATE_ABOUT_HERO_CONTENT", ...aboutHeroSettings }, "*");
+    }
+  }, [aboutHeroSettings, iframeRef]);
+
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: "UPDATE_STORY_CONTENT", settings: storySettings }, "*");
+    }
+  }, [storySettings, iframeRef]);
+
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage({ type: "UPDATE_SERVICES_CONTENT", settings: servicesSettings }, "*");
     }
   }, [servicesSettings, iframeRef]);
@@ -280,6 +322,9 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       const win = iframeRef.current.contentWindow;
       win.postMessage({ type: "UPDATE_HERO_CONTENT", ...heroSettings }, "*");
       win.postMessage({ type: "UPDATE_HERO_BG", ...heroSettings }, "*");
+      win.postMessage({ type: "UPDATE_ABOUT_HERO_CONTENT", ...aboutHeroSettings }, "*");
+      win.postMessage({ type: "UPDATE_ABOUT_HERO_BG", ...aboutHeroSettings }, "*");
+      win.postMessage({ type: "UPDATE_STORY_CONTENT", settings: storySettings }, "*");
       win.postMessage({ type: "UPDATE_SERVICES_CONTENT", settings: servicesSettings }, "*");
       win.postMessage({ type: "UPDATE_VALUES_CONTENT", settings: valuesSettings }, "*");
       win.postMessage({ type: "UPDATE_GALLERY_SETTINGS", settings: gallerySettings }, "*");
@@ -290,6 +335,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     }
   }, [
     heroSettings, 
+    aboutHeroSettings,
+    storySettings,
     servicesSettings, 
     valuesSettings, 
     gallerySettings, 
@@ -305,6 +352,16 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastAppliedHero({ ...heroSettings });
     toast({ title: "Preview atualizado!", description: "As mudanças do banner foram aplicadas ao rascunho." });
   }, [heroSettings, toast]);
+
+  const handleApplyAboutHero = useCallback(() => {
+    setLastAppliedAboutHero({ ...aboutHeroSettings });
+    toast({ title: "Preview atualizado!", description: "As mudanças do banner sobre nós foram aplicadas ao rascunho." });
+  }, [aboutHeroSettings, toast]);
+
+  const handleApplyStory = useCallback(() => {
+    setLastAppliedStory({ ...storySettings });
+    toast({ title: "Preview atualizado!", description: "As mudanças da história foram aplicadas ao rascunho." });
+  }, [storySettings, toast]);
 
   const handleApplyTypography = useCallback(() => {
     setLastAppliedFont({ ...fontSettings });
@@ -353,6 +410,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
   const handleSaveGlobal = useCallback(() => {
     saveHeroSettings(heroSettings);
+    saveAboutHeroSettings(aboutHeroSettings);
+    saveStorySettings(storySettings);
     saveFontSettings(fontSettings);
     saveServicesSettings(servicesSettings);
     saveValuesSettings(valuesSettings);
@@ -364,6 +423,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     saveVisibleSections(visibleSections);
 
     setLastSavedHero(heroSettings);
+    setLastSavedAboutHero(aboutHeroSettings);
+    setLastSavedStory(storySettings);
     setLastSavedFont(fontSettings);
     setLastSavedServices(servicesSettings);
     setLastSavedValues(valuesSettings);
@@ -375,6 +436,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastSavedVisibleSections(visibleSections);
 
     setLastAppliedHero(heroSettings);
+    setLastAppliedAboutHero(aboutHeroSettings);
+    setLastAppliedStory(storySettings);
     setLastAppliedFont(fontSettings);
     setLastAppliedServices(servicesSettings);
     setLastAppliedValues(valuesSettings);
@@ -384,7 +447,21 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastAppliedFooter(footerSettings);
 
     toast({ title: "Site Publicado!", description: "Todas as alterações foram salvas permanentemente." });
-  }, [heroSettings, fontSettings, servicesSettings, valuesSettings, gallerySettings, ctaSettings, headerSettings, footerSettings, pageVisibility, visibleSections, toast]);
+  }, [
+    heroSettings, 
+    aboutHeroSettings,
+    storySettings,
+    fontSettings, 
+    servicesSettings, 
+    valuesSettings, 
+    gallerySettings, 
+    ctaSettings, 
+    headerSettings, 
+    footerSettings, 
+    pageVisibility, 
+    visibleSections, 
+    toast
+  ]);
 
   const resetSettings = useCallback(() => {
     if (confirm("Tem certeza que deseja resetar todas as configurações para o padrão original?")) {
@@ -401,25 +478,74 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
   const handleSectionReset = useCallback((sectionId: string) => {
     if (confirm(`Deseja resetar as configurações da seção "${sectionId}" para o padrão?`)) {
+      if (!iframeRef.current?.contentWindow) return;
+      const win = iframeRef.current.contentWindow;
+
       switch (sectionId) {
-        case "header": setHeaderSettings(defaultHeaderSettings); break;
-        case "footer": setFooterSettings(defaultFooterSettings); break;
-        case "hero": setHeroSettings(defaultHeroSettings); break;
-        case "typography": setFontSettings(defaultFontSettings); break;
-        case "services": setServicesSettings(defaultServicesSettings); break;
-        case "values": setValuesSettings(defaultValuesSettings); break;
+        case "header":
+          setHeaderSettings(defaultHeaderSettings);
+          saveHeaderSettings(defaultHeaderSettings);
+          win.postMessage({ type: "UPDATE_HEADER_SETTINGS", settings: defaultHeaderSettings }, "*");
+          break;
+        case "footer":
+          setFooterSettings(defaultFooterSettings);
+          saveFooterSettings(defaultFooterSettings);
+          win.postMessage({ type: "UPDATE_FOOTER_SETTINGS", settings: defaultFooterSettings }, "*");
+          break;
+        case "hero":
+          setHeroSettings(defaultHeroSettings);
+          saveHeroSettings(defaultHeroSettings);
+          win.postMessage({ type: "UPDATE_HERO_CONTENT", ...defaultHeroSettings }, "*");
+          win.postMessage({ type: "UPDATE_HERO_BG", ...defaultHeroSettings }, "*");
+          break;
+        case "about-hero":
+          setAboutHeroSettings(defaultAboutHeroSettings);
+          saveAboutHeroSettings(defaultAboutHeroSettings);
+          win.postMessage({ type: "UPDATE_ABOUT_HERO_CONTENT", ...defaultAboutHeroSettings }, "*");
+          win.postMessage({ type: "UPDATE_ABOUT_HERO_BG", ...defaultAboutHeroSettings }, "*");
+          break;
+        case "story":
+          setStorySettings(defaultStorySettings);
+          saveStorySettings(defaultStorySettings);
+          win.postMessage({ type: "UPDATE_STORY_CONTENT", settings: defaultStorySettings }, "*");
+          break;
+        case "typography":
+          setFontSettings(defaultFontSettings);
+          saveFontSettings(defaultFontSettings);
+          win.postMessage({ type: "UPDATE_FONTS", ...defaultFontSettings }, "*");
+          break;
+        case "services":
+          setServicesSettings(defaultServicesSettings);
+          saveServicesSettings(defaultServicesSettings);
+          win.postMessage({ type: "UPDATE_SERVICES_CONTENT", settings: defaultServicesSettings }, "*");
+          break;
+        case "values":
+          setValuesSettings(defaultValuesSettings);
+          saveValuesSettings(defaultValuesSettings);
+          win.postMessage({ type: "UPDATE_VALUES_CONTENT", settings: defaultValuesSettings }, "*");
+          break;
         case "gallery-preview":
-        case "gallery-grid": setGallerySettings(defaultGallerySettings); break;
-        case "cta": setCTASettings(defaultCTASettings); break;
+        case "gallery-grid":
+          setGallerySettings(defaultGallerySettings);
+          saveGallerySettings(defaultGallerySettings);
+          win.postMessage({ type: "UPDATE_GALLERY_SETTINGS", settings: defaultGallerySettings }, "*");
+          break;
+        case "cta":
+          setCTASettings(defaultCTASettings);
+          saveCTASettings(defaultCTASettings);
+          win.postMessage({ type: "UPDATE_CTA_SETTINGS", settings: defaultCTASettings }, "*");
+          break;
         default:
           toast({ title: "Aviso", description: "Esta seção não possui configurações customizáveis para resetar." });
           break;
       }
     }
-  }, [toast]);
+  }, [toast, iframeRef]);
 
   // Booleans para habilitar/desabilitar botões
   const hasHeroChanges = JSON.stringify(heroSettings) !== JSON.stringify(lastAppliedHero);
+  const hasAboutHeroChanges = JSON.stringify(aboutHeroSettings) !== JSON.stringify(lastAppliedAboutHero);
+  const hasStoryChanges = JSON.stringify(storySettings) !== JSON.stringify(lastAppliedStory);
   const hasFontChanges = JSON.stringify(fontSettings) !== JSON.stringify(lastAppliedFont);
   const hasServicesChanges = JSON.stringify(servicesSettings) !== JSON.stringify(lastAppliedServices);
   const hasValuesChanges = JSON.stringify(valuesSettings) !== JSON.stringify(lastAppliedValues);
@@ -430,6 +556,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
   const hasUnsavedGlobalChanges = useMemo(() => {
     const heroChanged = JSON.stringify(lastAppliedHero) !== JSON.stringify(lastSavedHero);
+    const aboutHeroChanged = JSON.stringify(lastAppliedAboutHero) !== JSON.stringify(lastSavedAboutHero);
+    const storyChanged = JSON.stringify(lastAppliedStory) !== JSON.stringify(lastSavedStory);
     const fontChanged = JSON.stringify(lastAppliedFont) !== JSON.stringify(lastSavedFont);
     const servicesChanged = JSON.stringify(lastAppliedServices) !== JSON.stringify(lastSavedServices);
     const valuesChanged = JSON.stringify(lastAppliedValues) !== JSON.stringify(lastSavedValues);
@@ -442,12 +570,15 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     const visibleSectionsChanged = JSON.stringify(visibleSections) !== JSON.stringify(lastSavedVisibleSections);
 
     return (
-      heroChanged || fontChanged || servicesChanged || valuesChanged ||
+      heroChanged || aboutHeroChanged || storyChanged || fontChanged || servicesChanged || valuesChanged ||
       galleryChanged || ctaChanged || headerChanged || footerChanged ||
       pageVisibilityChanged || visibleSectionsChanged
     );
   }, [
-    lastAppliedHero, lastSavedHero, lastAppliedFont, lastSavedFont,
+    lastAppliedHero, lastSavedHero, 
+    lastAppliedAboutHero, lastSavedAboutHero,
+    lastAppliedStory, lastSavedStory,
+    lastAppliedFont, lastSavedFont,
     lastAppliedServices, lastSavedServices, lastAppliedValues, lastSavedValues,
     lastAppliedGallery, lastSavedGallery, lastAppliedCTA, lastSavedCTA,
     lastAppliedHeader, lastSavedHeader, lastAppliedFooter, lastSavedFooter,
@@ -456,6 +587,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
   return {
     heroSettings,
+    aboutHeroSettings,
+    storySettings,
     fontSettings,
     servicesSettings,
     valuesSettings,
@@ -466,6 +599,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     pageVisibility,
     visibleSections,
     handleUpdateHero,
+    handleUpdateAboutHero,
+    handleUpdateStory,
     handleUpdateFont,
     handleUpdateServices,
     handleUpdateValues,
@@ -476,6 +611,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     handlePageVisibilityChange,
     handleSectionVisibilityToggle,
     handleApplyHero,
+    handleApplyAboutHero,
+    handleApplyStory,
     handleApplyTypography,
     handleApplyServices,
     handleApplyValues,
@@ -487,6 +624,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     resetSettings,
     handleSectionReset,
     hasHeroChanges,
+    hasAboutHeroChanges,
+    hasStoryChanges,
     hasFontChanges,
     hasServicesChanges,
     hasValuesChanges,
@@ -497,3 +636,4 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     hasUnsavedGlobalChanges,
   };
 }
+

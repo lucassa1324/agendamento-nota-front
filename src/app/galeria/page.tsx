@@ -19,6 +19,7 @@ export default function GaleriaPage({
 }) {
   const router = useRouter();
   const [only, setOnly] = useState<string | null>(null);
+  const [isolatedSection, setIsolatedSection] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
@@ -34,6 +35,7 @@ export default function GaleriaPage({
     // Resolver searchParams
     searchParamsPromise.then((params) => {
       setOnly(params.only || null);
+      setIsolatedSection(params.only || null);
     });
 
     // Verificar visibilidade
@@ -59,6 +61,9 @@ export default function GaleriaPage({
       if (event.data?.type === "UPDATE_GALLERY_SETTINGS") {
         setGallerySettings(event.data.settings);
       }
+      if (event.data?.type === "SET_ISOLATED_SECTION") {
+        setIsolatedSection(event.data.sectionId);
+      }
     };
 
     const handleSectionsUpdate = () => {
@@ -81,7 +86,7 @@ export default function GaleriaPage({
   if (isVisible === null) return null; // Loading state
 
   const isSectionVisible = (id: string) => {
-    if (only) return only === id;
+    if (isolatedSection) return isolatedSection === id;
     return visibleSections[id] !== false;
   };
 
