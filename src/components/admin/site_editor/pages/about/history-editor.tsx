@@ -1,5 +1,6 @@
 "use client";
 
+import { BackgroundEditor } from "@/components/admin/site_editor/components/BackgroundEditor";
 import { ImageIcon, Palette, Type } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,7 @@ export function HistoryEditor({
       if (iframe?.contentWindow) {
         iframe.contentWindow.postMessage(
           {
-            type: "UPDATE_STORY_CONTENT",
+            type: "UPDATE_STORY_SETTINGS",
             settings: newSettings,
           },
           "*",
@@ -182,6 +183,12 @@ export function HistoryEditor({
           </p>
         </fieldset>
       </div>
+
+      <BackgroundEditor
+        settings={settings}
+        onUpdate={onUpdate}
+        sectionId="story"
+      />
 
       <div className="pt-2">
         <Button

@@ -19,6 +19,8 @@ import type {
   HeroSettings, 
   ServicesSettings, 
   StorySettings, 
+  TeamSettings,
+  TestimonialsSettings,
   ValuesSettings 
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
@@ -29,8 +31,11 @@ import { CTAEditor } from "../pages/home/cta-editor";
 import { GalleryEditor } from "../pages/home/gallery-editor";
 import { HeroEditor } from "../pages/home/hero-editor";
 import { HistoryEditor } from "../pages/about/history-editor";
+import { TeamEditor } from "../pages/about/team-editor";
+import { TestimonialsEditor } from "../pages/about/testimonials-editor";
 import { ServicesEditor } from "../pages/home/services-editor";
 import { ValuesEditor } from "../pages/home/values-editor";
+import { ValuesEditor as AboutValuesEditor } from "../pages/about/values-editor";
 import { SidebarNav } from "../sidebar-nav";
 import type { PageItem, SectionItem } from "./editor-constants";
 
@@ -43,6 +48,8 @@ interface SidebarContentProps {
   heroSettings: HeroSettings;
   aboutHeroSettings: HeroSettings;
   storySettings: StorySettings;
+  teamSettings: TeamSettings;
+  testimonialsSettings: TestimonialsSettings;
   servicesSettings: ServicesSettings;
   valuesSettings: ValuesSettings;
   gallerySettings: GallerySettings;
@@ -53,6 +60,8 @@ interface SidebarContentProps {
   onUpdateHero: (updates: Partial<HeroSettings>) => void;
   onUpdateAboutHero: (updates: Partial<HeroSettings>) => void;
   onUpdateStory: (updates: Partial<StorySettings>) => void;
+  onUpdateTeam: (updates: Partial<TeamSettings>) => void;
+  onUpdateTestimonials: (updates: Partial<TestimonialsSettings>) => void;
   onUpdateServices: (updates: Partial<ServicesSettings>) => void;
   onUpdateValues: (updates: Partial<ValuesSettings>) => void;
   onUpdateGallery: (updates: Partial<GallerySettings>) => void;
@@ -63,6 +72,8 @@ interface SidebarContentProps {
   onSaveHero: () => void;
   onSaveAboutHero: () => void;
   onSaveStory: () => void;
+  onSaveTeam: () => void;
+  onSaveTestimonials: () => void;
   onSaveServices: () => void;
   onSaveValues: () => void;
   onSaveGallery: () => void;
@@ -73,6 +84,8 @@ interface SidebarContentProps {
   hasHeroChanges: boolean;
   hasAboutHeroChanges: boolean;
   hasStoryChanges: boolean;
+  hasTeamChanges: boolean;
+  hasTestimonialsChanges: boolean;
   hasServicesChanges: boolean;
   hasValuesChanges: boolean;
   hasGalleryChanges: boolean;
@@ -105,6 +118,8 @@ export const SidebarContent = memo(
     heroSettings,
     aboutHeroSettings,
     storySettings,
+    teamSettings,
+    testimonialsSettings,
     servicesSettings,
     valuesSettings,
     gallerySettings,
@@ -115,6 +130,8 @@ export const SidebarContent = memo(
     onUpdateHero,
     onUpdateAboutHero,
     onUpdateStory,
+    onUpdateTeam,
+    onUpdateTestimonials,
     onUpdateServices,
     onUpdateValues,
     onUpdateGallery,
@@ -125,6 +142,8 @@ export const SidebarContent = memo(
     onSaveHero,
     onSaveAboutHero,
     onSaveStory,
+    onSaveTeam,
+    onSaveTestimonials,
     onSaveServices,
     onSaveValues,
     onSaveGallery,
@@ -135,6 +154,8 @@ export const SidebarContent = memo(
     hasHeroChanges,
     hasAboutHeroChanges,
     hasStoryChanges,
+    hasTeamChanges,
+    hasTestimonialsChanges,
     hasServicesChanges,
     hasValuesChanges,
     hasGalleryChanges,
@@ -263,11 +284,38 @@ export const SidebarContent = memo(
                   />
                 )}
                 {activeSection === "values" && (
-                  <ValuesEditor
-                    settings={valuesSettings}
-                    onUpdate={onUpdateValues}
-                    onSave={onSaveValues}
-                    hasChanges={hasValuesChanges}
+                  activePage === "sobre" ? (
+                    <AboutValuesEditor
+                      settings={valuesSettings}
+                      onUpdate={onUpdateValues}
+                      onSave={onSaveValues}
+                      hasChanges={hasValuesChanges}
+                    />
+                  ) : (
+                    <ValuesEditor
+                      settings={valuesSettings}
+                      onUpdate={onUpdateValues}
+                      onSave={onSaveValues}
+                      hasChanges={hasValuesChanges}
+                    />
+                  )
+                )}
+
+                {activeSection === "team" && (
+                  <TeamEditor
+                    settings={teamSettings}
+                    onUpdate={onUpdateTeam}
+                    onSave={onSaveTeam}
+                    hasChanges={hasTeamChanges}
+                  />
+                )}
+
+                {activeSection === "testimonials" && (
+                  <TestimonialsEditor
+                    settings={testimonialsSettings}
+                    onUpdate={onUpdateTestimonials}
+                    onSave={onSaveTestimonials}
+                    hasChanges={hasTestimonialsChanges}
                   />
                 )}
 
@@ -296,6 +344,8 @@ export const SidebarContent = memo(
                   "hero",
                   "about-hero",
                   "story",
+                  "team",
+                  "testimonials",
                   "services",
                   "values",
                   "gallery-preview",
@@ -337,6 +387,8 @@ export const SidebarContent = memo(
               !hasHeroChanges &&
               !hasAboutHeroChanges &&
               !hasStoryChanges &&
+              !hasTeamChanges &&
+              !hasTestimonialsChanges &&
               !hasFontChanges &&
               !hasServicesChanges &&
               !hasValuesChanges &&
@@ -352,6 +404,8 @@ export const SidebarContent = memo(
                 hasHeroChanges ||
                 hasAboutHeroChanges ||
                 hasStoryChanges ||
+                hasTeamChanges ||
+                hasTestimonialsChanges ||
                 hasFontChanges ||
                 hasServicesChanges ||
                 hasValuesChanges ||
@@ -367,6 +421,8 @@ export const SidebarContent = memo(
             hasHeroChanges ||
             hasAboutHeroChanges ||
             hasStoryChanges ||
+            hasTeamChanges ||
+            hasTestimonialsChanges ||
             hasFontChanges ||
             hasServicesChanges ||
             hasValuesChanges ||

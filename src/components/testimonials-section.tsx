@@ -1,58 +1,132 @@
-import { Star } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+"use client";
 
-const testimonials = [
-  {
-    name: "Maria Oliveira",
-    text: "Simplesmente perfeito! A Ana entendeu exatamente o que eu queria e o resultado ficou incrível. Minhas sobrancelhas nunca estiveram tão bonitas!",
-    rating: 5,
-  },
-  {
-    name: "Fernanda Lima",
-    text: "Profissionais extremamente capacitadas e atenciosas. O ambiente é acolhedor e o resultado superou minhas expectativas. Super recomendo!",
-    rating: 5,
-  },
-  {
-    name: "Beatriz Costa",
-    text: "Fiz a micropigmentação e estou apaixonada pelo resultado! Natural, delicado e exatamente como eu queria. Melhor investimento que fiz!",
-    rating: 5,
-  },
-  {
-    name: "Camila Rodrigues",
-    text: "Atendimento impecável do início ao fim. A equipe é super profissional e o cuidado com cada detalhe faz toda a diferença. Voltarei com certeza!",
-    rating: 5,
-  },
-];
+import { Star } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { getTestimonialsSettings, type TestimonialsSettings } from "@/lib/booking-data";
+import { cn } from "@/lib/utils";
+import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 
 export function TestimonialsSection() {
+  const [settings, setSettings] = useState<TestimonialsSettings | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [highlightedElement, setHighlightedElement] = useState<string | null>(null);
+
+  const loadData = useCallback(() => {
+    setSettings(getTestimonialsSettings());
+  }, []);
+
+  useEffect(() => {
+    setIsMounted(true);
+    loadData();
+
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+
+      if (event.data.type === "UPDATE_TESTIMONIALS_CONTENT") {
+        setSettings((prev) =>
+          prev ? { ...prev, ...event.data.settings } : prev,
+        );
+      }
+
+      if (
+        event.data.type === "HIGHLIGHT_SECTION" &&
+        event.data.sectionId === "testimonials"
+      ) {
+        setHighlightedElement("testimonials");
+        setTimeout(() => setHighlightedElement(null), 2000);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    window.addEventListener("testimonialsSettingsUpdated", loadData);
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("testimonialsSettingsUpdated", loadData);
+    };
+  }, [loadData]);
+
+  if (!settings) return null;
+  if (!isMounted) return null;
+
   return (
-    <section className="py-20 md:py-32 bg-secondary/30">
-      <div className="container mx-auto px-4">
+    <section
+      id="testimonials"
+      className={cn(
+        "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
+        highlightedElement === "testimonials" &&
+          "ring-8 ring-inset ring-primary/30 bg-primary/5",
+      )}
+    >
+      <SectionBackground settings={settings} />
+
+      <div className="container relative z-10 mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4 text-balance">
-            O Que Dizem Nossas Clientes
+          <h2
+            className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
+            style={{
+              color: settings.titleColor || undefined,
+              fontFamily: settings.titleFont
+                ? `'${settings.titleFont}', serif`
+                : undefined,
+            }}
+          >
+            {settings.title}
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty leading-relaxed">
-            A satisfação de nossas clientes é nossa maior conquista
+          <p
+            className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
+            style={{
+              color: settings.subtitleColor || undefined,
+              fontFamily: settings.subtitleFont
+                ? `'${settings.subtitleFont}', sans-serif`
+                : undefined,
+            }}
+          >
+            {settings.subtitle}
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-          {testimonials.map((testimonial) => (
-            <Card key={testimonial.name} className="border-border">
+          {settings.testimonials.map((testimonial) => (
+            <Card
+              key={testimonial.id}
+              className="border-border backdrop-blur-sm"
+              style={{
+                backgroundColor: settings.cardBgColor || undefined,
+              }}
+            >
               <CardContent className="p-6">
                 <div className="flex gap-1 mb-4">
                   {Array.from({ length: testimonial.rating }).map((_, i) => (
                     <Star
-                      key={`${testimonial.name}-star-${i}`}
+                      key={`${testimonial.id}-star-${i}`}
                       className="w-5 h-5 fill-accent text-accent"
                     />
                   ))}
                 </div>
-                <p className="text-muted-foreground leading-relaxed mb-4">
+                <p
+                  className="leading-relaxed mb-4 transition-all duration-300"
+                  style={{
+                    color: settings.cardTextColor || "hsl(var(--muted-foreground))",
+                    fontFamily: settings.subtitleFont
+                      ? `'${settings.subtitleFont}', sans-serif`
+                      : undefined,
+                  }}
+                >
                   {testimonial.text}
                 </p>
-                <p className="font-semibold">{testimonial.name}</p>
+                <p
+                  className="font-semibold transition-all duration-300"
+                  style={{
+                    color: settings.cardNameColor || undefined,
+                    fontFamily: settings.titleFont
+                      ? `'${settings.titleFont}', serif`
+                      : undefined,
+                  }}
+                >
+                  {testimonial.name}
+                </p>
               </CardContent>
             </Card>
           ))}

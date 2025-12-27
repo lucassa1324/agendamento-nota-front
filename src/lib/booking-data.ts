@@ -181,6 +181,14 @@ export type StorySettings = {
   content: string;
   contentColor: string;
   image: string;
+  bgType: "color" | "image";
+  bgColor: string;
+  bgImage: string;
+  imageOpacity: number;
+  overlayOpacity: number;
+  imageScale: number;
+  imageX: number;
+  imageY: number;
 };
 
 export type ValueItem = {
@@ -273,6 +281,14 @@ export const defaultStorySettings: StorySettings = {
     "O Brow Studio nasceu da paixão por realçar a beleza natural de cada pessoa através do design de sobrancelhas. Com mais de 10 anos de experiência no mercado, nos especializamos em técnicas avançadas que valorizam a individualidade de cada cliente.\n\nNossa missão é proporcionar não apenas um serviço de qualidade, mas uma experiência transformadora. Acreditamos que sobrancelhas bem feitas têm o poder de elevar a autoestima e destacar a beleza única de cada pessoa.\n\nInvestimos constantemente em capacitação e nas melhores técnicas do mercado para garantir resultados excepcionais e a satisfação total de nossas clientes.",
   contentColor: "",
   image: "/professional-eyebrow-artist-at-work.jpg",
+  bgType: "color",
+  bgColor: "#ffffff",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
 };
 
 export const defaultValuesSettings: ValuesSettings = {
@@ -401,6 +417,14 @@ export type TeamSettings = {
   subtitleColor: string;
   titleFont: string;
   subtitleFont: string;
+  bgType: "color" | "image";
+  bgColor: string;
+  bgImage: string;
+  imageOpacity: number;
+  overlayOpacity: number;
+  imageScale: number;
+  imageX: number;
+  imageY: number;
   cardBgColor: string;
   cardTitleColor: string;
   cardRoleColor: string;
@@ -422,6 +446,14 @@ export type TestimonialsSettings = {
   subtitleColor: string;
   titleFont: string;
   subtitleFont: string;
+  bgType: "color" | "image";
+  bgColor: string;
+  bgImage: string;
+  imageOpacity: number;
+  overlayOpacity: number;
+  imageScale: number;
+  imageX: number;
+  imageY: number;
   cardBgColor: string;
   cardNameColor: string;
   cardTextColor: string;
@@ -456,6 +488,14 @@ export const defaultTeamSettings: TeamSettings = {
   subtitleColor: "",
   titleFont: "Playfair Display",
   subtitleFont: "Inter",
+  bgType: "color",
+  bgColor: "",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0.5,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
   cardBgColor: "",
   cardTitleColor: "",
   cardRoleColor: "",
@@ -485,6 +525,14 @@ export const defaultTestimonialsSettings: TestimonialsSettings = {
   subtitleColor: "",
   titleFont: "Playfair Display",
   subtitleFont: "Inter",
+  bgType: "color",
+  bgColor: "",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0.5,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
   cardBgColor: "",
   cardNameColor: "",
   cardTextColor: "",
@@ -1116,6 +1164,32 @@ export function saveCTASettings(settings: CTASettings): void {
   localStorage.setItem("ctaSettings", JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("ctaSettingsUpdated"));
+  }
+}
+
+export function getTeamSettings(): TeamSettings {
+  if (typeof window === "undefined") return defaultTeamSettings;
+  const settings = localStorage.getItem("teamSettings");
+  return settings ? JSON.parse(settings) : defaultTeamSettings;
+}
+
+export function saveTeamSettings(settings: TeamSettings): void {
+  localStorage.setItem("teamSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("teamSettingsUpdated"));
+  }
+}
+
+export function getTestimonialsSettings(): TestimonialsSettings {
+  if (typeof window === "undefined") return defaultTestimonialsSettings;
+  const settings = localStorage.getItem("testimonialsSettings");
+  return settings ? JSON.parse(settings) : defaultTestimonialsSettings;
+}
+
+export function saveTestimonialsSettings(settings: TestimonialsSettings): void {
+  localStorage.setItem("testimonialsSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("testimonialsSettingsUpdated"));
   }
 }
 

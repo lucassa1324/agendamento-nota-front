@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { getStorySettings, type StorySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
 
 export function StorySection() {
   const [settings, setSettings] = useState<StorySettings | null>(null);
@@ -17,7 +18,7 @@ export function StorySection() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_STORY_CONTENT") {
+      if (event.data.type === "UPDATE_STORY_SETTINGS") {
         setSettings((prev) =>
           prev ? { ...prev, ...event.data.settings } : prev,
         );
@@ -51,12 +52,13 @@ export function StorySection() {
     <section
       id="story"
       className={cn(
-        "py-20 md:py-32 transition-all duration-500",
+        "relative py-20 md:py-32 overflow-hidden transition-all duration-500",
         highlightedElement === "story" &&
           "ring-8 ring-inset ring-primary/30 bg-primary/5",
       )}
     >
-      <div className="container mx-auto px-4">
+      <SectionBackground settings={settings} />
+      <div className="container mx-auto px-4 relative z-10">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="relative h-100 w-full overflow-hidden rounded-2xl shadow-xl">
             <Image

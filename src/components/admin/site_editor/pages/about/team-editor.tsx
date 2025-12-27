@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, Plus, Trash2, Type, UserPlus } from "lucide-react";
+import { CreditCard, ImageIcon, Plus, Trash2, Type, UserPlus } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { TeamMember, TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -116,6 +117,25 @@ export function TeamEditor({
                   ...(updates.color !== undefined && { subtitleColor: updates.color }),
                 })
               }
+            />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Fundo da Seção */}
+        <AccordionItem
+          value="background"
+          className="border rounded-lg px-4 bg-card/50"
+        >
+          <AccordionTrigger className="hover:no-underline py-4">
+            <div className="flex items-center gap-2 text-primary font-serif italic text-sm">
+              <ImageIcon className="w-4 h-4" /> FUNDO DA SEÇÃO
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4">
+            <BackgroundEditor
+              settings={settings}
+              onUpdate={(updates) => onUpdate({ ...updates })}
+              sectionId="team"
             />
           </AccordionContent>
         </AccordionItem>
