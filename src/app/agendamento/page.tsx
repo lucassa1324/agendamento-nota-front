@@ -18,6 +18,10 @@ export default function AgendamentoPage({
   const [isolatedSection, setIsolatedSection] = useState<string | null>(only || null);
 
   useEffect(() => {
+    setIsolatedSection(only || null);
+  }, [only]);
+
+  useEffect(() => {
     const checkVisibility = (visibility: Record<string, boolean>) => {
       if (visibility.agendar === false) {
         setIsVisible(false);

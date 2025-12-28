@@ -22,6 +22,10 @@ export default function SobrePage({
   const [isolatedSection, setIsolatedSection] = useState<string | null>(only || null);
 
   useEffect(() => {
+    setIsolatedSection(only || null);
+  }, [only]);
+
+  useEffect(() => {
     const checkVisibility = (visibility: Record<string, boolean>) => {
       if (visibility.sobre === false) {
         setIsVisible(false);

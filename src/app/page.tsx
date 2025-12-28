@@ -20,9 +20,7 @@ export default function Home({
 
   useEffect(() => {
     // Se o parâmetro 'only' mudar na URL, atualizamos o estado de isolamento
-    if (initialOnly) {
-      setIsolatedSection(initialOnly);
-    }
+    setIsolatedSection(initialOnly || null);
   }, [initialOnly]);
 
   useEffect(() => {

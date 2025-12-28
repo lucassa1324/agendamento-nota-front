@@ -47,7 +47,9 @@ export function useNavigationManager(iframeRef: RefObject<HTMLIFrameElement | nu
     
     // Adicionamos o parâmetro 'only' na URL inicial para garantir que o 
     // primeiro render já venha isolado, evitando o flash da home inteira.
-    return activeSection ? `${baseUrl}&only=${activeSection}` : baseUrl;
+    // Exceção: 'typography' deve mostrar a página inteira para visualização global.
+    const shouldIsolate = activeSection && activeSection !== "typography";
+    return shouldIsolate ? `${baseUrl}&only=${activeSection}` : baseUrl;
   }, [activePage, activePageData, activeSection]);
 
   const togglePageExpansion = useCallback((pageId: string) => {
@@ -90,10 +92,12 @@ export function useNavigationManager(iframeRef: RefObject<HTMLIFrameElement | nu
       const handleLoad = () => {
         setIsPageReady(true);
         setIsNavigating(false);
-        if (iframe.contentWindow && activeSection) {
+        if (iframe.contentWindow) {
+          // Se for tipografia, limpamos qualquer isolamento anterior para mostrar a página toda
+          const sectionId = activeSection === "typography" ? null : activeSection;
           iframe.contentWindow.postMessage({
             type: "SET_ISOLATED_SECTION",
-            sectionId: activeSection,
+            sectionId: sectionId,
           }, "*");
         }
       };
@@ -108,9 +112,11 @@ export function useNavigationManager(iframeRef: RefObject<HTMLIFrameElement | nu
   // Sincronizar isolamento de seção com o iframe
   useEffect(() => {
     if (isPageReady && !isNavigating && iframeRef.current?.contentWindow) {
+      // Se for tipografia, limpamos qualquer isolamento anterior para mostrar a página toda
+      const sectionId = activeSection === "typography" ? null : activeSection;
       iframeRef.current.contentWindow.postMessage({ 
         type: "SET_ISOLATED_SECTION", 
-        sectionId: activeSection 
+        sectionId: sectionId 
       }, "*");
     }
   }, [activeSection, iframeRef, isNavigating, isPageReady]);

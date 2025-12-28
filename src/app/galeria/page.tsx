@@ -37,7 +37,9 @@ export default function GaleriaPage({
       setOnly(params.only || null);
       setIsolatedSection(params.only || null);
     });
+  }, [searchParamsPromise]);
 
+  useEffect(() => {
     // Verificar visibilidade
     const checkVisibility = (visibility: Record<string, boolean>) => {
       if (visibility.galeria === false) {
