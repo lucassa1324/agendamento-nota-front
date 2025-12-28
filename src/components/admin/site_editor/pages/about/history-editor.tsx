@@ -1,8 +1,8 @@
 "use client";
 
-import { BackgroundEditor } from "@/components/admin/site_editor/components/BackgroundEditor";
 import { ImageIcon, Palette, Type } from "lucide-react";
 import { useEffect, useState } from "react";
+import { BackgroundEditor } from "@/components/admin/site_editor/components/BackgroundEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

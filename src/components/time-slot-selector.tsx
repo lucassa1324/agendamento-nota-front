@@ -17,7 +17,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getAvailableTimeSlots, type Service } from "@/lib/booking-data";
+import {
+  type BookingStepSettings,
+  type Service,
+  getAvailableTimeSlots,
+} from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
 type TimeSlotSelectorProps = {
@@ -26,6 +30,7 @@ type TimeSlotSelectorProps = {
   onTimeSelect: (time: string) => void;
   onBack: () => void;
   onDateChange: (newDate: string) => void;
+  settings?: BookingStepSettings;
 };
 
 export function TimeSlotSelector({
@@ -34,6 +39,7 @@ export function TimeSlotSelector({
   onTimeSelect,
   onBack,
   onDateChange,
+  settings,
 }: TimeSlotSelectorProps) {
   const timeSlots = getAvailableTimeSlots(date, service.duration);
   const currentDate = parseISO(date);
@@ -65,7 +71,13 @@ export function TimeSlotSelector({
         </Button>
       </div>
 
-      <Card className="border-primary/20 bg-primary/5 overflow-hidden relative">
+      <Card 
+        className="border-primary/20 overflow-hidden relative"
+        style={{ 
+          backgroundColor: settings?.cardBgColor || 'rgba(var(--primary), 0.05)',
+          borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
+        }}
+      >
         <div className="p-6 flex items-center justify-between min-h-35">
           {/* Botão Anterior */}
           <Button
@@ -77,8 +89,11 @@ export function TimeSlotSelector({
               "h-12 w-12 rounded-xl transition-all duration-200",
               isPreviousDayDisabled
                 ? "opacity-20 cursor-not-allowed"
-                : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md hover:scale-105 active:scale-95",
+                : "text-primary-foreground shadow-md hover:scale-105 active:scale-95",
             )}
+            style={{ 
+              backgroundColor: !isPreviousDayDisabled ? (settings?.accentColor || 'var(--primary)') : undefined,
+            }}
             title="Dia anterior"
           >
             <ChevronLeft className="w-6 h-6" />
@@ -86,10 +101,22 @@ export function TimeSlotSelector({
 
           {/* Informações Centralizadas */}
           <div className="flex-1 flex flex-col items-center text-center px-4 space-y-1">
-            <h3 className="font-bold text-xl text-foreground">
+            <h3 
+              className="font-bold text-xl"
+              style={{ 
+                color: settings?.titleColor || 'inherit',
+                fontFamily: settings?.titleFont || 'inherit'
+              }}
+            >
               {service.name}
             </h3>
-            <div className="text-base font-medium capitalize text-foreground/80">
+            <div 
+              className="text-base font-medium capitalize"
+              style={{ 
+                color: settings?.subtitleColor ? `${settings.subtitleColor}cc` : 'inherit',
+                fontFamily: settings?.subtitleFont || 'inherit'
+              }}
+            >
               {format(currentDate, "eeee, d 'de' MMMM 'de' yyyy", {
                 locale: ptBR,
               })}
@@ -106,7 +133,10 @@ export function TimeSlotSelector({
             variant="ghost"
             size="icon"
             onClick={handleNextDay}
-            className="h-12 w-12 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-md transition-all duration-200 hover:scale-105 active:scale-95"
+            className="h-12 w-12 rounded-xl text-primary-foreground shadow-md transition-all duration-200 hover:scale-105 active:scale-95"
+            style={{ 
+              backgroundColor: settings?.accentColor || 'var(--primary)',
+            }}
             title="Próximo dia"
           >
             <ChevronRight className="w-6 h-6" />
@@ -115,8 +145,24 @@ export function TimeSlotSelector({
       </Card>
 
       <div className="text-center space-y-2">
-        <h2 className="font-serif text-3xl font-bold">Escolha o Horário</h2>
-        <p className="text-muted-foreground capitalize">{formattedDate}</p>
+        <h2 
+          className="text-3xl font-bold"
+          style={{ 
+            color: settings?.titleColor || 'inherit',
+            fontFamily: settings?.titleFont || 'inherit'
+          }}
+        >
+          {settings?.title || "Escolha o Horário"}
+        </h2>
+        <p 
+          className="capitalize"
+          style={{ 
+            color: settings?.subtitleColor || 'inherit',
+            fontFamily: settings?.subtitleFont || 'inherit'
+          }}
+        >
+          {formattedDate}
+        </p>
       </div>
 
       <Card className="border-border/40 shadow-sm">
@@ -131,9 +177,26 @@ export function TimeSlotSelector({
                 className={cn(
                   "h-12 text-base font-medium transition-all duration-200",
                   slot.available
-                    ? "hover:bg-primary hover:text-primary-foreground hover:border-primary hover:scale-105 shadow-sm"
+                    ? "hover:text-primary-foreground hover:scale-105 shadow-sm"
                     : "opacity-40 cursor-not-allowed bg-muted/30",
                 )}
+                style={{
+                  borderColor: slot.available && settings?.accentColor ? settings.accentColor : undefined,
+                  color: slot.available && settings?.accentColor ? settings.accentColor : undefined,
+                  backgroundColor: 'transparent'
+                }}
+                onMouseEnter={(e) => {
+                  if (slot.available && settings?.accentColor) {
+                    e.currentTarget.style.backgroundColor = settings.accentColor;
+                    e.currentTarget.style.color = '#fff';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (slot.available && settings?.accentColor) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = settings.accentColor;
+                  }
+                }}
               >
                 {slot.time}
               </Button>

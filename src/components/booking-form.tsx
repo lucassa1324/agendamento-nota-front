@@ -1,13 +1,14 @@
 "use client";
 
-import { ChevronLeft } from "lucide-react";
 import { type FormEvent, useState } from "react";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   type Booking,
+  type BookingStepSettings,
   type Service,
   saveBookingToStorage,
   sendBookingNotifications,
@@ -21,6 +22,7 @@ type BookingFormProps = {
   onConfirm: (booking: Booking) => void;
   onBack: () => void;
   initialBooking?: Booking;
+  settings?: BookingStepSettings;
 };
 
 export function BookingForm({
@@ -30,6 +32,7 @@ export function BookingForm({
   onConfirm,
   onBack,
   initialBooking,
+  settings,
 }: BookingFormProps) {
   const [formData, setFormData] = useState({
     name: initialBooking?.clientName || "",
@@ -88,17 +91,41 @@ export function BookingForm({
           <ChevronLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
-        <Card className="border-accent/20 bg-accent/5 p-4">
+        <Card 
+          className="border-accent/20 p-4"
+          style={{ 
+            backgroundColor: settings?.cardBgColor || 'rgba(var(--accent), 0.05)',
+            borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
+          }}
+        >
           <div className="text-sm space-y-1">
-            <div className="font-semibold">{service.name}</div>
+            <div 
+              className="font-semibold"
+              style={{ 
+                color: settings?.titleColor || 'inherit',
+                fontFamily: settings?.titleFont || 'inherit'
+              }}
+            >
+              {service.name}
+            </div>
             <div className="text-muted-foreground capitalize">
               {formattedDate}
             </div>
-            <div className="text-muted-foreground">{time}</div>
-            <div className="text-muted-foreground">
+            <div 
+              className="font-bold"
+              style={{ 
+                color: settings?.accentColor || 'var(--accent)'
+              }}
+            >
+              {time}
+            </div>
+            <div className="text-xs text-muted-foreground">
               Duração: {service.duration} minutos
             </div>
-            <div className="font-semibold text-accent">
+            <div 
+              className="font-semibold"
+              style={{ color: settings?.accentColor || 'var(--accent)' }}
+            >
               R$ {formData.price.toFixed(2)}
             </div>
           </div>
@@ -111,8 +138,8 @@ export function BookingForm({
 
       <Card>
         <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
               <Label htmlFor="name">Nome Completo *</Label>
               <Input
                 id="name"
@@ -123,11 +150,15 @@ export function BookingForm({
                   setFormData({ ...formData, name: e.target.value })
                 }
                 placeholder="Seu nome completo"
+                className="focus-visible:ring-accent"
+                style={{ 
+                  '--tw-ring-color': settings?.accentColor || 'var(--accent)'
+                } as React.CSSProperties}
               />
             </div>
 
-            <div>
-              <Label htmlFor="email">E-mail </Label>
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
               <Input
                 id="email"
                 type="email"
@@ -136,11 +167,15 @@ export function BookingForm({
                   setFormData({ ...formData, email: e.target.value })
                 }
                 placeholder="seu@email.com"
+                className="focus-visible:ring-accent"
+                style={{ 
+                  '--tw-ring-color': settings?.accentColor || 'var(--accent)'
+                } as React.CSSProperties}
               />
             </div>
 
-            <div>
-              <Label htmlFor="phone">Telefone/WhatsApp *</Label>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone / WhatsApp *</Label>
               <Input
                 id="phone"
                 type="tel"
@@ -150,10 +185,14 @@ export function BookingForm({
                   setFormData({ ...formData, phone: e.target.value })
                 }
                 placeholder="(11) 99999-9999"
+                className="focus-visible:ring-accent"
+                style={{ 
+                  '--tw-ring-color': settings?.accentColor || 'var(--accent)'
+                } as React.CSSProperties}
               />
             </div>
 
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="price">Valor do Procedimento (R$)</Label>
               <Input
                 id="price"
@@ -167,12 +206,20 @@ export function BookingForm({
                   })
                 }
                 placeholder="0.00"
+                className="focus-visible:ring-accent"
+                style={{ 
+                  '--tw-ring-color': settings?.accentColor || 'var(--accent)'
+                } as React.CSSProperties}
               />
             </div>
 
             <Button
               type="submit"
-              className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+              className="w-full h-12 text-lg font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+              style={{ 
+                backgroundColor: settings?.accentColor || 'var(--accent)',
+                color: '#fff'
+              }}
             >
               {initialBooking ? "Salvar Alterações" : "Confirmar Agendamento"}
             </Button>

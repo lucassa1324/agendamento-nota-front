@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Navigation } from "@/components/navigation";
+import { Suspense, useEffect, useState } from "react";
+
 import { Footer } from "@/components/footer";
+import { Navigation } from "@/components/navigation";
 import type { FooterSettings, HeaderSettings } from "@/lib/booking-data";
 
 export function LayoutClientWrapper({
@@ -12,17 +13,24 @@ export function LayoutClientWrapper({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [headerSettings, setHeaderSettings] = useState<HeaderSettings | undefined>(undefined);
-  const [footerSettings, setFooterSettings] = useState<FooterSettings | undefined>(undefined);
+  const [headerSettings, setHeaderSettings] = useState<
+    HeaderSettings | undefined
+  >(undefined);
+  const [footerSettings, setFooterSettings] = useState<
+    FooterSettings | undefined
+  >(undefined);
   const [isolatedSection, setIsolatedSection] = useState<string | null>(null);
 
   // Notifica o editor (parent) sobre a mudança de rota interna
   useEffect(() => {
     if (window.self !== window.top) {
-      window.parent.postMessage({
-        type: "PAGE_NAVIGATED",
-        path: pathname
-      }, "*");
+      window.parent.postMessage(
+        {
+          type: "PAGE_NAVIGATED",
+          path: pathname,
+        },
+        "*",
+      );
     }
   }, [pathname]);
 
@@ -55,7 +63,9 @@ export function LayoutClientWrapper({
     <>
       {showHeader && (
         <Suspense
-          fallback={<div className="h-16 border-b border-border bg-background" />}
+          fallback={
+            <div className="h-16 border-b border-border bg-background" />
+          }
         >
           <Navigation externalHeaderSettings={headerSettings} />
         </Suspense>
@@ -63,7 +73,9 @@ export function LayoutClientWrapper({
       {children}
       {showFooter && (
         <Suspense
-          fallback={<div className="h-32 bg-secondary/30 border-t border-border" />}
+          fallback={
+            <div className="h-32 bg-secondary/30 border-t border-border" />
+          }
         >
           <Footer externalFooterSettings={footerSettings} />
         </Suspense>

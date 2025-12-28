@@ -4,13 +4,18 @@ import { Calendar, CheckCircle2, Clock, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Booking, Service } from "@/lib/booking-data";
+import type {
+  Booking,
+  BookingStepSettings,
+  Service,
+} from "@/lib/booking-data";
 
 type BookingConfirmationProps = {
   booking: Booking;
   service: Service;
   onReset: () => void;
   isUpdate?: boolean;
+  settings?: BookingStepSettings;
 };
 
 export function BookingConfirmation({
@@ -18,6 +23,7 @@ export function BookingConfirmation({
   service,
   onReset,
   isUpdate = false,
+  settings,
 }: BookingConfirmationProps) {
   const formattedDate = new Date(`${booking.date}T00:00:00`).toLocaleDateString(
     "pt-BR",
@@ -32,25 +38,59 @@ export function BookingConfirmation({
   return (
     <div className="max-w-2xl mx-auto">
       <div className="text-center mb-8">
-        <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
-          <CheckCircle2 className="w-10 h-10 text-accent" />
+        <div 
+          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
+          style={{ 
+            backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'rgba(var(--accent), 0.1)'
+          }}
+        >
+          <CheckCircle2 
+            className="w-10 h-10" 
+            style={{ color: settings?.accentColor || 'var(--accent)' }}
+          />
         </div>
-        <h2 className="font-serif text-3xl font-bold mb-2">
-          {isUpdate ? "Agendamento Atualizado!" : "Agendamento Confirmado!"}
+        <h2 
+          className="text-3xl font-bold mb-2"
+          style={{ 
+            color: settings?.titleColor || 'inherit',
+            fontFamily: settings?.titleFont || 'inherit'
+          }}
+        >
+          {settings?.title || (isUpdate ? "Agendamento Atualizado!" : "Agendamento Confirmado!")}
         </h2>
-        <p className="text-muted-foreground">
-          Enviamos uma confirmação para o seu e-mail
+        <p 
+          className="text-muted-foreground"
+          style={{ 
+            color: settings?.subtitleColor || 'inherit',
+            fontFamily: settings?.subtitleFont || 'inherit'
+          }}
+        >
+          {settings?.subtitle || "Enviamos uma confirmação para o seu e-mail"}
         </p>
       </div>
 
-      <Card className="border-accent/20">
+      <Card 
+        className="border-accent/20"
+        style={{ 
+          backgroundColor: settings?.cardBgColor || 'inherit',
+          borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
+        }}
+      >
         <CardContent className="p-6 space-y-6">
           <div>
             <h3 className="font-semibold mb-4">Detalhes do Agendamento</h3>
             <div className="space-y-3">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                  <Calendar className="w-5 h-5 text-accent" />
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{ 
+                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'rgba(var(--accent), 0.1)'
+                  }}
+                >
+                  <Calendar 
+                    className="w-5 h-5" 
+                    style={{ color: settings?.accentColor || 'var(--accent)' }}
+                  />
                 </div>
                 <div>
                   <div className="font-medium">{service.name}</div>
@@ -61,8 +101,16 @@ export function BookingConfirmation({
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                  <Clock className="w-5 h-5 text-accent" />
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{ 
+                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'rgba(var(--accent), 0.1)'
+                  }}
+                >
+                  <Clock 
+                    className="w-5 h-5" 
+                    style={{ color: settings?.accentColor || 'var(--accent)' }}
+                  />
                 </div>
                 <div>
                   <div className="font-medium">Horário</div>
@@ -73,8 +121,16 @@ export function BookingConfirmation({
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                  <DollarSign className="w-5 h-5 text-accent" />
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                  style={{ 
+                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'rgba(var(--accent), 0.1)'
+                  }}
+                >
+                  <DollarSign 
+                    className="w-5 h-5" 
+                    style={{ color: settings?.accentColor || 'var(--accent)' }}
+                  />
                 </div>
                 <div>
                   <div className="font-medium">Valor</div>
@@ -95,26 +151,42 @@ export function BookingConfirmation({
             </div>
           </div>
 
-          <div className="bg-accent/5 p-4 rounded-lg text-sm">
+          <div 
+            className="p-4 rounded-lg text-sm"
+            style={{ 
+              backgroundColor: settings?.accentColor ? `${settings.accentColor}0d` : 'rgba(var(--accent), 0.05)'
+            }}
+          >
             <p className="text-muted-foreground">
-              Enviamos uma confirmação para o seu e-mail. Em caso de dúvidas,
-              entre em contato conosco pelo WhatsApp.
+              Enviamos uma confirmação para o seu e-mail. Em caso de dúvidas, entre em contato conosco.
             </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <Button
+              asChild
+              className="flex-1 font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+              style={{ 
+                backgroundColor: settings?.accentColor || 'var(--accent)',
+                color: '#fff'
+              }}
+            >
+              <Link href="/">Voltar para Início</Link>
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onReset}
+              className="flex-1 font-bold"
+              style={{ 
+                borderColor: settings?.accentColor || 'var(--accent)',
+                color: settings?.accentColor || 'var(--accent)'
+              }}
+            >
+              Novo Agendamento
+            </Button>
           </div>
         </CardContent>
       </Card>
-
-      <div className="flex flex-col sm:flex-row gap-4 mt-6">
-        <Button asChild variant="outline" className="flex-1 bg-transparent">
-          <Link href="/">Voltar ao Início</Link>
-        </Button>
-        <Button
-          onClick={onReset}
-          className="flex-1 bg-accent hover:bg-accent/90 text-accent-foreground"
-        >
-          {isUpdate ? "Concluir" : "Fazer Novo Agendamento"}
-        </Button>
-      </div>
     </div>
   );
 }

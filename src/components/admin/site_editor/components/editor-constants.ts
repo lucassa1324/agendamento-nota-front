@@ -50,7 +50,11 @@ export const sections: Record<string, SectionItem[]> = {
     { id: "testimonials", name: "O que dizem nossas clientes", description: "Depoimentos e avaliações" },
   ],
   agendar: [
-    { id: "booking", name: "Fluxo de Agendamento", description: "Calendário e seleção de serviços" },
+    { id: "booking-service", name: "Passo 1: Serviços", description: "Configuração da seleção de serviços" },
+    { id: "booking-date", name: "Passo 2: Data", description: "Configuração da escolha do dia" },
+    { id: "booking-time", name: "Passo 3: Horário", description: "Configuração da escolha do horário" },
+    { id: "booking-form", name: "Passo 4: Dados do Cliente", description: "Configuração do formulário de contato" },
+    { id: "booking-confirmation", name: "Passo 5: Confirmação", description: "Configuração da tela de sucesso" },
   ],
 };
 

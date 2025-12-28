@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+
+import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
 import { getStorySettings, type StorySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
 
 export function StorySection() {
   const [settings, setSettings] = useState<StorySettings | null>(null);

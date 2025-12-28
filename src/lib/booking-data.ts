@@ -402,6 +402,185 @@ export type CTASettings = {
   imageY: number;
 };
 
+export type BookingStepSettings = {
+  title: string;
+  subtitle: string;
+  titleColor: string;
+  subtitleColor: string;
+  titleFont: string;
+  subtitleFont: string;
+  bgType: "color" | "image";
+  bgColor: string;
+  bgImage: string;
+  imageOpacity: number;
+  overlayOpacity: number;
+  imageScale: number;
+  imageX: number;
+  imageY: number;
+  accentColor?: string;
+  cardBgColor?: string;
+};
+
+export const defaultBookingServiceSettings: BookingStepSettings = {
+  title: "Escolha seus Serviços",
+  subtitle: "Selecione um ou mais serviços para o seu agendamento",
+  titleColor: "",
+  subtitleColor: "",
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  bgType: "color",
+  bgColor: "",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
+  accentColor: "",
+  cardBgColor: "",
+};
+
+export const defaultBookingDateSettings: BookingStepSettings = {
+  title: "Escolha a Data",
+  subtitle: "Selecione o dia de sua preferência",
+  titleColor: "",
+  subtitleColor: "",
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  bgType: "color",
+  bgColor: "",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
+  accentColor: "",
+  cardBgColor: "",
+};
+
+export const defaultBookingTimeSettings: BookingStepSettings = {
+  title: "Escolha o Horário",
+  subtitle: "Selecione o melhor horário disponível",
+  titleColor: "",
+  subtitleColor: "",
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  bgType: "color",
+  bgColor: "",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
+  accentColor: "",
+  cardBgColor: "",
+};
+
+export const defaultBookingFormSettings: BookingStepSettings = {
+  title: "Seus Dados",
+  subtitle: "Preencha suas informações para finalizar o agendamento",
+  titleColor: "",
+  subtitleColor: "",
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  bgType: "color",
+  bgColor: "",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
+  accentColor: "",
+  cardBgColor: "",
+};
+
+export const defaultBookingConfirmationSettings: BookingStepSettings = {
+  title: "Agendamento Confirmado!",
+  subtitle: "Tudo pronto! Você receberá um e-mail com os detalhes.",
+  titleColor: "",
+  subtitleColor: "",
+  titleFont: "Playfair Display",
+  subtitleFont: "Inter",
+  bgType: "color",
+  bgColor: "",
+  bgImage: "",
+  imageOpacity: 1,
+  overlayOpacity: 0,
+  imageScale: 1,
+  imageX: 50,
+  imageY: 50,
+  accentColor: "",
+  cardBgColor: "",
+};
+
+export function getBookingServiceSettings(): BookingStepSettings {
+  if (typeof window === "undefined") return defaultBookingServiceSettings;
+  const settings = localStorage.getItem("bookingServiceSettings");
+  return settings ? JSON.parse(settings) : defaultBookingServiceSettings;
+}
+
+export function saveBookingServiceSettings(settings: BookingStepSettings): void {
+  localStorage.setItem("bookingServiceSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("bookingServiceSettingsUpdated"));
+  }
+}
+
+export function getBookingDateSettings(): BookingStepSettings {
+  if (typeof window === "undefined") return defaultBookingDateSettings;
+  const settings = localStorage.getItem("bookingDateSettings");
+  return settings ? JSON.parse(settings) : defaultBookingDateSettings;
+}
+
+export function saveBookingDateSettings(settings: BookingStepSettings): void {
+  localStorage.setItem("bookingDateSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("bookingDateSettingsUpdated"));
+  }
+}
+
+export function getBookingTimeSettings(): BookingStepSettings {
+  if (typeof window === "undefined") return defaultBookingTimeSettings;
+  const settings = localStorage.getItem("bookingTimeSettings");
+  return settings ? JSON.parse(settings) : defaultBookingTimeSettings;
+}
+
+export function saveBookingTimeSettings(settings: BookingStepSettings): void {
+  localStorage.setItem("bookingTimeSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("bookingTimeSettingsUpdated"));
+  }
+}
+
+export function getBookingFormSettings(): BookingStepSettings {
+  if (typeof window === "undefined") return defaultBookingFormSettings;
+  const settings = localStorage.getItem("bookingFormSettings");
+  return settings ? JSON.parse(settings) : defaultBookingFormSettings;
+}
+
+export function saveBookingFormSettings(settings: BookingStepSettings): void {
+  localStorage.setItem("bookingFormSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("bookingFormSettingsUpdated"));
+  }
+}
+
+export function getBookingConfirmationSettings(): BookingStepSettings {
+  if (typeof window === "undefined") return defaultBookingConfirmationSettings;
+  const settings = localStorage.getItem("bookingConfirmationSettings");
+  return settings ? JSON.parse(settings) : defaultBookingConfirmationSettings;
+}
+
+export function saveBookingConfirmationSettings(settings: BookingStepSettings): void {
+  localStorage.setItem("bookingConfirmationSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("bookingConfirmationSettingsUpdated"));
+  }
+}
+
 export type TeamMember = {
   id: string;
   name: string;
@@ -440,6 +619,7 @@ export type Testimonial = {
 };
 
 export type TestimonialsSettings = {
+  starColor: string;
   title: string;
   subtitle: string;
   titleColor: string;

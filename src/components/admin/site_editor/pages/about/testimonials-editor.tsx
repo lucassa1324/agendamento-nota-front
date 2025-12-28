@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { type Testimonial, type TestimonialsSettings } from "@/lib/booking-data";
+import type { Testimonial, TestimonialsSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
@@ -337,6 +337,7 @@ export function TestimonialsEditor({
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
                             key={star}
+                            type="button"
                             onClick={() => updateItem(testimonial.id, { rating: star })}
                             className={cn(
                               "focus:outline-none transition-colors",

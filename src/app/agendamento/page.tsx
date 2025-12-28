@@ -1,7 +1,7 @@
 "use client";
 
+import { Suspense, use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
 import { BookingFlow } from "@/components/booking-flow";
 import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
 
@@ -59,28 +59,22 @@ export default function AgendamentoPage({
   if (isVisible === null) return null;
 
   const isSectionVisible = (id: string) => {
-    if (isolatedSection) return isolatedSection === id;
+    if (isolatedSection) {
+      // Se for o componente de booking, permitimos que ele apareça se qualquer um de seus passos estiver isolado
+      if (id === "booking") {
+        return isolatedSection === "booking" || isolatedSection.startsWith("booking-");
+      }
+      return isolatedSection === id;
+    }
     return visibleSections[id] !== false;
   };
 
   return (
     <main>
       {isSectionVisible("booking") && (
-        <section className="py-20 md:py-32 min-h-screen">
-          <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h1 className="font-serif text-4xl md:text-6xl font-bold mb-4 text-balance">
-                Agende Seu Horário
-              </h1>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty leading-relaxed">
-                Escolha o serviço, data e horário que melhor se encaixam na sua
-                rotina
-              </p>
-            </div>
-
-            <BookingFlow />
-          </div>
-        </section>
+        <Suspense fallback={<div className="min-h-screen bg-background" />}>
+          <BookingFlow />
+        </Suspense>
       )}
     </main>
   );

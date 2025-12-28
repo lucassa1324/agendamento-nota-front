@@ -1,25 +1,28 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   getBlockedPeriods,
   getWeekSchedule,
   type Service,
+  type BookingStepSettings,
 } from "@/lib/booking-data";
 
 type BookingCalendarProps = {
   service: Service;
   onDateSelect: (date: string) => void;
   onBack: () => void;
+  settings?: BookingStepSettings;
 };
 
 export function BookingCalendar({
   service,
   onDateSelect,
   onBack,
+  settings,
 }: BookingCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const weekSchedule = getWeekSchedule();
@@ -102,10 +105,24 @@ export function BookingCalendar({
           <ChevronLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
-        <Card className="border-accent/20 bg-accent/5 p-4">
+        <Card 
+          className="border-accent/20 p-4"
+          style={{ 
+            backgroundColor: settings?.cardBgColor || 'rgba(var(--accent), 0.05)',
+            borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
+          }}
+        >
           <div className="flex items-center gap-3">
             <div className="text-sm">
-              <span className="font-semibold">{service.name}</span>
+              <span 
+                className="font-semibold"
+                style={{ 
+                  color: settings?.titleColor || 'inherit',
+                  fontFamily: settings?.titleFont || 'inherit'
+                }}
+              >
+                {service.name}
+              </span>
               <span className="text-muted-foreground">
                 {" "}
                 - R$ {service.price}
@@ -115,8 +132,14 @@ export function BookingCalendar({
         </Card>
       </div>
 
-      <h2 className="font-serif text-2xl font-bold mb-6 text-center">
-        Escolha a Data
+      <h2 
+        className="text-2xl font-bold mb-6 text-center"
+        style={{ 
+          color: settings?.titleColor || 'inherit',
+          fontFamily: settings?.titleFont || 'inherit'
+        }}
+      >
+        {settings?.title || "Escolha a Data"}
       </h2>
 
       <Card>
@@ -126,7 +149,13 @@ export function BookingCalendar({
             <Button variant="ghost" size="icon" onClick={previousMonth}>
               <ChevronLeft className="w-5 h-5" />
             </Button>
-            <h3 className="font-semibold text-lg">
+            <h3 
+              className="font-semibold text-lg"
+              style={{ 
+                color: settings?.titleColor || 'inherit',
+                fontFamily: settings?.titleFont || 'inherit'
+              }}
+            >
               {monthNames[month]} {year}
             </h3>
             <Button variant="ghost" size="icon" onClick={nextMonth}>
@@ -164,8 +193,28 @@ export function BookingCalendar({
                   className={`aspect-square p-2 rounded-lg text-sm font-medium transition-colors ${
                     disabled
                       ? "text-muted-foreground/30 cursor-not-allowed"
-                      : "hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                      : "cursor-pointer"
                   }`}
+                  style={{
+                    backgroundColor: !disabled ? 'transparent' : undefined,
+                    color: !disabled && settings?.accentColor ? settings.accentColor : undefined,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!disabled && settings?.accentColor) {
+                      e.currentTarget.style.backgroundColor = settings.accentColor;
+                      e.currentTarget.style.color = '#fff';
+                    } else if (!disabled) {
+                      e.currentTarget.classList.add('bg-accent', 'text-accent-foreground');
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!disabled && settings?.accentColor) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                      e.currentTarget.style.color = settings.accentColor;
+                    } else if (!disabled) {
+                      e.currentTarget.classList.remove('bg-accent', 'text-accent-foreground');
+                    }
+                  }}
                 >
                   {day}
                 </button>

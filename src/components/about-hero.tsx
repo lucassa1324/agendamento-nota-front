@@ -1,11 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { getAboutHeroSettings, type HeroSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 
 export function AboutHero() {
   const [settings, setSettings] = useState<HeroSettings | null>(null);

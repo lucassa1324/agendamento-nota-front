@@ -23,7 +23,7 @@
  * sincronizado com o que o iframe do site está exibindo.
  */
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { pages, sections, type PageItem, type SectionItem } from "../components/editor-constants";
+import { type PageItem, pages, type SectionItem, sections } from "../components/editor-constants";
 
 export function useNavigationManager(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const [activePage, setActivePage] = useState("layout");

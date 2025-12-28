@@ -11,6 +11,7 @@ import {
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import type { 
+  BookingStepSettings, 
   CTASettings, 
   FontSettings, 
   FooterSettings, 
@@ -21,21 +22,22 @@ import type {
   StorySettings, 
   TeamSettings,
   TestimonialsSettings,
-  ValuesSettings 
+  ValuesSettings
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { FooterEditor } from "../layout/footer-editor";
 import { HeaderEditor } from "../layout/header-editor";
 import { TypographyEditor } from "../layout/typography-editor";
-import { CTAEditor } from "../pages/home/cta-editor";
-import { GalleryEditor } from "../pages/home/gallery-editor";
-import { HeroEditor } from "../pages/home/hero-editor";
 import { HistoryEditor } from "../pages/about/history-editor";
 import { TeamEditor } from "../pages/about/team-editor";
 import { TestimonialsEditor } from "../pages/about/testimonials-editor";
+import { ValuesEditor as AboutValuesEditor } from "../pages/about/values-editor";
+import { BookingStepEditor } from "../pages/agendar/booking-step-editor";
+import { CTAEditor } from "../pages/home/cta-editor";
+import { GalleryEditor } from "../pages/home/gallery-editor";
+import { HeroEditor } from "../pages/home/hero-editor";
 import { ServicesEditor } from "../pages/home/services-editor";
 import { ValuesEditor } from "../pages/home/values-editor";
-import { ValuesEditor as AboutValuesEditor } from "../pages/about/values-editor";
 import { SidebarNav } from "../sidebar-nav";
 import type { PageItem, SectionItem } from "./editor-constants";
 
@@ -56,6 +58,11 @@ interface SidebarContentProps {
   ctaSettings: CTASettings;
   headerSettings: HeaderSettings;
   footerSettings: FooterSettings;
+  bookingServiceSettings: BookingStepSettings;
+  bookingDateSettings: BookingStepSettings;
+  bookingTimeSettings: BookingStepSettings;
+  bookingFormSettings: BookingStepSettings;
+  bookingConfirmationSettings: BookingStepSettings;
   onUpdateFont: (updates: Partial<FontSettings>) => void;
   onUpdateHero: (updates: Partial<HeroSettings>) => void;
   onUpdateAboutHero: (updates: Partial<HeroSettings>) => void;
@@ -68,6 +75,11 @@ interface SidebarContentProps {
   onUpdateCTA: (updates: Partial<CTASettings>) => void;
   onUpdateHeader: (updates: Partial<HeaderSettings>) => void;
   onUpdateFooter: (updates: Partial<FooterSettings>) => void;
+  onUpdateBookingService: (updates: Partial<BookingStepSettings>) => void;
+  onUpdateBookingDate: (updates: Partial<BookingStepSettings>) => void;
+  onUpdateBookingTime: (updates: Partial<BookingStepSettings>) => void;
+  onUpdateBookingForm: (updates: Partial<BookingStepSettings>) => void;
+  onUpdateBookingConfirmation: (updates: Partial<BookingStepSettings>) => void;
   onSaveFont: () => void;
   onSaveHero: () => void;
   onSaveAboutHero: () => void;
@@ -80,6 +92,11 @@ interface SidebarContentProps {
   onSaveCTA: () => void;
   onSaveHeader: () => void;
   onSaveFooter: () => void;
+  onSaveBookingService: () => void;
+  onSaveBookingDate: () => void;
+  onSaveBookingTime: () => void;
+  onSaveBookingForm: () => void;
+  onSaveBookingConfirmation: () => void;
   hasFontChanges: boolean;
   hasHeroChanges: boolean;
   hasAboutHeroChanges: boolean;
@@ -92,6 +109,11 @@ interface SidebarContentProps {
   hasCTAChanges: boolean;
   hasHeaderChanges: boolean;
   hasFooterChanges: boolean;
+  hasBookingServiceChanges: boolean;
+  hasBookingDateChanges: boolean;
+  hasBookingTimeChanges: boolean;
+  hasBookingFormChanges: boolean;
+  hasBookingConfirmationChanges: boolean;
   onHighlight: (id: string) => void;
   activePage: string;
   expandedPages: string[];
@@ -126,6 +148,11 @@ export const SidebarContent = memo(
     ctaSettings,
     headerSettings,
     footerSettings,
+    bookingServiceSettings,
+    bookingDateSettings,
+    bookingTimeSettings,
+    bookingFormSettings,
+    bookingConfirmationSettings,
     onUpdateFont,
     onUpdateHero,
     onUpdateAboutHero,
@@ -138,6 +165,11 @@ export const SidebarContent = memo(
     onUpdateCTA,
     onUpdateHeader,
     onUpdateFooter,
+    onUpdateBookingService,
+    onUpdateBookingDate,
+    onUpdateBookingTime,
+    onUpdateBookingForm,
+    onUpdateBookingConfirmation,
     onSaveFont,
     onSaveHero,
     onSaveAboutHero,
@@ -150,6 +182,11 @@ export const SidebarContent = memo(
     onSaveCTA,
     onSaveHeader,
     onSaveFooter,
+    onSaveBookingService,
+    onSaveBookingDate,
+    onSaveBookingTime,
+    onSaveBookingForm,
+    onSaveBookingConfirmation,
     hasFontChanges,
     hasHeroChanges,
     hasAboutHeroChanges,
@@ -162,6 +199,11 @@ export const SidebarContent = memo(
     hasCTAChanges,
     hasHeaderChanges,
     hasFooterChanges,
+    hasBookingServiceChanges,
+    hasBookingDateChanges,
+    hasBookingTimeChanges,
+    hasBookingFormChanges,
+    hasBookingConfirmationChanges,
     onHighlight,
     activePage,
     expandedPages,
@@ -337,6 +379,61 @@ export const SidebarContent = memo(
                   />
                 )}
 
+                {activeSection === "booking-service" && (
+                  <BookingStepEditor
+                    title="Passo 1: Serviços"
+                    settings={bookingServiceSettings}
+                    onUpdate={onUpdateBookingService}
+                    onSave={onSaveBookingService}
+                    hasChanges={hasBookingServiceChanges}
+                    onHighlight={onHighlight}
+                  />
+                )}
+
+                {activeSection === "booking-date" && (
+                  <BookingStepEditor
+                    title="Passo 2: Data"
+                    settings={bookingDateSettings}
+                    onUpdate={onUpdateBookingDate}
+                    onSave={onSaveBookingDate}
+                    hasChanges={hasBookingDateChanges}
+                    onHighlight={onHighlight}
+                  />
+                )}
+
+                {activeSection === "booking-time" && (
+                  <BookingStepEditor
+                    title="Passo 3: Horário"
+                    settings={bookingTimeSettings}
+                    onUpdate={onUpdateBookingTime}
+                    onSave={onSaveBookingTime}
+                    hasChanges={hasBookingTimeChanges}
+                    onHighlight={onHighlight}
+                  />
+                )}
+
+                {activeSection === "booking-form" && (
+                  <BookingStepEditor
+                    title="Passo 4: Dados do Cliente"
+                    settings={bookingFormSettings}
+                    onUpdate={onUpdateBookingForm}
+                    onSave={onSaveBookingForm}
+                    hasChanges={hasBookingFormChanges}
+                    onHighlight={onHighlight}
+                  />
+                )}
+
+                {activeSection === "booking-confirmation" && (
+                  <BookingStepEditor
+                    title="Passo 5: Confirmação"
+                    settings={bookingConfirmationSettings}
+                    onUpdate={onUpdateBookingConfirmation}
+                    onSave={onSaveBookingConfirmation}
+                    hasChanges={hasBookingConfirmationChanges}
+                    onHighlight={onHighlight}
+                  />
+                )}
+
                 {![
                   "header",
                   "footer",
@@ -351,6 +448,11 @@ export const SidebarContent = memo(
                   "gallery-preview",
                   "gallery-grid",
                   "cta",
+                  "booking-service",
+                  "booking-date",
+                  "booking-time",
+                  "booking-form",
+                  "booking-confirmation",
                 ].includes(activeSection) && (
                   <div className="py-12 text-center">
                     <Settings2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
@@ -395,7 +497,12 @@ export const SidebarContent = memo(
               !hasGalleryChanges &&
               !hasCTAChanges &&
               !hasHeaderChanges &&
-              !hasFooterChanges
+              !hasFooterChanges &&
+              !hasBookingServiceChanges &&
+              !hasBookingDateChanges &&
+              !hasBookingTimeChanges &&
+              !hasBookingFormChanges &&
+              !hasBookingConfirmationChanges
             }
             onClick={onSaveGlobal}
             className={cn(
@@ -412,7 +519,12 @@ export const SidebarContent = memo(
                 hasGalleryChanges ||
                 hasCTAChanges ||
                 hasHeaderChanges ||
-                hasFooterChanges
+                hasFooterChanges ||
+                hasBookingServiceChanges ||
+                hasBookingDateChanges ||
+                hasBookingTimeChanges ||
+                hasBookingFormChanges ||
+                hasBookingConfirmationChanges
                 ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
                 : "bg-muted text-muted-foreground cursor-not-allowed",
             )}
@@ -429,7 +541,12 @@ export const SidebarContent = memo(
             hasGalleryChanges ||
             hasCTAChanges ||
             hasHeaderChanges ||
-            hasFooterChanges
+            hasFooterChanges ||
+            hasBookingServiceChanges ||
+            hasBookingDateChanges ||
+            hasBookingTimeChanges ||
+            hasBookingFormChanges ||
+            hasBookingConfirmationChanges
               ? "Publicar Site"
               : "Tudo Atualizado"}
           </Button>
