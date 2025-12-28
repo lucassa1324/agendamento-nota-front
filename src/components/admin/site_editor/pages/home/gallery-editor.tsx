@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageIcon, LayoutGrid, SlidersHorizontal, Type } from "lucide-react";
+import { ImageIcon, LayoutGrid, MousePointer2, RotateCcw, SlidersHorizontal, Type } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -8,9 +8,18 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { GallerySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { EDITOR_FONTS } from "../../components/editor-constants";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -96,6 +105,134 @@ export function GalleryEditor({
                 })
               }
             />
+          </AccordionContent>
+        </AccordionItem>
+
+        {/* Botão */}
+        <AccordionItem
+          value="button"
+          className="border rounded-lg px-4 bg-card/50"
+        >
+          <AccordionTrigger className="hover:no-underline py-4">
+            <div className="flex items-center gap-2 text-primary font-serif italic text-sm">
+              <MousePointer2 className="w-4 h-4" /> BOTÃO DE AÇÃO
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4 space-y-4">
+            <fieldset 
+              className="space-y-1.5 border-none p-0 m-0"
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                Texto do Botão
+              </legend>
+              <Input
+                value={settings.buttonText}
+                onChange={(e) => onUpdate({ buttonText: e.target.value })}
+                className="h-8 text-xs"
+              />
+            </fieldset>
+
+            <div className="grid grid-cols-2 gap-4">
+              <fieldset 
+                className="space-y-1.5 border-none p-0 m-0"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                  Fonte do Botão
+                </legend>
+                <Select
+                  value={settings.buttonFont || "default"}
+                  onValueChange={(v) => onUpdate({ buttonFont: v === "default" ? "" : v })}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Padrão do Site" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default" className="text-xs font-medium">
+                      Padrão do Site
+                    </SelectItem>
+                    {EDITOR_FONTS.map((f) => (
+                      <SelectItem
+                        key={f.name}
+                        value={f.name}
+                        className="text-xs"
+                      >
+                        <span style={{ fontFamily: f.name }}>{f.name}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </fieldset>
+
+              <div className="space-y-4">
+                <fieldset 
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+                    Cor do Botão
+                    {settings.buttonColor && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-4 w-4 hover:text-primary"
+                        onClick={() => onUpdate({ buttonColor: "" })}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </legend>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={settings.buttonColor || "#000000"}
+                      className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
+                      onChange={(e) => onUpdate({ buttonColor: e.target.value })}
+                    />
+                    <Input
+                      value={settings.buttonColor || ""}
+                      placeholder="Padrão"
+                      className="h-8 text-[10px] flex-1 uppercase"
+                      onChange={(e) => onUpdate({ buttonColor: e.target.value })}
+                    />
+                  </div>
+                </fieldset>
+
+                <fieldset 
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+                    Cor do Texto
+                    {settings.buttonTextColor && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-4 w-4 hover:text-primary"
+                        onClick={() => onUpdate({ buttonTextColor: "" })}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </legend>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={settings.buttonTextColor || "#FFFFFF"}
+                      className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
+                      onChange={(e) => onUpdate({ buttonTextColor: e.target.value })}
+                    />
+                    <Input
+                      value={settings.buttonTextColor || ""}
+                      placeholder="Padrão"
+                      className="h-8 text-[10px] flex-1 uppercase"
+                      onChange={(e) => onUpdate({ buttonTextColor: e.target.value })}
+                    />
+                  </div>
+                </fieldset>
+              </div>
+            </div>
           </AccordionContent>
         </AccordionItem>
 

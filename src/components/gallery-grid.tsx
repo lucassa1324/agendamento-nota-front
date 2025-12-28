@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { ImageModal } from "@/components/image-modal";
 import { Button } from "@/components/ui/button";
-import { getGalleryImages, getServices, type GalleryImage } from "@/lib/booking-data";
+import { type GalleryImage, getGalleryImages, getServices } from "@/lib/booking-data";
 
 export function GalleryGrid() {
   const [images, setImages] = useState<GalleryImage[]>([]);
@@ -58,11 +58,12 @@ export function GalleryGrid() {
             key={category.id}
             variant={selectedCategory === category.id ? "default" : "outline"}
             onClick={() => setSelectedCategory(category.id)}
-            className={
-              selectedCategory === category.id
-                ? "bg-accent hover:bg-accent/90 text-accent-foreground"
-                : ""
-            }
+            style={{
+              backgroundColor: selectedCategory === category.id ? "var(--primary)" : "transparent",
+              color: selectedCategory === category.id ? "white" : "var(--foreground)",
+              borderColor: selectedCategory === category.id ? "var(--primary)" : "var(--border)",
+              fontFamily: "var(--font-body)",
+            }}
           >
             {category.label}
           </Button>
@@ -116,13 +117,7 @@ export function GalleryGrid() {
       {/* Image Modal */}
       {selectedImage && (
         <ImageModal
-          image={{
-            ...selectedImage,
-            // O ImageModal antigo esperava id: number, mas agora é string. 
-            // Vamos converter ou adaptar se necessário. 
-            // O tipo GalleryImage no booking-data usa string.
-            id: selectedImage.id as any 
-          }}
+          image={selectedImage}
           onClose={() => setSelectedImage(null)}
         />
       )}

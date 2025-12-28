@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, ImageIcon, Plus, Trash2, Type, UserPlus } from "lucide-react";
+import { CreditCard, ImageIcon, Plus, RotateCcw, Trash2, Type, UserPlus } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -10,12 +10,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { TeamMember, TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
+import { EDITOR_FONTS } from "../../components/editor-constants";
 
 interface TeamEditorProps {
   settings: TeamSettings;
@@ -159,8 +167,18 @@ export function TeamEditor({
                 onClick={(e: React.MouseEvent) => e.stopPropagation()}
                 onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
               >
-                <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                   Fundo do Card
+                  {settings.cardBgColor && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-4 w-4 hover:text-primary"
+                      onClick={() => onUpdate({ cardBgColor: "" })}
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </Button>
+                  )}
                 </legend>
                 <div className="flex gap-2">
                   <Input
@@ -173,7 +191,7 @@ export function TeamEditor({
                   />
                   <Input
                     value={settings.cardBgColor || ""}
-                    placeholder="#HEX"
+                    placeholder="Transparente"
                     className="h-8 text-[10px] flex-1 uppercase"
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                       onUpdate({ cardBgColor: e.target.value })
@@ -186,96 +204,184 @@ export function TeamEditor({
                 <Label className="text-[11px] font-bold uppercase text-primary tracking-wider">
                   Textos do Card
                 </Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0"
-                    onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
-                    onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
-                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                    onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
-                  >
-                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
-                      Cor do Nome
-                    </legend>
-                    <div className="flex gap-2">
-                      <Input
-                        type="color"
-                        value={settings.cardTitleColor || "#000000"}
-                        className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          onUpdate({ cardTitleColor: e.target.value })
-                        }
-                      />
-                      <Input
-                        value={settings.cardTitleColor || ""}
-                        placeholder="#HEX"
-                        className="h-8 text-[10px] flex-1 uppercase"
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          onUpdate({ cardTitleColor: e.target.value })
-                        }
-                      />
-                    </div>
-                  </fieldset>
+                
+                <div className="space-y-4">
+                  {/* Nome */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <fieldset className="space-y-1.5 border-none p-0 m-0">
+                      <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                        Fonte do Nome
+                      </legend>
+                      <Select
+                        value={settings.cardTitleFont || "default"}
+                        onValueChange={(v) => onUpdate({ cardTitleFont: v === "default" ? "" : v })}
+                      >
+                        <SelectTrigger className="h-8 text-[10px]">
+                          <SelectValue placeholder="Padrão do Site" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+                          {EDITOR_FONTS.map((f) => (
+                            <SelectItem key={f.name} value={f.name} className="text-[10px]">
+                              <span style={{ fontFamily: f.name }}>{f.name}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </fieldset>
 
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0"
-                    onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
-                    onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
-                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                    onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
-                  >
-                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
-                      Cor do Cargo
-                    </legend>
-                    <div className="flex gap-2">
-                      <Input
-                        type="color"
-                        value={settings.cardRoleColor || "#666666"}
-                        className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          onUpdate({ cardRoleColor: e.target.value })
-                        }
-                      />
-                      <Input
-                        value={settings.cardRoleColor || ""}
-                        placeholder="#HEX"
-                        className="h-8 text-[10px] flex-1 uppercase"
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          onUpdate({ cardRoleColor: e.target.value })
-                        }
-                      />
-                    </div>
-                  </fieldset>
+                    <fieldset className="space-y-1.5 border-none p-0 m-0">
+                      <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+                        Cor do Nome
+                        {settings.cardTitleColor && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-4 w-4 hover:text-primary"
+                            onClick={() => onUpdate({ cardTitleColor: "" })}
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </legend>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={settings.cardTitleColor || "#000000"}
+                          className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            onUpdate({ cardTitleColor: e.target.value })
+                          }
+                        />
+                        <Input
+                          value={settings.cardTitleColor || ""}
+                          placeholder="Padrão"
+                          className="h-8 text-[10px] flex-1 uppercase"
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            onUpdate({ cardTitleColor: e.target.value })
+                          }
+                        />
+                      </div>
+                    </fieldset>
+                  </div>
 
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0"
-                    onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
-                    onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
-                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                    onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
-                  >
-                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
-                      Cor da Descrição
-                    </legend>
-                    <div className="flex gap-2">
-                      <Input
-                        type="color"
-                        value={settings.cardDescriptionColor || "#666666"}
-                        className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          onUpdate({ cardDescriptionColor: e.target.value })
-                        }
-                      />
-                      <Input
-                        value={settings.cardDescriptionColor || ""}
-                        placeholder="#HEX"
-                        className="h-8 text-[10px] flex-1 uppercase"
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          onUpdate({ cardDescriptionColor: e.target.value })
-                        }
-                      />
-                    </div>
-                  </fieldset>
+                  {/* Cargo */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <fieldset className="space-y-1.5 border-none p-0 m-0">
+                      <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                        Fonte do Cargo
+                      </legend>
+                      <Select
+                        value={settings.cardRoleFont || "default"}
+                        onValueChange={(v) => onUpdate({ cardRoleFont: v === "default" ? "" : v })}
+                      >
+                        <SelectTrigger className="h-8 text-[10px]">
+                          <SelectValue placeholder="Padrão do Site" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+                          {EDITOR_FONTS.map((f) => (
+                            <SelectItem key={f.name} value={f.name} className="text-[10px]">
+                              <span style={{ fontFamily: f.name }}>{f.name}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </fieldset>
+
+                    <fieldset className="space-y-1.5 border-none p-0 m-0">
+                      <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+                        Cor do Cargo
+                        {settings.cardRoleColor && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-4 w-4 hover:text-primary"
+                            onClick={() => onUpdate({ cardRoleColor: "" })}
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </legend>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={settings.cardRoleColor || "#666666"}
+                          className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            onUpdate({ cardRoleColor: e.target.value })
+                          }
+                        />
+                        <Input
+                          value={settings.cardRoleColor || ""}
+                          placeholder="Padrão"
+                          className="h-8 text-[10px] flex-1 uppercase"
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            onUpdate({ cardRoleColor: e.target.value })
+                          }
+                        />
+                      </div>
+                    </fieldset>
+                  </div>
+
+                  {/* Descrição */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <fieldset className="space-y-1.5 border-none p-0 m-0">
+                      <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                        Fonte da Descrição
+                      </legend>
+                      <Select
+                        value={settings.cardDescriptionFont || "default"}
+                        onValueChange={(v) => onUpdate({ cardDescriptionFont: v === "default" ? "" : v })}
+                      >
+                        <SelectTrigger className="h-8 text-[10px]">
+                          <SelectValue placeholder="Padrão do Site" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+                          {EDITOR_FONTS.map((f) => (
+                            <SelectItem key={f.name} value={f.name} className="text-[10px]">
+                              <span style={{ fontFamily: f.name }}>{f.name}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </fieldset>
+
+                    <fieldset className="space-y-1.5 border-none p-0 m-0">
+                      <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+                        Cor da Descrição
+                        {settings.cardDescriptionColor && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-4 w-4 hover:text-primary"
+                            onClick={() => onUpdate({ cardDescriptionColor: "" })}
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                          </Button>
+                        )}
+                      </legend>
+                      <div className="flex gap-2">
+                        <Input
+                          type="color"
+                          value={settings.cardDescriptionColor || "#666666"}
+                          className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            onUpdate({ cardDescriptionColor: e.target.value })
+                          }
+                        />
+                        <Input
+                          value={settings.cardDescriptionColor || ""}
+                          placeholder="Padrão"
+                          className="h-8 text-[10px] flex-1 uppercase"
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            onUpdate({ cardDescriptionColor: e.target.value })
+                          }
+                        />
+                      </div>
+                    </fieldset>
+                  </div>
                 </div>
               </div>
             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Layout, MousePointer2, Type } from "lucide-react";
+import { Layout, MousePointer2, RotateCcw, Type } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -10,8 +10,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import type { HeaderSettings } from "@/lib/booking-data";
+import { EDITOR_FONTS } from "../components/editor-constants";
 
 interface HeaderEditorProps {
   settings: HeaderSettings;
@@ -48,19 +56,32 @@ export function HeaderEditor({
           <AccordionContent className="pb-4 space-y-4">
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase text-muted-foreground font-medium">
-                  Cor de Fundo
-                </Label>
+                <div className="flex justify-between items-center">
+                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                    Cor de Fundo
+                  </Label>
+                  {settings.bgColor && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4"
+                      onClick={() => onUpdate({ bgColor: "" })}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Input
                     type="color"
-                    value={settings.bgColor}
+                    value={settings.bgColor || "#ffffff"}
                     onChange={(e) => onUpdate({ bgColor: e.target.value })}
                     className="w-12 h-8 p-1 cursor-pointer"
                   />
                   <Input
                     type="text"
                     value={settings.bgColor}
+                    placeholder="Padrão do Site"
                     onChange={(e) => onUpdate({ bgColor: e.target.value })}
                     className="h-8 text-xs flex-1"
                   />
@@ -119,8 +140,80 @@ export function HeaderEditor({
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase text-muted-foreground font-medium">
-                  Cor dos Links/Nomes
+                  Fonte do Título/Logo
                 </Label>
+                <Select
+                  value={settings.titleFont || "default"}
+                  onValueChange={(val) =>
+                    onUpdate({ titleFont: val === "default" ? "" : val })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-[10px]">
+                    <SelectValue placeholder="Padrão do Site" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default" className="text-[10px]">
+                      Padrão do Site
+                    </SelectItem>
+                    {EDITOR_FONTS.map((font) => (
+                      <SelectItem
+                        key={font.name}
+                        value={font.name}
+                        className="text-[10px]"
+                      >
+                        <span style={{ fontFamily: font.name }}>{font.name}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                  Fonte dos Links
+                </Label>
+                <Select
+                  value={settings.linksFont || "default"}
+                  onValueChange={(val) =>
+                    onUpdate({ linksFont: val === "default" ? "" : val })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-[10px]">
+                    <SelectValue placeholder="Padrão do Site" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default" className="text-[10px]">
+                      Padrão do Site
+                    </SelectItem>
+                    {EDITOR_FONTS.map((font) => (
+                      <SelectItem
+                        key={font.name}
+                        value={font.name}
+                        className="text-[10px]"
+                      >
+                        <span style={{ fontFamily: font.name }}>{font.name}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                    Cor dos Links/Nomes
+                  </Label>
+                  {settings.textColor && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4"
+                      onClick={() => onUpdate({ textColor: "" })}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Input
                     type="color"
@@ -131,7 +224,7 @@ export function HeaderEditor({
                   <Input
                     type="text"
                     value={settings.textColor}
-                    placeholder="Padrão do sistema"
+                    placeholder="Padrão do Site"
                     onChange={(e) => onUpdate({ textColor: e.target.value })}
                     className="h-8 text-xs flex-1"
                   />
@@ -157,9 +250,21 @@ export function HeaderEditor({
           <AccordionContent className="pb-4 space-y-4">
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase text-muted-foreground font-medium">
-                  Cor de Fundo do Botão
-                </Label>
+                <div className="flex justify-between items-center">
+                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                    Cor de Fundo do Botão
+                  </Label>
+                  {settings.buttonBgColor && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4"
+                      onClick={() => onUpdate({ buttonBgColor: "" })}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Input
                     type="color"
@@ -170,7 +275,7 @@ export function HeaderEditor({
                   <Input
                     type="text"
                     value={settings.buttonBgColor}
-                    placeholder="Padrão do sistema"
+                    placeholder="Padrão do Site"
                     onChange={(e) => onUpdate({ buttonBgColor: e.target.value })}
                     className="h-8 text-xs flex-1"
                   />
@@ -178,9 +283,21 @@ export function HeaderEditor({
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase text-muted-foreground font-medium">
-                  Cor do Texto do Botão
-                </Label>
+                <div className="flex justify-between items-center">
+                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                    Cor do Texto do Botão
+                  </Label>
+                  {settings.buttonTextColor && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4"
+                      onClick={() => onUpdate({ buttonTextColor: "" })}
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Input
                     type="color"
@@ -191,7 +308,7 @@ export function HeaderEditor({
                   <Input
                     type="text"
                     value={settings.buttonTextColor}
-                    placeholder="Padrão do sistema"
+                    placeholder="Padrão do Site"
                     onChange={(e) => onUpdate({ buttonTextColor: e.target.value })}
                     className="h-8 text-xs flex-1"
                   />

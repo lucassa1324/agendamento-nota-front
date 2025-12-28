@@ -69,13 +69,10 @@ export function HeroSection() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (
-        event.data.type === "UPDATE_HERO_BG" ||
-        event.data.type === "UPDATE_HERO_CONTENT"
-      ) {
+      if (event.data.type === "UPDATE_HERO_SETTINGS") {
         setCustomStyles((prev) => ({
           ...prev,
-          ...event.data,
+          ...event.data.settings,
         }));
       }
 
@@ -171,13 +168,13 @@ export function HeroSection() {
                 getHighlightClass("hero-badge"),
               )}
               style={{
-                fontFamily: customStyles.badgeFont,
+                fontFamily: customStyles.badgeFont || "var(--font-body)",
                 borderColor: customStyles.badgeColor
                   ? `${customStyles.badgeColor}33`
-                  : undefined,
+                  : "var(--secondary)",
                 backgroundColor: customStyles.badgeColor
                   ? `${customStyles.badgeColor}11`
-                  : undefined,
+                  : "transparent",
               }}
             >
               {(() => {
@@ -186,7 +183,7 @@ export function HeroSection() {
                 return (
                   <BadgeIcon
                     className="w-4 h-4"
-                    style={{ color: customStyles.badgeColor || undefined }}
+                    style={{ color: customStyles.badgeColor || "var(--secondary)" }}
                   />
                 );
               })()}
@@ -196,7 +193,7 @@ export function HeroSection() {
                   color:
                     customStyles.badgeTextColor ||
                     customStyles.badgeColor ||
-                    undefined,
+                    "var(--foreground)",
                 }}
               >
                 {customStyles.badge ||
@@ -211,8 +208,8 @@ export function HeroSection() {
               getHighlightClass("hero-title"),
             )}
             style={{
-              fontFamily: customStyles.titleFont,
-              color: customStyles.titleColor || undefined,
+              fontFamily: customStyles.titleFont || "var(--font-title)",
+              color: customStyles.titleColor || "var(--foreground)",
             }}
           >
             {customStyles.title || "Realce Sua Beleza Natural"}
@@ -225,8 +222,8 @@ export function HeroSection() {
               getHighlightClass("hero-subtitle"),
             )}
             style={{
-              fontFamily: customStyles.subtitleFont,
-              color: customStyles.subtitleColor || undefined,
+              fontFamily: customStyles.subtitleFont || "var(--font-subtitle)",
+              color: customStyles.subtitleColor || "var(--foreground)",
             }}
           >
             {customStyles.subtitle || description}
@@ -244,9 +241,9 @@ export function HeroSection() {
                 size="lg"
                 className="h-14 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
                 style={{
-                  backgroundColor: customStyles.primaryButtonColor || undefined,
-                  color: customStyles.primaryButtonTextColor || undefined,
-                  fontFamily: customStyles.primaryButtonFont,
+                  backgroundColor: customStyles.primaryButtonColor || "var(--primary)",
+                  color: customStyles.primaryButtonTextColor || "#ffffff",
+                  fontFamily: customStyles.primaryButtonFont || "var(--font-body)",
                 }}
               >
                 <Link href="/agendamento">
@@ -264,9 +261,9 @@ export function HeroSection() {
                   color:
                     customStyles.secondaryButtonTextColor ||
                     customStyles.secondaryButtonColor ||
-                    undefined,
-                  borderColor: customStyles.secondaryButtonColor || undefined,
-                  fontFamily: customStyles.secondaryButtonFont,
+                    "var(--foreground)",
+                  borderColor: customStyles.secondaryButtonColor || "var(--secondary)",
+                  fontFamily: customStyles.secondaryButtonFont || "var(--font-body)",
                 }}
               >
                 <Link href="/galeria">

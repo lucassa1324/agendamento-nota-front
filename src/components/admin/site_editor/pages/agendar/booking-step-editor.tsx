@@ -1,6 +1,6 @@
 "use client";
 
-import { Palette, Type } from "lucide-react";
+import { Palette, RotateCcw, Type } from "lucide-react";
 import type { ChangeEvent } from "react";
 import {
   Accordion,
@@ -8,6 +8,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -232,9 +233,19 @@ export function BookingStepEditor({
                   <div className="space-y-1.5">
                     <Label 
                       htmlFor="accentColor"
-                      className="text-[10px] uppercase text-muted-foreground font-medium"
+                      className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center"
                     >
                       Cor de Destaque
+                      {settings.accentColor && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-4 w-4 hover:text-primary"
+                          onClick={() => onUpdate({ accentColor: "" })}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </Button>
+                      )}
                     </Label>
                     <div className="flex gap-2">
                       <Input
@@ -246,7 +257,7 @@ export function BookingStepEditor({
                       />
                       <Input
                         value={settings.accentColor || ""}
-                        placeholder="#HEX"
+                        placeholder="Padrão"
                         className="h-8 text-[10px] flex-1 uppercase"
                         onChange={(e) => onUpdate({ accentColor: e.target.value })}
                       />
@@ -255,9 +266,19 @@ export function BookingStepEditor({
                   <div className="space-y-1.5">
                     <Label 
                       htmlFor="cardBgColor"
-                      className="text-[10px] uppercase text-muted-foreground font-medium"
+                      className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center"
                     >
                       Fundo do Card
+                      {settings.cardBgColor && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-4 w-4 hover:text-primary"
+                          onClick={() => onUpdate({ cardBgColor: "" })}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </Button>
+                      )}
                     </Label>
                     <div className="flex gap-2">
                       <Input
@@ -269,7 +290,7 @@ export function BookingStepEditor({
                       />
                       <Input
                         value={settings.cardBgColor || ""}
-                        placeholder="#HEX"
+                        placeholder="Padrão"
                         className="h-8 text-[10px] flex-1 uppercase"
                         onChange={(e) => onUpdate({ cardBgColor: e.target.value })}
                       />

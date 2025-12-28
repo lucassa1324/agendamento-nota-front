@@ -102,19 +102,19 @@ export function GalleryPreview() {
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">
           <h2
-            className="text-4xl md:text-5xl font-bold mb-4 text-balance"
+            className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
             style={{
-              fontFamily: settings.titleFont,
-              color: settings.titleColor || "inherit",
+              fontFamily: settings.titleFont || "var(--font-title)",
+              color: settings.titleColor || "var(--foreground)",
             }}
           >
             {settings.title}
           </h2>
           <p
-            className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed"
+            className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
             style={{
-              fontFamily: settings.subtitleFont,
-              color: settings.subtitleColor || "var(--muted-foreground)",
+              fontFamily: settings.subtitleFont || "var(--font-subtitle)",
+              color: settings.subtitleColor || "var(--foreground)",
             }}
           >
             {settings.subtitle}
@@ -178,8 +178,18 @@ export function GalleryPreview() {
         )}
 
         <div className="text-center">
-          <Button asChild size="lg" variant="outline">
-            <Link href="/galeria">Ver Galeria Completa</Link>
+          <Button 
+            asChild 
+            size="lg" 
+            variant="outline"
+            style={{
+              borderColor: settings.buttonColor || "var(--primary)",
+              backgroundColor: settings.buttonColor ? "transparent" : undefined,
+              color: settings.buttonTextColor || settings.buttonColor || "var(--primary)",
+              fontFamily: settings.buttonFont || "var(--font-body)"
+            }}
+          >
+            <Link href="/galeria">{settings.buttonText || "Ver Galeria Completa"}</Link>
           </Button>
         </div>
       </div>

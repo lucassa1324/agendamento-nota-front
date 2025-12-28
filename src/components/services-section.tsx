@@ -99,7 +99,7 @@ export function ServicesSection() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_SERVICES_CONTENT") {
+      if (event.data.type === "UPDATE_SERVICES_SETTINGS") {
         setSettings((prev) =>
           prev ? { ...prev, ...event.data.settings } : prev,
         );
@@ -155,10 +155,8 @@ export function ServicesSection() {
           <h2
             className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
             style={{
-              color: settings.titleColor || undefined,
-              fontFamily: settings.titleFont
-                ? `'${settings.titleFont}', serif`
-                : undefined,
+              color: settings.titleColor || "var(--foreground)",
+              fontFamily: settings.titleFont || "var(--font-title)",
             }}
           >
             {settings.title}
@@ -166,10 +164,8 @@ export function ServicesSection() {
           <p
             className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
             style={{
-              color: settings.subtitleColor || undefined,
-              fontFamily: settings.subtitleFont
-                ? `'${settings.subtitleFont}', sans-serif`
-                : undefined,
+              color: settings.subtitleColor || "var(--foreground)",
+              fontFamily: settings.subtitleFont || "var(--font-subtitle)",
             }}
           >
             {settings.subtitle}
@@ -195,7 +191,7 @@ export function ServicesSection() {
               <Card
                 key={service.id}
                 className="border-border hover:border-accent transition-colors overflow-hidden"
-                style={{ backgroundColor: settings.cardBgColor || undefined }}
+                style={{ backgroundColor: settings.cardBgColor || "transparent" }}
               >
                 <CardContent className="p-6">
                   <div
@@ -203,21 +199,19 @@ export function ServicesSection() {
                     style={{
                       backgroundColor: settings.cardIconColor
                         ? `${settings.cardIconColor}1a`
-                        : undefined,
+                        : "var(--muted)",
                     }}
                   >
                     <Icon
                       className="w-6 h-6 transition-colors"
-                      style={{ color: settings.cardIconColor || undefined }}
+                      style={{ color: settings.cardIconColor || "var(--primary)" }}
                     />
                   </div>
                   <h3
                     className="text-xl font-semibold mb-2"
                     style={{
-                      color: settings.cardTitleColor || undefined,
-                      fontFamily: settings.cardTitleFont
-                        ? `'${settings.cardTitleFont}', serif`
-                        : undefined,
+                      color: settings.cardTitleColor || "var(--foreground)",
+                      fontFamily: settings.cardTitleFont || "var(--font-subtitle)",
                     }}
                   >
                     {service.name}
@@ -225,10 +219,8 @@ export function ServicesSection() {
                   <p
                     className="text-sm mb-4 leading-relaxed opacity-80"
                     style={{
-                      color: settings.cardDescriptionColor || undefined,
-                      fontFamily: settings.cardDescriptionFont
-                        ? `'${settings.cardDescriptionFont}', sans-serif`
-                        : undefined,
+                      color: settings.cardDescriptionColor || "var(--foreground)",
+                      fontFamily: settings.cardDescriptionFont || "var(--font-body)",
                     }}
                   >
                     {service.description}
@@ -236,10 +228,8 @@ export function ServicesSection() {
                   <p
                     className="font-semibold"
                     style={{
-                      color: settings.cardPriceColor || undefined,
-                      fontFamily: settings.cardPriceFont
-                        ? `'${settings.cardPriceFont}', sans-serif`
-                        : undefined,
+                      color: settings.cardPriceColor || "var(--primary)",
+                      fontFamily: settings.cardPriceFont || "var(--font-body)",
                     }}
                   >
                     A partir de R$ {service.price.toFixed(2)}

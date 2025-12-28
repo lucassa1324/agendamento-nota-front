@@ -1,6 +1,6 @@
 "use client";
 
-import { Layout, Palette, Type } from "lucide-react";
+import { Layout, Palette, RotateCcw, Type } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { FooterSettings } from "@/lib/booking-data";
+import { EDITOR_FONTS } from "../components/editor-constants";
 
 interface FooterEditorProps {
   settings: FooterSettings;
@@ -26,16 +27,6 @@ interface FooterEditorProps {
   onSave?: () => void;
 }
 
-const FONTS = [
-  "Inter",
-  "Playfair Display",
-  "Montserrat",
-  "Roboto",
-  "Open Sans",
-  "Lato",
-  "Poppins",
-];
-
 export function FooterEditor({
   settings,
   onUpdate,
@@ -43,12 +34,12 @@ export function FooterEditor({
   onSave,
 }: FooterEditorProps) {
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
       <Accordion type="multiple" className="w-full space-y-2 border-none">
         {/* Background */}
         <AccordionItem
           value="item-background"
-          className="border rounded-lg bg-muted/20 px-3 overflow-hidden border-border/50"
+          className="border rounded-lg bg-card/50 px-3 overflow-hidden border-border/50"
         >
           <AccordionTrigger className="hover:no-underline py-3">
             <div className="flex items-center gap-2">
@@ -61,8 +52,18 @@ export function FooterEditor({
           <AccordionContent className="pb-4 space-y-4">
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                <Label className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center">
                   Cor de Fundo
+                  {settings.bgColor && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-4 w-4 hover:text-primary"
+                      onClick={() => onUpdate({ bgColor: "" })}
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </Button>
+                  )}
                 </Label>
                 <div className="flex gap-2">
                   <Input
@@ -73,10 +74,10 @@ export function FooterEditor({
                   />
                   <Input
                     type="text"
-                    value={settings.bgColor}
-                    placeholder="Padrão (secondary/30)"
+                    value={settings.bgColor || ""}
+                    placeholder="Padrão"
                     onChange={(e) => onUpdate({ bgColor: e.target.value })}
-                    className="h-8 text-xs flex-1"
+                    className="h-8 text-[10px] flex-1"
                   />
                 </div>
               </div>
@@ -87,7 +88,7 @@ export function FooterEditor({
         {/* Colors */}
         <AccordionItem
           value="item-colors"
-          className="border rounded-lg bg-muted/20 px-3 overflow-hidden border-border/50"
+          className="border rounded-lg bg-card/50 px-3 overflow-hidden border-border/50"
         >
           <AccordionTrigger className="hover:no-underline py-3">
             <div className="flex items-center gap-2">
@@ -100,8 +101,18 @@ export function FooterEditor({
           <AccordionContent className="pb-4 space-y-4">
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                <Label className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center">
                   Cor dos Títulos
+                  {settings.titleColor && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-4 w-4 hover:text-primary"
+                      onClick={() => onUpdate({ titleColor: "" })}
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </Button>
+                  )}
                 </Label>
                 <div className="flex gap-2">
                   <Input
@@ -112,17 +123,27 @@ export function FooterEditor({
                   />
                   <Input
                     type="text"
-                    value={settings.titleColor}
-                    placeholder="Padrão (primary)"
+                    value={settings.titleColor || ""}
+                    placeholder="Padrão"
                     onChange={(e) => onUpdate({ titleColor: e.target.value })}
-                    className="h-8 text-xs flex-1"
+                    className="h-8 text-[10px] flex-1"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                <Label className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center">
                   Cor dos Textos/Links
+                  {settings.textColor && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-4 w-4 hover:text-primary"
+                      onClick={() => onUpdate({ textColor: "" })}
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </Button>
+                  )}
                 </Label>
                 <div className="flex gap-2">
                   <Input
@@ -133,17 +154,27 @@ export function FooterEditor({
                   />
                   <Input
                     type="text"
-                    value={settings.textColor}
-                    placeholder="Padrão (muted-foreground)"
+                    value={settings.textColor || ""}
+                    placeholder="Padrão"
                     onChange={(e) => onUpdate({ textColor: e.target.value })}
-                    className="h-8 text-xs flex-1"
+                    className="h-8 text-[10px] flex-1"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                <Label className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center">
                   Cor dos Ícones
+                  {settings.iconColor && (
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-4 w-4 hover:text-primary"
+                      onClick={() => onUpdate({ iconColor: "" })}
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </Button>
+                  )}
                 </Label>
                 <div className="flex gap-2">
                   <Input
@@ -154,10 +185,10 @@ export function FooterEditor({
                   />
                   <Input
                     type="text"
-                    value={settings.iconColor}
-                    placeholder="Padrão (accent)"
+                    value={settings.iconColor || ""}
+                    placeholder="Padrão"
                     onChange={(e) => onUpdate({ iconColor: e.target.value })}
-                    className="h-8 text-xs flex-1"
+                    className="h-8 text-[10px] flex-1"
                   />
                 </div>
               </div>
@@ -168,7 +199,7 @@ export function FooterEditor({
         {/* Typography */}
         <AccordionItem
           value="item-typography"
-          className="border rounded-lg bg-muted/20 px-3 overflow-hidden border-border/50"
+          className="border rounded-lg bg-card/50 px-3 overflow-hidden border-border/50"
         >
           <AccordionTrigger className="hover:no-underline py-3">
             <div className="flex items-center gap-2">
@@ -185,16 +216,17 @@ export function FooterEditor({
                   Fonte dos Títulos
                 </Label>
                 <Select
-                  value={settings.titleFont}
-                  onValueChange={(val) => onUpdate({ titleFont: val })}
+                  value={settings.titleFont || "default"}
+                  onValueChange={(val) => onUpdate({ titleFont: val === "default" ? "" : val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Selecione a fonte" />
+                  <SelectTrigger className="h-8 text-[10px]">
+                    <SelectValue placeholder="Padrão do Site" />
                   </SelectTrigger>
                   <SelectContent>
-                    {FONTS.map((font) => (
-                      <SelectItem key={font} value={font} className="text-xs">
-                        {font}
+                    <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+                    {EDITOR_FONTS.map((font) => (
+                      <SelectItem key={font.name} value={font.name} className="text-[10px]">
+                        <span style={{ fontFamily: font.name }}>{font.name}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -206,16 +238,17 @@ export function FooterEditor({
                   Fonte do Corpo
                 </Label>
                 <Select
-                  value={settings.bodyFont}
-                  onValueChange={(val) => onUpdate({ bodyFont: val })}
+                  value={settings.bodyFont || "default"}
+                  onValueChange={(val) => onUpdate({ bodyFont: val === "default" ? "" : val })}
                 >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Selecione a fonte" />
+                  <SelectTrigger className="h-8 text-[10px]">
+                    <SelectValue placeholder="Padrão do Site" />
                   </SelectTrigger>
                   <SelectContent>
-                    {FONTS.map((font) => (
-                      <SelectItem key={font} value={font} className="text-xs">
-                        {font}
+                    <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+                    {EDITOR_FONTS.map((font) => (
+                      <SelectItem key={font.name} value={font.name} className="text-[10px]">
+                        <span style={{ fontFamily: font.name }}>{font.name}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>

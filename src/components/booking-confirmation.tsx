@@ -41,19 +41,19 @@ export function BookingConfirmation({
         <div 
           className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
           style={{ 
-            backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'rgba(var(--accent), 0.1)'
+            backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'var(--muted)'
           }}
         >
           <CheckCircle2 
             className="w-10 h-10" 
-            style={{ color: settings?.accentColor || 'var(--accent)' }}
+            style={{ color: settings?.accentColor || 'var(--primary)' }}
           />
         </div>
         <h2 
           className="text-3xl font-bold mb-2"
           style={{ 
-            color: settings?.titleColor || 'inherit',
-            fontFamily: settings?.titleFont || 'inherit'
+            color: settings?.titleColor || 'var(--foreground)',
+            fontFamily: settings?.titleFont || 'var(--font-title)'
           }}
         >
           {settings?.title || (isUpdate ? "Agendamento Atualizado!" : "Agendamento Confirmado!")}
@@ -61,8 +61,8 @@ export function BookingConfirmation({
         <p 
           className="text-muted-foreground"
           style={{ 
-            color: settings?.subtitleColor || 'inherit',
-            fontFamily: settings?.subtitleFont || 'inherit'
+            color: settings?.subtitleColor || 'var(--foreground)',
+            fontFamily: settings?.subtitleFont || 'var(--font-subtitle)'
           }}
         >
           {settings?.subtitle || "Enviamos uma confirmação para o seu e-mail"}
@@ -70,26 +70,31 @@ export function BookingConfirmation({
       </div>
 
       <Card 
-        className="border-accent/20"
+        className="border-primary/20"
         style={{ 
-          backgroundColor: settings?.cardBgColor || 'inherit',
+          backgroundColor: settings?.cardBgColor || 'transparent',
           borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
         }}
       >
         <CardContent className="p-6 space-y-6">
           <div>
-            <h3 className="font-semibold mb-4">Detalhes do Agendamento</h3>
+            <h3 
+              className="font-semibold mb-4"
+              style={{ fontFamily: 'var(--font-title)', color: 'var(--foreground)' }}
+            >
+              Detalhes do Agendamento
+            </h3>
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <div 
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                   style={{ 
-                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'rgba(var(--accent), 0.1)'
+                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'var(--muted)'
                   }}
                 >
                   <Calendar 
                     className="w-5 h-5" 
-                    style={{ color: settings?.accentColor || 'var(--accent)' }}
+                    style={{ color: settings?.accentColor || 'var(--primary)' }}
                   />
                 </div>
                 <div>
@@ -104,12 +109,12 @@ export function BookingConfirmation({
                 <div 
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                   style={{ 
-                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'rgba(var(--accent), 0.1)'
+                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'var(--muted)'
                   }}
                 >
                   <Clock 
                     className="w-5 h-5" 
-                    style={{ color: settings?.accentColor || 'var(--accent)' }}
+                    style={{ color: settings?.accentColor || 'var(--primary)' }}
                   />
                 </div>
                 <div>
@@ -124,12 +129,12 @@ export function BookingConfirmation({
                 <div 
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                   style={{ 
-                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'rgba(var(--accent), 0.1)'
+                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'var(--muted)'
                   }}
                 >
                   <DollarSign 
                     className="w-5 h-5" 
-                    style={{ color: settings?.accentColor || 'var(--accent)' }}
+                    style={{ color: settings?.accentColor || 'var(--primary)' }}
                   />
                 </div>
                 <div>
@@ -154,7 +159,7 @@ export function BookingConfirmation({
           <div 
             className="p-4 rounded-lg text-sm"
             style={{ 
-              backgroundColor: settings?.accentColor ? `${settings.accentColor}0d` : 'rgba(var(--accent), 0.05)'
+              backgroundColor: settings?.accentColor ? `${settings.accentColor}0d` : 'var(--muted)'
             }}
           >
             <p className="text-muted-foreground">
@@ -167,7 +172,7 @@ export function BookingConfirmation({
               asChild
               className="flex-1 font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
               style={{ 
-                backgroundColor: settings?.accentColor || 'var(--accent)',
+                backgroundColor: settings?.accentColor || 'var(--primary)',
                 color: '#fff'
               }}
             >
@@ -178,8 +183,8 @@ export function BookingConfirmation({
               onClick={onReset}
               className="flex-1 font-bold"
               style={{ 
-                borderColor: settings?.accentColor || 'var(--accent)',
-                color: settings?.accentColor || 'var(--accent)'
+                borderColor: settings?.accentColor || 'var(--primary)',
+                color: settings?.accentColor || 'var(--primary)'
               }}
             >
               Novo Agendamento

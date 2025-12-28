@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  type BookingStepSettings,
   getBlockedPeriods,
   getWeekSchedule,
   type Service,
-  type BookingStepSettings,
 } from "@/lib/booking-data";
 
 type BookingCalendarProps = {
@@ -106,9 +106,9 @@ export function BookingCalendar({
           Voltar
         </Button>
         <Card 
-          className="border-accent/20 p-4"
+          className="border-primary/20 p-4"
           style={{ 
-            backgroundColor: settings?.cardBgColor || 'rgba(var(--accent), 0.05)',
+            backgroundColor: settings?.cardBgColor || "var(--muted)",
             borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
           }}
         >
@@ -117,8 +117,8 @@ export function BookingCalendar({
               <span 
                 className="font-semibold"
                 style={{ 
-                  color: settings?.titleColor || 'inherit',
-                  fontFamily: settings?.titleFont || 'inherit'
+                  color: settings?.titleColor || 'var(--foreground)',
+                  fontFamily: settings?.titleFont || 'var(--font-title)'
                 }}
               >
                 {service.name}
@@ -135,8 +135,8 @@ export function BookingCalendar({
       <h2 
         className="text-2xl font-bold mb-6 text-center"
         style={{ 
-          color: settings?.titleColor || 'inherit',
-          fontFamily: settings?.titleFont || 'inherit'
+          color: settings?.titleColor || 'var(--foreground)',
+          fontFamily: settings?.titleFont || 'var(--font-title)'
         }}
       >
         {settings?.title || "Escolha a Data"}
@@ -152,8 +152,8 @@ export function BookingCalendar({
             <h3 
               className="font-semibold text-lg"
               style={{ 
-                color: settings?.titleColor || 'inherit',
-                fontFamily: settings?.titleFont || 'inherit'
+                color: settings?.titleColor || 'var(--foreground)',
+                fontFamily: settings?.titleFont || 'var(--font-title)'
               }}
             >
               {monthNames[month]} {year}
@@ -197,22 +197,18 @@ export function BookingCalendar({
                   }`}
                   style={{
                     backgroundColor: !disabled ? 'transparent' : undefined,
-                    color: !disabled && settings?.accentColor ? settings.accentColor : undefined,
+                    color: !disabled ? (settings?.accentColor || 'var(--primary)') : undefined,
                   }}
                   onMouseEnter={(e) => {
-                    if (!disabled && settings?.accentColor) {
-                      e.currentTarget.style.backgroundColor = settings.accentColor;
+                    if (!disabled) {
+                      e.currentTarget.style.backgroundColor = settings?.accentColor || 'var(--primary)';
                       e.currentTarget.style.color = '#fff';
-                    } else if (!disabled) {
-                      e.currentTarget.classList.add('bg-accent', 'text-accent-foreground');
                     }
                   }}
                   onMouseLeave={(e) => {
-                    if (!disabled && settings?.accentColor) {
+                    if (!disabled) {
                       e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = settings.accentColor;
-                    } else if (!disabled) {
-                      e.currentTarget.classList.remove('bg-accent', 'text-accent-foreground');
+                      e.currentTarget.style.color = settings?.accentColor || 'var(--primary)';
                     }
                   }}
                 >

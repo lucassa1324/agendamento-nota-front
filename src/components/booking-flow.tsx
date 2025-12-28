@@ -193,19 +193,19 @@ export function BookingFlow() {
   const renderStepHeader = (settings: BookingStepSettings) => (
     <div className="text-center mb-12">
       <h2 
-        className="text-4xl md:text-5xl font-bold mb-4"
+        className="text-4xl md:text-5xl font-bold mb-4 transition-all duration-300"
         style={{ 
-          color: settings.titleColor || "inherit",
-          fontFamily: settings.titleFont || "inherit"
+          color: settings.titleColor || "var(--primary)",
+          fontFamily: settings.titleFont || "var(--font-title)"
         }}
       >
         {settings.title}
       </h2>
       <p 
-        className="text-lg opacity-80 max-w-2xl mx-auto"
+        className="text-lg opacity-80 max-w-2xl mx-auto transition-all duration-300"
         style={{ 
-          color: settings.subtitleColor || "inherit",
-          fontFamily: settings.subtitleFont || "inherit"
+          color: settings.subtitleColor || "var(--foreground)",
+          fontFamily: settings.subtitleFont || "var(--font-body)"
         }}
       >
         {settings.subtitle}
@@ -224,13 +224,18 @@ export function BookingFlow() {
                 <div key={step.id} className="flex items-center flex-1">
                   <div className="flex flex-col items-center flex-1">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors ${
-                        step.completed || (only && steps.findIndex(s => s.id === only.replace('booking-', '')) > index)
-                          ? "bg-accent border-accent text-accent-foreground"
-                          : currentStep === step.id
-                            ? "border-accent text-accent"
-                            : "border-border text-muted-foreground"
-                      }`}
+                      className="w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300"
+                      style={{
+                        backgroundColor: (step.completed || (only && steps.findIndex(s => s.id === only.replace('booking-', '')) > index))
+                          ? "var(--primary)"
+                          : "transparent",
+                        borderColor: (step.completed || (only && steps.findIndex(s => s.id === only.replace('booking-', '')) > index) || currentStep === step.id)
+                          ? "var(--primary)"
+                          : "var(--border)",
+                        color: (step.completed || (only && steps.findIndex(s => s.id === only.replace('booking-', '')) > index))
+                          ? "white"
+                          : (currentStep === step.id ? "var(--primary)" : "var(--muted-foreground)")
+                      }}
                     >
                       {step.completed || (only && steps.findIndex(s => s.id === only.replace('booking-', '')) > index) ? (
                         <CheckCircle2 className="w-5 h-5" />
@@ -238,15 +243,16 @@ export function BookingFlow() {
                         index + 1
                       )}
                     </div>
-                    <span className="text-xs mt-2 font-medium">{step.label}</span>
+                    <span className="text-xs mt-2 font-medium" style={{ color: currentStep === step.id || step.completed ? "var(--primary)" : "var(--muted-foreground)" }}>{step.label}</span>
                   </div>
                   {index < steps.length - 1 && (
                     <div
-                      className={`h-0.5 flex-1 mx-2 transition-colors ${
-                        step.completed || (only && steps.findIndex(s => s.id === only.replace('booking-', '')) > index) 
-                          ? "bg-accent" 
-                          : "bg-border"
-                      }`}
+                      className="h-0.5 flex-1 mx-2 transition-all duration-300"
+                      style={{
+                        backgroundColor: (step.completed || (only && steps.findIndex(s => s.id === only.replace('booking-', '')) > index))
+                          ? "var(--primary)"
+                          : "var(--border)"
+                      }}
                     />
                   )}
                 </div>

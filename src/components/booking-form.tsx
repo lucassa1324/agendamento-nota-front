@@ -1,7 +1,7 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
 import { ChevronLeft } from "lucide-react";
+import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -92,9 +92,9 @@ export function BookingForm({
           Voltar
         </Button>
         <Card 
-          className="border-accent/20 p-4"
+          className="border-primary/20 p-4"
           style={{ 
-            backgroundColor: settings?.cardBgColor || 'rgba(var(--accent), 0.05)',
+            backgroundColor: settings?.cardBgColor || 'var(--muted)',
             borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
           }}
         >
@@ -102,8 +102,8 @@ export function BookingForm({
             <div 
               className="font-semibold"
               style={{ 
-                color: settings?.titleColor || 'inherit',
-                fontFamily: settings?.titleFont || 'inherit'
+                color: settings?.titleColor || 'var(--foreground)',
+                fontFamily: settings?.titleFont || 'var(--font-title)'
               }}
             >
               {service.name}
@@ -114,7 +114,7 @@ export function BookingForm({
             <div 
               className="font-bold"
               style={{ 
-                color: settings?.accentColor || 'var(--accent)'
+                color: settings?.accentColor || 'var(--primary)'
               }}
             >
               {time}
@@ -124,7 +124,7 @@ export function BookingForm({
             </div>
             <div 
               className="font-semibold"
-              style={{ color: settings?.accentColor || 'var(--accent)' }}
+              style={{ color: settings?.accentColor || 'var(--primary)' }}
             >
               R$ {formData.price.toFixed(2)}
             </div>
@@ -132,7 +132,10 @@ export function BookingForm({
         </Card>
       </div>
 
-      <h2 className="font-serif text-2xl font-bold mb-6 text-center">
+      <h2 
+        className="text-2xl font-bold mb-6 text-center"
+        style={{ fontFamily: 'var(--font-title)', color: 'var(--foreground)' }}
+      >
         Seus Dados
       </h2>
 
@@ -152,7 +155,7 @@ export function BookingForm({
                 placeholder="Seu nome completo"
                 className="focus-visible:ring-accent"
                 style={{ 
-                  '--tw-ring-color': settings?.accentColor || 'var(--accent)'
+                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
                 } as React.CSSProperties}
               />
             </div>
@@ -169,7 +172,7 @@ export function BookingForm({
                 placeholder="seu@email.com"
                 className="focus-visible:ring-accent"
                 style={{ 
-                  '--tw-ring-color': settings?.accentColor || 'var(--accent)'
+                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
                 } as React.CSSProperties}
               />
             </div>
@@ -187,7 +190,7 @@ export function BookingForm({
                 placeholder="(11) 99999-9999"
                 className="focus-visible:ring-accent"
                 style={{ 
-                  '--tw-ring-color': settings?.accentColor || 'var(--accent)'
+                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
                 } as React.CSSProperties}
               />
             </div>
@@ -208,7 +211,7 @@ export function BookingForm({
                 placeholder="0.00"
                 className="focus-visible:ring-accent"
                 style={{ 
-                  '--tw-ring-color': settings?.accentColor || 'var(--accent)'
+                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
                 } as React.CSSProperties}
               />
             </div>
@@ -217,7 +220,7 @@ export function BookingForm({
               type="submit"
               className="w-full h-12 text-lg font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
               style={{ 
-                backgroundColor: settings?.accentColor || 'var(--accent)',
+                backgroundColor: settings?.accentColor || 'var(--primary)',
                 color: '#fff'
               }}
             >

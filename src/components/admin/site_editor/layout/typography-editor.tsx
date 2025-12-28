@@ -20,6 +20,7 @@ import {
 interface TypographyEditorProps {
   settings: {
     headingFont: string;
+    subtitleFont: string;
     bodyFont: string;
   };
   onUpdate: (updates: Partial<TypographyEditorProps["settings"]>) => void;
@@ -39,13 +40,27 @@ export function TypographyEditor({
     if (value && onHighlight) {
       const highlightMap: Record<string, string> = {
         "item-headings": "hero-title",
-        "item-body": "hero-subtitle",
+        "item-subtitles": "hero-subtitle",
+        "item-body": "services-description",
       };
       if (highlightMap[value]) {
         onHighlight(highlightMap[value]);
       }
     }
   };
+
+  const fontOptions = [
+    { value: "Playfair Display", label: "Playfair Display" },
+    { value: "Montserrat", label: "Montserrat" },
+    { value: "Inter", label: "Inter" },
+    { value: "Lora", label: "Lora" },
+    { value: "Poppins", label: "Poppins" },
+    { value: "Merriweather", label: "Merriweather" },
+    { value: "Roboto", label: "Roboto" },
+    { value: "Open Sans", label: "Open Sans" },
+    { value: "Cormorant Garamond", label: "Cormorant Garamond" },
+    { value: "Cinzel", label: "Cinzel" },
+  ];
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -86,15 +101,53 @@ export function TypographyEditor({
                   <SelectValue placeholder="Selecione uma fonte" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Playfair Display">
-                    Playfair Display
-                  </SelectItem>
-                  <SelectItem value="Lora">Lora</SelectItem>
-                  <SelectItem value="Merriweather">Merriweather</SelectItem>
-                  <SelectItem value="Cormorant Garamond">
-                    Cormorant Garamond
-                  </SelectItem>
-                  <SelectItem value="Cinzel">Cinzel</SelectItem>
+                  {fontOptions.map((font) => (
+                    <SelectItem key={font.value} value={font.value}>
+                      {font.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </fieldset>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem
+          value="item-subtitles"
+          className="border rounded-lg bg-muted/20 px-3 overflow-hidden border-border/50"
+        >
+          <AccordionTrigger className="hover:no-underline py-3">
+            <div className="flex items-center gap-2">
+              <Plus className="w-3 h-3 text-primary" />
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Fonte dos Subtítulos
+              </span>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pb-4 space-y-4">
+            <fieldset
+              className="space-y-1.5 border-none p-0 m-0 pt-1"
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+            >
+              <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 ml-1">
+                Selecione a fonte para subtítulos
+              </legend>
+              <Select
+                value={settings.subtitleFont}
+                onValueChange={(val) => onUpdate({ subtitleFont: val })}
+              >
+                <SelectTrigger className="h-9 text-sm bg-background">
+                  <SelectValue placeholder="Selecione uma fonte" />
+                </SelectTrigger>
+                <SelectContent>
+                  {fontOptions.map((font) => (
+                    <SelectItem key={font.value} value={font.value}>
+                      {font.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </fieldset>
@@ -132,11 +185,11 @@ export function TypographyEditor({
                   <SelectValue placeholder="Selecione uma fonte" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Inter">Inter</SelectItem>
-                  <SelectItem value="Montserrat">Montserrat</SelectItem>
-                  <SelectItem value="Poppins">Poppins</SelectItem>
-                  <SelectItem value="Roboto">Roboto</SelectItem>
-                  <SelectItem value="Open Sans">Open Sans</SelectItem>
+                  {fontOptions.map((font) => (
+                    <SelectItem key={font.value} value={font.value}>
+                      {font.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </fieldset>
@@ -149,19 +202,22 @@ export function TypographyEditor({
           <Label className="text-[9px] text-muted-foreground uppercase">
             Prévia
           </Label>
-          <div className="space-y-1">
-            <h4
-              className="text-lg font-bold"
+          <div className="space-y-2">
+            <h1
+              className="text-2xl font-bold"
               style={{ fontFamily: settings.headingFont }}
             >
-              Exemplo de Título
-            </h4>
-            <p
-              className="text-xs text-muted-foreground"
-              style={{ fontFamily: settings.bodyFont }}
+              Título de Exemplo
+            </h1>
+            <h3
+              className="text-lg font-medium text-muted-foreground"
+              style={{ fontFamily: settings.subtitleFont }}
             >
-              Este é um exemplo de como o seu texto ficará com as fontes
-              selecionadas.
+              Subtítulo de Exemplo
+            </h3>
+            <p className="text-sm" style={{ fontFamily: settings.bodyFont }}>
+              Este é um exemplo de como o texto do corpo ficará com a fonte
+              selecionada. O design é focado em legibilidade e harmonia.
             </p>
           </div>
         </div>

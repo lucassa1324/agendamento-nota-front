@@ -22,6 +22,7 @@ import {
   Palette,
   Plane,
   Plus,
+  RotateCcw,
   Scissors,
   ShoppingBag,
   Smartphone,
@@ -216,8 +217,18 @@ export function ValuesEditor({
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
-                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Fundo do Card
+                    {settings.cardBgColor && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-4 w-4 hover:text-primary"
+                        onClick={() => onUpdate({ cardBgColor: "" })}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
+                    )}
                   </legend>
                   <div className="flex gap-2">
                     <Input
@@ -230,7 +241,7 @@ export function ValuesEditor({
                     />
                     <Input
                       value={settings.cardBgColor || ""}
-                      placeholder="#HEX"
+                      placeholder="Transparente"
                       className="h-8 text-[10px] flex-1 uppercase"
                       onChange={(e) =>
                         onUpdate({ cardBgColor: e.target.value })
@@ -245,8 +256,18 @@ export function ValuesEditor({
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     >
-                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Cor dos Ícones
+                    {settings.cardIconColor && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-4 w-4 hover:text-primary"
+                        onClick={() => onUpdate({ cardIconColor: "" })}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
+                    )}
                   </legend>
                   <div className="flex gap-2">
                     <Input
@@ -259,7 +280,7 @@ export function ValuesEditor({
                     />
                     <Input
                       value={settings.cardIconColor || ""}
-                      placeholder="#HEX"
+                      placeholder="Padrão"
                       className="h-8 text-[10px] flex-1 uppercase"
                       onChange={(e) =>
                         onUpdate({ cardIconColor: e.target.value })
@@ -285,25 +306,25 @@ export function ValuesEditor({
                       Fonte
                     </legend>
                     <Select
-                      value={settings.cardTitleFont}
-                      onValueChange={(v) => onUpdate({ cardTitleFont: v })}
+                      value={settings.cardTitleFont || "default"}
+                      onValueChange={(v) => onUpdate({ cardTitleFont: v === "default" ? "" : v })}
                     >
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Fonte" />
+                        <SelectValue placeholder="Padrão do Site" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="default" className="text-xs font-medium">
+                          Padrão do Site
+                        </SelectItem>
                         {EDITOR_FONTS.map((f) => (
-                          <SelectItem
-                            key={f.name}
-                            value={f.name}
-                            className="text-xs"
-                          >
+                          <SelectItem key={f.name} value={f.name} className="text-xs">
                             <span style={{ fontFamily: f.name }}>{f.name}</span>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </fieldset>
+
                   <fieldset 
                     className="space-y-1.5 border-none p-0 m-0" 
                     onPointerDown={(e) => e.stopPropagation()}
@@ -311,25 +332,31 @@ export function ValuesEditor({
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >
-                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                       Cor
+                      {settings.cardTitleColor && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-4 w-4 hover:text-primary"
+                          onClick={() => onUpdate({ cardTitleColor: "" })}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </Button>
+                      )}
                     </legend>
                     <div className="flex gap-2">
                       <Input
                         type="color"
                         value={settings.cardTitleColor || "#000000"}
                         className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                        onChange={(e) =>
-                          onUpdate({ cardTitleColor: e.target.value })
-                        }
+                        onChange={(e) => onUpdate({ cardTitleColor: e.target.value })}
                       />
                       <Input
                         value={settings.cardTitleColor || ""}
-                        placeholder="#HEX"
+                        placeholder="Padrão"
                         className="h-8 text-[10px] flex-1 uppercase"
-                        onChange={(e) =>
-                          onUpdate({ cardTitleColor: e.target.value })
-                        }
+                        onChange={(e) => onUpdate({ cardTitleColor: e.target.value })}
                       />
                     </div>
                   </fieldset>
@@ -343,8 +370,8 @@ export function ValuesEditor({
                 <div className="grid grid-cols-2 gap-4">
                   <fieldset 
                     className="space-y-1.5 border-none p-0 m-0" 
-                    onPointerDown={(e) => e.stopPropagation()} 
-                    onMouseDown={(e) => e.stopPropagation()} 
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >
@@ -352,53 +379,57 @@ export function ValuesEditor({
                       Fonte
                     </legend>
                     <Select
-                      value={settings.cardDescriptionFont}
-                      onValueChange={(v) =>
-                        onUpdate({ cardDescriptionFont: v })
-                      }
+                      value={settings.cardDescriptionFont || "default"}
+                      onValueChange={(v) => onUpdate({ cardDescriptionFont: v === "default" ? "" : v })}
                     >
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Fonte" />
+                        <SelectValue placeholder="Padrão do Site" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="default" className="text-xs font-medium">
+                          Padrão do Site
+                        </SelectItem>
                         {EDITOR_FONTS.map((f) => (
-                          <SelectItem
-                            key={f.name}
-                            value={f.name}
-                            className="text-xs"
-                          >
+                          <SelectItem key={f.name} value={f.name} className="text-xs">
                             <span style={{ fontFamily: f.name }}>{f.name}</span>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </fieldset>
+
                   <fieldset 
                     className="space-y-1.5 border-none p-0 m-0" 
-                    onPointerDown={(e) => e.stopPropagation()} 
-                    onMouseDown={(e) => e.stopPropagation()} 
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >
-                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                       Cor
+                      {settings.cardDescriptionColor && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-4 w-4 hover:text-primary"
+                          onClick={() => onUpdate({ cardDescriptionColor: "" })}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </Button>
+                      )}
                     </legend>
                     <div className="flex gap-2">
                       <Input
                         type="color"
-                        value={settings.cardDescriptionColor || "#666666"}
+                        value={settings.cardDescriptionColor || "#000000"}
                         className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                        onChange={(e) =>
-                          onUpdate({ cardDescriptionColor: e.target.value })
-                        }
+                        onChange={(e) => onUpdate({ cardDescriptionColor: e.target.value })}
                       />
                       <Input
                         value={settings.cardDescriptionColor || ""}
-                        placeholder="#HEX"
+                        placeholder="Padrão"
                         className="h-8 text-[10px] flex-1 uppercase"
-                        onChange={(e) =>
-                          onUpdate({ cardDescriptionColor: e.target.value })
-                        }
+                        onChange={(e) => onUpdate({ cardDescriptionColor: e.target.value })}
                       />
                     </div>
                   </fieldset>

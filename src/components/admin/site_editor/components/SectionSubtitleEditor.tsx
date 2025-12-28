@@ -1,5 +1,7 @@
 "use client";
 
+import { RotateCcw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -57,13 +59,16 @@ export function SectionSubtitleEditor({
             Fonte
           </legend>
           <Select
-            value={font}
-            onValueChange={(v) => onUpdate({ font: v })}
+            value={font || "default"}
+            onValueChange={(v) => onUpdate({ font: v === "default" ? "" : v })}
           >
             <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder="Fonte" />
+              <SelectValue placeholder="Padrão do Site" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="default" className="text-xs font-medium">
+                Padrão do Site
+              </SelectItem>
               {EDITOR_FONTS.map((f) => (
                 <SelectItem
                   key={f.name}
@@ -83,8 +88,18 @@ export function SectionSubtitleEditor({
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
-          <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+          <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
             Cor
+            {color && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-4 w-4 hover:text-primary"
+                onClick={() => onUpdate({ color: "" })}
+              >
+                <RotateCcw className="w-3 h-3" />
+              </Button>
+            )}
           </legend>
           <div className="flex gap-2">
             <Input
@@ -95,7 +110,7 @@ export function SectionSubtitleEditor({
             />
             <Input
               value={color || ""}
-              placeholder="#HEX"
+              placeholder="Padrão"
               className="h-8 text-[10px] flex-1 uppercase"
               onChange={(e) => onUpdate({ color: e.target.value })}
             />

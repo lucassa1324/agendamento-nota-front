@@ -88,7 +88,7 @@ export function ValuesSection() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_VALUES_CONTENT") {
+      if (event.data.type === "UPDATE_VALUES_SETTINGS") {
         setSettings((prev) =>
           prev ? { ...prev, ...event.data.settings } : prev,
         );
@@ -131,10 +131,8 @@ export function ValuesSection() {
           <h2
             className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
             style={{
-              color: settings.titleColor || undefined,
-              fontFamily: settings.titleFont
-                ? `'${settings.titleFont}', serif`
-                : undefined,
+              color: settings.titleColor || "var(--foreground)",
+              fontFamily: settings.titleFont || "var(--font-title)",
             }}
           >
             {settings.title}
@@ -142,10 +140,8 @@ export function ValuesSection() {
           <p
             className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
             style={{
-              color: settings.subtitleColor || undefined,
-              fontFamily: settings.subtitleFont
-                ? `'${settings.subtitleFont}', sans-serif`
-                : undefined,
+              color: settings.subtitleColor || "var(--foreground)",
+              fontFamily: settings.subtitleFont || "var(--font-subtitle)",
             }}
           >
             {settings.subtitle}
@@ -158,43 +154,40 @@ export function ValuesSection() {
             return (
               <Card
                 key={value.id}
-                className="border-border hover:border-accent transition-colors overflow-hidden text-center backdrop-blur-sm"
+                className="border-border hover:border-accent transition-all overflow-hidden text-center backdrop-blur-sm"
                 style={{
-                  backgroundColor: settings.cardBgColor || undefined,
+                  backgroundColor: settings.cardBgColor || "var(--card)",
                 }}
               >
                 <CardContent className="p-6">
                   <div
-                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 transition-colors duration-300"
+                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 transition-all duration-300"
                     style={{
                       backgroundColor: settings.cardIconColor
                         ? `${settings.cardIconColor}1a`
-                        : undefined,
+                        : "var(--muted)",
+                      opacity: settings.cardIconColor ? 1 : 1,
                     }}
                   >
                     <Icon
-                      className="w-8 h-8 transition-colors duration-300"
-                      style={{ color: settings.cardIconColor || undefined }}
+                      className="w-8 h-8 transition-all duration-300"
+                      style={{ color: settings.cardIconColor || "var(--primary)" }}
                     />
                   </div>
                   <h3
-                    className="text-xl font-semibold mb-3 transition-colors duration-300"
+                    className="text-xl font-semibold mb-3 transition-all duration-300"
                     style={{
-                      color: settings.cardTitleColor || undefined,
-                      fontFamily: settings.cardTitleFont
-                        ? `'${settings.cardTitleFont}', serif`
-                        : undefined,
+                      color: settings.cardTitleColor || "var(--primary)",
+                      fontFamily: settings.cardTitleFont || "var(--font-title)",
                     }}
                   >
                     {value.title}
                   </h3>
                   <p
-                    className="text-sm leading-relaxed transition-colors duration-300"
+                    className="text-sm leading-relaxed transition-all duration-300"
                     style={{
-                      color: settings.cardDescriptionColor || undefined,
-                      fontFamily: settings.cardDescriptionFont
-                        ? `'${settings.cardDescriptionFont}', sans-serif`
-                        : undefined,
+                      color: settings.cardDescriptionColor || "var(--foreground)",
+                      fontFamily: settings.cardDescriptionFont || "var(--font-body)",
                     }}
                   >
                     {value.description}

@@ -71,14 +71,20 @@ export function StorySection() {
           </div>
           <div>
             <h2
-              className="font-serif text-4xl md:text-5xl font-bold mb-6 text-balance transition-colors duration-300"
-              style={{ color: settings.titleColor || undefined }}
+              className="font-serif text-4xl md:text-5xl font-bold mb-6 text-balance transition-all duration-300"
+              style={{ 
+                color: settings.titleColor || "var(--foreground)",
+                fontFamily: settings.titleFont || "var(--font-title)"
+              }}
             >
               {settings.title}
             </h2>
             <div
-              className="space-y-4 leading-relaxed transition-colors duration-300"
-              style={{ color: settings.contentColor || undefined }}
+              className="space-y-4 leading-relaxed transition-all duration-300"
+              style={{ 
+                color: settings.contentColor || "var(--foreground)",
+                fontFamily: settings.contentFont || "var(--font-body)"
+              }}
             >
               {settings.content
                 .split("\n")
@@ -86,9 +92,6 @@ export function StorySection() {
                 .map((paragraph, index) => (
                   <p
                     key={`${paragraph.slice(0, 20)}-${index}`}
-                    className={cn(
-                      !settings.contentColor && "text-muted-foreground",
-                    )}
                   >
                     {paragraph}
                   </p>

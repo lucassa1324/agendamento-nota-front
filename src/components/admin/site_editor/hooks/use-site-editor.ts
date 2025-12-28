@@ -29,32 +29,24 @@
  */
 
 import {
+  type RefObject,
   useCallback,
   useEffect,
   useMemo,
   useState,
-  type RefObject,
 } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
   type BookingStepSettings,
+  type ColorSettings,
   type CTASettings,
-  type FontSettings,
-  type FooterSettings,
-  type GallerySettings,
-  type HeaderSettings,
-  type HeroSettings,
-  type ServicesSettings,
-  type StorySettings,
-  type TeamSettings,
-  type TestimonialsSettings,
-  type ValuesSettings,
   defaultAboutHeroSettings,
   defaultBookingConfirmationSettings,
   defaultBookingDateSettings,
   defaultBookingFormSettings,
   defaultBookingServiceSettings,
   defaultBookingTimeSettings,
+  defaultColorSettings,
   defaultCTASettings,
   defaultFontSettings,
   defaultFooterSettings,
@@ -66,12 +58,16 @@ import {
   defaultTeamSettings,
   defaultTestimonialsSettings,
   defaultValuesSettings,
+  type FontSettings,
+  type FooterSettings,
+  type GallerySettings,
   getAboutHeroSettings,
   getBookingConfirmationSettings,
   getBookingDateSettings,
   getBookingFormSettings,
   getBookingServiceSettings,
   getBookingTimeSettings,
+  getColorSettings,
   getCTASettings,
   getFontSettings,
   getFooterSettings,
@@ -85,12 +81,17 @@ import {
   getTestimonialsSettings,
   getValuesSettings,
   getVisibleSections,
+  type HeaderSettings,
+  type HeroSettings,
+  type ServicesSettings,
+  type StorySettings,
   saveAboutHeroSettings,
   saveBookingConfirmationSettings,
   saveBookingDateSettings,
   saveBookingFormSettings,
   saveBookingServiceSettings,
   saveBookingTimeSettings,
+  saveColorSettings,
   saveCTASettings,
   saveFontSettings,
   saveFooterSettings,
@@ -104,6 +105,9 @@ import {
   saveTestimonialsSettings,
   saveValuesSettings,
   saveVisibleSections,
+  type TeamSettings,
+  type TestimonialsSettings,
+  type ValuesSettings,
 } from "@/lib/booking-data";
 
 export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
@@ -123,6 +127,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     useState<TestimonialsSettings>(defaultTestimonialsSettings);
   const [fontSettings, setFontSettings] =
     useState<FontSettings>(defaultFontSettings);
+  const [colorSettings, setColorSettings] =
+    useState<ColorSettings>(defaultColorSettings);
   const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(
     defaultServicesSettings,
   );
@@ -174,6 +180,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     useState<TestimonialsSettings>(defaultTestimonialsSettings);
   const [lastAppliedFont, setLastAppliedFont] =
     useState<FontSettings>(defaultFontSettings);
+  const [lastAppliedColor, setLastAppliedColor] =
+    useState<ColorSettings>(defaultColorSettings);
   const [lastAppliedServices, setLastAppliedServices] =
     useState<ServicesSettings>(defaultServicesSettings);
   const [lastAppliedValues, setLastAppliedValues] = useState<ValuesSettings>(
@@ -215,6 +223,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     useState<TestimonialsSettings>(defaultTestimonialsSettings);
   const [lastSavedFont, setLastSavedFont] =
     useState<FontSettings>(defaultFontSettings);
+  const [lastSavedColor, setLastSavedColor] =
+    useState<ColorSettings>(defaultColorSettings);
   const [lastSavedServices, setLastSavedServices] = useState<ServicesSettings>(
     defaultServicesSettings,
   );
@@ -259,6 +269,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     const loadedTeam = getTeamSettings();
     const loadedTestimonials = getTestimonialsSettings();
     const loadedFont = getFontSettings();
+    const loadedColor = getColorSettings();
     const loadedServices = getServicesSettings();
     const loadedValues = getValuesSettings();
     const loadedGallery = getGallerySettings();
@@ -280,6 +291,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setTeamSettings(loadedTeam);
     setTestimonialsSettings(loadedTestimonials);
     setFontSettings(loadedFont);
+    setColorSettings(loadedColor);
     setServicesSettings(loadedServices);
     setValuesSettings(loadedValues);
     setGallerySettings(loadedGallery);
@@ -301,6 +313,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastAppliedTeam(loadedTeam);
     setLastAppliedTestimonials(loadedTestimonials);
     setLastAppliedFont(loadedFont);
+    setLastAppliedColor(loadedColor);
     setLastAppliedServices(loadedServices);
     setLastAppliedValues(loadedValues);
     setLastAppliedGallery(loadedGallery);
@@ -320,6 +333,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastSavedTeam(loadedTeam);
     setLastSavedTestimonials(loadedTestimonials);
     setLastSavedFont(loadedFont);
+    setLastSavedColor(loadedColor);
     setLastSavedServices(loadedServices);
     setLastSavedValues(loadedValues);
     setLastSavedGallery(loadedGallery);
@@ -369,6 +383,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
   const handleUpdateFont = useCallback((updates: Partial<FontSettings>) => {
     setFontSettings((prev: FontSettings) => ({ ...prev, ...updates }));
+  }, []);
+
+  const handleUpdateColors = useCallback((updates: Partial<ColorSettings>) => {
+    setColorSettings((prev: ColorSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateServices = useCallback(
@@ -502,11 +520,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_HERO_BG", ...heroSettings },
-        "*",
-      );
-      iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_HERO_CONTENT", ...heroSettings },
+        { type: "UPDATE_HERO_SETTINGS", settings: heroSettings },
         "*",
       );
     }
@@ -515,11 +529,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_ABOUT_HERO_BG", ...aboutHeroSettings },
-        "*",
-      );
-      iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_ABOUT_HERO_CONTENT", ...aboutHeroSettings },
+        { type: "UPDATE_ABOUT_HERO_SETTINGS", settings: aboutHeroSettings },
         "*",
       );
     }
@@ -528,7 +538,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_STORY_CONTENT", settings: storySettings },
+        { type: "UPDATE_STORY_SETTINGS", settings: storySettings },
         "*",
       );
     }
@@ -537,7 +547,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_TEAM_CONTENT", settings: teamSettings },
+        { type: "UPDATE_TEAM_SETTINGS", settings: teamSettings },
         "*",
       );
     }
@@ -546,7 +556,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_TESTIMONIALS_CONTENT", settings: testimonialsSettings },
+        { type: "UPDATE_TESTIMONIALS_SETTINGS", settings: testimonialsSettings },
         "*",
       );
     }
@@ -555,7 +565,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_SERVICES_CONTENT", settings: servicesSettings },
+        { type: "UPDATE_SERVICES_SETTINGS", settings: servicesSettings },
         "*",
       );
     }
@@ -564,7 +574,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_VALUES_CONTENT", settings: valuesSettings },
+        { type: "UPDATE_VALUES_SETTINGS", settings: valuesSettings },
         "*",
       );
     }
@@ -573,11 +583,56 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_FONTS", ...fontSettings },
+        { type: "UPDATE_TYPOGRAPHY", settings: fontSettings },
         "*",
       );
     }
   }, [fontSettings, iframeRef]);
+
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_COLORS", settings: colorSettings },
+        "*",
+      );
+    }
+  }, [colorSettings, iframeRef]);
+
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_GALLERY_SETTINGS", settings: gallerySettings },
+        "*",
+      );
+    }
+  }, [gallerySettings, iframeRef]);
+
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_CTA_SETTINGS", settings: ctaSettings },
+        "*",
+      );
+    }
+  }, [ctaSettings, iframeRef]);
+
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_HEADER_SETTINGS", settings: headerSettings },
+        "*",
+      );
+    }
+  }, [headerSettings, iframeRef]);
+
+  useEffect(() => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_FOOTER_SETTINGS", settings: footerSettings },
+        "*",
+      );
+    }
+  }, [footerSettings, iframeRef]);
 
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
@@ -670,34 +725,29 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       const win = iframeRef.current.contentWindow;
-      win.postMessage({ type: "UPDATE_HERO_CONTENT", ...heroSettings }, "*");
-      win.postMessage({ type: "UPDATE_HERO_BG", ...heroSettings }, "*");
+      win.postMessage({ type: "UPDATE_HERO_SETTINGS", settings: heroSettings }, "*");
       win.postMessage(
-        { type: "UPDATE_ABOUT_HERO_CONTENT", ...aboutHeroSettings },
+        { type: "UPDATE_ABOUT_HERO_SETTINGS", settings: aboutHeroSettings },
         "*",
       );
       win.postMessage(
-        { type: "UPDATE_ABOUT_HERO_BG", ...aboutHeroSettings },
+        { type: "UPDATE_STORY_SETTINGS", settings: storySettings },
         "*",
       );
       win.postMessage(
-        { type: "UPDATE_STORY_CONTENT", settings: storySettings },
+        { type: "UPDATE_TEAM_SETTINGS", settings: teamSettings },
         "*",
       );
       win.postMessage(
-        { type: "UPDATE_TEAM_CONTENT", settings: teamSettings },
+        { type: "UPDATE_TESTIMONIALS_SETTINGS", settings: testimonialsSettings },
         "*",
       );
       win.postMessage(
-        { type: "UPDATE_TESTIMONIALS_CONTENT", settings: testimonialsSettings },
+        { type: "UPDATE_SERVICES_SETTINGS", settings: servicesSettings },
         "*",
       );
       win.postMessage(
-        { type: "UPDATE_SERVICES_CONTENT", settings: servicesSettings },
-        "*",
-      );
-      win.postMessage(
-        { type: "UPDATE_VALUES_CONTENT", settings: valuesSettings },
+        { type: "UPDATE_VALUES_SETTINGS", settings: valuesSettings },
         "*",
       );
       win.postMessage(
@@ -718,6 +768,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       );
       win.postMessage(
         { type: "UPDATE_TYPOGRAPHY", settings: fontSettings },
+        "*",
+      );
+      win.postMessage(
+        { type: "UPDATE_COLORS", settings: colorSettings },
         "*",
       );
       win.postMessage(
@@ -760,6 +814,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     headerSettings,
     footerSettings,
     fontSettings,
+    colorSettings,
     bookingServiceSettings,
     bookingDateSettings,
     bookingTimeSettings,
@@ -771,84 +826,169 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   // Aplicar mudanças (atualizar estados applied e notificar iframe)
   const handleApplyHero = useCallback(() => {
     setLastAppliedHero({ ...heroSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_HERO_SETTINGS", settings: { ...heroSettings } },
+        "*",
+      );
+    }
+    saveHeroSettings(heroSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças do banner foram aplicadas ao rascunho.",
     });
-  }, [heroSettings, toast]);
+  }, [heroSettings, toast, iframeRef]);
 
   const handleApplyAboutHero = useCallback(() => {
     setLastAppliedAboutHero({ ...aboutHeroSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_ABOUT_HERO_SETTINGS", settings: { ...aboutHeroSettings } },
+        "*",
+      );
+    }
+    saveAboutHeroSettings(aboutHeroSettings);
     toast({
       title: "Preview atualizado!",
       description:
         "As mudanças do banner sobre nós foram aplicadas ao rascunho.",
     });
-  }, [aboutHeroSettings, toast]);
+  }, [aboutHeroSettings, toast, iframeRef]);
 
   const handleApplyStory = useCallback(() => {
     setLastAppliedStory({ ...storySettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_STORY_SETTINGS", settings: { ...storySettings } },
+        "*",
+      );
+    }
+    saveStorySettings(storySettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças da história foram aplicadas ao rascunho.",
     });
-  }, [storySettings, toast]);
+  }, [storySettings, toast, iframeRef]);
 
   const handleApplyTeam = useCallback(() => {
     setLastAppliedTeam({ ...teamSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_TEAM_SETTINGS", settings: { ...teamSettings } },
+        "*",
+      );
+    }
+    saveTeamSettings(teamSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças da equipe foram aplicadas ao rascunho.",
     });
-  }, [teamSettings, toast]);
+  }, [teamSettings, toast, iframeRef]);
 
   const handleApplyTestimonials = useCallback(() => {
     setLastAppliedTestimonials({ ...testimonialsSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_TESTIMONIALS_SETTINGS", settings: { ...testimonialsSettings } },
+        "*",
+      );
+    }
+    saveTestimonialsSettings(testimonialsSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças dos depoimentos foram aplicadas ao rascunho.",
     });
-  }, [testimonialsSettings, toast]);
+  }, [testimonialsSettings, toast, iframeRef]);
 
   const handleApplyTypography = useCallback(() => {
     setLastAppliedFont({ ...fontSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_TYPOGRAPHY", settings: { ...fontSettings } },
+        "*",
+      );
+    }
+    saveFontSettings(fontSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças de tipografia foram aplicadas ao rascunho.",
     });
-  }, [fontSettings, toast]);
+  }, [fontSettings, toast, iframeRef]);
+
+  const handleApplyColors = useCallback(() => {
+    setLastAppliedColor({ ...colorSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_COLORS", settings: { ...colorSettings } },
+        "*",
+      );
+    }
+    saveColorSettings(colorSettings);
+    toast({
+      title: "Preview atualizado!",
+      description: "As mudanças de cores foram aplicadas ao rascunho.",
+    });
+  }, [colorSettings, toast, iframeRef]);
 
   const handleApplyServices = useCallback(() => {
     setLastAppliedServices({ ...servicesSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_SERVICES_SETTINGS", settings: { ...servicesSettings } },
+        "*",
+      );
+    }
+    saveServicesSettings(servicesSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças de serviços foram aplicadas ao rascunho.",
     });
-  }, [servicesSettings, toast]);
+  }, [servicesSettings, toast, iframeRef]);
 
   const handleApplyValues = useCallback(() => {
     setLastAppliedValues({ ...valuesSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_VALUES_SETTINGS", settings: { ...valuesSettings } },
+        "*",
+      );
+    }
+    saveValuesSettings(valuesSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças de valores foram aplicadas ao rascunho.",
     });
-  }, [valuesSettings, toast]);
+  }, [valuesSettings, toast, iframeRef]);
 
   const handleApplyGallery = useCallback(() => {
     setLastAppliedGallery({ ...gallerySettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_GALLERY_SETTINGS", settings: { ...gallerySettings } },
+        "*",
+      );
+    }
+    saveGallerySettings(gallerySettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças da galeria foram aplicadas ao rascunho.",
     });
-  }, [gallerySettings, toast]);
+  }, [gallerySettings, toast, iframeRef]);
 
   const handleApplyCTA = useCallback(() => {
     setLastAppliedCTA({ ...ctaSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: "UPDATE_CTA_SETTINGS", settings: { ...ctaSettings } },
+        "*",
+      );
+    }
+    saveCTASettings(ctaSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças da chamada foram aplicadas ao rascunho.",
     });
-  }, [ctaSettings, toast]);
+  }, [ctaSettings, toast, iframeRef]);
 
   const handleApplyHeader = useCallback(() => {
     setLastAppliedHeader({ ...headerSettings });
@@ -884,43 +1024,93 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
   const handleApplyBookingService = useCallback(() => {
     setLastAppliedBookingService({ ...bookingServiceSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_BOOKING_SERVICE_SETTINGS",
+          settings: { ...bookingServiceSettings },
+        },
+        "*",
+      );
+    }
+    saveBookingServiceSettings(bookingServiceSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças do passo 1 (serviços) foram aplicadas.",
     });
-  }, [bookingServiceSettings, toast]);
+  }, [bookingServiceSettings, toast, iframeRef]);
 
   const handleApplyBookingDate = useCallback(() => {
     setLastAppliedBookingDate({ ...bookingDateSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_BOOKING_DATE_SETTINGS",
+          settings: { ...bookingDateSettings },
+        },
+        "*",
+      );
+    }
+    saveBookingDateSettings(bookingDateSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças do passo 2 (data) foram aplicadas.",
     });
-  }, [bookingDateSettings, toast]);
+  }, [bookingDateSettings, toast, iframeRef]);
 
   const handleApplyBookingTime = useCallback(() => {
     setLastAppliedBookingTime({ ...bookingTimeSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_BOOKING_TIME_SETTINGS",
+          settings: { ...bookingTimeSettings },
+        },
+        "*",
+      );
+    }
+    saveBookingTimeSettings(bookingTimeSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças do passo 3 (horário) foram aplicadas.",
     });
-  }, [bookingTimeSettings, toast]);
+  }, [bookingTimeSettings, toast, iframeRef]);
 
   const handleApplyBookingForm = useCallback(() => {
     setLastAppliedBookingForm({ ...bookingFormSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_BOOKING_FORM_SETTINGS",
+          settings: { ...bookingFormSettings },
+        },
+        "*",
+      );
+    }
+    saveBookingFormSettings(bookingFormSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças do passo 4 (dados) foram aplicadas.",
     });
-  }, [bookingFormSettings, toast]);
+  }, [bookingFormSettings, toast, iframeRef]);
 
   const handleApplyBookingConfirmation = useCallback(() => {
     setLastAppliedBookingConfirmation({ ...bookingConfirmationSettings });
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_BOOKING_CONFIRMATION_SETTINGS",
+          settings: { ...bookingConfirmationSettings },
+        },
+        "*",
+      );
+    }
+    saveBookingConfirmationSettings(bookingConfirmationSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças da confirmação foram aplicadas.",
     });
-  }, [bookingConfirmationSettings, toast]);
+  }, [bookingConfirmationSettings, toast, iframeRef]);
 
   const handleSaveGlobal = useCallback(() => {
     saveHeroSettings(heroSettings);
@@ -929,6 +1119,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     saveTeamSettings(teamSettings);
     saveTestimonialsSettings(testimonialsSettings);
     saveFontSettings(fontSettings);
+    saveColorSettings(colorSettings);
     saveServicesSettings(servicesSettings);
     saveValuesSettings(valuesSettings);
     saveGallerySettings(gallerySettings);
@@ -950,6 +1141,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastSavedTeam(teamSettings);
     setLastSavedTestimonials(testimonialsSettings);
     setLastSavedFont(fontSettings);
+    setLastSavedColor(colorSettings);
     setLastSavedServices(servicesSettings);
     setLastSavedValues(valuesSettings);
     setLastSavedGallery(gallerySettings);
@@ -971,6 +1163,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastAppliedTeam(teamSettings);
     setLastAppliedTestimonials(testimonialsSettings);
     setLastAppliedFont(fontSettings);
+    setLastAppliedColor(colorSettings);
     setLastAppliedServices(servicesSettings);
     setLastAppliedValues(valuesSettings);
     setLastAppliedGallery(gallerySettings);
@@ -996,6 +1189,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     teamSettings,
     testimonialsSettings,
     fontSettings,
+    colorSettings,
     servicesSettings,
     valuesSettings,
     gallerySettings,
@@ -1024,6 +1218,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       setTeamSettings(defaultTeamSettings);
       setTestimonialsSettings(defaultTestimonialsSettings);
       setFontSettings(defaultFontSettings);
+      setColorSettings(defaultColorSettings);
       setServicesSettings(defaultServicesSettings);
       setValuesSettings(defaultValuesSettings);
       setGallerySettings(defaultGallerySettings);
@@ -1070,11 +1265,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             setHeroSettings(defaultHeroSettings);
             saveHeroSettings(defaultHeroSettings);
             win.postMessage(
-              { type: "UPDATE_HERO_CONTENT", ...defaultHeroSettings },
-              "*",
-            );
-            win.postMessage(
-              { type: "UPDATE_HERO_BG", ...defaultHeroSettings },
+              { type: "UPDATE_HERO_SETTINGS", settings: defaultHeroSettings },
               "*",
             );
             break;
@@ -1083,13 +1274,9 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             saveAboutHeroSettings(defaultAboutHeroSettings);
             win.postMessage(
               {
-                type: "UPDATE_ABOUT_HERO_CONTENT",
-                ...defaultAboutHeroSettings,
+                type: "UPDATE_ABOUT_HERO_SETTINGS",
+                settings: defaultAboutHeroSettings,
               },
-              "*",
-            );
-            win.postMessage(
-              { type: "UPDATE_ABOUT_HERO_BG", ...defaultAboutHeroSettings },
               "*",
             );
             break;
@@ -1097,7 +1284,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             setStorySettings(defaultStorySettings);
             saveStorySettings(defaultStorySettings);
             win.postMessage(
-              { type: "UPDATE_STORY_CONTENT", settings: defaultStorySettings },
+              { type: "UPDATE_STORY_SETTINGS", settings: defaultStorySettings },
               "*",
             );
             break;
@@ -1105,7 +1292,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             setTeamSettings(defaultTeamSettings);
             saveTeamSettings(defaultTeamSettings);
             win.postMessage(
-              { type: "UPDATE_TEAM_CONTENT", settings: defaultTeamSettings },
+              { type: "UPDATE_TEAM_SETTINGS", settings: defaultTeamSettings },
               "*",
             );
             break;
@@ -1114,7 +1301,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             saveTestimonialsSettings(defaultTestimonialsSettings);
             win.postMessage(
               {
-                type: "UPDATE_TESTIMONIALS_CONTENT",
+                type: "UPDATE_TESTIMONIALS_SETTINGS",
                 settings: defaultTestimonialsSettings,
               },
               "*",
@@ -1124,7 +1311,15 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             setFontSettings(defaultFontSettings);
             saveFontSettings(defaultFontSettings);
             win.postMessage(
-              { type: "UPDATE_FONTS", ...defaultFontSettings },
+              { type: "UPDATE_TYPOGRAPHY", settings: defaultFontSettings },
+              "*",
+            );
+            break;
+          case "colors":
+            setColorSettings(defaultColorSettings);
+            saveColorSettings(defaultColorSettings);
+            win.postMessage(
+              { type: "UPDATE_COLORS", settings: defaultColorSettings },
               "*",
             );
             break;
@@ -1133,7 +1328,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             saveServicesSettings(defaultServicesSettings);
             win.postMessage(
               {
-                type: "UPDATE_SERVICES_CONTENT",
+                type: "UPDATE_SERVICES_SETTINGS",
                 settings: defaultServicesSettings,
               },
               "*",
@@ -1144,7 +1339,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             saveValuesSettings(defaultValuesSettings);
             win.postMessage(
               {
-                type: "UPDATE_VALUES_CONTENT",
+                type: "UPDATE_VALUES_SETTINGS",
                 settings: defaultValuesSettings,
               },
               "*",
@@ -1252,6 +1447,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     JSON.stringify(lastAppliedTestimonials);
   const hasFontChanges =
     JSON.stringify(fontSettings) !== JSON.stringify(lastAppliedFont);
+  const hasColorChanges =
+    JSON.stringify(colorSettings) !== JSON.stringify(lastAppliedColor);
   const hasServicesChanges =
     JSON.stringify(servicesSettings) !== JSON.stringify(lastAppliedServices);
   const hasValuesChanges =
@@ -1295,6 +1492,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       JSON.stringify(lastSavedTestimonials);
     const fontChanged =
       JSON.stringify(lastAppliedFont) !== JSON.stringify(lastSavedFont);
+    const colorChanged =
+      JSON.stringify(lastAppliedColor) !== JSON.stringify(lastSavedColor);
     const servicesChanged =
       JSON.stringify(lastAppliedServices) !== JSON.stringify(lastSavedServices);
     const valuesChanged =
@@ -1338,6 +1537,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       teamChanged,
       testimonialsChanged,
       fontChanged,
+      colorChanged,
       servicesChanged,
       valuesChanged,
       galleryChanged,
@@ -1367,6 +1567,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     lastSavedTestimonials,
     lastAppliedFont,
     lastSavedFont,
+    lastAppliedColor,
+    lastSavedColor,
     lastAppliedServices,
     lastSavedServices,
     lastAppliedValues,
@@ -1402,6 +1604,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     teamSettings,
     testimonialsSettings,
     fontSettings,
+    colorSettings,
     servicesSettings,
     valuesSettings,
     gallerySettings,
@@ -1421,6 +1624,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     handleUpdateTeam,
     handleUpdateTestimonials,
     handleUpdateFont,
+    handleUpdateColors,
     handleUpdateServices,
     handleUpdateValues,
     handleUpdateGallery,
@@ -1440,6 +1644,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     handleApplyTeam,
     handleApplyTestimonials,
     handleApplyTypography,
+    handleApplyColors,
     handleApplyServices,
     handleApplyValues,
     handleApplyGallery,
@@ -1460,6 +1665,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     hasTeamChanges,
     hasTestimonialsChanges,
     hasFontChanges,
+    hasColorChanges,
     hasServicesChanges,
     hasValuesChanges,
     hasGalleryChanges,

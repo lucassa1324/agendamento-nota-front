@@ -12,8 +12,9 @@ import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import type { 
   BookingStepSettings, 
-  CTASettings, 
-  FontSettings, 
+  ColorSettings,
+  CTASettings,
+  FontSettings,
   FooterSettings, 
   GallerySettings, 
   HeaderSettings, 
@@ -25,6 +26,7 @@ import type {
   ValuesSettings
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { ColorEditor } from "../layout/color-editor";
 import { FooterEditor } from "../layout/footer-editor";
 import { HeaderEditor } from "../layout/header-editor";
 import { TypographyEditor } from "../layout/typography-editor";
@@ -47,6 +49,7 @@ interface SidebarContentProps {
   setActiveSection: (id: string | null) => void;
   resetSettings: () => void;
   fontSettings: FontSettings;
+  colorSettings: ColorSettings;
   heroSettings: HeroSettings;
   aboutHeroSettings: HeroSettings;
   storySettings: StorySettings;
@@ -64,6 +67,7 @@ interface SidebarContentProps {
   bookingFormSettings: BookingStepSettings;
   bookingConfirmationSettings: BookingStepSettings;
   onUpdateFont: (updates: Partial<FontSettings>) => void;
+  onUpdateColors: (updates: Partial<ColorSettings>) => void;
   onUpdateHero: (updates: Partial<HeroSettings>) => void;
   onUpdateAboutHero: (updates: Partial<HeroSettings>) => void;
   onUpdateStory: (updates: Partial<StorySettings>) => void;
@@ -81,6 +85,7 @@ interface SidebarContentProps {
   onUpdateBookingForm: (updates: Partial<BookingStepSettings>) => void;
   onUpdateBookingConfirmation: (updates: Partial<BookingStepSettings>) => void;
   onSaveFont: () => void;
+  onSaveColors: () => void;
   onSaveHero: () => void;
   onSaveAboutHero: () => void;
   onSaveStory: () => void;
@@ -98,6 +103,7 @@ interface SidebarContentProps {
   onSaveBookingForm: () => void;
   onSaveBookingConfirmation: () => void;
   hasFontChanges: boolean;
+  hasColorChanges: boolean;
   hasHeroChanges: boolean;
   hasAboutHeroChanges: boolean;
   hasStoryChanges: boolean;
@@ -137,6 +143,7 @@ export const SidebarContent = memo(
     setActiveSection,
     resetSettings,
     fontSettings,
+    colorSettings,
     heroSettings,
     aboutHeroSettings,
     storySettings,
@@ -154,6 +161,7 @@ export const SidebarContent = memo(
     bookingFormSettings,
     bookingConfirmationSettings,
     onUpdateFont,
+    onUpdateColors,
     onUpdateHero,
     onUpdateAboutHero,
     onUpdateStory,
@@ -171,6 +179,7 @@ export const SidebarContent = memo(
     onUpdateBookingForm,
     onUpdateBookingConfirmation,
     onSaveFont,
+    onSaveColors,
     onSaveHero,
     onSaveAboutHero,
     onSaveStory,
@@ -188,6 +197,7 @@ export const SidebarContent = memo(
     onSaveBookingForm,
     onSaveBookingConfirmation,
     hasFontChanges,
+    hasColorChanges,
     hasHeroChanges,
     hasAboutHeroChanges,
     hasStoryChanges,
@@ -288,6 +298,14 @@ export const SidebarContent = memo(
                     onHighlight={onHighlight}
                     hasChanges={hasFontChanges}
                     onSave={onSaveFont}
+                  />
+                )}
+                {activeSection === "colors" && (
+                  <ColorEditor
+                    settings={colorSettings}
+                    onUpdate={onUpdateColors}
+                    hasChanges={hasColorChanges}
+                    onSave={onSaveColors}
                   />
                 )}
 
@@ -453,6 +471,7 @@ export const SidebarContent = memo(
                   "booking-time",
                   "booking-form",
                   "booking-confirmation",
+                  "colors",
                 ].includes(activeSection) && (
                   <div className="py-12 text-center">
                     <Settings2 className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />

@@ -1,11 +1,12 @@
 "use client";
 
-import { ImageIcon, Palette, Type } from "lucide-react";
+import { ImageIcon, Palette, RotateCcw, Type } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BackgroundEditor } from "@/components/admin/site_editor/components/BackgroundEditor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   getStorySettings,
@@ -13,6 +14,7 @@ import {
   saveStorySettings,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { EDITOR_FONTS } from "../../components/editor-constants";
 
 interface HistoryEditorProps {
   settings?: StorySettings;
@@ -104,25 +106,60 @@ export function HistoryEditor({
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
             onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
           >
-            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
-              <Palette className="w-2.5 h-2.5" /> Cor do Título
+            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+              <div className="flex items-center gap-1">
+                <Palette className="w-2.5 h-2.5" /> Cor do Título
+              </div>
+              {settings.titleColor && (
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-4 w-4 hover:text-primary"
+                  onClick={() => onUpdate({ titleColor: "" })}
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </Button>
+              )}
             </legend>
             <div className="flex gap-2">
               <Input
                 type="color"
                 value={settings.titleColor || "#000000"}
-                className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50"
+                className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ titleColor: e.target.value })}
               />
               <Input
                 value={settings.titleColor || ""}
-                placeholder="#HEX"
+                placeholder="Padrão"
                 className="h-8 text-[10px] flex-1 uppercase"
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ titleColor: e.target.value })}
               />
             </div>
           </fieldset>
         </div>
+
+        {/* Fonte do Título */}
+        <fieldset className="space-y-1.5 border-none p-0 m-0">
+          <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
+            <Type className="w-2.5 h-2.5" /> Fonte do Título
+          </legend>
+          <Select
+            value={settings.titleFont || "default"}
+            onValueChange={(v) => onUpdate({ titleFont: v === "default" ? "" : v })}
+          >
+            <SelectTrigger className="h-8 text-[10px]">
+              <SelectValue placeholder="Padrão do Site" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+              {EDITOR_FONTS.map((f) => (
+                <SelectItem key={f.name} value={f.name} className="text-[10px]">
+                  <span style={{ fontFamily: f.name }}>{f.name}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </fieldset>
 
         {/* Conteúdo e Cor */}
         <fieldset 
@@ -132,28 +169,60 @@ export function HistoryEditor({
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
           onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
         >
-          <div className="flex justify-between items-center">
-            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
+          <div className="flex justify-between items-center mb-1.5">
+            <legend className="text-[10px] uppercase text-muted-foreground font-medium flex items-center gap-1">
               <Type className="w-2.5 h-2.5" /> Descrição da História
             </legend>
-            <div className="flex items-center gap-2 mb-1.5">
+            <div className="flex items-center gap-2">
               <Label className="text-[10px] uppercase text-muted-foreground">
                 Cor
               </Label>
-              <Input
-                type="color"
-                value={settings.contentColor || "#666666"}
-                className="w-6 h-6 p-0.5 rounded-full bg-transparent border-border/50"
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ contentColor: e.target.value })}
-              />
+              <div className="flex items-center gap-1">
+                <Input
+                  type="color"
+                  value={settings.contentColor || "#666666"}
+                  className="w-6 h-6 p-0.5 rounded-full bg-transparent border-border/50 cursor-pointer"
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ contentColor: e.target.value })}
+                />
+                {settings.contentColor && (
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-4 w-4 hover:text-primary"
+                    onClick={() => onUpdate({ contentColor: "" })}
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
           <Textarea
             value={settings.content}
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdate({ content: e.target.value })}
-            className="min-h-37.5 text-xs resize-none"
+            className="min-h-37.5 text-xs resize-none mb-3"
             placeholder="Conte a trajetória do seu studio..."
           />
+
+          <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
+            <Type className="w-2.5 h-2.5" /> Fonte do Conteúdo
+          </legend>
+          <Select
+            value={settings.contentFont || "default"}
+            onValueChange={(v) => onUpdate({ contentFont: v === "default" ? "" : v })}
+          >
+            <SelectTrigger className="h-8 text-[10px]">
+              <SelectValue placeholder="Padrão do Site" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+              {EDITOR_FONTS.map((f) => (
+                <SelectItem key={f.name} value={f.name} className="text-[10px]">
+                  <span style={{ fontFamily: f.name }}>{f.name}</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </fieldset>
 
         {/* Imagem */}

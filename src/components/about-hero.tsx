@@ -17,11 +17,8 @@ export function AboutHero() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (
-        event.data.type === "UPDATE_ABOUT_HERO_BG" ||
-        event.data.type === "UPDATE_ABOUT_HERO_CONTENT"
-      ) {
-        setSettings((prev) => (prev ? { ...prev, ...event.data } : prev));
+      if (event.data.type === "UPDATE_ABOUT_HERO_SETTINGS") {
+        setSettings((prev) => (prev ? { ...prev, ...event.data.settings } : prev));
       }
 
       if (event.data.type === "HIGHLIGHT_SECTION") {
@@ -84,9 +81,9 @@ export function AboutHero() {
                 getHighlightClass("about-hero-badge"),
               )}
               style={{
-                fontFamily: settings.badgeFont,
-                color: settings.badgeColor || undefined,
-                borderColor: settings.badgeColor ? `${settings.badgeColor}33` : undefined,
+                fontFamily: settings.badgeFont || "var(--font-body)",
+                color: settings.badgeColor || "var(--secondary)",
+                borderColor: settings.badgeColor ? `${settings.badgeColor}33` : "var(--secondary)",
               }}
             >
               <span className="text-sm font-medium">
@@ -101,8 +98,8 @@ export function AboutHero() {
               getHighlightClass("about-hero-title"),
             )}
             style={{
-              fontFamily: settings.titleFont,
-              color: settings.titleColor || undefined,
+              fontFamily: settings.titleFont || "var(--font-title)",
+              color: settings.titleColor || "var(--foreground)",
             }}
           >
             {settings.title}
@@ -115,8 +112,8 @@ export function AboutHero() {
               getHighlightClass("about-hero-subtitle"),
             )}
             style={{
-              fontFamily: settings.subtitleFont,
-              color: settings.subtitleColor || undefined,
+              fontFamily: settings.subtitleFont || "var(--font-subtitle)",
+              color: settings.subtitleColor || "var(--foreground)",
             }}
           >
             {settings.subtitle}
@@ -133,9 +130,9 @@ export function AboutHero() {
               size="lg"
               className="h-14 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
               style={{
-                backgroundColor: settings.primaryButtonColor || undefined,
-                color: settings.primaryButtonTextColor || undefined,
-                fontFamily: settings.primaryButtonFont,
+                backgroundColor: settings.primaryButtonColor || "var(--primary)",
+                color: settings.primaryButtonTextColor || "#ffffff",
+                fontFamily: settings.primaryButtonFont || "var(--font-body)",
               }}
             >
               <Link href="/agendamento">
@@ -148,9 +145,9 @@ export function AboutHero() {
               size="lg"
               className="h-14 px-8 text-base font-bold rounded-full bg-background/50 backdrop-blur-sm border-border hover:bg-background/80 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
               style={{
-                color: settings.secondaryButtonTextColor || settings.secondaryButtonColor || undefined,
-                borderColor: settings.secondaryButtonColor || undefined,
-                fontFamily: settings.secondaryButtonFont,
+                color: settings.secondaryButtonTextColor || settings.secondaryButtonColor || "var(--foreground)",
+                borderColor: settings.secondaryButtonColor || "var(--secondary)",
+                fontFamily: settings.secondaryButtonFont || "var(--font-body)",
               }}
             >
               <Link href="/agendamento">

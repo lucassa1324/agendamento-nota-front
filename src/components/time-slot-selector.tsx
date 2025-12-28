@@ -19,8 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   type BookingStepSettings,
-  type Service,
   getAvailableTimeSlots,
+  type Service,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
@@ -74,7 +74,7 @@ export function TimeSlotSelector({
       <Card 
         className="border-primary/20 overflow-hidden relative"
         style={{ 
-          backgroundColor: settings?.cardBgColor || 'rgba(var(--primary), 0.05)',
+          backgroundColor: settings?.cardBgColor || 'var(--muted)',
           borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
         }}
       >
@@ -104,8 +104,8 @@ export function TimeSlotSelector({
             <h3 
               className="font-bold text-xl"
               style={{ 
-                color: settings?.titleColor || 'inherit',
-                fontFamily: settings?.titleFont || 'inherit'
+                color: settings?.titleColor || 'var(--foreground)',
+                fontFamily: settings?.titleFont || 'var(--font-title)'
               }}
             >
               {service.name}
@@ -113,8 +113,8 @@ export function TimeSlotSelector({
             <div 
               className="text-base font-medium capitalize"
               style={{ 
-                color: settings?.subtitleColor ? `${settings.subtitleColor}cc` : 'inherit',
-                fontFamily: settings?.subtitleFont || 'inherit'
+                color: settings?.subtitleColor ? `${settings.subtitleColor}cc` : 'var(--foreground)',
+                fontFamily: settings?.subtitleFont || 'var(--font-subtitle)'
               }}
             >
               {format(currentDate, "eeee, d 'de' MMMM 'de' yyyy", {
@@ -148,8 +148,8 @@ export function TimeSlotSelector({
         <h2 
           className="text-3xl font-bold"
           style={{ 
-            color: settings?.titleColor || 'inherit',
-            fontFamily: settings?.titleFont || 'inherit'
+            color: settings?.titleColor || 'var(--foreground)',
+            fontFamily: settings?.titleFont || 'var(--font-title)'
           }}
         >
           {settings?.title || "Escolha o Horário"}
@@ -157,8 +157,8 @@ export function TimeSlotSelector({
         <p 
           className="capitalize"
           style={{ 
-            color: settings?.subtitleColor || 'inherit',
-            fontFamily: settings?.subtitleFont || 'inherit'
+            color: settings?.subtitleColor || 'var(--foreground)',
+            fontFamily: settings?.subtitleFont || 'var(--font-subtitle)'
           }}
         >
           {formattedDate}
@@ -182,19 +182,19 @@ export function TimeSlotSelector({
                 )}
                 style={{
                   borderColor: slot.available && settings?.accentColor ? settings.accentColor : undefined,
-                  color: slot.available && settings?.accentColor ? settings.accentColor : undefined,
+                  color: slot.available && settings?.accentColor ? settings.accentColor : 'var(--foreground)',
                   backgroundColor: 'transparent'
                 }}
                 onMouseEnter={(e) => {
-                  if (slot.available && settings?.accentColor) {
-                    e.currentTarget.style.backgroundColor = settings.accentColor;
+                  if (slot.available) {
+                    e.currentTarget.style.backgroundColor = settings?.accentColor || 'var(--primary)';
                     e.currentTarget.style.color = '#fff';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (slot.available && settings?.accentColor) {
+                  if (slot.available) {
                     e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = settings.accentColor;
+                    e.currentTarget.style.color = settings?.accentColor || 'var(--foreground)';
                   }
                 }}
               >

@@ -97,8 +97,8 @@ export function CTASection() {
           <h2
             className="text-3xl md:text-5xl font-bold mb-4 text-balance"
             style={{
-              fontFamily: settings.titleFont,
-              color: settings.titleColor || "inherit",
+              fontFamily: settings.titleFont || "var(--font-title)",
+              color: settings.titleColor || "var(--foreground)",
             }}
           >
             {settings.title}
@@ -106,8 +106,8 @@ export function CTASection() {
           <p
             className="text-lg mb-8 text-pretty leading-relaxed max-w-2xl mx-auto"
             style={{
-              fontFamily: settings.subtitleFont,
-              color: settings.subtitleColor || "var(--muted-foreground)",
+              fontFamily: settings.subtitleFont || "var(--font-subtitle)",
+              color: settings.subtitleColor || "var(--foreground)",
             }}
           >
             {settings.subtitle}
@@ -117,9 +117,9 @@ export function CTASection() {
             size="lg"
             className="text-lg px-8 shadow-lg hover:scale-105 transition-all duration-300"
             style={{
-              fontFamily: settings.buttonFont,
+              fontFamily: settings.buttonFont || "var(--font-body)",
               backgroundColor: settings.buttonColor || "var(--primary)",
-              color: settings.buttonTextColor || "var(--primary-foreground)",
+              color: settings.buttonTextColor || "#ffffff",
             }}
           >
             <Link href="/agendamento">{settings.buttonText}</Link>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import {  use, useEffect, useState } from "react";
 import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
 import { GalleryGrid } from "@/components/gallery-grid";
 import {
@@ -18,8 +18,9 @@ export default function GaleriaPage({
   searchParams: Promise<{ only?: string }>;
 }) {
   const router = useRouter();
-  const [only, setOnly] = useState<string | null>(null);
-  const [isolatedSection, setIsolatedSection] = useState<string | null>(null);
+  const searchParams = use(searchParamsPromise);
+  const initialOnly = searchParams.only;
+  const [isolatedSection, setIsolatedSection] = useState<string | null>(initialOnly || null);
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
@@ -31,13 +32,11 @@ export default function GaleriaPage({
   useEffect(() => {
     // Carregar configurações iniciais
     setGallerySettings(getGallerySettings());
+  }, []);
 
-    // Resolver searchParams
-    searchParamsPromise.then((params) => {
-      setOnly(params.only || null);
-      setIsolatedSection(params.only || null);
-    });
-  }, [searchParamsPromise]);
+  useEffect(() => {
+    setIsolatedSection(initialOnly || null);
+  }, [initialOnly]);
 
   useEffect(() => {
     // Verificar visibilidade
@@ -82,7 +81,7 @@ export default function GaleriaPage({
         handleSectionsUpdate,
       );
     };
-  }, [searchParamsPromise, router]);
+  }, [router]);
 
   if (isVisible === false) return null;
   if (isVisible === null) return null; // Loading state
@@ -101,19 +100,19 @@ export default function GaleriaPage({
           <div className="container mx-auto px-4 relative z-10">
             <div className="text-center mb-16">
               <h1
-                className="text-4xl md:text-6xl font-bold mb-4 text-balance"
+                className="text-4xl md:text-6xl font-bold mb-4 text-balance transition-all duration-300"
                 style={{
-                  fontFamily: gallerySettings.titleFont,
-                  color: gallerySettings.titleColor || "inherit",
+                  fontFamily: gallerySettings.titleFont || "var(--font-title)",
+                  color: gallerySettings.titleColor || "var(--primary)",
                 }}
               >
                 {gallerySettings.title}
               </h1>
               <p
-                className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed"
+                className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
                 style={{
-                  fontFamily: gallerySettings.subtitleFont,
-                  color: gallerySettings.subtitleColor || "inherit",
+                  fontFamily: gallerySettings.subtitleFont || "var(--font-body)",
+                  color: gallerySettings.subtitleColor || "var(--text)",
                   opacity: gallerySettings.subtitleColor ? 1 : 0.8,
                 }}
               >

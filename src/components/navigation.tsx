@@ -140,13 +140,20 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
     WebkitBackdropFilter: `blur(${headerSettings.blurAmount}px)`,
   };
 
-  const textStyle = headerSettings.textColor
-    ? { color: headerSettings.textColor }
-    : {};
+  const titleStyle = {
+    color: headerSettings.textColor || "var(--foreground)",
+    fontFamily: headerSettings.titleFont || "var(--font-title)",
+  };
+
+  const linksStyle = {
+    color: headerSettings.textColor || "var(--foreground)",
+    fontFamily: headerSettings.linksFont || "var(--font-subtitle)",
+  };
 
   const buttonStyle = {
-    backgroundColor: headerSettings.buttonBgColor || undefined,
-    color: headerSettings.buttonTextColor || undefined,
+    backgroundColor: headerSettings.buttonBgColor || "var(--primary)",
+    color: headerSettings.buttonTextColor || "white",
+    fontFamily: headerSettings.linksFont || "var(--font-body)",
   };
 
   return (
@@ -160,7 +167,7 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
           <Link
             href="/"
             className="font-serif text-xl lg:text-2xl font-bold flex items-center gap-2 lg:gap-3"
-            style={textStyle}
+            style={titleStyle}
           >
             {profile?.logoUrl ? (
               <Image
@@ -186,7 +193,7 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
                 className={`text-xs lg:text-sm font-medium transition-colors hover:opacity-80 ${
                   isActive(link.href) ? "" : "opacity-70"
                 }`}
-                style={textStyle}
+                style={linksStyle}
               >
                 {link.label}
               </Link>
@@ -194,7 +201,7 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
             <Link
               href="/admin"
               className="text-xs lg:text-sm font-medium opacity-70 transition-colors hover:opacity-100 whitespace-nowrap"
-              style={textStyle}
+              style={linksStyle}
             >
               Acesse sua conta
             </Link>
@@ -216,7 +223,7 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
             className="md:hidden p-2"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle menu"
-            style={textStyle}
+            style={linksStyle}
           >
             {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
@@ -230,20 +237,20 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
                 <Link
                   key={link.href}
                   href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`text-sm font-medium transition-colors hover:opacity-80 ${
-                    isActive(link.href) ? "" : "opacity-70"
+                  className={`text-lg font-medium transition-colors ${
+                    isActive(link.href) ? "text-primary" : ""
                   }`}
-                  style={textStyle}
+                  style={linksStyle}
+                  onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.label}
                 </Link>
               ))}
               <Link
                 href="/admin"
+                className="text-lg font-medium opacity-70"
+                style={linksStyle}
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-sm font-medium opacity-70 transition-colors hover:opacity-100"
-                style={textStyle}
               >
                 Acesse sua conta
               </Link>

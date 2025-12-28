@@ -30,6 +30,7 @@ export const sections: Record<string, SectionItem[]> = {
   layout: [
     { id: "header", name: "Cabeçalho", description: "Logo e menu de navegação" },
     { id: "typography", name: "Tipografia", description: "Fontes e estilos de texto" },
+    { id: "colors", name: "Cores do Site", description: "Esquema de cores global" },
     { id: "footer", name: "Rodapé", description: "Informações de contato e links" },
   ],
   inicio: [

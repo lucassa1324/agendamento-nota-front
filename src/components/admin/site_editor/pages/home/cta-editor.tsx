@@ -1,12 +1,13 @@
 "use client";
 
-import { Type, MousePointer2, Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, MousePointer2, RotateCcw, Type } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -15,12 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import type { CTASettings } from "@/lib/booking-data";
-import { SectionTitleEditor } from "../../components/SectionTitleEditor";
-import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
+import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
 interface CTAEditorProps {
   settings: CTASettings;
@@ -131,13 +131,16 @@ export function CTAEditor({
                   Fonte do Botão
                 </legend>
                 <Select
-                  value={settings.buttonFont}
-                  onValueChange={(v) => onUpdate({ buttonFont: v })}
+                  value={settings.buttonFont || "default"}
+                  onValueChange={(v) => onUpdate({ buttonFont: v === "default" ? "" : v })}
                 >
                   <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Fonte" />
+                    <SelectValue placeholder="Padrão do Site" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="default" className="text-xs font-medium">
+                      Padrão do Site
+                    </SelectItem>
                     {EDITOR_FONTS.map((f) => (
                       <SelectItem
                         key={f.name}
@@ -156,8 +159,18 @@ export function CTAEditor({
                   className="space-y-1.5 border-none p-0 m-0"
                   onPointerDown={(e) => e.stopPropagation()}
                 >
-                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Cor do Botão
+                    {settings.buttonColor && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-4 w-4 hover:text-primary"
+                        onClick={() => onUpdate({ buttonColor: "" })}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
+                    )}
                   </legend>
                   <div className="flex gap-2">
                     <Input
@@ -168,7 +181,7 @@ export function CTAEditor({
                     />
                     <Input
                       value={settings.buttonColor || ""}
-                      placeholder="#HEX"
+                      placeholder="Padrão"
                       className="h-8 text-[10px] flex-1 uppercase"
                       onChange={(e) => onUpdate({ buttonColor: e.target.value })}
                     />
@@ -179,8 +192,18 @@ export function CTAEditor({
                   className="space-y-1.5 border-none p-0 m-0"
                   onPointerDown={(e) => e.stopPropagation()}
                 >
-                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Cor do Texto
+                    {settings.buttonTextColor && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-4 w-4 hover:text-primary"
+                        onClick={() => onUpdate({ buttonTextColor: "" })}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
+                    )}
                   </legend>
                   <div className="flex gap-2">
                     <Input
@@ -191,7 +214,7 @@ export function CTAEditor({
                     />
                     <Input
                       value={settings.buttonTextColor || ""}
-                      placeholder="#HEX"
+                      placeholder="Padrão"
                       className="h-8 text-[10px] flex-1 uppercase"
                       onChange={(e) => onUpdate({ buttonTextColor: e.target.value })}
                     />

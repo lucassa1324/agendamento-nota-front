@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, ImageIcon, Type } from "lucide-react";
+import { CreditCard, ImageIcon, RotateCcw, Type } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -124,8 +124,18 @@ export function ServicesEditor({
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
-                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Fundo do Card
+                    {settings.cardBgColor && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-4 w-4 hover:text-primary"
+                        onClick={() => onUpdate({ cardBgColor: "" })}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
+                    )}
                   </legend>
                   <div className="flex gap-2">
                     <Input
@@ -138,7 +148,7 @@ export function ServicesEditor({
                     />
                     <Input
                       value={settings.cardBgColor || ""}
-                      placeholder="#HEX"
+                      placeholder="Padrão"
                       className="h-8 text-[10px] flex-1 uppercase"
                       onChange={(e) =>
                         onUpdate({ cardBgColor: e.target.value })
@@ -153,8 +163,18 @@ export function ServicesEditor({
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
-                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Cor dos Ícones
+                    {settings.cardIconColor && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-4 w-4 hover:text-primary"
+                        onClick={() => onUpdate({ cardIconColor: "" })}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
+                    )}
                   </legend>
                   <div className="flex gap-2">
                     <Input
@@ -167,7 +187,7 @@ export function ServicesEditor({
                     />
                     <Input
                       value={settings.cardIconColor || ""}
-                      placeholder="#HEX"
+                      placeholder="Padrão"
                       className="h-8 text-[10px] flex-1 uppercase"
                       onChange={(e) =>
                         onUpdate({ cardIconColor: e.target.value })
@@ -193,13 +213,16 @@ export function ServicesEditor({
                       Fonte
                     </legend>
                     <Select
-                      value={settings.cardTitleFont}
-                      onValueChange={(v) => onUpdate({ cardTitleFont: v })}
+                      value={settings.cardTitleFont || "default"}
+                      onValueChange={(v) => onUpdate({ cardTitleFont: v === "default" ? "" : v })}
                     >
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Fonte" />
+                        <SelectValue placeholder="Padrão do Site" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="default" className="text-xs font-medium">
+                          Padrão do Site
+                        </SelectItem>
                         {EDITOR_FONTS.map((f) => (
                           <SelectItem
                             key={f.name}
@@ -213,14 +236,24 @@ export function ServicesEditor({
                     </Select>
                   </fieldset>
                   <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
+                    className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >
-                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
-                      Cor
+                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+                      Cor do Título
+                      {settings.cardTitleColor && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-4 w-4 hover:text-primary"
+                          onClick={() => onUpdate({ cardTitleColor: "" })}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </Button>
+                      )}
                     </legend>
                     <div className="flex gap-2">
                       <Input
@@ -233,7 +266,7 @@ export function ServicesEditor({
                       />
                       <Input
                         value={settings.cardTitleColor || ""}
-                        placeholder="#HEX"
+                        placeholder="Padrão"
                         className="h-8 text-[10px] flex-1 uppercase"
                         onChange={(e) =>
                           onUpdate({ cardTitleColor: e.target.value })
@@ -250,7 +283,7 @@ export function ServicesEditor({
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
                   <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
+                    className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
@@ -260,15 +293,16 @@ export function ServicesEditor({
                       Fonte
                     </legend>
                     <Select
-                      value={settings.cardDescriptionFont}
-                      onValueChange={(v) =>
-                        onUpdate({ cardDescriptionFont: v })
-                      }
+                      value={settings.cardDescriptionFont || "default"}
+                      onValueChange={(v) => onUpdate({ cardDescriptionFont: v === "default" ? "" : v })}
                     >
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Fonte" />
+                        <SelectValue placeholder="Padrão do Site" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="default" className="text-xs font-medium">
+                          Padrão do Site
+                        </SelectItem>
                         {EDITOR_FONTS.map((f) => (
                           <SelectItem
                             key={f.name}
@@ -282,19 +316,29 @@ export function ServicesEditor({
                     </Select>
                   </fieldset>
                   <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
+                    className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >
-                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
-                      Cor
+                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+                      Cor da Descrição
+                      {settings.cardDescriptionColor && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-4 w-4 hover:text-primary"
+                          onClick={() => onUpdate({ cardDescriptionColor: "" })}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </Button>
+                      )}
                     </legend>
                     <div className="flex gap-2">
                       <Input
                         type="color"
-                        value={settings.cardDescriptionColor || "#666666"}
+                        value={settings.cardDescriptionColor || "#000000"}
                         className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
                         onChange={(e) =>
                           onUpdate({ cardDescriptionColor: e.target.value })
@@ -302,7 +346,7 @@ export function ServicesEditor({
                       />
                       <Input
                         value={settings.cardDescriptionColor || ""}
-                        placeholder="#HEX"
+                        placeholder="Padrão"
                         className="h-8 text-[10px] flex-1 uppercase"
                         onChange={(e) =>
                           onUpdate({ cardDescriptionColor: e.target.value })
@@ -329,13 +373,16 @@ export function ServicesEditor({
                       Fonte
                     </legend>
                     <Select
-                      value={settings.cardPriceFont}
-                      onValueChange={(v) => onUpdate({ cardPriceFont: v })}
+                      value={settings.cardPriceFont || "default"}
+                      onValueChange={(v) => onUpdate({ cardPriceFont: v === "default" ? "" : v })}
                     >
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Fonte" />
+                        <SelectValue placeholder="Padrão do Site" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="default" className="text-xs font-medium">
+                          Padrão do Site
+                        </SelectItem>
                         {EDITOR_FONTS.map((f) => (
                           <SelectItem
                             key={f.name}
@@ -355,8 +402,18 @@ export function ServicesEditor({
                     onClick={(e) => e.stopPropagation()}
                     onKeyDown={(e) => e.stopPropagation()}
                   >
-                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                       Cor
+                      {settings.cardPriceColor && (
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-4 w-4 hover:text-primary"
+                          onClick={() => onUpdate({ cardPriceColor: "" })}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                        </Button>
+                      )}
                     </legend>
                     <div className="flex gap-2">
                       <Input
@@ -369,7 +426,7 @@ export function ServicesEditor({
                       />
                       <Input
                         value={settings.cardPriceColor || ""}
-                        placeholder="#HEX"
+                        placeholder="Padrão"
                         className="h-8 text-[10px] flex-1 uppercase"
                         onChange={(e) =>
                           onUpdate({ cardPriceColor: e.target.value })

@@ -23,7 +23,7 @@ export function TestimonialsSection() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_TESTIMONIALS_CONTENT") {
+      if (event.data.type === "UPDATE_TESTIMONIALS_SETTINGS") {
         setSettings((prev) =>
           prev ? { ...prev, ...event.data.settings } : prev,
         );
@@ -66,10 +66,8 @@ export function TestimonialsSection() {
           <h2
             className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
             style={{
-              color: settings.titleColor || undefined,
-              fontFamily: settings.titleFont
-                ? `'${settings.titleFont}', serif`
-                : undefined,
+              color: settings.titleColor || "var(--foreground)",
+              fontFamily: settings.titleFont || "var(--font-title)",
             }}
           >
             {settings.title}
@@ -77,10 +75,8 @@ export function TestimonialsSection() {
           <p
             className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
             style={{
-              color: settings.subtitleColor || undefined,
-              fontFamily: settings.subtitleFont
-                ? `'${settings.subtitleFont}', sans-serif`
-                : undefined,
+              color: settings.subtitleColor || "var(--foreground)",
+              fontFamily: settings.subtitleFont || "var(--font-subtitle)",
             }}
           >
             {settings.subtitle}
@@ -93,7 +89,7 @@ export function TestimonialsSection() {
               key={testimonial.id}
               className="border-border backdrop-blur-sm"
               style={{
-                backgroundColor: settings.cardBgColor || undefined,
+                backgroundColor: settings.cardBgColor || "transparent",
               }}
             >
               <CardContent className="p-6">
@@ -101,17 +97,16 @@ export function TestimonialsSection() {
                   {Array.from({ length: testimonial.rating }).map((_, i) => (
                     <Star
                       key={`${testimonial.id}-star-${i}`}
-                      className="w-5 h-5 fill-accent text-accent"
+                      className="w-5 h-5 fill-current"
+                      style={{ color: settings.starColor || "var(--primary)" }}
                     />
                   ))}
                 </div>
                 <p
                   className="leading-relaxed mb-4 transition-all duration-300"
                   style={{
-                    color: settings.cardTextColor || "hsl(var(--muted-foreground))",
-                    fontFamily: settings.subtitleFont
-                      ? `'${settings.subtitleFont}', sans-serif`
-                      : undefined,
+                    color: settings.cardTextColor || "var(--foreground)",
+                    fontFamily: settings.cardTextFont || "var(--font-body)",
                   }}
                 >
                   {testimonial.text}
@@ -119,10 +114,8 @@ export function TestimonialsSection() {
                 <p
                   className="font-semibold transition-all duration-300"
                   style={{
-                    color: settings.cardNameColor || undefined,
-                    fontFamily: settings.titleFont
-                      ? `'${settings.titleFont}', serif`
-                      : undefined,
+                    color: settings.cardNameColor || "var(--primary)",
+                    fontFamily: settings.cardNameFont || "var(--font-subtitle)",
                   }}
                 >
                   {testimonial.name}

@@ -123,27 +123,28 @@ export function Footer({ externalFooterSettings }: { externalFooterSettings?: Fo
   if (!profile) return null;
 
   const footerStyle = {
-    backgroundColor: footerSettings.bgColor || undefined,
-    fontFamily: footerSettings.bodyFont || undefined,
+    backgroundColor: footerSettings.bgColor || "var(--background)",
+    fontFamily: footerSettings.bodyFont || "var(--font-body)",
   };
 
   const titleStyle = {
-    color: footerSettings.titleColor || undefined,
-    fontFamily: footerSettings.titleFont || undefined,
+    color: footerSettings.titleColor || "var(--foreground)",
+    fontFamily: footerSettings.titleFont || "var(--font-title)",
   };
 
   const textStyle = {
-    color: footerSettings.textColor || undefined,
+    color: footerSettings.textColor || "var(--foreground)",
   };
 
   const iconStyle = {
-    color: footerSettings.iconColor || undefined,
+    color: footerSettings.iconColor || "var(--secondary)",
   };
 
   const iconBgStyle = {
     backgroundColor: footerSettings.iconColor
-      ? `${footerSettings.iconColor}1a` // 1a is 10% opacity in hex
-      : undefined,
+      ? `${footerSettings.iconColor}1a`
+      : "var(--secondary)",
+    opacity: footerSettings.iconColor ? 1 : 0.1,
   };
 
   return (

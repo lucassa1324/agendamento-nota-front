@@ -11,6 +11,7 @@ import {
   Moon,
   Palette,
   Plus,
+  RotateCcw,
   Smile,
   Sparkles,
   Star,
@@ -244,8 +245,18 @@ export function HeroEditor({
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >
-                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
-                          Cor do Ícone
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+                          <span className="flex items-center gap-1">Cor do Ícone</span>
+                          {settings.badgeColor && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-3 w-3 hover:text-primary p-0"
+                              onClick={() => onUpdate({ badgeColor: "" })}
+                            >
+                              <RotateCcw className="w-2.5 h-2.5" />
+                            </Button>
+                          )}
                         </legend>
                         <div className="flex gap-2">
                           <Input
@@ -258,7 +269,7 @@ export function HeroEditor({
                           />
                           <Input
                             value={settings.badgeColor || ""}
-                            placeholder="#HEX"
+                            placeholder="Padrão"
                             className="h-8 text-[10px] flex-1 uppercase"
                             onChange={(e) =>
                               onUpdate({ badgeColor: e.target.value })
@@ -274,8 +285,18 @@ export function HeroEditor({
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >
-                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
-                          Cor do Texto
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+                          <span className="flex items-center gap-1">Cor do Texto</span>
+                          {settings.badgeTextColor && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-3 w-3 hover:text-primary p-0"
+                              onClick={() => onUpdate({ badgeTextColor: "" })}
+                            >
+                              <RotateCcw className="w-2.5 h-2.5" />
+                            </Button>
+                          )}
                         </legend>
                         <div className="flex gap-2">
                           <Input
@@ -288,7 +309,7 @@ export function HeroEditor({
                           />
                           <Input
                             value={settings.badgeTextColor || ""}
-                            placeholder="#HEX"
+                            placeholder="Padrão"
                             className="h-8 text-[10px] flex-1 uppercase"
                             onChange={(e) =>
                               onUpdate({ badgeTextColor: e.target.value })
@@ -309,15 +330,18 @@ export function HeroEditor({
                         <Type className="w-2 h-2" /> Fonte
                       </legend>
                       <Select
-                        value={settings.badgeFont}
+                        value={settings.badgeFont || "default"}
                         onValueChange={(val: string) =>
-                          onUpdate({ badgeFont: val })
+                          onUpdate({ badgeFont: val === "default" ? "" : val })
                         }
                       >
                         <SelectTrigger className="h-8 text-[10px]">
-                          <SelectValue />
+                          <SelectValue placeholder="Padrão do Site" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="default" className="text-[10px]">
+                            Padrão do Site
+                          </SelectItem>
                           {EDITOR_FONTS.map((f) => (
                             <SelectItem
                               key={f.name}
@@ -427,8 +451,20 @@ export function HeroEditor({
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
-                          <Palette className="w-2 h-2" /> Cor de Fundo
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center justify-between gap-1">
+                          <span className="flex items-center gap-1">
+                            <Palette className="w-2 h-2" /> Cor de Fundo
+                          </span>
+                          {settings.primaryButtonColor && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-3 w-3 hover:text-primary p-0"
+                              onClick={() => onUpdate({ primaryButtonColor: "" })}
+                            >
+                              <RotateCcw className="w-2.5 h-2.5" />
+                            </Button>
+                          )}
                         </legend>
                         <div className="flex gap-1">
                           <Input
@@ -440,9 +476,9 @@ export function HeroEditor({
                             className="w-7 h-7 p-0.5 cursor-pointer rounded-full overflow-hidden"
                           />
                           <Input
-                            value={settings.primaryButtonColor}
-                            placeholder="Fundo"
-                            className="h-7 text-[10px] font-mono w-16"
+                            value={settings.primaryButtonColor || ""}
+                            placeholder="Padrão"
+                            className="h-7 text-[10px] font-mono w-16 uppercase"
                             onChange={(e: ChangeEvent<HTMLInputElement>) =>
                               onUpdate({ primaryButtonColor: e.target.value })
                             }
@@ -450,8 +486,20 @@ export function HeroEditor({
                         </div>
                       </fieldset>
                       <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
-                          <Palette className="w-2 h-2" /> Cor do Texto
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center justify-between gap-1">
+                          <span className="flex items-center gap-1">
+                            <Palette className="w-2 h-2" /> Cor do Texto
+                          </span>
+                          {settings.primaryButtonTextColor && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-3 w-3 hover:text-primary p-0"
+                              onClick={() => onUpdate({ primaryButtonTextColor: "" })}
+                            >
+                              <RotateCcw className="w-2.5 h-2.5" />
+                            </Button>
+                          )}
                         </legend>
                         <div className="flex gap-1">
                           <Input
@@ -465,9 +513,9 @@ export function HeroEditor({
                             className="w-7 h-7 p-0.5 cursor-pointer rounded-full overflow-hidden"
                           />
                           <Input
-                            value={settings.primaryButtonTextColor}
-                            placeholder="Texto"
-                            className="h-7 text-[10px] font-mono w-16"
+                            value={settings.primaryButtonTextColor || ""}
+                            placeholder="Padrão"
+                            className="h-7 text-[10px] font-mono w-16 uppercase"
                             onChange={(e: ChangeEvent<HTMLInputElement>) =>
                               onUpdate({
                                 primaryButtonTextColor: e.target.value,
@@ -482,15 +530,18 @@ export function HeroEditor({
                         <Type className="w-2 h-2" /> Fonte do Botão
                       </legend>
                       <Select
-                        value={settings.primaryButtonFont}
+                        value={settings.primaryButtonFont || "default"}
                         onValueChange={(val: string) =>
-                          onUpdate({ primaryButtonFont: val })
+                          onUpdate({ primaryButtonFont: val === "default" ? "" : val })
                         }
                       >
                         <SelectTrigger className="h-7 text-[10px]">
-                          <SelectValue />
+                          <SelectValue placeholder="Padrão do Site" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="default" className="text-[10px]">
+                            Padrão do Site
+                          </SelectItem>
                           {EDITOR_FONTS.map((f) => (
                             <SelectItem
                               key={f.name}
@@ -524,8 +575,20 @@ export function HeroEditor({
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
-                          <Palette className="w-2 h-2" /> Cor de Fundo
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center justify-between gap-1">
+                          <span className="flex items-center gap-1">
+                            <Palette className="w-2 h-2" /> Cor de Fundo
+                          </span>
+                          {settings.secondaryButtonColor && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-3 w-3 hover:text-primary p-0"
+                              onClick={() => onUpdate({ secondaryButtonColor: "" })}
+                            >
+                              <RotateCcw className="w-2.5 h-2.5" />
+                            </Button>
+                          )}
                         </legend>
                         <div className="flex gap-1">
                           <Input
@@ -537,9 +600,9 @@ export function HeroEditor({
                             className="w-7 h-7 p-0.5 cursor-pointer rounded-full overflow-hidden"
                           />
                           <Input
-                            value={settings.secondaryButtonColor}
-                            placeholder="Fundo"
-                            className="h-7 text-[10px] font-mono w-16"
+                            value={settings.secondaryButtonColor || ""}
+                            placeholder="Padrão"
+                            className="h-7 text-[10px] font-mono w-16 uppercase"
                             onChange={(e: ChangeEvent<HTMLInputElement>) =>
                               onUpdate({ secondaryButtonColor: e.target.value })
                             }
@@ -547,8 +610,20 @@ export function HeroEditor({
                         </div>
                       </fieldset>
                       <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
-                          <Palette className="w-2 h-2" /> Cor do Texto
+                        <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center justify-between gap-1">
+                          <span className="flex items-center gap-1">
+                            <Palette className="w-2 h-2" /> Cor do Texto
+                          </span>
+                          {settings.secondaryButtonTextColor && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-3 w-3 hover:text-primary p-0"
+                              onClick={() => onUpdate({ secondaryButtonTextColor: "" })}
+                            >
+                              <RotateCcw className="w-2.5 h-2.5" />
+                            </Button>
+                          )}
                         </legend>
                         <div className="flex gap-1">
                           <Input
@@ -564,9 +639,9 @@ export function HeroEditor({
                             className="w-7 h-7 p-0.5 cursor-pointer rounded-full overflow-hidden"
                           />
                           <Input
-                            value={settings.secondaryButtonTextColor}
-                            placeholder="Texto"
-                            className="h-7 text-[10px] font-mono w-16"
+                            value={settings.secondaryButtonTextColor || ""}
+                            placeholder="Padrão"
+                            className="h-7 text-[10px] font-mono w-16 uppercase"
                             onChange={(e: ChangeEvent<HTMLInputElement>) =>
                               onUpdate({
                                 secondaryButtonTextColor: e.target.value,
@@ -581,15 +656,18 @@ export function HeroEditor({
                         <Type className="w-2 h-2" /> Fonte do Botão
                       </legend>
                       <Select
-                        value={settings.secondaryButtonFont}
+                        value={settings.secondaryButtonFont || "default"}
                         onValueChange={(val: string) =>
-                          onUpdate({ secondaryButtonFont: val })
+                          onUpdate({ secondaryButtonFont: val === "default" ? "" : val })
                         }
                       >
                         <SelectTrigger className="h-7 text-[10px]">
-                          <SelectValue />
+                          <SelectValue placeholder="Padrão do Site" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="default" className="text-[10px]">
+                            Padrão do Site
+                          </SelectItem>
                           {EDITOR_FONTS.map((f) => (
                             <SelectItem
                               key={f.name}

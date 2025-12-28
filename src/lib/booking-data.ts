@@ -115,6 +115,8 @@ export type HeaderSettings = {
   buttonBgColor: string;
   buttonTextColor: string;
   blurAmount: number; // para o efeito glassmorphism
+  titleFont: string;
+  linksFont: string;
 };
 
 export type FooterSettings = {
@@ -133,6 +135,8 @@ export const defaultHeaderSettings: HeaderSettings = {
   buttonBgColor: "",
   buttonTextColor: "",
   blurAmount: 8,
+  titleFont: "",
+  linksFont: "",
 };
 
 export const defaultFooterSettings: FooterSettings = {
@@ -178,8 +182,10 @@ export type HeroSettings = {
 export type StorySettings = {
   title: string;
   titleColor: string;
+  titleFont: string;
   content: string;
   contentColor: string;
+  contentFont: string;
   image: string;
   bgType: "color" | "image";
   bgColor: string;
@@ -254,8 +260,8 @@ export const defaultServicesSettings: ServicesSettings = {
   subtitle: "Tratamentos especializados para realçar seu olhar",
   titleColor: "",
   subtitleColor: "",
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
+  titleFont: "",
+  subtitleFont: "",
   bgType: "color",
   bgColor: "",
   bgImage: "",
@@ -269,20 +275,22 @@ export const defaultServicesSettings: ServicesSettings = {
   cardDescriptionColor: "",
   cardPriceColor: "",
   cardIconColor: "",
-  cardTitleFont: "Playfair Display",
-  cardDescriptionFont: "Inter",
-  cardPriceFont: "Inter",
+  cardTitleFont: "",
+  cardDescriptionFont: "",
+  cardPriceFont: "",
 };
 
 export const defaultStorySettings: StorySettings = {
   title: "Nossa História",
   titleColor: "",
+  titleFont: "",
   content:
     "O Brow Studio nasceu da paixão por realçar a beleza natural de cada pessoa através do design de sobrancelhas. Com mais de 10 anos de experiência no mercado, nos especializamos em técnicas avançadas que valorizam a individualidade de cada cliente.\n\nNossa missão é proporcionar não apenas um serviço de qualidade, mas uma experiência transformadora. Acreditamos que sobrancelhas bem feitas têm o poder de elevar a autoestima e destacar a beleza única de cada pessoa.\n\nInvestimos constantemente em capacitação e nas melhores técnicas do mercado para garantir resultados excepcionais e a satisfação total de nossas clientes.",
   contentColor: "",
+  contentFont: "",
   image: "/professional-eyebrow-artist-at-work.jpg",
   bgType: "color",
-  bgColor: "#ffffff",
+  bgColor: "",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
@@ -297,8 +305,8 @@ export const defaultValuesSettings: ValuesSettings = {
     "Os princípios que guiam nosso trabalho e relacionamento com cada cliente",
   titleColor: "",
   subtitleColor: "",
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
+  titleFont: "",
+  subtitleFont: "",
   bgType: "color",
   bgColor: "",
   bgImage: "",
@@ -311,8 +319,8 @@ export const defaultValuesSettings: ValuesSettings = {
   cardTitleColor: "",
   cardDescriptionColor: "",
   cardIconColor: "",
-  cardTitleFont: "Playfair Display",
-  cardDescriptionFont: "Inter",
+  cardTitleFont: "",
+  cardDescriptionFont: "",
   items: [
     {
       id: "1",
@@ -348,10 +356,14 @@ export const defaultValuesSettings: ValuesSettings = {
 export type GallerySettings = {
   title: string;
   subtitle: string;
+  buttonText: string;
   titleColor: string;
   subtitleColor: string;
+  buttonColor: string;
+  buttonTextColor: string;
   titleFont: string;
   subtitleFont: string;
+  buttonFont: string;
   layout: "grid" | "carousel";
   bgType: "color" | "image";
   bgColor: string;
@@ -366,10 +378,14 @@ export type GallerySettings = {
 export const defaultGallerySettings: GallerySettings = {
   title: "Nossos Trabalhos",
   subtitle: "Veja alguns dos resultados incríveis que alcançamos com nossas clientes",
+  buttonText: "Ver Galeria Completa",
   titleColor: "",
   subtitleColor: "",
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
+  buttonColor: "",
+  buttonTextColor: "",
+  titleFont: "",
+  subtitleFont: "",
+  buttonFont: "",
   layout: "grid",
   bgType: "color",
   bgColor: "",
@@ -426,8 +442,8 @@ export const defaultBookingServiceSettings: BookingStepSettings = {
   subtitle: "Selecione um ou mais serviços para o seu agendamento",
   titleColor: "",
   subtitleColor: "",
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
+  titleFont: "",
+  subtitleFont: "",
   bgType: "color",
   bgColor: "",
   bgImage: "",
@@ -445,8 +461,8 @@ export const defaultBookingDateSettings: BookingStepSettings = {
   subtitle: "Selecione o dia de sua preferência",
   titleColor: "",
   subtitleColor: "",
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
+  titleFont: "",
+  subtitleFont: "",
   bgType: "color",
   bgColor: "",
   bgImage: "",
@@ -464,8 +480,8 @@ export const defaultBookingTimeSettings: BookingStepSettings = {
   subtitle: "Selecione o melhor horário disponível",
   titleColor: "",
   subtitleColor: "",
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
+  titleFont: "",
+  subtitleFont: "",
   bgType: "color",
   bgColor: "",
   bgImage: "",
@@ -483,8 +499,8 @@ export const defaultBookingFormSettings: BookingStepSettings = {
   subtitle: "Preencha suas informações para finalizar o agendamento",
   titleColor: "",
   subtitleColor: "",
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
+  titleFont: "",
+  subtitleFont: "",
   bgType: "color",
   bgColor: "",
   bgImage: "",
@@ -502,8 +518,8 @@ export const defaultBookingConfirmationSettings: BookingStepSettings = {
   subtitle: "Tudo pronto! Você receberá um e-mail com os detalhes.",
   titleColor: "",
   subtitleColor: "",
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
+  titleFont: "",
+  subtitleFont: "",
   bgType: "color",
   bgColor: "",
   bgImage: "",
@@ -608,6 +624,9 @@ export type TeamSettings = {
   cardTitleColor: string;
   cardRoleColor: string;
   cardDescriptionColor: string;
+  cardTitleFont: string;
+  cardRoleFont: string;
+  cardDescriptionFont: string;
   members: TeamMember[];
 };
 
@@ -637,6 +656,8 @@ export type TestimonialsSettings = {
   cardBgColor: string;
   cardNameColor: string;
   cardTextColor: string;
+  cardNameFont: string;
+  cardTextFont: string;
   testimonials: Testimonial[];
 };
 
@@ -648,9 +669,9 @@ export const defaultCTASettings: CTASettings = {
   subtitleColor: "",
   buttonColor: "",
   buttonTextColor: "",
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
-  buttonFont: "Inter",
+  titleFont: "",
+  subtitleFont: "",
+  buttonFont: "",
   bgType: "color",
   bgColor: "",
   bgImage: "",
@@ -666,8 +687,8 @@ export const defaultTeamSettings: TeamSettings = {
   subtitle: "Conheça as profissionais especialistas que cuidarão do seu olhar",
   titleColor: "",
   subtitleColor: "",
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
+  titleFont: "",
+  subtitleFont: "",
   bgType: "color",
   bgColor: "",
   bgImage: "",
@@ -680,6 +701,9 @@ export const defaultTeamSettings: TeamSettings = {
   cardTitleColor: "",
   cardRoleColor: "",
   cardDescriptionColor: "",
+  cardTitleFont: "",
+  cardRoleFont: "",
+  cardDescriptionFont: "",
   members: [
     {
       id: "1",
@@ -699,12 +723,13 @@ export const defaultTeamSettings: TeamSettings = {
 };
 
 export const defaultTestimonialsSettings: TestimonialsSettings = {
+  starColor: "",
   title: "O Que Dizem Nossas Clientes",
   subtitle: "A satisfação de nossas clientes é nossa maior conquista",
   titleColor: "",
   subtitleColor: "",
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
+  titleFont: "",
+  subtitleFont: "",
   bgType: "color",
   bgColor: "",
   bgImage: "",
@@ -716,6 +741,8 @@ export const defaultTestimonialsSettings: TestimonialsSettings = {
   cardBgColor: "",
   cardNameColor: "",
   cardTextColor: "",
+  cardNameFont: "",
+  cardTextFont: "",
   testimonials: [
     {
       id: "1",
@@ -734,7 +761,15 @@ export const defaultTestimonialsSettings: TestimonialsSettings = {
 
 export type FontSettings = {
   headingFont: string;
+  subtitleFont: string;
   bodyFont: string;
+};
+
+export type ColorSettings = {
+  primary: string;
+  secondary: string;
+  background: string;
+  text: string;
 };
 
 export const services: Service[] = [
@@ -918,23 +953,44 @@ export const defaultHeroSettings: HeroSettings = {
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  titleFont: "Playfair Display",
-  subtitleFont: "Inter",
-  badgeFont: "Inter",
+  titleFont: "",
+  subtitleFont: "",
+  badgeFont: "",
   primaryButtonColor: "",
   secondaryButtonColor: "",
   primaryButtonTextColor: "",
   secondaryButtonTextColor: "",
   titleColor: "",
   subtitleColor: "",
-  primaryButtonFont: "Inter",
-  secondaryButtonFont: "Inter",
+  primaryButtonFont: "",
+  secondaryButtonFont: "",
 };
 
 export const defaultFontSettings: FontSettings = {
   headingFont: "Playfair Display",
+  subtitleFont: "Playfair Display",
   bodyFont: "Inter",
 };
+
+export const defaultColorSettings: ColorSettings = {
+  primary: "#111827", // slate-900
+  secondary: "#4b5563", // slate-600
+  background: "#ffffff",
+  text: "#111827",
+};
+
+export function getColorSettings(): ColorSettings {
+  if (typeof window === "undefined") return defaultColorSettings;
+  const settings = localStorage.getItem("colorSettings");
+  return settings ? JSON.parse(settings) : defaultColorSettings;
+}
+
+export function saveColorSettings(settings: ColorSettings): void {
+  localStorage.setItem("colorSettings", JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("colorSettingsUpdated"));
+  }
+}
 
 export function generateTimeSlotsForDate(date: string): string[] {
   const dateObj = new Date(`${date}T00:00:00`);

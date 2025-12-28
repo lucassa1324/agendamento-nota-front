@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Suspense, use, useEffect, useState } from "react";
 import { BookingFlow } from "@/components/booking-flow";
 import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
 

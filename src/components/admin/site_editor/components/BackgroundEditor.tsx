@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCcw, Upload } from "lucide-react";
+import { RotateCcw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -85,8 +85,18 @@ export function BackgroundEditor({
 
       {settings.bgType === "color" ? (
         <fieldset className="space-y-1.5 border-none p-0 m-0">
-          <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+          <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
             Cor de Fundo
+            {settings.bgColor && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-4 w-4 hover:text-primary"
+                onClick={() => onUpdate({ bgColor: "" })}
+              >
+                <RotateCcw className="w-3 h-3" />
+              </Button>
+            )}
           </legend>
           <div className="flex gap-2">
             <Input
@@ -97,7 +107,7 @@ export function BackgroundEditor({
             />
             <Input
               value={settings.bgColor || ""}
-              placeholder="Ex: #ffffff ou transparent"
+              placeholder="Padrão do Site"
               className="h-8 text-[10px] flex-1 uppercase"
               onChange={(e) => onUpdate({ bgColor: e.target.value })}
             />
@@ -217,7 +227,7 @@ export function BackgroundEditor({
                 });
               }}
             >
-              <RefreshCcw className="w-3 h-3" /> Resetar Ajustes
+              <RotateCcw className="w-3 h-3" /> Resetar Ajustes
             </Button>
           </fieldset>
         </div>

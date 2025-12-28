@@ -36,7 +36,7 @@ export function SectionBackground({
         style={{
           backgroundColor:
             settings.bgType === "color"
-              ? settings.bgColor || "#ffffff"
+              ? settings.bgColor || "var(--background)"
               : "transparent",
         }}
       />
