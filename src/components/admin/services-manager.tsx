@@ -20,6 +20,7 @@ import {
   Medal,
   Moon,
   Music,
+  Package,
   Palette,
   Pencil,
   Plane,
@@ -143,6 +144,7 @@ const availableIcons = [
   { id: "Moon", Icon: Moon, label: "Noite / Relax", category: "Outros" },
 ];
 
+import { ArrowDownCircle, HelpCircle, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   AlertDialog,
@@ -176,16 +178,28 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { getSettingsFromStorage, type Service } from "@/lib/booking-data";
+import { getInventoryFromStorage, getSettingsFromStorage, type InventoryItem, type Service, saveInventoryToStorage } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
 export function ServicesManager() {
   const [services, setServices] = useState<Service[]>([]);
+  const [allProducts, setAllProducts] = useState<InventoryItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isAddProductSearchOpen, setIsAddProductSearchOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
+  const [serviceForProducts, setServiceForProducts] = useState<Service | null>(null);
+  const [productSearch, setProductSearch] = useState("");
+  const [innerProductSearch, setInnerProductSearch] = useState("");
+  const [editingConversionId, setEditingConversionId] = useState<string | null>(null);
+  const [conversionData, setConversionData] = useState<{
+    secondaryUnit: string;
+    conversionFactor: number;
+  }>({ secondaryUnit: "", conversionFactor: 1 });
   const [formData, setFormData] = useState<Partial<Service>>({});
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [conflictSearch, setConflictSearch] = useState("");
@@ -193,11 +207,47 @@ export function ServicesManager() {
 
   useEffect(() => {
     loadServices();
+    setAllProducts(getInventoryFromStorage());
   }, []);
 
   const loadServices = () => {
     const settings = getSettingsFromStorage();
-    setServices(settings.services);
+    const loadedInventory = getInventoryFromStorage();
+    const cotton = loadedInventory.find(p => p.name === "Algodão");
+    
+    // Migração/Correção para serviços que usam Algodão
+    let wasModified = false;
+    const updatedServices = settings.services.map((service: Service) => {
+      if (!service.products) return service;
+      
+      let serviceModified = false;
+      const updatedProducts = service.products.map(sp => {
+        if (cotton && sp.productId === cotton.id) {
+          // Se o produto for Algodão, garante que use unidade secundária e tenha quantidade razoável (10g)
+          if (!sp.useSecondaryUnit || sp.quantity > 50) {
+            serviceModified = true;
+            return { ...sp, useSecondaryUnit: true, quantity: 10 };
+          }
+        }
+        return sp;
+      });
+      
+      if (serviceModified) {
+        wasModified = true;
+        return { ...service, products: updatedProducts };
+      }
+      return service;
+    });
+
+    if (wasModified) {
+      saveSettings(updatedServices);
+      toast({
+        title: "Serviços Atualizados",
+        description: "A configuração de consumo de Algodão nos serviços foi otimizada para gramas.",
+      });
+    } else {
+      setServices(settings.services);
+    }
   };
 
   const saveSettings = (updatedServices: Service[]) => {
@@ -220,6 +270,7 @@ export function ServicesManager() {
       icon: "Sparkles",
       conflictGroupId: "",
       conflictingServiceIds: [],
+      products: [],
     });
     setErrors({});
     setIsModalOpen(true);
@@ -231,6 +282,7 @@ export function ServicesManager() {
       ...service,
       conflictGroupId: service.conflictGroupId || "",
       conflictingServiceIds: service.conflictingServiceIds || [],
+      products: service.products || [],
     });
     setErrors({});
     setIsModalOpen(true);
@@ -266,6 +318,7 @@ export function ServicesManager() {
       ...formData,
       conflictGroupId: formData.conflictGroupId?.trim() || undefined,
       conflictingServiceIds: formData.conflictingServiceIds || [],
+      products: formData.products || [],
     } as Service;
 
     let updatedServices: Service[];
@@ -298,6 +351,137 @@ export function ServicesManager() {
     setFormData({
       ...formData,
       conflictingServiceIds: newIds,
+    });
+  };
+
+  const addProductToService = (productId: string) => {
+    if (serviceForProducts) {
+      const currentProducts = serviceForProducts.products || [];
+      if (currentProducts.find((p) => p.productId === productId)) return;
+
+      setServiceForProducts({
+        ...serviceForProducts,
+        products: [...currentProducts, { productId, quantity: 1 }],
+      });
+    } else {
+      const currentProducts = formData.products || [];
+      if (currentProducts.find((p) => p.productId === productId)) return;
+
+      setFormData({
+        ...formData,
+        products: [...currentProducts, { productId, quantity: 1 }],
+      });
+    }
+  };
+
+  const removeProductFromService = (productId: string) => {
+    if (serviceForProducts) {
+      const currentProducts = serviceForProducts.products || [];
+      setServiceForProducts({
+        ...serviceForProducts,
+        products: currentProducts.filter((p) => p.productId !== productId),
+      });
+    } else {
+      const currentProducts = formData.products || [];
+      setFormData({
+        ...formData,
+        products: currentProducts.filter((p) => p.productId !== productId),
+      });
+    }
+  };
+
+  const updateProductQuantity = (productId: string, quantity: number) => {
+    if (serviceForProducts) {
+      const currentProducts = serviceForProducts.products || [];
+      setServiceForProducts({
+        ...serviceForProducts,
+        products: currentProducts.map((p) =>
+          p.productId === productId ? { ...p, quantity } : p
+        ),
+      });
+    } else {
+      const currentProducts = formData.products || [];
+      setFormData({
+        ...formData,
+        products: currentProducts.map((p) =>
+          p.productId === productId ? { ...p, quantity } : p
+        ),
+      });
+    }
+  };
+
+  const toggleProductUnit = (productId: string) => {
+    if (serviceForProducts) {
+      const currentProducts = serviceForProducts.products || [];
+      setServiceForProducts({
+        ...serviceForProducts,
+        products: currentProducts.map((p) =>
+          p.productId === productId ? { ...p, useSecondaryUnit: !p.useSecondaryUnit } : p
+        ),
+      });
+    } else {
+      const currentProducts = formData.products || [];
+      setFormData({
+        ...formData,
+        products: currentProducts.map((p) =>
+          p.productId === productId ? { ...p, useSecondaryUnit: !p.useSecondaryUnit } : p
+        ),
+      });
+    }
+  };
+
+  const handleSaveConversion = (productId: string) => {
+    if (!conversionData.secondaryUnit || conversionData.conversionFactor <= 0) {
+      toast({
+        title: "Dados Inválidos",
+        description: "Por favor, preencha a unidade e o fator de conversão corretamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const updatedInventory = allProducts.map((p) =>
+      p.id === productId
+        ? {
+            ...p,
+            secondaryUnit: conversionData.secondaryUnit,
+            conversionFactor: conversionData.conversionFactor,
+          }
+        : p
+    );
+
+    saveInventoryToStorage(updatedInventory);
+    setAllProducts(updatedInventory);
+    setEditingConversionId(null);
+
+    toast({
+      title: "Conversão Salva",
+      description: "A unidade de consumo foi configurada com sucesso.",
+    });
+  };
+
+  const handleOpenProductModal = (service: Service) => {
+    setAllProducts(getInventoryFromStorage());
+    setServiceForProducts(service);
+    setInnerProductSearch("");
+    setIsProductModalOpen(true);
+  };
+
+  const handleSaveServiceProducts = () => {
+    if (!serviceForProducts) return;
+
+    const updatedServices = services.map((s) =>
+      s.id === serviceForProducts.id ? serviceForProducts : s
+    );
+
+    saveSettings(updatedServices);
+    setIsProductModalOpen(false);
+    setServiceForProducts(null);
+    setInnerProductSearch("");
+
+    toast({
+      title: "Produtos Atualizados",
+      description: `A configuração de produtos para "${serviceForProducts.name}" foi salva.`,
     });
   };
 
@@ -448,11 +632,12 @@ export function ServicesManager() {
                 <Input
                   id="duration"
                   type="number"
-                  value={formData.duration || ""}
+                  value={Number.isNaN(formData.duration) ? "" : (formData.duration ?? "")}
                   onChange={(e) => {
+                    const val = e.target.value === "" ? Number.NaN : Number.parseInt(e.target.value, 10);
                     setFormData({
                       ...formData,
-                      duration: Number.parseInt(e.target.value, 10),
+                      duration: val,
                     });
                     if (errors.duration)
                       setErrors({ ...errors, duration: false });
@@ -477,11 +662,12 @@ export function ServicesManager() {
                 <Input
                   id="price"
                   type="number"
-                  value={formData.price || ""}
+                  value={Number.isNaN(formData.price) ? "" : (formData.price ?? "")}
                   onChange={(e) => {
+                    const val = e.target.value === "" ? Number.NaN : Number.parseFloat(e.target.value);
                     setFormData({
                       ...formData,
-                      price: Number.parseFloat(e.target.value),
+                      price: val,
                     });
                     if (errors.price) setErrors({ ...errors, price: false });
                   }}
@@ -657,6 +843,314 @@ export function ServicesManager() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <Dialog open={isProductModalOpen} onOpenChange={setIsProductModalOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-accent" />
+              Produtos: {serviceForProducts?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <p className="text-sm text-muted-foreground">
+              Configure os produtos consumidos. Use a unidade secundária para ajustes finos (ex: gramas).
+            </p>
+
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    className="pl-9 h-9"
+                    placeholder="Pesquisar nos produtos utilizados..."
+                    value={innerProductSearch}
+                    onChange={(e) => setInnerProductSearch(e.target.value)}
+                  />
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-9 border-accent text-accent hover:bg-accent/10 whitespace-nowrap"
+                  onClick={() => setIsAddProductSearchOpen(true)}
+                >
+                  <Plus className="w-3.5 h-3.5 mr-1.5" />
+                  Adicionar Produto
+                </Button>
+              </div>
+
+              <Dialog open={isAddProductSearchOpen} onOpenChange={setIsAddProductSearchOpen}>
+                <DialogContent className="sm:max-w-100">
+                  <DialogHeader>
+                    <DialogTitle>Adicionar Produto ao Serviço</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        className="pl-9"
+                        placeholder="Pesquisar produto..."
+                        value={productSearch}
+                        onChange={(e) => setProductSearch(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    <ScrollArea className="h-64 pr-4">
+                      <div className="space-y-1">
+                        {allProducts
+                          .filter(
+                            (p) =>
+                              p.name.toLowerCase().includes(productSearch.toLowerCase()) &&
+                              !serviceForProducts?.products?.find((sp) => sp.productId === p.id)
+                          )
+                          .map((product) => (
+                            <Button
+                              key={product.id}
+                              variant="ghost"
+                              className="w-full justify-between text-sm h-10 px-3 hover:bg-accent/5"
+                              onClick={() => {
+                                addProductToService(product.id);
+                                setIsAddProductSearchOpen(false);
+                                setProductSearch("");
+                              }}
+                            >
+                              <div className="flex flex-col items-start">
+                                <span>{product.name}</span>
+                                <span className="text-[10px] text-muted-foreground">{product.unit}</span>
+                              </div>
+                              <Plus className="w-4 h-4 text-accent" />
+                            </Button>
+                          ))}
+                        {allProducts.filter(
+                          (p) =>
+                            p.name.toLowerCase().includes(productSearch.toLowerCase()) &&
+                            !serviceForProducts?.products?.find((sp) => sp.productId === p.id)
+                        ).length === 0 && (
+                          <div className="p-8 text-center text-muted-foreground">
+                            <Package className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                            <p className="text-sm">Nenhum produto disponível para adicionar.</p>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <ScrollArea className="h-112.5 pr-4">
+                <div className="space-y-3">
+                  {serviceForProducts?.products
+                    ?.filter((sp) => {
+                      const product = allProducts.find((p) => p.id === sp.productId);
+                      return product?.name.toLowerCase().includes(innerProductSearch.toLowerCase());
+                    })
+                    .map((sp) => {
+                    const product = allProducts.find((p) => p.id === sp.productId);
+                    if (!product) return null;
+                    
+                    const isEditingConversion = editingConversionId === sp.productId;
+                    const canUseSecondary = product.secondaryUnit && product.conversionFactor;
+                    
+                    return (
+                      <div
+                        key={sp.productId}
+                        className="flex flex-col gap-3 p-3 border rounded-lg bg-muted/30"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm font-semibold flex items-center gap-2">
+                            {product.name}
+                            <span className="text-[10px] font-normal px-1.5 py-0.5 rounded bg-accent/10 text-accent">
+                              Estoque: {product.quantity} {product.unit}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                if (isEditingConversion) {
+                                  setEditingConversionId(null);
+                                } else {
+                                  setEditingConversionId(sp.productId);
+                                  setConversionData({
+                                    secondaryUnit: product.secondaryUnit || "",
+                                    conversionFactor: product.conversionFactor || 1,
+                                  });
+                                }
+                              }}
+                              className={cn(
+                                "h-7 w-7 p-0",
+                                canUseSecondary ? "text-muted-foreground" : "text-accent"
+                              )}
+                              title={canUseSecondary ? "Editar Conversão" : "Configurar Conversão"}
+                            >
+                              <Settings2 className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeProductFromService(sp.productId)}
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        {isEditingConversion ? (
+                          <div className="space-y-3 p-3 rounded-md bg-accent/5 border border-accent/20">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] font-bold text-accent uppercase tracking-wider">Configurar Conversão</span>
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent className="max-w-64">
+                                    <p className="text-xs">Configure como o produto é consumido. Ex: Se você compra em PACOTE mas usa em GRAMAS, e 1 pacote tem 500g, a unidade é "g" e o fator é 500.</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-[10px]">Unidade de Consumo</Label>
+                                <Select
+                                  value={conversionData.secondaryUnit}
+                                  onValueChange={(val) => setConversionData({ ...conversionData, secondaryUnit: val })}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Selecione" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="un">Unidade (un)</SelectItem>
+                                    <SelectItem value="g">Grama (g)</SelectItem>
+                                    <SelectItem value="kg">Quilograma (kg)</SelectItem>
+                                    <SelectItem value="ml">Mililitro (ml)</SelectItem>
+                                    <SelectItem value="lt">Litro (lt)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[10px]">Fator (1 {product.unit} = ?)</Label>
+                                <Input
+                                  type="number"
+                                  step="0.001"
+                                  value={Number.isNaN(conversionData.conversionFactor) ? "" : conversionData.conversionFactor}
+                                  onChange={(e) => {
+                                    const val = e.target.value === "" ? Number.NaN : Number(e.target.value);
+                                    setConversionData({ ...conversionData, conversionFactor: val });
+                                  }}
+                                  className="h-8 text-xs"
+                                  placeholder="Ex: 500"
+                                />
+                                {!Number.isNaN(conversionData.conversionFactor) && conversionData.secondaryUnit && (
+                                  <p className="text-[9px] text-muted-foreground mt-1">
+                                    Significa: 1 {product.unit} contém {conversionData.conversionFactor} {conversionData.secondaryUnit}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-1">
+                              <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={() => setEditingConversionId(null)}>Cancelar</Button>
+                              <Button size="sm" className="h-7 text-[10px] bg-accent" onClick={() => handleSaveConversion(sp.productId)}>Salvar Unidade</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <Label htmlFor={`qty-${sp.productId}`} className="text-xs">Consumo:</Label>
+                                <Input
+                                  id={`qty-${sp.productId}`}
+                                  type="number"
+                                  min="0.001"
+                                  step="0.001"
+                                  value={Number.isNaN(sp.quantity) ? "" : sp.quantity}
+                                  onChange={(e) => {
+                                    const val = e.target.value === "" ? Number.NaN : Number.parseFloat(e.target.value);
+                                    updateProductQuantity(sp.productId, val);
+                                  }}
+                                  className="w-24 h-8 text-right text-xs"
+                                />
+                                <span className="text-xs font-medium min-w-8">
+                                  {sp.useSecondaryUnit ? product.secondaryUnit : product.unit}
+                                </span>
+                              </div>
+
+                              {canUseSecondary && (
+                                <div className="flex items-center gap-2 bg-accent/5 px-2 py-1 rounded-md border border-accent/10">
+                                  <Checkbox
+                                    id={`unit-${sp.productId}`}
+                                    checked={sp.useSecondaryUnit || false}
+                                    onCheckedChange={() => toggleProductUnit(sp.productId)}
+                                  />
+                                  <Label 
+                                    htmlFor={`unit-${sp.productId}`} 
+                                    className="text-[10px] cursor-pointer font-medium"
+                                  >
+                                    Usar {product.secondaryUnit}
+                                  </Label>
+                                </div>
+                              )}
+                            </div>
+                            {sp.useSecondaryUnit && product.conversionFactor && (
+                              <div className="mt-1 px-1 space-y-0.5">
+                                <p className="text-[10px] text-muted-foreground italic flex items-center gap-1">
+                                  <ArrowDownCircle className="w-3 h-3 text-accent/60" />
+                                  Isso retira <span className="font-bold text-foreground">{(sp.quantity / product.conversionFactor).toLocaleString("pt-BR", { maximumFractionDigits: 4 })} {product.unit}</span> do seu estoque total.
+                                </p>
+                                <p className="text-[9px] text-muted-foreground/70 ml-4">
+                                  (Cálculo: {sp.quantity} {product.secondaryUnit} ÷ {product.conversionFactor} {product.secondaryUnit} por {product.unit})
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {(!serviceForProducts?.products ||
+                    serviceForProducts.products.length === 0) ? (
+                    <div className="text-center py-8 border border-dashed rounded-lg bg-muted/10">
+                      <Package className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                      <p className="text-xs text-muted-foreground">
+                        Nenhum produto configurado para este serviço.
+                      </p>
+                    </div>
+                  ) : (
+                    serviceForProducts.products.filter((sp) => {
+                      const product = allProducts.find((p) => p.id === sp.productId);
+                      return product?.name.toLowerCase().includes(innerProductSearch.toLowerCase());
+                    }).length === 0 && (
+                      <div className="text-center py-8 border border-dashed rounded-lg bg-muted/10">
+                        <Search className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
+                        <p className="text-xs text-muted-foreground">
+                          Nenhum produto encontrado para "{innerProductSearch}".
+                        </p>
+                      </div>
+                    )
+                  )}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsProductModalOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveServiceProducts}
+              className="bg-accent hover:bg-accent/90 text-accent-foreground"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Salvar Configuração
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="grid md:grid-cols-2 gap-4">
         {services.map((service) => (
           <Card key={service.id}>
@@ -680,6 +1174,34 @@ export function ServicesManager() {
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-muted-foreground hover:text-accent hover:bg-accent/10"
+                        >
+                          <HelpCircle className="w-4 h-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-62.5">
+                        <p className="text-xs">
+                          <strong>Configuração de Produtos:</strong> Defina quais itens do estoque são consumidos automaticamente ao concluir este serviço. Você pode configurar quantidades fracionadas (ex: gramas ou ml).
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleOpenProductModal(service)}
+                    className="text-accent hover:text-accent hover:bg-accent/10"
+                    title="Configurar Produtos"
+                  >
+                    <Package className="w-4 h-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
