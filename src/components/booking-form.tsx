@@ -201,13 +201,14 @@ export function BookingForm({
                 id="price"
                 type="number"
                 step="0.01"
-                value={formData.price}
-                onChange={(e) =>
+                value={Number.isNaN(formData.price) ? "" : formData.price}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? Number.NaN : Number.parseFloat(e.target.value);
                   setFormData({
                     ...formData,
-                    price: parseFloat(e.target.value) || 0,
-                  })
-                }
+                    price: val,
+                  });
+                }}
                 placeholder="0.00"
                 className="focus-visible:ring-accent"
                 style={{ 

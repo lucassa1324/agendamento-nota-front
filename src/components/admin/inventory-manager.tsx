@@ -43,7 +43,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { getInventoryFromStorage, saveInventoryToStorage, type InventoryItem } from "@/lib/booking-data";
+import { getInventoryFromStorage, type InventoryItem, saveInventoryToStorage } from "@/lib/booking-data";
 
 export function InventoryManager() {
   const { toast } = useToast();

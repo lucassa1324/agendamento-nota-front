@@ -143,13 +143,14 @@ export function EditBookingModal({
                 id="servicePrice"
                 type="number"
                 step="0.01"
-                value={formData.servicePrice}
-                onChange={(e) =>
+                value={Number.isNaN(formData.servicePrice) ? "" : formData.servicePrice}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? Number.NaN : Number.parseFloat(e.target.value);
                   setFormData({
                     ...formData,
-                    servicePrice: parseFloat(e.target.value) || 0,
-                  })
-                }
+                    servicePrice: val,
+                  });
+                }}
                 className="h-11 bg-gray-50/50 border-gray-200 focus:bg-white transition-all"
               />
             </div>

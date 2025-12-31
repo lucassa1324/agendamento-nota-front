@@ -8,6 +8,23 @@ export type Service = {
   icon?: string;
   conflictGroupId?: string;
   conflictingServiceIds?: string[];
+  products?: {
+    productId: string;
+    quantity: number;
+    useSecondaryUnit?: boolean;
+  }[];
+};
+
+export type InventoryItem = {
+  id: string;
+  name: string;
+  quantity: number;
+  minQuantity: number;
+  unit: string;
+  price: number;
+  lastUpdate: string;
+  secondaryUnit?: string;
+  conversionFactor?: number;
 };
 
 export type TimeSlot = {
@@ -1168,6 +1185,73 @@ export function markNotificationsSent(
       : b,
   );
   localStorage.setItem("bookings", JSON.stringify(updated));
+}
+
+export function getInventoryFromStorage(): InventoryItem[] {
+  if (typeof window === "undefined") return [];
+  const inventory = localStorage.getItem("inventory");
+  return inventory ? JSON.parse(inventory) : [];
+}
+
+export function saveInventoryToStorage(inventory: InventoryItem[]): void {
+  localStorage.setItem("inventory", JSON.stringify(inventory));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("inventoryUpdated"));
+  }
+}
+
+export function subtractInventoryForService(serviceIds: string | string[]): { success: boolean; message: string } {
+  if (typeof window === "undefined") return { success: false, message: "Ambiente inválido" };
+
+  const ids = Array.isArray(serviceIds) ? serviceIds : [serviceIds];
+  const settings = getSettingsFromStorage();
+  const inventory = getInventoryFromStorage();
+  const updatedInventory = [...inventory];
+  const logs: string[] = [];
+
+  for (const serviceId of ids) {
+    const service = settings.services.find((s: Service) => s.id === serviceId);
+    if (!service || !service.products) continue;
+
+    for (const serviceProduct of service.products) {
+      const inventoryProductIndex = updatedInventory.findIndex(
+        (p) => p.id === serviceProduct.productId
+      );
+
+      if (inventoryProductIndex !== -1) {
+        const product = updatedInventory[inventoryProductIndex];
+        
+        let quantityToSubtract = serviceProduct.quantity;
+        let unitLabel = product.unit;
+
+        if (serviceProduct.useSecondaryUnit && product.conversionFactor && product.conversionFactor > 0) {
+          quantityToSubtract = serviceProduct.quantity / product.conversionFactor;
+          unitLabel = product.secondaryUnit || product.unit;
+        }
+
+        if (product.quantity < quantityToSubtract) {
+          logs.push(`Estoque insuficiente para ${product.name}: necessário ${serviceProduct.quantity}${unitLabel}, disponível ${product.quantity.toLocaleString("pt-BR")}${product.unit}`);
+        }
+        
+        updatedInventory[inventoryProductIndex] = {
+          ...product,
+          quantity: Math.max(0, product.quantity - quantityToSubtract),
+          lastUpdate: new Date().toISOString(),
+        };
+      }
+    }
+  }
+
+  saveInventoryToStorage(updatedInventory);
+  
+  if (logs.length > 0) {
+    return { 
+      success: true, 
+      message: `Estoque atualizado, mas houve alertas:\n${logs.join("\n")}` 
+    };
+  }
+
+  return { success: true, message: "Estoque atualizado com sucesso" };
 }
 
 export function getSettingsFromStorage() {

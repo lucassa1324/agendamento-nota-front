@@ -32,6 +32,7 @@ import {
   type Booking,
   type BookingStatus,
   getBookingsFromStorage,
+  subtractInventoryForService,
   updateBookingStatus,
 } from "@/lib/booking-data";
 import { AdminBookingFlow } from "./admin-booking-flow";
@@ -159,6 +160,21 @@ export function BookingsManager() {
     newStatus: BookingStatus,
   ) => {
     updateBookingStatus(bookingId, newStatus);
+
+    // Se o status for concluído, subtrair produtos do estoque
+    if (newStatus === "concluido") {
+      const booking = bookings.find((b) => b.id === bookingId);
+      if (booking) {
+        const result = subtractInventoryForService(booking.serviceId);
+        if (result.success) {
+          toast({
+            title: "Estoque atualizado",
+            description: result.message,
+          });
+        }
+      }
+    }
+
     loadBookings();
     window.dispatchEvent(new Event("storage"));
 
