@@ -65,7 +65,7 @@ export function AdminBookingForm({
       clientName: formData.name,
       clientEmail: formData.email,
       clientPhone: formData.phone,
-      status: initialBooking?.status || "confirmado",
+      status: initialBooking?.status || "pendente",
       createdAt: initialBooking?.createdAt || new Date().toISOString(),
       notificationsSent: initialBooking?.notificationsSent || {
         email: false,

@@ -3,6 +3,9 @@
 import {
   BarChart3,
   Calendar,
+  CalendarCheck,
+  CheckCircle2,
+  Clock,
   DollarSign,
   Download,
   FileText,
@@ -12,6 +15,7 @@ import {
   PieChart as PieChartIcon,
   TrendingUp,
   Users,
+  XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -49,6 +53,9 @@ export function Reports() {
     monthlyRevenue: [] as { month: string; revenue: number }[],
     serviceDistribution: [] as { name: string; value: number }[],
     totalBookings: 0,
+    pendingCount: 0,
+    confirmedCount: 0,
+    cancelledCount: 0,
     recentMovements: [] as GlobalInventoryLog[],
     totalInventoryValue: 0,
     lowStockCount: 0,
@@ -58,6 +65,12 @@ export function Reports() {
   const generateReports = useCallback(() => {
     const bookings = getBookingsFromStorage();
     const inventory = getInventoryFromStorage();
+
+    // Filtros de agendamentos por status
+    const completedBookings = bookings.filter(b => b.status === "concluido");
+    const pendingBookings = bookings.filter(b => b.status === "pendente");
+    const confirmedBookings = bookings.filter(b => b.status === "confirmado");
+    const cancelledBookings = bookings.filter(b => b.status === "cancelado");
 
     // Valor total do inventário e contagem de estoque baixo
     let lowStockCount = 0;
@@ -84,19 +97,19 @@ export function Reports() {
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       .slice(0, 15); // Aumentado para 15
 
-    // Total de faturamento
-    const totalRevenue = bookings.reduce((sum, booking) => {
+    // Total de faturamento (apenas concluídos)
+    const totalRevenue = completedBookings.reduce((sum, booking) => {
       return sum + (booking.servicePrice || 0);
     }, 0);
 
-    // Faturamento mensal (últimos 6 meses)
+    // Faturamento mensal (últimos 6 meses) - apenas concluídos
     const monthlyData: { [key: string]: number } = {};
     const monthNames = [
       "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", 
       "Jul", "Ago", "Set", "Out", "Nov", "Dez"
     ];
 
-    bookings.forEach((booking) => {
+    completedBookings.forEach((booking) => {
       const date = new Date(booking.date);
       const monthKey = `${monthNames[date.getMonth()]}/${date.getFullYear().toString().slice(-2)}`;
       monthlyData[monthKey] =
@@ -107,9 +120,9 @@ export function Reports() {
       .map(([month, revenue]) => ({ month, revenue }))
       .slice(-6);
 
-    // Distribuição por serviço
+    // Distribuição por serviço (apenas concluídos para métricas de faturamento)
     const serviceCount: { [key: string]: number } = {};
-    bookings.forEach((booking) => {
+    completedBookings.forEach((booking) => {
       const serviceNames = booking.serviceName.split(" + ");
       serviceNames.forEach((name) => {
         serviceCount[name] = (serviceCount[name] || 0) + 1;
@@ -129,7 +142,10 @@ export function Reports() {
       totalRevenue,
       monthlyRevenue,
       serviceDistribution,
-      totalBookings: bookings.length,
+      totalBookings: completedBookings.length, // Agora reflete atendimentos REAIS
+      pendingCount: pendingBookings.length,
+      confirmedCount: confirmedBookings.length,
+      cancelledCount: cancelledBookings.length,
       recentMovements,
       totalInventoryValue,
       lowStockCount,
@@ -248,8 +264,44 @@ export function Reports() {
               <CardContent>
                 <div className="text-2xl font-bold">{reportData.totalBookings}</div>
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
-                  <Users className="w-3 h-3" />
-                  Total realizados
+                  <CheckCircle2 className="w-3 h-3 text-green-500" />
+                  Concluídos com sucesso
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Em Aberto
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {reportData.pendingCount + reportData.confirmedCount}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                    <Clock className="w-2.5 h-2.5" /> {reportData.pendingCount} pend.
+                  </span>
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                    <CalendarCheck className="w-2.5 h-2.5" /> {reportData.confirmedCount} conf.
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Cancelados
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-500">{reportData.cancelledCount}</div>
+                <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
+                  <XCircle className="w-3 h-3 text-red-400" />
+                  Total não realizados
                 </div>
               </CardContent>
             </Card>
@@ -267,23 +319,6 @@ export function Reports() {
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
                   <Package className="w-3 h-3" />
                   Valor em produtos
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className={cn(reportData.lowStockCount > 0 ? "border-red-200 bg-red-50/50" : "")}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Alertas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={cn("text-2xl font-bold", reportData.lowStockCount > 0 ? "text-red-600" : "")}>
-                  {reportData.lowStockCount}
-                </div>
-                <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
-                  <History className="w-3 h-3" />
-                  Reposição necessária
                 </div>
               </CardContent>
             </Card>

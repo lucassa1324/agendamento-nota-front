@@ -29,6 +29,7 @@ export function DashboardStats() {
       .filter((b) => {
         const bookingDate = new Date(b.date);
         return (
+          b.status === "concluido" &&
           bookingDate.getMonth() === currentMonth &&
           bookingDate.getFullYear() === currentYear
         );
