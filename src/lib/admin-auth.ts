@@ -4,15 +4,40 @@ export interface AdminUser {
   username: string;
   password: string;
   name: string;
+  email?: string;
+  phone?: string;
 }
 
-const ADMIN_USERS: AdminUser[] = [
-  {
-    username: "admin",
-    password: "admin123",
-    name: "Administrador",
-  },
-];
+const DEFAULT_ADMIN: AdminUser = {
+  username: "admin",
+  password: "admin123",
+  name: "Administrador",
+};
+
+export function getStoredAdminUser(): AdminUser {
+  if (typeof window === "undefined") return DEFAULT_ADMIN;
+  const stored = localStorage.getItem("adminProfile");
+  if (!stored) return DEFAULT_ADMIN;
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return DEFAULT_ADMIN;
+  }
+}
+
+export function saveAdminProfile(profile: AdminUser): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("adminProfile", JSON.stringify(profile));
+  
+  // Atualizar também o usuário logado no sessionStorage se for o mesmo
+  const currentUser = getAdminUser();
+  if (currentUser && currentUser.username === profile.username) {
+    sessionStorage.setItem(
+      "adminUser",
+      JSON.stringify({ username: profile.username, name: profile.name })
+    );
+  }
+}
 
 export function checkAdminAuth(): boolean {
   if (typeof window === "undefined") return false;
@@ -21,22 +46,20 @@ export function checkAdminAuth(): boolean {
 }
 
 export function loginAdmin(username: string, password: string): boolean {
-  const user = ADMIN_USERS.find(
-    (u) => u.username === username && u.password === password,
-  );
-
-  if (user) {
+  const adminProfile = getStoredAdminUser();
+  
+  if (adminProfile.username === username && adminProfile.password === password) {
     const token = btoa(
       JSON.stringify({
-        username: user.username,
-        name: user.name,
+        username: adminProfile.username,
+        name: adminProfile.name,
         timestamp: Date.now(),
       }),
     );
     sessionStorage.setItem("adminToken", token);
     sessionStorage.setItem(
       "adminUser",
-      JSON.stringify({ username: user.username, name: user.name }),
+      JSON.stringify({ username: adminProfile.username, name: adminProfile.name }),
     );
     return true;
   }

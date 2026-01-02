@@ -116,11 +116,11 @@ export function BookingsManager() {
       filtered = filtered.filter((b) => b.status === statusFilter);
     }
 
-    // Ordenação
+    // Ordenação (Crescente: do mais próximo ao mais distante)
     filtered.sort((a, b) => {
-      const dateCompare = b.date.localeCompare(a.date);
+      const dateCompare = a.date.localeCompare(b.date);
       if (dateCompare !== 0) return dateCompare;
-      return b.time.localeCompare(a.time);
+      return a.time.localeCompare(b.time);
     });
 
     return filtered;

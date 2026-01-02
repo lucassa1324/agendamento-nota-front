@@ -268,7 +268,6 @@ export function ServicesManager() {
       price: 0,
       showOnHome: false,
       icon: "Sparkles",
-      conflictGroupId: "",
       conflictingServiceIds: [],
       products: [],
     });
@@ -280,7 +279,6 @@ export function ServicesManager() {
     setEditingId(service.id);
     setFormData({
       ...service,
-      conflictGroupId: service.conflictGroupId || "",
       conflictingServiceIds: service.conflictingServiceIds || [],
       products: service.products || [],
     });
@@ -316,7 +314,6 @@ export function ServicesManager() {
 
     const serviceToSave = {
       ...formData,
-      conflictGroupId: formData.conflictGroupId?.trim() || undefined,
       conflictingServiceIds: formData.conflictingServiceIds || [],
       products: formData.products || [],
     } as Service;
@@ -713,23 +710,6 @@ export function ServicesManager() {
                 Selecione os serviços que NÃO podem ser realizados junto com
                 este.
               </p>
-
-              <div className="space-y-2">
-                <Label htmlFor="conflictGroup">
-                  Grupo de Conflito (Opcional)
-                </Label>
-                <Input
-                  id="conflictGroup"
-                  value={formData.conflictGroupId || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      conflictGroupId: e.target.value,
-                    })
-                  }
-                  placeholder="Ex: sobrancelhas"
-                />
-              </div>
 
               <div className="space-y-3">
                 <Label>Bloqueio Individual de Serviços</Label>

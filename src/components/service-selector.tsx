@@ -32,15 +32,6 @@ export function ServiceSelector({
 
   const checkConflict = (service: Service, currentSelected: Service[]) => {
     for (const s of currentSelected) {
-      // Mesma categoria/grupo de conflito
-      if (
-        service.conflictGroupId &&
-        s.conflictGroupId &&
-        service.conflictGroupId === s.conflictGroupId
-      ) {
-        return `O serviço "${service.name}" não pode ser realizado junto com "${s.name}" (mesmo grupo: ${service.conflictGroupId})`;
-      }
-
       // Conflito individual (A bloqueia B)
       if (service.conflictingServiceIds?.includes(s.id)) {
         return `O serviço "${service.name}" bloqueia o serviço "${s.name}"`;

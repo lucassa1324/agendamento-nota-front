@@ -167,11 +167,13 @@ export function InventoryManager() {
     type: "entrada" | "saida";
   } | null>(null);
   const [transactionQuantity, setTransactionQuantity] = useState<string>("1");
+  const [transactionPrice, setTransactionPrice] = useState<string>("");
   const [transactionUnit, setTransactionUnit] = useState<"primary" | "secondary">("primary");
 
   useEffect(() => {
     if (transactionItem) {
       setTransactionUnit("primary");
+      setTransactionPrice(transactionItem.item.price.toString());
     }
   }, [transactionItem]);
 
@@ -305,27 +307,36 @@ export function InventoryManager() {
     updateInventory(
       inventory.map((item) => {
         if (item.id === itemToUpdate.id) {
-          const newQty =
-            transactionItem.type === "entrada"
+          const isEntrada = transactionItem.type === "entrada";
+          const newQty = isEntrada
               ? item.quantity + qty
               : Math.max(0, item.quantity - qty);
+          
+          // Se for entrada e o preço mudou, atualizamos o preço do item
+          // Estamos usando a lógica de REAJUSTE (novo preço substitui o antigo)
+          // mas você poderia implementar Preço Médio aqui se preferir.
+          const newPrice = isEntrada && transactionPrice 
+            ? Number(transactionPrice) 
+            : item.price;
+
           const logEntry: InventoryLog = {
             id: Math.random().toString(36).substring(2, 11),
             timestamp: new Date().toISOString(),
             type: transactionItem.type,
-            quantityChange: transactionItem.type === "entrada" ? qty : -qty,
+            quantityChange: isEntrada ? qty : -qty,
             previousQuantity: item.quantity,
             newQuantity: newQty,
             notes: `Movimentação manual (${
               transactionUnit === "primary"
                 ? item.unit
                 : item.secondaryUnit || item.unit
-            })`,
+            })${isEntrada && newPrice !== item.price ? ` - Preço atualizado de R$ ${item.price.toFixed(2)} para R$ ${newPrice.toFixed(2)}` : ""}`,
           };
 
           return {
             ...item,
             quantity: newQty,
+            price: newPrice,
             lastUpdate: new Date().toISOString(),
             logs: [logEntry, ...(item.logs || [])].slice(0, 50),
           };
@@ -345,6 +356,7 @@ export function InventoryManager() {
 
     setTransactionItem(null);
     setTransactionQuantity("1");
+    setTransactionPrice("");
   };
 
   const handleDeleteItem = (id: string) => {
@@ -381,48 +393,49 @@ export function InventoryManager() {
   }, [inventory]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-semibold">Produtos em Estoque</h3>
-          <p className="text-sm text-muted-foreground">
-            Controle de entrada e saída de produtos (suporta gramas/ml com decimais)
+    <div className="space-y-3 sm:space-y-6 w-full max-w-full px-0">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3 w-full px-2 sm:px-0">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-xs sm:text-lg font-semibold truncate">Produtos em Estoque</h3>
+          <p className="text-[9px] sm:text-sm text-muted-foreground wrap-break-word line-clamp-1 sm:line-clamp-none">
+            Controle de entrada e saída de produtos
           </p>
         </div>
-        <Button onClick={() => setShowAddForm(!showAddForm)}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Button 
+          onClick={() => setShowAddForm(!showAddForm)} 
+          className="w-full sm:w-auto shrink-0 h-7 sm:h-9 text-[10px] sm:text-sm px-2 sm:px-3 mt-0.5 sm:mt-0"
+        >
+          <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
           Adicionar Produto
         </Button>
       </div>
 
       {lowStockItems.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="md:col-span-3 border-red-200 bg-red-50/50">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-4">
-                <div className="p-2 bg-red-100 rounded-full text-red-600">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-sm font-bold text-red-800 mb-1">
-                    Atenção: {lowStockItems.length} {lowStockItems.length === 1 ? 'item precisa' : 'itens precisam'} de reposição
-                  </h4>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {lowStockItems.map((item) => (
-                      <Badge 
-                        key={item.id} 
-                        variant="outline" 
-                        className="bg-white text-red-700 border-red-200 text-[10px]"
-                      >
-                        {item.name}: {item.quantity.toLocaleString("pt-BR")} {item.unit}
-                      </Badge>
-                    ))}
-                  </div>
+        <Card className="border-red-200 bg-red-50/50 w-full border-x-0 sm:border-x">
+          <CardContent className="pt-4 pb-4 px-3 sm:px-6">
+            <div className="flex flex-col sm:flex-row items-start gap-2 sm:gap-4">
+              <div className="p-1.5 bg-red-100 rounded-full text-red-600 shrink-0">
+                <AlertCircle className="w-4 h-4" />
+              </div>
+              <div className="flex-1 w-full">
+                <h4 className="text-[11px] sm:text-sm font-bold text-red-800 mb-1">
+                  Atenção: {lowStockItems.length} {lowStockItems.length === 1 ? 'item precisa' : 'itens precisam'} de reposição
+                </h4>
+                <div className="flex flex-wrap gap-1 sm:gap-2 mt-1.5">
+                  {lowStockItems.map((item) => (
+                    <Badge 
+                      key={item.id} 
+                      variant="outline" 
+                      className="bg-white text-red-700 border-red-200 text-[9px] py-0 px-1.5"
+                    >
+                      {item.name}: {item.quantity.toLocaleString("pt-BR")} {item.unit}
+                    </Badge>
+                  ))}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {showAddForm && (
@@ -597,9 +610,9 @@ export function InventoryManager() {
                 </div>
               </div>
             </TooltipProvider>
-            <div className="flex gap-2 mt-4">
-              <Button onClick={handleAddItem}>Adicionar</Button>
-              <Button variant="outline" onClick={() => setShowAddForm(false)}>
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              <Button onClick={handleAddItem} className="w-full sm:w-auto">Adicionar</Button>
+              <Button variant="outline" onClick={() => setShowAddForm(false)} className="w-full sm:w-auto">
                 Cancelar
               </Button>
             </div>
@@ -607,147 +620,196 @@ export function InventoryManager() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <CardTitle className="flex items-center gap-2">
-              <Package className="w-5 h-5" />
+      <Card className="w-full border-x-0 sm:border-x">
+        <CardHeader className="pb-3 px-2 sm:px-6">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-2 sm:gap-4">
+            <CardTitle className="flex items-center gap-2 text-[10px] sm:text-base md:text-lg">
+              <Package className="w-3 h-3 sm:w-5 sm:h-5" />
               Inventário
             </CardTitle>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
                 <Input
-                  placeholder="Pesquisar produto..."
-                  className="pl-9 w-full sm:w-62.5"
+                  placeholder="Buscar..."
+                  className="pl-7 w-full h-7 text-[10px] sm:text-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
               <Select value={sortBy} onValueChange={(value: "name" | "price" | "status") => setSortBy(value)}>
-                <SelectTrigger className="w-full sm:w-45">
-                  <SelectValue placeholder="Ordenar por" />
+                <SelectTrigger className="w-full sm:w-48 h-7 text-[10px] sm:text-sm">
+                  <SelectValue placeholder="Ordenar" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="name">Ordem Alfabética</SelectItem>
-                  <SelectItem value="price">Menor Valor</SelectItem>
-                  <SelectItem value="status">Status (Crítico primeiro)</SelectItem>
+                  <SelectItem value="name" className="text-[10px] sm:text-sm">Nome</SelectItem>
+                  <SelectItem value="price" className="text-[10px] sm:text-sm">Preço</SelectItem>
+                  <SelectItem value="status" className="text-[10px] sm:text-sm">Status</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Produto</TableHead>
-                <TableHead>Quantidade</TableHead>
-                <TableHead>Unidade</TableHead>
-                <TableHead>Valor Unitário</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Última Atualização</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAndSortedInventory.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>
-                    <span
-                      className={
-                        item.quantity <= item.minQuantity
-                          ? "text-red-600 font-semibold"
-                          : ""
-                      }
-                    >
-                      {item.quantity.toLocaleString("pt-BR", {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 3,
-                      })}
-                    </span>
-                  </TableCell>
-                  <TableCell>{item.unit}</TableCell>
-                  <TableCell>
-                    {new Intl.NumberFormat("pt-BR", {
-                      style: "currency",
-                      currency: "BRL",
-                    }).format(item.price)}
-                  </TableCell>
-                  <TableCell>
-                    {item.quantity > item.minQuantity ? (
-                      <Badge
-                        variant="outline"
-                        className="bg-green-50 text-green-700 border-green-200"
-                      >
-                        Em estoque
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="bg-red-50 text-red-700 border-red-200"
-                      >
-                        <AlertCircle className="w-3 h-3 mr-1" />
-                        Baixo
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {new Date(item.lastUpdate).toLocaleDateString("pt-BR")}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                        onClick={() => setEditingItem(item)}
-                      >
-                        <Pencil className="w-4 h-4 mr-1" />
-                        Editar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
-                        onClick={() => setTransactionItem({ item, type: "entrada" })}
-                      >
-                        <ArrowUpCircle className="w-4 h-4 mr-1" />
-                        Entrada
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => setTransactionItem({ item, type: "saida" })}
-                      >
-                        <ArrowDownCircle className="w-4 h-4 mr-1" />
-                        Saída
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                        onClick={() => setShowHistory(item)}
-                      >
-                        <History className="w-4 h-4 mr-1" />
-                        Histórico
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                        onClick={() => handleDeleteItem(item.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        <CardContent className="px-0 sm:px-6">
+          <div className="overflow-x-auto w-full max-w-full">
+            <Table className="w-full min-w-full">
+              <TableHeader>
+                <TableRow className="text-[10px] sm:text-xs">
+                  <TableHead className="px-2 sm:px-4">Produto</TableHead>
+                  <TableHead className="hidden xl:table-cell">Quantidade</TableHead>
+                  <TableHead className="hidden 2xl:table-cell">Unidade</TableHead>
+                  <TableHead className="px-2 sm:px-4">Valor Unit.</TableHead>
+                  <TableHead className="hidden 2xl:table-cell">Status</TableHead>
+                  <TableHead className="hidden 2xl:table-cell">Última Atualização</TableHead>
+                  <TableHead className="text-right px-2 sm:px-4">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredAndSortedInventory.map((item) => (
+                  <TableRow key={item.id} className="text-[10px] sm:text-sm">
+                    <TableCell className="font-medium py-2 sm:py-4 px-2 sm:px-4">
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate max-w-20 xs:max-w-[120px] sm:max-w-37.5 md:max-w-45 lg:max-w-55 xl:max-w-75 2xl:max-w-none">{item.name}</span>
+                        <div className="flex items-center gap-1 mt-0.5 xl:hidden">
+                          <span className={cn(
+                            "text-[9px] sm:text-xs",
+                            item.quantity <= item.minQuantity ? "text-red-600 font-bold" : "text-muted-foreground"
+                          )}>
+                            {item.quantity.toLocaleString("pt-BR")} {item.unit}
+                          </span>
+                          {item.quantity <= item.minQuantity && (
+                            <Badge variant="outline" className="h-3 px-1 text-[6px] sm:text-[8px] bg-red-50 text-red-700 border-red-200">
+                              Baixo
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden xl:table-cell">
+                      <span
+                        className={
+                          item.quantity <= item.minQuantity
+                            ? "text-red-600 font-semibold"
+                            : ""
+                        }
+                      >
+                        {item.quantity.toLocaleString("pt-BR", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 3,
+                        })}
+                      </span>
+                    </TableCell>
+                    <TableCell className="hidden 2xl:table-cell">{item.unit}</TableCell>
+                    <TableCell className="px-2 sm:px-4 whitespace-nowrap">
+                      {new Intl.NumberFormat("pt-BR", {
+                        style: "currency",
+                        currency: "BRL",
+                      }).format(item.price)}
+                    </TableCell>
+                    <TableCell className="hidden 2xl:table-cell">
+                      {item.quantity > item.minQuantity ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-green-50 text-green-700 border-green-200"
+                        >
+                          Em estoque
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="bg-red-50 text-red-700 border-red-200"
+                        >
+                          <AlertCircle className="w-3 h-3 mr-1" />
+                          Baixo
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden 2xl:table-cell text-muted-foreground whitespace-nowrap">
+                      {new Date(item.lastUpdate).toLocaleDateString("pt-BR")}
+                    </TableCell>
+                    <TableCell className="text-right px-2 sm:px-4">
+                      <div className="flex justify-end gap-1 sm:gap-1.5">
+                        {/* Botões simplificados para mobile/telas pequenas */}
+                        <div className="flex xl:hidden">
+                          <Select onValueChange={(val) => {
+                            if (val === 'edit') setEditingItem(item);
+                            if (val === 'entrada') setTransactionItem({ item, type: "entrada" });
+                            if (val === 'saida') setTransactionItem({ item, type: "saida" });
+                            if (val === 'history') setShowHistory(item);
+                            if (val === 'delete') handleDeleteItem(item.id);
+                          }}>
+                            <SelectTrigger className="h-7 w-7 p-0 border-none bg-transparent focus:ring-0">
+                              <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                            </SelectTrigger>
+                            <SelectContent align="end">
+                              <SelectItem value="edit" className="text-[10px]">Editar</SelectItem>
+                              <SelectItem value="entrada" className="text-[10px]">Entrada</SelectItem>
+                              <SelectItem value="saida" className="text-[10px]">Saída</SelectItem>
+                              <SelectItem value="history" className="text-[10px]">Histórico</SelectItem>
+                              <SelectItem value="delete" className="text-[10px] text-red-600">Excluir</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Botões completos para desktop (ícones apenas na maioria das telas) */}
+                        <div className="hidden xl:flex gap-1 sm:gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={() => setEditingItem(item)}
+                            title="Editar"
+                          >
+                            <Pencil className="w-4 h-4" />
+                            <span className="hidden 2xl:inline ml-1">Editar</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
+                            onClick={() => setTransactionItem({ item, type: "entrada" })}
+                            title="Entrada"
+                          >
+                            <ArrowUpCircle className="w-4 h-4" />
+                            <span className="hidden 2xl:inline ml-1">Entrada</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => setTransactionItem({ item, type: "saida" })}
+                            title="Saída"
+                          >
+                            <ArrowDownCircle className="w-4 h-4" />
+                            <span className="hidden 2xl:inline ml-1">Saída</span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 px-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                            onClick={() => setShowHistory(item)}
+                            title="Histórico"
+                          >
+                            <History className="w-4 h-4" />
+                            <span className="hidden 2xl:inline ml-1">Histórico</span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleDeleteItem(item.id)}
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -778,8 +840,25 @@ export function InventoryManager() {
                 value={transactionQuantity}
                 onChange={(e) => setTransactionQuantity(e.target.value)}
                 autoFocus
+                onFocus={(e) => e.target.select()}
               />
             </div>
+            {transactionItem?.type === "entrada" && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="transaction-price" className="text-right">
+                  Novo Preço (R$)
+                </Label>
+                <Input
+                  id="transaction-price"
+                  type="number"
+                  step="0.01"
+                  className="col-span-3"
+                  value={transactionPrice}
+                  onChange={(e) => setTransactionPrice(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                />
+              </div>
+            )}
             {transactionItem?.item.secondaryUnit && transactionItem?.item.conversionFactor && (
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="transaction-unit" className="text-right">
@@ -1104,3 +1183,4 @@ export function InventoryManager() {
     </div>
   );
 }
+

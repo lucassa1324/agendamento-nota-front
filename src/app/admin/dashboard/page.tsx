@@ -3,6 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { AdminBookingFlow } from "@/components/admin/admin-booking-flow";
+import { AdminProfileManager } from "@/components/admin/admin-profile-manager";
 import { BookingsManager } from "@/components/admin/bookings-manager";
 import { DashboardStats } from "@/components/admin/dashboard-stats";
 import { GalleryManager } from "@/components/admin/gallery-manager";
@@ -117,13 +118,27 @@ function DashboardContent() {
         <div className="space-y-6">
           <div>
             <h2 className="font-sans text-3xl font-bold mb-2 text-primary">
-              Perfil
+              Dados da Empresa
             </h2>
             <p className="text-muted-foreground">
-              Informações do studio e redes sociais
+              Informações comerciais, contatos e redes sociais
             </p>
           </div>
           <ProfileManager />
+        </div>
+      )}
+
+      {activeTab === "minha-conta" && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="font-sans text-3xl font-bold mb-2 text-primary">
+              Minha Conta
+            </h2>
+            <p className="text-muted-foreground">
+              Gerencie seus dados de acesso e informações pessoais
+            </p>
+          </div>
+          <AdminProfileManager />
         </div>
       )}
 

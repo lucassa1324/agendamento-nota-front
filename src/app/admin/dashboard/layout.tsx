@@ -15,7 +15,7 @@ import {
   Palette,
   PieChart,
   Plug,
-  Settings,
+  
   User,
 } from "lucide-react";
 import Link from "next/link";
@@ -220,8 +220,20 @@ const Sidebar = ({
               : "text-foreground hover:bg-accent hover:text-accent-foreground",
           )}
         >
-          <Settings className="w-4 h-4" />
-          Perfil
+          <Briefcase className="w-4 h-4" />
+          Dados da Empresa
+        </Link>
+        <Link
+          href="/admin/dashboard?tab=minha-conta"
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+            activeTab === "minha-conta"
+              ? "bg-primary text-primary-foreground"
+              : "text-foreground hover:bg-accent hover:text-accent-foreground",
+          )}
+        >
+          <User className="w-4 h-4" />
+          Minha Conta
         </Link>
         <Link
           href="/admin/dashboard?tab=personalizacao"
@@ -285,6 +297,22 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       setAdminUser(getAdminUser());
     }
     setIsLoading(false);
+
+    // Listener para atualizar o nome do admin se ele mudar o perfil
+    const handleStorageChange = (e?: Event) => {
+      // Se for um evento de storage real (outras abas) ou nosso evento customizado
+      if (!e || e.type === 'storage' || e.type === 'adminProfileUpdated') {
+        setAdminUser(getAdminUser());
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('adminProfileUpdated', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('adminProfileUpdated', handleStorageChange);
+    };
   }, [router]);
 
   const handleLogout = () => {
