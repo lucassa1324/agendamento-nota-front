@@ -14,10 +14,9 @@ import {
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-
+import { AdminBookingForm } from "@/components/admin/admin-booking-form";
 import { AdminCalendar } from "@/components/admin/admin-calendar";
 import { BookingConfirmation } from "@/components/booking-confirmation";
-import { BookingForm } from "@/components/booking-form";
 import { ServiceSelector } from "@/components/service-selector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -401,7 +400,7 @@ export function AdminBookingFlow({
         selectedDate &&
         selectedTime && (
           <div className="max-w-2xl mx-auto">
-            <BookingForm
+            <AdminBookingForm
               service={totalService}
               date={selectedDate}
               time={selectedTime}

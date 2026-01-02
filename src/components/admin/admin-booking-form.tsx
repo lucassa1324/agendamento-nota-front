@@ -15,7 +15,7 @@ import {
   updateBooking,
 } from "@/lib/booking-data";
 
-type BookingFormProps = {
+type AdminBookingFormProps = {
   service: Service;
   date: string;
   time: string;
@@ -25,7 +25,7 @@ type BookingFormProps = {
   settings?: BookingStepSettings;
 };
 
-export function BookingForm({
+export function AdminBookingForm({
   service,
   date,
   time,
@@ -33,11 +33,12 @@ export function BookingForm({
   onBack,
   initialBooking,
   settings,
-}: BookingFormProps) {
+}: AdminBookingFormProps) {
   const [formData, setFormData] = useState({
     name: initialBooking?.clientName || "",
     email: initialBooking?.clientEmail || "",
     phone: initialBooking?.clientPhone || "",
+    price: initialBooking?.servicePrice ?? service.price,
   });
 
   const formattedDate = new Date(`${date}T00:00:00`).toLocaleDateString(
@@ -58,13 +59,13 @@ export function BookingForm({
       serviceId: service.id.includes(",") ? service.id.split(",") : service.id,
       serviceName: service.name,
       serviceDuration: service.duration,
-      servicePrice: service.price,
+      servicePrice: formData.price,
       date,
       time,
       clientName: formData.name,
       clientEmail: formData.email,
       clientPhone: formData.phone,
-      status: initialBooking?.status || "pendente",
+      status: initialBooking?.status || "confirmado",
       createdAt: initialBooking?.createdAt || new Date().toISOString(),
       notificationsSent: initialBooking?.notificationsSent || {
         email: false,
@@ -125,7 +126,7 @@ export function BookingForm({
               className="font-semibold"
               style={{ color: settings?.accentColor || 'var(--primary)' }}
             >
-              R$ {service.price.toFixed(2)}
+              R$ {formData.price.toFixed(2)}
             </div>
           </div>
         </Card>
@@ -135,14 +136,14 @@ export function BookingForm({
         className="text-2xl font-bold mb-6 text-center"
         style={{ fontFamily: 'var(--font-title)', color: 'var(--foreground)' }}
       >
-        Seus Dados
+        Dados do Agendamento (Admin)
       </h2>
 
       <Card>
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Completo *</Label>
+              <Label htmlFor="name">Nome do Cliente *</Label>
               <Input
                 id="name"
                 type="text"
@@ -151,7 +152,7 @@ export function BookingForm({
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                placeholder="Seu nome completo"
+                placeholder="Nome do cliente"
                 className="focus-visible:ring-accent"
                 style={{ 
                   '--tw-ring-color': settings?.accentColor || 'var(--primary)'
@@ -168,7 +169,7 @@ export function BookingForm({
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
-                placeholder="seu@email.com"
+                placeholder="email@exemplo.com"
                 className="focus-visible:ring-accent"
                 style={{ 
                   '--tw-ring-color': settings?.accentColor || 'var(--primary)'
@@ -177,16 +178,37 @@ export function BookingForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefone / WhatsApp *</Label>
+              <Label htmlFor="phone">Telefone / WhatsApp</Label>
               <Input
                 id="phone"
                 type="tel"
-                required
                 value={formData.phone}
                 onChange={(e) =>
                   setFormData({ ...formData, phone: e.target.value })
                 }
-                placeholder="(11) 99999-9999"
+                placeholder="(00) 00000-0000"
+                className="focus-visible:ring-accent"
+                style={{ 
+                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
+                } as React.CSSProperties}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="price">Valor do Procedimento (R$)</Label>
+              <Input
+                id="price"
+                type="number"
+                step="0.01"
+                value={Number.isNaN(formData.price) ? "" : formData.price}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? Number.NaN : Number.parseFloat(e.target.value);
+                  setFormData({
+                    ...formData,
+                    price: val,
+                  });
+                }}
+                placeholder="0.00"
                 className="focus-visible:ring-accent"
                 style={{ 
                   '--tw-ring-color': settings?.accentColor || 'var(--primary)'

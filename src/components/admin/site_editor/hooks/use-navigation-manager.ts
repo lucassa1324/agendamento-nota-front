@@ -47,8 +47,8 @@ export function useNavigationManager(iframeRef: RefObject<HTMLIFrameElement | nu
     
     // Adicionamos o parâmetro 'only' na URL inicial para garantir que o 
     // primeiro render já venha isolado, evitando o flash da home inteira.
-    // Exceção: 'typography' deve mostrar a página inteira para visualização global.
-    const shouldIsolate = activeSection && activeSection !== "typography";
+    // Exceção: 'typography' e 'colors' devem mostrar a página inteira para visualização global.
+    const shouldIsolate = activeSection && activeSection !== "typography" && activeSection !== "colors";
     return shouldIsolate ? `${baseUrl}&only=${activeSection}` : baseUrl;
   }, [activePage, activePageData, activeSection]);
 

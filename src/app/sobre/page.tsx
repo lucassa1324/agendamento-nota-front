@@ -65,7 +65,10 @@ export default function SobrePage({
   }, [router]);
 
   const isSectionVisible = (sectionId: string) => {
-    if (isolatedSection) return isolatedSection === sectionId;
+    // Exceção: 'typography' e 'colors' mostram a página inteira
+    if (isolatedSection && isolatedSection !== "typography" && isolatedSection !== "colors") {
+      return isolatedSection === sectionId;
+    }
     return visibleSections[sectionId] !== false;
   };
 

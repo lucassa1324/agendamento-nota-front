@@ -121,10 +121,10 @@ export function PreviewStyleManager() {
         }));
       } else if (event.data.type === "UPDATE_COLORS") {
         setColors({
-          primary: event.data.settings.primary,
-          secondary: event.data.settings.secondary,
-          background: event.data.settings.background,
-          text: event.data.settings.text,
+          primary: event.data.settings.primary || "",
+          secondary: event.data.settings.secondary || "",
+          background: event.data.settings.background || "",
+          text: event.data.settings.text || "",
         });
       } else if (event.data.type === "UPDATE_HERO_SETTINGS") {
         setFonts((prev) => {

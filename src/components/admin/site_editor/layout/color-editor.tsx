@@ -115,27 +115,27 @@ export function ColorEditor({
           >
             Este texto demonstra como as cores do site interagem entre si.
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button 
               size="sm" 
-              className="transition-all duration-300"
+              className="transition-all duration-300 flex-1 min-w-25"
               style={{ 
                 backgroundColor: settings.primary,
                 color: "#ffffff" // Geralmente branco para melhor contraste em primário
               }}
             >
-              Botão Primário
+              Primário
             </Button>
             <Button 
               variant="outline"
               size="sm" 
-              className="transition-all duration-300"
+              className="transition-all duration-300 bg-transparent flex-1 min-w-25"
               style={{ 
                 borderColor: settings.secondary,
                 color: settings.secondary
               }}
             >
-              Botão Secundário
+              Secundário
             </Button>
           </div>
         </div>

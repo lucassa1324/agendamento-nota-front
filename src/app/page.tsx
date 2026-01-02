@@ -57,7 +57,10 @@ export default function Home({
 
   const isVisible = (id: string) => {
     // Se houver uma seção isolada, apenas ela deve aparecer
-    if (isolatedSection) return isolatedSection === id;
+    // Exceção: 'typography' e 'colors' mostram a página inteira
+    if (isolatedSection && isolatedSection !== "typography" && isolatedSection !== "colors") {
+      return isolatedSection === id;
+    }
     // Caso contrário, verificamos se a seção está marcada como visível (default é true)
     return visibleSections[id] !== false;
   };

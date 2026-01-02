@@ -57,8 +57,9 @@ export function LayoutClientWrapper({
   }, []);
 
   const isAdminRoute = pathname?.startsWith("/admin");
-  const showHeader = (!isolatedSection || isolatedSection === "header") && !isAdminRoute;
-  const showFooter = (!isolatedSection || isolatedSection === "footer") && !isAdminRoute;
+  const isGlobalEdit = isolatedSection === "typography" || isolatedSection === "colors";
+  const showHeader = (!isolatedSection || isolatedSection === "header" || isGlobalEdit) && !isAdminRoute;
+  const showFooter = (!isolatedSection || isolatedSection === "footer" || isGlobalEdit) && !isAdminRoute;
 
   return (
     <>
