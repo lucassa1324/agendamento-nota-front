@@ -15,6 +15,17 @@ export type Service = {
   }[];
 };
 
+export type InventoryLog = {
+  id: string;
+  timestamp: string;
+  type: "entrada" | "saida" | "ajuste" | "venda" | "servico";
+  quantityChange: number;
+  previousQuantity: number;
+  newQuantity: number;
+  notes?: string;
+  userName?: string;
+};
+
 export type InventoryItem = {
   id: string;
   name: string;
@@ -25,6 +36,7 @@ export type InventoryItem = {
   lastUpdate: string;
   secondaryUnit?: string;
   conversionFactor?: number;
+  logs?: InventoryLog[];
 };
 
 export type TimeSlot = {
@@ -782,6 +794,15 @@ export type FontSettings = {
   bodyFont: string;
 };
 
+export type Expense = {
+  id: string;
+  description: string;
+  value: number;
+  category: string;
+  date: string; // YYYY-MM-DD
+  isFixed: boolean;
+};
+
 export type ColorSettings = {
   primary: string;
   secondary: string;
@@ -1233,10 +1254,23 @@ export function subtractInventoryForService(serviceIds: string | string[]): { su
           logs.push(`Estoque insuficiente para ${product.name}: necessário ${serviceProduct.quantity}${unitLabel}, disponível ${product.quantity.toLocaleString("pt-BR")}${product.unit}`);
         }
         
+        const newQuantity = Math.max(0, product.quantity - quantityToSubtract);
+        
+        const logEntry: InventoryLog = {
+          id: Math.random().toString(36).substring(2, 11),
+          timestamp: new Date().toISOString(),
+          type: "servico",
+          quantityChange: -quantityToSubtract,
+          previousQuantity: product.quantity,
+          newQuantity: newQuantity,
+          notes: `Baixa automática via serviço: ${service.name}`,
+        };
+
         updatedInventory[inventoryProductIndex] = {
           ...product,
-          quantity: Math.max(0, product.quantity - quantityToSubtract),
+          quantity: newQuantity,
           lastUpdate: new Date().toISOString(),
+          logs: [logEntry, ...(product.logs || [])].slice(0, 50),
         };
       }
     }

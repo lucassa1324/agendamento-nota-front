@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, ArrowDownCircle, ArrowUpCircle, HelpCircle, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { AlertCircle, ArrowDownCircle, ArrowUpCircle, HelpCircle, History, Package, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,11 +43,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { getInventoryFromStorage, type InventoryItem, saveInventoryToStorage } from "@/lib/booking-data";
+import { getInventoryFromStorage, type InventoryItem, type InventoryLog, saveInventoryToStorage } from "@/lib/booking-data";
+import { cn } from "@/lib/utils";
 
 export function InventoryManager() {
   const { toast } = useToast();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [showHistory, setShowHistory] = useState<InventoryItem | null>(null);
 
   useEffect(() => {
     const loadedInventory = getInventoryFromStorage();
@@ -203,6 +205,17 @@ export function InventoryManager() {
       lastUpdate: new Date().toISOString(),
       secondaryUnit: newItem.secondaryUnit || undefined,
       conversionFactor: newItem.conversionFactor ? Number(newItem.conversionFactor) : undefined,
+      logs: [
+        {
+          id: Math.random().toString(36).substring(2, 11),
+          timestamp: new Date().toISOString(),
+          type: "entrada",
+          quantityChange: Number(newItem.quantity),
+          previousQuantity: 0,
+          newQuantity: Number(newItem.quantity),
+          notes: "Saldo inicial (criação do produto)",
+        },
+      ],
     };
 
     updateInventory([...inventory, item]);
@@ -235,11 +248,32 @@ export function InventoryManager() {
     }
 
     updateInventory(
-      inventory.map((item) =>
-        item.id === editingItem.id
-          ? { ...editingItem, lastUpdate: new Date().toISOString() }
-          : item
-      )
+      inventory.map((item) => {
+        if (item.id === editingItem.id) {
+          const quantityChange = editingItem.quantity - item.quantity;
+          let updatedLogs = item.logs || [];
+
+          if (quantityChange !== 0) {
+            const logEntry: InventoryLog = {
+              id: Math.random().toString(36).substring(2, 11),
+              timestamp: new Date().toISOString(),
+              type: "ajuste",
+              quantityChange: quantityChange,
+              previousQuantity: item.quantity,
+              newQuantity: editingItem.quantity,
+              notes: "Ajuste manual de estoque via edição",
+            };
+            updatedLogs = [logEntry, ...updatedLogs].slice(0, 50);
+          }
+
+          return {
+            ...editingItem,
+            lastUpdate: new Date().toISOString(),
+            logs: updatedLogs,
+          };
+        }
+        return item;
+      })
     );
 
     setEditingItem(null);
@@ -275,10 +309,25 @@ export function InventoryManager() {
             transactionItem.type === "entrada"
               ? item.quantity + qty
               : Math.max(0, item.quantity - qty);
+          const logEntry: InventoryLog = {
+            id: Math.random().toString(36).substring(2, 11),
+            timestamp: new Date().toISOString(),
+            type: transactionItem.type,
+            quantityChange: transactionItem.type === "entrada" ? qty : -qty,
+            previousQuantity: item.quantity,
+            newQuantity: newQty,
+            notes: `Movimentação manual (${
+              transactionUnit === "primary"
+                ? item.unit
+                : item.secondaryUnit || item.unit
+            })`,
+          };
+
           return {
             ...item,
             quantity: newQty,
             lastUpdate: new Date().toISOString(),
+            logs: [logEntry, ...(item.logs || [])].slice(0, 50),
           };
         }
         return item;
@@ -327,6 +376,10 @@ export function InventoryManager() {
       });
   }, [inventory, searchTerm, sortBy]);
 
+  const lowStockItems = useMemo(() => {
+    return inventory.filter((item) => item.quantity <= item.minQuantity);
+  }, [inventory]);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -341,6 +394,36 @@ export function InventoryManager() {
           Adicionar Produto
         </Button>
       </div>
+
+      {lowStockItems.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="md:col-span-3 border-red-200 bg-red-50/50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className="p-2 bg-red-100 rounded-full text-red-600">
+                  <AlertCircle className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="text-sm font-bold text-red-800 mb-1">
+                    Atenção: {lowStockItems.length} {lowStockItems.length === 1 ? 'item precisa' : 'itens precisam'} de reposição
+                  </h4>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {lowStockItems.map((item) => (
+                      <Badge 
+                        key={item.id} 
+                        variant="outline" 
+                        className="bg-white text-red-700 border-red-200 text-[10px]"
+                      >
+                        {item.name}: {item.quantity.toLocaleString("pt-BR")} {item.unit}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {showAddForm && (
         <Card>
@@ -643,6 +726,15 @@ export function InventoryManager() {
                         Saída
                       </Button>
                       <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                        onClick={() => setShowHistory(item)}
+                      >
+                        <History className="w-4 h-4 mr-1" />
+                        Histórico
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="sm"
                         className="h-8 px-2 text-muted-foreground hover:text-destructive"
@@ -939,6 +1031,73 @@ export function InventoryManager() {
               Cancelar
             </Button>
             <Button onClick={handleUpdateItem}>Salvar Alterações</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!showHistory}
+        onOpenChange={(open) => !open && setShowHistory(null)}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Histórico de Movimentação</DialogTitle>
+            <DialogDescription>
+              {showHistory?.name} - {showHistory?.quantity.toLocaleString("pt-BR")} {showHistory?.unit} em estoque
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {!showHistory?.logs || showHistory.logs.length === 0 ? (
+              <p className="text-center py-8 text-muted-foreground">Nenhuma movimentação registrada.</p>
+            ) : (
+              <div className="max-h-100 overflow-y-auto border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-37.5">Data/Hora</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Alteração</TableHead>
+                      <TableHead>Saldo</TableHead>
+                      <TableHead>Notas</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {showHistory.logs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell className="text-[10px] leading-tight">
+                          {new Date(log.timestamp).toLocaleString("pt-BR")}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(
+                            "text-[10px] px-1 py-0 h-5",
+                            log.type === "entrada" ? "bg-green-50 text-green-700 border-green-200" :
+                            log.type === "saida" || log.type === "servico" || log.type === "venda" ? "bg-red-50 text-red-700 border-red-200" :
+                            "bg-blue-50 text-blue-700 border-blue-200"
+                          )}>
+                            {log.type.charAt(0).toUpperCase() + log.type.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className={cn(
+                          "font-medium text-xs",
+                          log.quantityChange > 0 ? "text-green-600" : "text-red-600"
+                        )}>
+                          {log.quantityChange > 0 ? "+" : ""}{log.quantityChange.toLocaleString("pt-BR")}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs">
+                          {log.newQuantity.toLocaleString("pt-BR")}
+                        </TableCell>
+                        <TableCell className="text-[11px] max-w-50 truncate" title={log.notes}>
+                          {log.notes}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowHistory(null)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

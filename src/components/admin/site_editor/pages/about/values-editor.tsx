@@ -53,7 +53,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { type ValueItem, type ValuesSettings } from "@/lib/booking-data";
+import type { ValueItem, ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";

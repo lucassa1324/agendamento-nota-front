@@ -33,8 +33,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${playfair.variable}`}>
-      <body className={`font-sans antialiased`}>
+    <html lang="pt-BR" className={`${inter.variable} ${playfair.variable}`} suppressHydrationWarning>
+      <body className={`font-sans antialiased`} suppressHydrationWarning>
         <PreviewStyleManager />
         <FaviconUpdater />
         <LayoutClientWrapper>

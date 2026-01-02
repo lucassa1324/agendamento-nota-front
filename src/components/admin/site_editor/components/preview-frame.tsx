@@ -6,9 +6,6 @@
 import { 
   ChevronLeft, 
   ChevronRight,
-  Layout, 
-  Monitor, 
-  Smartphone 
 } from "lucide-react";
 import type { RefObject } from "react";
 import { Button } from "@/components/ui/button";
@@ -18,7 +15,6 @@ import type { PageItem } from "./editor-constants";
 interface PreviewFrameProps {
   iframeRef: RefObject<HTMLIFrameElement | null>;
   previewMode: "desktop" | "mobile";
-  setPreviewMode: (mode: "desktop" | "mobile") => void;
   currentWidth: number;
   mobileScale: number;
   desktopScale: number;
@@ -33,7 +29,6 @@ interface PreviewFrameProps {
 export function PreviewFrame({
   iframeRef,
   previewMode,
-  setPreviewMode,
   currentWidth,
   mobileScale,
   desktopScale,
@@ -46,39 +41,7 @@ export function PreviewFrame({
 }: PreviewFrameProps) {
   return (
     <div className="flex-1 w-full h-full flex flex-col min-w-0 transition-all duration-300 relative z-0">
-      <div className="flex items-center justify-between mb-2 lg:hidden px-4 pt-4">
-        <h2 className="font-serif text-base font-bold text-primary">
-          Preview do Site
-        </h2>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setPreviewMode(previewMode === "desktop" ? "mobile" : "desktop");
-              setManualWidth(null);
-            }}
-            className="h-8 w-8"
-          >
-            {previewMode === "desktop" ? (
-              <Smartphone className="w-4 h-4" />
-            ) : (
-              <Monitor className="w-4 h-4" />
-            )}
-          </Button>
-        </div>
-      </div>
-      
       <div className="flex-1 flex flex-col h-full min-w-0 bg-muted/5 overflow-hidden">
-        <div className="bg-card border-b border-border px-3 lg:px-6 py-2 lg:py-3 flex flex-row items-center justify-between space-y-0 shrink-0 h-12 lg:h-16 shadow-sm z-10">
-          <div className="flex items-center gap-2 lg:gap-3">
-            <div className="h-6 lg:h-8 px-2 lg:px-4 rounded-full bg-muted/50 flex items-center gap-1.5 lg:gap-2 text-[8px] lg:text-[10px] font-bold tracking-widest text-muted-foreground min-w-25 lg:min-w-40 uppercase">
-              <Layout className="w-2.5 h-2.5 lg:w-3 lg:h-3" />
-              <span className="truncate">{activePageData?.path}</span>
-            </div>
-          </div>
-        </div>
-
         <div
           ref={containerRef}
           className="flex-1 bg-muted/10 relative flex items-center justify-center overflow-hidden p-2 lg:p-4 group min-w-0"

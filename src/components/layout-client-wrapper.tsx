@@ -56,8 +56,9 @@ export function LayoutClientWrapper({
     };
   }, []);
 
-  const showHeader = !isolatedSection || isolatedSection === "header";
-  const showFooter = !isolatedSection || isolatedSection === "footer";
+  const isAdminRoute = pathname?.startsWith("/admin");
+  const showHeader = (!isolatedSection || isolatedSection === "header") && !isAdminRoute;
+  const showFooter = (!isolatedSection || isolatedSection === "footer") && !isAdminRoute;
 
   return (
     <>

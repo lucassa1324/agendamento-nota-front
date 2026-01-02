@@ -21,9 +21,9 @@ import { Textarea } from "@/components/ui/textarea";
 import type { TeamMember, TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { EDITOR_FONTS } from "../../components/editor-constants";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
-import { EDITOR_FONTS } from "../../components/editor-constants";
 
 interface TeamEditorProps {
   settings: TeamSettings;

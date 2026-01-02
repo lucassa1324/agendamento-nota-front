@@ -5,8 +5,9 @@
  */
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { Layout, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { useRef } from "react";
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useSidebar } from "@/context/sidebar-context";
 import { useIsMobile } from "@/hooks/use-is-mobile";
@@ -135,17 +136,6 @@ export function SiteCustomizer() {
     previewUrl,
   } = useNavigationManager(iframeRef);
 
-  const [headerPortalTarget, setHeaderPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    const target = document.getElementById("header-actions");
-    if (target) setHeaderPortalTarget(target);
-    else {
-      const timeout = setTimeout(() => setHeaderPortalTarget(document.getElementById("header-actions")), 500);
-      return () => clearTimeout(timeout);
-    }
-  }, []);
-
   const sidebarProps = {
     activeSection,
     activeSectionData: activeSectionData || null,
@@ -240,53 +230,91 @@ export function SiteCustomizer() {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background relative">
-      {headerPortalTarget && createPortal(
-        <HeaderControls
+    <div className="flex flex-col h-screen w-full overflow-hidden bg-background">
+      {/* Top Header */}
+      <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 shrink-0 z-30 shadow-sm">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onToggleSidebar(!isSidebarOpen)}
+            className="h-10 w-10 bg-[#1e293b] text-white hover:bg-[#334155] hover:text-white rounded-lg shadow-md transition-all active:scale-95"
+          >
+            {isSidebarOpen ? (
+              <PanelLeftClose className="w-5 h-5" />
+            ) : (
+              <PanelLeftOpen className="w-5 h-5" />
+            )}
+          </Button>
+          
+          <div className="flex items-center gap-6">
+            <h1 className="text-lg font-bold text-foreground whitespace-nowrap">
+              Personalização do Site
+            </h1>
+            
+            <div className="h-6 w-px bg-border hidden md:block" />
+            
+            <HeaderControls
+              previewMode={previewMode}
+              setPreviewMode={setPreviewMode}
+              mobileScale={mobileScale}
+              desktopScale={desktopScale}
+              setManualScale={setManualScale}
+              setIsAutoZoom={setIsAutoZoom}
+              isAutoZoom={isAutoZoom}
+              setManualWidth={setManualWidth}
+              reloadPreview={reloadPreview}
+            />
+          </div>
+        </div>
+
+        <div className="hidden lg:flex items-center gap-4 text-sm text-muted-foreground font-medium">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border/50">
+            <Layout className="w-4 h-4 text-primary/60" />
+            <span>{activePageData?.path || "/"}</span>
+          </div>
+          <span className="capitalize">
+            {new Intl.DateTimeFormat('pt-BR', { 
+              weekday: 'long', 
+              day: 'numeric', 
+              month: 'long' 
+            }).format(new Date())}
+          </span>
+        </div>
+      </header>
+
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile Sidebar */}
+        <Sheet open={isMobile && isSidebarOpen} onOpenChange={onToggleSidebar}>
+          <SheetContent side="left" className="p-0 w-[85%] sm:w-80 lg:hidden">
+            <SheetHeader className="sr-only"><SheetTitle>Personalização</SheetTitle></SheetHeader>
+            <SidebarContent {...sidebarProps} />
+          </SheetContent>
+        </Sheet>
+
+        {/* Desktop Sidebar */}
+        <div className={cn(
+          "hidden lg:flex flex-col h-full border-r border-border bg-card transition-all duration-300 ease-in-out overflow-hidden shrink-0 z-20",
+          isSidebarOpen ? "w-64 xl:w-80 2xl:w-96" : "w-0 border-r-0"
+        )}>
+          <SidebarContent {...sidebarProps} />
+        </div>
+
+        {/* Preview Area */}
+        <PreviewFrame
+          iframeRef={iframeRef}
           previewMode={previewMode}
-          setPreviewMode={setPreviewMode}
+          currentWidth={currentWidth}
           mobileScale={mobileScale}
           desktopScale={desktopScale}
-          setManualScale={setManualScale}
-          setIsAutoZoom={setIsAutoZoom}
           isAutoZoom={isAutoZoom}
           setManualWidth={setManualWidth}
-          reloadPreview={reloadPreview}
-        />,
-        headerPortalTarget
-      )}
-
-      {/* Mobile Sidebar */}
-      <Sheet open={isMobile && isSidebarOpen} onOpenChange={onToggleSidebar}>
-        <SheetContent side="left" className="p-0 w-[85%] sm:w-80 lg:hidden">
-          <SheetHeader className="sr-only"><SheetTitle>Personalização</SheetTitle></SheetHeader>
-          <SidebarContent {...sidebarProps} />
-        </SheetContent>
-      </Sheet>
-
-      {/* Desktop Sidebar */}
-      <div className={cn(
-        "hidden lg:flex flex-col h-full border-r border-border bg-card transition-all duration-300 ease-in-out overflow-hidden shrink-0 z-20",
-        isSidebarOpen ? "w-64 xl:w-80 2xl:w-96" : "w-0 border-r-0"
-      )}>
-        <SidebarContent {...sidebarProps} />
+          previewUrl={previewUrl}
+          previewKey={previewKey}
+          activePageData={activePageData}
+          containerRef={containerRef}
+        />
       </div>
-
-      {/* Preview Area */}
-      <PreviewFrame
-        iframeRef={iframeRef}
-        previewMode={previewMode}
-        setPreviewMode={setPreviewMode}
-        currentWidth={currentWidth}
-        mobileScale={mobileScale}
-        desktopScale={desktopScale}
-        isAutoZoom={isAutoZoom}
-        setManualWidth={setManualWidth}
-        previewUrl={previewUrl}
-        previewKey={previewKey}
-        activePageData={activePageData}
-        containerRef={containerRef}
-      />
     </div>
   );
 }
