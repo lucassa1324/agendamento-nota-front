@@ -155,7 +155,7 @@ export function ManagementReports() {
   const totalExpenses = expenses.reduce((acc, curr) => acc + curr.value, 0);
   
   // Calcular receita real apenas de agendamentos concluídos
-  const completedBookings = bookings.filter(b => b.status === "concluido");
+  const completedBookings = bookings.filter(b => b.status === "concluído");
   const totalRevenue = completedBookings.reduce((acc, curr) => acc + curr.servicePrice, 0);
   const totalServices = completedBookings.length;
   

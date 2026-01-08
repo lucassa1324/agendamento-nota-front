@@ -140,7 +140,7 @@ export function BookingsManager() {
       pendente: filteredBookings.filter((b) => b.status === "pendente").length,
       confirmado: filteredBookings.filter((b) => b.status === "confirmado")
         .length,
-      concluido: filteredBookings.filter((b) => b.status === "concluido")
+      concluído: filteredBookings.filter((b) => b.status === "concluído")
         .length,
       cancelado: filteredBookings.filter((b) => b.status === "cancelado")
         .length,
@@ -162,7 +162,7 @@ export function BookingsManager() {
     updateBookingStatus(bookingId, newStatus);
 
     // Se o status for concluído, subtrair produtos do estoque
-    if (newStatus === "concluido") {
+    if (newStatus === "concluído") {
       const booking = bookings.find((b) => b.id === bookingId);
       if (booking) {
         const result = subtractInventoryForService(booking.serviceId);
@@ -204,8 +204,8 @@ export function BookingsManager() {
     const variants = {
       pendente: "bg-yellow-100 text-yellow-800 border-yellow-200",
       confirmado: "bg-blue-100 text-blue-800 border-blue-200",
+      concluído: "bg-green-100 text-green-800 border-green-200",
       cancelado: "bg-red-100 text-red-800 border-red-200",
-      concluido: "bg-green-100 text-green-800 border-green-200",
     };
     return variants[status] || "bg-gray-100 text-gray-800";
   };
@@ -318,7 +318,7 @@ export function BookingsManager() {
             color: "bg-blue-100 text-blue-600",
           },
           {
-            id: "concluido",
+            id: "concluído",
             label: "Concluído",
             color: "bg-green-100 text-green-600",
           },
@@ -499,7 +499,7 @@ export function BookingsManager() {
                         variant="ghost"
                         size="sm"
                         onClick={() =>
-                          handleStatusChange(booking.id, "concluido")
+                          handleStatusChange(booking.id, "concluído")
                         }
                         className="h-8 text-green-600 hover:text-green-700 hover:bg-green-50 font-medium"
                       >

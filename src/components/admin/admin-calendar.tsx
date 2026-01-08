@@ -156,7 +156,7 @@ export function AdminCalendar({
   const SLOT_INTERVAL = 10;
   const timeSlots = useMemo(() => {
     const slots = [];
-    const startHour = 7;
+    const startHour = 0;
     const endHour = 23;
 
     for (let hour = startHour; hour <= endHour; hour++) {

@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  ArrowDownCircle,
+  ArrowUpCircle,
   BarChart3,
   Calendar,
   CalendarCheck,
@@ -9,15 +11,17 @@ import {
   DollarSign,
   Download,
   FileText,
+  Filter,
   History,
   LayoutDashboard,
   Package,
   PieChart as PieChartIcon,
+  Search,
   TrendingUp,
   Users,
   XCircle,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -33,6 +37,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -45,7 +57,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getBookingsFromStorage, getInventoryFromStorage, type InventoryLog } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
-type GlobalInventoryLog = InventoryLog & { productName: string; unit: string };
+type GlobalInventoryLog = InventoryLog & { productName: string; unit: string; price?: number };
+
+type FinancialMovement = {
+  id: string;
+  date: string;
+  description: string;
+  type: "entry" | "exit";
+  category: string;
+  amount: number;
+  status: "completed" | "confirmed" | "pending" | "cancelled";
+};
 
 export function Reports() {
   const [reportData, setReportData] = useState({
@@ -60,14 +82,20 @@ export function Reports() {
     totalInventoryValue: 0,
     lowStockCount: 0,
     topServices: [] as { name: string; count: number }[],
+    financialMovements: [] as FinancialMovement[],
   });
+
+  // Filtros da Tabela
+  const [filterPeriod, setFilterPeriod] = useState("current_month");
+  const [filterType, setFilterType] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
 
   const generateReports = useCallback(() => {
     const bookings = getBookingsFromStorage();
     const inventory = getInventoryFromStorage();
 
     // Filtros de agendamentos por status
-    const completedBookings = bookings.filter(b => b.status === "concluido");
+    const completedBookings = bookings.filter(b => b.status === "concluído");
     const pendingBookings = bookings.filter(b => b.status === "pendente");
     const confirmedBookings = bookings.filter(b => b.status === "confirmado");
     const cancelledBookings = bookings.filter(b => b.status === "cancelado");
@@ -81,21 +109,55 @@ export function Reports() {
 
     // Coletar todos os logs de todos os produtos e ordenar por data
     const allLogs: GlobalInventoryLog[] = [];
+    const inventoryMovements: FinancialMovement[] = [];
+
     inventory.forEach(item => {
       if (item.logs) {
         item.logs.forEach(log => {
           allLogs.push({
             ...log,
             productName: item.name,
-            unit: item.unit
+            unit: item.unit,
+            price: item.price
           });
+
+          // Se for adição de estoque, consideramos como saída de caixa (compra)
+          if (log.type === "entrada") {
+            inventoryMovements.push({
+              id: `inv-${item.id}-${log.timestamp}`,
+              date: log.timestamp,
+              description: `Compra de Estoque: ${item.name}`,
+              type: "exit",
+              category: "Estoque",
+              amount: log.quantityChange * item.price,
+              status: "completed"
+            });
+          }
         });
       }
     });
 
     const recentMovements = allLogs
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-      .slice(0, 15); // Aumentado para 15
+      .slice(0, 15);
+
+    // Mapear agendamentos para movimentações financeiras (Apenas Concluídos)
+    const bookingMovements: FinancialMovement[] = bookings
+      .filter(booking => booking.status === "concluído")
+      .map(booking => ({
+        id: booking.id,
+        date: booking.date,
+        description: `Serviço: ${booking.serviceName}`,
+        type: "entry",
+        category: "Serviços",
+        amount: booking.servicePrice || 0,
+        status: "completed"
+      }));
+
+    // Combinar e ordenar todas as movimentações
+    const allMovements = [...bookingMovements, ...inventoryMovements].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
 
     // Total de faturamento (apenas concluídos)
     const totalRevenue = completedBookings.reduce((sum, booking) => {
@@ -142,7 +204,7 @@ export function Reports() {
       totalRevenue,
       monthlyRevenue,
       serviceDistribution,
-      totalBookings: completedBookings.length, // Agora reflete atendimentos REAIS
+      totalBookings: completedBookings.length,
       pendingCount: pendingBookings.length,
       confirmedCount: confirmedBookings.length,
       cancelledCount: cancelledBookings.length,
@@ -150,8 +212,63 @@ export function Reports() {
       totalInventoryValue,
       lowStockCount,
       topServices,
+      financialMovements: allMovements,
     });
   }, []);
+
+  // Dados filtrados para a tabela
+  const filteredMovements = useMemo(() => {
+    let data = reportData.financialMovements;
+
+    // Filtro de Data
+    const now = new Date();
+    if (filterPeriod === "current_month") {
+      data = data.filter(m => {
+        const d = new Date(m.date);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      });
+    } else if (filterPeriod === "last_month") {
+      const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      data = data.filter(m => {
+        const d = new Date(m.date);
+        return d.getMonth() === lastMonth.getMonth() && d.getFullYear() === lastMonth.getFullYear();
+      });
+    } else if (filterPeriod === "last_3_months") {
+      const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+      data = data.filter(m => new Date(m.date) >= threeMonthsAgo);
+    }
+
+    // Filtro de Tipo
+    if (filterType !== "all") {
+      data = data.filter(m => m.type === filterType);
+    }
+
+    // Filtro de Busca
+    if (searchTerm) {
+      const lowerTerm = searchTerm.toLowerCase();
+      data = data.filter(m => 
+        m.description.toLowerCase().includes(lowerTerm) || 
+        m.category.toLowerCase().includes(lowerTerm)
+      );
+    }
+
+    return data;
+  }, [reportData.financialMovements, filterPeriod, filterType, searchTerm]);
+
+  // Cálculos do resumo da tabela filtrada
+  const tableSummary = useMemo(() => {
+    return filteredMovements.reduce((acc, curr) => {
+      // Entradas: Apenas serviços CONCLUÍDOS contam como dinheiro em caixa (Realizado)
+      if (curr.type === "entry" && curr.status === "completed") {
+        acc.entries += curr.amount;
+      }
+      // Saídas: Compras de estoque são consideradas gastos realizados
+      else if (curr.type === "exit" && curr.status === "completed") {
+        acc.exits += curr.amount;
+      }
+      return acc;
+    }, { entries: 0, exits: 0 });
+  }, [filteredMovements]);
 
   const handleExport = (type: "financeiro" | "agendamentos" | "estoque" | "geral") => {
     let csvContent = "";
@@ -420,6 +537,152 @@ export function Reports() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader className="flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+              <div>
+                <CardTitle>Fluxo de Caixa Detalhado</CardTitle>
+                <CardDescription>
+                  Registro de entradas (serviços concluídos) e saídas (compras de estoque)
+                </CardDescription>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-lg border border-green-100">
+                  <ArrowUpCircle className="w-4 h-4" />
+                  <span className="text-sm font-semibold">
+                    + R$ {tableSummary.entries.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-100">
+                  <ArrowDownCircle className="w-4 h-4" />
+                  <span className="text-sm font-semibold">
+                    - R$ {tableSummary.exits.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
+                  tableSummary.entries - tableSummary.exits >= 0 
+                    ? "bg-blue-50 text-blue-700 border-blue-100" 
+                    : "bg-orange-50 text-orange-700 border-orange-100"
+                )}>
+                  <DollarSign className="w-4 h-4" />
+                  <span className="text-sm font-bold">
+                    = R$ {(tableSummary.entries - tableSummary.exits).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-4 justify-between">
+                <div className="relative w-full sm:w-72">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por descrição ou categoria..."
+                    className="pl-8"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Select value={filterType} onValueChange={setFilterType}>
+                    <SelectTrigger className="w-full sm:w-35">
+                      <div className="flex items-center gap-2">
+                        <Filter className="w-4 h-4 text-muted-foreground" />
+                        <SelectValue placeholder="Tipo" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os tipos</SelectItem>
+                      <SelectItem value="entry">Entradas</SelectItem>
+                      <SelectItem value="exit">Saídas</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={filterPeriod} onValueChange={setFilterPeriod}>
+                    <SelectTrigger className="w-full sm:w-40">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                        <SelectValue placeholder="Período" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="current_month">Mês Atual</SelectItem>
+                      <SelectItem value="last_month">Mês Passado</SelectItem>
+                      <SelectItem value="last_3_months">Últimos 3 Meses</SelectItem>
+                      <SelectItem value="all_time">Todo o Período</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead className="text-right">Valor</TableHead>
+                      <TableHead className="text-right">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredMovements.length > 0 ? (
+                      filteredMovements.map((movement) => (
+                        <TableRow key={movement.id}>
+                          <TableCell className="font-medium text-xs text-muted-foreground">
+                            {new Date(movement.date).toLocaleDateString("pt-BR")}
+                            <br />
+                            {new Date(movement.date).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' })}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {movement.description}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="font-normal">
+                              {movement.category}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {movement.type === "entry" ? (
+                              <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">
+                                Entrada
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200">
+                                Saída
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className={cn(
+                            "text-right font-bold",
+                            movement.type === "entry" ? "text-green-600" : "text-red-600"
+                          )}>
+                            {movement.type === "entry" ? "+" : "-"} R$ {movement.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
+                              Concluído
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                          Nenhuma movimentação encontrada neste período.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex justify-end text-xs text-muted-foreground">
+                Mostrando {filteredMovements.length} registro(s)
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ABA FINANCEIRA */}

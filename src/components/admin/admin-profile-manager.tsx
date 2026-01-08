@@ -20,7 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { getStoredAdminUser, saveAdminProfile, type AdminUser } from "@/lib/admin-auth";
+import { type AdminUser, getStoredAdminUser, saveAdminProfile } from "@/lib/admin-auth";
 
 export function AdminProfileManager() {
   const { toast } = useToast();
@@ -59,7 +59,7 @@ export function AdminProfileManager() {
       });
       // Disparar evento customizado para atualizar a sidebar imediatamente
       window.dispatchEvent(new CustomEvent('adminProfileUpdated'));
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o perfil.",
@@ -114,7 +114,7 @@ export function AdminProfileManager() {
         title: "Sucesso!",
         description: "Sua senha foi alterada com sucesso.",
       });
-    } catch (error) {
+    } catch {
       toast({
         title: "Erro",
         description: "Não foi possível alterar a senha.",

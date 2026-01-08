@@ -48,7 +48,7 @@ export type BookingStatus =
   | "pendente"
   | "confirmado"
   | "cancelado"
-  | "concluido";
+  | "concluído";
 
 export type Booking = {
   id: string;
