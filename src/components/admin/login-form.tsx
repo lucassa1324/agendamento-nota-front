@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, User } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
@@ -14,25 +14,32 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { loginAdmin } from "@/lib/admin-auth";
+import { loginWithEmail } from "@/lib/auth-client";
 
 export function LoginForm() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    if (loginAdmin(username, password)) {
-      router.push("/admin/dashboard");
-    } else {
-      setError("Usuário ou senha incorretos");
-      setPassword("");
+    try {
+      const result = await loginWithEmail(email, password);
+      
+      if (result) {
+        router.push("/admin/dashboard");
+        router.refresh(); // Ensure the layout re-fetches the session
+      } else {
+        setError("Email ou senha incorretos");
+        setIsLoading(false);
+      }
+    } catch (_err) {
+      setError("Ocorreu um erro ao fazer login. Tente novamente.");
       setIsLoading(false);
     }
   };
@@ -51,15 +58,15 @@ export function LoginForm() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="username">Usuário</Label>
+            <Label htmlFor="email">Email</Label>
             <div className="relative">
-              <User className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+              <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Digite seu usuário"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Digite seu email"
                 className="pl-10"
                 required
                 disabled={isLoading}
@@ -97,13 +104,6 @@ export function LoginForm() {
           >
             {isLoading ? "Entrando..." : "Entrar"}
           </Button>
-
-          <div className="text-center pt-2">
-            <p className="text-xs text-muted-foreground">
-              Usuário padrão: <span className="font-mono">admin</span> | Senha:{" "}
-              <span className="font-mono">admin123</span>
-            </p>
-          </div>
         </form>
       </CardContent>
     </Card>

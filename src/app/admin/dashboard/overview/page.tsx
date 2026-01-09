@@ -8,7 +8,7 @@ export default function OverviewPage() {
           Visão Geral
         </h2>
         <p className="text-muted-foreground">
-          Acompanhe o desempenho do seu studio
+          Acompanhe o desempenho do seu negócio
         </p>
       </div>
       <DashboardStats />

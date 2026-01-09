@@ -97,6 +97,17 @@ export type DaySchedule = {
 
 export type WeekSchedule = DaySchedule[];
 
+// Helper para isolamento de dados por usuário
+function getStorageKey(key: string): string {
+  if (typeof window === "undefined") return key;
+  const userId = localStorage.getItem("current_admin_id");
+  // Se não houver usuário logado (site público), tenta pegar o último usuário ativo ou usa modo compartilhado
+  // Para garantir que o site público funcione, talvez devêssemos usar um ID padrão ou o último usado.
+  // Por enquanto, se não houver ID, usa a chave sem prefixo (comportamento legado/compartilhado).
+  if (!userId) return key; 
+  return `${userId}_${key}`;
+}
+
 export type NotificationSettings = {
   emailEnabled: boolean;
   whatsappEnabled: boolean;
@@ -114,6 +125,12 @@ export type GoogleCalendarSettings = {
 export type ScheduleSettings = {
   timeInterval: number; // intervalo em minutos (15, 30, 60)
   businessHours: BusinessHours;
+};
+
+export type StudioSettings = {
+  agendaAberta: boolean;
+  services: Service[];
+  scheduleSettings: ScheduleSettings;
 };
 
 export type SiteProfile = {
@@ -563,12 +580,12 @@ export const defaultBookingConfirmationSettings: BookingStepSettings = {
 
 export function getBookingServiceSettings(): BookingStepSettings {
   if (typeof window === "undefined") return defaultBookingServiceSettings;
-  const settings = localStorage.getItem("bookingServiceSettings");
+  const settings = localStorage.getItem(getStorageKey("bookingServiceSettings"));
   return settings ? JSON.parse(settings) : defaultBookingServiceSettings;
 }
 
 export function saveBookingServiceSettings(settings: BookingStepSettings): void {
-  localStorage.setItem("bookingServiceSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("bookingServiceSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingServiceSettingsUpdated"));
   }
@@ -576,12 +593,12 @@ export function saveBookingServiceSettings(settings: BookingStepSettings): void 
 
 export function getBookingDateSettings(): BookingStepSettings {
   if (typeof window === "undefined") return defaultBookingDateSettings;
-  const settings = localStorage.getItem("bookingDateSettings");
+  const settings = localStorage.getItem(getStorageKey("bookingDateSettings"));
   return settings ? JSON.parse(settings) : defaultBookingDateSettings;
 }
 
 export function saveBookingDateSettings(settings: BookingStepSettings): void {
-  localStorage.setItem("bookingDateSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("bookingDateSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingDateSettingsUpdated"));
   }
@@ -589,12 +606,12 @@ export function saveBookingDateSettings(settings: BookingStepSettings): void {
 
 export function getBookingTimeSettings(): BookingStepSettings {
   if (typeof window === "undefined") return defaultBookingTimeSettings;
-  const settings = localStorage.getItem("bookingTimeSettings");
+  const settings = localStorage.getItem(getStorageKey("bookingTimeSettings"));
   return settings ? JSON.parse(settings) : defaultBookingTimeSettings;
 }
 
 export function saveBookingTimeSettings(settings: BookingStepSettings): void {
-  localStorage.setItem("bookingTimeSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("bookingTimeSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingTimeSettingsUpdated"));
   }
@@ -602,12 +619,12 @@ export function saveBookingTimeSettings(settings: BookingStepSettings): void {
 
 export function getBookingFormSettings(): BookingStepSettings {
   if (typeof window === "undefined") return defaultBookingFormSettings;
-  const settings = localStorage.getItem("bookingFormSettings");
+  const settings = localStorage.getItem(getStorageKey("bookingFormSettings"));
   return settings ? JSON.parse(settings) : defaultBookingFormSettings;
 }
 
 export function saveBookingFormSettings(settings: BookingStepSettings): void {
-  localStorage.setItem("bookingFormSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("bookingFormSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingFormSettingsUpdated"));
   }
@@ -615,12 +632,12 @@ export function saveBookingFormSettings(settings: BookingStepSettings): void {
 
 export function getBookingConfirmationSettings(): BookingStepSettings {
   if (typeof window === "undefined") return defaultBookingConfirmationSettings;
-  const settings = localStorage.getItem("bookingConfirmationSettings");
+  const settings = localStorage.getItem(getStorageKey("bookingConfirmationSettings"));
   return settings ? JSON.parse(settings) : defaultBookingConfirmationSettings;
 }
 
 export function saveBookingConfirmationSettings(settings: BookingStepSettings): void {
-  localStorage.setItem("bookingConfirmationSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("bookingConfirmationSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingConfirmationSettingsUpdated"));
   }
@@ -1019,12 +1036,12 @@ export const defaultColorSettings: ColorSettings = {
 
 export function getColorSettings(): ColorSettings {
   if (typeof window === "undefined") return defaultColorSettings;
-  const settings = localStorage.getItem("colorSettings");
+  const settings = localStorage.getItem(getStorageKey("colorSettings"));
   return settings ? JSON.parse(settings) : defaultColorSettings;
 }
 
 export function saveColorSettings(settings: ColorSettings): void {
-  localStorage.setItem("colorSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("colorSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("colorSettingsUpdated"));
   }
@@ -1166,14 +1183,14 @@ function isTimeSlotAvailable(
 
 export function getBookingsFromStorage(): Booking[] {
   if (typeof window === "undefined") return [];
-  const bookings = localStorage.getItem("bookings");
+  const bookings = localStorage.getItem(getStorageKey("bookings"));
   return bookings ? JSON.parse(bookings) : [];
 }
 
 export function saveBookingToStorage(booking: Booking): void {
   const bookings = getBookingsFromStorage();
   bookings.push(booking);
-  localStorage.setItem("bookings", JSON.stringify(bookings));
+  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(bookings));
 }
 
 export function updateBookingStatus(
@@ -1184,7 +1201,7 @@ export function updateBookingStatus(
   const updated = bookings.map((b) =>
     b.id === bookingId ? { ...b, status } : b,
   );
-  localStorage.setItem("bookings", JSON.stringify(updated));
+  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function updateBooking(updatedBooking: Booking): void {
@@ -1192,7 +1209,7 @@ export function updateBooking(updatedBooking: Booking): void {
   const updated = bookings.map((b) =>
     b.id === updatedBooking.id ? updatedBooking : b,
   );
-  localStorage.setItem("bookings", JSON.stringify(updated));
+  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function markNotificationsSent(
@@ -1205,17 +1222,17 @@ export function markNotificationsSent(
       ? { ...b, notificationsSent: { ...b.notificationsSent, [type]: true } }
       : b,
   );
-  localStorage.setItem("bookings", JSON.stringify(updated));
+  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function getInventoryFromStorage(): InventoryItem[] {
   if (typeof window === "undefined") return [];
-  const inventory = localStorage.getItem("inventory");
+  const inventory = localStorage.getItem(getStorageKey("inventory"));
   return inventory ? JSON.parse(inventory) : [];
 }
 
 export function saveInventoryToStorage(inventory: InventoryItem[]): void {
-  localStorage.setItem("inventory", JSON.stringify(inventory));
+  localStorage.setItem(getStorageKey("inventory"), JSON.stringify(inventory));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("inventoryUpdated"));
   }
@@ -1288,14 +1305,14 @@ export function subtractInventoryForService(serviceIds: string | string[]): { su
   return { success: true, message: "Estoque atualizado com sucesso" };
 }
 
-export function getSettingsFromStorage() {
+export function getSettingsFromStorage(): StudioSettings {
   if (typeof window === "undefined")
     return {
       agendaAberta: true,
       services: services,
       scheduleSettings: defaultScheduleSettings,
     };
-  const settings = localStorage.getItem("studioSettings");
+  const settings = localStorage.getItem(getStorageKey("studioSettings"));
   return settings
     ? JSON.parse(settings)
     : {
@@ -1305,6 +1322,13 @@ export function getSettingsFromStorage() {
       };
 }
 
+export function saveSettingsToStorage(settings: StudioSettings): void {
+  localStorage.setItem(getStorageKey("studioSettings"), JSON.stringify(settings));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("studioSettingsUpdated"));
+  }
+}
+
 export function getScheduleSettings(): ScheduleSettings {
   const settings = getSettingsFromStorage();
   return settings.scheduleSettings || defaultScheduleSettings;
@@ -1312,12 +1336,12 @@ export function getScheduleSettings(): ScheduleSettings {
 
 export function getWeekSchedule(): WeekSchedule {
   if (typeof window === "undefined") return defaultWeekSchedule;
-  const settings = localStorage.getItem("weekSchedule");
+  const settings = localStorage.getItem(getStorageKey("weekSchedule"));
   return settings ? JSON.parse(settings) : defaultWeekSchedule;
 }
 
 export function saveWeekSchedule(schedule: WeekSchedule): void {
-  localStorage.setItem("weekSchedule", JSON.stringify(schedule));
+  localStorage.setItem(getStorageKey("weekSchedule"), JSON.stringify(schedule));
 }
 
 export type GalleryImage = {
@@ -1331,12 +1355,12 @@ export type GalleryImage = {
 
 export function getGalleryImages(): GalleryImage[] {
   if (typeof window === "undefined") return [];
-  const images = localStorage.getItem("galleryImages");
+  const images = localStorage.getItem(getStorageKey("galleryImages"));
   return images ? JSON.parse(images) : [];
 }
 
 export function saveGalleryImages(images: GalleryImage[]): void {
-  localStorage.setItem("galleryImages", JSON.stringify(images));
+  localStorage.setItem(getStorageKey("galleryImages"), JSON.stringify(images));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("galleryUpdated"));
   }
@@ -1344,7 +1368,7 @@ export function saveGalleryImages(images: GalleryImage[]): void {
 
 export function getBlockedPeriods(): BlockedPeriod[] {
   if (typeof window === "undefined") return [];
-  const blocked = localStorage.getItem("blockedPeriods");
+  const blocked = localStorage.getItem(getStorageKey("blockedPeriods"));
   return blocked ? JSON.parse(blocked) : [];
 }
 
@@ -1358,8 +1382,8 @@ export function getServices(): Service[] {
 export function saveServices(newServices: Service[]): void {
   const settings = getSettingsFromStorage();
   settings.services = newServices;
-  localStorage.setItem("studioSettings", JSON.stringify(settings));
-  localStorage.setItem("services", JSON.stringify(newServices));
+  localStorage.setItem(getStorageKey("studioSettings"), JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("services"), JSON.stringify(newServices));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("studioSettingsUpdated"));
     window.dispatchEvent(new Event("servicesUpdated"));
@@ -1367,41 +1391,41 @@ export function saveServices(newServices: Service[]): void {
 }
 
 export function saveBlockedPeriods(blocked: BlockedPeriod[]): void {
-  localStorage.setItem("blockedPeriods", JSON.stringify(blocked));
+  localStorage.setItem(getStorageKey("blockedPeriods"), JSON.stringify(blocked));
 }
 
 export function getNotificationSettings(): NotificationSettings {
   if (typeof window === "undefined") return defaultNotificationSettings;
-  const settings = localStorage.getItem("notificationSettings");
+  const settings = localStorage.getItem(getStorageKey("notificationSettings"));
   return settings ? JSON.parse(settings) : defaultNotificationSettings;
 }
 
 export function saveNotificationSettings(settings: NotificationSettings): void {
-  localStorage.setItem("notificationSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("notificationSettings"), JSON.stringify(settings));
 }
 
 export function getGoogleCalendarSettings(): GoogleCalendarSettings {
   if (typeof window === "undefined") return defaultGoogleCalendarSettings;
-  const settings = localStorage.getItem("googleCalendarSettings");
+  const settings = localStorage.getItem(getStorageKey("googleCalendarSettings"));
   return settings ? JSON.parse(settings) : defaultGoogleCalendarSettings;
 }
 
 export function saveGoogleCalendarSettings(
   settings: GoogleCalendarSettings,
 ): void {
-  localStorage.setItem("googleCalendarSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("googleCalendarSettings"), JSON.stringify(settings));
 }
 
 export function getSiteProfile(): SiteProfile {
   if (typeof window === "undefined") return defaultSiteProfile;
-  const profile = localStorage.getItem("siteProfile");
+  const profile = localStorage.getItem(getStorageKey("siteProfile"));
   return profile
     ? { ...defaultSiteProfile, ...JSON.parse(profile) }
     : defaultSiteProfile;
 }
 
 export function saveSiteProfile(profile: SiteProfile): void {
-  localStorage.setItem("siteProfile", JSON.stringify(profile));
+  localStorage.setItem(getStorageKey("siteProfile"), JSON.stringify(profile));
   // Dispatch custom event so components can update immediately
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("siteProfileUpdated"));
@@ -1410,12 +1434,12 @@ export function saveSiteProfile(profile: SiteProfile): void {
 
 export function getHeroSettings(): HeroSettings {
   if (typeof window === "undefined") return defaultHeroSettings;
-  const settings = localStorage.getItem("heroSettings");
+  const settings = localStorage.getItem(getStorageKey("heroSettings"));
   return settings ? JSON.parse(settings) : defaultHeroSettings;
 }
 
 export function saveHeroSettings(settings: HeroSettings): void {
-  localStorage.setItem("heroSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("heroSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("heroSettingsUpdated"));
   }
@@ -1432,12 +1456,12 @@ export const defaultAboutHeroSettings: HeroSettings = {
 
 export function getAboutHeroSettings(): HeroSettings {
   if (typeof window === "undefined") return defaultAboutHeroSettings;
-  const settings = localStorage.getItem("aboutHeroSettings");
+  const settings = localStorage.getItem(getStorageKey("aboutHeroSettings"));
   return settings ? JSON.parse(settings) : defaultAboutHeroSettings;
 }
 
 export function saveAboutHeroSettings(settings: HeroSettings): void {
-  localStorage.setItem("aboutHeroSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("aboutHeroSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("aboutHeroSettingsUpdated"));
   }
@@ -1445,12 +1469,12 @@ export function saveAboutHeroSettings(settings: HeroSettings): void {
 
 export function getStorySettings(): StorySettings {
   if (typeof window === "undefined") return defaultStorySettings;
-  const settings = localStorage.getItem("storySettings");
+  const settings = localStorage.getItem(getStorageKey("storySettings"));
   return settings ? JSON.parse(settings) : defaultStorySettings;
 }
 
 export function saveStorySettings(settings: StorySettings): void {
-  localStorage.setItem("storySettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("storySettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("storySettingsUpdated"));
   }
@@ -1458,12 +1482,12 @@ export function saveStorySettings(settings: StorySettings): void {
 
 export function getValuesSettings(): ValuesSettings {
   if (typeof window === "undefined") return defaultValuesSettings;
-  const settings = localStorage.getItem("valuesSettings");
+  const settings = localStorage.getItem(getStorageKey("valuesSettings"));
   return settings ? JSON.parse(settings) : defaultValuesSettings;
 }
 
 export function saveValuesSettings(settings: ValuesSettings): void {
-  localStorage.setItem("valuesSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("valuesSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("valuesSettingsUpdated"));
   }
@@ -1471,12 +1495,12 @@ export function saveValuesSettings(settings: ValuesSettings): void {
 
 export function getServicesSettings(): ServicesSettings {
   if (typeof window === "undefined") return defaultServicesSettings;
-  const settings = localStorage.getItem("servicesSettings");
+  const settings = localStorage.getItem(getStorageKey("servicesSettings"));
   return settings ? JSON.parse(settings) : defaultServicesSettings;
 }
 
 export function saveServicesSettings(settings: ServicesSettings): void {
-  localStorage.setItem("servicesSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("servicesSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("servicesSettingsUpdated"));
   }
@@ -1484,12 +1508,12 @@ export function saveServicesSettings(settings: ServicesSettings): void {
 
 export function getFontSettings(): FontSettings {
   if (typeof window === "undefined") return defaultFontSettings;
-  const settings = localStorage.getItem("fontSettings");
+  const settings = localStorage.getItem(getStorageKey("fontSettings"));
   return settings ? JSON.parse(settings) : defaultFontSettings;
 }
 
 export function saveFontSettings(settings: FontSettings): void {
-  localStorage.setItem("fontSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("fontSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("fontSettingsUpdated"));
   }
@@ -1497,12 +1521,12 @@ export function saveFontSettings(settings: FontSettings): void {
 
 export function getGallerySettings(): GallerySettings {
   if (typeof window === "undefined") return defaultGallerySettings;
-  const settings = localStorage.getItem("gallerySettings");
+  const settings = localStorage.getItem(getStorageKey("gallerySettings"));
   return settings ? JSON.parse(settings) : defaultGallerySettings;
 }
 
 export function saveGallerySettings(settings: GallerySettings): void {
-  localStorage.setItem("gallerySettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("gallerySettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("gallerySettingsUpdated"));
   }
@@ -1510,12 +1534,12 @@ export function saveGallerySettings(settings: GallerySettings): void {
 
 export function getCTASettings(): CTASettings {
   if (typeof window === "undefined") return defaultCTASettings;
-  const settings = localStorage.getItem("ctaSettings");
+  const settings = localStorage.getItem(getStorageKey("ctaSettings"));
   return settings ? JSON.parse(settings) : defaultCTASettings;
 }
 
 export function saveCTASettings(settings: CTASettings): void {
-  localStorage.setItem("ctaSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("ctaSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("ctaSettingsUpdated"));
   }
@@ -1523,12 +1547,12 @@ export function saveCTASettings(settings: CTASettings): void {
 
 export function getTeamSettings(): TeamSettings {
   if (typeof window === "undefined") return defaultTeamSettings;
-  const settings = localStorage.getItem("teamSettings");
+  const settings = localStorage.getItem(getStorageKey("teamSettings"));
   return settings ? JSON.parse(settings) : defaultTeamSettings;
 }
 
 export function saveTeamSettings(settings: TeamSettings): void {
-  localStorage.setItem("teamSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("teamSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("teamSettingsUpdated"));
   }
@@ -1536,12 +1560,12 @@ export function saveTeamSettings(settings: TeamSettings): void {
 
 export function getTestimonialsSettings(): TestimonialsSettings {
   if (typeof window === "undefined") return defaultTestimonialsSettings;
-  const settings = localStorage.getItem("testimonialsSettings");
+  const settings = localStorage.getItem(getStorageKey("testimonialsSettings"));
   return settings ? JSON.parse(settings) : defaultTestimonialsSettings;
 }
 
 export function saveTestimonialsSettings(settings: TestimonialsSettings): void {
-  localStorage.setItem("testimonialsSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("testimonialsSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("testimonialsSettingsUpdated"));
   }
@@ -1549,12 +1573,12 @@ export function saveTestimonialsSettings(settings: TestimonialsSettings): void {
 
 export function getHeaderSettings(): HeaderSettings {
   if (typeof window === "undefined") return defaultHeaderSettings;
-  const settings = localStorage.getItem("headerSettings");
+  const settings = localStorage.getItem(getStorageKey("headerSettings"));
   return settings ? JSON.parse(settings) : defaultHeaderSettings;
 }
 
 export function saveHeaderSettings(settings: HeaderSettings): void {
-  localStorage.setItem("headerSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("headerSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("headerSettingsUpdated"));
   }
@@ -1562,12 +1586,12 @@ export function saveHeaderSettings(settings: HeaderSettings): void {
 
 export function getFooterSettings(): FooterSettings {
   if (typeof window === "undefined") return defaultFooterSettings;
-  const settings = localStorage.getItem("footerSettings");
+  const settings = localStorage.getItem(getStorageKey("footerSettings"));
   return settings ? JSON.parse(settings) : defaultFooterSettings;
 }
 
 export function saveFooterSettings(settings: FooterSettings): void {
-  localStorage.setItem("footerSettings", JSON.stringify(settings));
+  localStorage.setItem(getStorageKey("footerSettings"), JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("footerSettingsUpdated"));
   }
@@ -1582,7 +1606,7 @@ export function getPageVisibility(): Record<string, boolean> {
       agendar: true,
     };
   }
-  const visibility = localStorage.getItem("pageVisibility");
+  const visibility = localStorage.getItem(getStorageKey("pageVisibility"));
   if (visibility) return JSON.parse(visibility);
 
   return {
@@ -1594,7 +1618,7 @@ export function getPageVisibility(): Record<string, boolean> {
 }
 
 export function savePageVisibility(visibility: Record<string, boolean>): void {
-  localStorage.setItem("pageVisibility", JSON.stringify(visibility));
+  localStorage.setItem(getStorageKey("pageVisibility"), JSON.stringify(visibility));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("pageVisibilityUpdated"));
   }
@@ -1616,7 +1640,7 @@ export function getVisibleSections(): Record<string, boolean> {
       booking: true,
     };
   }
-  const sections = localStorage.getItem("visibleSections");
+  const sections = localStorage.getItem(getStorageKey("visibleSections"));
   if (sections) return JSON.parse(sections);
 
   return {
@@ -1635,7 +1659,7 @@ export function getVisibleSections(): Record<string, boolean> {
 }
 
 export function saveVisibleSections(sections: Record<string, boolean>): void {
-  localStorage.setItem("visibleSections", JSON.stringify(sections));
+  localStorage.setItem(getStorageKey("visibleSections"), JSON.stringify(sections));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("visibleSectionsUpdated"));
   }
