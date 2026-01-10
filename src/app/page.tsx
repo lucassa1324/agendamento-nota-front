@@ -6,6 +6,8 @@ import { GalleryPreview } from "@/components/gallery-preview";
 import { HeroSection } from "@/components/hero-section";
 import { ServicesSection } from "@/components/services-section";
 import { ValuesSection } from "@/components/values-section";
+import { useStudio } from "@/context/studio-context";
+import { LANDING_PAGE_URL } from "@/lib/auth-client";
 import { getVisibleSections } from "@/lib/booking-data";
 
 export default function Home({
@@ -13,10 +15,18 @@ export default function Home({
 }: {
   searchParams: Promise<{ only?: string }>;
 }) {
+  const { slug, isLoading: studioLoading } = useStudio();
   const params = use(searchParams);
   const initialOnly = params?.only;
   const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
   const [isolatedSection, setIsolatedSection] = useState<string | null>(initialOnly || null);
+
+  useEffect(() => {
+    // Se não houver slug e não estiver carregando, redireciona para a landing page externa
+    if (!studioLoading && !slug) {
+      window.location.href = LANDING_PAGE_URL;
+    }
+  }, [slug, studioLoading]);
 
   useEffect(() => {
     // Se o parâmetro 'only' mudar na URL, atualizamos o estado de isolamento
@@ -64,6 +74,13 @@ export default function Home({
     // Caso contrário, verificamos se a seção está marcada como visível (default é true)
     return visibleSections[id] !== false;
   };
+
+  // Se estiver carregando o studio ou redirecionando, mostramos um estado neutro
+  if (studioLoading || !slug) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+    </div>;
+  }
 
   return (
     <main>

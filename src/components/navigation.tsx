@@ -215,7 +215,7 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
               </Link>
             ))}
             <Link
-              href="/admin"
+              href="http://localhost:3000/admin"
               className="text-xs lg:text-sm font-medium opacity-70 transition-colors hover:opacity-100 whitespace-nowrap"
               style={linksStyle}
             >
@@ -263,7 +263,7 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
                 </Link>
               ))}
               <Link
-                href="/admin"
+                href="http://localhost:3000/admin"
                 className="text-lg font-medium opacity-70"
                 style={linksStyle}
                 onClick={() => setMobileMenuOpen(false)}

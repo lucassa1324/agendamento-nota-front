@@ -1,5 +1,6 @@
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+export const LANDING_PAGE_URL = process.env.NEXT_PUBLIC_LANDING_PAGE_URL || "http://localhost:3002";
 
 export interface User {
   id: string;

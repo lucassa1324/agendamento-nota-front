@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 
 import { Footer } from "@/components/footer";
 import { Navigation } from "@/components/navigation";
+import { useStudio } from "@/context/studio-context";
 import type { FooterSettings, HeaderSettings } from "@/lib/booking-data";
 
 export function LayoutClientWrapper({
@@ -13,6 +14,7 @@ export function LayoutClientWrapper({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { slug } = useStudio();
   const [headerSettings, setHeaderSettings] = useState<
     HeaderSettings | undefined
   >(undefined);
@@ -57,9 +59,11 @@ export function LayoutClientWrapper({
   }, []);
 
   const isAdminRoute = pathname?.startsWith("/admin") || pathname?.includes("/admin/");
+  const isLandingPage = !slug && pathname === "/";
   const isGlobalEdit = isolatedSection === "typography" || isolatedSection === "colors";
-  const showHeader = (!isolatedSection || isolatedSection === "header" || isGlobalEdit) && !isAdminRoute;
-  const showFooter = (!isolatedSection || isolatedSection === "footer" || isGlobalEdit) && !isAdminRoute;
+  
+  const showHeader = (!isolatedSection || isolatedSection === "header" || isGlobalEdit) && !isAdminRoute && !isLandingPage;
+  const showFooter = (!isolatedSection || isolatedSection === "footer" || isGlobalEdit) && !isAdminRoute && !isLandingPage;
 
   return (
     <>
