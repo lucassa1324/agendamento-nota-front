@@ -2,11 +2,23 @@
 
 import { useEffect } from "react";
 import { getSiteProfile } from "@/lib/booking-data";
+import { useStudio } from "@/context/studio-context";
 
 export function FaviconUpdater() {
+  const { studio } = useStudio();
   useEffect(() => {
     const updateFavicon = () => {
-      const profile = getSiteProfile();
+      let logoUrl = "";
+      let name = "";
+
+      if (studio) {
+        logoUrl = studio.logoUrl || "";
+        name = studio.name || "";
+      } else {
+        const profile = getSiteProfile();
+        logoUrl = profile.logoUrl || "";
+        name = profile.name || "";
+      }
 
       // Remove ALL existing favicon-related tags
       const existingIcons = document.querySelectorAll(
@@ -16,32 +28,32 @@ export function FaviconUpdater() {
         el.remove();
       });
 
-      if (profile.logoUrl) {
+      if (logoUrl) {
         // 1. Standard Icon
         const link = document.createElement("link");
         link.rel = "icon";
-        link.type = profile.logoUrl.startsWith("data:image/svg")
+        link.type = logoUrl.startsWith("data:image/svg")
           ? "image/svg+xml"
           : "image/x-icon";
-        link.href = profile.logoUrl;
+        link.href = logoUrl;
         document.head.appendChild(link);
 
         // 2. Shortcut Icon (Older browsers)
         const shortcutLink = document.createElement("link");
         shortcutLink.rel = "shortcut icon";
-        shortcutLink.href = profile.logoUrl;
+        shortcutLink.href = logoUrl;
         document.head.appendChild(shortcutLink);
 
         // 3. Apple Touch Icon
         const appleLink = document.createElement("link");
         appleLink.rel = "apple-touch-icon";
-        appleLink.href = profile.logoUrl;
+        appleLink.href = logoUrl;
         document.head.appendChild(appleLink);
       }
 
       // Update Page Title
-      if (profile.name) {
-        document.title = `${profile.name} | Design & Beleza`;
+      if (name) {
+        document.title = `${name} | Design & Beleza`;
       }
     };
 
@@ -51,7 +63,7 @@ export function FaviconUpdater() {
     return () => {
       window.removeEventListener("siteProfileUpdated", updateFavicon);
     };
-  }, []);
+  }, [studio]);
 
   return null;
 }

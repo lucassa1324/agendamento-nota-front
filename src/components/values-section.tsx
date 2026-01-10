@@ -37,6 +37,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getValuesSettings, type ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { useStudio } from "@/context/studio-context";
 
 const iconMap: Record<string, LucideIcon> = {
   Heart,
@@ -71,6 +72,7 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export function ValuesSection() {
+  const { studio } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
   const [settings, setSettings] = useState<ValuesSettings | null>(null);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
@@ -78,8 +80,13 @@ export function ValuesSection() {
   );
 
   const loadData = useCallback(() => {
-    setSettings(getValuesSettings());
-  }, []);
+    // Se tivermos dados do studio via context (multi-tenant), usamos eles
+    if (studio?.config?.values) {
+      setSettings(studio.config.values as ValuesSettings);
+    } else {
+      setSettings(getValuesSettings());
+    }
+  }, [studio]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -131,66 +138,66 @@ export function ValuesSection() {
           <h2
             className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
             style={{
-              color: settings.titleColor || "var(--foreground)",
-              fontFamily: settings.titleFont || "var(--font-title)",
+              color: settings?.titleColor || "var(--foreground)",
+              fontFamily: settings?.titleFont || "var(--font-title)",
             }}
           >
-            {settings.title}
+            {settings?.title}
           </h2>
           <p
             className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
             style={{
-              color: settings.subtitleColor || "var(--foreground)",
-              fontFamily: settings.subtitleFont || "var(--font-subtitle)",
+              color: settings?.subtitleColor || "var(--foreground)",
+              fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
             }}
           >
-            {settings.subtitle}
+            {settings?.subtitle}
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {settings.items.map((value) => {
-            const Icon = iconMap[value.icon] || Heart;
+          {settings?.items?.map((value) => {
+            const Icon = (value?.icon && iconMap[value.icon]) || Heart;
             return (
               <Card
-                key={value.id}
+                key={value?.id}
                 className="border-border hover:border-accent transition-all overflow-hidden text-center backdrop-blur-sm"
                 style={{
-                  backgroundColor: settings.cardBgColor || "var(--card)",
+                  backgroundColor: settings?.cardBgColor || "var(--card)",
                 }}
               >
                 <CardContent className="p-6">
                   <div
                     className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 transition-all duration-300"
                     style={{
-                      backgroundColor: settings.cardIconColor
+                      backgroundColor: settings?.cardIconColor
                         ? `${settings.cardIconColor}1a`
                         : "var(--muted)",
-                      opacity: settings.cardIconColor ? 1 : 1,
+                      opacity: settings?.cardIconColor ? 1 : 1,
                     }}
                   >
                     <Icon
                       className="w-8 h-8 transition-all duration-300"
-                      style={{ color: settings.cardIconColor || "var(--primary)" }}
+                      style={{ color: settings?.cardIconColor || "var(--primary)" }}
                     />
                   </div>
                   <h3
                     className="text-xl font-semibold mb-3 transition-all duration-300"
                     style={{
-                      color: settings.cardTitleColor || "var(--primary)",
-                      fontFamily: settings.cardTitleFont || "var(--font-title)",
+                      color: settings?.cardTitleColor || "var(--primary)",
+                      fontFamily: settings?.cardTitleFont || "var(--font-title)",
                     }}
                   >
-                    {value.title}
+                    {value?.title}
                   </h3>
                   <p
                     className="text-sm leading-relaxed transition-all duration-300"
                     style={{
-                      color: settings.cardDescriptionColor || "var(--foreground)",
-                      fontFamily: settings.cardDescriptionFont || "var(--font-body)",
+                      color: settings?.cardDescriptionColor || "var(--foreground)",
+                      fontFamily: settings?.cardDescriptionFont || "var(--font-body)",
                     }}
                   >
-                    {value.description}
+                    {value?.description}
                   </p>
                 </CardContent>
               </Card>

@@ -25,10 +25,12 @@ import {
   type Service 
 } from "@/lib/booking-data";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { useStudio } from "@/context/studio-context";
 
 type BookingStep = "service" | "date" | "time" | "form" | "confirmation";
 
 export function BookingFlow() {
+  const { studio } = useStudio();
   const searchParams = useSearchParams();
   const only = searchParams.get("only");
 
@@ -56,12 +58,22 @@ export function BookingFlow() {
 
   // Load initial settings
   useEffect(() => {
-    setServiceSettings(getBookingServiceSettings());
-    setDateSettings(getBookingDateSettings());
-    setTimeSettings(getBookingTimeSettings());
-    setFormSettings(getBookingFormSettings());
-    setConfirmationSettings(getBookingConfirmationSettings());
-  }, []);
+    // Se tivermos dados do studio via context (multi-tenant), usamos eles
+    if (studio?.config?.bookingSteps) {
+      const steps = studio.config.bookingSteps as Record<string, BookingStepSettings>;
+      if (steps.service) setServiceSettings(steps.service);
+      if (steps.date) setDateSettings(steps.date);
+      if (steps.time) setTimeSettings(steps.time);
+      if (steps.form) setFormSettings(steps.form);
+      if (steps.confirmation) setConfirmationSettings(steps.confirmation);
+    } else {
+      setServiceSettings(getBookingServiceSettings());
+      setDateSettings(getBookingDateSettings());
+      setTimeSettings(getBookingTimeSettings());
+      setFormSettings(getBookingFormSettings());
+      setConfirmationSettings(getBookingConfirmationSettings());
+    }
+  }, [studio]);
 
   // Listen for real-time updates from editor
   useEffect(() => {

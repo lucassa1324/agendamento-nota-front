@@ -56,7 +56,7 @@ export function LayoutClientWrapper({
     };
   }, []);
 
-  const isAdminRoute = pathname?.startsWith("/admin");
+  const isAdminRoute = pathname?.startsWith("/admin") || pathname?.includes("/admin/");
   const isGlobalEdit = isolatedSection === "typography" || isolatedSection === "colors";
   const showHeader = (!isolatedSection || isolatedSection === "header" || isGlobalEdit) && !isAdminRoute;
   const showFooter = (!isolatedSection || isolatedSection === "footer" || isGlobalEdit) && !isAdminRoute;

@@ -40,8 +40,10 @@ import {
   type SiteProfile,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { useStudio } from "@/context/studio-context";
 
 export function HeroSection() {
+  const { studio } = useStudio();
   const [profile, setProfile] = useState<SiteProfile | null>(null);
   const [customStyles, setCustomStyles] = useState<Partial<HeroSettings>>({});
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
@@ -63,7 +65,12 @@ export function HeroSection() {
     setProfile(getSiteProfile());
 
     // Carregar configurações iniciais
-    setCustomStyles(getHeroSettings());
+    // Se tivermos dados do studio via context (multi-tenant), usamos eles
+    if (studio?.config?.hero) {
+      setCustomStyles(studio.config.hero);
+    } else {
+      setCustomStyles(getHeroSettings());
+    }
     setPageVisibility(getPageVisibility());
 
     const handleMessage = (event: MessageEvent) => {
@@ -105,7 +112,7 @@ export function HeroSection() {
         handleVisibilityUpdate,
       );
     };
-  }, []);
+  }, [studio]);
 
   const getHighlightClass = (id: string) => {
     return highlightedElement === id

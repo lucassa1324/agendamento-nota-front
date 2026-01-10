@@ -22,8 +22,10 @@ import {
   getVisibleSections,
   type SiteProfile,
 } from "@/lib/booking-data";
+import { useStudio } from "@/context/studio-context";
 
 export function Footer({ externalFooterSettings }: { externalFooterSettings?: FooterSettings }) {
+  const { studio } = useStudio();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -49,12 +51,26 @@ export function Footer({ externalFooterSettings }: { externalFooterSettings?: Fo
 
   useEffect(() => {
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
-    setProfile(getSiteProfile());
+    const baseProfile = getSiteProfile();
+    if (studio) {
+      setProfile({
+        ...baseProfile,
+        name: studio.name || baseProfile.name,
+        // Você pode adicionar outros campos do studio aqui se houver mapeamento
+      });
+    } else {
+      setProfile(baseProfile);
+    }
+    
     setPageVisibility(getPageVisibility());
     setVisibleSections(getVisibleSections());
     
     if (!externalFooterSettings) {
-      setFooterSettings(getFooterSettings());
+      if (studio?.config?.footer) {
+        setFooterSettings(studio.config.footer as FooterSettings);
+      } else {
+        setFooterSettings(getFooterSettings());
+      }
     }
 
     // Notificar o pai (admin) que o componente de rodapé está pronto
@@ -112,7 +128,7 @@ export function Footer({ externalFooterSettings }: { externalFooterSettings?: Fo
       window.removeEventListener("footerSettingsUpdated", handleFooterUpdate);
       window.removeEventListener("message", handleMessage);
     };
-  }, [pathname, externalFooterSettings]);
+  }, [pathname, externalFooterSettings, studio]);
 
   // Se estivermos isolando algo que não seja o footer, escondemos o footer
   if (only && only !== "footer") return null;

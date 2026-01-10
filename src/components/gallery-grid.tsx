@@ -5,8 +5,10 @@ import { useEffect, useState } from "react";
 import { ImageModal } from "@/components/image-modal";
 import { Button } from "@/components/ui/button";
 import { type GalleryImage, getGalleryImages, getServices } from "@/lib/booking-data";
+import { useStudio } from "@/context/studio-context";
 
 export function GalleryGrid() {
+  const { studio } = useStudio();
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [categories, setCategories] = useState<{ id: string; label: string }[]>([]);
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
@@ -20,6 +22,21 @@ export function GalleryGrid() {
 
   useEffect(() => {
     const loadData = () => {
+      // Se tivermos dados do studio via context (multi-tenant), usamos eles
+      if (studio) {
+        const allImages = studio.gallery || [];
+        const allServices = studio.services || [];
+        
+        setImages(allImages);
+        
+        const dynamicCategories = [
+          { id: "todos", label: "Todos" },
+          ...allServices.map(s => ({ id: s.name, label: s.name }))
+        ];
+        setCategories(dynamicCategories);
+        return;
+      }
+
       const allImages = getGalleryImages();
       const allServices = getServices();
       
@@ -42,7 +59,7 @@ export function GalleryGrid() {
       window.removeEventListener("studioSettingsUpdated", loadData);
       window.removeEventListener("servicesUpdated", loadData);
     };
-  }, []);
+  }, [studio]);
 
   const filteredImages =
     selectedCategory === "todos"

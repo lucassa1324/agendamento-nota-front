@@ -14,8 +14,10 @@ import {
 import { type GalleryImage as GalleryImageType, type GallerySettings, getGalleryImages, getGallerySettings, getPageVisibility } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { useStudio } from "@/context/studio-context";
 
 export function GalleryPreview() {
+  const { studio } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
   const [images, setImages] = useState<GalleryImageType[]>([]);
   const [settings, setSettings] = useState<GallerySettings | null>(null);
@@ -34,15 +36,30 @@ export function GalleryPreview() {
   useEffect(() => {
     setIsMounted(true);
     setPageVisibility(getPageVisibility());
-    setSettings(getGallerySettings());
+    
+    // Se tivermos dados do studio via context (multi-tenant), usamos eles
+    if (studio?.config?.gallery) {
+      setSettings(studio.config.gallery as GallerySettings);
+    } else {
+      setSettings(getGallerySettings());
+    }
 
     const loadImages = () => {
+      // Se tivermos dados do studio via context (multi-tenant), usamos as imagens dele
+      if (studio?.gallery) {
+        setImages(studio.gallery.filter((img) => img.showOnHome).slice(0, 6));
+        return;
+      }
       const allImages = getGalleryImages();
       setImages(allImages.filter((img) => img.showOnHome).slice(0, 6));
     };
 
     const loadSettings = () => {
-      setSettings(getGallerySettings());
+      if (studio?.config?.gallery) {
+        setSettings(studio.config.gallery as GallerySettings);
+      } else {
+        setSettings(getGallerySettings());
+      }
     };
 
     loadImages();
@@ -83,7 +100,7 @@ export function GalleryPreview() {
       window.removeEventListener("galleryUpdated", loadImages);
       window.removeEventListener("gallerySettingsUpdated", loadSettings);
     };
-  }, []);
+  }, [studio]);
 
   if (!isMounted || !settings) return null;
   if (pageVisibility.galeria === false) return null;
@@ -104,34 +121,34 @@ export function GalleryPreview() {
           <h2
             className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
             style={{
-              fontFamily: settings.titleFont || "var(--font-title)",
-              color: settings.titleColor || "var(--foreground)",
+              fontFamily: settings?.titleFont || "var(--font-title)",
+              color: settings?.titleColor || "var(--foreground)",
             }}
           >
-            {settings.title}
+            {settings?.title}
           </h2>
           <p
             className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
             style={{
-              fontFamily: settings.subtitleFont || "var(--font-subtitle)",
-              color: settings.subtitleColor || "var(--foreground)",
+              fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
+              color: settings?.subtitleColor || "var(--foreground)",
             }}
           >
-            {settings.subtitle}
+            {settings?.subtitle}
           </p>
         </div>
 
-        {images.length > 0 ? (
-          settings.layout === "grid" ? (
+        {images?.length > 0 ? (
+          settings?.layout === "grid" ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-              {images.map((image) => (
+              {images?.map((image) => (
                 <div
-                  key={image.id}
+                  key={image?.id}
                   className="aspect-square rounded-lg overflow-hidden hover:scale-105 transition-transform relative"
                 >
                   <Image
-                    src={image.url}
-                    alt={image.title}
+                    src={image?.url || ""}
+                    alt={image?.title || ""}
                     fill
                     className="w-full h-full object-cover"
                   />
@@ -148,15 +165,15 @@ export function GalleryPreview() {
                 className="w-full"
               >
                 <CarouselContent className="-ml-2 md:-ml-4">
-                  {images.map((image) => (
+                  {images?.map((image) => (
                     <CarouselItem
-                      key={image.id}
+                      key={image?.id}
                       className="pl-2 md:pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4"
                     >
                       <div className="aspect-square rounded-lg overflow-hidden relative group">
                         <Image
-                          src={image.url}
-                          alt={image.title}
+                          src={image?.url || ""}
+                          alt={image?.title || ""}
                           fill
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />

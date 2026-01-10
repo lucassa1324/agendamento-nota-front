@@ -1183,14 +1183,27 @@ function isTimeSlotAvailable(
 
 export function getBookingsFromStorage(): Booking[] {
   if (typeof window === "undefined") return [];
-  const bookings = localStorage.getItem(getStorageKey("bookings"));
-  return bookings ? JSON.parse(bookings) : [];
+  try {
+    const bookings = localStorage.getItem(getStorageKey("bookings"));
+    if (!bookings || bookings === "undefined") return [];
+    const parsed = JSON.parse(bookings);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error("Error reading bookings from storage:", error);
+    return [];
+  }
 }
 
 export function saveBookingToStorage(booking: Booking): void {
   const bookings = getBookingsFromStorage();
   bookings.push(booking);
   localStorage.setItem(getStorageKey("bookings"), JSON.stringify(bookings));
+}
+
+export function saveBookingsToStorage(newBookings: Booking[]): void {
+  const bookings = getBookingsFromStorage();
+  const updated = [...bookings, ...newBookings];
+  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function updateBookingStatus(
@@ -1227,8 +1240,15 @@ export function markNotificationsSent(
 
 export function getInventoryFromStorage(): InventoryItem[] {
   if (typeof window === "undefined") return [];
-  const inventory = localStorage.getItem(getStorageKey("inventory"));
-  return inventory ? JSON.parse(inventory) : [];
+  try {
+    const inventory = localStorage.getItem(getStorageKey("inventory"));
+    if (!inventory || inventory === "undefined") return [];
+    const parsed = JSON.parse(inventory);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error("Error reading inventory from storage:", error);
+    return [];
+  }
 }
 
 export function saveInventoryToStorage(inventory: InventoryItem[]): void {
@@ -1306,20 +1326,26 @@ export function subtractInventoryForService(serviceIds: string | string[]): { su
 }
 
 export function getSettingsFromStorage(): StudioSettings {
-  if (typeof window === "undefined")
-    return {
-      agendaAberta: true,
-      services: services,
-      scheduleSettings: defaultScheduleSettings,
-    };
-  const settings = localStorage.getItem(getStorageKey("studioSettings"));
-  return settings
-    ? JSON.parse(settings)
-    : {
-        agendaAberta: true,
-        services: services,
-        scheduleSettings: defaultScheduleSettings,
-      };
+  const defaultValue: StudioSettings = {
+    agendaAberta: true,
+    services: services,
+    scheduleSettings: defaultScheduleSettings,
+  };
+
+  if (typeof window === "undefined") return defaultValue;
+
+  try {
+    const settings = localStorage.getItem(getStorageKey("studioSettings"));
+    if (!settings || settings === "undefined") return defaultValue;
+    
+    const parsed = JSON.parse(settings);
+    if (!parsed || typeof parsed !== "object") return defaultValue;
+    
+    return parsed as StudioSettings;
+  } catch (error) {
+    console.error("Error reading studioSettings from storage:", error);
+    return defaultValue;
+  }
 }
 
 export function saveSettingsToStorage(settings: StudioSettings): void {
@@ -1700,4 +1726,21 @@ async function sendWhatsAppNotification(
   // console.log("[v0] Mensagem:", message);
   // Em produção, integrar com API do WhatsApp Business
   markNotificationsSent(booking.id, "whatsapp");
+}
+
+export interface BusinessConfig {
+  hero?: HeroSettings;
+  typography?: FontSettings;
+  [key: string]: unknown;
+}
+
+export interface Business {
+  id: string;
+  name: string;
+  slug: string;
+  logoUrl?: string;
+  config: BusinessConfig;
+  services?: Service[];
+  gallery?: GalleryImage[];
+  testimonials?: Testimonial[];
 }

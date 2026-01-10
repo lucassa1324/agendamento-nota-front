@@ -6,13 +6,20 @@ import { Button } from "@/components/ui/button";
 import { getAboutHeroSettings, type HeroSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { useStudio } from "@/context/studio-context";
 
 export function AboutHero() {
+  const { studio } = useStudio();
   const [settings, setSettings] = useState<HeroSettings | null>(null);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(null);
 
   useEffect(() => {
-    setSettings(getAboutHeroSettings());
+    // Se tivermos dados do studio via context (multi-tenant), usamos eles
+    if (studio?.config?.aboutHero) {
+      setSettings(studio.config.aboutHero as HeroSettings);
+    } else {
+      setSettings(getAboutHeroSettings());
+    }
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
@@ -38,7 +45,7 @@ export function AboutHero() {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("aboutHeroSettingsUpdated", handleUpdate);
     };
-  }, []);
+  }, [studio]);
 
   if (!settings) return null;
 

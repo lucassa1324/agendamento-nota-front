@@ -10,6 +10,7 @@ import {
   type Service,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { useStudio } from "@/context/studio-context";
 
 type ServiceSelectorProps = {
   onSelect: (services: Service[]) => void;
@@ -22,13 +23,19 @@ export function ServiceSelector({
   selectedServices: initialSelected = [],
   settings,
 }: ServiceSelectorProps) {
+  const { studio } = useStudio();
   const [services, setServices] = useState<Service[]>([]);
   const [selected, setSelected] = useState<Service[]>(initialSelected);
 
   useEffect(() => {
-    const settings = getSettingsFromStorage();
-    setServices(settings.services);
-  }, []);
+    // Se tivermos dados do studio via context (multi-tenant), usamos os serviços dele
+    if (studio?.services && studio.services.length > 0) {
+      setServices(studio.services);
+    } else {
+      const settings = getSettingsFromStorage();
+      setServices(settings.services);
+    }
+  }, [studio]);
 
   const checkConflict = (service: Service, currentSelected: Service[]) => {
     for (const s of currentSelected) {

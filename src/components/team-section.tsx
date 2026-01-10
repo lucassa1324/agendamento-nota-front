@@ -6,15 +6,22 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getTeamSettings, type TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { useStudio } from "@/context/studio-context";
 
 export function TeamSection() {
+  const { studio } = useStudio();
   const [settings, setSettings] = useState<TeamSettings | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(null);
 
   const loadData = useCallback(() => {
-    setSettings(getTeamSettings());
-  }, []);
+    // Se tivermos dados do studio via context (multi-tenant), usamos eles
+    if (studio?.config?.team) {
+      setSettings(studio.config.team as TeamSettings);
+    } else {
+      setSettings(getTeamSettings());
+    }
+  }, [studio]);
 
   useEffect(() => {
     setIsMounted(true);

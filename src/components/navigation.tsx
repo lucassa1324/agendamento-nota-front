@@ -15,8 +15,10 @@ import {
   type HeaderSettings,
   type SiteProfile,
 } from "@/lib/booking-data";
+import { useStudio } from "@/context/studio-context";
 
 export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?: HeaderSettings }) {
+  const { studio } = useStudio();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -43,12 +45,26 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
 
   useEffect(() => {
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
-    setProfile(getSiteProfile());
+    const baseProfile = getSiteProfile();
+    if (studio) {
+      setProfile({
+        ...baseProfile,
+        name: studio.name || baseProfile.name,
+        // Você pode adicionar outros campos do studio aqui se houver mapeamento
+      });
+    } else {
+      setProfile(baseProfile);
+    }
+    
     setPageVisibility(getPageVisibility());
     setVisibleSections(getVisibleSections());
     
     if (!externalHeaderSettings) {
-      setHeaderSettings(getHeaderSettings());
+      if (studio?.config?.header) {
+        setHeaderSettings(studio.config.header as HeaderSettings);
+      } else {
+        setHeaderSettings(getHeaderSettings());
+      }
     }
 
     // Notificar o pai (admin) que o componente de navegação está pronto
@@ -106,7 +122,7 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
       window.removeEventListener("headerSettingsUpdated", handleHeaderUpdate);
       window.removeEventListener("message", handleMessage);
     };
-  }, [pathname, externalHeaderSettings]);
+  }, [pathname, externalHeaderSettings, studio]);
 
   // Se estivermos isolando algo que não seja o header, escondemos o navigation
   if (only && only !== "header") return null;

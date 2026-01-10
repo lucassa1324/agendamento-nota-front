@@ -19,9 +19,10 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useStudio } from "@/context/studio-context";
 
 interface AdminNavItem {
   title: string;
@@ -79,8 +80,19 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
   const pathname = usePathname();
+  const params = useParams();
+  const { studio } = useStudio();
+  
+  const slug = (params?.slug as string) || studio?.slug || "";
 
   const isActive = (path: string) => pathname?.includes(path);
+
+  const getDynamicHref = (href: string) => {
+    if (slug) {
+      return href.replace("/admin/dashboard", `/${slug}/admin/dashboard`);
+    }
+    return href;
+  };
 
   return (
     <aside className="w-64 bg-card border-r border-border flex flex-col h-screen lg:sticky lg:top-0 z-50 shadow-xl">
@@ -101,7 +113,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
         </div>
 
         <Link
-          href="/"
+          href={slug ? `/${slug}` : "/"}
           className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors group"
         >
           <ExternalLink className="w-4 h-4 group-hover:text-primary transition-colors" />
@@ -116,21 +128,24 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
             <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">
               {group.group}
             </p>
-            {group.items.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                  isActive(item.href)
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
-              >
-                <item.icon className="w-4 h-4" />
-                {item.title}
-              </Link>
-            ))}
+            {group.items.map((item) => {
+              const dynamicHref = getDynamicHref(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={dynamicHref}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    isActive(item.href)
+                      ? "bg-primary text-primary-foreground"
+                      : "text-foreground hover:bg-accent hover:text-accent-foreground",
+                  )}
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.title}
+                </Link>
+              );
+            })}
           </div>
         ))}
 

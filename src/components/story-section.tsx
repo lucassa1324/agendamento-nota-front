@@ -6,15 +6,22 @@ import { useEffect, useState } from "react";
 import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
 import { getStorySettings, type StorySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { useStudio } from "@/context/studio-context";
 
 export function StorySection() {
+  const { studio } = useStudio();
   const [settings, setSettings] = useState<StorySettings | null>(null);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
   );
 
   useEffect(() => {
-    setSettings(getStorySettings());
+    // Se tivermos dados do studio via context (multi-tenant), usamos eles
+    if (studio?.config?.story) {
+      setSettings(studio.config.story as StorySettings);
+    } else {
+      setSettings(getStorySettings());
+    }
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
@@ -45,7 +52,7 @@ export function StorySection() {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("storySettingsUpdated", handleUpdate);
     };
-  }, []);
+  }, [studio]);
 
   if (!settings) return null;
 

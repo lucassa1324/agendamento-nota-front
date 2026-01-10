@@ -1,0 +1,104 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import type { Business } from "@/lib/booking-data";
+
+interface StudioContextType {
+  studio: Business | null;
+  isLoading: boolean;
+  error: string | null;
+  slug: string | null;
+}
+
+const StudioContext = createContext<StudioContextType | undefined>(undefined);
+
+export function StudioProvider({ 
+  children, 
+  initialSlug 
+}: { 
+  children: ReactNode;
+  initialSlug?: string;
+}) {
+  const [studio, setStudio] = useState<Business | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [slug, setSlug] = useState<string | null>(initialSlug || null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (initialSlug) {
+      setSlug(initialSlug);
+    }
+  }, [initialSlug]);
+
+  useEffect(() => {
+    async function fetchStudio() {
+      let currentSlug = slug;
+
+      // Se não temos um slug inicial, tenta extrair do host
+      if (!currentSlug && typeof window !== "undefined") {
+        const host = window.location.host;
+        // Ignora localhost puro e domínios www
+        if (!host.startsWith("localhost:") && !host.startsWith("www.")) {
+          const parts = host.split(".");
+          if (parts.length > 1) {
+            currentSlug = parts[0];
+            setSlug(currentSlug);
+          }
+        }
+      }
+
+      if (!currentSlug) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+        const response = await fetch(`${apiUrl}/api/studios/slug/${currentSlug}`, {
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setStudio(data);
+        } else if (response.status === 404) {
+          setError("Studio não encontrado");
+        } else {
+          throw new Error("Erro ao carregar dados do studio");
+        }
+      } catch (err) {
+        console.error("Erro ao buscar studio:", err);
+        setError("Erro de conexão");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchStudio();
+  }, [slug]);
+
+  useEffect(() => {
+    if (error === "Studio não encontrado") {
+      // Redireciona para uma página de erro ou home se o studio não existir
+      // Podemos usar router.replace para não sujar o histórico
+      router.replace("/404");
+      console.warn("Studio não encontrado para o slug:", slug);
+    }
+  }, [error, slug, router]);
+
+  return (
+    <StudioContext.Provider value={{ studio, isLoading, error, slug }}>
+      {children}
+    </StudioContext.Provider>
+  );
+}
+
+export function useStudio() {
+  const context = useContext(StudioContext);
+  if (context === undefined) {
+    throw new Error("useStudio deve ser usado dentro de um StudioProvider");
+  }
+  return context;
+}

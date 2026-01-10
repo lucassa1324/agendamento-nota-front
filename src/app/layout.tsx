@@ -1,11 +1,13 @@
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
+import { headers } from "next/headers";
 import type React from "react";
 import { FaviconUpdater } from "@/components/favicon-updater";
 import { LayoutClientWrapper } from "@/components/layout-client-wrapper";
 import { PreviewStyleManager } from "@/components/preview-style-manager";
 import { Toaster } from "@/components/ui/toaster";
+import { StudioProvider } from "@/context/studio-context";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -27,21 +29,26 @@ export const metadata: Metadata = {
   generator: "v0.app",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headersList = await headers();
+  const slug = headersList.get("x-studio-slug") || undefined;
+
   return (
     <html lang="pt-BR" className={`${inter.variable} ${playfair.variable}`} suppressHydrationWarning>
       <body className={`font-sans antialiased`} suppressHydrationWarning>
-        <PreviewStyleManager />
-        <FaviconUpdater />
-        <LayoutClientWrapper>
-          {children}
-        </LayoutClientWrapper>
-        <Toaster />
-        <Analytics />
+        <StudioProvider initialSlug={slug}>
+          <PreviewStyleManager />
+          <FaviconUpdater />
+          <LayoutClientWrapper>
+            {children}
+          </LayoutClientWrapper>
+          <Toaster />
+          <Analytics />
+        </StudioProvider>
       </body>
     </html>
   );

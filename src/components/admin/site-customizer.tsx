@@ -5,12 +5,21 @@
  */
 "use client";
 
-import { Layout, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useRef } from "react";
+import { PanelLeftClose, PanelLeftOpen, Save } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useSidebar } from "@/context/sidebar-context";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useToast } from "@/hooks/use-toast";
+import type { Business } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { pages, sections } from "./site_editor/components/editor-constants";
 import { HeaderControls } from "./site_editor/components/header-controls";
@@ -25,6 +34,11 @@ export function SiteCustomizer() {
   const isMobile = useIsMobile();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
+  const [isLoadingBusinesses, setIsLoadingBusinesses] = useState(true);
 
   const {
     heroSettings,
@@ -107,7 +121,105 @@ export function SiteCustomizer() {
     hasBookingFormChanges,
     hasBookingConfirmationChanges,
     hasUnsavedGlobalChanges,
+    // Novos helpers para sincronização com o banco
+    loadExternalConfig,
   } = useSiteEditor(iframeRef);
+
+  const fetchBusinesses = useCallback(async () => {
+    setIsLoadingBusinesses(true);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/business/my`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setBusinesses(data);
+        if (data.length > 0 && !selectedBusinessId) {
+          setSelectedBusinessId(data[0].id);
+        }
+      } else if (response.status === 401) {
+        toast({
+          title: "Sessão expirada",
+          description: "Por favor, faça login novamente para editar seu site.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao carregar negócios:", error);
+    } finally {
+      setIsLoadingBusinesses(false);
+    }
+  }, [selectedBusinessId, toast]);
+
+  useEffect(() => {
+    fetchBusinesses();
+  }, [fetchBusinesses]);
+
+  useEffect(() => {
+    if (selectedBusinessId) {
+      const business = businesses.find((b) => b.id === selectedBusinessId);
+      if (business?.config) {
+        loadExternalConfig(business.config);
+      }
+    }
+  }, [selectedBusinessId, businesses, loadExternalConfig]);
+
+  const handleSaveToDB = async () => {
+    if (!selectedBusinessId) return;
+
+    try {
+      const currentConfig = {
+        hero: heroSettings,
+        aboutHero: aboutHeroSettings,
+        story: storySettings,
+        team: teamSettings,
+        testimonials: testimonialsSettings,
+        typography: fontSettings,
+        colors: colorSettings,
+        services: servicesSettings,
+        values: valuesSettings,
+        gallery: gallerySettings,
+        cta: ctaSettings,
+        header: headerSettings,
+        footer: footerSettings,
+        bookingSteps: {
+          service: bookingServiceSettings,
+          date: bookingDateSettings,
+          time: bookingTimeSettings,
+          form: bookingFormSettings,
+          confirmation: bookingConfirmationSettings,
+        },
+        pageVisibility: pageVisibility,
+        visibleSections: visibleSections,
+      };
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/business/${selectedBusinessId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ config: currentConfig }),
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Salvo com sucesso!",
+          description: "As configurações foram salvas no banco de dados.",
+        });
+        // Também salva localmente
+        handleSaveGlobal();
+      } else {
+        throw new Error("Erro ao salvar no banco");
+      }
+    } catch (_error) {
+      toast({
+        title: "Erro ao salvar",
+        description: "Não foi possível persistir as alterações.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const {
     previewMode,
@@ -248,38 +360,56 @@ export function SiteCustomizer() {
           </Button>
           
           <div className="flex items-center gap-6">
-            <h1 className="text-lg font-bold text-foreground whitespace-nowrap">
-              Personalização do Site
-            </h1>
-            
-            <div className="h-6 w-px bg-border hidden md:block" />
-            
+            <div className="flex items-center gap-3 bg-muted/50 px-3 py-1.5 rounded-lg border">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Negócio:
+              </span>
+              {isLoadingBusinesses ? (
+                <div className="h-8 w-32 bg-muted animate-pulse rounded" />
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={selectedBusinessId}
+                    onValueChange={setSelectedBusinessId}
+                  >
+                    <SelectTrigger className="w-45 h-8 text-xs">
+                      <SelectValue placeholder="Selecione um negócio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {businesses.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+
             <HeaderControls
               previewMode={previewMode}
               setPreviewMode={setPreviewMode}
-              mobileScale={mobileScale}
-              desktopScale={desktopScale}
               setManualScale={setManualScale}
               setIsAutoZoom={setIsAutoZoom}
               isAutoZoom={isAutoZoom}
               setManualWidth={setManualWidth}
               reloadPreview={reloadPreview}
+              desktopScale={desktopScale}
+              mobileScale={mobileScale}
             />
           </div>
         </div>
 
-        <div className="hidden lg:flex items-center gap-4 text-sm text-muted-foreground font-medium">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border/50">
-            <Layout className="w-4 h-4 text-primary/60" />
-            <span>{activePageData?.path || "/"}</span>
-          </div>
-          <span className="capitalize">
-            {new Intl.DateTimeFormat('pt-BR', { 
-              weekday: 'long', 
-              day: 'numeric', 
-              month: 'long' 
-            }).format(new Date())}
-          </span>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleSaveToDB}
+            disabled={!selectedBusinessId}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all active:scale-95 px-6 font-semibold"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Salvar Tudo
+          </Button>
         </div>
       </header>
 

@@ -11,11 +11,16 @@ import {
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { useStudio } from "@/context/studio-context";
 
 export function CTASection() {
+  const { studio } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
   const [settings, setSettings] = useState<CTASettings | null>(() => {
-    if (typeof window !== "undefined") return getCTASettings();
+    if (typeof window !== "undefined") {
+      // Prioridade para o contexto se disponível
+      return null; 
+    }
     return null;
   });
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
@@ -33,7 +38,13 @@ export function CTASection() {
   useEffect(() => {
     setIsMounted(true);
     setPageVisibility(getPageVisibility());
-    setSettings(getCTASettings());
+    
+    // Se tivermos dados do studio via context (multi-tenant), usamos eles
+    if (studio?.config?.cta) {
+      setSettings(studio.config.cta as CTASettings);
+    } else {
+      setSettings(getCTASettings());
+    }
 
     const handleVisibilityUpdate = () => {
       setPageVisibility(getPageVisibility());
@@ -73,7 +84,7 @@ export function CTASection() {
       );
       window.removeEventListener("ctaSettingsUpdated", handleSettingsUpdate);
     };
-  }, []);
+  }, [studio]);
 
   if (!isMounted || !settings) return null;
   if (pageVisibility.agendar === false) return null;

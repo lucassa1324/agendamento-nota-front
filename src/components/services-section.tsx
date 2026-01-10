@@ -42,6 +42,7 @@ import {
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { useStudio } from "@/context/studio-context";
 
 const iconMap: Record<string, LucideIcon> = {
   Sparkles,
@@ -76,6 +77,7 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export function ServicesSection() {
+  const { studio } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [settings, setSettings] = useState<ServicesSettings | null>(null);
@@ -84,13 +86,27 @@ export function ServicesSection() {
   );
 
   const loadData = useCallback(() => {
+    // Se tivermos dados do studio via context (multi-tenant), usamos eles
+    if (studio) {
+      const homeServices = (studio?.services || []).filter(
+        (s: Service) => s?.showOnHome,
+      );
+      setServices(homeServices);
+      
+      const configServices = studio?.config?.services as ServicesSettings | undefined;
+      setSettings(configServices || getServicesSettings());
+      return;
+    }
+
     const studioSettings = getSettingsFromStorage();
-    const homeServices = studioSettings.services.filter(
-      (s: Service) => s.showOnHome,
-    );
-    setServices(homeServices);
+    if (studioSettings?.services) {
+      const homeServices = studioSettings?.services?.filter(
+        (s: Service) => s?.showOnHome,
+      );
+      setServices(homeServices || []);
+    }
     setSettings(getServicesSettings());
-  }, []);
+  }, [studio]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -173,14 +189,14 @@ export function ServicesSection() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {services.map((service: Service) => {
+          {services?.map((service: Service) => {
             // Usa o ícone definido no serviço ou tenta inferir pelo nome
             let Icon = Sparkles;
 
-            if (service.icon && iconMap[service.icon]) {
+            if (service?.icon && iconMap[service.icon]) {
               Icon = iconMap[service.icon];
             } else {
-              const name = service.name.toLowerCase();
+              const name = service?.name?.toLowerCase() || "";
               if (name.includes("design")) Icon = Scissors;
               else if (name.includes("color") || name.includes("henna"))
                 Icon = Palette;
@@ -189,50 +205,50 @@ export function ServicesSection() {
 
             return (
               <Card
-                key={service.id}
+                key={service?.id}
                 className="border-border hover:border-accent transition-colors overflow-hidden"
-                style={{ backgroundColor: settings.cardBgColor || "transparent" }}
+                style={{ backgroundColor: settings?.cardBgColor || "transparent" }}
               >
                 <CardContent className="p-6">
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center mb-4 transition-colors"
                     style={{
-                      backgroundColor: settings.cardIconColor
+                      backgroundColor: settings?.cardIconColor
                         ? `${settings.cardIconColor}1a`
                         : "var(--muted)",
                     }}
                   >
                     <Icon
                       className="w-6 h-6 transition-colors"
-                      style={{ color: settings.cardIconColor || "var(--primary)" }}
+                      style={{ color: settings?.cardIconColor || "var(--primary)" }}
                     />
                   </div>
                   <h3
                     className="text-xl font-semibold mb-2"
                     style={{
-                      color: settings.cardTitleColor || "var(--foreground)",
-                      fontFamily: settings.cardTitleFont || "var(--font-subtitle)",
+                      color: settings?.cardTitleColor || "var(--foreground)",
+                      fontFamily: settings?.cardTitleFont || "var(--font-subtitle)",
                     }}
                   >
-                    {service.name}
+                    {service?.name}
                   </h3>
                   <p
                     className="text-sm mb-4 leading-relaxed opacity-80"
                     style={{
-                      color: settings.cardDescriptionColor || "var(--foreground)",
-                      fontFamily: settings.cardDescriptionFont || "var(--font-body)",
+                      color: settings?.cardDescriptionColor || "var(--foreground)",
+                      fontFamily: settings?.cardDescriptionFont || "var(--font-body)",
                     }}
                   >
-                    {service.description}
+                    {service?.description}
                   </p>
                   <p
                     className="font-semibold"
                     style={{
-                      color: settings.cardPriceColor || "var(--primary)",
-                      fontFamily: settings.cardPriceFont || "var(--font-body)",
+                      color: settings?.cardPriceColor || "var(--primary)",
+                      fontFamily: settings?.cardPriceFont || "var(--font-body)",
                     }}
                   >
-                    A partir de R$ {service.price.toFixed(2)}
+                    A partir de R$ {service?.price?.toFixed(2) || "0,00"}
                   </p>
                 </CardContent>
               </Card>
