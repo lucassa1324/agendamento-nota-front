@@ -4,13 +4,13 @@ import { Check, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useStudio } from "@/context/studio-context";
 import {
   type BookingStepSettings,
   getSettingsFromStorage,
   type Service,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { useStudio } from "@/context/studio-context";
 
 type ServiceSelectorProps = {
   onSelect: (services: Service[]) => void;

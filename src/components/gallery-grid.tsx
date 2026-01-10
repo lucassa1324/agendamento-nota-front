@@ -4,8 +4,8 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { ImageModal } from "@/components/image-modal";
 import { Button } from "@/components/ui/button";
-import { type GalleryImage, getGalleryImages, getServices } from "@/lib/booking-data";
 import { useStudio } from "@/context/studio-context";
+import { type GalleryImage, getGalleryImages, getServices } from "@/lib/booking-data";
 
 export function GalleryGrid() {
   const { studio } = useStudio();

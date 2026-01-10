@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useStudio } from "@/context/studio-context";
 import {
   defaultHeaderSettings,
   getHeaderSettings,
@@ -15,7 +16,6 @@ import {
   type HeaderSettings,
   type SiteProfile,
 } from "@/lib/booking-data";
-import { useStudio } from "@/context/studio-context";
 
 export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?: HeaderSettings }) {
   const { studio } = useStudio();

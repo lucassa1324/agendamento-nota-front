@@ -3,10 +3,10 @@
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useStudio } from "@/context/studio-context";
 import { getTeamSettings, type TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
-import { useStudio } from "@/context/studio-context";
 
 export function TeamSection() {
   const { studio } = useStudio();

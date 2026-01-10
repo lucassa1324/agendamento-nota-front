@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useStudio } from "@/context/studio-context";
 import { getAboutHeroSettings, type HeroSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
-import { useStudio } from "@/context/studio-context";
 
 export function AboutHero() {
   const { studio } = useStudio();

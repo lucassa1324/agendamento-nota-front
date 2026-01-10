@@ -4,6 +4,7 @@ import { Calendar } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useStudio } from "@/context/studio-context";
 import {
   type CTASettings,
   getCTASettings,
@@ -11,7 +12,6 @@ import {
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
-import { useStudio } from "@/context/studio-context";
 
 export function CTASection() {
   const { studio } = useStudio();

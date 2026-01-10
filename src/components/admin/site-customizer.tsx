@@ -1,26 +1,16 @@
-/**
- * Componente principal do Customizador de Site.
- * Atua como o orquestrador entre a barra lateral de edição (SidebarContent)
- * e a visualização em tempo real (PreviewFrame).
- */
 "use client";
 
-import { PanelLeftClose, PanelLeftOpen, Save } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useSidebar } from "@/context/sidebar-context";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/lib/auth-client";
 import type { Business } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { PanelLeftClose, PanelLeftOpen, Save } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { pages, sections } from "./site_editor/components/editor-constants";
 import { HeaderControls } from "./site_editor/components/header-controls";
 import { PreviewFrame } from "./site_editor/components/preview-frame";
@@ -32,13 +22,17 @@ import { useSiteEditor } from "./site_editor/hooks/use-site-editor";
 export function SiteCustomizer() {
   const { isSidebarOpen, setIsSidebarOpen: onToggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
+  const params = useParams();
+  const slug = params?.slug as string;
+  
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
-  const [isLoadingBusinesses, setIsLoadingBusinesses] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     heroSettings,
@@ -125,44 +119,48 @@ export function SiteCustomizer() {
     loadExternalConfig,
   } = useSiteEditor(iframeRef);
 
-  const fetchBusinesses = useCallback(async () => {
-    setIsLoadingBusinesses(true);
+  const fetchBusinessData = useCallback(async () => {
+    if (!slug) return;
+    setIsLoading(true);
+    setError(null);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/business/my`, {
+      console.log(`>>> [CUSTOMIZER] Buscando dados para o slug: ${slug}`);
+      // Ajustado de /api/studios para /api/business conforme confirmado pelo back-end
+      const response = await fetch(`${API_BASE_URL}/api/business/slug/${slug}`, {
         credentials: "include",
       });
+
       if (response.ok) {
         const data = await response.json();
-        setBusinesses(data);
-        if (data.length > 0 && !selectedBusinessId) {
-          setSelectedBusinessId(data[0].id);
+        const businessData = Array.isArray(data) ? data[0] : data;
+        
+        if (businessData) {
+          setBusinesses([businessData]);
+          setSelectedBusinessId(businessData.id);
+          
+          if (businessData.config) {
+            console.log(">>> [CUSTOMIZER] Configuração encontrada, carregando no editor...");
+            loadExternalConfig(businessData.config);
+          }
+        } else {
+          setError("Dados do estúdio não encontrados.");
         }
-      } else if (response.status === 401) {
-        toast({
-          title: "Sessão expirada",
-          description: "Por favor, faça login novamente para editar seu site.",
-          variant: "destructive",
-        });
+      } else {
+        const errorText = await response.text();
+        console.error(`>>> [CUSTOMIZER] Erro ao buscar estúdio (${response.status}):`, errorText);
+        setError(`Erro ao carregar dados (${response.status})`);
       }
-    } catch (error) {
-      console.error("Erro ao carregar negócios:", error);
+    } catch (err) {
+      console.error(">>> [CUSTOMIZER] Erro de rede:", err);
+      setError("Erro de conexão com o servidor.");
     } finally {
-      setIsLoadingBusinesses(false);
+      setIsLoading(false);
     }
-  }, [selectedBusinessId, toast]);
+  }, [slug, loadExternalConfig]);
 
   useEffect(() => {
-    fetchBusinesses();
-  }, [fetchBusinesses]);
-
-  useEffect(() => {
-    if (selectedBusinessId) {
-      const business = businesses.find((b) => b.id === selectedBusinessId);
-      if (business?.config) {
-        loadExternalConfig(business.config);
-      }
-    }
-  }, [selectedBusinessId, businesses, loadExternalConfig]);
+    fetchBusinessData();
+  }, [fetchBusinessData]);
 
   const handleSaveToDB = async () => {
     if (!selectedBusinessId) return;
@@ -174,7 +172,7 @@ export function SiteCustomizer() {
         story: storySettings,
         team: teamSettings,
         testimonials: testimonialsSettings,
-        typography: fontSettings,
+        theme: fontSettings,
         colors: colorSettings,
         services: servicesSettings,
         values: valuesSettings,
@@ -193,8 +191,9 @@ export function SiteCustomizer() {
         visibleSections: visibleSections,
       };
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/business/${selectedBusinessId}`, {
-        method: "PATCH",
+      console.log(`>>> [CUSTOMIZER] Salvando configurações para o estúdio: ${selectedBusinessId}`);
+      const response = await fetch(`${API_BASE_URL}/api/studios/${selectedBusinessId}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
@@ -207,12 +206,15 @@ export function SiteCustomizer() {
           title: "Salvo com sucesso!",
           description: "As configurações foram salvas no banco de dados.",
         });
-        // Também salva localmente
+        // Também salva localmente (localStorage fallback)
         handleSaveGlobal();
       } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(">>> [CUSTOMIZER] Erro ao salvar no banco:", errorData);
         throw new Error("Erro ao salvar no banco");
       }
-    } catch (_error) {
+    } catch (err) {
+      console.error(">>> [CUSTOMIZER] Erro crítico ao salvar:", err);
       toast({
         title: "Erro ao salvar",
         description: "Não foi possível persistir as alterações.",
@@ -341,6 +343,32 @@ export function SiteCustomizer() {
     sections,
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen w-full bg-background gap-4">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-muted-foreground animate-pulse">Carregando configurações do estúdio...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen w-full bg-background gap-6 p-4 text-center">
+        <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center text-destructive">
+          <Save className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold">Ops! Algo deu errado</h2>
+          <p className="text-muted-foreground max-w-md">{error}</p>
+        </div>
+        <Button onClick={() => fetchBusinessData()} variant="outline">
+          Tentar Novamente
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden bg-background">
       {/* Top Header */}
@@ -362,29 +390,13 @@ export function SiteCustomizer() {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-3 bg-muted/50 px-3 py-1.5 rounded-lg border">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Negócio:
+                Estúdio:
               </span>
-              {isLoadingBusinesses ? (
-                <div className="h-8 w-32 bg-muted animate-pulse rounded" />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={selectedBusinessId}
-                    onValueChange={setSelectedBusinessId}
-                  >
-                    <SelectTrigger className="w-45 h-8 text-xs">
-                      <SelectValue placeholder="Selecione um negócio" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {businesses.map((b) => (
-                        <SelectItem key={b.id} value={b.id}>
-                          {b.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-primary truncate max-w-50">
+                  {businesses[0]?.name || slug}
+                </span>
+              </div>
             </div>
 
             <HeaderControls

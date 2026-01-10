@@ -11,10 +11,10 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { useStudio } from "@/context/studio-context";
 import { type GalleryImage as GalleryImageType, type GallerySettings, getGalleryImages, getGallerySettings, getPageVisibility } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
-import { useStudio } from "@/context/studio-context";
 
 export function GalleryPreview() {
   const { studio } = useStudio();

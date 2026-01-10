@@ -4,9 +4,9 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
+import { useStudio } from "@/context/studio-context";
 import { getStorySettings, type StorySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { useStudio } from "@/context/studio-context";
 
 export function StorySection() {
   const { studio } = useStudio();

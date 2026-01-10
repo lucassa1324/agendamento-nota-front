@@ -9,6 +9,7 @@ import { BookingForm } from "@/components/booking-form";
 import { ServiceSelector } from "@/components/service-selector";
 import { TimeSlotSelector } from "@/components/time-slot-selector";
 import { Card } from "@/components/ui/card";
+import { useStudio } from "@/context/studio-context";
 import { 
   type Booking, 
   type BookingStepSettings,
@@ -25,7 +26,6 @@ import {
   type Service 
 } from "@/lib/booking-data";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
-import { useStudio } from "@/context/studio-context";
 
 type BookingStep = "service" | "date" | "time" | "form" | "confirmation";
 

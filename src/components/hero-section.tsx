@@ -32,6 +32,7 @@ const iconMap: Record<string, LucideIcon> = {
   Award,
 };
 
+import { useStudio } from "@/context/studio-context";
 import {
   getHeroSettings,
   getPageVisibility,
@@ -40,7 +41,6 @@ import {
   type SiteProfile,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { useStudio } from "@/context/studio-context";
 
 export function HeroSection() {
   const { studio } = useStudio();

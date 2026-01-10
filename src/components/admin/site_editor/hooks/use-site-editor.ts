@@ -4,7 +4,7 @@ interface SiteConfigData {
   story?: StorySettings;
   team?: TeamSettings;
   testimonials?: TestimonialsSettings;
-  typography?: FontSettings;
+  theme?: FontSettings;
   colors?: ColorSettings;
   services?: ServicesSettings;
   values?: ValuesSettings;
@@ -1492,10 +1492,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       setLastAppliedTestimonials(data.testimonials);
     }
 
-    if (data.typography) {
-      setFontSettings(data.typography);
-      setLastSavedFont(data.typography);
-      setLastAppliedFont(data.typography);
+    if (data.theme) {
+      setFontSettings(data.theme);
+      setLastSavedFont(data.theme);
+      setLastAppliedFont(data.theme);
     }
 
     if (data.colors) {
@@ -1588,7 +1588,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         if (data.story) win.postMessage({ type: "UPDATE_STORY_SETTINGS", settings: data.story }, "*");
         if (data.team) win.postMessage({ type: "UPDATE_TEAM_SETTINGS", settings: data.team }, "*");
         if (data.testimonials) win.postMessage({ type: "UPDATE_TESTIMONIALS_SETTINGS", settings: data.testimonials }, "*");
-        if (data.typography) win.postMessage({ type: "UPDATE_TYPOGRAPHY", settings: data.typography }, "*");
+        if (data.theme) win.postMessage({ type: "UPDATE_TYPOGRAPHY", settings: data.theme }, "*");
         if (data.colors) win.postMessage({ type: "UPDATE_COLORS", settings: data.colors }, "*");
         if (data.services) win.postMessage({ type: "UPDATE_SERVICES_SETTINGS", settings: data.services }, "*");
         if (data.values) win.postMessage({ type: "UPDATE_VALUES_SETTINGS", settings: data.values }, "*");

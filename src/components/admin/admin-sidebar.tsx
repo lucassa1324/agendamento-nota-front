@@ -21,8 +21,8 @@ import {
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useStudio } from "@/context/studio-context";
+import { cn } from "@/lib/utils";
 
 interface AdminNavItem {
   title: string;
@@ -89,9 +89,20 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
 
   const getDynamicHref = (href: string) => {
     if (slug) {
-      return href.replace("/admin/dashboard", `/${slug}/admin/dashboard`);
+      return href.replace("/admin/dashboard", `/admin/${slug}/dashboard`);
     }
     return href;
+  };
+
+  const getSiteUrl = () => {
+    if (!slug) return "/";
+    if (typeof window !== "undefined") {
+      const host = window.location.host;
+      if (host.includes("localhost")) {
+        return `http://${slug}.localhost:3000`;
+      }
+    }
+    return `/${slug}`;
   };
 
   return (
@@ -112,13 +123,15 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
           </div>
         </div>
 
-        <Link
-          href={slug ? `/${slug}` : "/"}
+        <a
+          href={getSiteUrl()}
+          target="_blank"
+          rel="noopener noreferrer"
           className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors group"
         >
           <ExternalLink className="w-4 h-4 group-hover:text-primary transition-colors" />
           Ir para o site
-        </Link>
+        </a>
       </div>
 
       {/* Sidebar Navigation */}

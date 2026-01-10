@@ -13,6 +13,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useStudio } from "@/context/studio-context";
 import {
   defaultFooterSettings,
   type FooterSettings,
@@ -22,7 +23,6 @@ import {
   getVisibleSections,
   type SiteProfile,
 } from "@/lib/booking-data";
-import { useStudio } from "@/context/studio-context";
 
 export function Footer({ externalFooterSettings }: { externalFooterSettings?: FooterSettings }) {
   const { studio } = useStudio();

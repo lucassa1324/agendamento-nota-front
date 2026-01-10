@@ -40,18 +40,8 @@ export function SignUpForm() {
         const slug = result.business.slug;
         console.log(">>> [SIGNUP] Cadastro bem-sucedido, redirecionando para:", slug);
         
-        // Redirecionamento dinâmico ou subdomínio
-        if (typeof window !== "undefined") {
-          const host = window.location.host;
-          if (host.includes("localhost")) {
-            // Redireciona para o subdomínio no localhost
-            window.location.href = `http://${slug}.localhost:3000/admin/dashboard`;
-          } else {
-            // Para produção ou outros ambientes, usa a rota dinâmica
-            router.push(`/${slug}/admin/dashboard`);
-            router.refresh();
-          }
-        }
+        router.push(`/admin/${slug}/dashboard/overview`);
+        router.refresh();
       } else {
         console.error(">>> [SIGNUP] Resposta inválida do servidor:", result);
         setError("Erro ao criar conta. O servidor não retornou os dados do negócio.");

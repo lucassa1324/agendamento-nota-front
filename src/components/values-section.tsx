@@ -34,10 +34,10 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useStudio } from "@/context/studio-context";
 import { getValuesSettings, type ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
-import { useStudio } from "@/context/studio-context";
 
 const iconMap: Record<string, LucideIcon> = {
   Heart,

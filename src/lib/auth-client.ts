@@ -9,6 +9,11 @@ export interface User {
   image?: string;
   createdAt: Date;
   updatedAt: Date;
+  business?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
 }
 
 export interface Session {
@@ -28,6 +33,14 @@ export interface AuthResponse {
     id: string;
     name: string;
     slug: string;
+  };
+  data?: {
+    user?: User;
+    business?: {
+      id: string;
+      name: string;
+      slug: string;
+    };
   };
 }
 

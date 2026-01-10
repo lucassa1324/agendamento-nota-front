@@ -117,7 +117,7 @@ function AdminLayoutContent({
       {/* Botão Mobile para abrir Sidebar */}
       <div className="lg:hidden p-4 border-b border-border flex items-center justify-between bg-card shrink-0">
         <Link
-          href={`/${slug}/admin/dashboard`}
+          href={`/admin/${slug}/dashboard/overview`}
           className="font-serif font-bold text-primary"
         >
           Brow Studio
