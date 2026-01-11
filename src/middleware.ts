@@ -13,18 +13,15 @@ export function middleware(request: NextRequest) {
   // Verifica se o host atual é um dos domínios base
   const isBaseDomain = baseDomains.includes(host);
 
-  if (!isBaseDomain) {
-    // Extrai o subdomínio/slug
-    // Ex: barbearia-do-lucas.localhost:3000 -> barbearia-do-lucas
-    const slug = host.split(".")[0];
+  if (!isBaseDomain && host.endsWith(baseDomain)) {
+    // Extrai o subdomínio/slug removendo o domínio base
+    // Ex: lucas-studio.agendamento-nota-front.vercel.app -> lucas-studio
+    const slug = host.replace(`.${baseDomain}`, "").replace("www.", "");
 
-    if (slug && slug !== "www") {
+    if (slug) {
       // Adiciona o slug aos headers para que possa ser lido nos Server Components
       const requestHeaders = new Headers(request.headers);
       requestHeaders.set("x-studio-slug", slug);
-
-      // Opcional: Você pode fazer um rewrite se quiser caminhos internos específicos
-      // return NextResponse.rewrite(new URL(`/${slug}${url.pathname}`, request.url));
 
       return NextResponse.next({
         request: {

@@ -8,7 +8,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { API_BASE_URL } from "@/lib/auth-client";
+import { API_BASE_URL, BASE_DOMAIN } from "@/lib/auth-client";
 import type { Business } from "@/lib/booking-data";
 
 interface StudioContextType {
@@ -46,11 +46,12 @@ export function StudioProvider({
       // Se não temos um slug inicial, tenta extrair do host
       if (!currentSlug && typeof window !== "undefined") {
         const host = window.location.host;
-        // Ignora localhost puro e domínios www
-        if (!host.startsWith("localhost:") && !host.startsWith("www.")) {
-          const parts = host.split(".");
-          if (parts.length > 1) {
-            currentSlug = parts[0];
+        
+        // Verifica se estamos em um subdomínio do BASE_DOMAIN
+        if (BASE_DOMAIN && host.endsWith(BASE_DOMAIN) && host !== BASE_DOMAIN && host !== `www.${BASE_DOMAIN}`) {
+          const possibleSlug = host.replace(`.${BASE_DOMAIN}`, "").replace("www.", "");
+          if (possibleSlug) {
+            currentSlug = possibleSlug;
             setSlug(currentSlug);
           }
         }

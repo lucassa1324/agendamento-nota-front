@@ -27,10 +27,11 @@ export default function Home({
 
   useEffect(() => {
     // Se não houver slug e não estiver carregando, redireciona para a landing page externa
-    // Verificamos o host para garantir que não estamos no domínio base
-    if (!studioLoading && !slug) {
-      console.log("Redirecting to landing page:", LANDING_PAGE_URL);
-      window.location.replace(LANDING_PAGE_URL);
+    if (!studioLoading && !slug && LANDING_PAGE_URL) {
+      if (typeof window !== "undefined") {
+        console.log("Redirecting to landing page:", LANDING_PAGE_URL);
+        window.location.replace(LANDING_PAGE_URL);
+      }
     }
   }, [slug, studioLoading]);
 
