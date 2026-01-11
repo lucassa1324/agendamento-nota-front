@@ -18,8 +18,12 @@ export default function Home({
   const { slug, isLoading: studioLoading } = useStudio();
   const params = use(searchParams);
   const initialOnly = params?.only;
-  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
-  const [isolatedSection, setIsolatedSection] = useState<string | null>(initialOnly || null);
+  const [visibleSections, setVisibleSections] = useState<
+    Record<string, boolean>
+  >({});
+  const [isolatedSection, setIsolatedSection] = useState<string | null>(
+    initialOnly || null,
+  );
 
   useEffect(() => {
     // Se não houver slug e não estiver carregando, redireciona para a landing page externa
@@ -47,10 +51,18 @@ export default function Home({
         setVisibleSections(event.data.sections);
       } else if (event.data?.type === "UPDATE_HEADER_SETTINGS") {
         // Notifica o sistema de eventos global para o Header no LayoutClientWrapper
-        window.dispatchEvent(new CustomEvent("headerSettingsUpdated", { detail: event.data.settings }));
+        window.dispatchEvent(
+          new CustomEvent("headerSettingsUpdated", {
+            detail: event.data.settings,
+          }),
+        );
       } else if (event.data?.type === "UPDATE_FOOTER_SETTINGS") {
         // Notifica o sistema de eventos global para o Footer no LayoutClientWrapper
-        window.dispatchEvent(new CustomEvent("footerSettingsUpdated", { detail: event.data.settings }));
+        window.dispatchEvent(
+          new CustomEvent("footerSettingsUpdated", {
+            detail: event.data.settings,
+          }),
+        );
       } else if (event.data?.type === "SET_ISOLATED_SECTION") {
         setIsolatedSection(event.data.sectionId);
       }
@@ -60,7 +72,10 @@ export default function Home({
     window.addEventListener("message", handleMessage);
 
     return () => {
-      window.removeEventListener("visibleSectionsUpdated", handleVisibilityUpdate);
+      window.removeEventListener(
+        "visibleSectionsUpdated",
+        handleVisibilityUpdate,
+      );
       window.removeEventListener("message", handleMessage);
     };
   }, []);
@@ -68,7 +83,11 @@ export default function Home({
   const isVisible = (id: string) => {
     // Se houver uma seção isolada, apenas ela deve aparecer
     // Exceção: 'typography' e 'colors' mostram a página inteira
-    if (isolatedSection && isolatedSection !== "typography" && isolatedSection !== "colors") {
+    if (
+      isolatedSection &&
+      isolatedSection !== "typography" &&
+      isolatedSection !== "colors"
+    ) {
       return isolatedSection === id;
     }
     // Caso contrário, verificamos se a seção está marcada como visível (default é true)
@@ -77,9 +96,11 @@ export default function Home({
 
   // Se estiver carregando o studio ou redirecionando, mostramos um estado neutro
   if (studioLoading || !slug) {
-    return <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-    </div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
   }
 
   return (

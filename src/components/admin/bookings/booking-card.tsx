@@ -1,14 +1,10 @@
 "use client";
 
-import {
-  Calendar,
-  Clock,
-  Edit2,
-} from "lucide-react";
+import { Calendar, Clock, Edit2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { type Booking, type BookingStatus } from "@/lib/booking-data";
+import type { Booking, BookingStatus } from "@/lib/booking-data";
 
 interface BookingCardProps {
   booking: Booking;

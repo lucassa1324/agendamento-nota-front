@@ -14,8 +14,12 @@ export default function AgendamentoPage({
   const searchParams = use(searchParamsPromise);
   const only = searchParams.only;
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
-  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
-  const [isolatedSection, setIsolatedSection] = useState<string | null>(only || null);
+  const [visibleSections, setVisibleSections] = useState<
+    Record<string, boolean>
+  >({});
+  const [isolatedSection, setIsolatedSection] = useState<string | null>(
+    only || null,
+  );
 
   useEffect(() => {
     setIsolatedSection(only || null);
@@ -52,10 +56,13 @@ export default function AgendamentoPage({
 
     window.addEventListener("message", handleMessage);
     window.addEventListener("visibleSectionsUpdated", handleSectionsUpdate);
-    
+
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+      window.removeEventListener(
+        "visibleSectionsUpdated",
+        handleSectionsUpdate,
+      );
     };
   }, [router]);
 
@@ -66,7 +73,10 @@ export default function AgendamentoPage({
     if (isolatedSection) {
       // Se for o componente de booking, permitimos que ele apareça se qualquer um de seus passos estiver isolado
       if (id === "booking") {
-        return isolatedSection === "booking" || isolatedSection.startsWith("booking-");
+        return (
+          isolatedSection === "booking" ||
+          isolatedSection.startsWith("booking-")
+        );
       }
       return isolatedSection === id;
     }

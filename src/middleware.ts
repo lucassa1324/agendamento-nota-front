@@ -1,12 +1,18 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
   const host = request.headers.get("host") || "";
 
   // Define os domínios base que não devem ser tratados como slugs
-  const baseDomains = ["localhost:3000", "agendamento.com", "www.agendamento.com"];
-  
+  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || "localhost:3000";
+  const baseDomains = [
+    baseDomain,
+    `www.${baseDomain}`,
+    "agendamento.com",
+    "www.agendamento.com",
+  ];
+
   // Verifica se o host atual é um dos domínios base
   const isBaseDomain = baseDomains.includes(host);
 
@@ -22,7 +28,7 @@ export function middleware(request: NextRequest) {
 
       // Opcional: Você pode fazer um rewrite se quiser caminhos internos específicos
       // return NextResponse.rewrite(new URL(`/${slug}${url.pathname}`, request.url));
-      
+
       return NextResponse.next({
         request: {
           headers: requestHeaders,

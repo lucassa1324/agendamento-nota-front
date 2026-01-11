@@ -85,10 +85,7 @@ function formatDate(dateString: string): string {
 }
 
 // Função para agendar lembretes automáticos
-export function scheduleReminder(
-  date: string,
-  time: string,
-): void {
+export function scheduleReminder(date: string, time: string): void {
   // Em produção, usar um sistema de agendamento como cron jobs ou serviço de fila
   // console.log("[v0] Lembrete agendado para:", { bookingId, date, time });
 

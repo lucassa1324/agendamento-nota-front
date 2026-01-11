@@ -58,12 +58,20 @@ export function LayoutClientWrapper({
     };
   }, []);
 
-  const isAdminRoute = pathname?.startsWith("/admin") || pathname?.includes("/admin/");
+  const isAdminRoute =
+    pathname?.startsWith("/admin") || pathname?.includes("/admin/");
   const isLandingPage = !slug && pathname === "/";
-  const isGlobalEdit = isolatedSection === "typography" || isolatedSection === "colors";
-  
-  const showHeader = (!isolatedSection || isolatedSection === "header" || isGlobalEdit) && !isAdminRoute && !isLandingPage;
-  const showFooter = (!isolatedSection || isolatedSection === "footer" || isGlobalEdit) && !isAdminRoute && !isLandingPage;
+  const isGlobalEdit =
+    isolatedSection === "typography" || isolatedSection === "colors";
+
+  const showHeader =
+    (!isolatedSection || isolatedSection === "header" || isGlobalEdit) &&
+    !isAdminRoute &&
+    !isLandingPage;
+  const showFooter =
+    (!isolatedSection || isolatedSection === "footer" || isGlobalEdit) &&
+    !isAdminRoute &&
+    !isLandingPage;
 
   return (
     <>

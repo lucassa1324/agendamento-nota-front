@@ -196,7 +196,9 @@ export function SidebarNav({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            title={isVisible ? "Ocultar seção" : "Mostrar seção"}
+                            title={
+                              isVisible ? "Ocultar seção" : "Mostrar seção"
+                            }
                             className={cn(
                               "h-6 w-6 xl:h-7 xl:w-7 rounded-lg transition-all",
                               isSectionActive

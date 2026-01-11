@@ -20,7 +20,9 @@ import type { InventoryItem } from "@/lib/booking-data";
 
 interface InventoryTransactionModalProps {
   transactionItem: { item: InventoryItem; type: "entrada" | "saida" } | null;
-  setTransactionItem: (item: { item: InventoryItem; type: "entrada" | "saida" } | null) => void;
+  setTransactionItem: (
+    item: { item: InventoryItem; type: "entrada" | "saida" } | null,
+  ) => void;
   transactionQuantity: string;
   setTransactionQuantity: (value: string) => void;
   transactionPrice: string;
@@ -49,7 +51,9 @@ export function InventoryTransactionModal({
       <DialogContent className="sm:max-w-106.25">
         <DialogHeader>
           <DialogTitle>
-            {transactionItem?.type === "entrada" ? "Entrada de Estoque" : "Saída de Estoque"}
+            {transactionItem?.type === "entrada"
+              ? "Entrada de Estoque"
+              : "Saída de Estoque"}
           </DialogTitle>
           <DialogDescription>
             {transactionItem?.item.name} ({transactionItem?.item.quantity}{" "}
@@ -88,29 +92,35 @@ export function InventoryTransactionModal({
               />
             </div>
           )}
-          {transactionItem?.item.secondaryUnit && transactionItem?.item.conversionFactor && (
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="transaction-unit" className="text-right">
-                Unidade
-              </Label>
-              <Select
-                value={transactionUnit}
-                onValueChange={(value: "primary" | "secondary") => setTransactionUnit(value)}
-              >
-                <SelectTrigger id="transaction-unit" className="col-span-3">
-                  <SelectValue placeholder="Selecione a unidade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="primary">
-                    {transactionItem.item.unit} (Principal)
-                  </SelectItem>
-                  <SelectItem value="secondary">
-                    {transactionItem.item.secondaryUnit} (Secundária - 1 {transactionItem.item.unit} = {transactionItem.item.conversionFactor}{transactionItem.item.secondaryUnit})
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+          {transactionItem?.item.secondaryUnit &&
+            transactionItem?.item.conversionFactor && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="transaction-unit" className="text-right">
+                  Unidade
+                </Label>
+                <Select
+                  value={transactionUnit}
+                  onValueChange={(value: "primary" | "secondary") =>
+                    setTransactionUnit(value)
+                  }
+                >
+                  <SelectTrigger id="transaction-unit" className="col-span-3">
+                    <SelectValue placeholder="Selecione a unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="primary">
+                      {transactionItem.item.unit} (Principal)
+                    </SelectItem>
+                    <SelectItem value="secondary">
+                      {transactionItem.item.secondaryUnit} (Secundária - 1{" "}
+                      {transactionItem.item.unit} ={" "}
+                      {transactionItem.item.conversionFactor}
+                      {transactionItem.item.secondaryUnit})
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setTransactionItem(null)}>
@@ -124,7 +134,8 @@ export function InventoryTransactionModal({
                 : "bg-red-600 hover:bg-red-700"
             }
           >
-            Confirmar {transactionItem?.type === "entrada" ? "Entrada" : "Saída"}
+            Confirmar{" "}
+            {transactionItem?.type === "entrada" ? "Entrada" : "Saída"}
           </Button>
         </DialogFooter>
       </DialogContent>

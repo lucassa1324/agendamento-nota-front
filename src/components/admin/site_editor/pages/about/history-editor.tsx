@@ -6,7 +6,13 @@ import { BackgroundEditor } from "@/components/admin/site_editor/components/Back
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   getStorySettings,
@@ -29,7 +35,9 @@ export function HistoryEditor({
   onSave: externalOnSave,
   hasChanges: externalHasChanges,
 }: HistoryEditorProps) {
-  const [localSettings, setLocalSettings] = useState<StorySettings | null>(null);
+  const [localSettings, setLocalSettings] = useState<StorySettings | null>(
+    null,
+  );
   const [internalHasChanges, setInternalHasChanges] = useState(false);
   const hasChanges = externalHasChanges ?? internalHasChanges;
 
@@ -43,7 +51,7 @@ export function HistoryEditor({
 
   const onUpdate = (updates: Partial<StorySettings>) => {
     if (!settings) return;
-    
+
     if (propsOnUpdate) {
       propsOnUpdate(updates);
     } else {
@@ -82,10 +90,10 @@ export function HistoryEditor({
       {/* Título e Cor */}
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <fieldset 
-            className="space-y-1.5 border-none p-0 m-0" 
-            onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} 
-            onMouseDown={(e: React.MouseEvent) => e.stopPropagation()} 
+          <fieldset
+            className="space-y-1.5 border-none p-0 m-0"
+            onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+            onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
             onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
           >
@@ -94,15 +102,17 @@ export function HistoryEditor({
             </legend>
             <Input
               value={settings.title}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ title: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onUpdate({ title: e.target.value })
+              }
               className="h-8 text-xs"
               placeholder="Ex: Nossa História"
             />
           </fieldset>
-          <fieldset 
-            className="space-y-1.5 border-none p-0 m-0" 
-            onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} 
-            onMouseDown={(e: React.MouseEvent) => e.stopPropagation()} 
+          <fieldset
+            className="space-y-1.5 border-none p-0 m-0"
+            onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+            onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
             onClick={(e: React.MouseEvent) => e.stopPropagation()}
             onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
           >
@@ -111,9 +121,9 @@ export function HistoryEditor({
                 <Palette className="w-2.5 h-2.5" /> Cor do Título
               </div>
               {settings.titleColor && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-4 w-4 hover:text-primary"
                   onClick={() => onUpdate({ titleColor: "" })}
                 >
@@ -126,13 +136,17 @@ export function HistoryEditor({
                 type="color"
                 value={settings.titleColor || "#000000"}
                 className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ titleColor: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  onUpdate({ titleColor: e.target.value })
+                }
               />
               <Input
                 value={settings.titleColor || ""}
                 placeholder="Padrão"
                 className="h-8 text-[10px] flex-1 uppercase"
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ titleColor: e.target.value })}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  onUpdate({ titleColor: e.target.value })
+                }
               />
             </div>
           </fieldset>
@@ -145,13 +159,17 @@ export function HistoryEditor({
           </legend>
           <Select
             value={settings.titleFont || "default"}
-            onValueChange={(v) => onUpdate({ titleFont: v === "default" ? "" : v })}
+            onValueChange={(v) =>
+              onUpdate({ titleFont: v === "default" ? "" : v })
+            }
           >
             <SelectTrigger className="h-8 text-[10px]">
               <SelectValue placeholder="Padrão do Site" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+              <SelectItem value="default" className="text-[10px]">
+                Padrão do Site
+              </SelectItem>
               {EDITOR_FONTS.map((f) => (
                 <SelectItem key={f.name} value={f.name} className="text-[10px]">
                   <span style={{ fontFamily: f.name }}>{f.name}</span>
@@ -162,10 +180,10 @@ export function HistoryEditor({
         </fieldset>
 
         {/* Conteúdo e Cor */}
-        <fieldset 
-          className="space-y-1.5 border-none p-0 m-0" 
-          onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} 
-          onMouseDown={(e: React.MouseEvent) => e.stopPropagation()} 
+        <fieldset
+          className="space-y-1.5 border-none p-0 m-0"
+          onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+          onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
           onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
         >
@@ -182,12 +200,14 @@ export function HistoryEditor({
                   type="color"
                   value={settings.contentColor || "#666666"}
                   className="w-6 h-6 p-0.5 rounded-full bg-transparent border-border/50 cursor-pointer"
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ contentColor: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    onUpdate({ contentColor: e.target.value })
+                  }
                 />
                 {settings.contentColor && (
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
+                  <Button
+                    variant="ghost"
+                    size="icon"
                     className="h-4 w-4 hover:text-primary"
                     onClick={() => onUpdate({ contentColor: "" })}
                   >
@@ -199,7 +219,9 @@ export function HistoryEditor({
           </div>
           <Textarea
             value={settings.content}
-            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onUpdate({ content: e.target.value })}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
+              onUpdate({ content: e.target.value })
+            }
             className="min-h-37.5 text-xs resize-none mb-3"
             placeholder="Conte a trajetória do seu studio..."
           />
@@ -209,13 +231,17 @@ export function HistoryEditor({
           </legend>
           <Select
             value={settings.contentFont || "default"}
-            onValueChange={(v) => onUpdate({ contentFont: v === "default" ? "" : v })}
+            onValueChange={(v) =>
+              onUpdate({ contentFont: v === "default" ? "" : v })
+            }
           >
             <SelectTrigger className="h-8 text-[10px]">
               <SelectValue placeholder="Padrão do Site" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+              <SelectItem value="default" className="text-[10px]">
+                Padrão do Site
+              </SelectItem>
               {EDITOR_FONTS.map((f) => (
                 <SelectItem key={f.name} value={f.name} className="text-[10px]">
                   <span style={{ fontFamily: f.name }}>{f.name}</span>
@@ -226,10 +252,10 @@ export function HistoryEditor({
         </fieldset>
 
         {/* Imagem */}
-        <fieldset 
-          className="space-y-1.5 border-none p-0 m-0" 
-          onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} 
-          onMouseDown={(e: React.MouseEvent) => e.stopPropagation()} 
+        <fieldset
+          className="space-y-1.5 border-none p-0 m-0"
+          onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+          onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
           onClick={(e: React.MouseEvent) => e.stopPropagation()}
           onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
         >
@@ -239,7 +265,9 @@ export function HistoryEditor({
           <div className="flex gap-2">
             <Input
               value={settings.image}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ image: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onUpdate({ image: e.target.value })
+              }
               className="h-8 text-xs flex-1"
               placeholder="https://..."
             />

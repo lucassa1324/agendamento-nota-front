@@ -4,11 +4,7 @@ import { Calendar, CheckCircle2, Clock, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type {
-  Booking,
-  BookingStepSettings,
-  Service,
-} from "@/lib/booking-data";
+import type { Booking, BookingStepSettings, Service } from "@/lib/booking-data";
 
 type BookingConfirmationProps = {
   booking: Booking;
@@ -38,63 +34,73 @@ export function BookingConfirmation({
   return (
     <div className="max-w-2xl mx-auto">
       <div className="text-center mb-8">
-        <div 
+        <div
           className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
-          style={{ 
-            backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'var(--muted)'
+          style={{
+            backgroundColor: settings?.accentColor
+              ? `${settings.accentColor}1a`
+              : "var(--muted)",
           }}
         >
-          <CheckCircle2 
-            className="w-10 h-10" 
-            style={{ color: settings?.accentColor || 'var(--primary)' }}
+          <CheckCircle2
+            className="w-10 h-10"
+            style={{ color: settings?.accentColor || "var(--primary)" }}
           />
         </div>
-        <h2 
+        <h2
           className="text-3xl font-bold mb-2"
-          style={{ 
-            color: settings?.titleColor || 'var(--foreground)',
-            fontFamily: settings?.titleFont || 'var(--font-title)'
+          style={{
+            color: settings?.titleColor || "var(--foreground)",
+            fontFamily: settings?.titleFont || "var(--font-title)",
           }}
         >
-          {settings?.title || (isUpdate ? "Agendamento Atualizado!" : "Agendamento Confirmado!")}
+          {settings?.title ||
+            (isUpdate ? "Agendamento Atualizado!" : "Agendamento Confirmado!")}
         </h2>
-        <p 
+        <p
           className="text-muted-foreground"
-          style={{ 
-            color: settings?.subtitleColor || 'var(--foreground)',
-            fontFamily: settings?.subtitleFont || 'var(--font-subtitle)'
+          style={{
+            color: settings?.subtitleColor || "var(--foreground)",
+            fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
           }}
         >
           {settings?.subtitle || "Enviamos uma confirmação para o seu e-mail"}
         </p>
       </div>
 
-      <Card 
+      <Card
         className="border-primary/20"
-        style={{ 
-          backgroundColor: settings?.cardBgColor || 'transparent',
-          borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
+        style={{
+          backgroundColor: settings?.cardBgColor || "transparent",
+          borderColor: settings?.accentColor
+            ? `${settings.accentColor}33`
+            : undefined,
         }}
       >
         <CardContent className="p-6 space-y-6">
           <div>
-            <h3 
+            <h3
               className="font-semibold mb-4"
-              style={{ fontFamily: 'var(--font-title)', color: 'var(--foreground)' }}
+              style={{
+                fontFamily: "var(--font-title)",
+                color: "var(--foreground)",
+              }}
             >
               Detalhes do Agendamento
             </h3>
             <div className="space-y-3">
               <div className="flex items-start gap-3">
-                <div 
+                <div
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ 
-                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'var(--muted)'
+                  style={{
+                    backgroundColor: settings?.accentColor
+                      ? `${settings.accentColor}1a`
+                      : "var(--muted)",
                   }}
                 >
-                  <Calendar 
-                    className="w-5 h-5" 
-                    style={{ color: settings?.accentColor || 'var(--primary)' }}
+                  <Calendar
+                    className="w-5 h-5"
+                    style={{ color: settings?.accentColor || "var(--primary)" }}
                   />
                 </div>
                 <div>
@@ -106,15 +112,17 @@ export function BookingConfirmation({
               </div>
 
               <div className="flex items-start gap-3">
-                <div 
+                <div
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ 
-                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'var(--muted)'
+                  style={{
+                    backgroundColor: settings?.accentColor
+                      ? `${settings.accentColor}1a`
+                      : "var(--muted)",
                   }}
                 >
-                  <Clock 
-                    className="w-5 h-5" 
-                    style={{ color: settings?.accentColor || 'var(--primary)' }}
+                  <Clock
+                    className="w-5 h-5"
+                    style={{ color: settings?.accentColor || "var(--primary)" }}
                   />
                 </div>
                 <div>
@@ -126,15 +134,17 @@ export function BookingConfirmation({
               </div>
 
               <div className="flex items-start gap-3">
-                <div 
+                <div
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
-                  style={{ 
-                    backgroundColor: settings?.accentColor ? `${settings.accentColor}1a` : 'var(--muted)'
+                  style={{
+                    backgroundColor: settings?.accentColor
+                      ? `${settings.accentColor}1a`
+                      : "var(--muted)",
                   }}
                 >
-                  <DollarSign 
-                    className="w-5 h-5" 
-                    style={{ color: settings?.accentColor || 'var(--primary)' }}
+                  <DollarSign
+                    className="w-5 h-5"
+                    style={{ color: settings?.accentColor || "var(--primary)" }}
                   />
                 </div>
                 <div>
@@ -156,14 +166,17 @@ export function BookingConfirmation({
             </div>
           </div>
 
-          <div 
+          <div
             className="p-4 rounded-lg text-sm"
-            style={{ 
-              backgroundColor: settings?.accentColor ? `${settings.accentColor}0d` : 'var(--muted)'
+            style={{
+              backgroundColor: settings?.accentColor
+                ? `${settings.accentColor}0d`
+                : "var(--muted)",
             }}
           >
             <p className="text-muted-foreground">
-              Enviamos uma confirmação para o seu e-mail. Em caso de dúvidas, entre em contato conosco.
+              Enviamos uma confirmação para o seu e-mail. Em caso de dúvidas,
+              entre em contato conosco.
             </p>
           </div>
 
@@ -171,9 +184,9 @@ export function BookingConfirmation({
             <Button
               asChild
               className="flex-1 font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
-              style={{ 
-                backgroundColor: settings?.accentColor || 'var(--primary)',
-                color: '#fff'
+              style={{
+                backgroundColor: settings?.accentColor || "var(--primary)",
+                color: "#fff",
               }}
             >
               <Link href="/">Voltar para Início</Link>
@@ -182,9 +195,9 @@ export function BookingConfirmation({
               variant="outline"
               onClick={onReset}
               className="flex-1 font-bold"
-              style={{ 
-                borderColor: settings?.accentColor || 'var(--primary)',
-                color: settings?.accentColor || 'var(--primary)'
+              style={{
+                borderColor: settings?.accentColor || "var(--primary)",
+                color: settings?.accentColor || "var(--primary)",
               }}
             >
               Novo Agendamento

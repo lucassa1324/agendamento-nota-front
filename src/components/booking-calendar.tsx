@@ -105,20 +105,22 @@ export function BookingCalendar({
           <ChevronLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
-        <Card 
+        <Card
           className="border-primary/20 p-4"
-          style={{ 
+          style={{
             backgroundColor: settings?.cardBgColor || "var(--muted)",
-            borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
+            borderColor: settings?.accentColor
+              ? `${settings.accentColor}33`
+              : undefined,
           }}
         >
           <div className="flex items-center gap-3">
             <div className="text-sm">
-              <span 
+              <span
                 className="font-semibold"
-                style={{ 
-                  color: settings?.titleColor || 'var(--foreground)',
-                  fontFamily: settings?.titleFont || 'var(--font-title)'
+                style={{
+                  color: settings?.titleColor || "var(--foreground)",
+                  fontFamily: settings?.titleFont || "var(--font-title)",
                 }}
               >
                 {service.name}
@@ -132,11 +134,11 @@ export function BookingCalendar({
         </Card>
       </div>
 
-      <h2 
+      <h2
         className="text-2xl font-bold mb-6 text-center"
-        style={{ 
-          color: settings?.titleColor || 'var(--foreground)',
-          fontFamily: settings?.titleFont || 'var(--font-title)'
+        style={{
+          color: settings?.titleColor || "var(--foreground)",
+          fontFamily: settings?.titleFont || "var(--font-title)",
         }}
       >
         {settings?.title || "Escolha a Data"}
@@ -149,11 +151,11 @@ export function BookingCalendar({
             <Button variant="ghost" size="icon" onClick={previousMonth}>
               <ChevronLeft className="w-5 h-5" />
             </Button>
-            <h3 
+            <h3
               className="font-semibold text-lg"
-              style={{ 
-                color: settings?.titleColor || 'var(--foreground)',
-                fontFamily: settings?.titleFont || 'var(--font-title)'
+              style={{
+                color: settings?.titleColor || "var(--foreground)",
+                fontFamily: settings?.titleFont || "var(--font-title)",
               }}
             >
               {monthNames[month]} {year}
@@ -196,19 +198,23 @@ export function BookingCalendar({
                       : "cursor-pointer"
                   }`}
                   style={{
-                    backgroundColor: !disabled ? 'transparent' : undefined,
-                    color: !disabled ? (settings?.accentColor || 'var(--primary)') : undefined,
+                    backgroundColor: !disabled ? "transparent" : undefined,
+                    color: !disabled
+                      ? settings?.accentColor || "var(--primary)"
+                      : undefined,
                   }}
                   onMouseEnter={(e) => {
                     if (!disabled) {
-                      e.currentTarget.style.backgroundColor = settings?.accentColor || 'var(--primary)';
-                      e.currentTarget.style.color = '#fff';
+                      e.currentTarget.style.backgroundColor =
+                        settings?.accentColor || "var(--primary)";
+                      e.currentTarget.style.color = "#fff";
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!disabled) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = settings?.accentColor || 'var(--primary)';
+                      e.currentTarget.style.backgroundColor = "transparent";
+                      e.currentTarget.style.color =
+                        settings?.accentColor || "var(--primary)";
                     }
                   }}
                 >

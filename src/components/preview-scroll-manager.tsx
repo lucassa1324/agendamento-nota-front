@@ -16,7 +16,7 @@ export function PreviewScrollManager() {
     };
 
     window.addEventListener("message", handleMessage);
-    
+
     // Também verificar se há um hash na URL ao carregar
     const hash = window.location.hash;
     if (hash) {

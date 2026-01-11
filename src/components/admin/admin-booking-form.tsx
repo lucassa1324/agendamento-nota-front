@@ -91,19 +91,21 @@ export function AdminBookingForm({
           <ChevronLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
-        <Card 
+        <Card
           className="border-primary/20 p-4"
-          style={{ 
-            backgroundColor: settings?.cardBgColor || 'var(--muted)',
-            borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
+          style={{
+            backgroundColor: settings?.cardBgColor || "var(--muted)",
+            borderColor: settings?.accentColor
+              ? `${settings.accentColor}33`
+              : undefined,
           }}
         >
           <div className="text-sm space-y-1">
-            <div 
+            <div
               className="font-semibold"
-              style={{ 
-                color: settings?.titleColor || 'var(--foreground)',
-                fontFamily: settings?.titleFont || 'var(--font-title)'
+              style={{
+                color: settings?.titleColor || "var(--foreground)",
+                fontFamily: settings?.titleFont || "var(--font-title)",
               }}
             >
               {service.name}
@@ -111,10 +113,10 @@ export function AdminBookingForm({
             <div className="text-muted-foreground capitalize">
               {formattedDate}
             </div>
-            <div 
+            <div
               className="font-bold"
-              style={{ 
-                color: settings?.accentColor || 'var(--primary)'
+              style={{
+                color: settings?.accentColor || "var(--primary)",
               }}
             >
               {time}
@@ -122,9 +124,9 @@ export function AdminBookingForm({
             <div className="text-xs text-muted-foreground">
               Duração: {service.duration} minutos
             </div>
-            <div 
+            <div
               className="font-semibold"
-              style={{ color: settings?.accentColor || 'var(--primary)' }}
+              style={{ color: settings?.accentColor || "var(--primary)" }}
             >
               R$ {formData.price.toFixed(2)}
             </div>
@@ -132,9 +134,9 @@ export function AdminBookingForm({
         </Card>
       </div>
 
-      <h2 
+      <h2
         className="text-2xl font-bold mb-6 text-center"
-        style={{ fontFamily: 'var(--font-title)', color: 'var(--foreground)' }}
+        style={{ fontFamily: "var(--font-title)", color: "var(--foreground)" }}
       >
         Dados do Agendamento (Admin)
       </h2>
@@ -154,9 +156,12 @@ export function AdminBookingForm({
                 }
                 placeholder="Nome do cliente"
                 className="focus-visible:ring-accent"
-                style={{ 
-                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
-                } as React.CSSProperties}
+                style={
+                  {
+                    "--tw-ring-color":
+                      settings?.accentColor || "var(--primary)",
+                  } as React.CSSProperties
+                }
               />
             </div>
 
@@ -171,9 +176,12 @@ export function AdminBookingForm({
                 }
                 placeholder="email@exemplo.com"
                 className="focus-visible:ring-accent"
-                style={{ 
-                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
-                } as React.CSSProperties}
+                style={
+                  {
+                    "--tw-ring-color":
+                      settings?.accentColor || "var(--primary)",
+                  } as React.CSSProperties
+                }
               />
             </div>
 
@@ -188,9 +196,12 @@ export function AdminBookingForm({
                 }
                 placeholder="(00) 00000-0000"
                 className="focus-visible:ring-accent"
-                style={{ 
-                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
-                } as React.CSSProperties}
+                style={
+                  {
+                    "--tw-ring-color":
+                      settings?.accentColor || "var(--primary)",
+                  } as React.CSSProperties
+                }
               />
             </div>
 
@@ -202,7 +213,10 @@ export function AdminBookingForm({
                 step="0.01"
                 value={Number.isNaN(formData.price) ? "" : formData.price}
                 onChange={(e) => {
-                  const val = e.target.value === "" ? Number.NaN : Number.parseFloat(e.target.value);
+                  const val =
+                    e.target.value === ""
+                      ? Number.NaN
+                      : Number.parseFloat(e.target.value);
                   setFormData({
                     ...formData,
                     price: val,
@@ -210,18 +224,21 @@ export function AdminBookingForm({
                 }}
                 placeholder="0.00"
                 className="focus-visible:ring-accent"
-                style={{ 
-                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
-                } as React.CSSProperties}
+                style={
+                  {
+                    "--tw-ring-color":
+                      settings?.accentColor || "var(--primary)",
+                  } as React.CSSProperties
+                }
               />
             </div>
 
             <Button
               type="submit"
               className="w-full h-12 text-lg font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
-              style={{ 
-                backgroundColor: settings?.accentColor || 'var(--primary)',
-                color: '#fff'
+              style={{
+                backgroundColor: settings?.accentColor || "var(--primary)",
+                color: "#fff",
               }}
             >
               {initialBooking ? "Salvar Alterações" : "Confirmar Agendamento"}

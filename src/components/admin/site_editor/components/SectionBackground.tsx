@@ -19,17 +19,23 @@ interface SectionBackgroundProps {
   defaultImage?: string;
 }
 
-export function SectionBackground({ 
-  settings, 
-  className, 
+export function SectionBackground({
+  settings,
+  className,
   gradientClassName,
-  defaultImage
+  defaultImage,
 }: SectionBackgroundProps) {
   const bgImage = settings.bgImage || defaultImage;
-  const showImage = settings.bgType === "image" || (!settings.bgType && defaultImage);
+  const showImage =
+    settings.bgType === "image" || (!settings.bgType && defaultImage);
 
   return (
-    <div className={cn("absolute inset-0 overflow-hidden pointer-events-none", className)}>
+    <div
+      className={cn(
+        "absolute inset-0 overflow-hidden pointer-events-none",
+        className,
+      )}
+    >
       {/* Background Color Layer */}
       <div
         className="absolute inset-0 z-0 transition-colors duration-500"
@@ -50,7 +56,9 @@ export function SectionBackground({
             fill
             className="object-cover"
             style={{
-              opacity: settings.imageOpacity ?? (settings.bgType === "image" ? 1 : 0.2),
+              opacity:
+                settings.imageOpacity ??
+                (settings.bgType === "image" ? 1 : 0.2),
               transform: `scale(${settings.imageScale ?? 1})`,
               objectPosition: `${settings.imageX ?? 50}% ${settings.imageY ?? 50}%`,
             }}
@@ -63,7 +71,8 @@ export function SectionBackground({
       <div
         className={cn(
           "absolute inset-0 z-1 transition-opacity duration-500",
-          gradientClassName || "bg-linear-to-b from-black/20 via-black/50 to-black"
+          gradientClassName ||
+            "bg-linear-to-b from-black/20 via-black/50 to-black",
         )}
         style={{
           opacity: settings.overlayOpacity ?? 0,

@@ -1,6 +1,14 @@
 "use client";
 
-import { CreditCard, ImageIcon, Plus, RotateCcw, Trash2, Type, UserPlus } from "lucide-react";
+import {
+  CreditCard,
+  ImageIcon,
+  Plus,
+  RotateCcw,
+  Trash2,
+  Type,
+  UserPlus,
+} from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -92,11 +100,19 @@ export function TeamEditor({
               title={settings.title}
               font={settings.titleFont}
               color={settings.titleColor}
-              onUpdate={(updates: { title?: string; font?: string; color?: string }) =>
+              onUpdate={(updates: {
+                title?: string;
+                font?: string;
+                color?: string;
+              }) =>
                 onUpdate({
                   ...(updates.title !== undefined && { title: updates.title }),
-                  ...(updates.font !== undefined && { titleFont: updates.font }),
-                  ...(updates.color !== undefined && { titleColor: updates.color }),
+                  ...(updates.font !== undefined && {
+                    titleFont: updates.font,
+                  }),
+                  ...(updates.color !== undefined && {
+                    titleColor: updates.color,
+                  }),
                 })
               }
             />
@@ -118,11 +134,21 @@ export function TeamEditor({
               subtitle={settings.subtitle}
               font={settings.subtitleFont}
               color={settings.subtitleColor}
-              onUpdate={(updates: { subtitle?: string; font?: string; color?: string }) =>
+              onUpdate={(updates: {
+                subtitle?: string;
+                font?: string;
+                color?: string;
+              }) =>
                 onUpdate({
-                  ...(updates.subtitle !== undefined && { subtitle: updates.subtitle }),
-                  ...(updates.font !== undefined && { subtitleFont: updates.font }),
-                  ...(updates.color !== undefined && { subtitleColor: updates.color }),
+                  ...(updates.subtitle !== undefined && {
+                    subtitle: updates.subtitle,
+                  }),
+                  ...(updates.font !== undefined && {
+                    subtitleFont: updates.font,
+                  }),
+                  ...(updates.color !== undefined && {
+                    subtitleColor: updates.color,
+                  }),
                 })
               }
             />
@@ -160,7 +186,7 @@ export function TeamEditor({
           </AccordionTrigger>
           <AccordionContent className="space-y-6 pb-4">
             <div className="space-y-6">
-              <fieldset 
+              <fieldset
                 className="space-y-1.5 border-none p-0 m-0"
                 onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
                 onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
@@ -170,9 +196,9 @@ export function TeamEditor({
                 <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                   Fundo do Card
                   {settings.cardBgColor && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-4 w-4 hover:text-primary"
                       onClick={() => onUpdate({ cardBgColor: "" })}
                     >
@@ -204,7 +230,7 @@ export function TeamEditor({
                 <Label className="text-[11px] font-bold uppercase text-primary tracking-wider">
                   Textos do Card
                 </Label>
-                
+
                 <div className="space-y-4">
                   {/* Nome */}
                   <div className="grid grid-cols-2 gap-4">
@@ -214,16 +240,26 @@ export function TeamEditor({
                       </legend>
                       <Select
                         value={settings.cardTitleFont || "default"}
-                        onValueChange={(v) => onUpdate({ cardTitleFont: v === "default" ? "" : v })}
+                        onValueChange={(v) =>
+                          onUpdate({ cardTitleFont: v === "default" ? "" : v })
+                        }
                       >
                         <SelectTrigger className="h-8 text-[10px]">
                           <SelectValue placeholder="Padrão do Site" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+                          <SelectItem value="default" className="text-[10px]">
+                            Padrão do Site
+                          </SelectItem>
                           {EDITOR_FONTS.map((f) => (
-                            <SelectItem key={f.name} value={f.name} className="text-[10px]">
-                              <span style={{ fontFamily: f.name }}>{f.name}</span>
+                            <SelectItem
+                              key={f.name}
+                              value={f.name}
+                              className="text-[10px]"
+                            >
+                              <span style={{ fontFamily: f.name }}>
+                                {f.name}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -234,9 +270,9 @@ export function TeamEditor({
                       <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                         Cor do Nome
                         {settings.cardTitleColor && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-4 w-4 hover:text-primary"
                             onClick={() => onUpdate({ cardTitleColor: "" })}
                           >
@@ -273,16 +309,26 @@ export function TeamEditor({
                       </legend>
                       <Select
                         value={settings.cardRoleFont || "default"}
-                        onValueChange={(v) => onUpdate({ cardRoleFont: v === "default" ? "" : v })}
+                        onValueChange={(v) =>
+                          onUpdate({ cardRoleFont: v === "default" ? "" : v })
+                        }
                       >
                         <SelectTrigger className="h-8 text-[10px]">
                           <SelectValue placeholder="Padrão do Site" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+                          <SelectItem value="default" className="text-[10px]">
+                            Padrão do Site
+                          </SelectItem>
                           {EDITOR_FONTS.map((f) => (
-                            <SelectItem key={f.name} value={f.name} className="text-[10px]">
-                              <span style={{ fontFamily: f.name }}>{f.name}</span>
+                            <SelectItem
+                              key={f.name}
+                              value={f.name}
+                              className="text-[10px]"
+                            >
+                              <span style={{ fontFamily: f.name }}>
+                                {f.name}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -293,9 +339,9 @@ export function TeamEditor({
                       <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                         Cor do Cargo
                         {settings.cardRoleColor && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-4 w-4 hover:text-primary"
                             onClick={() => onUpdate({ cardRoleColor: "" })}
                           >
@@ -332,16 +378,28 @@ export function TeamEditor({
                       </legend>
                       <Select
                         value={settings.cardDescriptionFont || "default"}
-                        onValueChange={(v) => onUpdate({ cardDescriptionFont: v === "default" ? "" : v })}
+                        onValueChange={(v) =>
+                          onUpdate({
+                            cardDescriptionFont: v === "default" ? "" : v,
+                          })
+                        }
                       >
                         <SelectTrigger className="h-8 text-[10px]">
                           <SelectValue placeholder="Padrão do Site" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+                          <SelectItem value="default" className="text-[10px]">
+                            Padrão do Site
+                          </SelectItem>
                           {EDITOR_FONTS.map((f) => (
-                            <SelectItem key={f.name} value={f.name} className="text-[10px]">
-                              <span style={{ fontFamily: f.name }}>{f.name}</span>
+                            <SelectItem
+                              key={f.name}
+                              value={f.name}
+                              className="text-[10px]"
+                            >
+                              <span style={{ fontFamily: f.name }}>
+                                {f.name}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -352,11 +410,13 @@ export function TeamEditor({
                       <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                         Cor da Descrição
                         {settings.cardDescriptionColor && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-4 w-4 hover:text-primary"
-                            onClick={() => onUpdate({ cardDescriptionColor: "" })}
+                            onClick={() =>
+                              onUpdate({ cardDescriptionColor: "" })
+                            }
                           >
                             <RotateCcw className="w-3 h-3" />
                           </Button>
@@ -399,7 +459,7 @@ export function TeamEditor({
             </div>
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pb-4">
-            <fieldset 
+            <fieldset
               className="space-y-4 border-none p-0 m-0"
               onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
               onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}

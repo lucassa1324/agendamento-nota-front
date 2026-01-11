@@ -4,26 +4,23 @@
  * de cada seção (Hero, Fontes, Serviços, etc).
  */
 
-import { 
-  ArrowLeft, 
-  RotateCcw, 
-  Settings2 } from "lucide-react";
+import { ArrowLeft, RotateCcw, Settings2 } from "lucide-react";
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
-import type { 
-  BookingStepSettings, 
+import type {
+  BookingStepSettings,
   ColorSettings,
   CTASettings,
   FontSettings,
-  FooterSettings, 
-  GallerySettings, 
-  HeaderSettings, 
-  HeroSettings, 
-  ServicesSettings, 
-  StorySettings, 
+  FooterSettings,
+  GallerySettings,
+  HeaderSettings,
+  HeroSettings,
+  ServicesSettings,
+  StorySettings,
   TeamSettings,
   TestimonialsSettings,
-  ValuesSettings
+  ValuesSettings,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { ColorEditor } from "../layout/color-editor";
@@ -328,11 +325,11 @@ export const SidebarContent = memo(
                   />
                 )}
                 {activeSection === "story" && (
-                  <HistoryEditor 
+                  <HistoryEditor
                     settings={storySettings}
                     onUpdate={onUpdateStory}
-                    hasChanges={hasStoryChanges} 
-                    onSave={onSaveStory} 
+                    hasChanges={hasStoryChanges}
+                    onSave={onSaveStory}
                   />
                 )}
                 {activeSection === "services" && (
@@ -343,8 +340,8 @@ export const SidebarContent = memo(
                     onSave={onSaveServices}
                   />
                 )}
-                {activeSection === "values" && (
-                  activePage === "sobre" ? (
+                {activeSection === "values" &&
+                  (activePage === "sobre" ? (
                     <AboutValuesEditor
                       settings={valuesSettings}
                       onUpdate={onUpdateValues}
@@ -358,8 +355,7 @@ export const SidebarContent = memo(
                       onSave={onSaveValues}
                       hasChanges={hasValuesChanges}
                     />
-                  )
-                )}
+                  ))}
 
                 {activeSection === "team" && (
                   <TeamEditor
@@ -379,7 +375,8 @@ export const SidebarContent = memo(
                   />
                 )}
 
-                {(activeSection === "gallery-preview" || activeSection === "gallery-grid") && (
+                {(activeSection === "gallery-preview" ||
+                  activeSection === "gallery-grid") && (
                   <GalleryEditor
                     settings={gallerySettings}
                     onUpdate={onUpdateGallery}
@@ -572,7 +569,7 @@ export const SidebarContent = memo(
         </div>
       </div>
     );
-  }
+  },
 );
 
 SidebarContent.displayName = "SidebarContent";

@@ -7,7 +7,9 @@ interface InventoryLowStockAlertProps {
   lowStockItems: InventoryItem[];
 }
 
-export function InventoryLowStockAlert({ lowStockItems }: InventoryLowStockAlertProps) {
+export function InventoryLowStockAlert({
+  lowStockItems,
+}: InventoryLowStockAlertProps) {
   if (lowStockItems.length === 0) return null;
 
   return (
@@ -19,16 +21,19 @@ export function InventoryLowStockAlert({ lowStockItems }: InventoryLowStockAlert
           </div>
           <div className="flex-1 w-full">
             <h4 className="text-[11px] sm:text-sm font-bold text-red-800 mb-1">
-              Atenção: {lowStockItems.length} {lowStockItems.length === 1 ? 'item precisa' : 'itens precisam'} de reposição
+              Atenção: {lowStockItems.length}{" "}
+              {lowStockItems.length === 1 ? "item precisa" : "itens precisam"}{" "}
+              de reposição
             </h4>
             <div className="flex flex-wrap gap-1 sm:gap-2 mt-1.5">
               {lowStockItems.map((item) => (
-                <Badge 
-                  key={item.id} 
-                  variant="outline" 
+                <Badge
+                  key={item.id}
+                  variant="outline"
                   className="bg-white text-red-700 border-red-200 text-[9px] py-0 px-1.5"
                 >
-                  {item.name}: {item.quantity.toLocaleString("pt-BR")} {item.unit}
+                  {item.name}: {item.quantity.toLocaleString("pt-BR")}{" "}
+                  {item.unit}
                 </Badge>
               ))}
             </div>

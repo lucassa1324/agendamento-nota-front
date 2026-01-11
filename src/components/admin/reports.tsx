@@ -36,7 +36,13 @@ import {
 } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -54,10 +60,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getBookingsFromStorage, getInventoryFromStorage, type InventoryLog } from "@/lib/booking-data";
+import {
+  getBookingsFromStorage,
+  getInventoryFromStorage,
+  type InventoryLog,
+} from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
-type GlobalInventoryLog = InventoryLog & { productName: string; unit: string; price?: number };
+type GlobalInventoryLog = InventoryLog & {
+  productName: string;
+  unit: string;
+  price?: number;
+};
 
 type FinancialMovement = {
   id: string;
@@ -95,30 +109,30 @@ export function Reports() {
     const inventory = getInventoryFromStorage();
 
     // Filtros de agendamentos por status
-    const completedBookings = bookings.filter(b => b.status === "concluído");
-    const pendingBookings = bookings.filter(b => b.status === "pendente");
-    const confirmedBookings = bookings.filter(b => b.status === "confirmado");
-    const cancelledBookings = bookings.filter(b => b.status === "cancelado");
+    const completedBookings = bookings.filter((b) => b.status === "concluído");
+    const pendingBookings = bookings.filter((b) => b.status === "pendente");
+    const confirmedBookings = bookings.filter((b) => b.status === "confirmado");
+    const cancelledBookings = bookings.filter((b) => b.status === "cancelado");
 
     // Valor total do inventário e contagem de estoque baixo
     let lowStockCount = 0;
     const totalInventoryValue = inventory.reduce((sum, item) => {
       if (item.quantity <= item.minQuantity) lowStockCount++;
-      return sum + (item.price * item.quantity);
+      return sum + item.price * item.quantity;
     }, 0);
 
     // Coletar todos os logs de todos os produtos e ordenar por data
     const allLogs: GlobalInventoryLog[] = [];
     const inventoryMovements: FinancialMovement[] = [];
 
-    inventory.forEach(item => {
+    inventory.forEach((item) => {
       if (item.logs) {
-        item.logs.forEach(log => {
+        item.logs.forEach((log) => {
           allLogs.push({
             ...log,
             productName: item.name,
             unit: item.unit,
-            price: item.price
+            price: item.price,
           });
 
           // Se for adição de estoque, consideramos como saída de caixa (compra)
@@ -130,7 +144,7 @@ export function Reports() {
               type: "exit",
               category: "Estoque",
               amount: log.quantityChange * item.price,
-              status: "completed"
+              status: "completed",
             });
           }
         });
@@ -138,25 +152,28 @@ export function Reports() {
     });
 
     const recentMovements = allLogs
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      )
       .slice(0, 15);
 
     // Mapear agendamentos para movimentações financeiras (Apenas Concluídos)
     const bookingMovements: FinancialMovement[] = bookings
-      .filter(booking => booking.status === "concluído")
-      .map(booking => ({
+      .filter((booking) => booking.status === "concluído")
+      .map((booking) => ({
         id: booking.id,
         date: booking.date,
         description: `Serviço: ${booking.serviceName}`,
         type: "entry",
         category: "Serviços",
         amount: booking.servicePrice || 0,
-        status: "completed"
+        status: "completed",
       }));
 
     // Combinar e ordenar todas as movimentações
-    const allMovements = [...bookingMovements, ...inventoryMovements].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
+    const allMovements = [...bookingMovements, ...inventoryMovements].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
 
     // Total de faturamento (apenas concluídos)
@@ -167,8 +184,18 @@ export function Reports() {
     // Faturamento mensal (últimos 6 meses) - apenas concluídos
     const monthlyData: { [key: string]: number } = {};
     const monthNames = [
-      "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", 
-      "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez",
     ];
 
     completedBookings.forEach((booking) => {
@@ -223,32 +250,39 @@ export function Reports() {
     // Filtro de Data
     const now = new Date();
     if (filterPeriod === "current_month") {
-      data = data.filter(m => {
+      data = data.filter((m) => {
         const d = new Date(m.date);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        return (
+          d.getMonth() === now.getMonth() &&
+          d.getFullYear() === now.getFullYear()
+        );
       });
     } else if (filterPeriod === "last_month") {
       const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      data = data.filter(m => {
+      data = data.filter((m) => {
         const d = new Date(m.date);
-        return d.getMonth() === lastMonth.getMonth() && d.getFullYear() === lastMonth.getFullYear();
+        return (
+          d.getMonth() === lastMonth.getMonth() &&
+          d.getFullYear() === lastMonth.getFullYear()
+        );
       });
     } else if (filterPeriod === "last_3_months") {
       const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-      data = data.filter(m => new Date(m.date) >= threeMonthsAgo);
+      data = data.filter((m) => new Date(m.date) >= threeMonthsAgo);
     }
 
     // Filtro de Tipo
     if (filterType !== "all") {
-      data = data.filter(m => m.type === filterType);
+      data = data.filter((m) => m.type === filterType);
     }
 
     // Filtro de Busca
     if (searchTerm) {
       const lowerTerm = searchTerm.toLowerCase();
-      data = data.filter(m => 
-        m.description.toLowerCase().includes(lowerTerm) || 
-        m.category.toLowerCase().includes(lowerTerm)
+      data = data.filter(
+        (m) =>
+          m.description.toLowerCase().includes(lowerTerm) ||
+          m.category.toLowerCase().includes(lowerTerm),
       );
     }
 
@@ -257,20 +291,25 @@ export function Reports() {
 
   // Cálculos do resumo da tabela filtrada
   const tableSummary = useMemo(() => {
-    return filteredMovements.reduce((acc, curr) => {
-      // Entradas: Apenas serviços CONCLUÍDOS contam como dinheiro em caixa (Realizado)
-      if (curr.type === "entry" && curr.status === "completed") {
-        acc.entries += curr.amount;
-      }
-      // Saídas: Compras de estoque são consideradas gastos realizados
-      else if (curr.type === "exit" && curr.status === "completed") {
-        acc.exits += curr.amount;
-      }
-      return acc;
-    }, { entries: 0, exits: 0 });
+    return filteredMovements.reduce(
+      (acc, curr) => {
+        // Entradas: Apenas serviços CONCLUÍDOS contam como dinheiro em caixa (Realizado)
+        if (curr.type === "entry" && curr.status === "completed") {
+          acc.entries += curr.amount;
+        }
+        // Saídas: Compras de estoque são consideradas gastos realizados
+        else if (curr.type === "exit" && curr.status === "completed") {
+          acc.exits += curr.amount;
+        }
+        return acc;
+      },
+      { entries: 0, exits: 0 },
+    );
   }, [filteredMovements]);
 
-  const handleExport = (type: "financeiro" | "agendamentos" | "estoque" | "geral") => {
+  const handleExport = (
+    type: "financeiro" | "agendamentos" | "estoque" | "geral",
+  ) => {
     let csvContent = "";
     const fileName = `relatorio_${type}_${new Date().toISOString().split("T")[0]}.csv`;
 
@@ -379,7 +418,9 @@ export function Reports() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{reportData.totalBookings}</div>
+                <div className="text-2xl font-bold">
+                  {reportData.totalBookings}
+                </div>
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
                   <CheckCircle2 className="w-3 h-3 text-green-500" />
                   Concluídos com sucesso
@@ -399,10 +440,12 @@ export function Reports() {
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                    <Clock className="w-2.5 h-2.5" /> {reportData.pendingCount} pend.
+                    <Clock className="w-2.5 h-2.5" /> {reportData.pendingCount}{" "}
+                    pend.
                   </span>
                   <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                    <CalendarCheck className="w-2.5 h-2.5" /> {reportData.confirmedCount} conf.
+                    <CalendarCheck className="w-2.5 h-2.5" />{" "}
+                    {reportData.confirmedCount} conf.
                   </span>
                 </div>
               </CardContent>
@@ -415,7 +458,9 @@ export function Reports() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-500">{reportData.cancelledCount}</div>
+                <div className="text-2xl font-bold text-red-500">
+                  {reportData.cancelledCount}
+                </div>
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
                   <XCircle className="w-3 h-3 text-red-400" />
                   Total não realizados
@@ -446,14 +491,16 @@ export function Reports() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle>Exportar Dados</CardTitle>
-                  <CardDescription>Baixe as informações em formato de planilha (CSV)</CardDescription>
+                  <CardDescription>
+                    Baixe as informações em formato de planilha (CSV)
+                  </CardDescription>
                 </div>
                 <FileText className="w-8 h-8 text-muted-foreground/20" />
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-3">
-                <Button 
-                  variant="outline" 
-                  className="justify-start h-12 gap-3" 
+                <Button
+                  variant="outline"
+                  className="justify-start h-12 gap-3"
                   onClick={() => handleExport("financeiro")}
                 >
                   <div className="bg-green-100 p-1.5 rounded text-green-700">
@@ -461,11 +508,13 @@ export function Reports() {
                   </div>
                   <div className="text-left">
                     <div className="text-xs font-bold">Financeiro</div>
-                    <div className="text-[10px] text-muted-foreground font-normal">Fluxo de caixa</div>
+                    <div className="text-[10px] text-muted-foreground font-normal">
+                      Fluxo de caixa
+                    </div>
                   </div>
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="justify-start h-12 gap-3"
                   onClick={() => handleExport("agendamentos")}
                 >
@@ -474,11 +523,13 @@ export function Reports() {
                   </div>
                   <div className="text-left">
                     <div className="text-xs font-bold">Trabalhos</div>
-                    <div className="text-[10px] text-muted-foreground font-normal">Serviços e ranking</div>
+                    <div className="text-[10px] text-muted-foreground font-normal">
+                      Serviços e ranking
+                    </div>
                   </div>
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="justify-start h-12 gap-3"
                   onClick={() => handleExport("estoque")}
                 >
@@ -487,10 +538,12 @@ export function Reports() {
                   </div>
                   <div className="text-left">
                     <div className="text-xs font-bold">Estoque</div>
-                    <div className="text-[10px] text-muted-foreground font-normal">Produtos e logs</div>
+                    <div className="text-[10px] text-muted-foreground font-normal">
+                      Produtos e logs
+                    </div>
                   </div>
                 </Button>
-                <Button 
+                <Button
                   className="justify-start h-12 gap-3 bg-accent hover:bg-accent/90"
                   onClick={() => handleExport("geral")}
                 >
@@ -499,7 +552,9 @@ export function Reports() {
                   </div>
                   <div className="text-left">
                     <div className="text-xs font-bold">Relatório Geral</div>
-                    <div className="text-[10px] text-white/70 font-normal">Todas as métricas</div>
+                    <div className="text-[10px] text-white/70 font-normal">
+                      Todas as métricas
+                    </div>
                   </div>
                 </Button>
               </CardContent>
@@ -515,7 +570,9 @@ export function Reports() {
                     <BarChart3 className="w-4 h-4 text-accent" />
                   </div>
                   <div>
-                    <div className="text-[11px] text-muted-foreground uppercase">Serviço + Vendido</div>
+                    <div className="text-[11px] text-muted-foreground uppercase">
+                      Serviço + Vendido
+                    </div>
                     <div className="text-sm font-bold truncate max-w-37.5">
                       {reportData.topServices[0]?.name || "Carregando..."}
                     </div>
@@ -526,10 +583,15 @@ export function Reports() {
                     <TrendingUp className="w-4 h-4 text-accent" />
                   </div>
                   <div>
-                    <div className="text-[11px] text-muted-foreground uppercase">Ticket Médio</div>
+                    <div className="text-[11px] text-muted-foreground uppercase">
+                      Ticket Médio
+                    </div>
                     <div className="text-sm font-bold">
-                      R$ {reportData.totalBookings > 0 
-                        ? (reportData.totalRevenue / reportData.totalBookings).toLocaleString("pt-BR") 
+                      R${" "}
+                      {reportData.totalBookings > 0
+                        ? (
+                            reportData.totalRevenue / reportData.totalBookings
+                          ).toLocaleString("pt-BR")
                         : "0,00"}
                     </div>
                   </div>
@@ -543,31 +605,44 @@ export function Reports() {
               <div>
                 <CardTitle>Fluxo de Caixa Detalhado</CardTitle>
                 <CardDescription>
-                  Registro de entradas (serviços concluídos) e saídas (compras de estoque)
+                  Registro de entradas (serviços concluídos) e saídas (compras
+                  de estoque)
                 </CardDescription>
               </div>
               <div className="flex flex-col sm:flex-row gap-2">
                 <div className="flex items-center gap-2 bg-green-50 text-green-700 px-3 py-1.5 rounded-lg border border-green-100">
                   <ArrowUpCircle className="w-4 h-4" />
                   <span className="text-sm font-semibold">
-                    + R$ {tableSummary.entries.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    + R${" "}
+                    {tableSummary.entries.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 bg-red-50 text-red-700 px-3 py-1.5 rounded-lg border border-red-100">
                   <ArrowDownCircle className="w-4 h-4" />
                   <span className="text-sm font-semibold">
-                    - R$ {tableSummary.exits.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    - R${" "}
+                    {tableSummary.exits.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2,
+                    })}
                   </span>
                 </div>
-                <div className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
-                  tableSummary.entries - tableSummary.exits >= 0 
-                    ? "bg-blue-50 text-blue-700 border-blue-100" 
-                    : "bg-orange-50 text-orange-700 border-orange-100"
-                )}>
+                <div
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
+                    tableSummary.entries - tableSummary.exits >= 0
+                      ? "bg-blue-50 text-blue-700 border-blue-100"
+                      : "bg-orange-50 text-orange-700 border-orange-100",
+                  )}
+                >
                   <DollarSign className="w-4 h-4" />
                   <span className="text-sm font-bold">
-                    = R$ {(tableSummary.entries - tableSummary.exits).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    = R${" "}
+                    {(tableSummary.entries - tableSummary.exits).toLocaleString(
+                      "pt-BR",
+                      { minimumFractionDigits: 2 },
+                    )}
                   </span>
                 </div>
               </div>
@@ -608,7 +683,9 @@ export function Reports() {
                     <SelectContent>
                       <SelectItem value="current_month">Mês Atual</SelectItem>
                       <SelectItem value="last_month">Mês Passado</SelectItem>
-                      <SelectItem value="last_3_months">Últimos 3 Meses</SelectItem>
+                      <SelectItem value="last_3_months">
+                        Últimos 3 Meses
+                      </SelectItem>
                       <SelectItem value="all_time">Todo o Período</SelectItem>
                     </SelectContent>
                   </Select>
@@ -632,9 +709,14 @@ export function Reports() {
                       filteredMovements.map((movement) => (
                         <TableRow key={movement.id}>
                           <TableCell className="font-medium text-xs text-muted-foreground">
-                            {new Date(movement.date).toLocaleDateString("pt-BR")}
+                            {new Date(movement.date).toLocaleDateString(
+                              "pt-BR",
+                            )}
                             <br />
-                            {new Date(movement.date).toLocaleTimeString("pt-BR", { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(movement.date).toLocaleTimeString(
+                              "pt-BR",
+                              { hour: "2-digit", minute: "2-digit" },
+                            )}
                           </TableCell>
                           <TableCell className="font-medium">
                             {movement.description}
@@ -655,11 +737,18 @@ export function Reports() {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell className={cn(
-                            "text-right font-bold",
-                            movement.type === "entry" ? "text-green-600" : "text-red-600"
-                          )}>
-                            {movement.type === "entry" ? "+" : "-"} R$ {movement.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          <TableCell
+                            className={cn(
+                              "text-right font-bold",
+                              movement.type === "entry"
+                                ? "text-green-600"
+                                : "text-red-600",
+                            )}
+                          >
+                            {movement.type === "entry" ? "+" : "-"} R${" "}
+                            {movement.amount.toLocaleString("pt-BR", {
+                              minimumFractionDigits: 2,
+                            })}
                           </TableCell>
                           <TableCell className="text-right">
                             <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
@@ -670,7 +759,10 @@ export function Reports() {
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                        <TableCell
+                          colSpan={6}
+                          className="h-24 text-center text-muted-foreground"
+                        >
                           Nenhuma movimentação encontrada neste período.
                         </TableCell>
                       </TableRow>
@@ -689,7 +781,12 @@ export function Reports() {
         <TabsContent value="financeiro" className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-bold">Desempenho Financeiro</h3>
-            <Button variant="outline" size="sm" onClick={() => handleExport("financeiro")} className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport("financeiro")}
+              className="gap-2"
+            >
               <Download className="w-4 h-4" />
               Exportar CSV
             </Button>
@@ -704,7 +801,10 @@ export function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  R$ {reportData.totalRevenue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  R${" "}
+                  {reportData.totalRevenue.toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                  })}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Acumulado de todos os tempos
@@ -723,7 +823,9 @@ export function Reports() {
                 <div className="text-2xl font-bold">
                   R${" "}
                   {reportData.totalBookings > 0
-                    ? (reportData.totalRevenue / reportData.totalBookings).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
+                    ? (
+                        reportData.totalRevenue / reportData.totalBookings
+                      ).toLocaleString("pt-BR", { minimumFractionDigits: 2 })
                     : "0,00"}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -741,7 +843,10 @@ export function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-accent">
-                  R$ {(reportData.totalRevenue / 12 || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  R${" "}
+                  {(reportData.totalRevenue / 12 || 0).toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                  })}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Média mensal estimada
@@ -753,34 +858,44 @@ export function Reports() {
           <Card>
             <CardHeader>
               <CardTitle>Evolução de Faturamento</CardTitle>
-              <CardDescription>Visualização dos últimos 6 meses</CardDescription>
+              <CardDescription>
+                Visualização dos últimos 6 meses
+              </CardDescription>
             </CardHeader>
             <CardContent>
               {reportData.monthlyRevenue.length > 0 ? (
                 <div className="h-87.5 w-full pt-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={reportData.monthlyRevenue}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                      <XAxis 
-                        dataKey="month" 
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#888', fontSize: 12 }}
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        vertical={false}
+                        stroke="#f0f0f0"
                       />
-                      <YAxis 
+                      <XAxis
+                        dataKey="month"
                         axisLine={false}
                         tickLine={false}
-                        tick={{ fill: '#888', fontSize: 12 }}
+                        tick={{ fill: "#888", fontSize: 12 }}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: "#888", fontSize: 12 }}
                         tickFormatter={(value) => `R$ ${value}`}
                       />
-                      <Tooltip 
-                        cursor={{ fill: '#f8f8f8' }}
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                      <Tooltip
+                        cursor={{ fill: "#f8f8f8" }}
+                        contentStyle={{
+                          borderRadius: "8px",
+                          border: "none",
+                          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                        }}
                       />
-                      <Bar 
-                        dataKey="revenue" 
-                        fill="#d4a574" 
-                        radius={[4, 4, 0, 0]} 
+                      <Bar
+                        dataKey="revenue"
+                        fill="#d4a574"
+                        radius={[4, 4, 0, 0]}
                         barSize={40}
                       />
                     </BarChart>
@@ -799,7 +914,12 @@ export function Reports() {
         <TabsContent value="agendamentos" className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-bold">Análise de Trabalhos</h3>
-            <Button variant="outline" size="sm" onClick={() => handleExport("agendamentos")} className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport("agendamentos")}
+              className="gap-2"
+            >
               <Download className="w-4 h-4" />
               Exportar CSV
             </Button>
@@ -813,7 +933,9 @@ export function Reports() {
                 <Users className="w-5 h-5 text-accent" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{reportData.totalBookings}</div>
+                <div className="text-2xl font-bold">
+                  {reportData.totalBookings}
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Trabalhos realizados
                 </p>
@@ -859,7 +981,9 @@ export function Reports() {
             <Card>
               <CardHeader>
                 <CardTitle>Distribuição por Serviço</CardTitle>
-                <CardDescription>Frequência de cada procedimento</CardDescription>
+                <CardDescription>
+                  Frequência de cada procedimento
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {reportData.serviceDistribution.length > 0 ? (
@@ -878,12 +1002,14 @@ export function Reports() {
                           fill="#8884d8"
                           dataKey="value"
                         >
-                          {reportData.serviceDistribution.map((entry, index) => (
-                            <Cell
-                              key={`cell-${entry.name}`}
-                              fill={COLORS[index % COLORS.length]}
-                            />
-                          ))}
+                          {reportData.serviceDistribution.map(
+                            (entry, index) => (
+                              <Cell
+                                key={`cell-${entry.name}`}
+                                fill={COLORS[index % COLORS.length]}
+                              />
+                            ),
+                          )}
                         </Pie>
                         <Tooltip />
                       </PieChart>
@@ -900,7 +1026,9 @@ export function Reports() {
             <Card>
               <CardHeader>
                 <CardTitle>Ranking de Serviços</CardTitle>
-                <CardDescription>Top 5 procedimentos mais realizados</CardDescription>
+                <CardDescription>
+                  Top 5 procedimentos mais realizados
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -911,13 +1039,19 @@ export function Reports() {
                       </div>
                       <div className="flex-1">
                         <div className="flex justify-between mb-1">
-                          <span className="text-sm font-medium">{service.name}</span>
-                          <span className="text-sm text-muted-foreground">{service.count}x</span>
+                          <span className="text-sm font-medium">
+                            {service.name}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {service.count}x
+                          </span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-1.5">
-                          <div 
-                            className="bg-accent h-1.5 rounded-full" 
-                            style={{ width: `${(service.count / reportData.totalBookings) * 100}%` }}
+                          <div
+                            className="bg-accent h-1.5 rounded-full"
+                            style={{
+                              width: `${(service.count / reportData.totalBookings) * 100}%`,
+                            }}
                           />
                         </div>
                       </div>
@@ -938,7 +1072,12 @@ export function Reports() {
         <TabsContent value="estoque" className="space-y-6">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-bold">Gestão de Inventário</h3>
-            <Button variant="outline" size="sm" onClick={() => handleExport("estoque")} className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleExport("estoque")}
+              className="gap-2"
+            >
               <Download className="w-4 h-4" />
               Exportar CSV
             </Button>
@@ -953,7 +1092,10 @@ export function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">
-                  R$ {reportData.totalInventoryValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  R${" "}
+                  {reportData.totalInventoryValue.toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                  })}
                 </div>
                 <p className="text-sm opacity-80 mt-1">
                   Valor total investido em estoque atual
@@ -961,15 +1103,31 @@ export function Reports() {
               </CardContent>
             </Card>
 
-            <Card className={cn(reportData.lowStockCount > 0 ? "border-red-200 bg-red-50" : "")}>
+            <Card
+              className={cn(
+                reportData.lowStockCount > 0 ? "border-red-200 bg-red-50" : "",
+              )}
+            >
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Alertas de Reposição
                 </CardTitle>
-                <History className={cn("w-5 h-5", reportData.lowStockCount > 0 ? "text-red-500" : "text-accent")} />
+                <History
+                  className={cn(
+                    "w-5 h-5",
+                    reportData.lowStockCount > 0
+                      ? "text-red-500"
+                      : "text-accent",
+                  )}
+                />
               </CardHeader>
               <CardContent>
-                <div className={cn("text-3xl font-bold", reportData.lowStockCount > 0 ? "text-red-600" : "")}>
+                <div
+                  className={cn(
+                    "text-3xl font-bold",
+                    reportData.lowStockCount > 0 ? "text-red-600" : "",
+                  )}
+                >
                   {reportData.lowStockCount}
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -983,7 +1141,9 @@ export function Reports() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Histórico de Movimentações</CardTitle>
-                <CardDescription>Últimas 15 entradas e saídas registradas</CardDescription>
+                <CardDescription>
+                  Últimas 15 entradas e saídas registradas
+                </CardDescription>
               </div>
             </CardHeader>
             <CardContent>
@@ -1005,7 +1165,9 @@ export function Reports() {
                         <TableCell className="text-xs">
                           {new Date(log.timestamp).toLocaleString("pt-BR")}
                         </TableCell>
-                        <TableCell className="font-medium">{log.productName}</TableCell>
+                        <TableCell className="font-medium">
+                          {log.productName}
+                        </TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"
@@ -1020,25 +1182,36 @@ export function Reports() {
                                   : "bg-blue-50 text-blue-700 border-blue-200",
                             )}
                           >
-                            {log.type === "entrada" ? "Entrada" : 
-                             log.type === "saida" ? "Saída" :
-                             log.type === "servico" ? "Serviço" :
-                             log.type === "venda" ? "Venda" : "Ajuste"}
+                            {log.type === "entrada"
+                              ? "Entrada"
+                              : log.type === "saida"
+                                ? "Saída"
+                                : log.type === "servico"
+                                  ? "Serviço"
+                                  : log.type === "venda"
+                                    ? "Venda"
+                                    : "Ajuste"}
                           </Badge>
                         </TableCell>
                         <TableCell
                           className={cn(
                             "font-bold text-xs",
-                            log.quantityChange > 0 ? "text-green-600" : "text-red-600",
+                            log.quantityChange > 0
+                              ? "text-green-600"
+                              : "text-red-600",
                           )}
                         >
                           {log.quantityChange > 0 ? "+" : ""}
-                          {log.quantityChange.toLocaleString("pt-BR")} {log.unit}
+                          {log.quantityChange.toLocaleString("pt-BR")}{" "}
+                          {log.unit}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {log.newQuantity.toLocaleString("pt-BR")} {log.unit}
                         </TableCell>
-                        <TableCell className="text-[11px] text-muted-foreground italic max-w-50 truncate" title={log.notes}>
+                        <TableCell
+                          className="text-[11px] text-muted-foreground italic max-w-50 truncate"
+                          title={log.notes}
+                        >
                           {log.notes}
                         </TableCell>
                       </TableRow>
@@ -1056,4 +1229,4 @@ export function Reports() {
       </Tabs>
     </div>
   );
-};
+}

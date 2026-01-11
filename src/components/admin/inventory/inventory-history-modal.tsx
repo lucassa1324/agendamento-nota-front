@@ -37,12 +37,16 @@ export function InventoryHistoryModal({
         <DialogHeader>
           <DialogTitle>Histórico de Movimentação</DialogTitle>
           <DialogDescription>
-            {showHistory?.name} - {showHistory?.quantity.toLocaleString("pt-BR")} {showHistory?.unit} em estoque
+            {showHistory?.name} -{" "}
+            {showHistory?.quantity.toLocaleString("pt-BR")} {showHistory?.unit}{" "}
+            em estoque
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           {!showHistory?.logs || showHistory.logs.length === 0 ? (
-            <p className="text-center py-8 text-muted-foreground">Nenhuma movimentação registrada.</p>
+            <p className="text-center py-8 text-muted-foreground">
+              Nenhuma movimentação registrada.
+            </p>
           ) : (
             <div className="max-h-100 overflow-y-auto border rounded-md">
               <Table>
@@ -62,25 +66,40 @@ export function InventoryHistoryModal({
                         {new Date(log.timestamp).toLocaleString("pt-BR")}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={cn(
-                          "text-[10px] px-1 py-0 h-5",
-                          log.type === "entrada" ? "bg-green-50 text-green-700 border-green-200" :
-                          log.type === "saida" || log.type === "servico" || log.type === "venda" ? "bg-red-50 text-red-700 border-red-200" :
-                          "bg-blue-50 text-blue-700 border-blue-200"
-                        )}>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px] px-1 py-0 h-5",
+                            log.type === "entrada"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : log.type === "saida" ||
+                                  log.type === "servico" ||
+                                  log.type === "venda"
+                                ? "bg-red-50 text-red-700 border-red-200"
+                                : "bg-blue-50 text-blue-700 border-blue-200",
+                          )}
+                        >
                           {log.type.charAt(0).toUpperCase() + log.type.slice(1)}
                         </Badge>
                       </TableCell>
-                      <TableCell className={cn(
-                        "font-medium text-xs",
-                        log.quantityChange > 0 ? "text-green-600" : "text-red-600"
-                      )}>
-                        {log.quantityChange > 0 ? "+" : ""}{log.quantityChange.toLocaleString("pt-BR")}
+                      <TableCell
+                        className={cn(
+                          "font-medium text-xs",
+                          log.quantityChange > 0
+                            ? "text-green-600"
+                            : "text-red-600",
+                        )}
+                      >
+                        {log.quantityChange > 0 ? "+" : ""}
+                        {log.quantityChange.toLocaleString("pt-BR")}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
                         {log.newQuantity.toLocaleString("pt-BR")}
                       </TableCell>
-                      <TableCell className="text-[11px] max-w-50 truncate" title={log.notes}>
+                      <TableCell
+                        className="text-[11px] max-w-50 truncate"
+                        title={log.notes}
+                      >
                         {log.notes}
                       </TableCell>
                     </TableRow>

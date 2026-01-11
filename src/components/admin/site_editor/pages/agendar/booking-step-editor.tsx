@@ -38,7 +38,7 @@ export function BookingStepEditor({
       // booking-service, booking-date, booking-time, booking-form, booking-confirmation
       const activeValues = Array.isArray(values) ? values : [values];
       const lastValue = activeValues[activeValues.length - 1];
-      
+
       if (lastValue) {
         // Notificamos o editor sobre a seção ativa para isolamento no preview
         onHighlight(activeSection || "booking-service");
@@ -46,11 +46,17 @@ export function BookingStepEditor({
     }
   };
 
-  const activeSection = title.includes("Serviços") ? "booking-service" :
-                       title.includes("Data") ? "booking-date" :
-                       title.includes("Horário") ? "booking-time" :
-                       title.includes("Dados") ? "booking-form" :
-                       title.includes("Confirmação") ? "booking-confirmation" : null;
+  const activeSection = title.includes("Serviços")
+    ? "booking-service"
+    : title.includes("Data")
+      ? "booking-date"
+      : title.includes("Horário")
+        ? "booking-time"
+        : title.includes("Dados")
+          ? "booking-form"
+          : title.includes("Confirmação")
+            ? "booking-confirmation"
+            : null;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -156,9 +162,15 @@ export function BookingStepEditor({
                   font={settings.titleFont}
                   onUpdate={(updates) =>
                     onUpdate({
-                      ...(updates.title !== undefined && { title: updates.title }),
-                      ...(updates.font !== undefined && { titleFont: updates.font }),
-                      ...(updates.color !== undefined && { titleColor: updates.color }),
+                      ...(updates.title !== undefined && {
+                        title: updates.title,
+                      }),
+                      ...(updates.font !== undefined && {
+                        titleFont: updates.font,
+                      }),
+                      ...(updates.color !== undefined && {
+                        titleColor: updates.color,
+                      }),
                     })
                   }
                 />
@@ -185,9 +197,15 @@ export function BookingStepEditor({
                   font={settings.subtitleFont}
                   onUpdate={(updates) =>
                     onUpdate({
-                      ...(updates.subtitle !== undefined && { subtitle: updates.subtitle }),
-                      ...(updates.font !== undefined && { subtitleFont: updates.font }),
-                      ...(updates.color !== undefined && { subtitleColor: updates.color }),
+                      ...(updates.subtitle !== undefined && {
+                        subtitle: updates.subtitle,
+                      }),
+                      ...(updates.font !== undefined && {
+                        subtitleFont: updates.font,
+                      }),
+                      ...(updates.color !== undefined && {
+                        subtitleColor: updates.color,
+                      }),
                     })
                   }
                 />
@@ -208,10 +226,7 @@ export function BookingStepEditor({
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-0 pb-4 space-y-4 border-t border-border/50 mt-2">
-                <BackgroundEditor
-                  settings={settings}
-                  onUpdate={onUpdate}
-                />
+                <BackgroundEditor settings={settings} onUpdate={onUpdate} />
               </AccordionContent>
             </AccordionItem>
 
@@ -231,15 +246,15 @@ export function BookingStepEditor({
               <AccordionContent className="pt-0 pb-4 space-y-4 border-t border-border/50 mt-2">
                 <div className="grid grid-cols-2 gap-4 pt-2">
                   <div className="space-y-1.5">
-                    <Label 
+                    <Label
                       htmlFor="accentColor"
                       className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center"
                     >
                       Cor de Destaque
                       {settings.accentColor && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-4 w-4 hover:text-primary"
                           onClick={() => onUpdate({ accentColor: "" })}
                         >
@@ -253,26 +268,30 @@ export function BookingStepEditor({
                         type="color"
                         value={settings.accentColor || "#000000"}
                         className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                        onChange={(e) => onUpdate({ accentColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ accentColor: e.target.value })
+                        }
                       />
                       <Input
                         value={settings.accentColor || ""}
                         placeholder="Padrão"
                         className="h-8 text-[10px] flex-1 uppercase"
-                        onChange={(e) => onUpdate({ accentColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ accentColor: e.target.value })
+                        }
                       />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label 
+                    <Label
                       htmlFor="cardBgColor"
                       className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center"
                     >
                       Fundo do Card
                       {settings.cardBgColor && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-4 w-4 hover:text-primary"
                           onClick={() => onUpdate({ cardBgColor: "" })}
                         >
@@ -286,13 +305,17 @@ export function BookingStepEditor({
                         type="color"
                         value={settings.cardBgColor || "#ffffff"}
                         className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                        onChange={(e) => onUpdate({ cardBgColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ cardBgColor: e.target.value })
+                        }
                       />
                       <Input
                         value={settings.cardBgColor || ""}
                         placeholder="Padrão"
                         className="h-8 text-[10px] flex-1 uppercase"
-                        onChange={(e) => onUpdate({ cardBgColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ cardBgColor: e.target.value })
+                        }
                       />
                     </div>
                   </div>

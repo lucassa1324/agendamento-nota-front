@@ -30,33 +30,41 @@ export function LoginForm() {
 
     try {
       // Limpeza de Cache: Tenta deslogar para limpar cookies de sessões anteriores
-      console.log('>>> [AUTH] Limpando sessões anteriores...');
+      console.log(">>> [AUTH] Limpando sessões anteriores...");
       await logout().catch(() => {});
 
       // Logs de Depuração: Confirmar credenciais antes de enviar
-      console.log('Enviando credenciais:', { email });
+      console.log("Enviando credenciais:", { email });
 
       const result = await loginWithEmail(email, password);
-      console.log('Dados recebidos:', result);
-      
+      console.log("Dados recebidos:", result);
+
       if (result) {
         // Captura flexível de slug conforme solicitado pelo usuário
-        const businessSlug = result.data?.user?.business?.slug || 
-                             result.data?.business?.slug || 
-                             result.user?.business?.slug || 
-                             result.business?.slug || 
-                             result.slug;
-        
+        const businessSlug =
+          result.data?.user?.business?.slug ||
+          result.data?.business?.slug ||
+          result.user?.business?.slug ||
+          result.business?.slug ||
+          result.slug;
+
         if (!businessSlug) {
-          console.warn(">>> [LOGIN_FLOW] Login realizado, mas nenhum slug de estúdio foi encontrado na resposta.");
-          console.log(">>> [LOGIN_FLOW] Objeto completo para debug:", JSON.stringify(result, null, 2));
+          console.warn(
+            ">>> [LOGIN_FLOW] Login realizado, mas nenhum slug de estúdio foi encontrado na resposta.",
+          );
+          console.log(
+            ">>> [LOGIN_FLOW] Objeto completo para debug:",
+            JSON.stringify(result, null, 2),
+          );
           // Redirecionamento temporário para debug ou erro se o slug for nulo
           setError("Dados do estúdio não encontrados. Verifique o console.");
           setIsLoading(false);
           return;
         }
 
-        console.log(`>>> [LOGIN_FLOW] Slug encontrado: ${businessSlug}. Redirecionando...`);
+        console.log(
+          `>>> [LOGIN_FLOW] Slug encontrado: ${businessSlug}. Redirecionando...`,
+        );
         router.push(`/admin/${businessSlug}/dashboard/overview`);
         router.refresh();
         return;
@@ -136,9 +144,9 @@ export function LoginForm() {
           <div className="text-center mt-4">
             <p className="text-sm text-muted-foreground">
               Não tem uma conta?{" "}
-              <Button 
-                variant="link" 
-                className="p-0 h-auto" 
+              <Button
+                variant="link"
+                className="p-0 h-auto"
                 onClick={() => router.push("/admin/register")}
               >
                 Cadastre-se

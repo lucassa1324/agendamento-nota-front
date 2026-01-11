@@ -16,7 +16,11 @@ interface SectionTitleEditorProps {
   title: string;
   font: string;
   color: string;
-  onUpdate: (updates: { title?: string; font?: string; color?: string }) => void;
+  onUpdate: (updates: {
+    title?: string;
+    font?: string;
+    color?: string;
+  }) => void;
   label?: string;
 }
 
@@ -29,10 +33,10 @@ export function SectionTitleEditor({
 }: SectionTitleEditorProps) {
   return (
     <div className="space-y-4 pt-2">
-      <fieldset 
-        className="space-y-1.5 border-none p-0 m-0" 
-        onPointerDown={(e) => e.stopPropagation()} 
-        onMouseDown={(e) => e.stopPropagation()} 
+      <fieldset
+        className="space-y-1.5 border-none p-0 m-0"
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => e.stopPropagation()}
       >
@@ -47,10 +51,10 @@ export function SectionTitleEditor({
       </fieldset>
 
       <div className="grid grid-cols-2 gap-4">
-        <fieldset 
-          className="space-y-1.5 border-none p-0 m-0" 
-          onPointerDown={(e) => e.stopPropagation()} 
-          onMouseDown={(e) => e.stopPropagation()} 
+        <fieldset
+          className="space-y-1.5 border-none p-0 m-0"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
@@ -69,30 +73,26 @@ export function SectionTitleEditor({
                 Padrão do Site
               </SelectItem>
               {EDITOR_FONTS.map((f) => (
-                <SelectItem
-                  key={f.name}
-                  value={f.name}
-                  className="text-xs"
-                >
+                <SelectItem key={f.name} value={f.name} className="text-xs">
                   <span style={{ fontFamily: f.name }}>{f.name}</span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </fieldset>
-        <fieldset 
-          className="space-y-1.5 border-none p-0 m-0" 
-          onPointerDown={(e) => e.stopPropagation()} 
-          onMouseDown={(e) => e.stopPropagation()} 
+        <fieldset
+          className="space-y-1.5 border-none p-0 m-0"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
           <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
             Cor
             {color && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-4 w-4 hover:text-primary"
                 onClick={() => onUpdate({ color: "" })}
               >

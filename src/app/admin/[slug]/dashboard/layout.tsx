@@ -29,7 +29,7 @@ function MobileNav({
           size="icon"
           className={cn(
             "h-10 w-10",
-            isPersonalizacao ? "bg-background/80 backdrop-blur-sm" : ""
+            isPersonalizacao ? "bg-background/80 backdrop-blur-sm" : "",
           )}
         >
           <Menu className="h-5 w-5" />
@@ -42,10 +42,10 @@ function MobileNav({
   );
 }
 
-function AdminLayoutContent({ 
+function AdminLayoutContent({
   children,
-  slug: propSlug 
-}: { 
+  slug: propSlug,
+}: {
   children: ReactNode;
   slug: string;
 }) {
@@ -53,7 +53,7 @@ function AdminLayoutContent({
   const pathname = usePathname();
   // Se já temos o slug via prop, não precisamos do useParams aqui
   const slug = propSlug;
-  
+
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [adminUser, setAdminUser] = useState<{
@@ -139,7 +139,7 @@ function AdminLayoutContent({
         <main
           className={cn(
             "flex-1 flex flex-col",
-            isPersonalizacao ? "p-0" : "p-4 lg:p-6"
+            isPersonalizacao ? "p-0" : "p-4 lg:p-6",
           )}
         >
           {/* Botão Sanduíche para Personalização (Mobile) */}
@@ -170,7 +170,13 @@ export default function AdminLayout({
 
   // Mover o check de autenticação para o topo se possível, ou garantir que hooks sejam estáveis
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Carregando...</p></div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <p>Carregando...</p>
+        </div>
+      }
+    >
       <StudioProvider initialSlug={slug}>
         <SidebarProvider>
           <AdminLayoutContent slug={slug}>{children}</AdminLayoutContent>

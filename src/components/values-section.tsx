@@ -178,14 +178,17 @@ export function ValuesSection() {
                   >
                     <Icon
                       className="w-8 h-8 transition-all duration-300"
-                      style={{ color: settings?.cardIconColor || "var(--primary)" }}
+                      style={{
+                        color: settings?.cardIconColor || "var(--primary)",
+                      }}
                     />
                   </div>
                   <h3
                     className="text-xl font-semibold mb-3 transition-all duration-300"
                     style={{
                       color: settings?.cardTitleColor || "var(--primary)",
-                      fontFamily: settings?.cardTitleFont || "var(--font-title)",
+                      fontFamily:
+                        settings?.cardTitleFont || "var(--font-title)",
                     }}
                   >
                     {value?.title}
@@ -193,8 +196,10 @@ export function ValuesSection() {
                   <p
                     className="text-sm leading-relaxed transition-all duration-300"
                     style={{
-                      color: settings?.cardDescriptionColor || "var(--foreground)",
-                      fontFamily: settings?.cardDescriptionFont || "var(--font-body)",
+                      color:
+                        settings?.cardDescriptionColor || "var(--foreground)",
+                      fontFamily:
+                        settings?.cardDescriptionFont || "var(--font-body)",
                     }}
                   >
                     {value?.description}

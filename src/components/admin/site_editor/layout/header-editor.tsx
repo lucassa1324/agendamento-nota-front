@@ -36,10 +36,7 @@ export function HeaderEditor({
 }: HeaderEditorProps) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <Accordion
-        type="multiple"
-        className="w-full space-y-2 border-none"
-      >
+      <Accordion type="multiple" className="w-full space-y-2 border-none">
         {/* Background & Glassmorphism */}
         <AccordionItem
           value="item-background"
@@ -161,7 +158,9 @@ export function HeaderEditor({
                         value={font.name}
                         className="text-[10px]"
                       >
-                        <span style={{ fontFamily: font.name }}>{font.name}</span>
+                        <span style={{ fontFamily: font.name }}>
+                          {font.name}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -191,7 +190,9 @@ export function HeaderEditor({
                         value={font.name}
                         className="text-[10px]"
                       >
-                        <span style={{ fontFamily: font.name }}>{font.name}</span>
+                        <span style={{ fontFamily: font.name }}>
+                          {font.name}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -269,14 +270,18 @@ export function HeaderEditor({
                   <Input
                     type="color"
                     value={settings.buttonBgColor || "#000000"}
-                    onChange={(e) => onUpdate({ buttonBgColor: e.target.value })}
+                    onChange={(e) =>
+                      onUpdate({ buttonBgColor: e.target.value })
+                    }
                     className="w-12 h-8 p-1 cursor-pointer"
                   />
                   <Input
                     type="text"
                     value={settings.buttonBgColor}
                     placeholder="Padrão do Site"
-                    onChange={(e) => onUpdate({ buttonBgColor: e.target.value })}
+                    onChange={(e) =>
+                      onUpdate({ buttonBgColor: e.target.value })
+                    }
                     className="h-8 text-xs flex-1"
                   />
                 </div>
@@ -302,14 +307,18 @@ export function HeaderEditor({
                   <Input
                     type="color"
                     value={settings.buttonTextColor || "#ffffff"}
-                    onChange={(e) => onUpdate({ buttonTextColor: e.target.value })}
+                    onChange={(e) =>
+                      onUpdate({ buttonTextColor: e.target.value })
+                    }
                     className="w-12 h-8 p-1 cursor-pointer"
                   />
                   <Input
                     type="text"
                     value={settings.buttonTextColor}
                     placeholder="Padrão do Site"
-                    onChange={(e) => onUpdate({ buttonTextColor: e.target.value })}
+                    onChange={(e) =>
+                      onUpdate({ buttonTextColor: e.target.value })
+                    }
                     className="h-8 text-xs flex-1"
                   />
                 </div>

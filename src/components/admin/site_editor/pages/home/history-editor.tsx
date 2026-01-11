@@ -1,6 +1,12 @@
 "use client";
 
-import { ImageIcon, Image as ImageIcon2, Palette, RotateCcw, Type } from "lucide-react";
+import {
+  ImageIcon,
+  Image as ImageIcon2,
+  Palette,
+  RotateCcw,
+  Type,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,11 +78,11 @@ export function HistoryEditor({
       {/* Título e Cor */}
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-3">
-          <fieldset 
-            className="space-y-1.5 border-none p-0 m-0" 
-            onPointerDown={(e) => e.stopPropagation()} 
-            onMouseDown={(e) => e.stopPropagation()} 
-            onClick={(e) => e.stopPropagation()} 
+          <fieldset
+            className="space-y-1.5 border-none p-0 m-0"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
             <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
@@ -92,7 +98,7 @@ export function HistoryEditor({
         </div>
 
         <div className="grid grid-cols-2 gap-3 pt-2">
-          <fieldset 
+          <fieldset
             className="space-y-1.5 border-none p-0 m-0"
             onPointerDown={(e) => e.stopPropagation()}
           >
@@ -101,7 +107,9 @@ export function HistoryEditor({
             </legend>
             <Select
               value={settings.titleFont || "default"}
-              onValueChange={(v) => onUpdate({ titleFont: v === "default" ? "" : v })}
+              onValueChange={(v) =>
+                onUpdate({ titleFont: v === "default" ? "" : v })
+              }
             >
               <SelectTrigger className="h-8 text-[10px]">
                 <SelectValue placeholder="Padrão do Site" />
@@ -111,7 +119,11 @@ export function HistoryEditor({
                   Padrão do Site
                 </SelectItem>
                 {EDITOR_FONTS.map((f) => (
-                  <SelectItem key={f.name} value={f.name} className="text-[10px]">
+                  <SelectItem
+                    key={f.name}
+                    value={f.name}
+                    className="text-[10px]"
+                  >
                     <span style={{ fontFamily: f.name }}>{f.name}</span>
                   </SelectItem>
                 ))}
@@ -119,11 +131,11 @@ export function HistoryEditor({
             </Select>
           </fieldset>
 
-          <fieldset 
-            className="space-y-1.5 border-none p-0 m-0" 
-            onPointerDown={(e) => e.stopPropagation()} 
-            onMouseDown={(e) => e.stopPropagation()} 
-            onClick={(e) => e.stopPropagation()} 
+          <fieldset
+            className="space-y-1.5 border-none p-0 m-0"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
             <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
@@ -131,9 +143,9 @@ export function HistoryEditor({
                 <Palette className="w-2.5 h-2.5" /> Cor do Título
               </span>
               {settings.titleColor && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-4 w-4 hover:text-primary"
                   onClick={() => onUpdate({ titleColor: "" })}
                 >
@@ -161,7 +173,7 @@ export function HistoryEditor({
 
       {/* Conteúdo e Cor do Texto */}
       <div className="space-y-4 pt-4 border-t border-border/40">
-        <fieldset 
+        <fieldset
           className="space-y-1.5 border-none p-0 m-0"
           onPointerDown={(e) => e.stopPropagation()}
         >
@@ -177,7 +189,7 @@ export function HistoryEditor({
         </fieldset>
 
         <div className="grid grid-cols-2 gap-3">
-          <fieldset 
+          <fieldset
             className="space-y-1.5 border-none p-0 m-0"
             onPointerDown={(e) => e.stopPropagation()}
           >
@@ -186,7 +198,9 @@ export function HistoryEditor({
             </legend>
             <Select
               value={settings.contentFont || "default"}
-              onValueChange={(v) => onUpdate({ contentFont: v === "default" ? "" : v })}
+              onValueChange={(v) =>
+                onUpdate({ contentFont: v === "default" ? "" : v })
+              }
             >
               <SelectTrigger className="h-8 text-[10px]">
                 <SelectValue placeholder="Padrão do Site" />
@@ -196,7 +210,11 @@ export function HistoryEditor({
                   Padrão do Site
                 </SelectItem>
                 {EDITOR_FONTS.map((f) => (
-                  <SelectItem key={f.name} value={f.name} className="text-[10px]">
+                  <SelectItem
+                    key={f.name}
+                    value={f.name}
+                    className="text-[10px]"
+                  >
                     <span style={{ fontFamily: f.name }}>{f.name}</span>
                   </SelectItem>
                 ))}
@@ -204,16 +222,16 @@ export function HistoryEditor({
             </Select>
           </fieldset>
 
-          <fieldset 
+          <fieldset
             className="space-y-1.5 border-none p-0 m-0"
             onPointerDown={(e) => e.stopPropagation()}
           >
             <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
               Cor do Texto
               {settings.contentColor && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="h-4 w-4 hover:text-primary"
                   onClick={() => onUpdate({ contentColor: "" })}
                 >
@@ -239,10 +257,10 @@ export function HistoryEditor({
         </div>
 
         {/* Imagem */}
-        <fieldset 
-          className="space-y-1.5 border-none p-0 m-0" 
-          onPointerDown={(e) => e.stopPropagation()} 
-          onMouseDown={(e) => e.stopPropagation()} 
+        <fieldset
+          className="space-y-1.5 border-none p-0 m-0"
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           onKeyDown={(e) => e.stopPropagation()}
         >
@@ -268,7 +286,7 @@ export function HistoryEditor({
 
       {/* Fundo da Seção */}
       <div className="space-y-4 pt-4 border-t border-border/40">
-        <fieldset 
+        <fieldset
           className="space-y-1.5 border-none p-0 m-0"
           onPointerDown={(e) => e.stopPropagation()}
         >

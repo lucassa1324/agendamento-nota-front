@@ -158,11 +158,19 @@ export function ValuesEditor({
               title={settings.title}
               font={settings.titleFont}
               color={settings.titleColor}
-              onUpdate={(updates: { title?: string; font?: string; color?: string }) =>
+              onUpdate={(updates: {
+                title?: string;
+                font?: string;
+                color?: string;
+              }) =>
                 onUpdate({
                   ...(updates.title !== undefined && { title: updates.title }),
-                  ...(updates.font !== undefined && { titleFont: updates.font }),
-                  ...(updates.color !== undefined && { titleColor: updates.color }),
+                  ...(updates.font !== undefined && {
+                    titleFont: updates.font,
+                  }),
+                  ...(updates.color !== undefined && {
+                    titleColor: updates.color,
+                  }),
                 })
               }
             />
@@ -184,11 +192,21 @@ export function ValuesEditor({
               subtitle={settings.subtitle}
               font={settings.subtitleFont}
               color={settings.subtitleColor}
-              onUpdate={(updates: { subtitle?: string; font?: string; color?: string }) =>
+              onUpdate={(updates: {
+                subtitle?: string;
+                font?: string;
+                color?: string;
+              }) =>
                 onUpdate({
-                  ...(updates.subtitle !== undefined && { subtitle: updates.subtitle }),
-                  ...(updates.font !== undefined && { subtitleFont: updates.font }),
-                  ...(updates.color !== undefined && { subtitleColor: updates.color }),
+                  ...(updates.subtitle !== undefined && {
+                    subtitle: updates.subtitle,
+                  }),
+                  ...(updates.font !== undefined && {
+                    subtitleFont: updates.font,
+                  }),
+                  ...(updates.color !== undefined && {
+                    subtitleColor: updates.color,
+                  }),
                 })
               }
             />
@@ -209,13 +227,13 @@ export function ValuesEditor({
             <div className="space-y-6">
               {/* Cores Base do Card */}
               <div className="grid grid-cols-2 gap-4">
-                <fieldset 
-                      className="space-y-1.5 border-none p-0 m-0" 
-                      onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
-                      onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
-                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                      onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
-                    >
+                <fieldset
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+                  onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                  onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
+                >
                   <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
                     Fundo do Card
                   </legend>
@@ -238,13 +256,13 @@ export function ValuesEditor({
                     />
                   </div>
                 </fieldset>
-                <fieldset 
-                      className="space-y-1.5 border-none p-0 m-0" 
-                      onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
-                      onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
-                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                      onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
-                    >
+                <fieldset
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+                  onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                  onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
+                >
                   <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
                     Cor dos Ícones
                   </legend>
@@ -274,9 +292,11 @@ export function ValuesEditor({
                   Título do Card
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
-                    onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
+                    onPointerDown={(e: React.PointerEvent) =>
+                      e.stopPropagation()
+                    }
                     onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
@@ -286,7 +306,9 @@ export function ValuesEditor({
                     </legend>
                     <Select
                       value={settings.cardTitleFont}
-                      onValueChange={(v: string) => onUpdate({ cardTitleFont: v })}
+                      onValueChange={(v: string) =>
+                        onUpdate({ cardTitleFont: v })
+                      }
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Fonte" />
@@ -304,9 +326,11 @@ export function ValuesEditor({
                       </SelectContent>
                     </Select>
                   </fieldset>
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
-                    onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
+                    onPointerDown={(e: React.PointerEvent) =>
+                      e.stopPropagation()
+                    }
                     onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
@@ -341,10 +365,12 @@ export function ValuesEditor({
                   Descrição do Card
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
-                    onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} 
-                    onMouseDown={(e: React.MouseEvent) => e.stopPropagation()} 
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
+                    onPointerDown={(e: React.PointerEvent) =>
+                      e.stopPropagation()
+                    }
+                    onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
                   >
@@ -373,10 +399,12 @@ export function ValuesEditor({
                       </SelectContent>
                     </Select>
                   </fieldset>
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
-                    onPointerDown={(e: React.PointerEvent) => e.stopPropagation()} 
-                    onMouseDown={(e: React.MouseEvent) => e.stopPropagation()} 
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
+                    onPointerDown={(e: React.PointerEvent) =>
+                      e.stopPropagation()
+                    }
+                    onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
                     onClick={(e: React.MouseEvent) => e.stopPropagation()}
                     onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
                   >
@@ -438,8 +466,8 @@ export function ValuesEditor({
             </div>
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pb-4">
-            <fieldset 
-              className="space-y-4 border-none p-0 m-0" 
+            <fieldset
+              className="space-y-4 border-none p-0 m-0"
               onPointerDown={(e: React.PointerEvent) => e.stopPropagation()}
               onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
@@ -467,7 +495,9 @@ export function ValuesEditor({
                       </Label>
                       <Select
                         value={item.icon}
-                        onValueChange={(v: string) => updateItem(item.id, { icon: v })}
+                        onValueChange={(v: string) =>
+                          updateItem(item.id, { icon: v })
+                        }
                       >
                         <SelectTrigger className="h-8 w-12 px-2">
                           <SelectValue />

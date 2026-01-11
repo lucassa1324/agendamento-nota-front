@@ -79,29 +79,25 @@ export function StorySection() {
           <div>
             <h2
               className="font-serif text-4xl md:text-5xl font-bold mb-6 text-balance transition-all duration-300"
-              style={{ 
+              style={{
                 color: settings.titleColor || "var(--foreground)",
-                fontFamily: settings.titleFont || "var(--font-title)"
+                fontFamily: settings.titleFont || "var(--font-title)",
               }}
             >
               {settings.title}
             </h2>
             <div
               className="space-y-4 leading-relaxed transition-all duration-300"
-              style={{ 
+              style={{
                 color: settings.contentColor || "var(--foreground)",
-                fontFamily: settings.contentFont || "var(--font-body)"
+                fontFamily: settings.contentFont || "var(--font-body)",
               }}
             >
               {settings.content
                 .split("\n")
                 .filter((p) => p.trim() !== "")
                 .map((paragraph, index) => (
-                  <p
-                    key={`${paragraph.slice(0, 20)}-${index}`}
-                  >
-                    {paragraph}
-                  </p>
+                  <p key={`${paragraph.slice(0, 20)}-${index}`}>{paragraph}</p>
                 ))}
             </div>
           </div>

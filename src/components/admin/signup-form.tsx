@@ -33,18 +33,23 @@ export function SignUpForm() {
     try {
       console.log(">>> [SIGNUP] Iniciando cadastro para:", email);
       const result = await signUp(email, password, name, studioName);
-      
+
       console.log(">>> [SIGNUP] Resposta do cadastro:", result);
 
       if (result?.business?.slug) {
         const slug = result.business.slug;
-        console.log(">>> [SIGNUP] Cadastro bem-sucedido, redirecionando para:", slug);
-        
+        console.log(
+          ">>> [SIGNUP] Cadastro bem-sucedido, redirecionando para:",
+          slug,
+        );
+
         router.push(`/admin/${slug}/dashboard/overview`);
         router.refresh();
       } else {
         console.error(">>> [SIGNUP] Resposta inválida do servidor:", result);
-        setError("Erro ao criar conta. O servidor não retornou os dados do negócio.");
+        setError(
+          "Erro ao criar conta. O servidor não retornou os dados do negócio.",
+        );
         setIsLoading(false);
       }
     } catch (err) {
@@ -141,20 +146,16 @@ export function SignUpForm() {
             </div>
           )}
 
-          <Button
-            type="submit"
-            className="w-full h-11"
-            disabled={isLoading}
-          >
+          <Button type="submit" className="w-full h-11" disabled={isLoading}>
             {isLoading ? "Criando conta..." : "Criar Conta"}
           </Button>
 
           <div className="text-center mt-4">
             <p className="text-sm text-muted-foreground">
               Já tem uma conta?{" "}
-              <Button 
-                variant="link" 
-                className="p-0 h-auto" 
+              <Button
+                variant="link"
+                className="p-0 h-auto"
                 onClick={() => router.push("/admin")}
               >
                 Fazer login

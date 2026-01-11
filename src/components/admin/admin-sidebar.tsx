@@ -22,6 +22,7 @@ import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
+import { BASE_DOMAIN } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 interface AdminNavItem {
@@ -39,9 +40,21 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
   {
     group: "Operacional",
     items: [
-      { title: "Visão Geral", href: "/admin/dashboard/overview", icon: LayoutDashboard },
-      { title: "Agendamentos", href: "/admin/dashboard/agendamentos", icon: ListTodo },
-      { title: "Calendário Admin", href: "/admin/dashboard/calendario", icon: CalendarIcon },
+      {
+        title: "Visão Geral",
+        href: "/admin/dashboard/overview",
+        icon: LayoutDashboard,
+      },
+      {
+        title: "Agendamentos",
+        href: "/admin/dashboard/agendamentos",
+        icon: ListTodo,
+      },
+      {
+        title: "Calendário Admin",
+        href: "/admin/dashboard/calendario",
+        icon: CalendarIcon,
+      },
       { title: "Serviços", href: "/admin/dashboard/servicos", icon: Briefcase },
       { title: "Horários", href: "/admin/dashboard/horarios", icon: Clock },
     ],
@@ -49,25 +62,57 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
   {
     group: "Administrativo",
     items: [
-      { title: "Gerenciamento", href: "/admin/dashboard/gerenciamento", icon: PieChart },
+      {
+        title: "Gerenciamento",
+        href: "/admin/dashboard/gerenciamento",
+        icon: PieChart,
+      },
       { title: "Estoque", href: "/admin/dashboard/estoque", icon: Package },
-      { title: "Relatórios", href: "/admin/dashboard/relatorios", icon: BarChart3 },
+      {
+        title: "Relatórios",
+        href: "/admin/dashboard/relatorios",
+        icon: BarChart3,
+      },
     ],
   },
   {
     group: "Integrações",
     items: [
-      { title: "Integrações", href: "/admin/dashboard/integracoes", icon: Plug },
-      { title: "Google Calendar", href: "/admin/dashboard/google", icon: CalendarIcon },
-      { title: "Notificações", href: "/admin/dashboard/notificacoes", icon: Bell },
+      {
+        title: "Integrações",
+        href: "/admin/dashboard/integracoes",
+        icon: Plug,
+      },
+      {
+        title: "Google Calendar",
+        href: "/admin/dashboard/google",
+        icon: CalendarIcon,
+      },
+      {
+        title: "Notificações",
+        href: "/admin/dashboard/notificacoes",
+        icon: Bell,
+      },
     ],
   },
   {
     group: "Configurações e Site",
     items: [
-      { title: "Dados da Empresa", href: "/admin/dashboard/perfil", icon: Briefcase },
-      { title: "Minha Conta", href: "/admin/dashboard/minha-conta", icon: User },
-      { title: "Personalização", href: "/admin/dashboard/personalizacao", icon: Palette },
+      {
+        title: "Dados da Empresa",
+        href: "/admin/dashboard/perfil",
+        icon: Briefcase,
+      },
+      {
+        title: "Minha Conta",
+        href: "/admin/dashboard/minha-conta",
+        icon: User,
+      },
+      {
+        title: "Personalização",
+        href: "/admin/dashboard/personalizacao",
+        icon: Palette,
+      },
       { title: "Galeria", href: "/admin/dashboard/galeria", icon: ImageIcon },
     ],
   },
@@ -82,7 +127,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
   const pathname = usePathname();
   const params = useParams();
   const { studio } = useStudio();
-  
+
   const slug = (params?.slug as string) || studio?.slug || "";
 
   const isActive = (path: string) => pathname?.includes(path);
@@ -97,10 +142,8 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
   const getSiteUrl = () => {
     if (!slug) return "/";
     if (typeof window !== "undefined") {
-      const host = window.location.host;
-      if (host.includes("localhost")) {
-        return `http://${slug}.localhost:3000`;
-      }
+      const protocol = window.location.protocol;
+      return `${protocol}//${slug}.${BASE_DOMAIN}`;
     }
     return `/${slug}`;
   };

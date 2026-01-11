@@ -69,8 +69,12 @@ export function ServicesEditor({
               onUpdate={(updates) =>
                 onUpdate({
                   ...(updates.title !== undefined && { title: updates.title }),
-                  ...(updates.font !== undefined && { titleFont: updates.font }),
-                  ...(updates.color !== undefined && { titleColor: updates.color }),
+                  ...(updates.font !== undefined && {
+                    titleFont: updates.font,
+                  }),
+                  ...(updates.color !== undefined && {
+                    titleColor: updates.color,
+                  }),
                 })
               }
             />
@@ -94,9 +98,15 @@ export function ServicesEditor({
               color={settings.subtitleColor}
               onUpdate={(updates) =>
                 onUpdate({
-                  ...(updates.subtitle !== undefined && { subtitle: updates.subtitle }),
-                  ...(updates.font !== undefined && { subtitleFont: updates.font }),
-                  ...(updates.color !== undefined && { subtitleColor: updates.color }),
+                  ...(updates.subtitle !== undefined && {
+                    subtitle: updates.subtitle,
+                  }),
+                  ...(updates.font !== undefined && {
+                    subtitleFont: updates.font,
+                  }),
+                  ...(updates.color !== undefined && {
+                    subtitleColor: updates.color,
+                  }),
                 })
               }
             />
@@ -117,8 +127,8 @@ export function ServicesEditor({
             <div className="space-y-6">
               {/* Cores Base do Card */}
               <div className="grid grid-cols-2 gap-4">
-                <fieldset 
-                  className="space-y-1.5 border-none p-0 m-0" 
+                <fieldset
+                  className="space-y-1.5 border-none p-0 m-0"
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
@@ -127,9 +137,9 @@ export function ServicesEditor({
                   <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Fundo do Card
                     {settings.cardBgColor && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-4 w-4 hover:text-primary"
                         onClick={() => onUpdate({ cardBgColor: "" })}
                       >
@@ -156,7 +166,7 @@ export function ServicesEditor({
                     />
                   </div>
                 </fieldset>
-                <fieldset 
+                <fieldset
                   className="space-y-1.5 border-none p-0 m-0"
                   onPointerDown={(e) => e.stopPropagation()}
                   onMouseDown={(e) => e.stopPropagation()}
@@ -166,9 +176,9 @@ export function ServicesEditor({
                   <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Cor dos Ícones
                     {settings.cardIconColor && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-4 w-4 hover:text-primary"
                         onClick={() => onUpdate({ cardIconColor: "" })}
                       >
@@ -202,8 +212,8 @@ export function ServicesEditor({
                   Título do Card
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
@@ -214,13 +224,18 @@ export function ServicesEditor({
                     </legend>
                     <Select
                       value={settings.cardTitleFont || "default"}
-                      onValueChange={(v) => onUpdate({ cardTitleFont: v === "default" ? "" : v })}
+                      onValueChange={(v) =>
+                        onUpdate({ cardTitleFont: v === "default" ? "" : v })
+                      }
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Padrão do Site" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default" className="text-xs font-medium">
+                        <SelectItem
+                          value="default"
+                          className="text-xs font-medium"
+                        >
                           Padrão do Site
                         </SelectItem>
                         {EDITOR_FONTS.map((f) => (
@@ -235,7 +250,7 @@ export function ServicesEditor({
                       </SelectContent>
                     </Select>
                   </fieldset>
-                  <fieldset 
+                  <fieldset
                     className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
@@ -245,9 +260,9 @@ export function ServicesEditor({
                     <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                       Cor do Título
                       {settings.cardTitleColor && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-4 w-4 hover:text-primary"
                           onClick={() => onUpdate({ cardTitleColor: "" })}
                         >
@@ -282,7 +297,7 @@ export function ServicesEditor({
                   Descrição do Card
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
-                  <fieldset 
+                  <fieldset
                     className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
@@ -294,13 +309,20 @@ export function ServicesEditor({
                     </legend>
                     <Select
                       value={settings.cardDescriptionFont || "default"}
-                      onValueChange={(v) => onUpdate({ cardDescriptionFont: v === "default" ? "" : v })}
+                      onValueChange={(v) =>
+                        onUpdate({
+                          cardDescriptionFont: v === "default" ? "" : v,
+                        })
+                      }
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Padrão do Site" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default" className="text-xs font-medium">
+                        <SelectItem
+                          value="default"
+                          className="text-xs font-medium"
+                        >
                           Padrão do Site
                         </SelectItem>
                         {EDITOR_FONTS.map((f) => (
@@ -315,7 +337,7 @@ export function ServicesEditor({
                       </SelectContent>
                     </Select>
                   </fieldset>
-                  <fieldset 
+                  <fieldset
                     className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
@@ -325,9 +347,9 @@ export function ServicesEditor({
                     <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                       Cor da Descrição
                       {settings.cardDescriptionColor && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-4 w-4 hover:text-primary"
                           onClick={() => onUpdate({ cardDescriptionColor: "" })}
                         >
@@ -362,8 +384,8 @@ export function ServicesEditor({
                   Preço/Valor
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
@@ -374,13 +396,18 @@ export function ServicesEditor({
                     </legend>
                     <Select
                       value={settings.cardPriceFont || "default"}
-                      onValueChange={(v) => onUpdate({ cardPriceFont: v === "default" ? "" : v })}
+                      onValueChange={(v) =>
+                        onUpdate({ cardPriceFont: v === "default" ? "" : v })
+                      }
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Padrão do Site" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default" className="text-xs font-medium">
+                        <SelectItem
+                          value="default"
+                          className="text-xs font-medium"
+                        >
                           Padrão do Site
                         </SelectItem>
                         {EDITOR_FONTS.map((f) => (
@@ -405,9 +432,9 @@ export function ServicesEditor({
                     <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                       Cor
                       {settings.cardPriceColor && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-4 w-4 hover:text-primary"
                           onClick={() => onUpdate({ cardPriceColor: "" })}
                         >

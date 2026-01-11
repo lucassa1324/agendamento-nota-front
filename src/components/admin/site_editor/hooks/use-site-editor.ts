@@ -581,7 +581,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_TESTIMONIALS_SETTINGS", settings: testimonialsSettings },
+        {
+          type: "UPDATE_TESTIMONIALS_SETTINGS",
+          settings: testimonialsSettings,
+        },
         "*",
       );
     }
@@ -750,7 +753,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       const win = iframeRef.current.contentWindow;
-      win.postMessage({ type: "UPDATE_HERO_SETTINGS", settings: heroSettings }, "*");
+      win.postMessage(
+        { type: "UPDATE_HERO_SETTINGS", settings: heroSettings },
+        "*",
+      );
       win.postMessage(
         { type: "UPDATE_ABOUT_HERO_SETTINGS", settings: aboutHeroSettings },
         "*",
@@ -764,7 +770,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         "*",
       );
       win.postMessage(
-        { type: "UPDATE_TESTIMONIALS_SETTINGS", settings: testimonialsSettings },
+        {
+          type: "UPDATE_TESTIMONIALS_SETTINGS",
+          settings: testimonialsSettings,
+        },
         "*",
       );
       win.postMessage(
@@ -795,10 +804,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         { type: "UPDATE_TYPOGRAPHY", settings: fontSettings },
         "*",
       );
-      win.postMessage(
-        { type: "UPDATE_COLORS", settings: colorSettings },
-        "*",
-      );
+      win.postMessage({ type: "UPDATE_COLORS", settings: colorSettings }, "*");
       win.postMessage(
         {
           type: "UPDATE_BOOKING_SERVICE_SETTINGS",
@@ -868,7 +874,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastAppliedAboutHero({ ...aboutHeroSettings });
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_ABOUT_HERO_SETTINGS", settings: { ...aboutHeroSettings } },
+        {
+          type: "UPDATE_ABOUT_HERO_SETTINGS",
+          settings: { ...aboutHeroSettings },
+        },
         "*",
       );
     }
@@ -914,7 +923,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastAppliedTestimonials({ ...testimonialsSettings });
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
-        { type: "UPDATE_TESTIMONIALS_SETTINGS", settings: { ...testimonialsSettings } },
+        {
+          type: "UPDATE_TESTIMONIALS_SETTINGS",
+          settings: { ...testimonialsSettings },
+        },
         "*",
       );
     }
@@ -1458,161 +1470,259 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     [toast, iframeRef],
   );
 
-  const loadExternalConfig = useCallback((config: Record<string, unknown>) => {
-    if (!config) return;
-    const data = config as SiteConfigData;
+  const loadExternalConfig = useCallback(
+    (config: Record<string, unknown>) => {
+      if (!config) return;
+      const data = config as SiteConfigData;
 
-    if (data.hero) {
-      setHeroSettings(data.hero);
-      setLastSavedHero(data.hero);
-      setLastAppliedHero(data.hero);
-    }
-
-    if (data.aboutHero) {
-      setAboutHeroSettings(data.aboutHero);
-      setLastSavedAboutHero(data.aboutHero);
-      setLastAppliedAboutHero(data.aboutHero);
-    }
-
-    if (data.story) {
-      setStorySettings(data.story);
-      setLastSavedStory(data.story);
-      setLastAppliedStory(data.story);
-    }
-
-    if (data.team) {
-      setTeamSettings(data.team);
-      setLastSavedTeam(data.team);
-      setLastAppliedTeam(data.team);
-    }
-
-    if (data.testimonials) {
-      setTestimonialsSettings(data.testimonials);
-      setLastSavedTestimonials(data.testimonials);
-      setLastAppliedTestimonials(data.testimonials);
-    }
-
-    if (data.theme) {
-      setFontSettings(data.theme);
-      setLastSavedFont(data.theme);
-      setLastAppliedFont(data.theme);
-    }
-
-    if (data.colors) {
-      setColorSettings(data.colors);
-      setLastSavedColor(data.colors);
-      setLastAppliedColor(data.colors);
-    }
-
-    if (data.services) {
-      setServicesSettings(data.services);
-      setLastSavedServices(data.services);
-      setLastAppliedServices(data.services);
-    }
-
-    if (data.values) {
-      setValuesSettings(data.values);
-      setLastSavedValues(data.values);
-      setLastAppliedValues(data.values);
-    }
-
-    if (data.gallery) {
-      setGallerySettings(data.gallery);
-      setLastSavedGallery(data.gallery);
-      setLastAppliedGallery(data.gallery);
-    }
-
-    if (data.cta) {
-      setCTASettings(data.cta);
-      setLastSavedCTA(data.cta);
-      setLastAppliedCTA(data.cta);
-    }
-
-    if (data.header) {
-      setHeaderSettings(data.header);
-      setLastSavedHeader(data.header);
-      setLastAppliedHeader(data.header);
-    }
-
-    if (data.footer) {
-      setFooterSettings(data.footer);
-      setLastSavedFooter(data.footer);
-      setLastAppliedFooter(data.footer);
-    }
-
-    if (data.bookingSteps) {
-      const steps = data.bookingSteps;
-      if (steps.service) {
-        setBookingServiceSettings(steps.service);
-        setLastSavedBookingService(steps.service);
-        setLastAppliedBookingService(steps.service);
+      if (data.hero) {
+        setHeroSettings(data.hero);
+        setLastSavedHero(data.hero);
+        setLastAppliedHero(data.hero);
       }
-      if (steps.date) {
-        setBookingDateSettings(steps.date);
-        setLastSavedBookingDate(steps.date);
-        setLastAppliedBookingDate(steps.date);
-      }
-      if (steps.time) {
-        setBookingTimeSettings(steps.time);
-        setLastSavedBookingTime(steps.time);
-        setLastAppliedBookingTime(steps.time);
-      }
-      if (steps.form) {
-        setBookingFormSettings(steps.form);
-        setLastSavedBookingForm(steps.form);
-        setLastAppliedBookingForm(steps.form);
-      }
-      if (steps.confirmation) {
-        setBookingConfirmationSettings(steps.confirmation);
-        setLastSavedBookingConfirmation(steps.confirmation);
-        setLastAppliedBookingConfirmation(steps.confirmation);
-      }
-    }
 
-    if (data.pageVisibility) {
-      setPageVisibility(data.pageVisibility);
-      setLastSavedPageVisibility(data.pageVisibility);
-    }
+      if (data.aboutHero) {
+        setAboutHeroSettings(data.aboutHero);
+        setLastSavedAboutHero(data.aboutHero);
+        setLastAppliedAboutHero(data.aboutHero);
+      }
 
-    if (data.visibleSections) {
-      setVisibleSections(data.visibleSections);
-      setLastSavedVisibleSections(data.visibleSections);
-    }
+      if (data.story) {
+        setStorySettings(data.story);
+        setLastSavedStory(data.story);
+        setLastAppliedStory(data.story);
+      }
 
-    // Sincroniza com o iframe se necessário
-    const timer = setTimeout(() => {
-      if (iframeRef.current?.contentWindow) {
-        const win = iframeRef.current.contentWindow;
-        if (data.hero) win.postMessage({ type: "UPDATE_HERO_SETTINGS", settings: data.hero }, "*");
-        if (data.aboutHero) win.postMessage({ type: "UPDATE_ABOUT_HERO_SETTINGS", settings: data.aboutHero }, "*");
-        if (data.story) win.postMessage({ type: "UPDATE_STORY_SETTINGS", settings: data.story }, "*");
-        if (data.team) win.postMessage({ type: "UPDATE_TEAM_SETTINGS", settings: data.team }, "*");
-        if (data.testimonials) win.postMessage({ type: "UPDATE_TESTIMONIALS_SETTINGS", settings: data.testimonials }, "*");
-        if (data.theme) win.postMessage({ type: "UPDATE_TYPOGRAPHY", settings: data.theme }, "*");
-        if (data.colors) win.postMessage({ type: "UPDATE_COLORS", settings: data.colors }, "*");
-        if (data.services) win.postMessage({ type: "UPDATE_SERVICES_SETTINGS", settings: data.services }, "*");
-        if (data.values) win.postMessage({ type: "UPDATE_VALUES_SETTINGS", settings: data.values }, "*");
-        if (data.gallery) win.postMessage({ type: "UPDATE_GALLERY_SETTINGS", settings: data.gallery }, "*");
-        if (data.cta) win.postMessage({ type: "UPDATE_CTA_SETTINGS", settings: data.cta }, "*");
-        if (data.header) win.postMessage({ type: "UPDATE_HEADER_SETTINGS", settings: data.header }, "*");
-        if (data.footer) win.postMessage({ type: "UPDATE_FOOTER_SETTINGS", settings: data.footer }, "*");
-        
-        if (data.bookingSteps) {
-          const steps = data.bookingSteps;
-          if (steps.service) win.postMessage({ type: "UPDATE_BOOKING_SERVICE_SETTINGS", settings: steps.service }, "*");
-          if (steps.date) win.postMessage({ type: "UPDATE_BOOKING_DATE_SETTINGS", settings: steps.date }, "*");
-          if (steps.time) win.postMessage({ type: "UPDATE_BOOKING_TIME_SETTINGS", settings: steps.time }, "*");
-          if (steps.form) win.postMessage({ type: "UPDATE_BOOKING_FORM_SETTINGS", settings: steps.form }, "*");
-          if (steps.confirmation) win.postMessage({ type: "UPDATE_BOOKING_CONFIRMATION_SETTINGS", settings: steps.confirmation }, "*");
+      if (data.team) {
+        setTeamSettings(data.team);
+        setLastSavedTeam(data.team);
+        setLastAppliedTeam(data.team);
+      }
+
+      if (data.testimonials) {
+        setTestimonialsSettings(data.testimonials);
+        setLastSavedTestimonials(data.testimonials);
+        setLastAppliedTestimonials(data.testimonials);
+      }
+
+      if (data.theme) {
+        setFontSettings(data.theme);
+        setLastSavedFont(data.theme);
+        setLastAppliedFont(data.theme);
+      }
+
+      if (data.colors) {
+        setColorSettings(data.colors);
+        setLastSavedColor(data.colors);
+        setLastAppliedColor(data.colors);
+      }
+
+      if (data.services) {
+        setServicesSettings(data.services);
+        setLastSavedServices(data.services);
+        setLastAppliedServices(data.services);
+      }
+
+      if (data.values) {
+        setValuesSettings(data.values);
+        setLastSavedValues(data.values);
+        setLastAppliedValues(data.values);
+      }
+
+      if (data.gallery) {
+        setGallerySettings(data.gallery);
+        setLastSavedGallery(data.gallery);
+        setLastAppliedGallery(data.gallery);
+      }
+
+      if (data.cta) {
+        setCTASettings(data.cta);
+        setLastSavedCTA(data.cta);
+        setLastAppliedCTA(data.cta);
+      }
+
+      if (data.header) {
+        setHeaderSettings(data.header);
+        setLastSavedHeader(data.header);
+        setLastAppliedHeader(data.header);
+      }
+
+      if (data.footer) {
+        setFooterSettings(data.footer);
+        setLastSavedFooter(data.footer);
+        setLastAppliedFooter(data.footer);
+      }
+
+      if (data.bookingSteps) {
+        const steps = data.bookingSteps;
+        if (steps.service) {
+          setBookingServiceSettings(steps.service);
+          setLastSavedBookingService(steps.service);
+          setLastAppliedBookingService(steps.service);
         }
-
-        if (data.pageVisibility) win.postMessage({ type: "UPDATE_PAGE_VISIBILITY", visibility: data.pageVisibility }, "*");
-         if (data.visibleSections) win.postMessage({ type: "UPDATE_VISIBLE_SECTIONS", sections: data.visibleSections }, "*");
+        if (steps.date) {
+          setBookingDateSettings(steps.date);
+          setLastSavedBookingDate(steps.date);
+          setLastAppliedBookingDate(steps.date);
+        }
+        if (steps.time) {
+          setBookingTimeSettings(steps.time);
+          setLastSavedBookingTime(steps.time);
+          setLastAppliedBookingTime(steps.time);
+        }
+        if (steps.form) {
+          setBookingFormSettings(steps.form);
+          setLastSavedBookingForm(steps.form);
+          setLastAppliedBookingForm(steps.form);
+        }
+        if (steps.confirmation) {
+          setBookingConfirmationSettings(steps.confirmation);
+          setLastSavedBookingConfirmation(steps.confirmation);
+          setLastAppliedBookingConfirmation(steps.confirmation);
+        }
       }
-    }, 100);
 
-    return () => clearTimeout(timer);
-  }, [iframeRef]);
+      if (data.pageVisibility) {
+        setPageVisibility(data.pageVisibility);
+        setLastSavedPageVisibility(data.pageVisibility);
+      }
+
+      if (data.visibleSections) {
+        setVisibleSections(data.visibleSections);
+        setLastSavedVisibleSections(data.visibleSections);
+      }
+
+      // Sincroniza com o iframe se necessário
+      const timer = setTimeout(() => {
+        if (iframeRef.current?.contentWindow) {
+          const win = iframeRef.current.contentWindow;
+          if (data.hero)
+            win.postMessage(
+              { type: "UPDATE_HERO_SETTINGS", settings: data.hero },
+              "*",
+            );
+          if (data.aboutHero)
+            win.postMessage(
+              { type: "UPDATE_ABOUT_HERO_SETTINGS", settings: data.aboutHero },
+              "*",
+            );
+          if (data.story)
+            win.postMessage(
+              { type: "UPDATE_STORY_SETTINGS", settings: data.story },
+              "*",
+            );
+          if (data.team)
+            win.postMessage(
+              { type: "UPDATE_TEAM_SETTINGS", settings: data.team },
+              "*",
+            );
+          if (data.testimonials)
+            win.postMessage(
+              {
+                type: "UPDATE_TESTIMONIALS_SETTINGS",
+                settings: data.testimonials,
+              },
+              "*",
+            );
+          if (data.theme)
+            win.postMessage(
+              { type: "UPDATE_TYPOGRAPHY", settings: data.theme },
+              "*",
+            );
+          if (data.colors)
+            win.postMessage(
+              { type: "UPDATE_COLORS", settings: data.colors },
+              "*",
+            );
+          if (data.services)
+            win.postMessage(
+              { type: "UPDATE_SERVICES_SETTINGS", settings: data.services },
+              "*",
+            );
+          if (data.values)
+            win.postMessage(
+              { type: "UPDATE_VALUES_SETTINGS", settings: data.values },
+              "*",
+            );
+          if (data.gallery)
+            win.postMessage(
+              { type: "UPDATE_GALLERY_SETTINGS", settings: data.gallery },
+              "*",
+            );
+          if (data.cta)
+            win.postMessage(
+              { type: "UPDATE_CTA_SETTINGS", settings: data.cta },
+              "*",
+            );
+          if (data.header)
+            win.postMessage(
+              { type: "UPDATE_HEADER_SETTINGS", settings: data.header },
+              "*",
+            );
+          if (data.footer)
+            win.postMessage(
+              { type: "UPDATE_FOOTER_SETTINGS", settings: data.footer },
+              "*",
+            );
+
+          if (data.bookingSteps) {
+            const steps = data.bookingSteps;
+            if (steps.service)
+              win.postMessage(
+                {
+                  type: "UPDATE_BOOKING_SERVICE_SETTINGS",
+                  settings: steps.service,
+                },
+                "*",
+              );
+            if (steps.date)
+              win.postMessage(
+                { type: "UPDATE_BOOKING_DATE_SETTINGS", settings: steps.date },
+                "*",
+              );
+            if (steps.time)
+              win.postMessage(
+                { type: "UPDATE_BOOKING_TIME_SETTINGS", settings: steps.time },
+                "*",
+              );
+            if (steps.form)
+              win.postMessage(
+                { type: "UPDATE_BOOKING_FORM_SETTINGS", settings: steps.form },
+                "*",
+              );
+            if (steps.confirmation)
+              win.postMessage(
+                {
+                  type: "UPDATE_BOOKING_CONFIRMATION_SETTINGS",
+                  settings: steps.confirmation,
+                },
+                "*",
+              );
+          }
+
+          if (data.pageVisibility)
+            win.postMessage(
+              {
+                type: "UPDATE_PAGE_VISIBILITY",
+                visibility: data.pageVisibility,
+              },
+              "*",
+            );
+          if (data.visibleSections)
+            win.postMessage(
+              {
+                type: "UPDATE_VISIBLE_SECTIONS",
+                sections: data.visibleSections,
+              },
+              "*",
+            );
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
+    },
+    [iframeRef],
+  );
 
   // Booleans para habilitar/desabilitar botões
   const hasHeroChanges =
@@ -1731,7 +1841,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       bookingFormChanged,
       bookingConfirmationChanged,
       pageVisibilityChanged,
-      visibleSectionsChanged
+      visibleSectionsChanged,
     ];
 
     return changes.some(Boolean);

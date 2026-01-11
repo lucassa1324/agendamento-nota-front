@@ -4,7 +4,10 @@ import { Star } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
-import { getTestimonialsSettings, type TestimonialsSettings } from "@/lib/booking-data";
+import {
+  getTestimonialsSettings,
+  type TestimonialsSettings,
+} from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 
@@ -12,18 +15,22 @@ export function TestimonialsSection() {
   const { studio } = useStudio();
   const [settings, setSettings] = useState<TestimonialsSettings | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [highlightedElement, setHighlightedElement] = useState<string | null>(null);
+  const [highlightedElement, setHighlightedElement] = useState<string | null>(
+    null,
+  );
 
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studio) {
-      const testimonialsSettings = (studio.config.testimonials as TestimonialsSettings) || getTestimonialsSettings();
-      
+      const testimonialsSettings =
+        (studio.config.testimonials as TestimonialsSettings) ||
+        getTestimonialsSettings();
+
       // Se o studio tiver depoimentos específicos, usamos eles
       if (studio.testimonials && studio.testimonials.length > 0) {
         setSettings({
           ...testimonialsSettings,
-          testimonials: studio.testimonials
+          testimonials: studio.testimonials,
         });
       } else {
         setSettings(testimonialsSettings);

@@ -83,10 +83,10 @@ export function TypographyEditor({
             </div>
           </AccordionTrigger>
           <AccordionContent className="pb-4 space-y-4">
-            <fieldset 
-              className="space-y-1.5 border-none p-0 m-0 pt-1" 
-              onPointerDown={(e) => e.stopPropagation()} 
-              onMouseDown={(e) => e.stopPropagation()} 
+            <fieldset
+              className="space-y-1.5 border-none p-0 m-0 pt-1"
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             >
@@ -167,10 +167,10 @@ export function TypographyEditor({
             </div>
           </AccordionTrigger>
           <AccordionContent className="pb-4 space-y-4">
-            <fieldset 
-              className="space-y-1.5 border-none p-0 m-0 pt-1" 
-              onPointerDown={(e) => e.stopPropagation()} 
-              onMouseDown={(e) => e.stopPropagation()} 
+            <fieldset
+              className="space-y-1.5 border-none p-0 m-0 pt-1"
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={(e) => e.stopPropagation()}
             >

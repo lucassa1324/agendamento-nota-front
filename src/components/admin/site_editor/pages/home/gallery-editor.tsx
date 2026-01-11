@@ -1,6 +1,13 @@
 "use client";
 
-import { ImageIcon, LayoutGrid, MousePointer2, RotateCcw, SlidersHorizontal, Type } from "lucide-react";
+import {
+  ImageIcon,
+  LayoutGrid,
+  MousePointer2,
+  RotateCcw,
+  SlidersHorizontal,
+  Type,
+} from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -119,7 +126,7 @@ export function GalleryEditor({
             </div>
           </AccordionTrigger>
           <AccordionContent className="pb-4 space-y-4">
-            <fieldset 
+            <fieldset
               className="space-y-1.5 border-none p-0 m-0"
               onPointerDown={(e) => e.stopPropagation()}
             >
@@ -134,7 +141,7 @@ export function GalleryEditor({
             </fieldset>
 
             <div className="grid grid-cols-2 gap-4">
-              <fieldset 
+              <fieldset
                 className="space-y-1.5 border-none p-0 m-0"
                 onPointerDown={(e) => e.stopPropagation()}
               >
@@ -143,7 +150,9 @@ export function GalleryEditor({
                 </legend>
                 <Select
                   value={settings.buttonFont || "default"}
-                  onValueChange={(v) => onUpdate({ buttonFont: v === "default" ? "" : v })}
+                  onValueChange={(v) =>
+                    onUpdate({ buttonFont: v === "default" ? "" : v })
+                  }
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Padrão do Site" />
@@ -166,16 +175,16 @@ export function GalleryEditor({
               </fieldset>
 
               <div className="space-y-4">
-                <fieldset 
+                <fieldset
                   className="space-y-1.5 border-none p-0 m-0"
                   onPointerDown={(e) => e.stopPropagation()}
                 >
                   <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Cor do Botão
                     {settings.buttonColor && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-4 w-4 hover:text-primary"
                         onClick={() => onUpdate({ buttonColor: "" })}
                       >
@@ -188,27 +197,31 @@ export function GalleryEditor({
                       type="color"
                       value={settings.buttonColor || "#000000"}
                       className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                      onChange={(e) => onUpdate({ buttonColor: e.target.value })}
+                      onChange={(e) =>
+                        onUpdate({ buttonColor: e.target.value })
+                      }
                     />
                     <Input
                       value={settings.buttonColor || ""}
                       placeholder="Padrão"
                       className="h-8 text-[10px] flex-1 uppercase"
-                      onChange={(e) => onUpdate({ buttonColor: e.target.value })}
+                      onChange={(e) =>
+                        onUpdate({ buttonColor: e.target.value })
+                      }
                     />
                   </div>
                 </fieldset>
 
-                <fieldset 
+                <fieldset
                   className="space-y-1.5 border-none p-0 m-0"
                   onPointerDown={(e) => e.stopPropagation()}
                 >
                   <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Cor do Texto
                     {settings.buttonTextColor && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-4 w-4 hover:text-primary"
                         onClick={() => onUpdate({ buttonTextColor: "" })}
                       >
@@ -221,13 +234,17 @@ export function GalleryEditor({
                       type="color"
                       value={settings.buttonTextColor || "#FFFFFF"}
                       className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                      onChange={(e) => onUpdate({ buttonTextColor: e.target.value })}
+                      onChange={(e) =>
+                        onUpdate({ buttonTextColor: e.target.value })
+                      }
                     />
                     <Input
                       value={settings.buttonTextColor || ""}
                       placeholder="Padrão"
                       className="h-8 text-[10px] flex-1 uppercase"
-                      onChange={(e) => onUpdate({ buttonTextColor: e.target.value })}
+                      onChange={(e) =>
+                        onUpdate({ buttonTextColor: e.target.value })
+                      }
                     />
                   </div>
                 </fieldset>

@@ -90,19 +90,21 @@ export function BookingForm({
           <ChevronLeft className="w-4 h-4 mr-2" />
           Voltar
         </Button>
-        <Card 
+        <Card
           className="border-primary/20 p-4"
-          style={{ 
-            backgroundColor: settings?.cardBgColor || 'var(--muted)',
-            borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
+          style={{
+            backgroundColor: settings?.cardBgColor || "var(--muted)",
+            borderColor: settings?.accentColor
+              ? `${settings.accentColor}33`
+              : undefined,
           }}
         >
           <div className="text-sm space-y-1">
-            <div 
+            <div
               className="font-semibold"
-              style={{ 
-                color: settings?.titleColor || 'var(--foreground)',
-                fontFamily: settings?.titleFont || 'var(--font-title)'
+              style={{
+                color: settings?.titleColor || "var(--foreground)",
+                fontFamily: settings?.titleFont || "var(--font-title)",
               }}
             >
               {service.name}
@@ -110,10 +112,10 @@ export function BookingForm({
             <div className="text-muted-foreground capitalize">
               {formattedDate}
             </div>
-            <div 
+            <div
               className="font-bold"
-              style={{ 
-                color: settings?.accentColor || 'var(--primary)'
+              style={{
+                color: settings?.accentColor || "var(--primary)",
               }}
             >
               {time}
@@ -121,9 +123,9 @@ export function BookingForm({
             <div className="text-xs text-muted-foreground">
               Duração: {service.duration} minutos
             </div>
-            <div 
+            <div
               className="font-semibold"
-              style={{ color: settings?.accentColor || 'var(--primary)' }}
+              style={{ color: settings?.accentColor || "var(--primary)" }}
             >
               R$ {service.price.toFixed(2)}
             </div>
@@ -131,9 +133,9 @@ export function BookingForm({
         </Card>
       </div>
 
-      <h2 
+      <h2
         className="text-2xl font-bold mb-6 text-center"
-        style={{ fontFamily: 'var(--font-title)', color: 'var(--foreground)' }}
+        style={{ fontFamily: "var(--font-title)", color: "var(--foreground)" }}
       >
         Seus Dados
       </h2>
@@ -153,9 +155,12 @@ export function BookingForm({
                 }
                 placeholder="Seu nome completo"
                 className="focus-visible:ring-accent"
-                style={{ 
-                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
-                } as React.CSSProperties}
+                style={
+                  {
+                    "--tw-ring-color":
+                      settings?.accentColor || "var(--primary)",
+                  } as React.CSSProperties
+                }
               />
             </div>
 
@@ -170,9 +175,12 @@ export function BookingForm({
                 }
                 placeholder="seu@email.com"
                 className="focus-visible:ring-accent"
-                style={{ 
-                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
-                } as React.CSSProperties}
+                style={
+                  {
+                    "--tw-ring-color":
+                      settings?.accentColor || "var(--primary)",
+                  } as React.CSSProperties
+                }
               />
             </div>
 
@@ -188,18 +196,21 @@ export function BookingForm({
                 }
                 placeholder="(11) 99999-9999"
                 className="focus-visible:ring-accent"
-                style={{ 
-                  '--tw-ring-color': settings?.accentColor || 'var(--primary)'
-                } as React.CSSProperties}
+                style={
+                  {
+                    "--tw-ring-color":
+                      settings?.accentColor || "var(--primary)",
+                  } as React.CSSProperties
+                }
               />
             </div>
 
             <Button
               type="submit"
               className="w-full h-12 text-lg font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
-              style={{ 
-                backgroundColor: settings?.accentColor || 'var(--primary)',
-                color: '#fff'
+              style={{
+                backgroundColor: settings?.accentColor || "var(--primary)",
+                color: "#fff",
               }}
             >
               {initialBooking ? "Salvar Alterações" : "Confirmar Agendamento"}

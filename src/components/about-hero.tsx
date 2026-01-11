@@ -11,7 +11,9 @@ import { SectionBackground } from "./admin/site_editor/components/SectionBackgro
 export function AboutHero() {
   const { studio } = useStudio();
   const [settings, setSettings] = useState<HeroSettings | null>(null);
-  const [highlightedElement, setHighlightedElement] = useState<string | null>(null);
+  const [highlightedElement, setHighlightedElement] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
@@ -25,7 +27,9 @@ export function AboutHero() {
       if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "UPDATE_ABOUT_HERO_SETTINGS") {
-        setSettings((prev) => (prev ? { ...prev, ...event.data.settings } : prev));
+        setSettings((prev) =>
+          prev ? { ...prev, ...event.data.settings } : prev,
+        );
       }
 
       if (event.data.type === "HIGHLIGHT_SECTION") {
@@ -60,7 +64,8 @@ export function AboutHero() {
       id="about-hero"
       className={cn(
         "relative py-20 md:py-32 overflow-hidden transition-all duration-700",
-        (highlightedElement === "about-hero-bg" || highlightedElement === "about-hero") &&
+        (highlightedElement === "about-hero-bg" ||
+          highlightedElement === "about-hero") &&
           "ring-8 ring-inset ring-primary/30",
       )}
     >
@@ -90,7 +95,9 @@ export function AboutHero() {
               style={{
                 fontFamily: settings.badgeFont || "var(--font-body)",
                 color: settings.badgeColor || "var(--secondary)",
-                borderColor: settings.badgeColor ? `${settings.badgeColor}33` : "var(--secondary)",
+                borderColor: settings.badgeColor
+                  ? `${settings.badgeColor}33`
+                  : "var(--secondary)",
               }}
             >
               <span className="text-sm font-medium">
@@ -137,7 +144,8 @@ export function AboutHero() {
               size="lg"
               className="h-14 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
               style={{
-                backgroundColor: settings.primaryButtonColor || "var(--primary)",
+                backgroundColor:
+                  settings.primaryButtonColor || "var(--primary)",
                 color: settings.primaryButtonTextColor || "#ffffff",
                 fontFamily: settings.primaryButtonFont || "var(--font-body)",
               }}
@@ -152,8 +160,12 @@ export function AboutHero() {
               size="lg"
               className="h-14 px-8 text-base font-bold rounded-full bg-background/50 backdrop-blur-sm border-border hover:bg-background/80 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
               style={{
-                color: settings.secondaryButtonTextColor || settings.secondaryButtonColor || "var(--foreground)",
-                borderColor: settings.secondaryButtonColor || "var(--secondary)",
+                color:
+                  settings.secondaryButtonTextColor ||
+                  settings.secondaryButtonColor ||
+                  "var(--foreground)",
+                borderColor:
+                  settings.secondaryButtonColor || "var(--secondary)",
                 fontFamily: settings.secondaryButtonFont || "var(--font-body)",
               }}
             >
@@ -167,4 +179,3 @@ export function AboutHero() {
     </section>
   );
 }
-

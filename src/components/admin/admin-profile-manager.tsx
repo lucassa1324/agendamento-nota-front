@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  Check,
-  KeyRound,
-  Loader2,
-  Mail,
-  Phone,
-  User,
-} from "lucide-react";
+import { Check, KeyRound, Loader2, Mail, Phone, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +13,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { type AdminUser, getStoredAdminUser, saveAdminProfile } from "@/lib/admin-auth";
+import {
+  type AdminUser,
+  getStoredAdminUser,
+  saveAdminProfile,
+} from "@/lib/admin-auth";
 
 export function AdminProfileManager() {
   const { toast } = useToast();
@@ -47,9 +44,9 @@ export function AdminProfileManager() {
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     // Simular um pequeno delay para feedback visual
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
     try {
       saveAdminProfile(profile);
@@ -58,7 +55,7 @@ export function AdminProfileManager() {
         description: "Seu perfil foi atualizado com sucesso.",
       });
       // Disparar evento customizado para atualizar a sidebar imediatamente
-      window.dispatchEvent(new CustomEvent('adminProfileUpdated'));
+      window.dispatchEvent(new CustomEvent("adminProfileUpdated"));
     } catch {
       toast({
         title: "Erro",
@@ -72,7 +69,7 @@ export function AdminProfileManager() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (passwords.current !== profile.password) {
       toast({
         title: "Erro",
@@ -101,9 +98,9 @@ export function AdminProfileManager() {
     }
 
     setIsLoading(true);
-    
+
     // Simular um pequeno delay para feedback visual
-    await new Promise(resolve => setTimeout(resolve, 800));
+    await new Promise((resolve) => setTimeout(resolve, 800));
 
     try {
       const updatedProfile = { ...profile, password: passwords.new };
@@ -147,7 +144,9 @@ export function AdminProfileManager() {
                   id="name"
                   className="pl-10"
                   value={profile.name}
-                  onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                  onChange={(e) =>
+                    setProfile({ ...profile, name: e.target.value })
+                  }
                   placeholder="Seu nome"
                   required
                 />
@@ -180,7 +179,9 @@ export function AdminProfileManager() {
                   type="email"
                   className="pl-10"
                   value={profile.email || ""}
-                  onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                  onChange={(e) =>
+                    setProfile({ ...profile, email: e.target.value })
+                  }
                   placeholder="seu@email.com"
                 />
               </div>
@@ -194,7 +195,9 @@ export function AdminProfileManager() {
                   id="phone"
                   className="pl-10"
                   value={profile.phone || ""}
-                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                  onChange={(e) =>
+                    setProfile({ ...profile, phone: e.target.value })
+                  }
                   placeholder="(00) 00000-0000"
                 />
               </div>
@@ -235,7 +238,9 @@ export function AdminProfileManager() {
                 id="current-password"
                 type="password"
                 value={passwords.current}
-                onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+                onChange={(e) =>
+                  setPasswords({ ...passwords, current: e.target.value })
+                }
                 placeholder="••••••••"
                 required
               />
@@ -247,7 +252,9 @@ export function AdminProfileManager() {
                 id="new-password"
                 type="password"
                 value={passwords.new}
-                onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
+                onChange={(e) =>
+                  setPasswords({ ...passwords, new: e.target.value })
+                }
                 placeholder="••••••••"
                 required
               />
@@ -259,13 +266,20 @@ export function AdminProfileManager() {
                 id="confirm-password"
                 type="password"
                 value={passwords.confirm}
-                onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+                onChange={(e) =>
+                  setPasswords({ ...passwords, confirm: e.target.value })
+                }
                 placeholder="••••••••"
                 required
               />
             </div>
 
-            <Button type="submit" variant="outline" className="w-full" disabled={isLoading}>
+            <Button
+              type="submit"
+              variant="outline"
+              className="w-full"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

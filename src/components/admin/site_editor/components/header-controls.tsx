@@ -3,13 +3,13 @@
  * Fornece botões para alternar entre Desktop/Mobile, ajustar o zoom,
  * resetar visualização e atualizar o preview.
  */
-import { 
-  Maximize, 
-  Monitor, 
-  RotateCcw, 
-  Smartphone, 
-  ZoomIn, 
-  ZoomOut 
+import {
+  Maximize,
+  Monitor,
+  RotateCcw,
+  Smartphone,
+  ZoomIn,
+  ZoomOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -46,7 +46,8 @@ export function HeaderControls({
           size="icon"
           className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
           onClick={() => {
-            const currentScale = previewMode === "mobile" ? mobileScale : desktopScale;
+            const currentScale =
+              previewMode === "mobile" ? mobileScale : desktopScale;
             setManualScale(Math.max(0.1, currentScale - 0.1));
             setIsAutoZoom(false);
           }}
@@ -55,7 +56,10 @@ export function HeaderControls({
           <ZoomOut className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
         </Button>
         <span className="text-[10px] lg:text-xs font-bold min-w-10 text-center">
-          {Math.round((previewMode === "mobile" ? mobileScale : desktopScale) * 100)}%
+          {Math.round(
+            (previewMode === "mobile" ? mobileScale : desktopScale) * 100,
+          )}
+          %
         </span>
         <Button
           type="button"
@@ -63,7 +67,8 @@ export function HeaderControls({
           size="icon"
           className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
           onClick={() => {
-            const currentScale = previewMode === "mobile" ? mobileScale : desktopScale;
+            const currentScale =
+              previewMode === "mobile" ? mobileScale : desktopScale;
             setManualScale(Math.min(2, currentScale + 0.1));
             setIsAutoZoom(false);
           }}
@@ -77,7 +82,7 @@ export function HeaderControls({
           size="icon"
           className={cn(
             "rounded-full w-7 h-7 lg:w-8 lg:h-8",
-            isAutoZoom && "bg-background shadow-sm"
+            isAutoZoom && "bg-background shadow-sm",
           )}
           onClick={() => setIsAutoZoom(true)}
           title="Ajustar à Tela (Auto)"
@@ -95,7 +100,7 @@ export function HeaderControls({
           size="icon"
           className={cn(
             "rounded-full w-7 h-7 lg:w-8 lg:h-8",
-            previewMode === "desktop" && "bg-background shadow-sm"
+            previewMode === "desktop" && "bg-background shadow-sm",
           )}
           onClick={() => {
             setPreviewMode("desktop");
@@ -111,7 +116,7 @@ export function HeaderControls({
           size="icon"
           className={cn(
             "rounded-full w-7 h-7 lg:w-8 lg:h-8",
-            previewMode === "mobile" && "bg-background shadow-sm"
+            previewMode === "mobile" && "bg-background shadow-sm",
           )}
           onClick={() => {
             setPreviewMode("mobile");

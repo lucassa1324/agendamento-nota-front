@@ -32,7 +32,9 @@ export function ImageModal({ image, onClose }: ImageModalProps) {
     };
   }, [onClose]);
 
-  const imageUrl = image.url || `https://images.unsplash.com/photo-1560750588-73207b1ef5b8?auto=format&fit=crop&q=80&w=800&h=800&query=${image.query}`;
+  const imageUrl =
+    image.url ||
+    `https://images.unsplash.com/photo-1560750588-73207b1ef5b8?auto=format&fit=crop&q=80&w=800&h=800&query=${image.query}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

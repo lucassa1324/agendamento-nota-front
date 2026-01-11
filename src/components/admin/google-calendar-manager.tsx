@@ -83,14 +83,16 @@ export function GoogleCalendarManager() {
     if (filteredBookings.length === 0) {
       toast({
         title: "Nenhum agendamento",
-        description: "Não há agendamentos no período selecionado para exportar.",
+        description:
+          "Não há agendamentos no período selecionado para exportar.",
         variant: "destructive",
       });
       return;
     }
 
-    let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Agendamento Nota//PT\n";
-    
+    let icsContent =
+      "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Agendamento Nota//PT\n";
+
     filteredBookings.forEach((b) => {
       const startDateTime = `${b.date.replace(/-/g, "")}T${b.time.replace(/:/g, "")}00`;
       // Calcular fim com base na duração
@@ -110,7 +112,11 @@ export function GoogleCalendarManager() {
 
     icsContent += "END:VCALENDAR";
 
-    downloadFile(icsContent, `agendamentos_${exportRange.start}_${exportRange.end}.ics`, "text/calendar");
+    downloadFile(
+      icsContent,
+      `agendamentos_${exportRange.start}_${exportRange.end}.ics`,
+      "text/calendar",
+    );
   };
 
   const handleExportCSV = () => {
@@ -123,14 +129,27 @@ export function GoogleCalendarManager() {
     if (filteredBookings.length === 0) {
       toast({
         title: "Nenhum agendamento",
-        description: "Não há agendamentos no período selecionado para exportar.",
+        description:
+          "Não há agendamentos no período selecionado para exportar.",
         variant: "destructive",
       });
       return;
     }
 
-    const headers = ["ID", "Data", "Hora", "Cliente", "Telefone", "E-mail", "Serviço", "Duração (min)", "Preço", "Status", "Criado em"];
-    const rows = filteredBookings.map(b => [
+    const headers = [
+      "ID",
+      "Data",
+      "Hora",
+      "Cliente",
+      "Telefone",
+      "E-mail",
+      "Serviço",
+      "Duração (min)",
+      "Preço",
+      "Status",
+      "Criado em",
+    ];
+    const rows = filteredBookings.map((b) => [
       b.id,
       b.date,
       b.time,
@@ -141,20 +160,28 @@ export function GoogleCalendarManager() {
       b.serviceDuration,
       b.servicePrice,
       b.status,
-      b.createdAt
+      b.createdAt,
     ]);
 
     const csvContent = [
       headers.join(","),
-      ...rows.map(r => r.join(","))
+      ...rows.map((r) => r.join(",")),
     ].join("\n");
 
     // Adicionar BOM para Excel abrir corretamente com acentos
     const blobContent = `\uFEFF${csvContent}`;
-    downloadFile(blobContent, `agendamentos_${exportRange.start}_${exportRange.end}.csv`, "text/csv;charset=utf-8;");
+    downloadFile(
+      blobContent,
+      `agendamentos_${exportRange.start}_${exportRange.end}.csv`,
+      "text/csv;charset=utf-8;",
+    );
   };
 
-  const downloadFile = (content: string, fileName: string, contentType: string) => {
+  const downloadFile = (
+    content: string,
+    fileName: string,
+    contentType: string,
+  ) => {
     const blob = new Blob([content], { type: contentType });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -190,12 +217,12 @@ export function GoogleCalendarManager() {
 
   const importCSV = (content: string) => {
     try {
-      const lines = content.split("\n").filter(line => line.trim() !== "");
+      const lines = content.split("\n").filter((line) => line.trim() !== "");
       // Pular header (remover BOM se houver)
       const dataLines = lines.slice(1);
-      
-      const newBookings: Booking[] = dataLines.map(line => {
-        const cols = line.split(",").map(c => c.replace(/^"|"$/g, ""));
+
+      const newBookings: Booking[] = dataLines.map((line) => {
+        const cols = line.split(",").map((c) => c.replace(/^"|"$/g, ""));
         return {
           id: cols[0] || Math.random().toString(36).substring(2, 11),
           date: cols[1],
@@ -209,7 +236,7 @@ export function GoogleCalendarManager() {
           status: (cols[9] as BookingStatus) || "pendente",
           createdAt: cols[10] || new Date().toISOString(),
           serviceId: "", // Informação perdida no CSV simplificado
-          notificationsSent: { email: false, whatsapp: false }
+          notificationsSent: { email: false, whatsapp: false },
         };
       });
 
@@ -230,15 +257,15 @@ export function GoogleCalendarManager() {
   const importICS = (content: string) => {
     try {
       const events = content.split("BEGIN:VEVENT").slice(1);
-      const newBookings: Booking[] = events.map(event => {
+      const newBookings: Booking[] = events.map((event) => {
         const summary = event.match(/SUMMARY:(.*)/)?.[1] || "Importado";
         const dtstart = event.match(/DTSTART:(.*)/)?.[1] || "";
         const description = event.match(/DESCRIPTION:(.*)/)?.[1] || "";
-        
+
         // Parse data e hora do formato iCal (YYYYMMDDTHHMMSS)
         const dateStr = `${dtstart.substring(0, 4)}-${dtstart.substring(4, 6)}-${dtstart.substring(6, 8)}`;
         const timeStr = `${dtstart.substring(9, 11)}:${dtstart.substring(11, 13)}`;
-        
+
         const clientNameMatch = description.match(/Cliente: ([^\\]*)/);
         const phoneMatch = description.match(/Telefone: ([^\\]*)/);
         const serviceMatch = summary.split(" - ")[0];
@@ -247,7 +274,10 @@ export function GoogleCalendarManager() {
           id: Math.random().toString(36).substring(2, 11),
           date: dateStr,
           time: timeStr,
-          clientName: clientNameMatch?.[1] || summary.split(" - ")[1] || "Cliente Importado",
+          clientName:
+            clientNameMatch?.[1] ||
+            summary.split(" - ")[1] ||
+            "Cliente Importado",
           clientPhone: phoneMatch?.[1] || "",
           clientEmail: "",
           serviceName: serviceMatch || "Serviço Importado",
@@ -256,7 +286,7 @@ export function GoogleCalendarManager() {
           status: "confirmado",
           createdAt: new Date().toISOString(),
           serviceId: "",
-          notificationsSent: { email: false, whatsapp: false }
+          notificationsSent: { email: false, whatsapp: false },
         };
       });
 
@@ -298,7 +328,9 @@ export function GoogleCalendarManager() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="calendarUrl">URL do iCal do Google Calendar</Label>
+                <Label htmlFor="calendarUrl">
+                  URL do iCal do Google Calendar
+                </Label>
                 <Input
                   id="calendarUrl"
                   type="url"
@@ -329,7 +361,8 @@ export function GoogleCalendarManager() {
 
               {settings.lastSync && (
                 <p className="text-xs text-muted-foreground text-center">
-                  Última sincronização: {new Date(settings.lastSync).toLocaleString("pt-BR")}
+                  Última sincronização:{" "}
+                  {new Date(settings.lastSync).toLocaleString("pt-BR")}
                 </p>
               )}
             </CardContent>
@@ -367,7 +400,9 @@ export function GoogleCalendarManager() {
                   <Input
                     type="date"
                     value={exportRange.start}
-                    onChange={(e) => setExportRange({ ...exportRange, start: e.target.value })}
+                    onChange={(e) =>
+                      setExportRange({ ...exportRange, start: e.target.value })
+                    }
                   />
                 </div>
                 <div className="space-y-1">
@@ -375,17 +410,27 @@ export function GoogleCalendarManager() {
                   <Input
                     type="date"
                     value={exportRange.end}
-                    onChange={(e) => setExportRange({ ...exportRange, end: e.target.value })}
+                    onChange={(e) =>
+                      setExportRange({ ...exportRange, end: e.target.value })
+                    }
                   />
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
-                <Button onClick={handleExportICS} variant="outline" className="justify-start">
+                <Button
+                  onClick={handleExportICS}
+                  variant="outline"
+                  className="justify-start"
+                >
                   <FileText className="w-4 h-4 mr-2 text-blue-500" />
                   Para Google Agenda (.ics)
                 </Button>
-                <Button onClick={handleExportCSV} variant="outline" className="justify-start">
+                <Button
+                  onClick={handleExportCSV}
+                  variant="outline"
+                  className="justify-start"
+                >
                   <FileSpreadsheet className="w-4 h-4 mr-2 text-green-500" />
                   Para Planilha (.csv)
                 </Button>
@@ -402,10 +447,17 @@ export function GoogleCalendarManager() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="importFile" className="cursor-pointer border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 flex flex-col items-center justify-center gap-2 hover:bg-accent/50 transition-colors">
+                <Label
+                  htmlFor="importFile"
+                  className="cursor-pointer border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 flex flex-col items-center justify-center gap-2 hover:bg-accent/50 transition-colors"
+                >
                   <Upload className="w-8 h-8 text-muted-foreground" />
-                  <span className="text-sm font-medium">Clique para selecionar arquivo</span>
-                  <span className="text-xs text-muted-foreground">Suporta .csv ou .ics</span>
+                  <span className="text-sm font-medium">
+                    Clique para selecionar arquivo
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Suporta .csv ou .ics
+                  </span>
                   <Input
                     id="importFile"
                     type="file"
@@ -424,11 +476,17 @@ export function GoogleCalendarManager() {
         <CardContent className="pt-6 space-y-2 text-sm">
           <div className="flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-            <p><strong>Exportação:</strong> Escolha o período e baixe o arquivo para backup ou integração externa.</p>
+            <p>
+              <strong>Exportação:</strong> Escolha o período e baixe o arquivo
+              para backup ou integração externa.
+            </p>
           </div>
           <div className="flex items-start gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-            <p><strong>Importação:</strong> Adicione agendamentos em massa a partir de arquivos exportados anteriormente.</p>
+            <p>
+              <strong>Importação:</strong> Adicione agendamentos em massa a
+              partir de arquivos exportados anteriormente.
+            </p>
           </div>
         </CardContent>
       </Card>

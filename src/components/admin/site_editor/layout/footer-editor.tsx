@@ -55,9 +55,9 @@ export function FooterEditor({
                 <Label className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center">
                   Cor de Fundo
                   {settings.bgColor && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-4 w-4 hover:text-primary"
                       onClick={() => onUpdate({ bgColor: "" })}
                     >
@@ -104,9 +104,9 @@ export function FooterEditor({
                 <Label className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center">
                   Cor dos Títulos
                   {settings.titleColor && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-4 w-4 hover:text-primary"
                       onClick={() => onUpdate({ titleColor: "" })}
                     >
@@ -135,9 +135,9 @@ export function FooterEditor({
                 <Label className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center">
                   Cor dos Textos/Links
                   {settings.textColor && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-4 w-4 hover:text-primary"
                       onClick={() => onUpdate({ textColor: "" })}
                     >
@@ -166,9 +166,9 @@ export function FooterEditor({
                 <Label className="text-[10px] uppercase text-muted-foreground font-medium flex justify-between items-center">
                   Cor dos Ícones
                   {settings.iconColor && (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-4 w-4 hover:text-primary"
                       onClick={() => onUpdate({ iconColor: "" })}
                     >
@@ -217,16 +217,26 @@ export function FooterEditor({
                 </Label>
                 <Select
                   value={settings.titleFont || "default"}
-                  onValueChange={(val) => onUpdate({ titleFont: val === "default" ? "" : val })}
+                  onValueChange={(val) =>
+                    onUpdate({ titleFont: val === "default" ? "" : val })
+                  }
                 >
                   <SelectTrigger className="h-8 text-[10px]">
                     <SelectValue placeholder="Padrão do Site" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+                    <SelectItem value="default" className="text-[10px]">
+                      Padrão do Site
+                    </SelectItem>
                     {EDITOR_FONTS.map((font) => (
-                      <SelectItem key={font.name} value={font.name} className="text-[10px]">
-                        <span style={{ fontFamily: font.name }}>{font.name}</span>
+                      <SelectItem
+                        key={font.name}
+                        value={font.name}
+                        className="text-[10px]"
+                      >
+                        <span style={{ fontFamily: font.name }}>
+                          {font.name}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -239,16 +249,26 @@ export function FooterEditor({
                 </Label>
                 <Select
                   value={settings.bodyFont || "default"}
-                  onValueChange={(val) => onUpdate({ bodyFont: val === "default" ? "" : val })}
+                  onValueChange={(val) =>
+                    onUpdate({ bodyFont: val === "default" ? "" : val })
+                  }
                 >
                   <SelectTrigger className="h-8 text-[10px]">
                     <SelectValue placeholder="Padrão do Site" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default" className="text-[10px]">Padrão do Site</SelectItem>
+                    <SelectItem value="default" className="text-[10px]">
+                      Padrão do Site
+                    </SelectItem>
                     {EDITOR_FONTS.map((font) => (
-                      <SelectItem key={font.name} value={font.name} className="text-[10px]">
-                        <span style={{ fontFamily: font.name }}>{font.name}</span>
+                      <SelectItem
+                        key={font.name}
+                        value={font.name}
+                        className="text-[10px]"
+                      >
+                        <span style={{ fontFamily: font.name }}>
+                          {font.name}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -153,14 +153,14 @@ export function HeroEditor({
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-0 pb-4 space-y-4">
-                  {/* biome-ignore lint/a11y/noStaticElementInteractions: Necessário para evitar propagação em componentes de UI */}
-                  <div 
-                    className="flex items-center justify-between border-t border-border/50 pt-4" 
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                  >
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: Necessário para evitar propagação em componentes de UI */}
+                <div
+                  className="flex items-center justify-between border-t border-border/50 pt-4"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
                   <Label className="text-[10px] text-muted-foreground">
                     Mostrar Tag
                   </Label>
@@ -180,8 +180,8 @@ export function HeroEditor({
 
                 {settings.showBadge && (
                   <div className="space-y-4 animate-in fade-in duration-300">
-                    <fieldset 
-                      className="space-y-1.5 border-none p-0 m-0" 
+                    <fieldset
+                      className="space-y-1.5 border-none p-0 m-0"
                       onPointerDown={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
@@ -201,8 +201,8 @@ export function HeroEditor({
                       />
                     </fieldset>
 
-                    <fieldset 
-                      className="space-y-1.5 border-none p-0 m-0" 
+                    <fieldset
+                      className="space-y-1.5 border-none p-0 m-0"
                       onPointerDown={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
@@ -238,19 +238,21 @@ export function HeroEditor({
                     </fieldset>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <fieldset 
-                        className="space-y-1.5 border-none p-0 m-0" 
+                      <fieldset
+                        className="space-y-1.5 border-none p-0 m-0"
                         onPointerDown={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >
                         <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
-                          <span className="flex items-center gap-1">Cor do Ícone</span>
+                          <span className="flex items-center gap-1">
+                            Cor do Ícone
+                          </span>
                           {settings.badgeColor && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-3 w-3 hover:text-primary p-0"
                               onClick={() => onUpdate({ badgeColor: "" })}
                             >
@@ -278,19 +280,21 @@ export function HeroEditor({
                         </div>
                       </fieldset>
 
-                      <fieldset 
-                        className="space-y-1.5 border-none p-0 m-0" 
+                      <fieldset
+                        className="space-y-1.5 border-none p-0 m-0"
                         onPointerDown={(e) => e.stopPropagation()}
                         onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >
                         <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
-                          <span className="flex items-center gap-1">Cor do Texto</span>
+                          <span className="flex items-center gap-1">
+                            Cor do Texto
+                          </span>
                           {settings.badgeTextColor && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-3 w-3 hover:text-primary p-0"
                               onClick={() => onUpdate({ badgeTextColor: "" })}
                             >
@@ -319,8 +323,8 @@ export function HeroEditor({
                       </fieldset>
                     </div>
 
-                    <fieldset 
-                      className="space-y-1.5 border-none p-0 m-0" 
+                    <fieldset
+                      className="space-y-1.5 border-none p-0 m-0"
                       onPointerDown={(e) => e.stopPropagation()}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
@@ -348,7 +352,9 @@ export function HeroEditor({
                               value={f.name}
                               className="text-[10px]"
                             >
-                              <span style={{ fontFamily: f.name }}>{f.name}</span>
+                              <span style={{ fontFamily: f.name }}>
+                                {f.name}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -379,9 +385,15 @@ export function HeroEditor({
                   color={settings.titleColor}
                   onUpdate={(updates) =>
                     onUpdate({
-                      ...(updates.title !== undefined && { title: updates.title }),
-                      ...(updates.font !== undefined && { titleFont: updates.font }),
-                      ...(updates.color !== undefined && { titleColor: updates.color }),
+                      ...(updates.title !== undefined && {
+                        title: updates.title,
+                      }),
+                      ...(updates.font !== undefined && {
+                        titleFont: updates.font,
+                      }),
+                      ...(updates.color !== undefined && {
+                        titleColor: updates.color,
+                      }),
                     })
                   }
                 />
@@ -408,9 +420,15 @@ export function HeroEditor({
                   color={settings.subtitleColor}
                   onUpdate={(updates) =>
                     onUpdate({
-                      ...(updates.subtitle !== undefined && { subtitle: updates.subtitle }),
-                      ...(updates.font !== undefined && { subtitleFont: updates.font }),
-                      ...(updates.color !== undefined && { subtitleColor: updates.color }),
+                      ...(updates.subtitle !== undefined && {
+                        subtitle: updates.subtitle,
+                      }),
+                      ...(updates.font !== undefined && {
+                        subtitleFont: updates.font,
+                      }),
+                      ...(updates.color !== undefined && {
+                        subtitleColor: updates.color,
+                      }),
                     })
                   }
                 />
@@ -432,8 +450,8 @@ export function HeroEditor({
               </AccordionTrigger>
               <AccordionContent className="pb-4 space-y-6 border-t border-border/50 pt-4">
                 <div className="space-y-4">
-                  <fieldset 
-                    className="space-y-3 p-3 rounded-lg bg-background/50 border border-border/50" 
+                  <fieldset
+                    className="space-y-3 p-3 rounded-lg bg-background/50 border border-border/50"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
@@ -450,17 +468,25 @@ export function HeroEditor({
                       }
                     />
                     <div className="grid grid-cols-2 gap-2">
-                      <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <fieldset
+                        className="space-y-1 border-none p-0 m-0"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center justify-between gap-1">
                           <span className="flex items-center gap-1">
                             <Palette className="w-2 h-2" /> Cor de Fundo
                           </span>
                           {settings.primaryButtonColor && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-3 w-3 hover:text-primary p-0"
-                              onClick={() => onUpdate({ primaryButtonColor: "" })}
+                              onClick={() =>
+                                onUpdate({ primaryButtonColor: "" })
+                              }
                             >
                               <RotateCcw className="w-2.5 h-2.5" />
                             </Button>
@@ -485,17 +511,25 @@ export function HeroEditor({
                           />
                         </div>
                       </fieldset>
-                      <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <fieldset
+                        className="space-y-1 border-none p-0 m-0"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center justify-between gap-1">
                           <span className="flex items-center gap-1">
                             <Palette className="w-2 h-2" /> Cor do Texto
                           </span>
                           {settings.primaryButtonTextColor && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-3 w-3 hover:text-primary p-0"
-                              onClick={() => onUpdate({ primaryButtonTextColor: "" })}
+                              onClick={() =>
+                                onUpdate({ primaryButtonTextColor: "" })
+                              }
                             >
                               <RotateCcw className="w-2.5 h-2.5" />
                             </Button>
@@ -525,14 +559,22 @@ export function HeroEditor({
                         </div>
                       </fieldset>
                     </div>
-                    <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                    <fieldset
+                      className="space-y-1 border-none p-0 m-0"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                         <Type className="w-2 h-2" /> Fonte do Botão
                       </legend>
                       <Select
                         value={settings.primaryButtonFont || "default"}
                         onValueChange={(val: string) =>
-                          onUpdate({ primaryButtonFont: val === "default" ? "" : val })
+                          onUpdate({
+                            primaryButtonFont: val === "default" ? "" : val,
+                          })
                         }
                       >
                         <SelectTrigger className="h-7 text-[10px]">
@@ -548,7 +590,9 @@ export function HeroEditor({
                               value={f.name}
                               className="text-[10px]"
                             >
-                              <span style={{ fontFamily: f.name }}>{f.name}</span>
+                              <span style={{ fontFamily: f.name }}>
+                                {f.name}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -556,8 +600,8 @@ export function HeroEditor({
                     </fieldset>
                   </fieldset>
 
-                  <fieldset 
-                    className="space-y-3 p-3 rounded-lg bg-background/50 border border-border/50" 
+                  <fieldset
+                    className="space-y-3 p-3 rounded-lg bg-background/50 border border-border/50"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
@@ -574,17 +618,25 @@ export function HeroEditor({
                       }
                     />
                     <div className="grid grid-cols-2 gap-2">
-                      <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <fieldset
+                        className="space-y-1 border-none p-0 m-0"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center justify-between gap-1">
                           <span className="flex items-center gap-1">
                             <Palette className="w-2 h-2" /> Cor de Fundo
                           </span>
                           {settings.secondaryButtonColor && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-3 w-3 hover:text-primary p-0"
-                              onClick={() => onUpdate({ secondaryButtonColor: "" })}
+                              onClick={() =>
+                                onUpdate({ secondaryButtonColor: "" })
+                              }
                             >
                               <RotateCcw className="w-2.5 h-2.5" />
                             </Button>
@@ -609,17 +661,25 @@ export function HeroEditor({
                           />
                         </div>
                       </fieldset>
-                      <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <fieldset
+                        className="space-y-1 border-none p-0 m-0"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center justify-between gap-1">
                           <span className="flex items-center gap-1">
                             <Palette className="w-2 h-2" /> Cor do Texto
                           </span>
                           {settings.secondaryButtonTextColor && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               className="h-3 w-3 hover:text-primary p-0"
-                              onClick={() => onUpdate({ secondaryButtonTextColor: "" })}
+                              onClick={() =>
+                                onUpdate({ secondaryButtonTextColor: "" })
+                              }
                             >
                               <RotateCcw className="w-2.5 h-2.5" />
                             </Button>
@@ -651,14 +711,22 @@ export function HeroEditor({
                         </div>
                       </fieldset>
                     </div>
-                    <fieldset className="space-y-1 border-none p-0 m-0" onPointerDown={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                    <fieldset
+                      className="space-y-1 border-none p-0 m-0"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex items-center gap-1">
                         <Type className="w-2 h-2" /> Fonte do Botão
                       </legend>
                       <Select
                         value={settings.secondaryButtonFont || "default"}
                         onValueChange={(val: string) =>
-                          onUpdate({ secondaryButtonFont: val === "default" ? "" : val })
+                          onUpdate({
+                            secondaryButtonFont: val === "default" ? "" : val,
+                          })
                         }
                       >
                         <SelectTrigger className="h-7 text-[10px]">
@@ -674,7 +742,9 @@ export function HeroEditor({
                               value={f.name}
                               className="text-[10px]"
                             >
-                              <span style={{ fontFamily: f.name }}>{f.name}</span>
+                              <span style={{ fontFamily: f.name }}>
+                                {f.name}
+                              </span>
                             </SelectItem>
                           ))}
                         </SelectContent>

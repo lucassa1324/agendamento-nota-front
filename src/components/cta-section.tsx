@@ -19,7 +19,7 @@ export function CTASection() {
   const [settings, setSettings] = useState<CTASettings | null>(() => {
     if (typeof window !== "undefined") {
       // Prioridade para o contexto se disponível
-      return null; 
+      return null;
     }
     return null;
   });
@@ -38,7 +38,7 @@ export function CTASection() {
   useEffect(() => {
     setIsMounted(true);
     setPageVisibility(getPageVisibility());
-    
+
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studio?.config?.cta) {
       setSettings(studio.config.cta as CTASettings);

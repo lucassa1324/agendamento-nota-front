@@ -5,12 +5,18 @@ import { useEffect, useState } from "react";
 import { ImageModal } from "@/components/image-modal";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
-import { type GalleryImage, getGalleryImages, getServices } from "@/lib/booking-data";
+import {
+  type GalleryImage,
+  getGalleryImages,
+  getServices,
+} from "@/lib/booking-data";
 
 export function GalleryGrid() {
   const { studio } = useStudio();
   const [images, setImages] = useState<GalleryImage[]>([]);
-  const [categories, setCategories] = useState<{ id: string; label: string }[]>([]);
+  const [categories, setCategories] = useState<{ id: string; label: string }[]>(
+    [],
+  );
   const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("todos");
 
@@ -26,12 +32,12 @@ export function GalleryGrid() {
       if (studio) {
         const allImages = studio.gallery || [];
         const allServices = studio.services || [];
-        
+
         setImages(allImages);
-        
+
         const dynamicCategories = [
           { id: "todos", label: "Todos" },
-          ...allServices.map(s => ({ id: s.name, label: s.name }))
+          ...allServices.map((s) => ({ id: s.name, label: s.name })),
         ];
         setCategories(dynamicCategories);
         return;
@@ -39,12 +45,12 @@ export function GalleryGrid() {
 
       const allImages = getGalleryImages();
       const allServices = getServices();
-      
+
       setImages(allImages);
-      
+
       const dynamicCategories = [
         { id: "todos", label: "Todos" },
-        ...allServices.map(s => ({ id: s.name, label: s.name }))
+        ...allServices.map((s) => ({ id: s.name, label: s.name })),
       ];
       setCategories(dynamicCategories);
     };
@@ -76,9 +82,18 @@ export function GalleryGrid() {
             variant={selectedCategory === category.id ? "default" : "outline"}
             onClick={() => setSelectedCategory(category.id)}
             style={{
-              backgroundColor: selectedCategory === category.id ? "var(--primary)" : "transparent",
-              color: selectedCategory === category.id ? "white" : "var(--foreground)",
-              borderColor: selectedCategory === category.id ? "var(--primary)" : "var(--border)",
+              backgroundColor:
+                selectedCategory === category.id
+                  ? "var(--primary)"
+                  : "transparent",
+              color:
+                selectedCategory === category.id
+                  ? "white"
+                  : "var(--foreground)",
+              borderColor:
+                selectedCategory === category.id
+                  ? "var(--primary)"
+                  : "var(--border)",
               fontFamily: "var(--font-body)",
             }}
           >
@@ -124,8 +139,8 @@ export function GalleryGrid() {
       ) : (
         <div className="text-center py-20 bg-secondary/10 rounded-xl border border-dashed">
           <p className="text-muted-foreground">
-            {selectedCategory === "todos" 
-              ? "Nenhuma imagem na galeria ainda." 
+            {selectedCategory === "todos"
+              ? "Nenhuma imagem na galeria ainda."
               : `Nenhuma imagem encontrada para a categoria "${selectedCategory}".`}
           </p>
         </div>

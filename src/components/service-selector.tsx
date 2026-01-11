@@ -74,20 +74,20 @@ export function ServiceSelector({
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 
+        <h2
           className="text-2xl font-bold mb-2 transition-all duration-300"
-          style={{ 
-            color: settings?.titleColor || 'var(--foreground)',
-            fontFamily: settings?.titleFont || 'var(--font-title)'
+          style={{
+            color: settings?.titleColor || "var(--foreground)",
+            fontFamily: settings?.titleFont || "var(--font-title)",
           }}
         >
           {settings?.title || "Escolha os Serviços"}
         </h2>
-        <p 
+        <p
           className="text-muted-foreground transition-all duration-300"
-          style={{ 
-            color: settings?.subtitleColor || 'var(--foreground)',
-            fontFamily: settings?.subtitleFont || 'var(--font-subtitle)'
+          style={{
+            color: settings?.subtitleColor || "var(--foreground)",
+            fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
           }}
         >
           {settings?.subtitle || "Você pode selecionar mais de um serviço"}
@@ -112,17 +112,22 @@ export function ServiceSelector({
                   "opacity-60 grayscale-[0.5] border-destructive/20 cursor-not-allowed",
               )}
               style={{
-                borderColor: isSelected && settings?.accentColor ? settings.accentColor : undefined,
-                backgroundColor: isSelected ? (settings?.cardBgColor || "var(--muted)") : undefined,
+                borderColor:
+                  isSelected && settings?.accentColor
+                    ? settings.accentColor
+                    : undefined,
+                backgroundColor: isSelected
+                  ? settings?.cardBgColor || "var(--muted)"
+                  : undefined,
               }}
               onClick={() => toggleService(service)}
             >
               {isSelected && (
-                <div 
+                <div
                   className="absolute top-0 right-0 p-1"
-                  style={{ 
-                    backgroundColor: settings?.accentColor || 'var(--primary)',
-                    color: '#fff'
+                  style={{
+                    backgroundColor: settings?.accentColor || "var(--primary)",
+                    color: "#fff",
                   }}
                 >
                   <Check className="w-3 h-3" />
@@ -130,19 +135,19 @@ export function ServiceSelector({
               )}
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 
+                  <h3
                     className="font-bold text-lg"
-                    style={{ 
-                      color: settings?.titleColor || 'var(--foreground)',
-                      fontFamily: settings?.titleFont || 'var(--font-title)'
+                    style={{
+                      color: settings?.titleColor || "var(--foreground)",
+                      fontFamily: settings?.titleFont || "var(--font-title)",
                     }}
                   >
                     {service.name}
                   </h3>
-                  <div 
+                  <div
                     className="font-bold"
-                    style={{ 
-                      color: settings?.accentColor || 'var(--primary)'
+                    style={{
+                      color: settings?.accentColor || "var(--primary)",
                     }}
                   >
                     R$ {service.price}
@@ -164,25 +169,30 @@ export function ServiceSelector({
       </div>
 
       {selected.length > 0 && (
-        <Card 
+        <Card
           className="border-primary/20 sticky bottom-4 z-10 shadow-lg"
-          style={{ 
+          style={{
             backgroundColor: settings?.cardBgColor || "var(--background)",
-            borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
+            borderColor: settings?.accentColor
+              ? `${settings.accentColor}33`
+              : undefined,
           }}
         >
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex flex-col">
-              <span 
+              <span
                 className="text-xs text-muted-foreground uppercase font-bold tracking-wider"
-                style={{ fontFamily: 'var(--font-body)' }}
+                style={{ fontFamily: "var(--font-body)" }}
               >
                 Total Selecionado
               </span>
               <div className="flex items-center gap-3">
-                <span 
+                <span
                   className="text-lg font-bold"
-                  style={{ color: 'var(--foreground)', fontFamily: 'var(--font-title)' }}
+                  style={{
+                    color: "var(--foreground)",
+                    fontFamily: "var(--font-title)",
+                  }}
                 >
                   R$ {totalPrice}
                 </span>
@@ -194,9 +204,9 @@ export function ServiceSelector({
             <Button
               onClick={() => onSelect(selected)}
               className="px-8 font-bold shadow-md transition-all hover:scale-105 active:scale-95"
-              style={{ 
-                backgroundColor: settings?.accentColor || 'var(--primary)',
-                color: '#fff'
+              style={{
+                backgroundColor: settings?.accentColor || "var(--primary)",
+                color: "#fff",
               }}
             >
               Confirmar

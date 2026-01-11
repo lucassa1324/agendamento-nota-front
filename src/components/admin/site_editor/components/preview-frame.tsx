@@ -3,10 +3,7 @@
  * Renderiza o iframe do site com controles de redimensionamento,
  * molduras de dispositivo (Monitor/Smartphone) e zoom responsivo.
  */
-import { 
-  ChevronLeft, 
-  ChevronRight,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,7 +16,9 @@ interface PreviewFrameProps {
   mobileScale: number;
   desktopScale: number;
   isAutoZoom: boolean;
-  setManualWidth: (width: number | null | ((prev: number | null) => number | null)) => void;
+  setManualWidth: (
+    width: number | null | ((prev: number | null) => number | null),
+  ) => void;
   previewUrl: string;
   previewKey: number;
   activePageData: PageItem | undefined;
@@ -55,7 +54,8 @@ export function PreviewFrame({
               className="w-8 h-8 lg:w-10 lg:h-10 rounded-full shadow-lg pointer-events-auto bg-[#FFD6D6] hover:bg-[#FFC1C1] text-black border-none transition-all hover:scale-110 active:scale-95"
               onClick={() =>
                 setManualWidth(
-                  (prev) => (prev || (previewMode === "mobile" ? 375 : 1280)) - 50,
+                  (prev) =>
+                    (prev || (previewMode === "mobile" ? 375 : 1280)) - 50,
                 )
               }
               title="Diminuir Largura"
@@ -72,7 +72,8 @@ export function PreviewFrame({
               className="w-8 h-8 lg:w-10 lg:h-10 rounded-full shadow-lg pointer-events-auto bg-[#FFD6D6] hover:bg-[#FFC1C1] text-black border-none transition-all hover:scale-110 active:scale-95"
               onClick={() =>
                 setManualWidth(
-                  (prev) => (prev || (previewMode === "mobile" ? 375 : 1280)) + 50,
+                  (prev) =>
+                    (prev || (previewMode === "mobile" ? 375 : 1280)) + 50,
                 )
               }
               title="Aumentar Largura"
@@ -87,11 +88,13 @@ export function PreviewFrame({
               width:
                 previewMode === "desktop" && isAutoZoom
                   ? "100%"
-                  : currentWidth * (previewMode === "mobile" ? mobileScale : desktopScale),
+                  : currentWidth *
+                    (previewMode === "mobile" ? mobileScale : desktopScale),
               height:
                 previewMode === "desktop" && isAutoZoom
                   ? "100%"
-                  : (previewMode === "mobile" ? 750 : 850) * (previewMode === "mobile" ? mobileScale : desktopScale),
+                  : (previewMode === "mobile" ? 750 : 850) *
+                    (previewMode === "mobile" ? mobileScale : desktopScale),
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -131,7 +134,10 @@ export function PreviewFrame({
                   <div className="flex-1 max-w-md bg-white h-6 rounded-md border border-border flex items-center px-3 gap-2 overflow-hidden">
                     <div className="w-2 h-2 rounded-full bg-muted-foreground/20 shrink-0" />
                     <span className="text-[10px] text-muted-foreground truncate">
-                      {typeof window !== "undefined" ? window.location.origin : ""}{activePageData?.path}
+                      {typeof window !== "undefined"
+                        ? window.location.origin
+                        : ""}
+                      {activePageData?.path}
                     </span>
                   </div>
                 </div>

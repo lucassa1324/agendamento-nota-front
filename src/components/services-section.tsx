@@ -92,8 +92,10 @@ export function ServicesSection() {
         (s: Service) => s?.showOnHome,
       );
       setServices(homeServices);
-      
-      const configServices = studio?.config?.services as ServicesSettings | undefined;
+
+      const configServices = studio?.config?.services as
+        | ServicesSettings
+        | undefined;
       setSettings(configServices || getServicesSettings());
       return;
     }
@@ -207,7 +209,9 @@ export function ServicesSection() {
               <Card
                 key={service?.id}
                 className="border-border hover:border-accent transition-colors overflow-hidden"
-                style={{ backgroundColor: settings?.cardBgColor || "transparent" }}
+                style={{
+                  backgroundColor: settings?.cardBgColor || "transparent",
+                }}
               >
                 <CardContent className="p-6">
                   <div
@@ -220,14 +224,17 @@ export function ServicesSection() {
                   >
                     <Icon
                       className="w-6 h-6 transition-colors"
-                      style={{ color: settings?.cardIconColor || "var(--primary)" }}
+                      style={{
+                        color: settings?.cardIconColor || "var(--primary)",
+                      }}
                     />
                   </div>
                   <h3
                     className="text-xl font-semibold mb-2"
                     style={{
                       color: settings?.cardTitleColor || "var(--foreground)",
-                      fontFamily: settings?.cardTitleFont || "var(--font-subtitle)",
+                      fontFamily:
+                        settings?.cardTitleFont || "var(--font-subtitle)",
                     }}
                   >
                     {service?.name}
@@ -235,8 +242,10 @@ export function ServicesSection() {
                   <p
                     className="text-sm mb-4 leading-relaxed opacity-80"
                     style={{
-                      color: settings?.cardDescriptionColor || "var(--foreground)",
-                      fontFamily: settings?.cardDescriptionFont || "var(--font-body)",
+                      color:
+                        settings?.cardDescriptionColor || "var(--foreground)",
+                      fontFamily:
+                        settings?.cardDescriptionFont || "var(--font-body)",
                     }}
                   >
                     {service?.description}

@@ -96,7 +96,10 @@ export function ManagementReports() {
   ]);
 
   const handleAddCategory = () => {
-    if (newCategoryName.trim() && !categories.includes(newCategoryName.trim())) {
+    if (
+      newCategoryName.trim() &&
+      !categories.includes(newCategoryName.trim())
+    ) {
       setCategories([...categories, newCategoryName.trim()]);
       setNewExpense({ ...newExpense, category: newCategoryName.trim() });
       setNewCategoryName("");
@@ -116,7 +119,7 @@ export function ManagementReports() {
                 value: Number(newExpense.value),
                 category: newExpense.category || "Geral",
               }
-            : e
+            : e,
         );
         setExpenses(updatedExpenses);
         setEditingExpense(null);
@@ -132,7 +135,12 @@ export function ManagementReports() {
         };
         setExpenses([...expenses, expense]);
       }
-      setNewExpense({ description: "", value: undefined, category: "", isFixed: true });
+      setNewExpense({
+        description: "",
+        value: undefined,
+        category: "",
+        isFixed: true,
+      });
       setIsDialogOpen(false);
     }
   };
@@ -153,12 +161,15 @@ export function ManagementReports() {
   };
 
   const totalExpenses = expenses.reduce((acc, curr) => acc + curr.value, 0);
-  
+
   // Calcular receita real apenas de agendamentos concluídos
-  const completedBookings = bookings.filter(b => b.status === "concluído");
-  const totalRevenue = completedBookings.reduce((acc, curr) => acc + curr.servicePrice, 0);
+  const completedBookings = bookings.filter((b) => b.status === "concluído");
+  const totalRevenue = completedBookings.reduce(
+    (acc, curr) => acc + curr.servicePrice,
+    0,
+  );
   const totalServices = completedBookings.length;
-  
+
   const operationalProfit = totalRevenue - totalExpenses;
 
   return (
@@ -230,13 +241,21 @@ export function ManagementReports() {
               Gerencie seus custos operacionais mensais
             </CardDescription>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) {
-              setEditingExpense(null);
-              setNewExpense({ description: "", value: undefined, category: "", isFixed: true });
-            }
-          }}>
+          <Dialog
+            open={isDialogOpen}
+            onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                setEditingExpense(null);
+                setNewExpense({
+                  description: "",
+                  value: undefined,
+                  category: "",
+                  isFixed: true,
+                });
+              }
+            }}
+          >
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2">
                 <Plus className="w-4 h-4" />
@@ -245,9 +264,15 @@ export function ManagementReports() {
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingExpense ? "Editar Gasto Fixo" : "Adicionar Gasto Fixo"}</DialogTitle>
+                <DialogTitle>
+                  {editingExpense
+                    ? "Editar Gasto Fixo"
+                    : "Adicionar Gasto Fixo"}
+                </DialogTitle>
                 <DialogDescription>
-                  {editingExpense ? "Altere os dados do gasto operacional." : "Preencha os dados do novo gasto operacional."}
+                  {editingExpense
+                    ? "Altere os dados do gasto operacional."
+                    : "Preencha os dados do novo gasto operacional."}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -260,7 +285,10 @@ export function ManagementReports() {
                     className="col-span-3"
                     value={newExpense.description}
                     onChange={(e) =>
-                      setNewExpense({ ...newExpense, description: e.target.value })
+                      setNewExpense({
+                        ...newExpense,
+                        description: e.target.value,
+                      })
                     }
                   />
                 </div>
@@ -274,9 +302,12 @@ export function ManagementReports() {
                     className="col-span-3"
                     value={newExpense.value ?? ""}
                     onChange={(e) =>
-                      setNewExpense({ 
-                        ...newExpense, 
-                        value: e.target.value === "" ? undefined : Number(e.target.value) 
+                      setNewExpense({
+                        ...newExpense,
+                        value:
+                          e.target.value === ""
+                            ? undefined
+                            : Number(e.target.value),
                       })
                     }
                     onFocus={(e) => e.target.select()}
@@ -294,24 +325,24 @@ export function ManagementReports() {
                           value={newCategoryName}
                           onChange={(e) => setNewCategoryName(e.target.value)}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === "Enter") {
                               e.preventDefault();
                               handleAddCategory();
                             }
                           }}
                         />
-                        <Button 
-                          type="button" 
-                          size="sm" 
+                        <Button
+                          type="button"
+                          size="sm"
                           onClick={handleAddCategory}
                           className="bg-green-600 hover:bg-green-700"
                         >
                           Add
                         </Button>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setIsAddingCategory(false)}
                         >
                           X
@@ -336,10 +367,10 @@ export function ManagementReports() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="icon" 
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
                           onClick={() => setIsAddingCategory(true)}
                           title="Criar nova categoria"
                           className="shrink-0"
@@ -352,7 +383,10 @@ export function ManagementReports() {
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
                   Cancelar
                 </Button>
                 <Button onClick={handleAddExpense}>Salvar</Button>
@@ -379,7 +413,8 @@ export function ManagementReports() {
                     </TableCell>
                     <TableCell>{expense.category}</TableCell>
                     <TableCell className="text-right">
-                      R$ {expense.value.toLocaleString("pt-BR", {
+                      R${" "}
+                      {expense.value.toLocaleString("pt-BR", {
                         minimumFractionDigits: 2,
                       })}
                     </TableCell>
@@ -407,7 +442,10 @@ export function ManagementReports() {
                 ))}
                 {expenses.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-4 text-muted-foreground">
+                    <TableCell
+                      colSpan={4}
+                      className="text-center py-4 text-muted-foreground"
+                    >
                       Nenhum gasto fixo cadastrado.
                     </TableCell>
                   </TableRow>
@@ -417,9 +455,12 @@ export function ManagementReports() {
           </div>
           <div className="mt-4 flex justify-end">
             <div className="text-right">
-              <p className="text-sm text-muted-foreground">Total em Gastos Fixos</p>
+              <p className="text-sm text-muted-foreground">
+                Total em Gastos Fixos
+              </p>
               <p className="text-2xl font-bold text-destructive">
-                R$ {totalExpenses.toLocaleString("pt-BR", {
+                R${" "}
+                {totalExpenses.toLocaleString("pt-BR", {
                   minimumFractionDigits: 2,
                 })}
               </p>
@@ -439,7 +480,8 @@ export function ManagementReports() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold">
-                  R$ {totalRevenue.toLocaleString("pt-BR", {
+                  R${" "}
+                  {totalRevenue.toLocaleString("pt-BR", {
                     minimumFractionDigits: 2,
                   })}
                 </p>
@@ -462,7 +504,8 @@ export function ManagementReports() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-2xl font-bold text-destructive">
-                  R$ {totalExpenses.toLocaleString("pt-BR", {
+                  R${" "}
+                  {totalExpenses.toLocaleString("pt-BR", {
                     minimumFractionDigits: 2,
                   })}
                 </p>
@@ -484,8 +527,11 @@ export function ManagementReports() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`text-2xl font-bold ${operationalProfit >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                  R$ {operationalProfit.toLocaleString("pt-BR", {
+                <p
+                  className={`text-2xl font-bold ${operationalProfit >= 0 ? "text-green-600" : "text-destructive"}`}
+                >
+                  R${" "}
+                  {operationalProfit.toLocaleString("pt-BR", {
                     minimumFractionDigits: 2,
                   })}
                 </p>

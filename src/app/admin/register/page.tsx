@@ -11,9 +11,7 @@ export default function RegisterPage() {
       <div className="container mx-auto px-4">
         <div className="max-w-md mx-auto">
           <div className="text-center mb-8">
-            <h1 className="font-serif text-4xl font-bold mb-2">
-              Comece Agora
-            </h1>
+            <h1 className="font-serif text-4xl font-bold mb-2">Comece Agora</h1>
             <p className="text-muted-foreground">
               Crie sua conta para gerenciar seu negócio
             </p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import {  use, useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
 import { GalleryGrid } from "@/components/gallery-grid";
 import {
@@ -20,7 +20,9 @@ export default function GaleriaPage({
   const router = useRouter();
   const searchParams = use(searchParamsPromise);
   const initialOnly = searchParams.only;
-  const [isolatedSection, setIsolatedSection] = useState<string | null>(initialOnly || null);
+  const [isolatedSection, setIsolatedSection] = useState<string | null>(
+    initialOnly || null,
+  );
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
@@ -111,7 +113,8 @@ export default function GaleriaPage({
               <p
                 className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
                 style={{
-                  fontFamily: gallerySettings.subtitleFont || "var(--font-body)",
+                  fontFamily:
+                    gallerySettings.subtitleFont || "var(--font-body)",
                   color: gallerySettings.subtitleColor || "var(--text)",
                   opacity: gallerySettings.subtitleColor ? 1 : 0.8,
                 }}

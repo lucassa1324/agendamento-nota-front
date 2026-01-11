@@ -28,13 +28,13 @@ export function getStoredAdminUser(): AdminUser {
 export function saveAdminProfile(profile: AdminUser): void {
   if (typeof window === "undefined") return;
   localStorage.setItem("adminProfile", JSON.stringify(profile));
-  
+
   // Atualizar também o usuário logado no sessionStorage se for o mesmo
   const currentUser = getAdminUser();
   if (currentUser && currentUser.username === profile.username) {
     sessionStorage.setItem(
       "adminUser",
-      JSON.stringify({ username: profile.username, name: profile.name })
+      JSON.stringify({ username: profile.username, name: profile.name }),
     );
   }
 }
@@ -47,8 +47,11 @@ export function checkAdminAuth(): boolean {
 
 export function loginAdmin(username: string, password: string): boolean {
   const adminProfile = getStoredAdminUser();
-  
-  if (adminProfile.username === username && adminProfile.password === password) {
+
+  if (
+    adminProfile.username === username &&
+    adminProfile.password === password
+  ) {
     const token = btoa(
       JSON.stringify({
         username: adminProfile.username,
@@ -59,7 +62,10 @@ export function loginAdmin(username: string, password: string): boolean {
     sessionStorage.setItem("adminToken", token);
     sessionStorage.setItem(
       "adminUser",
-      JSON.stringify({ username: adminProfile.username, name: adminProfile.name }),
+      JSON.stringify({
+        username: adminProfile.username,
+        name: adminProfile.name,
+      }),
     );
     return true;
   }

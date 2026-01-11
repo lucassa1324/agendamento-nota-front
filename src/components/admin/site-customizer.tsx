@@ -4,7 +4,12 @@ import { PanelLeftClose, PanelLeftOpen, Save } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useSidebar } from "@/context/sidebar-context";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +29,7 @@ export function SiteCustomizer() {
   const isMobile = useIsMobile();
   const params = useParams();
   const slug = params?.slug as string;
-  
+
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -126,20 +131,25 @@ export function SiteCustomizer() {
     try {
       console.log(`>>> [CUSTOMIZER] Buscando dados para o slug: ${slug}`);
       // Ajustado de /api/studios para /api/business conforme confirmado pelo back-end
-      const response = await fetch(`${API_BASE_URL}/api/business/slug/${slug}`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/business/slug/${slug}`,
+        {
+          credentials: "include",
+        },
+      );
 
       if (response.ok) {
         const data = await response.json();
         const businessData = Array.isArray(data) ? data[0] : data;
-        
+
         if (businessData) {
           setBusinesses([businessData]);
           setSelectedBusinessId(businessData.id);
-          
+
           if (businessData.config) {
-            console.log(">>> [CUSTOMIZER] Configuração encontrada, carregando no editor...");
+            console.log(
+              ">>> [CUSTOMIZER] Configuração encontrada, carregando no editor...",
+            );
             loadExternalConfig(businessData.config);
           }
         } else {
@@ -147,7 +157,10 @@ export function SiteCustomizer() {
         }
       } else {
         const errorText = await response.text();
-        console.error(`>>> [CUSTOMIZER] Erro ao buscar estúdio (${response.status}):`, errorText);
+        console.error(
+          `>>> [CUSTOMIZER] Erro ao buscar estúdio (${response.status}):`,
+          errorText,
+        );
         setError(`Erro ao carregar dados (${response.status})`);
       }
     } catch (err) {
@@ -191,15 +204,20 @@ export function SiteCustomizer() {
         visibleSections: visibleSections,
       };
 
-      console.log(`>>> [CUSTOMIZER] Salvando configurações para o estúdio: ${selectedBusinessId}`);
-      const response = await fetch(`${API_BASE_URL}/api/studios/${selectedBusinessId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
+      console.log(
+        `>>> [CUSTOMIZER] Salvando configurações para o estúdio: ${selectedBusinessId}`,
+      );
+      const response = await fetch(
+        `${API_BASE_URL}/api/studios/${selectedBusinessId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ config: currentConfig }),
+          credentials: "include",
         },
-        body: JSON.stringify({ config: currentConfig }),
-        credentials: "include",
-      });
+      );
 
       if (response.ok) {
         toast({
@@ -347,7 +365,9 @@ export function SiteCustomizer() {
     return (
       <div className="flex flex-col items-center justify-center h-screen w-full bg-background gap-4">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-muted-foreground animate-pulse">Carregando configurações do estúdio...</p>
+        <p className="text-muted-foreground animate-pulse">
+          Carregando configurações do estúdio...
+        </p>
       </div>
     );
   }
@@ -386,7 +406,7 @@ export function SiteCustomizer() {
               <PanelLeftOpen className="w-5 h-5" />
             )}
           </Button>
-          
+
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-3 bg-muted/50 px-3 py-1.5 rounded-lg border">
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -429,16 +449,20 @@ export function SiteCustomizer() {
         {/* Mobile Sidebar */}
         <Sheet open={isMobile && isSidebarOpen} onOpenChange={onToggleSidebar}>
           <SheetContent side="left" className="p-0 w-[85%] sm:w-80 lg:hidden">
-            <SheetHeader className="sr-only"><SheetTitle>Personalização</SheetTitle></SheetHeader>
+            <SheetHeader className="sr-only">
+              <SheetTitle>Personalização</SheetTitle>
+            </SheetHeader>
             <SidebarContent {...sidebarProps} />
           </SheetContent>
         </Sheet>
 
         {/* Desktop Sidebar */}
-        <div className={cn(
-          "hidden lg:flex flex-col h-full border-r border-border bg-card transition-all duration-300 ease-in-out overflow-hidden shrink-0 z-20",
-          isSidebarOpen ? "w-64 xl:w-80 2xl:w-96" : "w-0 border-r-0"
-        )}>
+        <div
+          className={cn(
+            "hidden lg:flex flex-col h-full border-r border-border bg-card transition-all duration-300 ease-in-out overflow-hidden shrink-0 z-20",
+            isSidebarOpen ? "w-64 xl:w-80 2xl:w-96" : "w-0 border-r-0",
+          )}
+        >
           <SidebarContent {...sidebarProps} />
         </div>
 

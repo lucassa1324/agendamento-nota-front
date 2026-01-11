@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { getSiteProfile } from "@/lib/booking-data";
+
 import { useStudio } from "@/context/studio-context";
+import { getSiteProfile } from "@/lib/booking-data";
 
 export function FaviconUpdater() {
   const { studio } = useStudio();

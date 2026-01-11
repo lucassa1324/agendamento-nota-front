@@ -71,11 +71,13 @@ export function TimeSlotSelector({
         </Button>
       </div>
 
-      <Card 
+      <Card
         className="border-primary/20 overflow-hidden relative"
-        style={{ 
-          backgroundColor: settings?.cardBgColor || 'var(--muted)',
-          borderColor: settings?.accentColor ? `${settings.accentColor}33` : undefined
+        style={{
+          backgroundColor: settings?.cardBgColor || "var(--muted)",
+          borderColor: settings?.accentColor
+            ? `${settings.accentColor}33`
+            : undefined,
         }}
       >
         <div className="p-6 flex items-center justify-between min-h-35">
@@ -91,8 +93,10 @@ export function TimeSlotSelector({
                 ? "opacity-20 cursor-not-allowed"
                 : "text-primary-foreground shadow-md hover:scale-105 active:scale-95",
             )}
-            style={{ 
-              backgroundColor: !isPreviousDayDisabled ? (settings?.accentColor || 'var(--primary)') : undefined,
+            style={{
+              backgroundColor: !isPreviousDayDisabled
+                ? settings?.accentColor || "var(--primary)"
+                : undefined,
             }}
             title="Dia anterior"
           >
@@ -101,20 +105,22 @@ export function TimeSlotSelector({
 
           {/* Informações Centralizadas */}
           <div className="flex-1 flex flex-col items-center text-center px-4 space-y-1">
-            <h3 
+            <h3
               className="font-bold text-xl"
-              style={{ 
-                color: settings?.titleColor || 'var(--foreground)',
-                fontFamily: settings?.titleFont || 'var(--font-title)'
+              style={{
+                color: settings?.titleColor || "var(--foreground)",
+                fontFamily: settings?.titleFont || "var(--font-title)",
               }}
             >
               {service.name}
             </h3>
-            <div 
+            <div
               className="text-base font-medium capitalize"
-              style={{ 
-                color: settings?.subtitleColor ? `${settings.subtitleColor}cc` : 'var(--foreground)',
-                fontFamily: settings?.subtitleFont || 'var(--font-subtitle)'
+              style={{
+                color: settings?.subtitleColor
+                  ? `${settings.subtitleColor}cc`
+                  : "var(--foreground)",
+                fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
               }}
             >
               {format(currentDate, "eeee, d 'de' MMMM 'de' yyyy", {
@@ -134,8 +140,8 @@ export function TimeSlotSelector({
             size="icon"
             onClick={handleNextDay}
             className="h-12 w-12 rounded-xl text-primary-foreground shadow-md transition-all duration-200 hover:scale-105 active:scale-95"
-            style={{ 
-              backgroundColor: settings?.accentColor || 'var(--primary)',
+            style={{
+              backgroundColor: settings?.accentColor || "var(--primary)",
             }}
             title="Próximo dia"
           >
@@ -145,20 +151,20 @@ export function TimeSlotSelector({
       </Card>
 
       <div className="text-center space-y-2">
-        <h2 
+        <h2
           className="text-3xl font-bold"
-          style={{ 
-            color: settings?.titleColor || 'var(--foreground)',
-            fontFamily: settings?.titleFont || 'var(--font-title)'
+          style={{
+            color: settings?.titleColor || "var(--foreground)",
+            fontFamily: settings?.titleFont || "var(--font-title)",
           }}
         >
           {settings?.title || "Escolha o Horário"}
         </h2>
-        <p 
+        <p
           className="capitalize"
-          style={{ 
-            color: settings?.subtitleColor || 'var(--foreground)',
-            fontFamily: settings?.subtitleFont || 'var(--font-subtitle)'
+          style={{
+            color: settings?.subtitleColor || "var(--foreground)",
+            fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
           }}
         >
           {formattedDate}
@@ -181,20 +187,28 @@ export function TimeSlotSelector({
                     : "opacity-40 cursor-not-allowed bg-muted/30",
                 )}
                 style={{
-                  borderColor: slot.available && settings?.accentColor ? settings.accentColor : undefined,
-                  color: slot.available && settings?.accentColor ? settings.accentColor : 'var(--foreground)',
-                  backgroundColor: 'transparent'
+                  borderColor:
+                    slot.available && settings?.accentColor
+                      ? settings.accentColor
+                      : undefined,
+                  color:
+                    slot.available && settings?.accentColor
+                      ? settings.accentColor
+                      : "var(--foreground)",
+                  backgroundColor: "transparent",
                 }}
                 onMouseEnter={(e) => {
                   if (slot.available) {
-                    e.currentTarget.style.backgroundColor = settings?.accentColor || 'var(--primary)';
-                    e.currentTarget.style.color = '#fff';
+                    e.currentTarget.style.backgroundColor =
+                      settings?.accentColor || "var(--primary)";
+                    e.currentTarget.style.color = "#fff";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (slot.available) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                    e.currentTarget.style.color = settings?.accentColor || 'var(--foreground)';
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color =
+                      settings?.accentColor || "var(--foreground)";
                   }
                 }}
               >

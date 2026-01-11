@@ -12,7 +12,13 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useStudio } from "@/context/studio-context";
-import { type GalleryImage as GalleryImageType, type GallerySettings, getGalleryImages, getGallerySettings, getPageVisibility } from "@/lib/booking-data";
+import {
+  type GalleryImage as GalleryImageType,
+  type GallerySettings,
+  getGalleryImages,
+  getGallerySettings,
+  getPageVisibility,
+} from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 
@@ -36,7 +42,7 @@ export function GalleryPreview() {
   useEffect(() => {
     setIsMounted(true);
     setPageVisibility(getPageVisibility());
-    
+
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studio?.config?.gallery) {
       setSettings(studio.config.gallery as GallerySettings);
@@ -195,18 +201,23 @@ export function GalleryPreview() {
         )}
 
         <div className="text-center">
-          <Button 
-            asChild 
-            size="lg" 
+          <Button
+            asChild
+            size="lg"
             variant="outline"
             style={{
               borderColor: settings.buttonColor || "var(--primary)",
               backgroundColor: settings.buttonColor ? "transparent" : undefined,
-              color: settings.buttonTextColor || settings.buttonColor || "var(--primary)",
-              fontFamily: settings.buttonFont || "var(--font-body)"
+              color:
+                settings.buttonTextColor ||
+                settings.buttonColor ||
+                "var(--primary)",
+              fontFamily: settings.buttonFont || "var(--font-body)",
             }}
           >
-            <Link href="/galeria">{settings.buttonText || "Ver Galeria Completa"}</Link>
+            <Link href="/galeria">
+              {settings.buttonText || "Ver Galeria Completa"}
+            </Link>
           </Button>
         </div>
       </div>

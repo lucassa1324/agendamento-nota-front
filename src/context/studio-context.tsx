@@ -1,7 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  type ReactNode,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import { API_BASE_URL } from "@/lib/auth-client";
 import type { Business } from "@/lib/booking-data";
 
 interface StudioContextType {
@@ -13,10 +20,10 @@ interface StudioContextType {
 
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
 
-export function StudioProvider({ 
-  children, 
-  initialSlug 
-}: { 
+export function StudioProvider({
+  children,
+  initialSlug,
+}: {
   children: ReactNode;
   initialSlug?: string;
 }) {
@@ -55,10 +62,12 @@ export function StudioProvider({
       }
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-        const response = await fetch(`${apiUrl}/api/studios/slug/${currentSlug}`, {
-          credentials: "include",
-        });
+        const response = await fetch(
+          `${API_BASE_URL}/api/studios/slug/${currentSlug}`,
+          {
+            credentials: "include",
+          },
+        );
 
         if (response.ok) {
           const data = await response.json();

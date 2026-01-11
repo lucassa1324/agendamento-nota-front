@@ -1,4 +1,11 @@
-import { AlertCircle, ArrowDownCircle, ArrowUpCircle, History, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  History,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +28,10 @@ import { cn } from "@/lib/utils";
 interface InventoryTableProps {
   items: InventoryItem[];
   setEditingItem: (item: InventoryItem) => void;
-  setTransactionItem: (data: { item: InventoryItem; type: "entrada" | "saida" }) => void;
+  setTransactionItem: (data: {
+    item: InventoryItem;
+    type: "entrada" | "saida";
+  }) => void;
   setShowHistory: (item: InventoryItem) => void;
   handleDeleteItem: (id: string) => void;
 }
@@ -43,7 +53,9 @@ export function InventoryTable({
             <TableHead className="hidden 2xl:table-cell">Unidade</TableHead>
             <TableHead className="px-2 sm:px-4">Valor Unit.</TableHead>
             <TableHead className="hidden 2xl:table-cell">Status</TableHead>
-            <TableHead className="hidden 2xl:table-cell">Última Atualização</TableHead>
+            <TableHead className="hidden 2xl:table-cell">
+              Última Atualização
+            </TableHead>
             <TableHead className="text-right px-2 sm:px-4">Ações</TableHead>
           </TableRow>
         </TableHeader>
@@ -52,16 +64,25 @@ export function InventoryTable({
             <TableRow key={item.id} className="text-[10px] sm:text-sm">
               <TableCell className="font-medium py-2 sm:py-4 px-2 sm:px-4">
                 <div className="flex flex-col min-w-0">
-                  <span className="truncate max-w-20 xs:max-w-[120px] sm:max-w-37.5 md:max-w-45 lg:max-w-55 xl:max-w-75 2xl:max-w-none">{item.name}</span>
+                  <span className="truncate max-w-20 xs:max-w-[120px] sm:max-w-37.5 md:max-w-45 lg:max-w-55 xl:max-w-75 2xl:max-w-none">
+                    {item.name}
+                  </span>
                   <div className="flex items-center gap-1 mt-0.5 xl:hidden">
-                    <span className={cn(
-                      "text-[9px] sm:text-xs",
-                      item.quantity <= item.minQuantity ? "text-red-600 font-bold" : "text-muted-foreground"
-                    )}>
+                    <span
+                      className={cn(
+                        "text-[9px] sm:text-xs",
+                        item.quantity <= item.minQuantity
+                          ? "text-red-600 font-bold"
+                          : "text-muted-foreground",
+                      )}
+                    >
                       {item.quantity.toLocaleString("pt-BR")} {item.unit}
                     </span>
                     {item.quantity <= item.minQuantity && (
-                      <Badge variant="outline" className="h-3 px-1 text-[6px] sm:text-[8px] bg-red-50 text-red-700 border-red-200">
+                      <Badge
+                        variant="outline"
+                        className="h-3 px-1 text-[6px] sm:text-[8px] bg-red-50 text-red-700 border-red-200"
+                      >
                         Baixo
                       </Badge>
                     )}
@@ -82,7 +103,9 @@ export function InventoryTable({
                   })}
                 </span>
               </TableCell>
-              <TableCell className="hidden 2xl:table-cell">{item.unit}</TableCell>
+              <TableCell className="hidden 2xl:table-cell">
+                {item.unit}
+              </TableCell>
               <TableCell className="px-2 sm:px-4 whitespace-nowrap">
                 {new Intl.NumberFormat("pt-BR", {
                   style: "currency",
@@ -114,22 +137,39 @@ export function InventoryTable({
                 <div className="flex justify-end gap-1 sm:gap-1.5">
                   {/* Botões simplificados para mobile/telas pequenas */}
                   <div className="flex xl:hidden">
-                    <Select onValueChange={(val) => {
-                      if (val === 'edit') setEditingItem(item);
-                      if (val === 'entrada') setTransactionItem({ item, type: "entrada" });
-                      if (val === 'saida') setTransactionItem({ item, type: "saida" });
-                      if (val === 'history') setShowHistory(item);
-                      if (val === 'delete') handleDeleteItem(item.id);
-                    }}>
+                    <Select
+                      onValueChange={(val) => {
+                        if (val === "edit") setEditingItem(item);
+                        if (val === "entrada")
+                          setTransactionItem({ item, type: "entrada" });
+                        if (val === "saida")
+                          setTransactionItem({ item, type: "saida" });
+                        if (val === "history") setShowHistory(item);
+                        if (val === "delete") handleDeleteItem(item.id);
+                      }}
+                    >
                       <SelectTrigger className="h-7 w-7 p-0 border-none bg-transparent focus:ring-0">
                         <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                       </SelectTrigger>
                       <SelectContent align="end">
-                        <SelectItem value="edit" className="text-[10px]">Editar</SelectItem>
-                        <SelectItem value="entrada" className="text-[10px]">Entrada</SelectItem>
-                        <SelectItem value="saida" className="text-[10px]">Saída</SelectItem>
-                        <SelectItem value="history" className="text-[10px]">Histórico</SelectItem>
-                        <SelectItem value="delete" className="text-[10px] text-red-600">Excluir</SelectItem>
+                        <SelectItem value="edit" className="text-[10px]">
+                          Editar
+                        </SelectItem>
+                        <SelectItem value="entrada" className="text-[10px]">
+                          Entrada
+                        </SelectItem>
+                        <SelectItem value="saida" className="text-[10px]">
+                          Saída
+                        </SelectItem>
+                        <SelectItem value="history" className="text-[10px]">
+                          Histórico
+                        </SelectItem>
+                        <SelectItem
+                          value="delete"
+                          className="text-[10px] text-red-600"
+                        >
+                          Excluir
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -150,7 +190,9 @@ export function InventoryTable({
                       variant="outline"
                       size="sm"
                       className="h-8 px-2 text-green-600 hover:text-green-700 hover:bg-green-50"
-                      onClick={() => setTransactionItem({ item, type: "entrada" })}
+                      onClick={() =>
+                        setTransactionItem({ item, type: "entrada" })
+                      }
                       title="Entrada"
                     >
                       <ArrowUpCircle className="w-4 h-4" />
@@ -160,7 +202,9 @@ export function InventoryTable({
                       variant="outline"
                       size="sm"
                       className="h-8 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => setTransactionItem({ item, type: "saida" })}
+                      onClick={() =>
+                        setTransactionItem({ item, type: "saida" })
+                      }
                       title="Saída"
                     >
                       <ArrowDownCircle className="w-4 h-4" />

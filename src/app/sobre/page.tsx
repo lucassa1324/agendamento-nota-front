@@ -18,8 +18,12 @@ export default function SobrePage({
   const searchParams = use(searchParamsPromise);
   const only = searchParams.only;
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
-  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
-  const [isolatedSection, setIsolatedSection] = useState<string | null>(only || null);
+  const [visibleSections, setVisibleSections] = useState<
+    Record<string, boolean>
+  >({});
+  const [isolatedSection, setIsolatedSection] = useState<string | null>(
+    only || null,
+  );
 
   useEffect(() => {
     setIsolatedSection(only || null);
@@ -60,13 +64,20 @@ export default function SobrePage({
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+      window.removeEventListener(
+        "visibleSectionsUpdated",
+        handleSectionsUpdate,
+      );
     };
   }, [router]);
 
   const isSectionVisible = (sectionId: string) => {
     // Exceção: 'typography' e 'colors' mostram a página inteira
-    if (isolatedSection && isolatedSection !== "typography" && isolatedSection !== "colors") {
+    if (
+      isolatedSection &&
+      isolatedSection !== "typography" &&
+      isolatedSection !== "colors"
+    ) {
       return isolatedSection === sectionId;
     }
     return visibleSections[sectionId] !== false;

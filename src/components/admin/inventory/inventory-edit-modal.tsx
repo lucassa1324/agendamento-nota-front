@@ -59,7 +59,9 @@ export function InventoryEditModal({
                       <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Insira o nome completo do item (ex: Henna, Pinça, etc).</p>
+                      <p>
+                        Insira o nome completo do item (ex: Henna, Pinça, etc).
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -87,9 +89,16 @@ export function InventoryEditModal({
                   id="edit-quantity"
                   type="number"
                   step="0.001"
-                  value={Number.isNaN(editingItem.quantity) ? "" : editingItem.quantity}
+                  value={
+                    Number.isNaN(editingItem.quantity)
+                      ? ""
+                      : editingItem.quantity
+                  }
                   onChange={(e) => {
-                    const val = e.target.value === "" ? Number.NaN : Number.parseFloat(e.target.value);
+                    const val =
+                      e.target.value === ""
+                        ? Number.NaN
+                        : Number.parseFloat(e.target.value);
                     setEditingItem({
                       ...editingItem,
                       quantity: val,
@@ -105,7 +114,10 @@ export function InventoryEditModal({
                       <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>O sistema avisará quando o estoque for igual ou menor que este valor.</p>
+                      <p>
+                        O sistema avisará quando o estoque for igual ou menor
+                        que este valor.
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -113,9 +125,16 @@ export function InventoryEditModal({
                   id="edit-min-quantity"
                   type="number"
                   step="0.001"
-                  value={Number.isNaN(editingItem.minQuantity) ? "" : editingItem.minQuantity}
+                  value={
+                    Number.isNaN(editingItem.minQuantity)
+                      ? ""
+                      : editingItem.minQuantity
+                  }
                   onChange={(e) => {
-                    const val = e.target.value === "" ? Number.NaN : Number.parseFloat(e.target.value);
+                    const val =
+                      e.target.value === ""
+                        ? Number.NaN
+                        : Number.parseFloat(e.target.value);
                     setEditingItem({
                       ...editingItem,
                       minQuantity: val,
@@ -139,9 +158,14 @@ export function InventoryEditModal({
                   id="edit-price"
                   type="number"
                   step="0.01"
-                  value={Number.isNaN(editingItem.price) ? "" : editingItem.price}
+                  value={
+                    Number.isNaN(editingItem.price) ? "" : editingItem.price
+                  }
                   onChange={(e) => {
-                    const val = e.target.value === "" ? Number.NaN : Number.parseFloat(e.target.value);
+                    const val =
+                      e.target.value === ""
+                        ? Number.NaN
+                        : Number.parseFloat(e.target.value);
                     setEditingItem({
                       ...editingItem,
                       price: val,
@@ -157,7 +181,9 @@ export function InventoryEditModal({
                       <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Forma de medida do produto (unidade, quilo, litro, etc).</p>
+                      <p>
+                        Forma de medida do produto (unidade, quilo, litro, etc).
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -183,20 +209,28 @@ export function InventoryEditModal({
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="edit-secondary-unit">Unidade Secundária (Consumo)</Label>
+                  <Label htmlFor="edit-secondary-unit">
+                    Unidade Secundária (Consumo)
+                  </Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Unidade menor usada para consumo (ex: se o produto é pacote, a secundária é gramas).</p>
+                      <p>
+                        Unidade menor usada para consumo (ex: se o produto é
+                        pacote, a secundária é gramas).
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
                 <Select
                   value={editingItem.secondaryUnit || ""}
                   onValueChange={(value) =>
-                    setEditingItem({ ...editingItem, secondaryUnit: value || undefined })
+                    setEditingItem({
+                      ...editingItem,
+                      secondaryUnit: value || undefined,
+                    })
                   }
                 >
                   <SelectTrigger id="edit-secondary-unit">
@@ -213,13 +247,18 @@ export function InventoryEditModal({
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="edit-conversion-factor">Fator de Conversão</Label>
+                  <Label htmlFor="edit-conversion-factor">
+                    Fator de Conversão
+                  </Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Quantas unidades secundárias tem em uma unidade principal? (Ex: 1 pacote tem 500g, fator = 500).</p>
+                      <p>
+                        Quantas unidades secundárias tem em uma unidade
+                        principal? (Ex: 1 pacote tem 500g, fator = 500).
+                      </p>
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -228,9 +267,17 @@ export function InventoryEditModal({
                   type="number"
                   step="0.001"
                   placeholder="Ex: 500"
-                  value={editingItem.conversionFactor === undefined || Number.isNaN(editingItem.conversionFactor) ? "" : editingItem.conversionFactor}
+                  value={
+                    editingItem.conversionFactor === undefined ||
+                    Number.isNaN(editingItem.conversionFactor)
+                      ? ""
+                      : editingItem.conversionFactor
+                  }
                   onChange={(e) => {
-                    const val = e.target.value === "" ? undefined : Number(e.target.value);
+                    const val =
+                      e.target.value === ""
+                        ? undefined
+                        : Number(e.target.value);
                     setEditingItem({
                       ...editingItem,
                       conversionFactor: val,

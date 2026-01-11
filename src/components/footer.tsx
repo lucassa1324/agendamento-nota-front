@@ -24,7 +24,11 @@ import {
   type SiteProfile,
 } from "@/lib/booking-data";
 
-export function Footer({ externalFooterSettings }: { externalFooterSettings?: FooterSettings }) {
+export function Footer({
+  externalFooterSettings,
+}: {
+  externalFooterSettings?: FooterSettings;
+}) {
   const { studio } = useStudio();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -33,13 +37,17 @@ export function Footer({ externalFooterSettings }: { externalFooterSettings?: Fo
   const [footerSettings, setFooterSettings] = useState<FooterSettings>(
     externalFooterSettings || defaultFooterSettings,
   );
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
-    inicio: true,
-    galeria: true,
-    sobre: true,
-    agendar: true,
-  });
-  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
+    {
+      inicio: true,
+      galeria: true,
+      sobre: true,
+      agendar: true,
+    },
+  );
+  const [visibleSections, setVisibleSections] = useState<
+    Record<string, boolean>
+  >({});
 
   const only = searchParams.get("only");
 
@@ -61,10 +69,10 @@ export function Footer({ externalFooterSettings }: { externalFooterSettings?: Fo
     } else {
       setProfile(baseProfile);
     }
-    
+
     setPageVisibility(getPageVisibility());
     setVisibleSections(getVisibleSections());
-    
+
     if (!externalFooterSettings) {
       if (studio?.config?.footer) {
         setFooterSettings(studio.config.footer as FooterSettings);
@@ -75,7 +83,10 @@ export function Footer({ externalFooterSettings }: { externalFooterSettings?: Fo
 
     // Notificar o pai (admin) que o componente de rodapé está pronto
     if (window.self !== window.top) {
-      window.parent.postMessage({ type: "COMPONENT_READY", component: "footer" }, "*");
+      window.parent.postMessage(
+        { type: "COMPONENT_READY", component: "footer" },
+        "*",
+      );
     }
 
     const handleMessage = (event: MessageEvent) => {
@@ -86,7 +97,10 @@ export function Footer({ externalFooterSettings }: { externalFooterSettings?: Fo
         setVisibleSections(event.data.sections);
       }
       if (event.data?.type === "UPDATE_FOOTER_SETTINGS") {
-        console.log("Footer: Recebendo novas configurações", event.data.settings);
+        console.log(
+          "Footer: Recebendo novas configurações",
+          event.data.settings,
+        );
         setFooterSettings(event.data.settings);
       }
     };
@@ -123,8 +137,14 @@ export function Footer({ externalFooterSettings }: { externalFooterSettings?: Fo
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
-      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
-      window.removeEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+      window.removeEventListener(
+        "pageVisibilityUpdated",
+        handleVisibilityUpdate,
+      );
+      window.removeEventListener(
+        "visibleSectionsUpdated",
+        handleSectionsUpdate,
+      );
       window.removeEventListener("footerSettingsUpdated", handleFooterUpdate);
       window.removeEventListener("message", handleMessage);
     };
@@ -251,7 +271,9 @@ export function Footer({ externalFooterSettings }: { externalFooterSettings?: Fo
             <h4 className="font-semibold mb-4" style={titleStyle}>
               Contato
             </h4>
-            <ul className={`space-y-2 text-sm ${!footerSettings.textColor ? "text-muted-foreground" : ""}`}>
+            <ul
+              className={`space-y-2 text-sm ${!footerSettings.textColor ? "text-muted-foreground" : ""}`}
+            >
               {profile.phone && (
                 <li className="flex items-center gap-2" style={textStyle}>
                   <Phone className="w-4 h-4" style={iconStyle} />

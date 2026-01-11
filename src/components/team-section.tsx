@@ -12,7 +12,9 @@ export function TeamSection() {
   const { studio } = useStudio();
   const [settings, setSettings] = useState<TeamSettings | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-  const [highlightedElement, setHighlightedElement] = useState<string | null>(null);
+  const [highlightedElement, setHighlightedElement] = useState<string | null>(
+    null,
+  );
 
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
@@ -112,7 +114,8 @@ export function TeamSection() {
                   className="text-xl font-semibold mb-1 transition-all duration-300"
                   style={{
                     color: settings.cardTitleColor || "var(--primary)",
-                    fontFamily: settings.cardTitleFont || "var(--font-subtitle)",
+                    fontFamily:
+                      settings.cardTitleFont || "var(--font-subtitle)",
                   }}
                 >
                   {member.name}
@@ -130,7 +133,8 @@ export function TeamSection() {
                   className="text-sm leading-relaxed transition-all duration-300"
                   style={{
                     color: settings.cardDescriptionColor || "var(--foreground)",
-                    fontFamily: settings.cardDescriptionFont || "var(--font-body)",
+                    fontFamily:
+                      settings.cardDescriptionFont || "var(--font-body)",
                   }}
                 >
                   {member.description}

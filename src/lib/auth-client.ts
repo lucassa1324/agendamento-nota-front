@@ -1,6 +1,11 @@
-
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-export const LANDING_PAGE_URL = process.env.NEXT_PUBLIC_LANDING_PAGE_URL || "http://localhost:3002";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+export const LANDING_PAGE_URL =
+  process.env.NEXT_PUBLIC_LANDING_PAGE_URL || "http://localhost:3002";
+export const BASE_DOMAIN =
+  process.env.NEXT_PUBLIC_BASE_DOMAIN || "localhost:3000";
+export const ADMIN_URL =
+  process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3000/admin";
 
 export interface User {
   id: string;
@@ -45,7 +50,10 @@ export interface AuthResponse {
   };
 }
 
-export async function loginWithEmail(email: string, password: string): Promise<AuthResponse | null> {
+export async function loginWithEmail(
+  email: string,
+  password: string,
+): Promise<AuthResponse | null> {
   try {
     console.log(">>> [AUTH] Iniciando login para:", email);
     const requestBody = {
@@ -53,7 +61,10 @@ export async function loginWithEmail(email: string, password: string): Promise<A
       password,
       callbackURL: "/",
     };
-    console.log(">>> [AUTH] Enviando para o back-end:", { ...requestBody, password: "***" });
+    console.log(">>> [AUTH] Enviando para o back-end:", {
+      ...requestBody,
+      password: "***",
+    });
 
     const response = await fetch(`${API_BASE_URL}/api/auth/sign-in/email`, {
       method: "POST",
@@ -64,7 +75,11 @@ export async function loginWithEmail(email: string, password: string): Promise<A
       credentials: "include", // Critical for cookies
     });
 
-    console.log(">>> [AUTH] Resposta do back-end (status):", response.status, response.statusText);
+    console.log(
+      ">>> [AUTH] Resposta do back-end (status):",
+      response.status,
+      response.statusText,
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -76,7 +91,7 @@ export async function loginWithEmail(email: string, password: string): Promise<A
     console.log(">>> [AUTH] Login bem-sucedido. Dados recebidos:", {
       user: data.user,
       session: data.session,
-      hasBusiness: !!data.business
+      hasBusiness: !!data.business,
     });
     return data;
   } catch (error) {
@@ -85,16 +100,29 @@ export async function loginWithEmail(email: string, password: string): Promise<A
   }
 }
 
-export async function signUp(email: string, password: string, name: string, studioName: string): Promise<AuthResponse | null> {
+export async function signUp(
+  email: string,
+  password: string,
+  name: string,
+  studioName: string,
+): Promise<AuthResponse | null> {
   try {
-    console.log(">>> [AUTH] Iniciando cadastro para:", email, "com estúdio:", studioName);
+    console.log(
+      ">>> [AUTH] Iniciando cadastro para:",
+      email,
+      "com estúdio:",
+      studioName,
+    );
     const requestBody = {
       email,
       password,
       name,
       studioName,
     };
-    console.log(">>> [AUTH] Enviando para o back-end (POST /api/users):", { ...requestBody, password: "***" });
+    console.log(">>> [AUTH] Enviando para o back-end (POST /api/users):", {
+      ...requestBody,
+      password: "***",
+    });
 
     const response = await fetch(`${API_BASE_URL}/api/users`, {
       method: "POST",
@@ -117,7 +145,7 @@ export async function signUp(email: string, password: string, name: string, stud
     console.log(">>> [AUTH] Cadastro bem-sucedido. Dados:", {
       user: data.user,
       business: data.business,
-      slug: data.slug
+      slug: data.slug,
     });
     return data;
   } catch (error) {
@@ -129,7 +157,7 @@ export async function signUp(email: string, password: string, name: string, stud
 export async function getSession(token?: string): Promise<AuthResponse | null> {
   try {
     console.log(">>> [AUTH] Verificando sessão ativa...");
-    
+
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };

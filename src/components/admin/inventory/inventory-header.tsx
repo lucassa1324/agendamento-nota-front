@@ -38,7 +38,9 @@ export function InventoryHeader({
           className="w-full sm:w-auto"
           variant={showAddForm ? "outline" : "default"}
         >
-          {showAddForm ? "Cancelar" : (
+          {showAddForm ? (
+            "Cancelar"
+          ) : (
             <>
               <Plus className="w-4 h-4 mr-2" />
               Novo Item
@@ -58,7 +60,12 @@ export function InventoryHeader({
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select value={sortBy} onValueChange={(value: "name" | "price" | "status") => setSortBy(value)}>
+          <Select
+            value={sortBy}
+            onValueChange={(value: "name" | "price" | "status") =>
+              setSortBy(value)
+            }
+          >
             <SelectTrigger className="w-full sm:w-48">
               <SelectValue placeholder="Ordenar por" />
             </SelectTrigger>

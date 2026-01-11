@@ -29,9 +29,21 @@ export function ColorEditor({
   onSave,
 }: ColorEditorProps) {
   const colorOptions = [
-    { key: "primary", label: "Cor Primária", description: "Botões, destaques e ícones" },
-    { key: "secondary", label: "Cor Secundária", description: "Banners, cards e fundos suaves" },
-    { key: "background", label: "Cor de Fundo", description: "Fundo principal das seções" },
+    {
+      key: "primary",
+      label: "Cor Primária",
+      description: "Botões, destaques e ícones",
+    },
+    {
+      key: "secondary",
+      label: "Cor Secundária",
+      description: "Banners, cards e fundos suaves",
+    },
+    {
+      key: "background",
+      label: "Cor de Fundo",
+      description: "Fundo principal das seções",
+    },
     { key: "text", label: "Cor do Texto", description: "Títulos e parágrafos" },
   ] as const;
 
@@ -50,8 +62,8 @@ export function ColorEditor({
           >
             <AccordionTrigger className="hover:no-underline py-3">
               <div className="flex items-center gap-3">
-                <div 
-                  className="w-4 h-4 rounded-full border border-border shadow-sm" 
+                <div
+                  className="w-4 h-4 rounded-full border border-border shadow-sm"
                   style={{ backgroundColor: settings[option.key] }}
                 />
                 <div className="flex flex-col items-start text-left">
@@ -72,11 +84,13 @@ export function ColorEditor({
                       <Input
                         type="text"
                         value={settings[option.key]}
-                        onChange={(e) => onUpdate({ [option.key]: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ [option.key]: e.target.value })
+                        }
                         className="h-9 text-xs font-mono uppercase pl-9"
                         placeholder="#000000"
                       />
-                      <div 
+                      <div
                         className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-border"
                         style={{ backgroundColor: settings[option.key] }}
                       />
@@ -84,7 +98,9 @@ export function ColorEditor({
                     <Input
                       type="color"
                       value={settings[option.key]}
-                      onChange={(e) => onUpdate({ [option.key]: e.target.value })}
+                      onChange={(e) =>
+                        onUpdate({ [option.key]: e.target.value })
+                      }
                       className="w-9 h-9 p-1 bg-background border-border cursor-pointer shrink-0"
                     />
                   </div>
@@ -99,40 +115,40 @@ export function ColorEditor({
         <Label className="text-[9px] text-muted-foreground uppercase">
           Prévia de Cores
         </Label>
-        <div 
+        <div
           className="p-4 rounded-lg border border-border space-y-4 transition-colors duration-300"
           style={{ backgroundColor: settings.background }}
         >
-          <h4 
+          <h4
             className="text-lg font-bold transition-colors duration-300"
             style={{ color: settings.text }}
           >
             Exemplo de Conteúdo
           </h4>
-          <p 
+          <p
             className="text-sm opacity-80 transition-colors duration-300"
             style={{ color: settings.text }}
           >
             Este texto demonstra como as cores do site interagem entre si.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               className="transition-all duration-300 flex-1 min-w-25"
-              style={{ 
+              style={{
                 backgroundColor: settings.primary,
-                color: "#ffffff" // Geralmente branco para melhor contraste em primário
+                color: "#ffffff", // Geralmente branco para melhor contraste em primário
               }}
             >
               Primário
             </Button>
-            <Button 
+            <Button
               variant="outline"
-              size="sm" 
+              size="sm"
               className="transition-all duration-300 bg-transparent flex-1 min-w-25"
-              style={{ 
+              style={{
                 borderColor: settings.secondary,
-                color: settings.secondary
+                color: settings.secondary,
               }}
             >
               Secundário

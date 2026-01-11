@@ -162,8 +162,12 @@ export function ValuesEditor({
               onUpdate={(updates) =>
                 onUpdate({
                   ...(updates.title !== undefined && { title: updates.title }),
-                  ...(updates.font !== undefined && { titleFont: updates.font }),
-                  ...(updates.color !== undefined && { titleColor: updates.color }),
+                  ...(updates.font !== undefined && {
+                    titleFont: updates.font,
+                  }),
+                  ...(updates.color !== undefined && {
+                    titleColor: updates.color,
+                  }),
                 })
               }
             />
@@ -187,9 +191,15 @@ export function ValuesEditor({
               color={settings.subtitleColor}
               onUpdate={(updates) =>
                 onUpdate({
-                  ...(updates.subtitle !== undefined && { subtitle: updates.subtitle }),
-                  ...(updates.font !== undefined && { subtitleFont: updates.font }),
-                  ...(updates.color !== undefined && { subtitleColor: updates.color }),
+                  ...(updates.subtitle !== undefined && {
+                    subtitle: updates.subtitle,
+                  }),
+                  ...(updates.font !== undefined && {
+                    subtitleFont: updates.font,
+                  }),
+                  ...(updates.color !== undefined && {
+                    subtitleColor: updates.color,
+                  }),
                 })
               }
             />
@@ -210,19 +220,19 @@ export function ValuesEditor({
             <div className="space-y-6">
               {/* Cores Base do Card */}
               <div className="grid grid-cols-2 gap-4">
-                <fieldset 
-                      className="space-y-1.5 border-none p-0 m-0" 
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    >
+                <fieldset
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
                   <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Fundo do Card
                     {settings.cardBgColor && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-4 w-4 hover:text-primary"
                         onClick={() => onUpdate({ cardBgColor: "" })}
                       >
@@ -249,19 +259,19 @@ export function ValuesEditor({
                     />
                   </div>
                 </fieldset>
-                <fieldset 
-                      className="space-y-1.5 border-none p-0 m-0" 
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onMouseDown={(e) => e.stopPropagation()}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    >
+                <fieldset
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
                   <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                     Cor dos Ícones
                     {settings.cardIconColor && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         className="h-4 w-4 hover:text-primary"
                         onClick={() => onUpdate({ cardIconColor: "" })}
                       >
@@ -295,8 +305,8 @@ export function ValuesEditor({
                   Título do Card
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
@@ -307,17 +317,26 @@ export function ValuesEditor({
                     </legend>
                     <Select
                       value={settings.cardTitleFont || "default"}
-                      onValueChange={(v) => onUpdate({ cardTitleFont: v === "default" ? "" : v })}
+                      onValueChange={(v) =>
+                        onUpdate({ cardTitleFont: v === "default" ? "" : v })
+                      }
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Padrão do Site" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default" className="text-xs font-medium">
+                        <SelectItem
+                          value="default"
+                          className="text-xs font-medium"
+                        >
                           Padrão do Site
                         </SelectItem>
                         {EDITOR_FONTS.map((f) => (
-                          <SelectItem key={f.name} value={f.name} className="text-xs">
+                          <SelectItem
+                            key={f.name}
+                            value={f.name}
+                            className="text-xs"
+                          >
                             <span style={{ fontFamily: f.name }}>{f.name}</span>
                           </SelectItem>
                         ))}
@@ -325,8 +344,8 @@ export function ValuesEditor({
                     </Select>
                   </fieldset>
 
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
@@ -335,9 +354,9 @@ export function ValuesEditor({
                     <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                       Cor
                       {settings.cardTitleColor && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-4 w-4 hover:text-primary"
                           onClick={() => onUpdate({ cardTitleColor: "" })}
                         >
@@ -350,13 +369,17 @@ export function ValuesEditor({
                         type="color"
                         value={settings.cardTitleColor || "#000000"}
                         className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                        onChange={(e) => onUpdate({ cardTitleColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ cardTitleColor: e.target.value })
+                        }
                       />
                       <Input
                         value={settings.cardTitleColor || ""}
                         placeholder="Padrão"
                         className="h-8 text-[10px] flex-1 uppercase"
-                        onChange={(e) => onUpdate({ cardTitleColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ cardTitleColor: e.target.value })
+                        }
                       />
                     </div>
                   </fieldset>
@@ -368,8 +391,8 @@ export function ValuesEditor({
                   Descrição do Card
                 </Label>
                 <div className="grid grid-cols-2 gap-4">
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
@@ -380,17 +403,28 @@ export function ValuesEditor({
                     </legend>
                     <Select
                       value={settings.cardDescriptionFont || "default"}
-                      onValueChange={(v) => onUpdate({ cardDescriptionFont: v === "default" ? "" : v })}
+                      onValueChange={(v) =>
+                        onUpdate({
+                          cardDescriptionFont: v === "default" ? "" : v,
+                        })
+                      }
                     >
                       <SelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder="Padrão do Site" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="default" className="text-xs font-medium">
+                        <SelectItem
+                          value="default"
+                          className="text-xs font-medium"
+                        >
                           Padrão do Site
                         </SelectItem>
                         {EDITOR_FONTS.map((f) => (
-                          <SelectItem key={f.name} value={f.name} className="text-xs">
+                          <SelectItem
+                            key={f.name}
+                            value={f.name}
+                            className="text-xs"
+                          >
                             <span style={{ fontFamily: f.name }}>{f.name}</span>
                           </SelectItem>
                         ))}
@@ -398,8 +432,8 @@ export function ValuesEditor({
                     </Select>
                   </fieldset>
 
-                  <fieldset 
-                    className="space-y-1.5 border-none p-0 m-0" 
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
                     onPointerDown={(e) => e.stopPropagation()}
                     onMouseDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
@@ -408,9 +442,9 @@ export function ValuesEditor({
                     <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
                       Cor
                       {settings.cardDescriptionColor && (
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           className="h-4 w-4 hover:text-primary"
                           onClick={() => onUpdate({ cardDescriptionColor: "" })}
                         >
@@ -423,13 +457,17 @@ export function ValuesEditor({
                         type="color"
                         value={settings.cardDescriptionColor || "#000000"}
                         className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-                        onChange={(e) => onUpdate({ cardDescriptionColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ cardDescriptionColor: e.target.value })
+                        }
                       />
                       <Input
                         value={settings.cardDescriptionColor || ""}
                         placeholder="Padrão"
                         className="h-8 text-[10px] flex-1 uppercase"
-                        onChange={(e) => onUpdate({ cardDescriptionColor: e.target.value })}
+                        onChange={(e) =>
+                          onUpdate({ cardDescriptionColor: e.target.value })
+                        }
                       />
                     </div>
                   </fieldset>
@@ -469,8 +507,8 @@ export function ValuesEditor({
             </div>
           </AccordionTrigger>
           <AccordionContent className="space-y-4 pb-4">
-            <fieldset 
-              className="space-y-4 border-none p-0 m-0" 
+            <fieldset
+              className="space-y-4 border-none p-0 m-0"
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}

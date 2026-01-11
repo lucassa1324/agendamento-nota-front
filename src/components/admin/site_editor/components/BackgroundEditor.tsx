@@ -31,7 +31,7 @@ export function BackgroundEditor({
   sectionId = "section",
 }: BackgroundEditorProps) {
   return (
-    <fieldset 
+    <fieldset
       className="space-y-6 pt-2 border-none p-0 m-0"
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
@@ -39,9 +39,7 @@ export function BackgroundEditor({
       <div>
         <RadioGroup
           value={settings.bgType}
-          onValueChange={(v) =>
-            onUpdate({ bgType: v as "color" | "image" })
-          }
+          onValueChange={(v) => onUpdate({ bgType: v as "color" | "image" })}
           className="grid grid-cols-2 gap-2 bg-muted/50 p-1 rounded-md"
         >
           <div className="flex items-center justify-center">
@@ -88,9 +86,9 @@ export function BackgroundEditor({
           <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
             Cor de Fundo
             {settings.bgColor && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-4 w-4 hover:text-primary"
                 onClick={() => onUpdate({ bgColor: "" })}
               >
@@ -236,7 +234,9 @@ export function BackgroundEditor({
       <fieldset className="space-y-1.5 border-none p-0 m-0 pt-4 border-t border-border/30">
         <div className="flex justify-between items-center">
           <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
-            {settings.bgType === "image" ? "Intensidade do Gradiente" : "Sobreposição de Cor"}
+            {settings.bgType === "image"
+              ? "Intensidade do Gradiente"
+              : "Sobreposição de Cor"}
           </legend>
           <span className="text-[10px] font-mono">
             {Math.round((settings.overlayOpacity || 0) * 100)}%
@@ -250,8 +250,8 @@ export function BackgroundEditor({
           onValueChange={([v]) => onUpdate({ overlayOpacity: v / 100 })}
         />
         <p className="text-[9px] text-muted-foreground mt-1">
-          {settings.bgType === "image" 
-            ? "Cria um degradê suave para melhorar a leitura do texto sobre a imagem." 
+          {settings.bgType === "image"
+            ? "Cria um degradê suave para melhorar a leitura do texto sobre a imagem."
             : "Aplica uma camada de cor extra sobre o fundo escolhido."}
         </p>
       </fieldset>

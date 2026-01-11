@@ -38,14 +38,16 @@ export default async function RootLayout({
   const slug = headersList.get("x-studio-slug") || undefined;
 
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${playfair.variable}`} suppressHydrationWarning>
+    <html
+      lang="pt-BR"
+      className={`${inter.variable} ${playfair.variable}`}
+      suppressHydrationWarning
+    >
       <body className={`font-sans antialiased`} suppressHydrationWarning>
         <StudioProvider initialSlug={slug}>
           <PreviewStyleManager />
           <FaviconUpdater />
-          <LayoutClientWrapper>
-            {children}
-          </LayoutClientWrapper>
+          <LayoutClientWrapper>{children}</LayoutClientWrapper>
           <Toaster />
           <Analytics />
         </StudioProvider>

@@ -7,6 +7,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
+import { ADMIN_URL } from "@/lib/auth-client";
 import {
   defaultHeaderSettings,
   getHeaderSettings,
@@ -17,7 +18,11 @@ import {
   type SiteProfile,
 } from "@/lib/booking-data";
 
-export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?: HeaderSettings }) {
+export function Navigation({
+  externalHeaderSettings,
+}: {
+  externalHeaderSettings?: HeaderSettings;
+}) {
   const { studio } = useStudio();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -27,13 +32,17 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
   const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(
     externalHeaderSettings || defaultHeaderSettings,
   );
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>({
-    inicio: true,
-    galeria: true,
-    sobre: true,
-    agendar: true,
-  });
-  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
+  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
+    {
+      inicio: true,
+      galeria: true,
+      sobre: true,
+      agendar: true,
+    },
+  );
+  const [visibleSections, setVisibleSections] = useState<
+    Record<string, boolean>
+  >({});
 
   const only = searchParams.get("only");
 
@@ -55,10 +64,10 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
     } else {
       setProfile(baseProfile);
     }
-    
+
     setPageVisibility(getPageVisibility());
     setVisibleSections(getVisibleSections());
-    
+
     if (!externalHeaderSettings) {
       if (studio?.config?.header) {
         setHeaderSettings(studio.config.header as HeaderSettings);
@@ -69,7 +78,10 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
 
     // Notificar o pai (admin) que o componente de navegação está pronto
     if (window.self !== window.top) {
-      window.parent.postMessage({ type: "COMPONENT_READY", component: "header" }, "*");
+      window.parent.postMessage(
+        { type: "COMPONENT_READY", component: "header" },
+        "*",
+      );
     }
 
     const handleMessage = (event: MessageEvent) => {
@@ -80,7 +92,10 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
         setVisibleSections(event.data.sections);
       }
       if (event.data?.type === "UPDATE_HEADER_SETTINGS") {
-        console.log("Header: Recebendo novas configurações", event.data.settings);
+        console.log(
+          "Header: Recebendo novas configurações",
+          event.data.settings,
+        );
         setHeaderSettings(event.data.settings);
       }
     };
@@ -117,8 +132,14 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
 
     return () => {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
-      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
-      window.removeEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+      window.removeEventListener(
+        "pageVisibilityUpdated",
+        handleVisibilityUpdate,
+      );
+      window.removeEventListener(
+        "visibleSectionsUpdated",
+        handleSectionsUpdate,
+      );
       window.removeEventListener("headerSettingsUpdated", handleHeaderUpdate);
       window.removeEventListener("message", handleMessage);
     };
@@ -215,7 +236,7 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
               </Link>
             ))}
             <Link
-              href="http://localhost:3000/admin"
+              href={ADMIN_URL}
               className="text-xs lg:text-sm font-medium opacity-70 transition-colors hover:opacity-100 whitespace-nowrap"
               style={linksStyle}
             >
@@ -263,7 +284,7 @@ export function Navigation({ externalHeaderSettings }: { externalHeaderSettings?
                 </Link>
               ))}
               <Link
-                href="http://localhost:3000/admin"
+                href={ADMIN_URL}
                 className="text-lg font-medium opacity-70"
                 style={linksStyle}
                 onClick={() => setMobileMenuOpen(false)}

@@ -190,7 +190,9 @@ export function HeroSection() {
                 return (
                   <BadgeIcon
                     className="w-4 h-4"
-                    style={{ color: customStyles.badgeColor || "var(--secondary)" }}
+                    style={{
+                      color: customStyles.badgeColor || "var(--secondary)",
+                    }}
                   />
                 );
               })()}
@@ -248,9 +250,11 @@ export function HeroSection() {
                 size="lg"
                 className="h-14 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
                 style={{
-                  backgroundColor: customStyles.primaryButtonColor || "var(--primary)",
+                  backgroundColor:
+                    customStyles.primaryButtonColor || "var(--primary)",
                   color: customStyles.primaryButtonTextColor || "#ffffff",
-                  fontFamily: customStyles.primaryButtonFont || "var(--font-body)",
+                  fontFamily:
+                    customStyles.primaryButtonFont || "var(--font-body)",
                 }}
               >
                 <Link href="/agendamento">
@@ -269,8 +273,10 @@ export function HeroSection() {
                     customStyles.secondaryButtonTextColor ||
                     customStyles.secondaryButtonColor ||
                     "var(--foreground)",
-                  borderColor: customStyles.secondaryButtonColor || "var(--secondary)",
-                  fontFamily: customStyles.secondaryButtonFont || "var(--font-body)",
+                  borderColor:
+                    customStyles.secondaryButtonColor || "var(--secondary)",
+                  fontFamily:
+                    customStyles.secondaryButtonFont || "var(--font-body)",
                 }}
               >
                 <Link href="/galeria">

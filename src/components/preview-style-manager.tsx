@@ -60,7 +60,8 @@ export function PreviewStyleManager() {
         extras.add(servicesSettings.cardPriceFont);
       if (valuesSettings.titleFont) extras.add(valuesSettings.titleFont);
       if (valuesSettings.subtitleFont) extras.add(valuesSettings.subtitleFont);
-      if (valuesSettings.cardTitleFont) extras.add(valuesSettings.cardTitleFont);
+      if (valuesSettings.cardTitleFont)
+        extras.add(valuesSettings.cardTitleFont);
       if (valuesSettings.cardDescriptionFont)
         extras.add(valuesSettings.cardDescriptionFont);
 
@@ -87,7 +88,8 @@ export function PreviewStyleManager() {
       if (footerSettings.titleFont) extras.add(footerSettings.titleFont);
       if (footerSettings.bodyFont) extras.add(footerSettings.bodyFont);
       if (gallerySettings.titleFont) extras.add(gallerySettings.titleFont);
-      if (gallerySettings.subtitleFont) extras.add(gallerySettings.subtitleFont);
+      if (gallerySettings.subtitleFont)
+        extras.add(gallerySettings.subtitleFont);
       if (gallerySettings.buttonFont) extras.add(gallerySettings.buttonFont);
       if (storySettings.titleFont) extras.add(storySettings.titleFont);
       if (storySettings.contentFont) extras.add(storySettings.contentFont);
@@ -259,7 +261,10 @@ export function PreviewStyleManager() {
     window.addEventListener("servicesSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("valuesSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("teamSettingsUpdated", handleSettingsUpdate);
-    window.addEventListener("testimonialsSettingsUpdated", handleSettingsUpdate);
+    window.addEventListener(
+      "testimonialsSettingsUpdated",
+      handleSettingsUpdate,
+    );
     window.addEventListener("ctaSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("headerSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("footerSettingsUpdated", handleSettingsUpdate);
@@ -284,7 +289,10 @@ export function PreviewStyleManager() {
       window.removeEventListener("ctaSettingsUpdated", handleSettingsUpdate);
       window.removeEventListener("headerSettingsUpdated", handleSettingsUpdate);
       window.removeEventListener("footerSettingsUpdated", handleSettingsUpdate);
-      window.removeEventListener("gallerySettingsUpdated", handleSettingsUpdate);
+      window.removeEventListener(
+        "gallerySettingsUpdated",
+        handleSettingsUpdate,
+      );
       window.removeEventListener("storySettingsUpdated", handleSettingsUpdate);
     };
   }, []);
