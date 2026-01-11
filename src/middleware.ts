@@ -5,13 +5,10 @@ export function middleware(request: NextRequest) {
   const host = request.headers.get("host") || "";
 
   // Define os domínios base que não devem ser tratados como slugs
-  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || "localhost:3000";
-  const baseDomains = [
-    baseDomain,
-    `www.${baseDomain}`,
-    "agendamento.com",
-    "www.agendamento.com",
-  ];
+  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN;
+  if (!baseDomain) return NextResponse.next();
+
+  const baseDomains = [baseDomain, `www.${baseDomain}`];
 
   // Verifica se o host atual é um dos domínios base
   const isBaseDomain = baseDomains.includes(host);

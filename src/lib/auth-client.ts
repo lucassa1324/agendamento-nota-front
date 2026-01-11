@@ -1,11 +1,7 @@
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-export const LANDING_PAGE_URL =
-  process.env.NEXT_PUBLIC_LANDING_PAGE_URL || "http://localhost:3002";
-export const BASE_DOMAIN =
-  process.env.NEXT_PUBLIC_BASE_DOMAIN || "localhost:3000";
-export const ADMIN_URL =
-  process.env.NEXT_PUBLIC_ADMIN_URL || "http://localhost:3000/admin";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+export const LANDING_PAGE_URL = process.env.NEXT_PUBLIC_LANDING_PAGE_URL || "";
+export const BASE_DOMAIN = process.env.NEXT_PUBLIC_BASE_DOMAIN || "";
+export const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL || "";
 
 export interface User {
   id: string;
