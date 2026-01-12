@@ -71,6 +71,16 @@ function AdminLayoutContent({
   );
 
   useEffect(() => {
+    // Timeout de segurança: se após 5 segundos a sessão não responder, libera o loading
+    const safetyTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn(
+          ">>> [DASHBOARD_LAYOUT] Timeout de segurança atingido (5s). Forçando isLoading -> false",
+        );
+        setIsLoading(false);
+      }
+    }, 5000);
+
     const checkSession = async () => {
       try {
         console.log(">>> [DASHBOARD_LAYOUT] checkSession iniciada.");
@@ -78,27 +88,22 @@ function AdminLayoutContent({
           typeof window !== "undefined"
             ? localStorage.getItem("auth_token")
             : undefined;
-        const sessionData = await getSession(token || undefined);
-        console.log(
-          ">>> [DASHBOARD_LAYOUT] sessionData recebido:",
-          sessionData,
-        );
 
-        // Extração super flexível do usuário
+        const sessionData = await getSession(token || undefined);
+        console.log(">>> [DASHBOARD_LAYOUT] Resposta recebida:", !!sessionData);
+
         const user =
           sessionData?.user ||
           sessionData?.data?.user ||
           sessionData?.session?.user ||
-          (sessionData?.email ? sessionData : null); // Caso o retorno seja o próprio objeto do usuário
+          (sessionData?.email ? sessionData : null);
 
         if (!sessionData || !user) {
           console.warn(
-            ">>> [DASHBOARD_LAYOUT] Sessão não encontrada no primeiro check. Aguardando 1s para re-tentativa...",
+            ">>> [DASHBOARD_LAYOUT] Sessão não encontrada no primeiro check. Re-tentando em 1s...",
           );
-
-          // Re-tentativa única após 1 segundo antes de expulsar
-          // Isso ajuda se o cookie demorar a ser propagado ou o middleware estiver lento
           await new Promise((resolve) => setTimeout(resolve, 1000));
+
           const secondCheck = await getSession(token || undefined);
           const secondUser =
             secondCheck?.user ||
@@ -106,29 +111,18 @@ function AdminLayoutContent({
             secondCheck?.session?.user;
 
           if (secondCheck && secondUser) {
-            console.log(
-              ">>> [DASHBOARD_LAYOUT] Sessão recuperada na re-tentativa.",
-            );
+            console.log(">>> [DASHBOARD_LAYOUT] Sessão recuperada.");
             setIsAuthenticated(true);
             setAdminUser({
               name: secondUser.name || "Administrador",
               username: secondUser.email,
             });
-            return;
-          }
-
-          console.error(
-            ">>> [DASHBOARD_LAYOUT] Sessão realmente inválida. Redirecionando...",
-          );
-          setTimeout(() => {
+          } else {
+            console.error(">>> [DASHBOARD_LAYOUT] Sessão realmente inválida.");
             router.push("/admin");
-          }, 100);
+          }
         } else {
-          console.log(
-            ">>> [DASHBOARD_LAYOUT] Sessão válida encontrada para:",
-            user.email,
-          );
-          // Salvar ID do usuário para isolamento de dados no LocalStorage
+          console.log(">>> [DASHBOARD_LAYOUT] Sessão válida encontrada.");
           if (typeof window !== "undefined" && user.id) {
             localStorage.setItem("current_admin_id", user.id);
           }
@@ -144,14 +138,14 @@ function AdminLayoutContent({
         router.push("/admin");
       } finally {
         setIsLoading(false);
-        console.log(
-          ">>> [DASHBOARD_LAYOUT] checkSession finalizada. isLoading -> false",
-        );
+        clearTimeout(safetyTimeout);
+        console.log(">>> [DASHBOARD_LAYOUT] checkSession finalizada.");
       }
     };
 
     checkSession();
-  }, [router]);
+    return () => clearTimeout(safetyTimeout);
+  }, [router, isLoading]);
 
   const handleLogout = async () => {
     await logout();
