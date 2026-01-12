@@ -242,17 +242,14 @@ export async function getSession(token?: string): Promise<AuthResponse | null> {
   }
 }
 
-// Nota: O código abaixo foi solicitado pelo usuário para configuração do Better-Auth Client.
-// Caso a biblioteca 'better-auth/client' seja instalada futuramente, este cliente pode ser utilizado.
-/*
 import { createAuthClient } from "better-auth/client";
-export const authClient = createAuthClient({ 
-  baseURL: API_BASE_URL, 
-  fetchOptions: { 
-    credentials: "include" 
-  } 
+
+export const authClient = createAuthClient({
+  baseURL: API_BASE_URL,
+  fetchOptions: {
+    credentials: "include",
+  },
 });
-*/
 
 export async function logout(): Promise<boolean> {
   try {
