@@ -136,6 +136,7 @@ export type StudioSettings = {
 export type SiteProfile = {
   name: string;
   description: string;
+  titleSuffix?: string;
   logoUrl?: string;
   instagram?: string;
   whatsapp?: string;
@@ -999,6 +1000,7 @@ export const defaultSiteProfile: SiteProfile = {
   name: "Brow Studio",
   description:
     "Especialistas em design de sobrancelhas, dedicados a realçar sua beleza natural.",
+  titleSuffix: "Agendamento Online",
   logoUrl: "",
   instagram: "browstudio",
   whatsapp: "5511999999999",
@@ -1828,6 +1830,7 @@ export interface Business {
   id: string;
   name: string;
   slug: string;
+  titleSuffix?: string;
   logoUrl?: string;
   config: BusinessConfig;
   services?: Service[];

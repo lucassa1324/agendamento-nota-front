@@ -1,7 +1,16 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
-export const LANDING_PAGE_URL = process.env.NEXT_PUBLIC_LANDING_PAGE_URL || "";
-export const BASE_DOMAIN = process.env.NEXT_PUBLIC_BASE_DOMAIN || "";
-export const ADMIN_URL = process.env.NEXT_PUBLIC_ADMIN_URL || "";
+// Função para limpar e garantir que a URL seja absoluta
+const cleanUrl = (url?: string) => {
+  if (!url) return "";
+  // Garante que a URL não termine com barra e seja absoluta
+  return url.replace(/\/$/, "");
+};
+
+export const API_BASE_URL = cleanUrl(process.env.NEXT_PUBLIC_API_URL);
+export const LANDING_PAGE_URL = cleanUrl(
+  process.env.NEXT_PUBLIC_LANDING_PAGE_URL,
+);
+export const BASE_DOMAIN = cleanUrl(process.env.NEXT_PUBLIC_BASE_DOMAIN);
+export const ADMIN_URL = cleanUrl(process.env.NEXT_PUBLIC_ADMIN_URL);
 
 export interface User {
   id: string;
@@ -78,8 +87,18 @@ export async function loginWithEmail(
     );
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(">>> [AUTH] Login falhou. Detalhes do erro:", errorData);
+      const errorText = await response.text();
+      let errorData: unknown;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch {
+        errorData = { message: errorText };
+      }
+      console.error(">>> [AUTH] Login falhou!", {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData,
+      });
       return null;
     }
 
@@ -159,7 +178,6 @@ export async function getSession(token?: string): Promise<AuthResponse | null> {
     };
 
     if (token) {
-      console.log(">>> [AUTH] Usando Token para verificar sessão.");
       headers.Authorization = `Bearer ${token}`;
     }
 
@@ -169,15 +187,22 @@ export async function getSession(token?: string): Promise<AuthResponse | null> {
       credentials: "include",
     });
 
+    const responseText = await response.text();
     console.log(">>> [AUTH] Resposta get-session (status):", response.status);
+    console.log(">>> [AUTH] Corpo da resposta get-session:", responseText);
 
     if (!response.ok) {
       return null;
     }
 
-    const data = await response.json();
-    console.log(">>> [AUTH] Sessão encontrada:", !!data);
-    return data;
+    try {
+      const data = JSON.parse(responseText);
+      console.log(">>> [AUTH] Sessão processada com sucesso:", !!data);
+      return data as AuthResponse;
+    } catch {
+      console.error(">>> [AUTH] Erro ao processar JSON da sessão");
+      return null;
+    }
   } catch (error) {
     console.error(">>> [AUTH] Erro ao verificar sessão:", error);
     return null;

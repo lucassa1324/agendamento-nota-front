@@ -39,6 +39,7 @@ export function ProfileManager() {
   const [profile, setProfile] = useState<SiteProfile>({
     name: "",
     description: "",
+    titleSuffix: "",
     logoUrl: "",
     instagram: "",
     whatsapp: "",
@@ -144,6 +145,24 @@ export function ProfileManager() {
               onChange={(e) => updateField("name", e.target.value)}
               placeholder="Ex: Brow Studio"
             />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="site-suffix">
+              Sufixo do Título (Aba do Navegador)
+            </Label>
+            <Input
+              id="site-suffix"
+              value={profile.titleSuffix || ""}
+              onChange={(e) => updateField("titleSuffix", e.target.value)}
+              placeholder="Ex: Agendamento Online, Especialidade, Slogan..."
+            />
+            <p className="text-xs text-muted-foreground">
+              Define como o nome aparecerá na aba do navegador. Exemplo:
+              <span className="font-medium ml-1">
+                {profile.name || "Nome do Negócio"} |{" "}
+                {profile.titleSuffix || "Sufixo Escolhido"}
+              </span>
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="site-description">Descrição</Label>

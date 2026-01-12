@@ -8,6 +8,7 @@ import { LayoutClientWrapper } from "@/components/layout-client-wrapper";
 import { PreviewStyleManager } from "@/components/preview-style-manager";
 import { Toaster } from "@/components/ui/toaster";
 import { StudioProvider } from "@/context/studio-context";
+import { API_BASE_URL } from "@/lib/auth-client";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -22,12 +23,39 @@ const inter = Inter({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Studio de Sobrancelhas | Design & Beleza",
-  description:
-    "Especialistas em design de sobrancelhas. Agende seu horário e realce sua beleza natural.",
-  generator: "v0.app",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const slug = headersList.get("x-studio-slug");
+
+  if (!slug) {
+    return {
+      title: "StudioManager | Gestão e Agendamentos",
+      description: "A plataforma completa para gestão do seu studio.",
+    };
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/studios/slug/${slug}`, {
+      next: { revalidate: 3600 }, // Cache de 1 hora
+    });
+
+    if (response.ok) {
+      const studio = await response.json();
+      const suffix = studio.titleSuffix || "Agendamento Online";
+      return {
+        title: `${studio.name} | ${suffix}`,
+        description: `Agende seu horário no ${studio.name}. Especialistas prontos para te atender.`,
+      };
+    }
+  } catch (error) {
+    console.error("Erro ao gerar metadata:", error);
+  }
+
+  return {
+    title: "StudioManager | Agendamento Online",
+    description: "Agende seu horário e realce sua beleza natural.",
+  };
+}
 
 export default async function RootLayout({
   children,

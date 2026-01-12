@@ -46,10 +46,17 @@ export function StudioProvider({
       // Se não temos um slug inicial, tenta extrair do host
       if (!currentSlug && typeof window !== "undefined") {
         const host = window.location.host;
-        
+
         // Verifica se estamos em um subdomínio do BASE_DOMAIN
-        if (BASE_DOMAIN && host.endsWith(BASE_DOMAIN) && host !== BASE_DOMAIN && host !== `www.${BASE_DOMAIN}`) {
-          const possibleSlug = host.replace(`.${BASE_DOMAIN}`, "").replace("www.", "");
+        if (
+          BASE_DOMAIN &&
+          host.endsWith(BASE_DOMAIN) &&
+          host !== BASE_DOMAIN &&
+          host !== `www.${BASE_DOMAIN}`
+        ) {
+          const possibleSlug = host
+            .replace(`.${BASE_DOMAIN}`, "")
+            .replace("www.", "");
           if (possibleSlug) {
             currentSlug = possibleSlug;
             setSlug(currentSlug);

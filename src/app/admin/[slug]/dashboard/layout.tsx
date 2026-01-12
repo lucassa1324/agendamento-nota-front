@@ -61,29 +61,62 @@ function AdminLayoutContent({
     name: string;
   } | null>(null);
 
+  console.log(
+    ">>> [DASHBOARD_LAYOUT] Renderizando AdminLayoutContent. Estado:",
+    {
+      isAuthenticated,
+      isLoading,
+      slug,
+    },
+  );
+
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const sessionData = await getSession();
-        if (!sessionData) {
+        console.log(">>> [DASHBOARD_LAYOUT] checkSession iniciada.");
+        const token =
+          typeof window !== "undefined"
+            ? localStorage.getItem("auth_token")
+            : undefined;
+        const sessionData = await getSession(token || undefined);
+        console.log(
+          ">>> [DASHBOARD_LAYOUT] sessionData recebido:",
+          sessionData,
+        );
+
+        // Extração flexível do usuário da resposta (pode vir na raiz ou dentro de data)
+        const user = sessionData?.user || sessionData?.data?.user;
+
+        if (!sessionData || !user) {
+          console.warn(
+            ">>> [DASHBOARD_LAYOUT] Sessão inválida ou incompleta, redirecionando para /admin",
+            sessionData,
+          );
           router.push("/admin");
         } else {
+          console.log(
+            ">>> [DASHBOARD_LAYOUT] Sessão válida encontrada para:",
+            user.email,
+          );
           // Salvar ID do usuário para isolamento de dados no LocalStorage
-          if (typeof window !== "undefined") {
-            localStorage.setItem("current_admin_id", sessionData.user.id);
+          if (typeof window !== "undefined" && user.id) {
+            localStorage.setItem("current_admin_id", user.id);
           }
 
           setIsAuthenticated(true);
           setAdminUser({
-            name: sessionData.user.name || "Administrador",
-            username: sessionData.user.email,
+            name: user.name || "Administrador",
+            username: user.email,
           });
         }
       } catch (error) {
-        console.error("Session check failed", error);
+        console.error(">>> [DASHBOARD_LAYOUT] Erro no checkSession:", error);
         router.push("/admin");
       } finally {
         setIsLoading(false);
+        console.log(
+          ">>> [DASHBOARD_LAYOUT] checkSession finalizada. isLoading -> false",
+        );
       }
     };
 
@@ -94,6 +127,7 @@ function AdminLayoutContent({
     await logout();
     if (typeof window !== "undefined") {
       localStorage.removeItem("current_admin_id");
+      localStorage.removeItem("auth_token");
     }
     router.push("/admin");
   };

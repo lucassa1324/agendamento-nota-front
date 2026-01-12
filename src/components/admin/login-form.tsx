@@ -40,6 +40,12 @@ export function LoginForm() {
       console.log("Dados recebidos:", result);
 
       if (result) {
+        // Se houver um token na resposta, salva no localStorage para contornar problemas de cookies em localhost
+        // @ts-expect-error - Propriedades dinâmicas de diferentes formatos de API
+        const token = result.token || result.data?.token || result.session?.id;
+        if (token && typeof token === "string") {
+          localStorage.setItem("auth_token", token);
+        }
         // Captura flexível de slug conforme solicitado pelo usuário
         const businessSlug =
           result.data?.user?.business?.slug ||
@@ -65,8 +71,22 @@ export function LoginForm() {
         console.log(
           `>>> [LOGIN_FLOW] Slug encontrado: ${businessSlug}. Redirecionando...`,
         );
-        router.push(`/admin/${businessSlug}/dashboard/overview`);
-        router.refresh();
+
+        const dashboardUrl = `/admin/${businessSlug}/dashboard/overview`;
+        console.log(`>>> [LOGIN_FLOW] Puxando rota: ${dashboardUrl}`);
+
+        router.push(dashboardUrl);
+
+        // Timeout de segurança: se o router.push falhar em 3 segundos, tenta forçar via window.location
+        setTimeout(() => {
+          if (window.location.pathname === "/admin") {
+            console.warn(
+              ">>> [LOGIN_FLOW] Redirecionamento SPA parece ter falhado. Forçando recarregamento...",
+            );
+            window.location.href = dashboardUrl;
+          }
+        }, 3000);
+
         return;
       } else {
         console.warn(">>> [LOGIN_FLOW] Falha nas credenciais (Email/Senha)");
