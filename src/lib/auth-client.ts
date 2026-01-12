@@ -201,10 +201,11 @@ export async function getSession(token?: string): Promise<AuthResponse | null> {
 
     if (token) {
       console.log(
-        ">>> [AUTH] Enviando token no header Authorization:",
+        ">>> [AUTH] Enviando token puro no header Authorization:",
         `${token.substring(0, 10)}...`,
       );
-      headers.Authorization = `Bearer ${token}`;
+      // Alterado de `Bearer ${token}` para apenas `${token}` conforme solicitado
+      headers.Authorization = token;
     }
 
     const response = await fetch(`${API_BASE_URL}/api/auth/get-session`, {
