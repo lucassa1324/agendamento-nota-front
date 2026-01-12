@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { loginWithEmail, logout } from "@/lib/auth-client";
+import { loginWithEmail } from "@/lib/auth-client";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -29,10 +29,6 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      // Limpeza de Cache: Tenta deslogar para limpar cookies de sessões anteriores
-      console.log(">>> [AUTH] Limpando sessões anteriores...");
-      await logout().catch(() => {});
-
       // Logs de Depuração: Confirmar credenciais antes de enviar
       console.log("Enviando credenciais:", { email });
 
@@ -40,26 +36,6 @@ export function LoginForm() {
       console.log("Dados recebidos:", result);
 
       if (result) {
-        // Se houver um token na resposta, salva no localStorage para contornar problemas de cookies em localhost
-        const token =
-          result.token ||
-          result.data?.token ||
-          result.session?.id ||
-          result.session?.sessionToken || // Padrão better-auth
-          result.data?.session?.id;
-
-        if (token && typeof token === "string") {
-          console.log(
-            ">>> [LOGIN_FLOW] Token encontrado e salvo:",
-            `${token.substring(0, 10)}...`,
-          );
-          localStorage.setItem("auth_token", token);
-        } else {
-          console.warn(
-            ">>> [LOGIN_FLOW] Nenhum token encontrado no resultado do login:",
-            result,
-          );
-        }
         // Captura flexível de slug conforme solicitado pelo usuário
         const businessSlug =
           result.data?.user?.business?.slug ||
@@ -72,38 +48,37 @@ export function LoginForm() {
           console.warn(
             ">>> [LOGIN_FLOW] Login realizado, mas nenhum slug de estúdio foi encontrado na resposta.",
           );
-          console.log(
-            ">>> [LOGIN_FLOW] Objeto completo para debug:",
-            JSON.stringify(result, null, 2),
+          setError(
+            "Sua conta não possui um estúdio vinculado. Verifique os cookies do navegador ou contate o suporte.",
           );
-          // Redirecionamento temporário para debug ou erro se o slug for nulo
-          setError("Dados do estúdio não encontrados. Verifique o console.");
           setIsLoading(false);
           return;
+        }
+
+        // Se houver um token na resposta, salva no localStorage para contornar problemas de cookies
+        const token =
+          result.token ||
+          result.data?.token ||
+          result.session?.id ||
+          result.session?.sessionToken ||
+          result.data?.session?.id;
+
+        if (token && typeof token === "string") {
+          localStorage.setItem("auth_token", token);
         }
 
         console.log(
           `>>> [LOGIN_FLOW] Slug encontrado: ${businessSlug}. Redirecionando...`,
         );
 
-        // Implementa o fluxo de navegação dinâmica conforme solicitado
-        const slug = businessSlug;
-        router.push(`/admin/${slug}/dashboard/overview`);
-
-        // Timeout de segurança: se o router.push falhar em 3 segundos, tenta forçar via window.location
-        setTimeout(() => {
-          if (window.location.pathname === "/admin") {
-            console.warn(
-              ">>> [LOGIN_FLOW] Redirecionamento SPA parece ter falhado. Forçando recarregamento...",
-            );
-            window.location.href = `/admin/${slug}/dashboard/overview`;
-          }
-        }, 3000);
-
+        // Implementa o fluxo de navegação dinâmica
+        router.push(`/admin/${businessSlug}/dashboard/overview`);
         return;
       } else {
-        console.warn(">>> [LOGIN_FLOW] Falha nas credenciais (Email/Senha)");
-        setError("Email ou senha incorretos");
+        console.warn(">>> [LOGIN_FLOW] Falha nas credenciais ou sessão nula");
+        setError(
+          "Não foi possível validar sua sessão. Por favor, verifique se os cookies estão habilitados no seu navegador.",
+        );
         setIsLoading(false);
       }
     } catch (err) {
