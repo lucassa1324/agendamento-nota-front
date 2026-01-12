@@ -33,26 +33,48 @@ export interface Session {
   ipAddress?: string;
   userAgent?: string;
   userId: string;
+  sessionToken?: string; // Para compatibilidade com better-auth
+  // biome-ignore lint/suspicious/noExplicitAny: Resposta dinâmica do back-end
+  user?: any; // Em alguns casos o usuário vem dentro da sessão
+  // biome-ignore lint/suspicious/noExplicitAny: Resposta dinâmica do back-end
+  [key: string]: any; // Permite propriedades dinâmicas
 }
 
 export interface AuthResponse {
-  user: User;
-  session: Session;
+  // biome-ignore lint/suspicious/noExplicitAny: Resposta dinâmica do back-end
+  user?: User | any;
+  // biome-ignore lint/suspicious/noExplicitAny: Resposta dinâmica do back-end
+  session?: Session | any;
   token?: string;
   slug?: string;
-  business?: {
-    id: string;
-    name: string;
-    slug: string;
-  };
+  email?: string; // Caso o objeto seja o próprio usuário
+  business?:
+    | {
+        id: string;
+        name: string;
+        slug: string;
+      }
+    // biome-ignore lint/suspicious/noExplicitAny: Resposta dinâmica do back-end
+    | any;
   data?: {
-    user?: User;
-    business?: {
-      id: string;
-      name: string;
-      slug: string;
-    };
+    // biome-ignore lint/suspicious/noExplicitAny: Resposta dinâmica do back-end
+    user?: User | any;
+    token?: string;
+    // biome-ignore lint/suspicious/noExplicitAny: Resposta dinâmica do back-end
+    session?: Session | any;
+    business?:
+      | {
+          id: string;
+          name: string;
+          slug: string;
+        }
+      // biome-ignore lint/suspicious/noExplicitAny: Resposta dinâmica do back-end
+      | any;
+    // biome-ignore lint/suspicious/noExplicitAny: Resposta dinâmica do back-end
+    [key: string]: any;
   };
+  // biome-ignore lint/suspicious/noExplicitAny: Resposta dinâmica do back-end
+  [key: string]: any; // Permite que a resposta tenha qualquer outra propriedade
 }
 
 export async function loginWithEmail(
@@ -178,6 +200,10 @@ export async function getSession(token?: string): Promise<AuthResponse | null> {
     };
 
     if (token) {
+      console.log(
+        ">>> [AUTH] Enviando token no header Authorization:",
+        `${token.substring(0, 10)}...`,
+      );
       headers.Authorization = `Bearer ${token}`;
     }
 
@@ -189,18 +215,25 @@ export async function getSession(token?: string): Promise<AuthResponse | null> {
 
     const responseText = await response.text();
     console.log(">>> [AUTH] Resposta get-session (status):", response.status);
-    console.log(">>> [AUTH] Corpo da resposta get-session:", responseText);
 
     if (!response.ok) {
+      console.warn(
+        ">>> [AUTH] get-session falhou com status:",
+        response.status,
+        responseText,
+      );
       return null;
     }
 
     try {
       const data = JSON.parse(responseText);
-      console.log(">>> [AUTH] Sessão processada com sucesso:", !!data);
+      console.log(
+        ">>> [AUTH] Dados da sessão decodificados:",
+        `${JSON.stringify(data).substring(0, 100)}...`,
+      );
       return data as AuthResponse;
     } catch {
-      console.error(">>> [AUTH] Erro ao processar JSON da sessão");
+      console.error(">>> [AUTH] Erro ao parsear JSON da sessão:", responseText);
       return null;
     }
   } catch (error) {

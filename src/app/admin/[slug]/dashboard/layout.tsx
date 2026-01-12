@@ -84,15 +84,27 @@ function AdminLayoutContent({
           sessionData,
         );
 
-        // Extração flexível do usuário da resposta (pode vir na raiz ou dentro de data)
-        const user = sessionData?.user || sessionData?.data?.user;
+        // Extração super flexível do usuário
+        const user =
+          sessionData?.user ||
+          sessionData?.data?.user ||
+          sessionData?.session?.user ||
+          (sessionData?.email ? sessionData : null); // Caso o retorno seja o próprio objeto do usuário
 
         if (!sessionData || !user) {
           console.warn(
-            ">>> [DASHBOARD_LAYOUT] Sessão inválida ou incompleta, redirecionando para /admin",
-            sessionData,
+            ">>> [DASHBOARD_LAYOUT] Sessão inválida ou incompleta. Estrutura recebida:",
+            JSON.stringify(sessionData),
           );
-          router.push("/admin");
+
+          // Se tivermos um token mas o get-session falhou, vamos dar uma segunda chance
+          // ou ser mais específico no erro antes de redirecionar
+          console.log(
+            ">>> [DASHBOARD_LAYOUT] Redirecionando para /admin em 100ms...",
+          );
+          setTimeout(() => {
+            router.push("/admin");
+          }, 100);
         } else {
           console.log(
             ">>> [DASHBOARD_LAYOUT] Sessão válida encontrada para:",

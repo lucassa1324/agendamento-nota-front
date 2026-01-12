@@ -41,10 +41,24 @@ export function LoginForm() {
 
       if (result) {
         // Se houver um token na resposta, salva no localStorage para contornar problemas de cookies em localhost
-        // @ts-expect-error - Propriedades dinâmicas de diferentes formatos de API
-        const token = result.token || result.data?.token || result.session?.id;
+        const token =
+          result.token ||
+          result.data?.token ||
+          result.session?.id ||
+          result.session?.sessionToken || // Padrão better-auth
+          result.data?.session?.id;
+
         if (token && typeof token === "string") {
+          console.log(
+            ">>> [LOGIN_FLOW] Token encontrado e salvo:",
+            `${token.substring(0, 10)}...`,
+          );
           localStorage.setItem("auth_token", token);
+        } else {
+          console.warn(
+            ">>> [LOGIN_FLOW] Nenhum token encontrado no resultado do login:",
+            result,
+          );
         }
         // Captura flexível de slug conforme solicitado pelo usuário
         const businessSlug =
