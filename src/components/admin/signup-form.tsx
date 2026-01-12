@@ -36,15 +36,13 @@ export function SignUpForm() {
 
       console.log(">>> [SIGNUP] Resposta do cadastro:", result);
 
-      if (result?.business?.slug) {
-        const slug = result.business.slug;
+      if (result) {
         console.log(
-          ">>> [SIGNUP] Cadastro bem-sucedido, redirecionando para:",
-          slug,
+          ">>> [SIGNUP] Cadastro bem-sucedido, redirecionando para login...",
         );
-
-        router.push(`/admin/${slug}/dashboard/overview`);
-        router.refresh();
+        // Redireciona para a tela de login administrativa usando a URL absoluta do ambiente conforme solicitado
+        const adminLoginUrl = `${process.env.NEXT_PUBLIC_ADMIN_URL}/admin`;
+        window.location.href = adminLoginUrl;
       } else {
         console.error(">>> [SIGNUP] Resposta inválida do servidor:", result);
         setError(

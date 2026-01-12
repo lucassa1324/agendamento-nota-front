@@ -70,8 +70,9 @@ export function StudioProvider({
       }
 
       try {
+        // Ajustado para /api/business/slug/ conforme novo padrão do back-end
         const response = await fetch(
-          `${API_BASE_URL}/api/studios/slug/${currentSlug}`,
+          `${API_BASE_URL}/api/business/slug/${currentSlug}`,
           {
             credentials: "include",
           },

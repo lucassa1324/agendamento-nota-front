@@ -86,10 +86,9 @@ export function LoginForm() {
           `>>> [LOGIN_FLOW] Slug encontrado: ${businessSlug}. Redirecionando...`,
         );
 
-        const dashboardUrl = `/admin/${businessSlug}/dashboard/overview`;
-        console.log(`>>> [LOGIN_FLOW] Puxando rota: ${dashboardUrl}`);
-
-        router.push(dashboardUrl);
+        // Implementa o fluxo de navegação dinâmica conforme solicitado
+        const slug = businessSlug;
+        router.push(`/admin/${slug}/dashboard/overview`);
 
         // Timeout de segurança: se o router.push falhar em 3 segundos, tenta forçar via window.location
         setTimeout(() => {
@@ -97,7 +96,7 @@ export function LoginForm() {
             console.warn(
               ">>> [LOGIN_FLOW] Redirecionamento SPA parece ter falhado. Forçando recarregamento...",
             );
-            window.location.href = dashboardUrl;
+            window.location.href = `/admin/${slug}/dashboard/overview`;
           }
         }, 3000);
 

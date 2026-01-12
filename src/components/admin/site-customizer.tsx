@@ -207,8 +207,9 @@ export function SiteCustomizer() {
       console.log(
         `>>> [CUSTOMIZER] Salvando configurações para o estúdio: ${selectedBusinessId}`,
       );
+      // Ajustado de /api/studios/:id para /api/business/:id conforme nova estrutura do back-end
       const response = await fetch(
-        `${API_BASE_URL}/api/studios/${selectedBusinessId}`,
+        `${API_BASE_URL}/api/business/${selectedBusinessId}`,
         {
           method: "PUT",
           headers: {
