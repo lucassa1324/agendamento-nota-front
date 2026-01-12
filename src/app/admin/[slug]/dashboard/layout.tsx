@@ -93,14 +93,32 @@ function AdminLayoutContent({
 
         if (!sessionData || !user) {
           console.warn(
-            ">>> [DASHBOARD_LAYOUT] Sessão inválida ou incompleta. Estrutura recebida:",
-            JSON.stringify(sessionData),
+            ">>> [DASHBOARD_LAYOUT] Sessão não encontrada no primeiro check. Aguardando 1s para re-tentativa...",
           );
 
-          // Se tivermos um token mas o get-session falhou, vamos dar uma segunda chance
-          // ou ser mais específico no erro antes de redirecionar
-          console.log(
-            ">>> [DASHBOARD_LAYOUT] Redirecionando para /admin em 100ms...",
+          // Re-tentativa única após 1 segundo antes de expulsar
+          // Isso ajuda se o cookie demorar a ser propagado ou o middleware estiver lento
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          const secondCheck = await getSession(token || undefined);
+          const secondUser =
+            secondCheck?.user ||
+            secondCheck?.data?.user ||
+            secondCheck?.session?.user;
+
+          if (secondCheck && secondUser) {
+            console.log(
+              ">>> [DASHBOARD_LAYOUT] Sessão recuperada na re-tentativa.",
+            );
+            setIsAuthenticated(true);
+            setAdminUser({
+              name: secondUser.name || "Administrador",
+              username: secondUser.email,
+            });
+            return;
+          }
+
+          console.error(
+            ">>> [DASHBOARD_LAYOUT] Sessão realmente inválida. Redirecionando...",
           );
           setTimeout(() => {
             router.push("/admin");

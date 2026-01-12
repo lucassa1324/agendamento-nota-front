@@ -36,7 +36,7 @@ export function LoginForm() {
       console.log("Dados recebidos:", result);
 
       if (result) {
-        // Captura flexível de slug conforme solicitado pelo usuário
+        // Captura flexível de slug
         const businessSlug =
           result.data?.user?.business?.slug ||
           result.data?.business?.slug ||
@@ -45,17 +45,15 @@ export function LoginForm() {
           result.slug;
 
         if (!businessSlug) {
-          console.warn(
-            ">>> [LOGIN_FLOW] Login realizado, mas nenhum slug de estúdio foi encontrado na resposta.",
-          );
+          console.warn(">>> [LOGIN_FLOW] Login 200, mas sem slug.");
           setError(
-            "Sua conta não possui um estúdio vinculado. Verifique os cookies do navegador ou contate o suporte.",
+            "Sua conta foi autenticada, mas não encontramos um estúdio vinculado. Verifique se os cookies estão habilitados.",
           );
           setIsLoading(false);
           return;
         }
 
-        // Se houver um token na resposta, salva no localStorage para contornar problemas de cookies
+        // Se houver um token, salva no localStorage como fallback
         const token =
           result.token ||
           result.data?.token ||
@@ -68,22 +66,33 @@ export function LoginForm() {
         }
 
         console.log(
-          `>>> [LOGIN_FLOW] Slug encontrado: ${businessSlug}. Redirecionando...`,
+          `>>> [LOGIN_FLOW] Sucesso! Aguardando 500ms para estabilização dos cookies antes de ir para: ${businessSlug}`,
         );
 
-        // Implementa o fluxo de navegação dinâmica
-        router.push(`/admin/${businessSlug}/dashboard/overview`);
+        // Delay de estabilização para garantir que o navegador processe o Set-Cookie
+        setTimeout(() => {
+          router.push(`/admin/${businessSlug}/dashboard/overview`);
+        }, 500);
         return;
-      } else {
-        console.warn(">>> [LOGIN_FLOW] Falha nas credenciais ou sessão nula");
-        setError(
-          "Não foi possível validar sua sessão. Por favor, verifique se os cookies estão habilitados no seu navegador.",
-        );
-        setIsLoading(false);
       }
-    } catch (err) {
-      console.error(">>> [LOGIN_FLOW] Erro crítico no handleSubmit:", err);
-      setError("Ocorreu um erro ao fazer login. Tente novamente.");
+      // Se result for null mas não cair no catch, provavelmente credenciais erradas
+      setError("Email ou senha incorretos.");
+      setIsLoading(false);
+    } catch (err: unknown) {
+      console.error(">>> [LOGIN_FLOW] Erro crítico:", err);
+
+      const error = err as { status?: number; message?: string };
+
+      // Tratamento refinado de erros visuais
+      if (error.status === 401 || error.message?.includes("401")) {
+        setError("Email ou senha incorretos.");
+      } else if (error.status === 500 || error.message?.includes("500")) {
+        setError("Erro no servidor. Tente novamente em instantes.");
+      } else {
+        setError(
+          "Não foi possível conectar ao servidor. Verifique sua conexão.",
+        );
+      }
       setIsLoading(false);
     }
   };

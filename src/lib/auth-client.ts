@@ -249,6 +249,13 @@ export const authClient = createAuthClient({
   fetchOptions: {
     credentials: "include",
   },
+  // Prioriza cookies e garante persistência estável
+  session: {
+    cookieCache: {
+      enabled: true,
+      factor: 0.8,
+    },
+  },
 });
 
 export async function logout(): Promise<boolean> {
