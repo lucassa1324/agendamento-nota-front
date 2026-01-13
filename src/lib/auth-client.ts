@@ -8,9 +8,23 @@ const cleanUrl = (url?: string) => {
 };
 
 export const API_BASE_URL = cleanUrl(process.env.NEXT_PUBLIC_API_URL);
-// Em produção (Vercel), usamos a rota relativa /api/auth via Rewrite para evitar problemas de cookies de terceiros.
-// Localmente, mantemos a URL absoluta para compatibilidade com o ambiente de desenvolvimento se necessário.
-export const AUTH_BASE_URL = process.env.NODE_ENV === "production" ? "/api/auth" : `${API_BASE_URL}/api/auth`;
+// Em produção, o Better-Auth exige uma URL absoluta. Usamos o próprio domínio do Front,
+// garantindo cookies de primeira parte, combinando com o rewrite para o backend.
+const FRONT_ORIGIN =
+  typeof window !== "undefined"
+    ? window.location.origin
+    : process.env.NEXT_PUBLIC_FRONT_URL
+      ? cleanUrl(process.env.NEXT_PUBLIC_FRONT_URL)
+      : process.env.VERCEL_URL
+        ? `https://${cleanUrl(process.env.VERCEL_URL)}`
+        : (() => {
+            const base = process.env.NEXT_PUBLIC_BASE_DOMAIN || "localhost:3000";
+            return base.startsWith("http")
+              ? cleanUrl(base)
+              : `http://${cleanUrl(base)}`;
+          })();
+
+export const AUTH_BASE_URL = `${FRONT_ORIGIN}/api/auth`;
 
 console.log(">>> [AUTH_CLIENT] API_BASE_URL configurada como:", API_BASE_URL);
 console.log(">>> [AUTH_CLIENT] AUTH_BASE_URL configurada como:", AUTH_BASE_URL);
