@@ -88,7 +88,9 @@ function AdminLayoutContent({
         return;
       }
 
-      console.log(">>> [DASHBOARD_LAYOUT] Sessão válida encontrada via useSession.");
+      console.log(
+        ">>> [DASHBOARD_LAYOUT] Sessão válida encontrada via useSession.",
+      );
       setIsAuthenticated(true);
       setAdminUser({
         name: user.name || "Administrador",

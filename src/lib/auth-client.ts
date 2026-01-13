@@ -10,19 +10,26 @@ const cleanUrl = (url?: string) => {
 export const API_BASE_URL = cleanUrl(process.env.NEXT_PUBLIC_API_URL);
 // Em produção, o Better-Auth exige uma URL absoluta. Usamos o próprio domínio do Front,
 // garantindo cookies de primeira parte, combinando com o rewrite para o backend.
+const ensureAbsolute = (origin?: string) => {
+  if (!origin) return "";
+  const normalized = cleanUrl(origin);
+  return normalized.startsWith("http") ? normalized : `https://${normalized}`;
+};
+
 const FRONT_ORIGIN =
-  typeof window !== "undefined"
-    ? window.location.origin
-    : process.env.NEXT_PUBLIC_FRONT_URL
-      ? cleanUrl(process.env.NEXT_PUBLIC_FRONT_URL)
-      : process.env.VERCEL_URL
-        ? `https://${cleanUrl(process.env.VERCEL_URL)}`
-        : (() => {
-            const base = process.env.NEXT_PUBLIC_BASE_DOMAIN || "localhost:3000";
-            return base.startsWith("http")
-              ? cleanUrl(base)
-              : `http://${cleanUrl(base)}`;
-          })();
+  process.env.NODE_ENV === "production"
+    ? ensureAbsolute(
+        process.env.NEXT_PUBLIC_FRONT_URL ||
+          process.env.VERCEL_URL ||
+          process.env.NEXT_PUBLIC_BASE_DOMAIN ||
+          "http://localhost:3000",
+      )
+    : typeof window !== "undefined"
+      ? window.location.origin
+      : ensureAbsolute(
+          process.env.NEXT_PUBLIC_FRONT_URL ||
+            (process.env.NEXT_PUBLIC_BASE_DOMAIN || "http://localhost:3000"),
+        );
 
 export const AUTH_BASE_URL = `${FRONT_ORIGIN}/api/auth`;
 
@@ -60,4 +67,12 @@ export const authClient = createAuthClient({
   },
 });
 
-export const { signIn, signUp, signOut, useSession, getSession, listSessions, revokeSession } = authClient;
+export const {
+  signIn,
+  signUp,
+  signOut,
+  useSession,
+  getSession,
+  listSessions,
+  revokeSession,
+} = authClient;
