@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, KeyRound, Loader2, Mail, Phone, User } from "lucide-react";
+import { Check, KeyRound, Loader2, Mail, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,21 +13,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import {
-  type AdminUser,
-  getStoredAdminUser,
-  saveAdminProfile,
-} from "@/lib/admin-auth";
+import { authClient } from "@/lib/auth-client";
 
 export function AdminProfileManager() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [profile, setProfile] = useState<AdminUser>({
-    username: "",
-    password: "",
+  const { data: session } = authClient.useSession();
+
+  const [profile, setProfile] = useState({
     name: "",
     email: "",
-    phone: "",
+    // phone: "", // Better-auth user object doesn't have phone by default unless customized
   });
 
   const [passwords, setPasswords] = useState({
@@ -37,29 +33,34 @@ export function AdminProfileManager() {
   });
 
   useEffect(() => {
-    const admin = getStoredAdminUser();
-    setProfile(admin);
-  }, []);
+    if (session?.user) {
+      setProfile({
+        name: session.user.name || "",
+        email: session.user.email || "",
+      });
+    }
+  }, [session]);
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simular um pequeno delay para feedback visual
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
     try {
-      saveAdminProfile(profile);
+      const { error } = await authClient.updateUser({
+        name: profile.name,
+      });
+
+      if (error) throw error;
+
       toast({
         title: "Sucesso!",
         description: "Seu perfil foi atualizado com sucesso.",
       });
-      // Disparar evento customizado para atualizar a sidebar imediatamente
-      window.dispatchEvent(new CustomEvent("adminProfileUpdated"));
-    } catch {
+    } catch (err: unknown) {
+      const error = err as { message?: string };
       toast({
         title: "Erro",
-        description: "Não foi possível atualizar o perfil.",
+        description: error.message || "Não foi possível atualizar o perfil.",
         variant: "destructive",
       });
     } finally {
@@ -70,15 +71,6 @@ export function AdminProfileManager() {
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (passwords.current !== profile.password) {
-      toast({
-        title: "Erro",
-        description: "A senha atual está incorreta.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (passwords.new !== passwords.confirm) {
       toast({
         title: "Erro",
@@ -88,33 +80,27 @@ export function AdminProfileManager() {
       return;
     }
 
-    if (passwords.new.length < 6) {
-      toast({
-        title: "Erro",
-        description: "A nova senha deve ter pelo menos 6 caracteres.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
 
-    // Simular um pequeno delay para feedback visual
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
     try {
-      const updatedProfile = { ...profile, password: passwords.new };
-      saveAdminProfile(updatedProfile);
-      setProfile(updatedProfile);
+      const { error } = await authClient.changePassword({
+        newPassword: passwords.new,
+        currentPassword: passwords.current,
+        revokeOtherSessions: true,
+      });
+
+      if (error) throw error;
+
       setPasswords({ current: "", new: "", confirm: "" });
       toast({
         title: "Sucesso!",
         description: "Sua senha foi alterada com sucesso.",
       });
-    } catch {
+    } catch (err: unknown) {
+      const error = err as { message?: string };
       toast({
         title: "Erro",
-        description: "Não foi possível alterar a senha.",
+        description: error.message || "Não foi possível alterar a senha.",
         variant: "destructive",
       });
     } finally {
@@ -154,53 +140,20 @@ export function AdminProfileManager() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="username">Usuário de Login</Label>
-              <div className="relative">
-                <User className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="username"
-                  className="pl-10 bg-muted"
-                  value={profile.username}
-                  disabled
-                  placeholder="admin"
-                />
-              </div>
-              <p className="text-[10px] text-muted-foreground">
-                O nome de usuário não pode ser alterado.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
+              <Label htmlFor="email">E-mail de Login</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="email"
-                  type="email"
-                  className="pl-10"
-                  value={profile.email || ""}
-                  onChange={(e) =>
-                    setProfile({ ...profile, email: e.target.value })
-                  }
+                  className="pl-10 bg-muted"
+                  value={profile.email}
+                  disabled
                   placeholder="seu@email.com"
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="phone">Telefone/WhatsApp</Label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="phone"
-                  className="pl-10"
-                  value={profile.phone || ""}
-                  onChange={(e) =>
-                    setProfile({ ...profile, phone: e.target.value })
-                  }
-                  placeholder="(00) 00000-0000"
-                />
-              </div>
+              <p className="text-[10px] text-muted-foreground">
+                O e-mail de login não pode ser alterado diretamente aqui.
+              </p>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarProvider } from "@/context/sidebar-context";
 import { StudioProvider } from "@/context/studio-context";
-import { getSession, logout } from "@/lib/auth-client";
+import { getSession, signOut } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 function MobileNav({
@@ -51,7 +51,6 @@ function AdminLayoutContent({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  // Se já temos o slug via prop, não precisamos do useParams aqui
   const slug = propSlug;
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -61,97 +60,72 @@ function AdminLayoutContent({
     name: string;
   } | null>(null);
 
-  console.log(
-    ">>> [DASHBOARD_LAYOUT] Renderizando AdminLayoutContent. Estado:",
-    {
-      isAuthenticated,
-      isLoading,
-      slug,
-    },
-  );
-
   useEffect(() => {
-    // Timeout de segurança: se após 5 segundos a sessão não responder, libera o loading
     const safetyTimeout = setTimeout(() => {
       if (isLoading) {
-        console.warn(
-          ">>> [DASHBOARD_LAYOUT] Timeout de segurança atingido (5s). Forçando isLoading -> false",
-        );
+        console.warn(">>> [DASHBOARD_LAYOUT] Timeout de segurança atingido.");
         setIsLoading(false);
       }
     }, 5000);
 
     const checkSession = async () => {
       try {
-        console.log(">>> [DASHBOARD_LAYOUT] checkSession iniciada.");
-        const token =
-          typeof window !== "undefined"
-            ? localStorage.getItem("auth_token")
-            : undefined;
+        console.log(
+          ">>> [DASHBOARD_LAYOUT] Verificando sessão com better-auth...",
+        );
 
-        const sessionData = await getSession(token || undefined);
-        console.log(">>> [DASHBOARD_LAYOUT] Resposta recebida:", !!sessionData);
+        const { data: sessionData, error } = await getSession();
 
-        const user =
-          sessionData?.user ||
-          sessionData?.data?.user ||
-          sessionData?.session?.user ||
-          (sessionData?.email ? sessionData : null);
-
-        if (!sessionData || !user) {
+        if (error || !sessionData) {
           console.warn(
-            ">>> [DASHBOARD_LAYOUT] Sessão não encontrada no primeiro check. Re-tentando em 1s...",
+            ">>> [DASHBOARD_LAYOUT] Sessão inválida ou erro:",
+            error,
           );
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          router.push("/admin");
+          return;
+        }
 
-          const secondCheck = await getSession(token || undefined);
-          const secondUser =
-            secondCheck?.user ||
-            secondCheck?.data?.user ||
-            secondCheck?.session?.user;
+        const user = sessionData.user;
 
-          if (secondCheck && secondUser) {
-            console.log(">>> [DASHBOARD_LAYOUT] Sessão recuperada.");
-            setIsAuthenticated(true);
-            setAdminUser({
-              name: secondUser.name || "Administrador",
-              username: secondUser.email,
-            });
-          } else {
-            console.error(">>> [DASHBOARD_LAYOUT] Sessão realmente inválida.");
-            router.push("/admin");
-          }
-        } else {
-          console.log(">>> [DASHBOARD_LAYOUT] Sessão válida encontrada.");
-          if (typeof window !== "undefined" && user.id) {
-            localStorage.setItem("current_admin_id", user.id);
-          }
+        // Verificação de Nível de Acesso (Slug do negócio)
+        // @ts-expect-error - Acesso dinâmico a propriedades do better-auth que não estão no tipo padrão
+        const businessSlug = user?.business?.slug || user?.slug;
 
-          setIsAuthenticated(true);
-          setAdminUser({
-            name: user.name || "Administrador",
-            username: user.email,
-          });
+        if (businessSlug && businessSlug !== slug) {
+          console.warn(
+            `>>> [DASHBOARD_LAYOUT] Acesso negado. Usuário do estúdio ${businessSlug} tentando acessar ${slug}`,
+          );
+          router.push(`/admin/${businessSlug}/dashboard/overview`);
+          return;
+        }
+
+        console.log(">>> [DASHBOARD_LAYOUT] Sessão válida encontrada.");
+        setIsAuthenticated(true);
+        setAdminUser({
+          name: user.name || "Administrador",
+          username: user.email,
+        });
+
+        if (typeof window !== "undefined" && user.id) {
+          localStorage.setItem("current_admin_id", user.id);
         }
       } catch (error) {
-        console.error(">>> [DASHBOARD_LAYOUT] Erro no checkSession:", error);
+        console.error(">>> [DASHBOARD_LAYOUT] Erro crítico na sessão:", error);
         router.push("/admin");
       } finally {
         setIsLoading(false);
         clearTimeout(safetyTimeout);
-        console.log(">>> [DASHBOARD_LAYOUT] checkSession finalizada.");
       }
     };
 
     checkSession();
     return () => clearTimeout(safetyTimeout);
-  }, [router, isLoading]);
+  }, [router, slug, isLoading]);
 
   const handleLogout = async () => {
-    await logout();
+    await signOut();
     if (typeof window !== "undefined") {
       localStorage.removeItem("current_admin_id");
-      localStorage.removeItem("auth_token");
     }
     router.push("/admin");
   };

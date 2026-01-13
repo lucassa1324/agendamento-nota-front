@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { loginWithEmail } from "@/lib/auth-client";
+import { signIn } from "@/lib/auth-client";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -32,67 +32,52 @@ export function LoginForm() {
       // Logs de Depuração: Confirmar credenciais antes de enviar
       console.log("Enviando credenciais:", { email });
 
-      const result = await loginWithEmail(email, password);
-      console.log("Dados recebidos:", result);
+      const { data, error: authError } = await signIn.email({
+        email,
+        password,
+        callbackURL: "/",
+      });
 
-      if (result) {
-        // Captura flexível de slug
-        const businessSlug =
-          result.data?.user?.business?.slug ||
-          result.data?.business?.slug ||
-          result.user?.business?.slug ||
-          result.business?.slug ||
-          result.slug;
+      if (authError) {
+        console.error(">>> [LOGIN_FLOW] Erro no signIn:", authError);
+        if (authError.status === 401) {
+          setError("Email ou senha incorretos.");
+        } else {
+          setError(authError.message || "Erro ao realizar login.");
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      if (data) {
+        console.log(">>> [LOGIN_FLOW] Login bem-sucedido. Dados:", data);
+
+        // No better-auth, o slug costuma vir nos metadados do usuário ou em uma tabela vinculada
+        // biome-ignore lint/suspicious/noExplicitAny: Acesso dinâmico a propriedades do better-auth
+        const user = data.user as any;
+        const businessSlug = user?.business?.slug || user?.slug;
 
         if (!businessSlug) {
           console.warn(">>> [LOGIN_FLOW] Login 200, mas sem slug.");
           setError(
-            "Sua conta foi autenticada, mas não encontramos um estúdio vinculado. Verifique se os cookies estão habilitados.",
+            "Sua conta foi autenticada, mas não encontramos um estúdio vinculado.",
           );
           setIsLoading(false);
           return;
         }
 
-        // Se houver um token, salva no localStorage como fallback
-        const token =
-          result.token ||
-          result.data?.token ||
-          result.session?.id ||
-          result.session?.sessionToken ||
-          result.data?.session?.id;
-
-        if (token && typeof token === "string") {
-          localStorage.setItem("auth_token", token);
-        }
-
         console.log(
-          `>>> [LOGIN_FLOW] Sucesso! Aguardando 500ms para estabilização dos cookies antes de ir para: ${businessSlug}`,
+          `>>> [LOGIN_FLOW] Sucesso! Redirecionando para: ${businessSlug}`,
         );
 
         // Delay de estabilização para garantir que o navegador processe o Set-Cookie
         setTimeout(() => {
           router.push(`/admin/${businessSlug}/dashboard/overview`);
         }, 500);
-        return;
       }
-      // Se result for null mas não cair no catch, provavelmente credenciais erradas
-      setError("Email ou senha incorretos.");
-      setIsLoading(false);
     } catch (err: unknown) {
       console.error(">>> [LOGIN_FLOW] Erro crítico:", err);
-
-      const error = err as { status?: number; message?: string };
-
-      // Tratamento refinado de erros visuais
-      if (error.status === 401 || error.message?.includes("401")) {
-        setError("Email ou senha incorretos.");
-      } else if (error.status === 500 || error.message?.includes("500")) {
-        setError("Erro no servidor. Tente novamente em instantes.");
-      } else {
-        setError(
-          "Não foi possível conectar ao servidor. Verifique sua conexão.",
-        );
-      }
+      setError("Não foi possível conectar ao servidor. Verifique sua conexão.");
       setIsLoading(false);
     }
   };

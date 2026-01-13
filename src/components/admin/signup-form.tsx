@@ -32,23 +32,30 @@ export function SignUpForm() {
 
     try {
       console.log(">>> [SIGNUP] Iniciando cadastro para:", email);
-      const result = await signUp(email, password, name, studioName);
 
-      console.log(">>> [SIGNUP] Resposta do cadastro:", result);
+      const { data, error: authError } = await signUp.email({
+        email,
+        password,
+        name,
+        // @ts-expect-error - studioName é um campo customizado suportado pelo nosso backend
+        studioName,
+        callbackURL: "/admin",
+      });
 
-      if (result) {
+      if (authError) {
+        console.error(">>> [SIGNUP] Erro no cadastro:", authError);
+        setError(authError.message || "Erro ao criar conta.");
+        setIsLoading(false);
+        return;
+      }
+
+      if (data) {
         console.log(
           ">>> [SIGNUP] Cadastro bem-sucedido, redirecionando para login...",
         );
         // Redireciona para a tela de login administrativa usando a URL absoluta do ambiente conforme solicitado
         const adminLoginUrl = `${process.env.NEXT_PUBLIC_ADMIN_URL}/admin`;
         window.location.href = adminLoginUrl;
-      } else {
-        console.error(">>> [SIGNUP] Resposta inválida do servidor:", result);
-        setError(
-          "Erro ao criar conta. O servidor não retornou os dados do negócio.",
-        );
-        setIsLoading(false);
       }
     } catch (err) {
       console.error(">>> [SIGNUP] Erro inesperado durante o cadastro:", err);
