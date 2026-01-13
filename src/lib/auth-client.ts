@@ -17,19 +17,14 @@ const ensureAbsolute = (origin?: string) => {
 };
 
 const FRONT_ORIGIN =
-  process.env.NODE_ENV === "production"
-    ? ensureAbsolute(
+  typeof window !== "undefined"
+    ? window.location.origin
+    : ensureAbsolute(
         process.env.NEXT_PUBLIC_FRONT_URL ||
           process.env.VERCEL_URL ||
           process.env.NEXT_PUBLIC_BASE_DOMAIN ||
           "http://localhost:3000",
-      )
-    : typeof window !== "undefined"
-      ? window.location.origin
-      : ensureAbsolute(
-          process.env.NEXT_PUBLIC_FRONT_URL ||
-            (process.env.NEXT_PUBLIC_BASE_DOMAIN || "http://localhost:3000"),
-        );
+      );
 
 export const AUTH_BASE_URL = `${FRONT_ORIGIN}/api/auth`;
 
