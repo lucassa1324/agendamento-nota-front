@@ -8,7 +8,12 @@ const cleanUrl = (url?: string) => {
 };
 
 export const API_BASE_URL = cleanUrl(process.env.NEXT_PUBLIC_API_URL);
+// Em produção (Vercel), usamos a rota relativa /api/auth via Rewrite para evitar problemas de cookies de terceiros.
+// Localmente, mantemos a URL absoluta para compatibilidade com o ambiente de desenvolvimento se necessário.
+export const AUTH_BASE_URL = process.env.NODE_ENV === "production" ? "/api/auth" : `${API_BASE_URL}/api/auth`;
+
 console.log(">>> [AUTH_CLIENT] API_BASE_URL configurada como:", API_BASE_URL);
+console.log(">>> [AUTH_CLIENT] AUTH_BASE_URL configurada como:", AUTH_BASE_URL);
 
 export const LANDING_PAGE_URL = cleanUrl(
   process.env.NEXT_PUBLIC_LANDING_PAGE_URL,
@@ -17,7 +22,7 @@ export const BASE_DOMAIN = cleanUrl(process.env.NEXT_PUBLIC_BASE_DOMAIN);
 export const ADMIN_URL = cleanUrl(process.env.NEXT_PUBLIC_ADMIN_URL);
 
 export const authClient = createAuthClient({
-  baseURL: API_BASE_URL,
+  baseURL: AUTH_BASE_URL,
   fetchOptions: {
     credentials: "include",
   },
