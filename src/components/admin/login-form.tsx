@@ -29,55 +29,47 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
-      // Logs de Depuração: Confirmar credenciais antes de enviar
-      console.log("Enviando credenciais:", { email });
+      console.log(">>> [LOGIN_FLOW] Iniciando login nativo com better-auth:", {
+        email,
+      });
 
       const { data, error: authError } = await signIn.email({
         email,
         password,
-        callbackURL: "/",
       });
 
       if (authError) {
         console.error(">>> [LOGIN_FLOW] Erro no signIn:", authError);
-        if (authError.status === 401) {
-          setError("Email ou senha incorretos.");
-        } else {
-          setError(authError.message || "Erro ao realizar login.");
-        }
+        setError(authError.message || "Email ou senha incorretos.");
         setIsLoading(false);
         return;
       }
 
       if (data) {
-        console.log(">>> [LOGIN_FLOW] Login bem-sucedido. Dados:", data);
+        console.log(">>> [LOGIN_FLOW] Login bem-sucedido via Better-Auth.");
 
-        // No better-auth, o slug costuma vir nos metadados do usuário ou em uma tabela vinculada
-        // biome-ignore lint/suspicious/noExplicitAny: Acesso dinâmico a propriedades do better-auth
-        const user = data.user as any;
+        interface AuthUser {
+          slug?: string;
+          business?: {
+            slug?: string;
+          };
+        }
+
+        const user = data.user as AuthUser;
         const businessSlug = user?.business?.slug || user?.slug;
 
         if (!businessSlug) {
-          console.warn(">>> [LOGIN_FLOW] Login 200, mas sem slug.");
-          setError(
-            "Sua conta foi autenticada, mas não encontramos um estúdio vinculado.",
-          );
+          console.warn(">>> [LOGIN_FLOW] Sem slug vinculado.");
+          setError("Sua conta não possui um estúdio vinculado.");
           setIsLoading(false);
           return;
         }
 
-        console.log(
-          `>>> [LOGIN_FLOW] Sucesso! Redirecionando para: ${businessSlug}`,
-        );
-
-        // Delay de estabilização para garantir que o navegador processe o Set-Cookie
-        setTimeout(() => {
-          router.push(`/admin/${businessSlug}/dashboard/overview`);
-        }, 500);
+        router.push(`/admin/${businessSlug}/dashboard/overview`);
       }
     } catch (err: unknown) {
       console.error(">>> [LOGIN_FLOW] Erro crítico:", err);
-      setError("Não foi possível conectar ao servidor. Verifique sua conexão.");
+      setError("Não foi possível conectar ao servidor.");
       setIsLoading(false);
     }
   };

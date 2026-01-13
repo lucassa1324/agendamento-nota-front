@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarProvider } from "@/context/sidebar-context";
 import { StudioProvider } from "@/context/studio-context";
-import { getSession, signOut } from "@/lib/auth-client";
+import { signOut, useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 function MobileNav({
@@ -53,89 +53,61 @@ function AdminLayoutContent({
   const pathname = usePathname();
   const slug = propSlug;
 
+  const { data: session, isPending: isLoadingSession } = useSession();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [adminUser, setAdminUser] = useState<{
     username: string;
     name: string;
   } | null>(null);
 
   useEffect(() => {
-    const safetyTimeout = setTimeout(() => {
-      if (isLoading) {
-        console.warn(">>> [DASHBOARD_LAYOUT] Timeout de segurança atingido.");
-        setIsLoading(false);
-      }
-    }, 5000);
-
-    const checkSession = async () => {
-      try {
-        console.log(
-          ">>> [DASHBOARD_LAYOUT] Verificando sessão com better-auth...",
-        );
-
-        const { data: sessionData, error } = await getSession();
-
-        if (error || !sessionData) {
-          console.warn(
-            ">>> [DASHBOARD_LAYOUT] Sessão inválida ou erro:",
-            error,
-          );
-          router.push("/admin");
-          return;
-        }
-
-        const user = sessionData.user;
-
-        // Verificação de Nível de Acesso (Slug do negócio)
-        // @ts-expect-error - Acesso dinâmico a propriedades do better-auth que não estão no tipo padrão
-        const businessSlug = user?.business?.slug || user?.slug;
-
-        if (businessSlug && businessSlug !== slug) {
-          console.warn(
-            `>>> [DASHBOARD_LAYOUT] Acesso negado. Usuário do estúdio ${businessSlug} tentando acessar ${slug}`,
-          );
-          router.push(`/admin/${businessSlug}/dashboard/overview`);
-          return;
-        }
-
-        console.log(">>> [DASHBOARD_LAYOUT] Sessão válida encontrada.");
-        setIsAuthenticated(true);
-        setAdminUser({
-          name: user.name || "Administrador",
-          username: user.email,
-        });
-
-        if (typeof window !== "undefined" && user.id) {
-          localStorage.setItem("current_admin_id", user.id);
-        }
-      } catch (error) {
-        console.error(">>> [DASHBOARD_LAYOUT] Erro crítico na sessão:", error);
+    if (!isLoadingSession) {
+      if (!session) {
+        console.warn(">>> [DASHBOARD_LAYOUT] Nenhuma sessão encontrada.");
         router.push("/admin");
-      } finally {
-        setIsLoading(false);
-        clearTimeout(safetyTimeout);
+        return;
       }
-    };
 
-    checkSession();
-    return () => clearTimeout(safetyTimeout);
-  }, [router, slug, isLoading]);
+      interface AuthUser {
+        name: string;
+        email: string;
+        slug?: string;
+        business?: {
+          slug?: string;
+        };
+      }
+
+      const user = session.user as AuthUser;
+      const businessSlug = user?.business?.slug || user?.slug;
+
+      if (businessSlug && businessSlug !== slug) {
+        console.warn(
+          `>>> [DASHBOARD_LAYOUT] Acesso negado. Usuário do estúdio ${businessSlug} tentando acessar ${slug}`,
+        );
+        router.push(`/admin/${businessSlug}/dashboard/overview`);
+        return;
+      }
+
+      console.log(">>> [DASHBOARD_LAYOUT] Sessão válida encontrada via useSession.");
+      setIsAuthenticated(true);
+      setAdminUser({
+        name: user.name || "Administrador",
+        username: user.email,
+      });
+    }
+  }, [session, isLoadingSession, slug, router]);
 
   const handleLogout = async () => {
     await signOut();
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("current_admin_id");
-    }
     router.push("/admin");
   };
 
   const isPersonalizacao = pathname?.includes("/personalizacao");
 
-  if (isLoading) {
+  if (isLoadingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>Carregando...</p>
+        <p>Carregando sessão...</p>
       </div>
     );
   }

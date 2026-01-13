@@ -8,6 +8,8 @@ const cleanUrl = (url?: string) => {
 };
 
 export const API_BASE_URL = cleanUrl(process.env.NEXT_PUBLIC_API_URL);
+console.log(">>> [AUTH_CLIENT] API_BASE_URL configurada como:", API_BASE_URL);
+
 export const LANDING_PAGE_URL = cleanUrl(
   process.env.NEXT_PUBLIC_LANDING_PAGE_URL,
 );
@@ -19,13 +21,24 @@ export const authClient = createAuthClient({
   fetchOptions: {
     credentials: "include",
   },
-  // Prioriza cookies e garante persistência estável
+  // O Better-Auth gerencia os cookies automaticamente
   session: {
     cookieCache: {
       enabled: true,
       factor: 0.8,
     },
   },
+  // Tipagem para os campos customizados do usuário (slug, business)
+  user: {
+    additionalFields: {
+      slug: {
+        type: "string",
+      },
+      business: {
+        type: "object",
+      },
+    },
+  },
 });
 
-export const { signIn, signUp, signOut, useSession, getSession } = authClient;
+export const { signIn, signUp, signOut, useSession, getSession, listSessions, revokeSession } = authClient;
