@@ -759,8 +759,7 @@ export function HeroEditor({
 
         <TabsContent value="style" className="space-y-4 mt-0">
           <Accordion
-            type="single"
-            collapsible
+            type="multiple"
             className="w-full space-y-2 border-none"
             onValueChange={handleAccordionChange}
           >

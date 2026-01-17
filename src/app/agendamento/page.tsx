@@ -8,11 +8,12 @@ import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
 export default function AgendamentoPage({
   searchParams: searchParamsPromise,
 }: {
-  searchParams: Promise<{ only?: string }>;
+  searchParams: Promise<{ only?: string; preview?: string }>;
 }) {
   const router = useRouter();
   const searchParams = use(searchParamsPromise);
   const only = searchParams.only;
+  const isPreview = searchParams.preview === "true";
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
@@ -27,7 +28,8 @@ export default function AgendamentoPage({
 
   useEffect(() => {
     const checkVisibility = (visibility: Record<string, boolean>) => {
-      if (visibility.agendar === false) {
+      // Se estiver em modo preview, não redirecionamos mesmo que a página esteja desativada
+      if (visibility.agendar === false && !isPreview) {
         setIsVisible(false);
         router.push("/");
       } else {
@@ -64,7 +66,7 @@ export default function AgendamentoPage({
         handleSectionsUpdate,
       );
     };
-  }, [router]);
+  }, [router, isPreview]);
 
   if (isVisible === false) return null;
   if (isVisible === null) return null;

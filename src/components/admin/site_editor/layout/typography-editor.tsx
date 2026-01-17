@@ -36,15 +36,19 @@ export function TypographyEditor({
   hasChanges,
   onSave,
 }: TypographyEditorProps) {
-  const handleAccordionChange = (value: string) => {
-    if (value && onHighlight) {
+  const handleAccordionChange = (values: string | string[]) => {
+    if (onHighlight) {
       const highlightMap: Record<string, string> = {
         "item-headings": "hero-title",
         "item-subtitles": "hero-subtitle",
         "item-body": "services-description",
       };
-      if (highlightMap[value]) {
-        onHighlight(highlightMap[value]);
+      
+      const activeValues = Array.isArray(values) ? values : [values];
+      const lastValue = activeValues[activeValues.length - 1];
+      
+      if (lastValue && highlightMap[lastValue]) {
+        onHighlight(highlightMap[lastValue]);
       }
     }
   };
@@ -65,8 +69,7 @@ export function TypographyEditor({
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <Accordion
-        type="single"
-        collapsible
+        type="multiple"
         className="w-full space-y-2 border-none"
         onValueChange={handleAccordionChange}
       >

@@ -15,11 +15,12 @@ import {
 export default function GaleriaPage({
   searchParams: searchParamsPromise,
 }: {
-  searchParams: Promise<{ only?: string }>;
+  searchParams: Promise<{ only?: string; preview?: string }>;
 }) {
   const router = useRouter();
   const searchParams = use(searchParamsPromise);
   const initialOnly = searchParams.only;
+  const isPreview = searchParams.preview === "true";
   const [isolatedSection, setIsolatedSection] = useState<string | null>(
     initialOnly || null,
   );
@@ -43,7 +44,8 @@ export default function GaleriaPage({
   useEffect(() => {
     // Verificar visibilidade
     const checkVisibility = (visibility: Record<string, boolean>) => {
-      if (visibility.galeria === false) {
+      // Se estiver em modo preview, não redirecionamos mesmo que a página esteja desativada
+      if (visibility.galeria === false && !isPreview) {
         setIsVisible(false);
         router.push("/");
       } else {
@@ -83,7 +85,7 @@ export default function GaleriaPage({
         handleSectionsUpdate,
       );
     };
-  }, [router]);
+  }, [router, isPreview]);
 
   if (isVisible === false) return null;
   if (isVisible === null) return null; // Loading state

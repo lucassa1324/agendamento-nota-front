@@ -45,9 +45,8 @@ export function CTAEditor({
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
       <Accordion
-        type="single"
-        collapsible
-        defaultValue="title"
+        type="multiple"
+        defaultValue={["title"]}
         className="w-full space-y-4 border-none"
       >
         {/* Título */}

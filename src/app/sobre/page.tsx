@@ -12,11 +12,12 @@ import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
 export default function SobrePage({
   searchParams: searchParamsPromise,
 }: {
-  searchParams: Promise<{ only?: string }>;
+  searchParams: Promise<{ only?: string; preview?: string }>;
 }) {
   const router = useRouter();
   const searchParams = use(searchParamsPromise);
   const only = searchParams.only;
+  const isPreview = searchParams.preview === "true";
   const [isVisible, setIsVisible] = useState<boolean | null>(null);
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
@@ -31,7 +32,8 @@ export default function SobrePage({
 
   useEffect(() => {
     const checkVisibility = (visibility: Record<string, boolean>) => {
-      if (visibility.sobre === false) {
+      // Se estiver em modo preview, não redirecionamos mesmo que a página esteja desativada
+      if (visibility.sobre === false && !isPreview) {
         setIsVisible(false);
         router.push("/");
       } else {
@@ -69,7 +71,7 @@ export default function SobrePage({
         handleSectionsUpdate,
       );
     };
-  }, [router]);
+  }, [router, isPreview]);
 
   const isSectionVisible = (sectionId: string) => {
     // Exceção: 'typography' e 'colors' mostram a página inteira

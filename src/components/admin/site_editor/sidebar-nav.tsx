@@ -105,7 +105,7 @@ export function SidebarNav({
               </div>
 
               <div className="flex items-center gap-2 xl:gap-3">
-                {page.id !== "layout" && page.id !== "inicio" && (
+                {page.id !== "layout" && (
                   <Switch
                     checked={isPageVisible}
                     onCheckedChange={(checked: boolean) =>
