@@ -22,9 +22,9 @@ type BlockPayload = {
 
 type SettingsPayload = {
   companyId: string;
-  interval: string;
+  interval?: string;
+  slotInterval?: string; // Adicionado para suportar o campo que o backend retorna
   weekly: WeekdaySchedulePayload[];
-  // Removido blocks daqui pois agora será POST individual
 };
 
 class BusinessService {
@@ -91,6 +91,65 @@ class BusinessService {
     return response.json().catch(() => ({}));
   }
 
+  async getSettings(companyId: string): Promise<SettingsPayload | null> {
+    const headers = await this.getAuthHeaders();
+    const url = `${this.baseUrl}/${companyId}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      const msg = await response.text().catch(() => "");
+      throw new Error(
+        msg || `Falha ao buscar configurações (${response.status})`,
+      );
+    }
+
+    const data = await response.json();
+    
+    // Normalizar slotInterval para interval se necessário
+    if (data?.slotInterval && !data.interval) {
+      data.interval = data.slotInterval;
+    }
+
+    return data;
+  }
+
+  async getBlocks(companyId: string): Promise<BlockedPeriod[]> {
+    const headers = await this.getAuthHeaders();
+    const url = `${this.baseUrl}/${companyId}/blocks`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const msg = await response.text().catch(() => "");
+      throw new Error(msg || `Falha ao buscar bloqueios (${response.status})`);
+    }
+
+    const data = await response.json();
+    
+    // Mapear do backend para o formato esperado pelo frontend se necessário
+    if (Array.isArray(data)) {
+      return data.map((b: Partial<BlockPayload & { id?: string; startDate?: string; date?: string }>) => ({
+        id: b.id || Math.random().toString(36).slice(2, 11),
+        date: b.startDate || b.date || "",
+        startTime: b.startTime,
+        endTime: b.endTime,
+        reason: b.reason,
+      }));
+    }
+
+    return [];
+  }
+
   async createBlock(payload: BlockPayload) {
     const headers = await this.getAuthHeaders();
     const url = `${this.baseUrl}/${payload.companyId}/blocks`;
@@ -115,6 +174,24 @@ class BusinessService {
 
     return response.json().catch(() => ({}));
   }
+
+  async deleteBlock(companyId: string, blockId: string) {
+    const headers = await this.getAuthHeaders();
+    const url = `${this.baseUrl}/${companyId}/blocks/${blockId}`;
+
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const msg = await response.text().catch(() => "");
+      throw new Error(msg || `Falha ao excluir bloqueio (${response.status})`);
+    }
+
+    return true;
+  }
 }
 
 export const businessService = new BusinessService();
@@ -133,41 +210,16 @@ export function buildSchedulePayload(
   }));
 }
 
-export function buildBlocksPayload(
-  blocks: BlockedPeriod[],
-  companyId: string,
-): BlockPayload[] {
-  return blocks.map((b) => {
-    let type: "BLOCK_DAY" | "BLOCK_HOUR" | "BLOCK_PERIOD" = "BLOCK_DAY";
-    if (b.startTime && b.endTime) {
-      type = "BLOCK_HOUR";
-    }
-
-    return {
-      companyId,
-      type,
-      startDate: b.date,
-      endDate: b.date,
-      startTime: b.startTime ? normalizeTime(b.startTime) : undefined,
-      endTime: b.endTime ? normalizeTime(b.endTime) : undefined,
-      reason: b.reason,
-    };
-  });
+export function normalizeTime(time: string): string {
+  if (!time) return "00:00";
+  if (time.length === 5 && time.includes(":")) return time;
+  // Se for apenas H:mm ou algo assim, tenta normalizar
+  const [h, m] = time.split(":");
+  return `${h.padStart(2, "0")}:${(m || "00").padEnd(2, "0")}`;
 }
 
 export function minutesToHHmm(minutes: number): string {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(h)}:${pad(m)}`;
-}
-
-function normalizeTime(value: string): string {
-  const v = (value || "").trim();
-  if (/^\d{2}:\d{2}$/.test(v)) return v;
-  const parts = v.split(":");
-  const hh = parts[0] || "00";
-  const mm = parts[1] || "00";
-  const pad = (s: string) => s.padStart(2, "0").slice(-2);
-  return `${pad(hh)}:${pad(mm)}`;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
 }

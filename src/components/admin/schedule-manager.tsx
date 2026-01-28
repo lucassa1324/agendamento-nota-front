@@ -48,22 +48,107 @@ export function ScheduleManager() {
     reason: "",
   });
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
 
-  const loadSchedule = useCallback(() => {
-    const schedule = getWeekSchedule();
-    const blocked = getBlockedPeriods();
-    setWeekSchedule(schedule);
-    setInitialSchedule(JSON.stringify(schedule));
-    setBlockedPeriods(blocked);
-    setInitialBlocked(JSON.stringify(blocked));
+  const loadSchedule = useCallback(async () => {
+    if (!studio?.id) return;
+    setIsLoading(true);
 
-    // Pegar o intervalo do primeiro dia aberto como padrão para o select global
-    const firstOpenDay = schedule.find((d) => d.isOpen);
-    if (firstOpenDay) {
-      setGlobalInterval(firstOpenDay.interval);
-      setInitialInterval(firstOpenDay.interval);
+    try {
+      // 1. Tentar carregar do Backend
+      const [settings, blocks] = await Promise.all([
+        businessService.getSettings(studio.id),
+        businessService.getBlocks(studio.id),
+      ]);
+
+      console.log("Intervalo vindo do banco:", settings?.interval || settings?.slotInterval);
+
+      let finalSchedule: DaySchedule[];
+
+      const dayNames = [
+        "Domingo",
+        "Segunda-feira",
+        "Terça-feira",
+        "Quarta-feira",
+        "Quinta-feira",
+        "Sexta-feira",
+        "Sábado",
+      ];
+
+      if (settings?.weekly?.length) {
+        // Mapear do backend para o estado local
+        const backendWeekly = settings.weekly;
+        
+        // Função auxiliar para converter HH:mm ou mm para número de minutos
+        const parseInterval = (val?: string) => {
+          if (!val) return 30;
+          if (val.includes(":")) {
+            const [hrs, mins] = val.split(":").map(n => parseInt(n, 10));
+            return (hrs * 60) + mins;
+          }
+          return parseInt(val, 10) || 30;
+        };
+
+        const currentInterval = parseInterval(settings.interval);
+
+        finalSchedule = Array.from({ length: 7 }, (_, i) => {
+          const dayData = backendWeekly.find((d) => Number(d.dayOfWeek) === i);
+          if (dayData) {
+            return {
+              dayOfWeek: i,
+              dayName: dayNames[i],
+              isOpen: dayData.status === "OPEN",
+              openTime: dayData.morningStart || "08:00",
+              lunchStart: dayData.morningEnd || "12:00",
+              lunchEnd: dayData.afternoonStart || "13:00",
+              closeTime: dayData.afternoonEnd || "18:00",
+              interval: currentInterval,
+            };
+          }
+          // Fallback para dia não encontrado no backend
+          return {
+            dayOfWeek: i,
+            dayName: dayNames[i],
+            isOpen: false,
+            openTime: "08:00",
+            lunchStart: "12:00",
+            lunchEnd: "13:00",
+            closeTime: "18:00",
+            interval: currentInterval,
+          };
+        });
+
+        setGlobalInterval(currentInterval);
+        setInitialInterval(currentInterval);
+      } else {
+        // 2. Fallback para LocalStorage se não houver dados no backend
+        finalSchedule = getWeekSchedule();
+        const firstOpenDay = finalSchedule.find((d) => d.isOpen);
+        if (firstOpenDay) {
+          setGlobalInterval(firstOpenDay.interval);
+          setInitialInterval(firstOpenDay.interval);
+        }
+      }
+
+      setWeekSchedule(finalSchedule);
+      setInitialSchedule(JSON.stringify(finalSchedule));
+
+      const finalBlocks = blocks || getBlockedPeriods();
+      setBlockedPeriods(finalBlocks);
+      setInitialBlocked(JSON.stringify(finalBlocks));
+    } catch (error) {
+      console.error("Erro ao carregar dados do servidor:", error);
+      // Fallback total para LocalStorage em caso de erro de conexão
+      const schedule = getWeekSchedule();
+      const blocked = getBlockedPeriods();
+      setWeekSchedule(schedule);
+      setInitialSchedule(JSON.stringify(schedule));
+      setBlockedPeriods(blocked);
+      setInitialBlocked(JSON.stringify(blocked));
+    } finally {
+      setIsLoading(false);
     }
-  }, []);
+  }, [studio?.id]);
 
   useEffect(() => {
     loadSchedule();
@@ -198,11 +283,36 @@ export function ScheduleManager() {
     }
   };
 
-  const removeBlockedPeriod = (id: string) => {
-    const updated = blockedPeriods.filter((p) => p.id !== id);
-    setBlockedPeriods(updated);
-    saveBlockedPeriods(updated);
-    setInitialBlocked(JSON.stringify(updated));
+  const handleDeleteBlock = async (id: string) => {
+    if (!studio?.id) return;
+
+    if (!window.confirm("Tem certeza que deseja remover este bloqueio?")) {
+      return;
+    }
+
+    try {
+      // Chamada ao backend
+      await businessService.deleteBlock(studio.id, id);
+
+      // Atualiza estado local para resposta instantânea
+      const updated = blockedPeriods.filter((p) => p.id !== id);
+      setBlockedPeriods(updated);
+      saveBlockedPeriods(updated);
+      setInitialBlocked(JSON.stringify(updated));
+
+      toast({
+        title: "Bloqueio Removido",
+        description: "O bloqueio foi excluído com sucesso do servidor.",
+        className: "bg-green-600 text-white border-none",
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Erro ao excluir bloqueio.";
+      toast({
+        title: "Falha na Exclusão",
+        description: message,
+        variant: "destructive",
+      });
+    }
   };
 
   const updateDaySchedule = (
@@ -256,6 +366,15 @@ export function ScheduleManager() {
       className: "bg-blue-600 text-white border-none",
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-100 gap-4">
+        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-muted-foreground animate-pulse">Carregando configurações da agenda...</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -639,7 +758,7 @@ export function ScheduleManager() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => removeBlockedPeriod(block.id)}
+                      onClick={() => handleDeleteBlock(block.id)}
                       className="text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="w-4 h-4" />
