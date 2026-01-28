@@ -59,7 +59,10 @@ class AppointmentService {
         const { data: sessionData } = await authClient.getSession();
         sessionToken = sessionData?.session?.token || null;
       } catch (e) {
-        console.error(">>> [AppointmentService] Erro ao buscar sessão via authClient:", e);
+        console.error(
+          ">>> [AppointmentService] Erro ao buscar sessão via authClient:",
+          e,
+        );
       }
     }
 
@@ -81,7 +84,10 @@ class AppointmentService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       if (response.status === 500) {
-        console.error(">>> [ERRO 500] Detalhes do Servidor (API Appointments):", errorData);
+        console.error(
+          ">>> [ERRO 500] Detalhes do Servidor (API Appointments):",
+          errorData,
+        );
       }
       throw {
         status: response.status,
@@ -113,7 +119,10 @@ class AppointmentService {
     return this.handleResponse(response);
   }
 
-  async updateStatus(id: string, status: AppointmentStatus): Promise<Appointment> {
+  async updateStatus(
+    id: string,
+    status: AppointmentStatus,
+  ): Promise<Appointment> {
     const headers = await this.getAuthHeaders();
     const response = await fetch(`${this.baseUrl}/${id}/status`, {
       method: "PATCH",

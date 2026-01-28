@@ -1,14 +1,6 @@
 "use client";
 
-import { addDays, format, isBefore, isEqual, parseISO } from "date-fns";
-import {
-  Ban,
-  Calendar,
-  CalendarRange,
-  Clock,
-  Save,
-  Trash2,
-} from "lucide-react";
+import { Ban, Calendar, CalendarRange, Save, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import {
   type BlockedPeriod,
@@ -31,8 +24,14 @@ import {
   saveBlockedPeriods,
   saveWeekSchedule,
 } from "@/lib/booking-data";
+import {
+  buildSchedulePayload,
+  businessService,
+  minutesToHHmm,
+} from "@/lib/business-service";
 
 export function ScheduleManager() {
+  const { studio } = useStudio();
   const [weekSchedule, setWeekSchedule] = useState<DaySchedule[]>([]);
   const [initialSchedule, setInitialSchedule] = useState<string>("");
   const [globalInterval, setGlobalInterval] = useState<number>(30);
@@ -71,6 +70,7 @@ export function ScheduleManager() {
   }, [loadSchedule]);
 
   const saveInterval = () => {
+    if (!studio?.id) return;
     const updatedSchedule = weekSchedule.map((day) => ({
       ...day,
       interval: globalInterval,
@@ -80,6 +80,14 @@ export function ScheduleManager() {
     setInitialSchedule(JSON.stringify(updatedSchedule));
     setInitialInterval(globalInterval);
 
+    businessService
+      .saveSettings({
+        companyId: studio.id,
+        interval: minutesToHHmm(globalInterval),
+        weekly: buildSchedulePayload(updatedSchedule),
+      })
+      .catch(() => {});
+
     toast({
       title: "Intervalo Atualizado!",
       description: `O intervalo de ${globalInterval} minutos foi aplicado e salvo.`,
@@ -88,8 +96,18 @@ export function ScheduleManager() {
   };
 
   const saveSchedule = () => {
+    if (!studio?.id) return;
     saveWeekSchedule(weekSchedule);
     setInitialSchedule(JSON.stringify(weekSchedule));
+
+    businessService
+      .saveSettings({
+        companyId: studio.id,
+        interval: minutesToHHmm(globalInterval),
+        weekly: buildSchedulePayload(weekSchedule),
+      })
+      .catch(() => {});
+
     toast({
       title: "Horários Salvos!",
       description:
@@ -99,11 +117,13 @@ export function ScheduleManager() {
   };
 
   const saveBlocked = () => {
+    if (!studio?.id) return;
     saveBlockedPeriods(blockedPeriods);
     setInitialBlocked(JSON.stringify(blockedPeriods));
+
     toast({
-      title: "Bloqueios Atualizados!",
-      description: "A lista de períodos bloqueados foi salva com sucesso.",
+      title: "Bloqueios Salvos Localmente",
+      description: "A lista de períodos bloqueados foi atualizada na interface.",
       className: "bg-orange-600 text-white border-none",
     });
   };
@@ -112,130 +132,77 @@ export function ScheduleManager() {
   const isIntervalDirty = globalInterval !== initialInterval;
   const isBlockedDirty = initialBlocked !== JSON.stringify(blockedPeriods);
 
-  const addBlockedPeriod = () => {
-    if (!newBlocked.date) {
+  const handleCreateBlock = async () => {
+    if (!studio?.id || !newBlocked.date) {
       toast({
         title: "Erro",
-        description: "Selecione uma data para o bloqueio.",
+        description: "Selecione pelo menos uma data para o bloqueio.",
         variant: "destructive",
       });
       return;
     }
 
-    const blocked: BlockedPeriod = {
-      id: Math.random().toString(36).slice(2, 11),
-      date: newBlocked.date as string,
-      startTime: newBlocked.startTime,
-      endTime: newBlocked.endTime,
-      reason: newBlocked.reason,
-    };
+    let type: "BLOCK_DAY" | "BLOCK_HOUR" | "BLOCK_PERIOD" = "BLOCK_DAY";
+    if (newBlocked.startTime && newBlocked.endTime) {
+      type = "BLOCK_HOUR";
+    } else if (newBlocked.endDate && newBlocked.endDate !== newBlocked.date) {
+      type = "BLOCK_PERIOD";
+    }
 
-    const updated = [...blockedPeriods, blocked];
-    setBlockedPeriods(updated);
-    setNewBlocked({
-      date: "",
-      endDate: "",
-      startTime: "",
-      endTime: "",
-      reason: "",
-    });
-  };
+    try {
+      await businessService.createBlock({
+        companyId: studio.id,
+        type,
+        startDate: newBlocked.date,
+        endDate: newBlocked.endDate || newBlocked.date,
+        startTime: newBlocked.startTime,
+        endTime: newBlocked.endTime,
+        reason: newBlocked.reason,
+      });
 
-  const addFullDayBlock = () => {
-    if (!newBlocked.date) {
+      // Atualiza lista local
+      const newBlockObj: BlockedPeriod = {
+        id: Math.random().toString(36).slice(2, 11),
+        date: newBlocked.date,
+        startTime: newBlocked.startTime,
+        endTime: newBlocked.endTime,
+        reason: newBlocked.reason,
+      };
+
+      const updated = [...blockedPeriods, newBlockObj];
+      setBlockedPeriods(updated);
+      saveBlockedPeriods(updated);
+      setInitialBlocked(JSON.stringify(updated));
+
+      // Limpa campos
+      setNewBlocked({
+        date: "",
+        endDate: "",
+        startTime: "",
+        endTime: "",
+        reason: "",
+      });
+
       toast({
-        title: "Erro",
-        description: "Selecione uma data para bloquear o dia todo.",
+        title: "Bloqueio Confirmado!",
+        description: "O bloqueio foi enviado com sucesso para o servidor.",
+        className: "bg-green-600 text-white border-none",
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Ocorreu um erro inesperado.";
+      toast({
+        title: "Erro ao criar bloqueio",
+        description: message,
         variant: "destructive",
       });
-      return;
     }
-
-    const blocked: BlockedPeriod = {
-      id: Math.random().toString(36).slice(2, 11),
-      date: newBlocked.date as string,
-      reason: newBlocked.reason || "Dia todo bloqueado",
-    };
-
-    const updated = [...blockedPeriods, blocked];
-    setBlockedPeriods(updated);
-    setNewBlocked({
-      date: "",
-      endDate: "",
-      startTime: "",
-      endTime: "",
-      reason: "",
-    });
-  };
-
-  const addRangeBlock = () => {
-    if (!newBlocked.date || !newBlocked.endDate) {
-      toast({
-        title: "Erro",
-        description:
-          "Selecione a data inicial e final para o bloqueio do período.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const start = parseISO(newBlocked.date);
-    const end = parseISO(newBlocked.endDate);
-
-    if (isBefore(end, start)) {
-      toast({
-        title: "Erro",
-        description: "A data final deve ser posterior à data inicial.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const newBlocks: BlockedPeriod[] = [];
-    let current = start;
-
-    while (isBefore(current, end) || isEqual(current, end)) {
-      const dateStr = format(current, "yyyy-MM-dd");
-
-      // Evitar duplicatas para a mesma data
-      if (!blockedPeriods.some((b) => b.date === dateStr)) {
-        newBlocks.push({
-          id: Math.random().toString(36).slice(2, 11),
-          date: dateStr,
-          reason: newBlocked.reason || "Período bloqueado",
-        });
-      }
-
-      current = addDays(current, 1);
-    }
-
-    if (newBlocks.length === 0) {
-      toast({
-        title: "Aviso",
-        description: "Todas as datas selecionadas já estão bloqueadas.",
-      });
-      return;
-    }
-
-    const updated = [...blockedPeriods, ...newBlocks];
-    setBlockedPeriods(updated);
-    setNewBlocked({
-      date: "",
-      endDate: "",
-      startTime: "",
-      endTime: "",
-      reason: "",
-    });
-
-    toast({
-      title: "Período Bloqueado!",
-      description: `${newBlocks.length} dias foram adicionados aos bloqueios.`,
-      className: "bg-orange-600 text-white border-none",
-    });
   };
 
   const removeBlockedPeriod = (id: string) => {
-    setBlockedPeriods((prev) => prev.filter((p) => p.id !== id));
+    const updated = blockedPeriods.filter((p) => p.id !== id);
+    setBlockedPeriods(updated);
+    saveBlockedPeriods(updated);
+    setInitialBlocked(JSON.stringify(updated));
   };
 
   const updateDaySchedule = (
@@ -622,27 +589,11 @@ export function ScheduleManager() {
               </div>
               <div className="flex items-end gap-2 lg:col-span-2">
                 <Button
-                  onClick={addBlockedPeriod}
-                  variant="outline"
-                  className="flex-1"
+                  onClick={handleCreateBlock}
+                  className="w-full bg-destructive hover:bg-destructive/90 text-white shadow-lg transition-all active:scale-95"
                 >
-                  <Clock className="w-4 h-4 mr-2" />
-                  Bloquear Horário
-                </Button>
-                <Button
-                  onClick={addFullDayBlock}
-                  variant="secondary"
-                  className="flex-1"
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Bloquear Dia
-                </Button>
-                <Button
-                  onClick={addRangeBlock}
-                  className="flex-1 bg-destructive hover:bg-destructive/90 text-white shadow-md"
-                >
-                  <CalendarRange className="w-4 h-4 mr-2" />
-                  Bloquear Período
+                  <Ban className="w-4 h-4 mr-2" />
+                  Confirmar Bloqueio
                 </Button>
               </div>
             </div>
