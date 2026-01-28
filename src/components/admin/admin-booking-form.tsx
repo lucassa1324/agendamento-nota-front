@@ -1,18 +1,19 @@
 "use client";
 
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useStudio } from "@/context/studio-context";
+import { toast } from "@/hooks/use-toast";
 import {
   type Booking,
   type BookingStepSettings,
   type Service,
   saveBookingToStorage,
   sendBookingNotifications,
-  updateBooking,
 } from "@/lib/booking-data";
 
 type AdminBookingFormProps = {
@@ -34,6 +35,8 @@ export function AdminBookingForm({
   initialBooking,
   settings,
 }: AdminBookingFormProps) {
+  const { studio } = useStudio();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: initialBooking?.clientName || "",
     email: initialBooking?.clientEmail || "",
@@ -53,35 +56,91 @@ export function AdminBookingForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!studio?.id) return;
 
-    const booking: Booking = {
-      id: initialBooking?.id || Date.now().toString(),
-      serviceId: service.id.includes(",") ? service.id.split(",") : service.id,
-      serviceName: service.name,
-      serviceDuration: service.duration,
-      servicePrice: formData.price,
-      date,
-      time,
-      clientName: formData.name,
-      clientEmail: formData.email,
-      clientPhone: formData.phone,
-      status: initialBooking?.status || "pendente",
-      createdAt: initialBooking?.createdAt || new Date().toISOString(),
-      notificationsSent: initialBooking?.notificationsSent || {
-        email: false,
-        whatsapp: false,
-      },
-    };
+    setIsLoading(true);
 
-    if (initialBooking) {
-      updateBooking(booking);
-    } else {
+    try {
+      // 1. Preparar o agendamento para o novo Back-end (Elysia)
+      const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
+
+      // Log para validar o Service ID e outros dados antes de enviar
+      console.log("🔍 Validando dados para o Back-end:");
+      console.log("Service ID:", service.id);
+      console.log("Is UUID:", /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(service.id));
+      
+      const appointmentData = {
+        companyId: studio.id,
+        serviceId: service.id, // Vindo de service.id (prop do componente)
+        customerId: null, // Enviar null para agendamentos manuais via Admin
+        scheduledAt,
+        customerName: formData.name,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        serviceNameSnapshot: service.name,
+        servicePriceSnapshot: formData.price.toFixed(2), // String decimal
+        serviceDurationSnapshot: service.duration.toString(), // String minutos
+        notes: "Agendado via Admin",
+      };
+
+      console.log("📤 Enviando agendamento:", appointmentData);
+
+      const res = await fetch("http://localhost:3001/api/appointments/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(appointmentData),
+      });
+
+      if (!res.ok) {
+        const errorDetail = await res.json().catch(() => ({ message: "Erro ao processar JSON de erro" }));
+        if (res.status === 500) {
+          console.error(">>> [ERRO 500] Detalhes do Erro no Banco:", errorDetail);
+        }
+        console.log("❌ Erro detalhado da API:", errorDetail);
+        throw new Error(errorDetail.message || "Erro desconhecido no servidor");
+      }
+
+      const result = await res.json();
+      console.log("✅ Agendamento criado com sucesso:", result);
+
+      // 2. Manter compatibilidade com o objeto Booking legado
+      const booking: Booking = {
+        id: result.id,
+        serviceId: service.id,
+        serviceName: service.name,
+        serviceDuration: service.duration,
+        servicePrice: formData.price,
+        date,
+        time,
+        clientName: formData.name,
+        clientEmail: formData.email,
+        clientPhone: formData.phone,
+        status: "pending",
+        createdAt: result.createdAt,
+        notificationsSent: {
+          email: false,
+          whatsapp: false,
+        },
+      };
+
       saveBookingToStorage(booking);
+
+      await sendBookingNotifications(booking);
+
+      onConfirm(booking);
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("🚨 Falha na submissão:", err.message);
+      console.log("Pilha do erro:", err);
+      
+      toast({
+        title: "Erro ao criar agendamento",
+        description: err.message || "Ocorreu um erro inesperado no servidor.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    await sendBookingNotifications(booking);
-
-    onConfirm(booking);
   };
 
   return (
@@ -235,13 +294,23 @@ export function AdminBookingForm({
 
             <Button
               type="submit"
+              disabled={isLoading}
               className="w-full h-12 text-lg font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
               style={{
                 backgroundColor: settings?.accentColor || "var(--primary)",
                 color: "#fff",
               }}
             >
-              {initialBooking ? "Salvar Alterações" : "Confirmar Agendamento"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : initialBooking ? (
+                "Salvar Alterações"
+              ) : (
+                "Confirmar Agendamento"
+              )}
             </Button>
           </form>
         </CardContent>

@@ -40,6 +40,9 @@ import {
   Utensils,
   Wind,
 } from "lucide-react";
+import { useParams } from "next/navigation";
+import { useStudio } from "@/context/studio-context";
+import { API_BASE_URL } from "@/lib/auth-client";
 
 const availableIcons = [
   // Beleza & Estética
@@ -146,6 +149,7 @@ const availableIcons = [
 
 import { ArrowDownCircle, HelpCircle, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { authClient } from "@/lib/auth-client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -194,8 +198,26 @@ import {
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
+const API_URL = `${API_BASE_URL}/api/services`.replace(/\/+$/, "");
+
+console.log(">>> [SERVICES_MANAGER] API_BASE_URL:", API_BASE_URL);
+console.log(">>> [SERVICES_MANAGER] API_URL configurada para:", API_URL);
+
+interface BackendService {
+  id: string;
+  name: string;
+  description: string;
+  duration: string | number;
+  price: string | number;
+  icon?: string;
+  showOnHome?: boolean;
+  conflictingServiceIds?: string[];
+  products?: { productId: string; quantity: number; useSecondaryUnit?: boolean }[];
+}
+
 export function ServicesManager() {
   const [services, setServices] = useState<Service[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [allProducts, setAllProducts] = useState<InventoryItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -219,50 +241,99 @@ export function ServicesManager() {
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [conflictSearch, setConflictSearch] = useState("");
   const { toast } = useToast();
+  const params = useParams();
+  const { studio, isLoading: studioLoading } = useStudio();
+  const rawSlug = (params as Record<string, string | string[] | undefined>)?.slug;
+  const slugParam = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
+
+  // Função auxiliar centralizada para obter headers de autenticação
+  const getAuthOptions = () => {
+    const getCookie = (name: string) => {
+      if (typeof document === "undefined") return null;
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(";").shift();
+      return null;
+    };
+
+    const sessionToken = typeof window !== "undefined" 
+      ? (localStorage.getItem("better-auth.session_token") || 
+         localStorage.getItem("better-auth.access_token") ||
+         getCookie("better-auth.session_token"))
+      : null;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (sessionToken) {
+      headers["Authorization"] = `Bearer ${sessionToken}`;
+    }
+
+    return {
+      headers,
+      credentials: "include" as const,
+    };
+  };
 
   useEffect(() => {
+    if (!studio?.id) return;
     loadServices();
     setAllProducts(getInventoryFromStorage());
-  }, []);
+  }, [studio?.id]);
 
-  const loadServices = () => {
-    const settings = getSettingsFromStorage();
-    const loadedInventory = getInventoryFromStorage();
-    const cotton = loadedInventory.find((p) => p.name === "Algodão");
+  const loadServices = async () => {
+    if (!studio?.id) {
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const loadUrl = `${API_URL}/company/${studio.id}`.replace(/([^:]\/)\/+/g, "$1");
+      console.log(">>> [SERVICES_MANAGER] Buscando serviços em:", loadUrl);
+      
+      const authOptions = getAuthOptions();
+      
+      console.log(">>> [SERVICES_MANAGER] Header de Auth enviado:", authOptions.headers["Authorization"] ? "Bearer [TOKEN_PRESENTE]" : "NENHUM");
 
-    // Migração/Correção para serviços que usam Algodão
-    let wasModified = false;
-    const updatedServices = settings.services.map((service: Service) => {
-      if (!service.products) return service;
-
-      let serviceModified = false;
-      const updatedProducts = service.products.map((sp) => {
-        if (cotton && sp.productId === cotton.id) {
-          // Se o produto for Algodão, garante que use unidade secundária e tenha quantidade razoável (10g)
-          if (!sp.useSecondaryUnit || sp.quantity > 50) {
-            serviceModified = true;
-            return { ...sp, useSecondaryUnit: true, quantity: 10 };
-          }
-        }
-        return sp;
+      const response = await fetch(loadUrl, {
+        ...authOptions,
       });
 
-      if (serviceModified) {
-        wasModified = true;
-        return { ...service, products: updatedProducts };
+      console.log(">>> [SERVICES_MANAGER] Resposta da API:", {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(">>> [SERVICES_MANAGER] Erro na resposta:", errorData);
+        throw new Error(`Erro ao carregar serviços (${response.status})`);
       }
-      return service;
-    });
+      
+      const data = await response.json();
+      console.log(">>> [SERVICES_MANAGER] Dados recebidos:", data);
+      
+      // Mapear os dados do Back-end (que usa strings decimais) de volta para numbers se necessário
+      // e garantir que os campos opcionais existam
+      const formattedServices = data.map((s: BackendService) => ({
+        ...s,
+        price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
+        duration: typeof s.duration === "string" ? parseInt(s.duration, 10) : s.duration,
+        conflictingServiceIds: s.conflictingServiceIds || [],
+        products: s.products || [],
+      }));
 
-    if (wasModified) {
-      saveSettings(updatedServices);
+      setServices(formattedServices);
+    } catch (error) {
+      console.error("Erro ao carregar serviços:", error);
       toast({
-        title: "Serviços Atualizados",
-        description:
-          "A configuração de consumo de Algodão nos serviços foi otimizada para gramas.",
+        title: "Erro",
+        description: "Não foi possível carregar a lista de serviços.",
+        variant: "destructive",
       });
-    } else {
-      setServices(settings.services);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -302,7 +373,7 @@ export function ServicesManager() {
     setIsModalOpen(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const newErrors: Record<string, boolean> = {
       name: !formData.name?.trim(),
       description: !formData.description?.trim(),
@@ -328,31 +399,106 @@ export function ServicesManager() {
       return;
     }
 
-    const serviceToSave = {
-      ...formData,
-      conflictingServiceIds: formData.conflictingServiceIds || [],
-      products: formData.products || [],
-    } as Service;
+    // Criar objeto limpo apenas com o que o backend pediu explicitamente
+    const cleanData = {
+      name: formData.name,
+      description: formData.description,
+      duration: Math.floor(Number(formData.duration)), // Enviar como número inteiro
+      price: Number(formData.price), // Enviar como número decimal
+      companyId: studio?.id,
+      icon: formData.icon || "Sparkles", // Ícone selecionado
+      showOnHome: formData.showOnHome ?? false, // Visibilidade na home
+    };
 
-    let updatedServices: Service[];
-    if (!editingId) {
-      updatedServices = [...services, serviceToSave];
-    } else {
-      updatedServices = services.map((s) =>
-        s.id === editingId ? serviceToSave : s,
-      );
+    console.log(">>> [SERVICES-MANAGER] Payload sendo enviado:", cleanData);
+
+    const authOptions = getAuthOptions();
+
+    try {
+      let response: Response;
+      if (!editingId) {
+        // Criar novo serviço
+        response = await fetch(API_URL, {
+          ...authOptions,
+          method: "POST",
+          body: JSON.stringify(cleanData),
+        });
+      } else {
+        // Atualizar serviço existente
+        const updateData = {
+          ...cleanData,
+          conflictingServiceIds: formData.conflictingServiceIds || [],
+          products: formData.products || [],
+          showOnHome: formData.showOnHome ?? true,
+        };
+        
+        const putUrl = `${API_URL}/${editingId}`.replace(/([^:]\/)\/+/g, "$1");
+        console.log(">>> [SERVICES_MANAGER] Disparando PUT para:", putUrl);
+
+        response = await fetch(putUrl, {
+          ...authOptions,
+          method: "PUT",
+          body: JSON.stringify(updateData),
+        });
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData = {};
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { raw: errorText };
+        }
+        
+        if (response.status === 500) {
+          console.error(">>> [ERRO 500] Resposta Completa do Servidor:", errorData);
+        }
+
+        const error = errorData as { message?: string; raw?: string };
+        throw new Error(
+          error.message || 
+          error.raw || 
+          "Erro ao salvar serviço no servidor"
+        );
+      }
+
+      toast({
+        title: editingId ? "Serviço Atualizado" : "Serviço Adicionado",
+        description: `O serviço "${formData.name}" foi salvo com sucesso.`,
+      });
+
+      setIsModalOpen(false);
+      setEditingId(null);
+      setFormData({});
+      setConflictSearch("");
+
+      // Recarregar lista do banco para garantir sincronia
+      await loadServices();
+
+      // Sincronizar localStorage para compatibilidade com outros componentes
+      const getUrl = `${API_URL}/company/${studio?.id}`.replace(/([^:]\/)\/+/g, "$1");
+      const responseGet = await fetch(getUrl, {
+        ...authOptions,
+      });
+      if (responseGet.ok) {
+        const latestData = await responseGet.json();
+        const formattedForStorage = latestData.map((s: BackendService) => ({
+          ...s,
+          price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
+          duration: typeof s.duration === "string" ? parseInt(s.duration, 10) : s.duration,
+        }));
+        saveSettings(formattedForStorage);
+      }
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error("Erro ao salvar serviço:", err);
+      toast({
+        title: "Erro ao Salvar",
+        description: err.message || "Não foi possível persistir as alterações no Back-end.",
+        variant: "destructive",
+      });
     }
-
-    saveSettings(updatedServices);
-    setIsModalOpen(false);
-    setEditingId(null);
-    setFormData({});
-    setConflictSearch("");
-
-    toast({
-      title: editingId ? "Serviço Atualizado" : "Serviço Adicionado",
-      description: `O serviço "${serviceToSave.name}" foi salvo com sucesso.`,
-    });
   };
 
   const toggleConflict = (serviceId: string) => {
@@ -485,22 +631,64 @@ export function ServicesManager() {
     setIsProductModalOpen(true);
   };
 
-  const handleSaveServiceProducts = () => {
+  const handleSaveServiceProducts = async () => {
     if (!serviceForProducts) return;
 
-    const updatedServices = services.map((s) =>
-      s.id === serviceForProducts.id ? serviceForProducts : s,
-    );
+    const authOptions = getAuthOptions();
 
-    saveSettings(updatedServices);
-    setIsProductModalOpen(false);
-    setServiceForProducts(null);
-    setInnerProductSearch("");
+    try {
+      const serviceData = {
+        ...serviceForProducts,
+        companyId: studio?.id,
+        price: serviceForProducts.price.toFixed(2),
+        duration: serviceForProducts.duration.toString(),
+      };
 
-    toast({
-      title: "Produtos Atualizados",
-      description: `A configuração de produtos para "${serviceForProducts.name}" foi salva.`,
-    });
+      const putProductsUrl = `${API_URL}/${serviceForProducts.id}`.replace(/([^:]\/)\/+/g, "$1");
+      console.log(">>> [SERVICES_MANAGER] Salvando produtos via PUT em:", putProductsUrl);
+
+      const response = await fetch(putProductsUrl, {
+        ...authOptions,
+        method: "PUT",
+        body: JSON.stringify(serviceData),
+      });
+
+      if (!response.ok) throw new Error("Erro ao salvar produtos do serviço no servidor");
+
+      toast({
+        title: "Produtos Atualizados",
+        description: `A configuração de produtos para "${serviceForProducts.name}" foi salva.`,
+      });
+
+      setIsProductModalOpen(false);
+      setServiceForProducts(null);
+      setInnerProductSearch("");
+
+      // Recarregar lista do banco
+      await loadServices();
+
+      // Sincronizar localStorage
+      const syncUrl = `${API_URL}/company/${studio?.id}`.replace(/([^:]\/)\/+/g, "$1");
+      const responseGet = await fetch(syncUrl, {
+        ...authOptions,
+      });
+      if (responseGet.ok) {
+        const latestData = await responseGet.json();
+        const formattedForStorage = latestData.map((s: BackendService) => ({
+          ...s,
+          price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
+          duration: typeof s.duration === "string" ? parseInt(s.duration, 10) : s.duration,
+        }));
+        saveSettings(formattedForStorage);
+      }
+    } catch (error) {
+      console.error("Erro ao salvar produtos:", error);
+      toast({
+        title: "Erro ao Salvar",
+        description: "Não foi possível salvar a configuração de produtos no Back-end.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCancel = () => {
@@ -515,33 +703,78 @@ export function ServicesManager() {
     setIsDeleteConfirmOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!serviceToDelete) return;
 
-    const updatedServices = services.filter((s) => s.id !== serviceToDelete.id);
-    saveSettings(updatedServices);
-    setIsDeleteConfirmOpen(false);
-    setServiceToDelete(null);
+    const authOptions = getAuthOptions();
 
-    toast({
-      title: "Serviço Excluído",
-      description: `O serviço "${serviceToDelete.name}" foi removido com sucesso.`,
-      variant: "destructive",
-    });
+    try {
+      const deleteUrl = `${API_URL}/${serviceToDelete.id}`.replace(/([^:]\/)\/+/g, "$1");
+      console.log(">>> [SERVICES_MANAGER] Deletando via DELETE em:", deleteUrl);
+
+      const response = await fetch(deleteUrl, {
+        ...authOptions,
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao excluir serviço no servidor");
+      }
+
+      toast({
+        title: "Serviço Excluído",
+        description: `O serviço "${serviceToDelete.name}" foi removido com sucesso.`,
+        variant: "destructive",
+      });
+
+      setIsDeleteConfirmOpen(false);
+      setServiceToDelete(null);
+
+      // Recarregar lista do banco
+      await loadServices();
+
+      // Sincronizar localStorage
+      const syncDeleteUrl = `${API_URL}/company/${studio?.id}`.replace(/([^:]\/)\/+/g, "$1");
+      const responseGet = await fetch(syncDeleteUrl, {
+        ...authOptions,
+      });
+      if (responseGet.ok) {
+        const latestData = await responseGet.json();
+        const formattedForStorage = latestData.map((s: BackendService) => ({
+          ...s,
+          price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
+          duration: typeof s.duration === "string" ? parseInt(s.duration, 10) : s.duration,
+        }));
+        saveSettings(formattedForStorage);
+      }
+    } catch (error) {
+      console.error("Erro ao excluir serviço:", error);
+      toast({
+        title: "Erro ao Excluir",
+        description: "Não foi possível remover o serviço do Back-end.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-serif text-2xl font-bold">Gerenciar Serviços</h2>
-        <Button
-          onClick={handleAdd}
-          className="bg-accent hover:bg-accent/90 text-accent-foreground"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Adicionar Serviço
-        </Button>
-      </div>
+      {studioLoading || !studio?.id ? (
+        <div className="p-6 text-center text-muted-foreground">
+          Carregando{slugParam ? ` (${slugParam})` : "..."}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-serif text-2xl font-bold">Gerenciar Serviços</h2>
+          <Button
+            onClick={handleAdd}
+            className="bg-accent hover:bg-accent/90 text-accent-foreground"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Adicionar Serviço
+          </Button>
+        </div>
+      )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
@@ -1162,7 +1395,7 @@ export function ServicesManager() {
                               </div>
                             </div>
                           ) : (
-                            <>
+                            <div className="space-y-1">
                               <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2">
                                   <Label
@@ -1240,7 +1473,7 @@ export function ServicesManager() {
                                     </p>
                                   </div>
                                 )}
-                            </>
+                            </div>
                           )}
                         </div>
                       );
@@ -1294,79 +1527,89 @@ export function ServicesManager() {
       </Dialog>
 
       <div className="grid md:grid-cols-2 gap-4">
-        {services.map((service) => (
-          <Card key={service.id}>
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="font-serif text-lg font-semibold mb-1">
-                    {service.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {service.description}
-                  </p>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {service.duration} min
-                    </span>
-                    <span className="text-accent font-semibold">
-                      R$ {service.price.toFixed(2)}
-                    </span>
+        {isLoading ? (
+          <div className="col-span-full py-12 text-center text-muted-foreground">
+            Carregando serviços...
+          </div>
+        ) : services.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-muted-foreground">
+            Nenhum serviço cadastrado.
+          </div>
+        ) : (
+          services.map((service) => (
+            <Card key={service.id}>
+              <CardContent className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="font-serif text-lg font-semibold mb-1">
+                      {service.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {service.description}
+                    </p>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {service.duration} min
+                      </span>
+                      <span className="text-accent font-semibold">
+                        R$ {service.price.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-accent hover:bg-accent/10"
+                          >
+                            <HelpCircle className="w-4 h-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-62.5">
+                          <p className="text-xs">
+                            <strong>Configuração de Produtos:</strong> Defina
+                            quais itens do estoque são consumidos automaticamente
+                            ao concluir este serviço. Você pode configurar
+                            quantidades fracionadas (ex: gramas ou ml).
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleOpenProductModal(service)}
+                      className="text-accent hover:text-accent hover:bg-accent/10"
+                      title="Configurar Produtos"
+                    >
+                      <Package className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEdit(service)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDeleteClick(service)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-accent hover:bg-accent/10"
-                        >
-                          <HelpCircle className="w-4 h-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-62.5">
-                        <p className="text-xs">
-                          <strong>Configuração de Produtos:</strong> Defina
-                          quais itens do estoque são consumidos automaticamente
-                          ao concluir este serviço. Você pode configurar
-                          quantidades fracionadas (ex: gramas ou ml).
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleOpenProductModal(service)}
-                    className="text-accent hover:text-accent hover:bg-accent/10"
-                    title="Configurar Produtos"
-                  >
-                    <Package className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEdit(service)}
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDeleteClick(service)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
     </div>
   );

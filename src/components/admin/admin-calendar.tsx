@@ -30,7 +30,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
+import { appointmentService } from "@/lib/api-appointments";
 import {
   type Booking,
   getBookingsFromStorage,
@@ -53,6 +55,7 @@ export function AdminCalendar({
   onTimeSelect,
   onBack,
 }: AdminCalendarProps) {
+  const { studio } = useStudio();
   const [currentDate, setCurrentDate] = useState(
     initialDate ? new Date(`${initialDate}T12:00:00`) : new Date(),
   );
@@ -83,7 +86,12 @@ export function AdminCalendar({
     // Escutar mudanças no localStorage (ex: quando um agendamento é deletado/editado no BookingsManager)
     const handleStorageChange = () => loadData();
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    window.addEventListener("studioSettingsUpdated", loadData);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("studioSettingsUpdated", loadData);
+    };
   }, [loadData]);
 
   const handlePreviousDay = () => setCurrentDate((prev) => subDays(prev, 1));
@@ -103,7 +111,7 @@ export function AdminCalendar({
     }
   };
 
-  const handleAddBooking = () => {
+  const handleAddBooking = async () => {
     if (!newBooking.clientName || newBooking.serviceIds.length === 0) {
       toast({
         title: "Erro",
@@ -114,42 +122,96 @@ export function AdminCalendar({
       return;
     }
 
+    if (!studio?.id) {
+      toast({
+        title: "Erro",
+        description: "Studio não identificado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const selectedServices = services.filter((s) =>
       newBooking.serviceIds.includes(s.id),
     );
     if (selectedServices.length === 0) return;
 
-    const booking: Booking = {
-      id: Date.now().toString(),
-      serviceId: selectedServices.map((s) => s.id),
-      serviceName: selectedServices.map((s) => s.name).join(" + "),
-      serviceDuration: selectedServices.reduce((acc, s) => acc + s.duration, 0),
-      servicePrice: selectedServices.reduce((acc, s) => acc + s.price, 0),
-      date: dateStr,
-      time: selectedTime,
-      clientName: newBooking.clientName,
-      clientEmail: "",
-      clientPhone: newBooking.clientPhone,
-      status: "confirmado",
-      createdAt: new Date().toISOString(),
-      notificationsSent: {
-        email: false,
-        whatsapp: false,
-      },
-    };
+    try {
+      // Para múltiplos serviços, o ideal seria criar múltiplos agendamentos ou um "pacote".
+      // Aqui, vamos assumir que o admin seleciona um serviço principal ou que o backend suporta apenas um por vez.
+      // O código original concatenava serviços. Vamos adaptar para criar um agendamento para cada serviço
+      // OU criar apenas para o primeiro (dado que a API espera serviceId único).
+      
+      // Decisão: Vamos criar um agendamento para cada serviço selecionado, no mesmo horário (ou sequencial? 
+      // O código original usava time único).
+      // Se houver múltiplos serviços, vamos criar o primeiro e avisar, ou iterar.
+      // Simplificação para garantir integridade com a API atual: Iterar e criar.
 
-    saveBookingToStorage(booking);
-    setBookings((prev) => [...prev, booking]);
-    setIsAddDialogOpen(false);
-    setNewBooking({ clientName: "", clientPhone: "", serviceIds: [] });
+      const scheduledAt = new Date(`${dateStr}T${selectedTime}:00`).toISOString();
 
-    toast({
-      title: "Sucesso",
-      description: "Agendamento realizado com sucesso!",
-    });
+      for (const service of selectedServices) {
+         const appointmentData = {
+          companyId: studio.id,
+          serviceId: service.id,
+          customerId: null,
+          scheduledAt,
+          customerName: newBooking.clientName,
+          customerEmail: "", // O modal simples não pede email
+          customerPhone: newBooking.clientPhone,
+          serviceNameSnapshot: service.name,
+          servicePriceSnapshot: service.price.toFixed(2),
+          serviceDurationSnapshot: service.duration.toString(),
+          notes: "Agendado via Admin Calendar (Criação Rápida)",
+        };
 
-    // Disparar evento customizado para atualizar outros componentes se necessário
-    window.dispatchEvent(new Event("storage"));
+        const result = await appointmentService.create(appointmentData);
+
+        const booking: Booking = {
+          id: result.id,
+          serviceId: service.id,
+          serviceName: service.name,
+          serviceDuration: service.duration,
+          servicePrice: service.price,
+          date: dateStr,
+          time: selectedTime,
+          clientName: newBooking.clientName,
+          clientEmail: "",
+          clientPhone: newBooking.clientPhone,
+          status: "confirmado", // Admin calendar cria como confirmado por padrão no código original
+          createdAt: result.createdAt,
+          notificationsSent: {
+            email: false,
+            whatsapp: false,
+          },
+        };
+
+        // Atualizar status no backend para confirmado, já que criamos como pendente por padrão na API
+        if (booking.status === "confirmado") {
+           await appointmentService.updateStatus(result.id, "CONFIRMED");
+        }
+
+        saveBookingToStorage(booking);
+        setBookings((prev) => [...prev, booking]);
+      }
+
+      setIsAddDialogOpen(false);
+      setNewBooking({ clientName: "", clientPhone: "", serviceIds: [] });
+
+      toast({
+        title: "Sucesso",
+        description: "Agendamento(s) realizado(s) com sucesso!",
+      });
+
+      window.dispatchEvent(new Event("storage"));
+
+    } catch (error) {
+      console.error("Erro ao criar agendamento rápido:", error);
+      toast({
+        title: "Erro ao criar",
+        description: "Falha ao salvar o agendamento no servidor.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Gerar horários do dia (de 10 em 10 minutos como na imagem)

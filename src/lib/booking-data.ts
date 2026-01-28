@@ -46,6 +46,7 @@ export type TimeSlot = {
 
 export type BookingStatus =
   | "pendente"
+  | "pending"
   | "confirmado"
   | "cancelado"
   | "concluído";
@@ -855,49 +856,7 @@ export type ColorSettings = {
   text: string;
 };
 
-export const services: Service[] = [
-  {
-    id: "design",
-    name: "Design de Sobrancelhas",
-    description: "Modelagem personalizada que valoriza seu formato de rosto",
-    duration: 45,
-    price: 80,
-    showOnHome: true,
-  },
-  {
-    id: "coloracao",
-    name: "Coloração & Henna",
-    description: "Técnicas de coloração para sobrancelhas mais definidas",
-    duration: 60,
-    price: 100,
-    showOnHome: true,
-  },
-  {
-    id: "micropigmentacao",
-    name: "Micropigmentação Fio a Fio",
-    description: "Resultado natural e duradouro com técnicas avançadas",
-    duration: 180,
-    price: 450,
-    showOnHome: true,
-  },
-  {
-    id: "laminacao",
-    name: "Laminação de Sobrancelhas",
-    description: "Fios alinhados e volumosos por até 8 semanas",
-    duration: 90,
-    price: 150,
-    showOnHome: true,
-  },
-  {
-    id: "lash-lifting-90",
-    name: "Lash Lifting Completo",
-    description:
-      "Tratamento completo de lifting de cílios com duração de 90 minutos",
-    duration: 90,
-    price: 180,
-    showOnHome: true,
-  },
-];
+export const services: Service[] = [];
 
 export const defaultScheduleSettings: ScheduleSettings = {
   timeInterval: 30,

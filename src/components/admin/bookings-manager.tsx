@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: useEffect dependencies are managed manually */
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
@@ -8,13 +9,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
+import { type Appointment, type AppointmentStatus, appointmentService } from "@/lib/api-appointments";
 import {
   type Booking,
   type BookingStatus,
   getBookingsFromStorage,
   subtractInventoryForService,
-  updateBookingStatus,
 } from "@/lib/booking-data";
 import { AdminBookingFlow } from "./admin-booking-flow";
 import { BookingCard } from "./bookings/booking-card";
@@ -24,8 +26,39 @@ import { BookingPagination } from "./bookings/booking-pagination";
 import { BookingStatusTabs } from "./bookings/booking-status-tabs";
 import { EditBookingModal } from "./edit-booking-modal";
 
+// Helper para converter tipos de agendamento da API para o formato legado do Front
+const mapApiToBooking = (api: Appointment): Booking => ({
+  id: api.id,
+  serviceId: api.serviceId,
+  serviceName: api.serviceNameSnapshot,
+  serviceDuration: parseInt(api.serviceDurationSnapshot, 10),
+  servicePrice: parseFloat(api.servicePriceSnapshot),
+  date: api.scheduledAt.split("T")[0],
+  time: api.scheduledAt.split("T")[1].substring(0, 5),
+  clientName: api.customerName,
+  clientEmail: api.customerEmail,
+  clientPhone: api.customerPhone,
+  status: api.status.toLowerCase() as BookingStatus,
+  createdAt: api.createdAt,
+  notificationsSent: { email: false, whatsapp: false },
+});
+
+// Helper para converter status legado para o novo formato da API
+const mapStatusToApi = (status: BookingStatus): AppointmentStatus => {
+  const map: Record<BookingStatus, AppointmentStatus> = {
+    pendente: "PENDING",
+    pending: "PENDING",
+    confirmado: "CONFIRMED",
+    concluído: "COMPLETED",
+    cancelado: "CANCELLED",
+  };
+  return map[status] || "PENDING";
+};
+
 export function BookingsManager() {
+  const { studio } = useStudio();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [filterName, setFilterName] = useState<string>("");
@@ -57,12 +90,39 @@ export function BookingsManager() {
 
     setStartDate(firstDay);
     setEndDate(lastDay);
-    loadBookings();
   }, []);
 
-  const loadBookings = () => {
-    const allBookings = getBookingsFromStorage();
-    setBookings(allBookings);
+  // Recarregar agendamentos quando o studio ID estiver disponível
+  useEffect(() => {
+    if (studio?.id) {
+      loadBookings();
+    }
+  }, [studio?.id]);
+
+  const loadBookings = async () => {
+    if (!studio?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const apiAppointments = await appointmentService.listByCompany(studio.id);
+      const mappedBookings = apiAppointments.map(mapApiToBooking);
+      setBookings(mappedBookings);
+    } catch (error) {
+      console.error("Erro ao carregar agendamentos:", error);
+      toast({
+        title: "Erro ao carregar",
+        description: "Não foi possível buscar os agendamentos no servidor.",
+        variant: "destructive",
+      });
+      
+      // Fallback para storage se necessário durante transição
+      const storageBookings = getBookingsFromStorage();
+      if (storageBookings.length > 0) {
+        setBookings(storageBookings);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredBookings = useMemo(() => {
@@ -123,7 +183,7 @@ export function BookingsManager() {
   const statusCounts = useMemo(() => {
     const counts = {
       todos: filteredBookings.length,
-      pendente: filteredBookings.filter((b) => b.status === "pendente").length,
+      pendente: filteredBookings.filter((b) => b.status === "pendente" || b.status === "pending").length,
       confirmado: filteredBookings.filter((b) => b.status === "confirmado")
         .length,
       concluído: filteredBookings.filter((b) => b.status === "concluído")
@@ -145,50 +205,66 @@ export function BookingsManager() {
     bookingId: string,
     newStatus: BookingStatus,
   ) => {
-    updateBookingStatus(bookingId, newStatus);
+    try {
+      const apiStatus = mapStatusToApi(newStatus);
+      await appointmentService.updateStatus(bookingId, apiStatus);
 
-    // Se o status for concluído, subtrair produtos do estoque
-    if (newStatus === "concluído") {
-      const booking = bookings.find((b) => b.id === bookingId);
-      if (booking) {
-        const result = subtractInventoryForService(booking.serviceId);
-        if (result.success) {
-          toast({
-            title: "Estoque atualizado",
-            description: result.message,
-          });
+      // Se o status for concluído, subtrair produtos do estoque
+      if (newStatus === "concluído") {
+        const booking = bookings.find((b) => b.id === bookingId);
+        if (booking) {
+          const result = subtractInventoryForService(booking.serviceId);
+          if (result.success) {
+            toast({
+              title: "Estoque atualizado",
+              description: result.message,
+            });
+          }
         }
       }
-    }
 
-    loadBookings();
-    window.dispatchEvent(new Event("storage"));
-
-    toast({
-      title: `Status atualizado para ${newStatus}`,
-      description: "O agendamento foi atualizado com sucesso.",
-    });
-  };
-
-  const handleDelete = (bookingId: string) => {
-    if (confirm("Tem certeza que deseja excluir este agendamento?")) {
-      const allBookings = getBookingsFromStorage();
-      const updated = allBookings.filter((b) => b.id !== bookingId);
-      localStorage.setItem("bookings", JSON.stringify(updated));
-      loadBookings();
-      window.dispatchEvent(new Event("storage"));
-
+      await loadBookings();
+      
       toast({
-        title: "Agendamento excluído",
-        description: "O agendamento foi removido com sucesso",
+        title: `Status atualizado para ${newStatus}`,
+        description: "O agendamento foi atualizado com sucesso.",
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar status:", error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar o status no servidor.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleDelete = async (bookingId: string) => {
+    if (confirm("Tem certeza que deseja excluir este agendamento?")) {
+      try {
+        await appointmentService.delete(bookingId);
+        await loadBookings();
+
+        toast({
+          title: "Agendamento excluído",
+          description: "O agendamento foi removido com sucesso",
+          variant: "destructive",
+        });
+      } catch (error) {
+        console.error("Erro ao excluir agendamento:", error);
+        toast({
+          title: "Erro ao excluir",
+          description: "Não foi possível remover o agendamento do servidor.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   const getStatusBadge = (status: BookingStatus) => {
     const variants = {
       pendente: "bg-yellow-100 text-yellow-800 border-yellow-200",
+      pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
       confirmado: "bg-blue-100 text-blue-800 border-blue-200",
       concluído: "bg-green-100 text-green-800 border-green-200",
       cancelado: "bg-red-100 text-red-800 border-red-200",
@@ -242,7 +318,12 @@ export function BookingsManager() {
 
       {/* Lista de Agendamentos */}
       <div className="space-y-4">
-        {paginatedBookings.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
+            <Loader2 className="w-10 h-10 animate-spin mb-4" />
+            <p className="text-lg font-medium">Carregando agendamentos...</p>
+          </div>
+        ) : paginatedBookings.length === 0 ? (
           <BookingEmptyState />
         ) : (
           paginatedBookings.map((booking) => (

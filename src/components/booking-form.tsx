@@ -1,18 +1,19 @@
 "use client";
 
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useStudio } from "@/context/studio-context";
+import { appointmentService } from "@/lib/api-appointments";
 import {
   type Booking,
   type BookingStepSettings,
   type Service,
   saveBookingToStorage,
   sendBookingNotifications,
-  updateBooking,
 } from "@/lib/booking-data";
 
 type BookingFormProps = {
@@ -34,6 +35,8 @@ export function BookingForm({
   initialBooking,
   settings,
 }: BookingFormProps) {
+  const { studio } = useStudio();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: initialBooking?.clientName || "",
     email: initialBooking?.clientEmail || "",
@@ -52,35 +55,61 @@ export function BookingForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!studio?.id) return;
 
-    const booking: Booking = {
-      id: initialBooking?.id || Date.now().toString(),
-      serviceId: service.id.includes(",") ? service.id.split(",") : service.id,
-      serviceName: service.name,
-      serviceDuration: service.duration,
-      servicePrice: service.price,
-      date,
-      time,
-      clientName: formData.name,
-      clientEmail: formData.email,
-      clientPhone: formData.phone,
-      status: initialBooking?.status || "pendente",
-      createdAt: initialBooking?.createdAt || new Date().toISOString(),
-      notificationsSent: initialBooking?.notificationsSent || {
-        email: false,
-        whatsapp: false,
-      },
-    };
+    setIsLoading(true);
 
-    if (initialBooking) {
-      updateBooking(booking);
-    } else {
+    try {
+      // 1. Preparar o agendamento para o novo Back-end (Elysia)
+      const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
+
+      const appointmentData = {
+        companyId: studio.id,
+        serviceId: service.id,
+        scheduledAt,
+        customerName: formData.name,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        serviceNameSnapshot: service.name,
+        servicePriceSnapshot: service.price.toString(),
+        serviceDurationSnapshot: service.duration.toString(),
+        notes: "",
+      };
+
+      const result = await appointmentService.create(appointmentData);
+
+      // 2. Manter compatibilidade com o objeto Booking legado para não quebrar o restante do front imediatamente
+      const booking: Booking = {
+        id: result.id,
+        serviceId: service.id,
+        serviceName: service.name,
+        serviceDuration: service.duration,
+        servicePrice: service.price,
+        date,
+        time,
+        clientName: formData.name,
+        clientEmail: formData.email,
+        clientPhone: formData.phone,
+        status: "pendente",
+        createdAt: result.createdAt,
+        notificationsSent: {
+          email: false,
+          whatsapp: false,
+        },
+      };
+
+      // Opcional: Ainda salvar no storage para redundância/cache
       saveBookingToStorage(booking);
+
+      await sendBookingNotifications(booking);
+
+      onConfirm(booking);
+    } catch (error) {
+      console.error("Erro ao criar agendamento:", error);
+      // Aqui você poderia adicionar um toast de erro
+    } finally {
+      setIsLoading(false);
     }
-
-    await sendBookingNotifications(booking);
-
-    onConfirm(booking);
   };
 
   return (
@@ -207,13 +236,23 @@ export function BookingForm({
 
             <Button
               type="submit"
+              disabled={isLoading}
               className="w-full h-12 text-lg font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
               style={{
                 backgroundColor: settings?.accentColor || "var(--primary)",
                 color: "#fff",
               }}
             >
-              {initialBooking ? "Salvar Alterações" : "Confirmar Agendamento"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : initialBooking ? (
+                "Salvar Alterações"
+              ) : (
+                "Confirmar Agendamento"
+              )}
             </Button>
           </form>
         </CardContent>

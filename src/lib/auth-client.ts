@@ -7,7 +7,7 @@ const cleanUrl = (url?: string) => {
   return url.replace(/\/$/, "");
 };
 
-export const API_BASE_URL = cleanUrl(process.env.NEXT_PUBLIC_API_URL);
+export const API_BASE_URL = cleanUrl(process.env.NEXT_PUBLIC_API_URL) || "http://localhost:3001";
 // Em produção, o Better-Auth exige uma URL absoluta. Usamos o próprio domínio do Front,
 // garantindo cookies de primeira parte, combinando com o rewrite para o backend.
 const ensureAbsolute = (origin?: string) => {

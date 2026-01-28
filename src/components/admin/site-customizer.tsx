@@ -179,6 +179,29 @@ export function SiteCustomizer() {
     if (!selectedBusinessId) return;
 
     try {
+      // Enviar também para o novo endpoint de customização conforme solicitado
+      console.log(">>> [CUSTOMIZER] Enviando POST para /api/company/customizer");
+      const customizerResponse = await fetch(`${API_BASE_URL}/api/company/customizer`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          hero: heroSettings,
+          typography: fontSettings,
+          companyId: selectedBusinessId,
+        }),
+        credentials: "include",
+      });
+
+      if (!customizerResponse.ok) {
+        const errorData = await customizerResponse.json().catch(() => ({}));
+        if (customizerResponse.status === 500) {
+          console.error(">>> [ERRO 500] Erro no Customizer:", errorData);
+        }
+        console.warn(">>> [CUSTOMIZER] Falha no POST secundário, mas continuando...", errorData);
+      }
+
       const currentConfig = {
         hero: heroSettings,
         aboutHero: aboutHeroSettings,
