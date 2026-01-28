@@ -12,6 +12,8 @@ type BookingConfirmationProps = {
   onReset: () => void;
   isUpdate?: boolean;
   settings?: BookingStepSettings;
+  backToHomeHref?: string;
+  backToHomeLabel?: string;
 };
 
 export function BookingConfirmation({
@@ -20,6 +22,8 @@ export function BookingConfirmation({
   onReset,
   isUpdate = false,
   settings,
+  backToHomeHref = "/",
+  backToHomeLabel = "Voltar para Início",
 }: BookingConfirmationProps) {
   const formattedDate = new Date(`${booking.date}T00:00:00`).toLocaleDateString(
     "pt-BR",
@@ -189,7 +193,7 @@ export function BookingConfirmation({
                 color: "#fff",
               }}
             >
-              <Link href="/">Voltar para Início</Link>
+              <Link href={backToHomeHref}>{backToHomeLabel}</Link>
             </Button>
             <Button
               variant="outline"

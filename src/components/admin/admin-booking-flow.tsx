@@ -13,6 +13,7 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AdminBookingForm } from "@/components/admin/admin-booking-form";
 import { AdminCalendar } from "@/components/admin/admin-calendar";
@@ -20,6 +21,7 @@ import { BookingConfirmation } from "@/components/booking-confirmation";
 import { ServiceSelector } from "@/components/service-selector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useStudio } from "@/context/studio-context";
 import {
   type Booking,
   getSettingsFromStorage,
@@ -40,6 +42,7 @@ export function AdminBookingFlow({
   onComplete,
   mode = "reschedule",
 }: AdminBookingFlowProps) {
+  const { slug } = useStudio();
   const [currentStep, setCurrentStep] = useState<BookingStep>("service");
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -112,9 +115,6 @@ export function AdminBookingFlow({
   };
 
   const handleDateClick = (day: number) => {
-    const status = getDateStatus(day);
-    if (status === "past") return;
-
     const date = new Date(year, month, day);
     setSelectedDate(format(date, "yyyy-MM-dd"));
     setCurrentStep("calendar");
@@ -228,10 +228,24 @@ export function AdminBookingFlow({
 
       {/* Step Content */}
       {currentStep === "service" && (
-        <ServiceSelector
-          onSelect={handleServiceSelect}
-          selectedServices={selectedServices}
-        />
+        <div className="space-y-4">
+          <Button
+            variant="ghost"
+            asChild
+            className="w-fit -ml-2 h-8 text-muted-foreground"
+          >
+            <Link
+              href={slug ? `/admin/${slug}/dashboard/agendamentos` : "/admin"}
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Voltar para Agendamentos
+            </Link>
+          </Button>
+          <ServiceSelector
+            onSelect={handleServiceSelect}
+            selectedServices={selectedServices}
+          />
+        </div>
       )}
 
       {currentStep === "date" && totalService && (
@@ -311,7 +325,7 @@ export function AdminBookingFlow({
                     "hover:bg-accent hover:text-accent-foreground cursor-pointer";
 
                   if (status === "past") {
-                    buttonClass += " bg-red-100 text-red-800";
+                    buttonClass += " bg-slate-100 text-slate-400";
                   } else if (status === "selected") {
                     buttonClass += " bg-[#FEF3C7] text-[#D97706]";
                   }
@@ -338,7 +352,7 @@ export function AdminBookingFlow({
 
               <div className="mt-4 flex gap-4 text-xs justify-center">
                 <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-red-100 rounded-sm border border-red-200" />
+                  <div className="w-3 h-3 bg-slate-100 rounded-sm border border-slate-200" />
                   <span>Passado</span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -417,6 +431,8 @@ export function AdminBookingFlow({
           service={totalService}
           onReset={onComplete || handleReset}
           isUpdate={!!initialBooking}
+          backToHomeHref={slug ? `/admin/${slug}/dashboard/agendamentos` : "/"}
+          backToHomeLabel="Ir para Agendamentos"
         />
       )}
     </div>

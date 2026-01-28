@@ -10,6 +10,7 @@ import {
   Plus,
   User,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,11 +33,11 @@ import {
 } from "@/components/ui/tooltip";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
-import { appointmentService } from "@/lib/api-appointments";
+import { type Appointment, appointmentService } from "@/lib/api-appointments";
+import { API_BASE_URL } from "@/lib/auth-client";
 import {
   type Booking,
-  getBookingsFromStorage,
-  getSettingsFromStorage,
+  type BookingStatus,
   type Service,
   saveBookingToStorage,
 } from "@/lib/booking-data";
@@ -71,14 +72,111 @@ export function AdminCalendar({
     serviceIds: [] as string[],
   });
 
+  const getAuthOptions = useCallback(() => {
+    const getCookie = (name: string) => {
+      if (typeof document === "undefined") return null;
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(";").shift();
+      return null;
+    };
+
+    const sessionToken = typeof window !== "undefined" 
+      ? (localStorage.getItem("better-auth.session_token") || 
+         localStorage.getItem("better-auth.access_token") ||
+         getCookie("better-auth.session_token"))
+      : null;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (sessionToken) {
+      headers.Authorization = `Bearer ${sessionToken}`;
+    }
+
+    return {
+      headers,
+      credentials: "include" as const,
+    };
+  }, []);
+
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
+  const loadServicesFromAPI = useCallback(async () => {
+    if (!studio?.id) return;
+
+    try {
+      const authOptions = getAuthOptions();
+
+      const response = await fetch(`${API_BASE_URL}/api/services/company/${studio.id}`, {
+        ...authOptions,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const formattedServices = data.map((s: Service) => ({
+          ...s,
+          price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
+          duration: typeof s.duration === "string" ? parseInt(s.duration, 10) : s.duration,
+        }));
+        setServices(formattedServices);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar serviços no calendário:", error);
+    }
+  }, [studio?.id, getAuthOptions]);
+
+  const loadAppointmentsFromAPI = useCallback(async () => {
+    if (!studio?.id) return;
+
+    try {
+      const appointments = await appointmentService.listByCompany(studio.id);
+      const mappedBookings: Booking[] = appointments.map((app: Appointment) => ({
+        id: app.id,
+        serviceId: app.serviceId,
+        serviceName: app.serviceNameSnapshot,
+        serviceDuration: parseInt(app.serviceDurationSnapshot, 10),
+        servicePrice: parseFloat(app.servicePriceSnapshot),
+        date: format(new Date(app.scheduledAt), "yyyy-MM-dd"),
+        time: format(new Date(app.scheduledAt), "HH:mm"),
+        clientName: app.customerName,
+        clientEmail: app.customerEmail,
+        clientPhone: app.customerPhone,
+        status: (app.status.toLowerCase() === "confirmed" 
+          ? "confirmado" 
+          : app.status.toLowerCase() === "completed"
+          ? "concluído"
+          : app.status.toLowerCase() === "cancelled"
+          ? "cancelado"
+          : "pending") as BookingStatus,
+        createdAt: app.createdAt,
+        notificationsSent: {
+          email: false,
+          whatsapp: false,
+        },
+      }));
+      setBookings(mappedBookings);
+    } catch (error) {
+      console.error("Erro ao carregar agendamentos no calendário:", error);
+      // Tratamento gracioso: inicializa com lista vazia para não travar o componente
+      setBookings([]);
+      
+      // Opcional: mostrar toast apenas se não for um erro de "não autorizado" comum (silencioso)
+      if (error instanceof Object && "status" in error && error.status !== 401) {
+        toast({
+          title: "Aviso",
+          description: "Não foi possível carregar os agendamentos existentes.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [studio?.id, toast]);
+
   const loadData = useCallback(() => {
-    const allBookings = getBookingsFromStorage();
-    const settings = getSettingsFromStorage();
-    setBookings(allBookings);
-    setServices(settings.services || []);
-  }, []);
+    loadServicesFromAPI();
+    loadAppointmentsFromAPI();
+  }, [loadServicesFromAPI, loadAppointmentsFromAPI]);
 
   useEffect(() => {
     loadData();
@@ -205,10 +303,15 @@ export function AdminCalendar({
       window.dispatchEvent(new Event("storage"));
 
     } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : typeof error === "object" && error !== null && "message" in error
+          ? String((error as Record<string, unknown>).message)
+          : "Falha ao salvar o agendamento no servidor.";
       console.error("Erro ao criar agendamento rápido:", error);
       toast({
         title: "Erro ao criar",
-        description: "Falha ao salvar o agendamento no servidor.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -304,16 +407,36 @@ export function AdminCalendar({
     <Card className="h-auto border-none shadow-none bg-transparent">
       <CardHeader className="px-0 pt-0 pb-6">
         <div className="flex flex-col gap-4">
-          {onBack && (
+          <div className="flex items-center justify-between">
+            {onBack ? (
+              <Button
+                variant="ghost"
+                onClick={onBack}
+                className="w-fit -ml-2 h-8 text-muted-foreground"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Voltar para serviços
+              </Button>
+            ) : (
+              <div />
+            )}
             <Button
               variant="ghost"
-              onClick={onBack}
-              className="w-fit -ml-2 h-8 text-muted-foreground"
+              asChild
+              className="h-8 text-muted-foreground"
             >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              Voltar para serviços
+              <Link
+                href={
+                  studio?.slug
+                    ? `/admin/${studio.slug}/dashboard/agendamentos`
+                    : "/admin"
+                }
+              >
+                Ir para Agendamentos
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Link>
             </Button>
-          )}
+          </div>
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-1">
               <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
@@ -395,7 +518,7 @@ export function AdminCalendar({
                               booking || isPreview || isConflict
                                 ? "bg-orange-100 border-orange-200 text-orange-700 hover:bg-orange-200"
                                 : past
-                                  ? "bg-red-50 border-red-100 text-red-400 opacity-60"
+                                  ? "bg-slate-50 border-slate-100 text-slate-400 hover:bg-slate-100"
                                   : "bg-white border-slate-100 text-slate-600 hover:border-primary/30",
                             )}
                           >
@@ -465,7 +588,7 @@ export function AdminCalendar({
             {/* Legenda */}
             <div className="mt-8 flex items-center justify-center gap-6 border-t pt-6">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-100 border border-red-200" />
+                <div className="w-3 h-3 rounded-full bg-slate-50 border border-slate-200" />
                 <span className="text-[11px] text-slate-500 font-medium">
                   Passado
                 </span>

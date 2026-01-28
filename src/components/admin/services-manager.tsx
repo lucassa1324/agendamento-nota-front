@@ -149,7 +149,6 @@ const availableIcons = [
 
 import { ArrowDownCircle, HelpCircle, Settings2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { authClient } from "@/lib/auth-client";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -267,7 +266,7 @@ export function ServicesManager() {
     };
 
     if (sessionToken) {
-      headers["Authorization"] = `Bearer ${sessionToken}`;
+      headers.Authorization = `Bearer ${sessionToken}`;
     }
 
     return {
@@ -293,7 +292,7 @@ export function ServicesManager() {
       
       const authOptions = getAuthOptions();
       
-      console.log(">>> [SERVICES_MANAGER] Header de Auth enviado:", authOptions.headers["Authorization"] ? "Bearer [TOKEN_PRESENTE]" : "NENHUM");
+      console.log(">>> [SERVICES_MANAGER] Header de Auth enviado:", authOptions.headers.Authorization ? "Bearer [TOKEN_PRESENTE]" : "NENHUM");
 
       const response = await fetch(loadUrl, {
         ...authOptions,

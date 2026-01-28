@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useStudio } from "@/context/studio-context";
 import { toast } from "@/hooks/use-toast";
+import { appointmentService } from "@/lib/api-appointments";
 import {
   type Booking,
   type BookingStepSettings,
@@ -83,29 +84,13 @@ export function AdminBookingForm({
         notes: "Agendado via Admin",
       };
 
-      console.log("📤 Enviando agendamento:", appointmentData);
+      console.log("📤 Enviando agendamento via AppointmentService:", appointmentData);
 
-      const res = await fetch("http://localhost:3001/api/appointments/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(appointmentData),
-      });
+      const createdAppointment = await appointmentService.create(appointmentData);
 
-      if (!res.ok) {
-        const errorDetail = await res.json().catch(() => ({ message: "Erro ao processar JSON de erro" }));
-        if (res.status === 500) {
-          console.error(">>> [ERRO 500] Detalhes do Erro no Banco:", errorDetail);
-        }
-        console.log("❌ Erro detalhado da API:", errorDetail);
-        throw new Error(errorDetail.message || "Erro desconhecido no servidor");
-      }
-
-      const result = await res.json();
-      console.log("✅ Agendamento criado com sucesso:", result);
-
-      // 2. Manter compatibilidade com o objeto Booking legado
+      // 2. Preparar objeto Legado para compatibilidade com o front antigo
       const booking: Booking = {
-        id: result.id,
+        id: createdAppointment.id, // Usar ID retornado pelo banco
         serviceId: service.id,
         serviceName: service.name,
         serviceDuration: service.duration,
@@ -115,8 +100,8 @@ export function AdminBookingForm({
         clientName: formData.name,
         clientEmail: formData.email,
         clientPhone: formData.phone,
-        status: "pending",
-        createdAt: result.createdAt,
+        status: "confirmado",
+        createdAt: new Date().toISOString(),
         notificationsSent: {
           email: false,
           whatsapp: false,
