@@ -59,6 +59,9 @@ class BusinessService {
 
     if (sessionToken) {
       headers.Authorization = `Bearer ${sessionToken}`;
+      console.log(">>> [BusinessService] Sessão válida encontrada (token presente).");
+    } else {
+      console.warn(">>> [BusinessService] Nenhuma sessão encontrada. Requisições podem retornar 401.");
     }
 
     return headers;
