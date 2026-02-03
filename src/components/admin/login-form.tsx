@@ -14,7 +14,14 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signIn } from "@/lib/auth-client";
+import { signIn, getSession } from "@/lib/auth-client";
+
+interface AuthUser {
+  slug?: string;
+  business?: {
+    slug?: string;
+  };
+}
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -22,6 +29,33 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Verifica se já existe sessão ao carregar a página
+  React.useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data } = await getSession();
+        if (data?.session) {
+          console.log(
+            ">>> [LOGIN_FORM] Sessão ativa encontrada. Redirecionando...",
+          );
+          const user = data.user as AuthUser;
+          const businessSlug = user?.business?.slug || user?.slug;
+
+          if (businessSlug) {
+            router.push(`/admin/${businessSlug}/dashboard/overview`);
+          } else {
+            console.warn(
+              ">>> [LOGIN_FORM] Sessão encontrada mas sem slug vinculado.",
+            );
+          }
+        }
+      } catch (err) {
+        console.error(">>> [LOGIN_FORM] Erro ao verificar sessão:", err);
+      }
+    };
+    checkSession();
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,10 +67,14 @@ export function LoginForm() {
         email,
       });
 
-      const { data, error: authError } = await signIn.email({
+      const result = await signIn.email({
         email,
         password,
       });
+
+      console.log(">>> [LOGIN_FLOW] Resposta do signIn recebida:", result);
+
+      const { data, error: authError } = result;
 
       if (authError) {
         console.error(">>> [LOGIN_FLOW] Erro no signIn:", authError);
@@ -48,13 +86,6 @@ export function LoginForm() {
       if (data) {
         console.log(">>> [LOGIN_FLOW] Login bem-sucedido via Better-Auth.");
 
-        interface AuthUser {
-          slug?: string;
-          business?: {
-            slug?: string;
-          };
-        }
-
         const user = data.user as AuthUser;
         const businessSlug = user?.business?.slug || user?.slug;
 
@@ -65,10 +96,17 @@ export function LoginForm() {
           return;
         }
 
+        console.log(
+          `>>> [LOGIN_FLOW] Redirecionando para /admin/${businessSlug}/dashboard/overview`,
+        );
         router.push(`/admin/${businessSlug}/dashboard/overview`);
+      } else {
+        console.warn(">>> [LOGIN_FLOW] Login retornou sem dados e sem erro.");
+        setError("Erro inesperado no login.");
+        setIsLoading(false);
       }
     } catch (err: unknown) {
-      console.error(">>> [LOGIN_FLOW] Erro crítico:", err);
+      console.error(">>> [LOGIN_FLOW] Erro crítico (catch):", err);
       setError("Não foi possível conectar ao servidor.");
       setIsLoading(false);
     }
