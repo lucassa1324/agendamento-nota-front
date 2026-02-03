@@ -55,17 +55,28 @@ function AdminLayoutContent({
 
   const { data: session, isPending: isLoadingSession } = useSession();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [adminUser, setAdminUser] = useState<{
     username: string;
     name: string;
   } | null>(null);
 
   useEffect(() => {
+    // Só age quando o loading inicial do better-auth terminar
     if (!isLoadingSession) {
+      console.log(">>> [DASHBOARD_LAYOUT] Estado da sessão:", {
+        hasSession: !!session,
+        sessionData: session,
+        currentSlug: slug,
+      });
+
       if (!session) {
-        console.warn(">>> [DASHBOARD_LAYOUT] Nenhuma sessão encontrada.");
-        router.push("/admin");
-        return;
+        // Pequeno delay para evitar falsos negativos em transições rápidas
+        const timer = setTimeout(() => {
+          console.warn(">>> [DASHBOARD_LAYOUT] Redirecionando por falta de sessão.");
+          router.push("/admin");
+        }, 500);
+        return () => clearTimeout(timer);
       }
 
       interface AuthUser {
@@ -82,20 +93,19 @@ function AdminLayoutContent({
 
       if (businessSlug && businessSlug !== slug) {
         console.warn(
-          `>>> [DASHBOARD_LAYOUT] Acesso negado. Usuário do estúdio ${businessSlug} tentando acessar ${slug}`,
+          `>>> [DASHBOARD_LAYOUT] Acesso negado. Redirecionando para o slug correto: ${businessSlug}`,
         );
         router.push(`/admin/${businessSlug}/dashboard/overview`);
         return;
       }
 
-      console.log(
-        ">>> [DASHBOARD_LAYOUT] Sessão válida encontrada via useSession.",
-      );
+      console.log(">>> [DASHBOARD_LAYOUT] Sessão validada com sucesso.");
       setIsAuthenticated(true);
       setAdminUser({
         name: user.name || "Administrador",
         username: user.email,
       });
+      setIsCheckingSession(false);
     }
   }, [session, isLoadingSession, slug, router]);
 
@@ -106,16 +116,16 @@ function AdminLayoutContent({
 
   const isPersonalizacao = pathname?.includes("/personalizacao");
 
-  if (isLoadingSession) {
+  // Enquanto estiver carregando ou validando, mostra o loading
+  if (isLoadingSession || isCheckingSession || !isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Carregando sessão...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-muted-foreground animate-pulse">Verificando acesso...</p>
+        </div>
       </div>
     );
-  }
-
-  if (!isAuthenticated) {
-    return null;
   }
 
   return (
