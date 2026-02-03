@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarProvider } from "@/context/sidebar-context";
 import { StudioProvider } from "@/context/studio-context";
-import { signOut, useSession } from "@/lib/auth-client";
+import { API_BASE_URL, getSession, signOut, useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 function MobileNav({
@@ -70,12 +70,30 @@ function AdminLayoutContent({
         currentSlug: slug,
       });
 
+      // Diagnóstico adicional: verifica se os cookies estão sendo enviados para o backend
+      const checkBackendAuth = async () => {
+        try {
+          console.log(">>> [DASHBOARD_LAYOUT] Tentando getSession() manual...");
+          const manualSession = await getSession();
+          console.log(">>> [DASHBOARD_LAYOUT] Resultado getSession() manual:", manualSession);
+
+          const diagRes = await fetch(`${API_BASE_URL}/diagnostics/headers`, { credentials: "include" });
+          if (diagRes.ok) {
+            const diagData = await diagRes.json();
+            console.log(">>> [DASHBOARD_LAYOUT] Diagnóstico do Backend:", diagData);
+          }
+        } catch (e) {
+          console.error(">>> [DASHBOARD_LAYOUT] Erro ao buscar diagnóstico:", e);
+        }
+      };
+      
       if (!session) {
+        checkBackendAuth();
         // Pequeno delay para evitar falsos negativos em transições rápidas
         const timer = setTimeout(() => {
           console.warn(">>> [DASHBOARD_LAYOUT] Redirecionando por falta de sessão.");
           router.push("/admin");
-        }, 500);
+        }, 1000); // Aumentado para 1s para dar mais tempo ao diagnóstico
         return () => clearTimeout(timer);
       }
 

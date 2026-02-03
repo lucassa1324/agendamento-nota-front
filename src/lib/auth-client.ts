@@ -31,8 +31,7 @@ export const authClient = createAuthClient({
   // O Better-Auth gerencia os cookies automaticamente
   session: {
     cookieCache: {
-      enabled: true,
-      factor: 0.8,
+      enabled: false, // Desabilitado para evitar que o cliente use cache de sessão expirada/nula
     },
   },
   // Tipagem para os campos customizados do usuário (slug, business)
