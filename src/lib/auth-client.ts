@@ -9,25 +9,10 @@ const cleanUrl = (url?: string) => {
 
 export const API_BASE_URL =
   cleanUrl(process.env.NEXT_PUBLIC_API_URL) || "http://localhost:3001";
-// Em produção, o Better-Auth exige uma URL absoluta. Usamos o próprio domínio do Front,
-// garantindo cookies de primeira parte, combinando com o rewrite para o backend.
-const ensureAbsolute = (origin?: string) => {
-  if (!origin) return "";
-  const normalized = cleanUrl(origin);
-  return normalized.startsWith("http") ? normalized : `https://${normalized}`;
-};
 
-const FRONT_ORIGIN =
-  typeof window !== "undefined"
-    ? window.location.origin
-    : ensureAbsolute(
-        process.env.NEXT_PUBLIC_FRONT_URL ||
-          process.env.VERCEL_URL ||
-          process.env.NEXT_PUBLIC_BASE_DOMAIN ||
-          "http://localhost:3000",
-      );
-
-export const AUTH_BASE_URL = `${FRONT_ORIGIN}/api/auth`;
+// Configura a URL base do Better Auth para apontar DIRETAMENTE para o backend
+// Isso evita problemas com rewrites do Next.js e garante que a validação de sessão ocorra na origem correta
+export const AUTH_BASE_URL = `${API_BASE_URL}/api/auth`;
 
 console.log(">>> [AUTH_CLIENT] API_BASE_URL configurada como:", API_BASE_URL);
 console.log(">>> [AUTH_CLIENT] AUTH_BASE_URL configurada como:", AUTH_BASE_URL);
