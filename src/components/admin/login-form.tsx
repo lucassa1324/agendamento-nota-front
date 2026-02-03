@@ -31,7 +31,7 @@ export function LoginForm() {
   const router = useRouter();
 
   // Verifica se já existe sessão ao carregar a página
-  React.useEffect(() => {
+  useEffect(() => {
     const checkSession = async () => {
       try {
         const { data } = await getSession();
