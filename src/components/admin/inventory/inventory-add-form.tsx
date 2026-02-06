@@ -1,4 +1,4 @@
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,7 @@ interface InventoryAddFormProps {
   }) => void;
   handleAddItem: () => void;
   setShowAddForm: (show: boolean) => void;
+  isLoading?: boolean;
 }
 
 export function InventoryAddForm({
@@ -45,6 +46,7 @@ export function InventoryAddForm({
   setNewItem,
   handleAddItem,
   setShowAddForm,
+  isLoading = false,
 }: InventoryAddFormProps) {
   return (
     <Card className="mb-6 border-primary/20 bg-primary/5">
@@ -74,6 +76,7 @@ export function InventoryAddForm({
                 id="name"
                 placeholder="Ex: Henna Profissional"
                 value={newItem.name}
+                disabled={isLoading}
                 onChange={(e) =>
                   setNewItem({ ...newItem, name: e.target.value })
                 }
@@ -97,6 +100,7 @@ export function InventoryAddForm({
                 step="0.001"
                 placeholder="Ex: 10"
                 value={newItem.quantity}
+                disabled={isLoading}
                 onChange={(e) =>
                   setNewItem({ ...newItem, quantity: e.target.value })
                 }
@@ -123,6 +127,7 @@ export function InventoryAddForm({
                 step="0.001"
                 placeholder="Ex: 2"
                 value={newItem.minQuantity}
+                disabled={isLoading}
                 onChange={(e) =>
                   setNewItem({ ...newItem, minQuantity: e.target.value })
                 }
@@ -146,6 +151,7 @@ export function InventoryAddForm({
                 step="0.01"
                 placeholder="Ex: 45.90"
                 value={newItem.price}
+                disabled={isLoading}
                 onChange={(e) =>
                   setNewItem({ ...newItem, price: e.target.value })
                 }
@@ -165,6 +171,7 @@ export function InventoryAddForm({
               </div>
               <Select
                 value={newItem.unit}
+                disabled={isLoading}
                 onValueChange={(value) =>
                   setNewItem({ ...newItem, unit: value })
                 }
@@ -202,6 +209,7 @@ export function InventoryAddForm({
               </div>
               <Select
                 value={newItem.secondaryUnit}
+                disabled={isLoading}
                 onValueChange={(value) =>
                   setNewItem({ ...newItem, secondaryUnit: value })
                 }
@@ -239,6 +247,7 @@ export function InventoryAddForm({
                 step="0.001"
                 placeholder="Ex: 500"
                 value={newItem.conversionFactor}
+                disabled={isLoading}
                 onChange={(e) =>
                   setNewItem({ ...newItem, conversionFactor: e.target.value })
                 }
@@ -247,13 +256,21 @@ export function InventoryAddForm({
           </div>
         </TooltipProvider>
         <div className="flex flex-col sm:flex-row gap-2 mt-4">
-          <Button onClick={handleAddItem} className="w-full sm:w-auto">
-            Adicionar
+          <Button onClick={handleAddItem} className="w-full sm:w-auto" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              "Adicionar"
+            )}
           </Button>
           <Button
             variant="outline"
             onClick={() => setShowAddForm(false)}
             className="w-full sm:w-auto"
+            disabled={isLoading}
           >
             Cancelar
           </Button>

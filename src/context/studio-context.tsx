@@ -16,6 +16,7 @@ interface StudioContextType {
   isLoading: boolean;
   error: string | null;
   slug: string | null;
+  updateStudioInfo: (updates: Partial<Business>) => void;
 }
 
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
@@ -32,6 +33,10 @@ export function StudioProvider({
   const [error, setError] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(initialSlug || null);
   const router = useRouter();
+
+  const updateStudioInfo = (updates: Partial<Business>) => {
+    setStudio((prev) => (prev ? { ...prev, ...updates } : null));
+  };
 
   useEffect(() => {
     if (initialSlug) {
@@ -128,7 +133,9 @@ export function StudioProvider({
   }, [error, slug, router]);
 
   return (
-    <StudioContext.Provider value={{ studio, isLoading, error, slug }}>
+    <StudioContext.Provider
+      value={{ studio, isLoading, error, slug, updateStudioInfo }}
+    >
       {children}
     </StudioContext.Provider>
   );

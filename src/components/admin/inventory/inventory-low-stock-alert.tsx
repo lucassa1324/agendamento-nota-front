@@ -32,7 +32,7 @@ export function InventoryLowStockAlert({
                   variant="outline"
                   className="bg-white text-red-700 border-red-200 text-[9px] py-0 px-1.5"
                 >
-                  {item.name}: {item.quantity.toLocaleString("pt-BR")}{" "}
+                  {item.name}: {(item.quantity || 0).toLocaleString("pt-BR")}{" "}
                   {item.unit}
                 </Badge>
               ))}

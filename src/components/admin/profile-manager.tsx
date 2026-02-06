@@ -1,5 +1,6 @@
 "use client";
 
+import imageCompression from "browser-image-compression";
 import {
   Check,
   ImageIcon,
@@ -10,7 +11,7 @@ import {
   Upload,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,21 +22,37 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
-import {
-  getSiteProfile,
-  type SiteProfile,
-  saveSiteProfile,
-} from "@/lib/booking-data";
+import { API_BASE_URL, useSession } from "@/lib/auth-client";
+import type { SiteProfile } from "@/lib/booking-data";
 
 export function ProfileManager() {
   const { toast } = useToast();
+  const { data: session } = useSession();
+  const { studio, updateStudioInfo } = useStudio();
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const initialProfileRef = useRef<SiteProfile | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isDirty, setIsDirty] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Interface para tipagem segura da sessão
+  interface SessionUser {
+    businessId?: string;
+    business?: { id: string };
+  }
+
+  // Origem do ID: Consome do StudioContext (preferencial) ou da sessão
+  const user = session?.user as SessionUser | undefined;
+  const companyId = studio?.id || user?.businessId || user?.business?.id;
+
   const [profile, setProfile] = useState<SiteProfile>({
     name: "",
     description: "",
@@ -58,33 +75,147 @@ export function ProfileManager() {
     showX: false,
   });
 
+  // Removido o isDirty como estado para usar comparação direta
+  const isDirty =
+    initialProfileRef.current &&
+    JSON.stringify(profile) !== JSON.stringify(initialProfileRef.current);
+
+  // Busca inicial das configurações do Back-end
+  const fetchProfile = useCallback(async () => {
+    if (!companyId) return;
+    setIsLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/settings/profile/${companyId}`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log(">>> [PROFILE] Dados recebidos:", data);
+
+        const loadedProfile = {
+          name: data.siteName || data.name || "",
+          description: data.description || "",
+          titleSuffix: data.titleSuffix || "",
+          phone: data.phone || "",
+          instagram: data.instagram || "",
+          whatsapp: data.whatsapp || "",
+          facebook: data.facebook || "",
+          tiktok: data.tiktok || "",
+          linkedin: data.linkedin || "",
+          x: data.x || "",
+          logoUrl: data.logoUrl || "",
+          showInstagram: data.showInstagram ?? true,
+          showWhatsapp: data.showWhatsapp ?? true,
+          showFacebook: data.showFacebook ?? true,
+          showTiktok: data.showTiktok ?? false,
+          showLinkedin: data.showLinkedin ?? false,
+          showX: data.showX ?? false,
+        };
+
+        setProfile(loadedProfile);
+        initialProfileRef.current = loadedProfile;
+      }
+    } catch (error) {
+      console.error("Erro ao buscar perfil:", error);
+      toast({
+        title: "Erro de Conexão",
+        description: "Não foi possível carregar as configurações do site.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast, companyId]);
+
   useEffect(() => {
-    const savedProfile = getSiteProfile();
-    setProfile(savedProfile);
-  }, []);
+    if (companyId) {
+      fetchProfile();
+    }
+  }, [fetchProfile, companyId]);
 
   const handleSave = async () => {
+    if (!companyId) {
+      toast({
+        title: "Erro",
+        description: "ID da empresa não encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // 1. Dirty Checking: Compara estado atual com inicial
+    const initialProfile = initialProfileRef.current;
+    if (!initialProfile) return;
+
+    const changes: Record<string, string | boolean | null | undefined> = {};
+    let hasChanges = false;
+
+    Object.keys(profile).forEach((key) => {
+      const k = key as keyof SiteProfile;
+      if (profile[k] !== initialProfile[k]) {
+        // Mapeia 'name' para 'siteName' conforme expectativa do backend
+        const backendKey = k === "name" ? "siteName" : k;
+        changes[backendKey] = profile[k];
+        hasChanges = true;
+      }
+    });
+
+    if (!hasChanges) {
+      toast({
+        title: "Nenhuma alteração",
+        description: "Nenhuma alteração detectada para salvar.",
+      });
+      return;
+    }
+
     setIsSaving(true);
     setSaveSuccess(false);
 
-    // Simula um pequeno delay para feedback visual
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
     try {
-      saveSiteProfile(profile);
-      setIsDirty(false);
-      setSaveSuccess(true);
+      // Adiciona o ID obrigatório ao payload de mudanças
+      const payload = {
+        ...changes,
+        companyId,
+      };
+
+      console.log(">>> [PROFILE] Enviando apenas alterações:", payload);
+
+      const response = await fetch(`${API_BASE_URL}/api/settings/profile`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        if (response.status === 422) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error || "Erro de validação nos dados enviados.",
+          );
+        }
+        throw new Error(`Falha ao salvar (Status: ${response.status})`);
+      }
+
+      // Atualiza o dado inicial após salvar com sucesso
+      initialProfileRef.current = { ...profile };
+
       toast({
         title: "Perfil Atualizado",
         description: "As informações do site foram salvas com sucesso.",
       });
-
-      // Remove o estado de sucesso após 3 segundos
+      setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
-    } catch {
+    } catch (error) {
+      console.error("Erro ao salvar perfil:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Ocorreu um erro ao tentar salvar as informações no servidor.";
+
       toast({
         title: "Erro ao Salvar",
-        description: "Ocorreu um erro ao tentar salvar as informações.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -92,37 +223,125 @@ export function ProfileManager() {
     }
   };
 
-  const updateField = (field: keyof SiteProfile, value: string | boolean) => {
-    setProfile((prev) => ({ ...prev, [field]: value }));
-    setIsDirty(true);
+  const maskPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 11) {
+      return numbers
+        .replace(/^(\d{2})(\d)/g, "($1) $2")
+        .replace(/(\d{5})(\d)/, "$1-$2")
+        .substring(0, 15);
+    }
+    return numbers.substring(0, 11);
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const updateField = (field: keyof SiteProfile, value: string | boolean) => {
+    let finalValue = value;
+    if (field === "phone" && typeof value === "string") {
+      finalValue = maskPhone(value);
+    }
+    setProfile((prev) => ({ ...prev, [field]: finalValue }));
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 4 * 1024 * 1024) {
-        toast({
-          title: "Erro no Upload",
-          description: "A logo deve ter no máximo 4MB.",
-          variant: "destructive",
+    if (!file || !companyId) return;
+
+    // 1. Validação básica de tamanho (opcional aqui, pois vamos comprimir)
+    if (file.size > 10 * 1024 * 1024) { // 10MB limite antes da compressão
+      toast({
+        title: "Arquivo muito grande",
+        description: "A imagem original deve ter no máximo 10MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // 2. Compressão no Client-side
+      const options = {
+        maxSizeMB: 0.2, // 200KB alvo
+        maxWidthOrHeight: 800, // Máximo 800px de largura/altura
+        useWebWorker: true,
+        onProgress: (p: number) => setUploadProgress(Math.round(p * 0.5)), // 50% do progresso é compressão
+      };
+
+      const compressedFile = await imageCompression(file, options);
+      console.log(`>>> [LOGO] Original: ${(file.size / 1024 / 1024).toFixed(2)}MB | Comprimida: ${(compressedFile.size / 1024).toFixed(2)}KB`);
+
+      // 3. Upload Assíncrono com XHR (para acompanhar progresso real)
+      const formData = new FormData();
+      formData.append("file", compressedFile);
+      formData.append("companyId", companyId);
+
+      const xhr = new XMLHttpRequest();
+      
+      const uploadPromise = new Promise((resolve, reject) => {
+        xhr.upload.addEventListener("progress", (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 50) + 50; // Os outros 50% são upload
+            setUploadProgress(percentComplete);
+          }
         });
-        e.target.value = "";
-        return;
+
+        xhr.addEventListener("load", () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const response = JSON.parse(xhr.responseText);
+              resolve(response);
+            } catch {
+              reject(new Error("Erro ao processar resposta do servidor."));
+            }
+          } else {
+            reject(new Error(`Erro no upload: ${xhr.status}`));
+          }
+        });
+
+        xhr.addEventListener("error", () => reject(new Error("Erro na conexão durante o upload.")));
+        xhr.open("POST", `${API_BASE_URL}/api/settings/logo`);
+        xhr.withCredentials = true;
+        xhr.send(formData);
+      });
+
+      const response = (await uploadPromise) as { logoUrl: string };
+      
+      // 4. Sucesso: Atualiza estados e StudioContext
+      updateField("logoUrl", response.logoUrl);
+      
+      // Cache local no StudioContext
+      if (updateStudioInfo) {
+        updateStudioInfo({ logoUrl: response.logoUrl });
       }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        updateField("logoUrl", base64String);
-        toast({
-          title: "Logo Carregada",
-          description: "A logo foi carregada. Clique em salvar para aplicar.",
-        });
-      };
-      reader.readAsDataURL(file);
+      toast({
+        title: "Logo Atualizada",
+        description: "A nova logo foi carregada e salva com sucesso.",
+      });
+
+    } catch (error) {
+      console.error("Erro no processo de logo:", error);
+      toast({
+        title: "Erro no Upload",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao processar a logo.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
-    e.target.value = "";
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-25 space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="text-muted-foreground animate-pulse">Carregando configurações...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -144,6 +363,7 @@ export function ProfileManager() {
               value={profile.name || ""}
               onChange={(e) => updateField("name", e.target.value)}
               placeholder="Ex: Brow Studio"
+              autoComplete="off"
             />
           </div>
           <div className="space-y-2">
@@ -155,6 +375,7 @@ export function ProfileManager() {
               value={profile.titleSuffix || ""}
               onChange={(e) => updateField("titleSuffix", e.target.value)}
               placeholder="Ex: Agendamento Online, Especialidade, Slogan..."
+              autoComplete="off"
             />
             <p className="text-xs text-muted-foreground">
               Define como o nome aparecerá na aba do navegador. Exemplo:
@@ -212,6 +433,7 @@ export function ProfileManager() {
                   onChange={(e) => updateField("instagram", e.target.value)}
                   placeholder="usuario"
                   disabled={!profile.showInstagram}
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -241,6 +463,7 @@ export function ProfileManager() {
                   onChange={(e) => updateField("whatsapp", e.target.value)}
                   placeholder="11999999999"
                   disabled={!profile.showWhatsapp}
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -266,6 +489,7 @@ export function ProfileManager() {
                 onChange={(e) => updateField("facebook", e.target.value)}
                 placeholder="nome.da.pagina"
                 disabled={!profile.showFacebook}
+                autoComplete="off"
               />
             </div>
 
@@ -294,6 +518,7 @@ export function ProfileManager() {
                   onChange={(e) => updateField("tiktok", e.target.value)}
                   placeholder="usuario"
                   disabled={!profile.showTiktok}
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -319,6 +544,7 @@ export function ProfileManager() {
                 onChange={(e) => updateField("linkedin", e.target.value)}
                 placeholder="in/usuario"
                 disabled={!profile.showLinkedin}
+                autoComplete="off"
               />
             </div>
 
@@ -345,6 +571,7 @@ export function ProfileManager() {
                   onChange={(e) => updateField("x", e.target.value)}
                   placeholder="usuario"
                   disabled={!profile.showX}
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -369,6 +596,7 @@ export function ProfileManager() {
                 value={profile.phone || ""}
                 onChange={(e) => updateField("phone", e.target.value)}
                 placeholder="(11) 99999-9999"
+                autoComplete="off"
               />
             </div>
             <div className="space-y-2">
@@ -377,9 +605,13 @@ export function ProfileManager() {
                 id="email"
                 type="email"
                 value={profile.email || ""}
-                onChange={(e) => updateField("email", e.target.value)}
                 placeholder="contato@exemplo.com"
+                readOnly
+                className="bg-muted cursor-not-allowed"
               />
+              <p className="text-[10px] text-muted-foreground">
+                O e-mail é definido no cadastro da empresa e não pode ser alterado aqui.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="address">Endereço / Localização</Label>
@@ -388,6 +620,7 @@ export function ProfileManager() {
                 value={profile.address || ""}
                 onChange={(e) => updateField("address", e.target.value)}
                 placeholder="São Paulo, SP"
+                autoComplete="off"
               />
             </div>
           </CardContent>
@@ -440,15 +673,34 @@ export function ProfileManager() {
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <label
                 htmlFor="logo-upload"
-                className="relative border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors cursor-pointer group flex flex-col items-center justify-center h-full"
+                className={`relative border-2 border-dashed border-border rounded-lg p-8 text-center transition-colors cursor-pointer group flex flex-col items-center justify-center h-full ${
+                  isUploading ? "opacity-50 cursor-wait" : "hover:border-primary"
+                }`}
               >
-                <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground group-hover:text-primary transition-colors" />
-                <p className="text-sm text-muted-foreground">
-                  Clique para fazer upload da logo
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  PNG, JPG ou SVG (máx. 4MB)
-                </p>
+                {isUploading ? (
+                  <div className="w-full space-y-4">
+                    <Loader2 className="w-8 h-8 mx-auto animate-spin text-primary" />
+                    <div className="space-y-2">
+                      <Progress value={uploadProgress || 0} className="h-2" />
+                      <p className="text-xs text-muted-foreground font-medium">
+                        {uploadProgress && uploadProgress < 50
+                          ? "Otimizando imagem..."
+                          : "Enviando para o servidor..."}
+                        ({uploadProgress}%)
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <p className="text-sm text-muted-foreground">
+                      Clique para fazer upload da logo
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      PNG, JPG ou SVG (máx. 10MB)
+                    </p>
+                  </>
+                )}
               </label>
               <input
                 id="logo-upload"
@@ -457,6 +709,7 @@ export function ProfileManager() {
                 accept="image/*"
                 className="hidden"
                 onChange={handleLogoUpload}
+                disabled={isUploading}
               />
 
               {profile.logoUrl && (

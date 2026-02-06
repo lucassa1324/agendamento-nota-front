@@ -38,7 +38,7 @@ export function InventoryHistoryModal({
           <DialogTitle>Histórico de Movimentação</DialogTitle>
           <DialogDescription>
             {showHistory?.name} -{" "}
-            {showHistory?.quantity.toLocaleString("pt-BR")} {showHistory?.unit}{" "}
+            {(showHistory?.quantity || 0).toLocaleString("pt-BR")} {showHistory?.unit}{" "}
             em estoque
           </DialogDescription>
         </DialogHeader>
@@ -63,7 +63,7 @@ export function InventoryHistoryModal({
                   {showHistory.logs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="text-[10px] leading-tight">
-                        {new Date(log.timestamp).toLocaleString("pt-BR")}
+                        {log.timestamp ? new Date(log.timestamp).toLocaleString("pt-BR") : "---"}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -85,16 +85,16 @@ export function InventoryHistoryModal({
                       <TableCell
                         className={cn(
                           "font-medium text-xs",
-                          log.quantityChange > 0
+                          (log.quantityChange || 0) > 0
                             ? "text-green-600"
                             : "text-red-600",
                         )}
                       >
-                        {log.quantityChange > 0 ? "+" : ""}
-                        {log.quantityChange.toLocaleString("pt-BR")}
+                        {(log.quantityChange || 0) > 0 ? "+" : ""}
+                        {(log.quantityChange || 0).toLocaleString("pt-BR")}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
-                        {log.newQuantity.toLocaleString("pt-BR")}
+                        {(log.newQuantity || 0).toLocaleString("pt-BR")}
                       </TableCell>
                       <TableCell
                         className="text-[11px] max-w-50 truncate"

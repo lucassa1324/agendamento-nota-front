@@ -10,9 +10,13 @@ const cleanUrl = (url?: string) => {
 export const API_BASE_URL =
   cleanUrl(process.env.NEXT_PUBLIC_API_URL) || "http://localhost:3001";
 
-// Configura a URL base do Better Auth para apontar DIRETAMENTE para o backend
-// Isso evita problemas com rewrites do Next.js e garante que a validação de sessão ocorra na origem correta
-export const AUTH_BASE_URL = `${API_BASE_URL}/api/auth`;
+// Configura a URL base do Better Auth
+// Em produção na Vercel, usamos o próprio domínio do front (/api/auth) que é roteado via rewrites
+// Isso garante que os cookies sejam First-Party e persistam corretamente
+export const AUTH_BASE_URL =
+  process.env.NODE_ENV === "production"
+    ? "/api/auth"
+    : `${API_BASE_URL}/api/auth`;
 
 console.log(">>> [AUTH_CLIENT] API_BASE_URL configurada como:", API_BASE_URL);
 console.log(">>> [AUTH_CLIENT] AUTH_BASE_URL configurada como:", AUTH_BASE_URL);

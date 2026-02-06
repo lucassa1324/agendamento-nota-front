@@ -71,14 +71,14 @@ export function InventoryTable({
                     <span
                       className={cn(
                         "text-[9px] sm:text-xs",
-                        item.quantity <= item.minQuantity
+                        (item.quantity || 0) <= (item.minQuantity || 0)
                           ? "text-red-600 font-bold"
                           : "text-muted-foreground",
                       )}
                     >
-                      {item.quantity.toLocaleString("pt-BR")} {item.unit}
+                      {(item.quantity || 0).toLocaleString("pt-BR")} {item.unit}
                     </span>
-                    {item.quantity <= item.minQuantity && (
+                    {(item.quantity || 0) <= (item.minQuantity || 0) && (
                       <Badge
                         variant="outline"
                         className="h-3 px-1 text-[6px] sm:text-[8px] bg-red-50 text-red-700 border-red-200"
@@ -92,12 +92,12 @@ export function InventoryTable({
               <TableCell className="hidden xl:table-cell">
                 <span
                   className={
-                    item.quantity <= item.minQuantity
+                    (item.quantity || 0) <= (item.minQuantity || 0)
                       ? "text-red-600 font-semibold"
                       : ""
                   }
                 >
-                  {item.quantity.toLocaleString("pt-BR", {
+                  {(item.quantity || 0).toLocaleString("pt-BR", {
                     minimumFractionDigits: 0,
                     maximumFractionDigits: 3,
                   })}
@@ -110,10 +110,10 @@ export function InventoryTable({
                 {new Intl.NumberFormat("pt-BR", {
                   style: "currency",
                   currency: "BRL",
-                }).format(item.price)}
+                }).format(Number(item.price || item.unitPrice || 0))}
               </TableCell>
               <TableCell className="hidden 2xl:table-cell">
-                {item.quantity > item.minQuantity ? (
+                {(item.quantity || 0) > (item.minQuantity || 0) ? (
                   <Badge
                     variant="outline"
                     className="bg-green-50 text-green-700 border-green-200"
@@ -131,7 +131,7 @@ export function InventoryTable({
                 )}
               </TableCell>
               <TableCell className="hidden 2xl:table-cell text-muted-foreground whitespace-nowrap">
-                {new Date(item.lastUpdate).toLocaleDateString("pt-BR")}
+                {item.lastUpdate ? new Date(item.lastUpdate).toLocaleDateString("pt-BR") : "---"}
               </TableCell>
               <TableCell className="text-right px-2 sm:px-4">
                 <div className="flex justify-end gap-1 sm:gap-1.5">
