@@ -4,12 +4,15 @@ import { useRouter } from "next/navigation";
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useState,
 } from "react";
+import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { API_BASE_URL, BASE_DOMAIN } from "@/lib/auth-client";
 import type { Business } from "@/lib/booking-data";
+import { siteCustomizerService } from "@/lib/site-customizer-service";
 
 interface StudioContextType {
   studio: Business | null;
@@ -34,9 +37,9 @@ export function StudioProvider({
   const [slug, setSlug] = useState<string | null>(initialSlug || null);
   const router = useRouter();
 
-  const updateStudioInfo = (updates: Partial<Business>) => {
+  const updateStudioInfo = useCallback((updates: Partial<Business>) => {
     setStudio((prev) => (prev ? { ...prev, ...updates } : null));
-  };
+  }, []);
 
   useEffect(() => {
     if (initialSlug) {
@@ -51,9 +54,23 @@ export function StudioProvider({
       // Se não temos um slug inicial, tenta extrair do host
       if (!currentSlug && typeof window !== "undefined") {
         const host = window.location.host;
+        console.log(
+          `>>> [StudioProvider] Analisando HOST para extração de SLUG: ${host}`,
+        );
 
-        // Verifica se estamos em um subdomínio do BASE_DOMAIN
-        if (
+        // Caso especial para desenvolvimento: subdomínio em localhost (ex: lucas-studio.localhost:3000)
+        if (host.includes(".localhost")) {
+          const parts = host.split(".");
+          if (parts.length > 1 && parts[0] !== "www") {
+            currentSlug = parts[0];
+            console.log(
+              `>>> [StudioProvider] SLUG extraído do subdomínio LOCALHOST: ${currentSlug}`,
+            );
+            setSlug(currentSlug);
+          }
+        }
+        // Caso para produção: subdomínio do BASE_DOMAIN
+        else if (
           BASE_DOMAIN &&
           host.endsWith(BASE_DOMAIN) &&
           host !== BASE_DOMAIN &&
@@ -64,6 +81,9 @@ export function StudioProvider({
             .replace("www.", "");
           if (possibleSlug) {
             currentSlug = possibleSlug;
+            console.log(
+              `>>> [StudioProvider] SLUG extraído do subdomínio PRODUÇÃO: ${currentSlug}`,
+            );
             setSlug(currentSlug);
           }
         }
@@ -75,31 +95,87 @@ export function StudioProvider({
       }
 
       try {
-        console.log(`>>> [StudioProvider] Buscando studio via: ${API_BASE_URL}/api/business/slug/${currentSlug}`);
-        
-        // Ajustado para /api/business/slug/ conforme novo padrão do back-end
-        const response = await fetch(
-          `${API_BASE_URL}/api/business/slug/${currentSlug}`,
-          {
-            credentials: "include",
-            headers: {
-              "Accept": "application/json",
-            },
+        const fetchUrl = `${API_BASE_URL}/api/business/slug/${currentSlug}`;
+        console.log(`>>> [StudioProvider] Buscando studio via: ${fetchUrl}`);
+
+        const response = await fetch(fetchUrl, {
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            Accept: "application/json",
           },
-        );
+        });
 
         if (response.ok) {
-          const data = await response.json();
-          console.log(">>> [StudioProvider] Dados do studio carregados com sucesso:", data?.id);
-          setStudio(data);
+          // Blindagem contra JSON vazio ou malformado
+          const text = await response.text();
+          console.log(">>> [StudioProvider] Resposta bruta do servidor:", text);
+
+          if (!text || text.trim() === "") {
+            throw new Error("Resposta do servidor está vazia.");
+          }
+
+          try {
+            const data = JSON.parse(text);
+            console.log(
+              ">>> [StudioProvider] Dados do studio carregados com sucesso:",
+              data?.id,
+            );
+            setStudio(data);
+
+            // Busca de customização SEM CACHE para refletir alterações imediatamente no visitante
+            if (data?.id) {
+              try {
+                const customization =
+                  await siteCustomizerService.getCustomization(data.id);
+                console.log(
+                  ">>> [StudioProvider] Customização carregada diretamente do banco para empresa:",
+                  data.id,
+                );
+
+                // Mapeamento flexível para garantir que cores e fontes do layoutGlobal sejam aplicadas
+                const config = customization as SiteConfigData;
+                const layoutGlobal = config.layoutGlobal || config.layout_global;
+                const mappedConfig = {
+                  ...config,
+                  colors:
+                    config.colors ||
+                    layoutGlobal?.siteColors ||
+                    layoutGlobal?.cores_base,
+                  theme:
+                    config.theme || config.typography || layoutGlobal?.fontes,
+                };
+
+                updateStudioInfo({
+                  config: mappedConfig as Business["config"],
+                });
+              } catch (custErr) {
+                console.error(
+                  ">>> [StudioProvider] Falha ao carregar customização sem cache:",
+                  custErr,
+                );
+              }
+            }
+          } catch (parseErr) {
+            console.error(
+              ">>> [StudioProvider] Erro ao processar JSON:",
+              parseErr,
+            );
+            throw new Error("Resposta do servidor não é um JSON válido.");
+          }
         } else {
-          const errorText = await response.text().catch(() => "Sem detalhes no corpo da resposta");
-          console.error(`>>> [StudioProvider] Resposta do servidor não foi OK:`, {
-            status: response.status,
-            statusText: response.statusText,
-            details: errorText,
-            url: response.url
-          });
+          const errorText = await response
+            .text()
+            .catch(() => "Sem detalhes no corpo da resposta");
+          console.error(
+            `>>> [StudioProvider] Resposta do servidor não foi OK:`,
+            {
+              status: response.status,
+              statusText: response.statusText,
+              details: errorText,
+              url: response.url,
+            },
+          );
 
           if (response.status === 404) {
             setError("Studio não encontrado");
@@ -107,21 +183,40 @@ export function StudioProvider({
             setError(`Erro do servidor (${response.status})`);
           }
         }
-      } catch (err) {
-        console.error(">>> [StudioProvider] ERRO CRÍTICO de rede ou CORS:", {
-          message: err instanceof Error ? err.message : "Erro desconhecido",
-          error: err,
-          api_url: API_BASE_URL,
-          slug: currentSlug
-        });
-        setError("Erro de conexão com o servidor. Verifique o CORS ou a URL da API.");
+      } catch (err: unknown) {
+        const fetchUrl = `${API_BASE_URL}/api/business/slug/${currentSlug}`;
+        const currentOrigin =
+          typeof window !== "undefined" ? window.location.origin : "N/A";
+
+        const errorDetails = err as { stack?: string; cause?: unknown };
+
+        console.error(
+          ">>> [StudioProvider] ERRO CRÍTICO de rede ou processamento:",
+          {
+            message: err instanceof Error ? err.message : "Erro desconhecido",
+            stack: errorDetails.stack,
+            cause: errorDetails.cause,
+            api_url: API_BASE_URL,
+            fetch_url: fetchUrl,
+            current_origin: currentOrigin,
+            slug: currentSlug,
+          },
+        );
+
+        // Log detalhado do erro para inspeção no console do navegador
+        console.dir(err);
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Erro de conexão com o servidor.",
+        );
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchStudio();
-  }, [slug]);
+  }, [slug, updateStudioInfo]);
 
   useEffect(() => {
     if (error === "Studio não encontrado") {

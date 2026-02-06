@@ -49,10 +49,7 @@ export function ColorEditor({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <Accordion
-        type="multiple"
-        className="w-full space-y-2 border-none"
-      >
+      <Accordion type="multiple" className="w-full space-y-2 border-none">
         {colorOptions.map((option) => (
           <AccordionItem
             key={option.key}

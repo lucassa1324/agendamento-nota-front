@@ -43,10 +43,10 @@ export function TypographyEditor({
         "item-subtitles": "hero-subtitle",
         "item-body": "services-description",
       };
-      
+
       const activeValues = Array.isArray(values) ? values : [values];
       const lastValue = activeValues[activeValues.length - 1];
-      
+
       if (lastValue && highlightMap[lastValue]) {
         onHighlight(highlightMap[lastValue]);
       }

@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/sheet";
 import { useSidebar } from "@/context/sidebar-context";
 import { useIsMobile } from "@/hooks/use-is-mobile";
-import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "@/lib/auth-client";
 import type { Business } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
@@ -32,7 +31,6 @@ export function SiteCustomizer() {
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
@@ -121,7 +119,9 @@ export function SiteCustomizer() {
     hasBookingConfirmationChanges,
     hasUnsavedGlobalChanges,
     // Novos helpers para sincronização com o banco
-    loadExternalConfig,
+    fetchCustomization,
+    isFetching: isConfigFetching,
+    isSaving: isConfigSaving,
   } = useSiteEditor(iframeRef);
 
   const fetchBusinessData = useCallback(async () => {
@@ -146,11 +146,11 @@ export function SiteCustomizer() {
           setBusinesses([businessData]);
           setSelectedBusinessId(businessData.id);
 
-          if (businessData.config) {
+          if (businessData.id) {
             console.log(
-              ">>> [CUSTOMIZER] Configuração encontrada, carregando no editor...",
+              ">>> [CUSTOMIZER] Buscando customização via serviço...",
             );
-            loadExternalConfig(businessData.config);
+            await fetchCustomization(businessData.id);
           }
         } else {
           setError("Dados do estúdio não encontrados.");
@@ -169,101 +169,11 @@ export function SiteCustomizer() {
     } finally {
       setIsLoading(false);
     }
-  }, [slug, loadExternalConfig]);
+  }, [slug, fetchCustomization]);
 
   useEffect(() => {
     fetchBusinessData();
   }, [fetchBusinessData]);
-
-  const handleSaveToDB = async () => {
-    if (!selectedBusinessId) return;
-
-    try {
-      // Enviar também para o novo endpoint de customização conforme solicitado
-      console.log(">>> [CUSTOMIZER] Enviando POST para /api/company/customizer");
-      const customizerResponse = await fetch(`${API_BASE_URL}/api/company/customizer`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          hero: heroSettings,
-          typography: fontSettings,
-          companyId: selectedBusinessId,
-        }),
-        credentials: "include",
-      });
-
-      if (!customizerResponse.ok) {
-        const errorData = await customizerResponse.json().catch(() => ({}));
-        if (customizerResponse.status === 500) {
-          console.error(">>> [ERRO 500] Erro no Customizer:", errorData);
-        }
-        console.warn(">>> [CUSTOMIZER] Falha no POST secundário, mas continuando...", errorData);
-      }
-
-      const currentConfig = {
-        hero: heroSettings,
-        aboutHero: aboutHeroSettings,
-        story: storySettings,
-        team: teamSettings,
-        testimonials: testimonialsSettings,
-        theme: fontSettings,
-        colors: colorSettings,
-        services: servicesSettings,
-        values: valuesSettings,
-        gallery: gallerySettings,
-        cta: ctaSettings,
-        header: headerSettings,
-        footer: footerSettings,
-        bookingSteps: {
-          service: bookingServiceSettings,
-          date: bookingDateSettings,
-          time: bookingTimeSettings,
-          form: bookingFormSettings,
-          confirmation: bookingConfirmationSettings,
-        },
-        pageVisibility: pageVisibility,
-        visibleSections: visibleSections,
-      };
-
-      console.log(
-        `>>> [CUSTOMIZER] Salvando configurações para o estúdio: ${selectedBusinessId}`,
-      );
-      // Ajustado de /api/studios/:id para /api/business/:id conforme nova estrutura do back-end
-      const response = await fetch(
-        `${API_BASE_URL}/api/business/${selectedBusinessId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ config: currentConfig }),
-          credentials: "include",
-        },
-      );
-
-      if (response.ok) {
-        toast({
-          title: "Salvo com sucesso!",
-          description: "As configurações foram salvas no banco de dados.",
-        });
-        // Também salva localmente (localStorage fallback)
-        handleSaveGlobal();
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error(">>> [CUSTOMIZER] Erro ao salvar no banco:", errorData);
-        throw new Error("Erro ao salvar no banco");
-      }
-    } catch (err) {
-      console.error(">>> [CUSTOMIZER] Erro crítico ao salvar:", err);
-      toast({
-        title: "Erro ao salvar",
-        description: "Não foi possível persistir as alterações.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const {
     previewMode,
@@ -385,7 +295,7 @@ export function SiteCustomizer() {
     sections,
   };
 
-  if (isLoading) {
+  if (isLoading || isConfigFetching) {
     return (
       <div className="flex flex-col items-center justify-center h-screen w-full bg-background gap-4">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -459,12 +369,16 @@ export function SiteCustomizer() {
 
         <div className="flex items-center gap-3">
           <Button
-            onClick={handleSaveToDB}
-            disabled={!selectedBusinessId}
+            onClick={handleSaveGlobal}
+            disabled={!selectedBusinessId || isConfigSaving}
             className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all active:scale-95 px-6 font-semibold"
           >
-            <Save className="w-4 h-4 mr-2" />
-            Salvar Tudo
+            {isConfigSaving ? (
+              <div className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <Save className="w-4 h-4 mr-2" />
+            )}
+            {isConfigSaving ? "Salvando..." : "Salvar Tudo"}
           </Button>
         </div>
       </header>

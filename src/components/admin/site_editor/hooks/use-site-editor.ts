@@ -1,10 +1,17 @@
-interface SiteConfigData {
+export interface LayoutGlobalSettings {
+  siteColors?: ColorSettings;
+  cores_base?: ColorSettings;
+  fontes?: FontSettings;
+}
+
+export interface SiteConfigData {
   hero?: HeroSettings;
   aboutHero?: HeroSettings;
   story?: StorySettings;
   team?: TeamSettings;
   testimonials?: TestimonialsSettings;
   theme?: FontSettings;
+  typography?: FontSettings; // Alinhamento com o Back-end
   colors?: ColorSettings;
   services?: ServicesSettings;
   values?: ValuesSettings;
@@ -14,6 +21,8 @@ interface SiteConfigData {
   footer?: FooterSettings;
   pageVisibility?: Record<string, boolean>;
   visibleSections?: Record<string, boolean>;
+  layoutGlobal?: LayoutGlobalSettings; // Suporte para estrutura aninhada do banco
+  layout_global?: LayoutGlobalSettings; // Suporte para snake_case do banco
   bookingSteps?: {
     service?: BookingStepSettings;
     date?: BookingStepSettings;
@@ -134,9 +143,15 @@ import {
   type TestimonialsSettings,
   type ValuesSettings,
 } from "@/lib/booking-data";
+import { siteCustomizerService } from "@/lib/site-customizer-service";
 
 export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const { toast } = useToast();
+
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Estados de customização (inicializados do storage)
   const [heroSettings, setHeroSettings] =
@@ -375,6 +390,411 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastSavedPageVisibility(loadedPageVisibility);
     setLastSavedVisibleSections(loadedVisibleSections);
   }, []);
+
+  const loadExternalConfig = useCallback(
+    (config: Record<string, unknown>) => {
+      if (!config) return;
+      
+      // Mapeamento flexível para suportar layoutGlobal/layout_global do banco
+      const layoutGlobal = (config.layoutGlobal || config.layout_global) as Record<string, unknown> | undefined;
+      
+      const data = {
+        ...config,
+        colors: (config.colors || layoutGlobal?.siteColors || layoutGlobal?.cores_base) as ColorSettings | undefined,
+        theme: (config.theme || config.typography || layoutGlobal?.fontes) as FontSettings | undefined,
+      } as SiteConfigData;
+
+      if (data.hero) {
+        setHeroSettings(data.hero);
+        setLastSavedHero(data.hero);
+        setLastAppliedHero(data.hero);
+      }
+
+      if (data.aboutHero) {
+        setAboutHeroSettings(data.aboutHero);
+        setLastSavedAboutHero(data.aboutHero);
+        setLastAppliedAboutHero(data.aboutHero);
+      }
+
+      if (data.story) {
+        setStorySettings(data.story);
+        setLastSavedStory(data.story);
+        setLastAppliedStory(data.story);
+      }
+
+      if (data.team) {
+        setTeamSettings(data.team);
+        setLastSavedTeam(data.team);
+        setLastAppliedTeam(data.team);
+      }
+
+      if (data.testimonials) {
+        setTestimonialsSettings(data.testimonials);
+        setLastSavedTestimonials(data.testimonials);
+        setLastAppliedTestimonials(data.testimonials);
+      }
+
+      if (data.theme) {
+        setFontSettings(data.theme);
+        setLastSavedFont(data.theme);
+        setLastAppliedFont(data.theme);
+      }
+
+      if (data.colors) {
+        setColorSettings(data.colors);
+        setLastSavedColor(data.colors);
+        setLastAppliedColor(data.colors);
+      }
+
+      if (data.services) {
+        setServicesSettings(data.services);
+        setLastSavedServices(data.services);
+        setLastAppliedServices(data.services);
+      }
+
+      if (data.values) {
+        setValuesSettings(data.values);
+        setLastSavedValues(data.values);
+        setLastAppliedValues(data.values);
+      }
+
+      if (data.gallery) {
+        setGallerySettings(data.gallery);
+        setLastSavedGallery(data.gallery);
+        setLastAppliedGallery(data.gallery);
+      }
+
+      if (data.cta) {
+        setCTASettings(data.cta);
+        setLastSavedCTA(data.cta);
+        setLastAppliedCTA(data.cta);
+      }
+
+      if (data.header) {
+        setHeaderSettings(data.header);
+        setLastSavedHeader(data.header);
+        setLastAppliedHeader(data.header);
+      }
+
+      if (data.footer) {
+        setFooterSettings(data.footer);
+        setLastSavedFooter(data.footer);
+        setLastAppliedFooter(data.footer);
+      }
+
+      if (data.bookingSteps) {
+        const steps = data.bookingSteps;
+        if (steps.service) {
+          setBookingServiceSettings(steps.service);
+          setLastSavedBookingService(steps.service);
+          setLastAppliedBookingService(steps.service);
+        }
+        if (steps.date) {
+          setBookingDateSettings(steps.date);
+          setLastSavedBookingDate(steps.date);
+          setLastAppliedBookingDate(steps.date);
+        }
+        if (steps.time) {
+          setBookingTimeSettings(steps.time);
+          setLastSavedBookingTime(steps.time);
+          setLastAppliedBookingTime(steps.time);
+        }
+        if (steps.form) {
+          setBookingFormSettings(steps.form);
+          setLastSavedBookingForm(steps.form);
+          setLastAppliedBookingForm(steps.form);
+        }
+        if (steps.confirmation) {
+          setBookingConfirmationSettings(steps.confirmation);
+          setLastSavedBookingConfirmation(steps.confirmation);
+          setLastAppliedBookingConfirmation(steps.confirmation);
+        }
+      }
+
+      if (data.pageVisibility) {
+        setPageVisibility(data.pageVisibility);
+        setLastSavedPageVisibility(data.pageVisibility);
+      }
+
+      if (data.visibleSections) {
+        setVisibleSections(data.visibleSections);
+        setLastSavedVisibleSections(data.visibleSections);
+      }
+
+      // Sincroniza com o iframe se necessário
+      const timer = setTimeout(() => {
+        if (iframeRef.current?.contentWindow) {
+          const win = iframeRef.current.contentWindow;
+          if (data.hero)
+            win.postMessage(
+              { type: "UPDATE_HERO_SETTINGS", settings: data.hero },
+              "*",
+            );
+          if (data.aboutHero)
+            win.postMessage(
+              { type: "UPDATE_ABOUT_HERO_SETTINGS", settings: data.aboutHero },
+              "*",
+            );
+          if (data.story)
+            win.postMessage(
+              { type: "UPDATE_STORY_SETTINGS", settings: data.story },
+              "*",
+            );
+          if (data.team)
+            win.postMessage(
+              { type: "UPDATE_TEAM_SETTINGS", settings: data.team },
+              "*",
+            );
+          if (data.testimonials)
+            win.postMessage(
+              {
+                type: "UPDATE_TESTIMONIALS_SETTINGS",
+                settings: data.testimonials,
+              },
+              "*",
+            );
+          if (data.theme)
+            win.postMessage(
+              { type: "UPDATE_TYPOGRAPHY", settings: data.theme },
+              "*",
+            );
+          if (data.colors)
+            win.postMessage(
+              { type: "UPDATE_COLORS", settings: data.colors },
+              "*",
+            );
+          if (data.services)
+            win.postMessage(
+              { type: "UPDATE_SERVICES_SETTINGS", settings: data.services },
+              "*",
+            );
+          if (data.values)
+            win.postMessage(
+              { type: "UPDATE_VALUES_SETTINGS", settings: data.values },
+              "*",
+            );
+          if (data.gallery)
+            win.postMessage(
+              { type: "UPDATE_GALLERY_SETTINGS", settings: data.gallery },
+              "*",
+            );
+          if (data.cta)
+            win.postMessage(
+              { type: "UPDATE_CTA_SETTINGS", settings: data.cta },
+              "*",
+            );
+          if (data.header)
+            win.postMessage(
+              { type: "UPDATE_HEADER_SETTINGS", settings: data.header },
+              "*",
+            );
+          if (data.footer)
+            win.postMessage(
+              { type: "UPDATE_FOOTER_SETTINGS", settings: data.footer },
+              "*",
+            );
+
+          if (data.bookingSteps) {
+            const steps = data.bookingSteps;
+            if (steps.service)
+              win.postMessage(
+                {
+                  type: "UPDATE_BOOKING_SERVICE_SETTINGS",
+                  settings: steps.service,
+                },
+                "*",
+              );
+            if (steps.date)
+              win.postMessage(
+                { type: "UPDATE_BOOKING_DATE_SETTINGS", settings: steps.date },
+                "*",
+              );
+            if (steps.time)
+              win.postMessage(
+                { type: "UPDATE_BOOKING_TIME_SETTINGS", settings: steps.time },
+                "*",
+              );
+            if (steps.form)
+              win.postMessage(
+                { type: "UPDATE_BOOKING_FORM_SETTINGS", settings: steps.form },
+                "*",
+              );
+            if (steps.confirmation)
+              win.postMessage(
+                {
+                  type: "UPDATE_BOOKING_CONFIRMATION_SETTINGS",
+                  settings: steps.confirmation,
+                },
+                "*",
+              );
+          }
+
+          if (data.pageVisibility)
+            win.postMessage(
+              {
+                type: "UPDATE_PAGE_VISIBILITY",
+                visibility: data.pageVisibility,
+              },
+              "*",
+            );
+          if (data.visibleSections)
+            win.postMessage(
+              {
+                type: "UPDATE_VISIBLE_SECTIONS",
+                sections: data.visibleSections,
+              },
+              "*",
+            );
+        }
+      }, 100);
+
+      return () => clearTimeout(timer);
+    },
+    [iframeRef],
+  );
+
+  const getChangedSettings = useCallback(() => {
+    const changes: Partial<SiteConfigData> = {};
+
+    if (JSON.stringify(heroSettings) !== JSON.stringify(lastSavedHero)) {
+      changes.hero = heroSettings;
+    }
+    if (
+      JSON.stringify(aboutHeroSettings) !== JSON.stringify(lastSavedAboutHero)
+    ) {
+      changes.aboutHero = aboutHeroSettings;
+    }
+    if (JSON.stringify(storySettings) !== JSON.stringify(lastSavedStory)) {
+      changes.story = storySettings;
+    }
+    if (JSON.stringify(teamSettings) !== JSON.stringify(lastSavedTeam)) {
+      changes.team = teamSettings;
+    }
+    if (
+      JSON.stringify(testimonialsSettings) !==
+      JSON.stringify(lastSavedTestimonials)
+    ) {
+      changes.testimonials = testimonialsSettings;
+    }
+    if (JSON.stringify(fontSettings) !== JSON.stringify(lastSavedFont)) {
+      changes.theme = fontSettings;
+    }
+    if (JSON.stringify(colorSettings) !== JSON.stringify(lastSavedColor)) {
+      changes.colors = colorSettings;
+    }
+    if (
+      JSON.stringify(servicesSettings) !== JSON.stringify(lastSavedServices)
+    ) {
+      changes.services = servicesSettings;
+    }
+    if (JSON.stringify(valuesSettings) !== JSON.stringify(lastSavedValues)) {
+      changes.values = valuesSettings;
+    }
+    if (JSON.stringify(gallerySettings) !== JSON.stringify(lastSavedGallery)) {
+      changes.gallery = gallerySettings;
+    }
+    if (JSON.stringify(ctaSettings) !== JSON.stringify(lastSavedCTA)) {
+      changes.cta = ctaSettings;
+    }
+    if (JSON.stringify(headerSettings) !== JSON.stringify(lastSavedHeader)) {
+      changes.header = headerSettings;
+    }
+    if (JSON.stringify(footerSettings) !== JSON.stringify(lastSavedFooter)) {
+      changes.footer = footerSettings;
+    }
+
+    if (
+      JSON.stringify(pageVisibility) !== JSON.stringify(lastSavedPageVisibility)
+    ) {
+      changes.pageVisibility = pageVisibility;
+    }
+    if (
+      JSON.stringify(visibleSections) !==
+      JSON.stringify(lastSavedVisibleSections)
+    ) {
+      changes.visibleSections = visibleSections;
+    }
+
+    // Booking Steps
+    const bookingChanges: SiteConfigData["bookingSteps"] = {};
+    if (
+      JSON.stringify(bookingServiceSettings) !==
+      JSON.stringify(lastSavedBookingService)
+    ) {
+      bookingChanges.service = bookingServiceSettings;
+    }
+    if (
+      JSON.stringify(bookingDateSettings) !==
+      JSON.stringify(lastSavedBookingDate)
+    ) {
+      bookingChanges.date = bookingDateSettings;
+    }
+    if (
+      JSON.stringify(bookingTimeSettings) !==
+      JSON.stringify(lastSavedBookingTime)
+    ) {
+      bookingChanges.time = bookingTimeSettings;
+    }
+    if (
+      JSON.stringify(bookingFormSettings) !==
+      JSON.stringify(lastSavedBookingForm)
+    ) {
+      bookingChanges.form = bookingFormSettings;
+    }
+    if (
+      JSON.stringify(bookingConfirmationSettings) !==
+      JSON.stringify(lastSavedBookingConfirmation)
+    ) {
+      bookingChanges.confirmation = bookingConfirmationSettings;
+    }
+
+    if (Object.keys(bookingChanges).length > 0) {
+      changes.bookingSteps = bookingChanges;
+    }
+
+    return changes;
+  }, [
+    heroSettings,
+    lastSavedHero,
+    aboutHeroSettings,
+    lastSavedAboutHero,
+    storySettings,
+    lastSavedStory,
+    teamSettings,
+    lastSavedTeam,
+    testimonialsSettings,
+    lastSavedTestimonials,
+    fontSettings,
+    lastSavedFont,
+    colorSettings,
+    lastSavedColor,
+    servicesSettings,
+    lastSavedServices,
+    valuesSettings,
+    lastSavedValues,
+    gallerySettings,
+    lastSavedGallery,
+    ctaSettings,
+    lastSavedCTA,
+    headerSettings,
+    lastSavedHeader,
+    footerSettings,
+    lastSavedFooter,
+    pageVisibility,
+    lastSavedPageVisibility,
+    visibleSections,
+    lastSavedVisibleSections,
+    bookingServiceSettings,
+    lastSavedBookingService,
+    bookingDateSettings,
+    lastSavedBookingDate,
+    bookingTimeSettings,
+    lastSavedBookingTime,
+    bookingFormSettings,
+    lastSavedBookingForm,
+    bookingConfirmationSettings,
+    lastSavedBookingConfirmation,
+  ]);
 
   // Handlers de atualização
   const handleUpdateHero = useCallback((updates: Partial<HeroSettings>) => {
@@ -1149,7 +1569,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     });
   }, [bookingConfirmationSettings, toast, iframeRef]);
 
-  const handleSaveGlobal = useCallback(() => {
+  const handleSaveGlobal = useCallback(async () => {
+    // 1. Persistência Local (Backup/Offline)
     saveHeroSettings(heroSettings);
     saveAboutHeroSettings(aboutHeroSettings);
     saveStorySettings(storySettings);
@@ -1172,6 +1593,101 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     saveBookingFormSettings(bookingFormSettings);
     saveBookingConfirmationSettings(bookingConfirmationSettings);
 
+    // 2. Persistência no Backend (se companyId estiver definido)
+    if (companyId) {
+      setIsSaving(true);
+      try {
+        const changes = getChangedSettings();
+
+        // Alinhamento com o Back-end: Converter 'colors' para 'layoutGlobal' com 'siteColors'
+        const payload: Record<string, unknown> = { ...changes };
+
+        if (changes.colors) {
+          const colors = changes.colors as Record<string, string | undefined>;
+          payload.layoutGlobal = {
+            ...(payload.layoutGlobal as Record<string, unknown> || {}),
+            siteColors: {
+              primary: colors.primary,
+              secondary: colors.secondary,
+              accent: colors.accent || colors.primary,
+              background: colors.background,
+              text: colors.text,
+              buttonText: colors.buttonText || "#ffffff",
+            },
+          };
+          // Removemos a chave antiga para evitar duplicidade ou confusão no back-end
+          delete payload.colors;
+        }
+
+        if (changes.theme) {
+          payload.typography = changes.theme;
+          payload.layoutGlobal = {
+            ...(payload.layoutGlobal as Record<string, unknown> || {}),
+            fontes: changes.theme,
+          };
+          delete payload.theme;
+        }
+
+        console.log("ENVIANDO PARA O BANCO:", payload);
+        await siteCustomizerService.saveCustomization(companyId, payload);
+
+        // Pós-salvamento: recarrega do banco (sem cache) e aplica imediatamente
+        try {
+          const fresh = await siteCustomizerService.getCustomization(companyId);
+          loadExternalConfig(fresh as unknown as Record<string, unknown>);
+
+          // Sincronização explícita com o preview para cores e fontes (que são as mais sensíveis)
+          const layoutGlobal = fresh.layoutGlobal || fresh.layout_global;
+          const freshColors = fresh.colors || layoutGlobal?.siteColors || layoutGlobal?.cores_base;
+          const freshFonts = fresh.theme || fresh.typography || layoutGlobal?.fontes;
+
+          if (iframeRef.current?.contentWindow) {
+            if (freshColors) {
+              iframeRef.current.contentWindow.postMessage(
+                { type: "UPDATE_COLORS", settings: freshColors },
+                "*",
+              );
+            }
+            if (freshFonts) {
+              iframeRef.current.contentWindow.postMessage(
+                { type: "UPDATE_TYPOGRAPHY", settings: freshFonts },
+                "*",
+              );
+            }
+          }
+        } catch (reloadErr) {
+          console.error(
+            "Falha ao recarregar dados do banco após salvar:",
+            reloadErr,
+          );
+        }
+
+        toast({
+          title: "Salvo com sucesso!",
+          description: "As alterações foram publicadas no seu site.",
+        });
+      } catch (err) {
+        console.error("Erro ao salvar no backend:", err);
+        toast({
+          title: "Erro ao salvar",
+          description:
+            "As alterações foram salvas localmente, mas houve um erro ao sincronizar com o servidor.",
+          variant: "destructive",
+        });
+        // Não retornamos aqui, deixamos atualizar os estados "lastSaved" para que o botão fique desabilitado,
+        // pois já salvamos localmente. Ou deveríamos manter habilitado?
+        // Assumindo que o local storage é a fonte de verdade imediata para o editor.
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      toast({
+        title: "Site salvo localmente!",
+        description: "As alterações foram salvas no navegador.",
+      });
+    }
+
+    // 3. Atualiza estados "LastSaved" para refletir o que está "commitado"
     setLastSavedHero(heroSettings);
     setLastSavedAboutHero(aboutHeroSettings);
     setLastSavedStory(storySettings);
@@ -1214,12 +1730,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastAppliedBookingForm(bookingFormSettings);
     setLastAppliedBookingConfirmation(bookingConfirmationSettings);
 
-    toast({
-      title: "Site publicado!",
-      description: "Todas as alterações foram salvas com sucesso.",
-    });
     window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
   }, [
+    companyId,
+    getChangedSettings,
     heroSettings,
     aboutHeroSettings,
     storySettings,
@@ -1241,6 +1755,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     bookingFormSettings,
     bookingConfirmationSettings,
     toast,
+    iframeRef.current?.contentWindow,
+    loadExternalConfig,
   ]);
 
   const resetSettings = useCallback(() => {
@@ -1470,258 +1986,23 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     [toast, iframeRef],
   );
 
-  const loadExternalConfig = useCallback(
-    (config: Record<string, unknown>) => {
-      if (!config) return;
-      const data = config as SiteConfigData;
-
-      if (data.hero) {
-        setHeroSettings(data.hero);
-        setLastSavedHero(data.hero);
-        setLastAppliedHero(data.hero);
+  const fetchCustomization = useCallback(
+    async (id: string) => {
+      setCompanyId(id);
+      setIsFetching(true);
+      setFetchError(null);
+      try {
+        const data = await siteCustomizerService.getCustomization(id);
+        // Cast to unknown first to avoid partial match issues if types slightly differ
+        loadExternalConfig(data as unknown as Record<string, unknown>);
+      } catch (err) {
+        console.error("Failed to fetch customization", err);
+        setFetchError("Falha ao carregar configurações do site.");
+      } finally {
+        setIsFetching(false);
       }
-
-      if (data.aboutHero) {
-        setAboutHeroSettings(data.aboutHero);
-        setLastSavedAboutHero(data.aboutHero);
-        setLastAppliedAboutHero(data.aboutHero);
-      }
-
-      if (data.story) {
-        setStorySettings(data.story);
-        setLastSavedStory(data.story);
-        setLastAppliedStory(data.story);
-      }
-
-      if (data.team) {
-        setTeamSettings(data.team);
-        setLastSavedTeam(data.team);
-        setLastAppliedTeam(data.team);
-      }
-
-      if (data.testimonials) {
-        setTestimonialsSettings(data.testimonials);
-        setLastSavedTestimonials(data.testimonials);
-        setLastAppliedTestimonials(data.testimonials);
-      }
-
-      if (data.theme) {
-        setFontSettings(data.theme);
-        setLastSavedFont(data.theme);
-        setLastAppliedFont(data.theme);
-      }
-
-      if (data.colors) {
-        setColorSettings(data.colors);
-        setLastSavedColor(data.colors);
-        setLastAppliedColor(data.colors);
-      }
-
-      if (data.services) {
-        setServicesSettings(data.services);
-        setLastSavedServices(data.services);
-        setLastAppliedServices(data.services);
-      }
-
-      if (data.values) {
-        setValuesSettings(data.values);
-        setLastSavedValues(data.values);
-        setLastAppliedValues(data.values);
-      }
-
-      if (data.gallery) {
-        setGallerySettings(data.gallery);
-        setLastSavedGallery(data.gallery);
-        setLastAppliedGallery(data.gallery);
-      }
-
-      if (data.cta) {
-        setCTASettings(data.cta);
-        setLastSavedCTA(data.cta);
-        setLastAppliedCTA(data.cta);
-      }
-
-      if (data.header) {
-        setHeaderSettings(data.header);
-        setLastSavedHeader(data.header);
-        setLastAppliedHeader(data.header);
-      }
-
-      if (data.footer) {
-        setFooterSettings(data.footer);
-        setLastSavedFooter(data.footer);
-        setLastAppliedFooter(data.footer);
-      }
-
-      if (data.bookingSteps) {
-        const steps = data.bookingSteps;
-        if (steps.service) {
-          setBookingServiceSettings(steps.service);
-          setLastSavedBookingService(steps.service);
-          setLastAppliedBookingService(steps.service);
-        }
-        if (steps.date) {
-          setBookingDateSettings(steps.date);
-          setLastSavedBookingDate(steps.date);
-          setLastAppliedBookingDate(steps.date);
-        }
-        if (steps.time) {
-          setBookingTimeSettings(steps.time);
-          setLastSavedBookingTime(steps.time);
-          setLastAppliedBookingTime(steps.time);
-        }
-        if (steps.form) {
-          setBookingFormSettings(steps.form);
-          setLastSavedBookingForm(steps.form);
-          setLastAppliedBookingForm(steps.form);
-        }
-        if (steps.confirmation) {
-          setBookingConfirmationSettings(steps.confirmation);
-          setLastSavedBookingConfirmation(steps.confirmation);
-          setLastAppliedBookingConfirmation(steps.confirmation);
-        }
-      }
-
-      if (data.pageVisibility) {
-        setPageVisibility(data.pageVisibility);
-        setLastSavedPageVisibility(data.pageVisibility);
-      }
-
-      if (data.visibleSections) {
-        setVisibleSections(data.visibleSections);
-        setLastSavedVisibleSections(data.visibleSections);
-      }
-
-      // Sincroniza com o iframe se necessário
-      const timer = setTimeout(() => {
-        if (iframeRef.current?.contentWindow) {
-          const win = iframeRef.current.contentWindow;
-          if (data.hero)
-            win.postMessage(
-              { type: "UPDATE_HERO_SETTINGS", settings: data.hero },
-              "*",
-            );
-          if (data.aboutHero)
-            win.postMessage(
-              { type: "UPDATE_ABOUT_HERO_SETTINGS", settings: data.aboutHero },
-              "*",
-            );
-          if (data.story)
-            win.postMessage(
-              { type: "UPDATE_STORY_SETTINGS", settings: data.story },
-              "*",
-            );
-          if (data.team)
-            win.postMessage(
-              { type: "UPDATE_TEAM_SETTINGS", settings: data.team },
-              "*",
-            );
-          if (data.testimonials)
-            win.postMessage(
-              {
-                type: "UPDATE_TESTIMONIALS_SETTINGS",
-                settings: data.testimonials,
-              },
-              "*",
-            );
-          if (data.theme)
-            win.postMessage(
-              { type: "UPDATE_TYPOGRAPHY", settings: data.theme },
-              "*",
-            );
-          if (data.colors)
-            win.postMessage(
-              { type: "UPDATE_COLORS", settings: data.colors },
-              "*",
-            );
-          if (data.services)
-            win.postMessage(
-              { type: "UPDATE_SERVICES_SETTINGS", settings: data.services },
-              "*",
-            );
-          if (data.values)
-            win.postMessage(
-              { type: "UPDATE_VALUES_SETTINGS", settings: data.values },
-              "*",
-            );
-          if (data.gallery)
-            win.postMessage(
-              { type: "UPDATE_GALLERY_SETTINGS", settings: data.gallery },
-              "*",
-            );
-          if (data.cta)
-            win.postMessage(
-              { type: "UPDATE_CTA_SETTINGS", settings: data.cta },
-              "*",
-            );
-          if (data.header)
-            win.postMessage(
-              { type: "UPDATE_HEADER_SETTINGS", settings: data.header },
-              "*",
-            );
-          if (data.footer)
-            win.postMessage(
-              { type: "UPDATE_FOOTER_SETTINGS", settings: data.footer },
-              "*",
-            );
-
-          if (data.bookingSteps) {
-            const steps = data.bookingSteps;
-            if (steps.service)
-              win.postMessage(
-                {
-                  type: "UPDATE_BOOKING_SERVICE_SETTINGS",
-                  settings: steps.service,
-                },
-                "*",
-              );
-            if (steps.date)
-              win.postMessage(
-                { type: "UPDATE_BOOKING_DATE_SETTINGS", settings: steps.date },
-                "*",
-              );
-            if (steps.time)
-              win.postMessage(
-                { type: "UPDATE_BOOKING_TIME_SETTINGS", settings: steps.time },
-                "*",
-              );
-            if (steps.form)
-              win.postMessage(
-                { type: "UPDATE_BOOKING_FORM_SETTINGS", settings: steps.form },
-                "*",
-              );
-            if (steps.confirmation)
-              win.postMessage(
-                {
-                  type: "UPDATE_BOOKING_CONFIRMATION_SETTINGS",
-                  settings: steps.confirmation,
-                },
-                "*",
-              );
-          }
-
-          if (data.pageVisibility)
-            win.postMessage(
-              {
-                type: "UPDATE_PAGE_VISIBILITY",
-                visibility: data.pageVisibility,
-              },
-              "*",
-            );
-          if (data.visibleSections)
-            win.postMessage(
-              {
-                type: "UPDATE_VISIBLE_SECTIONS",
-                sections: data.visibleSections,
-              },
-              "*",
-            );
-        }
-      }, 100);
-
-      return () => clearTimeout(timer);
     },
-    [iframeRef],
+    [loadExternalConfig],
   );
 
   // Booleans para habilitar/desabilitar botões
@@ -1970,5 +2251,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     hasBookingConfirmationChanges,
     hasUnsavedGlobalChanges,
     loadExternalConfig,
+    getChangedSettings,
+    fetchCustomization,
+    isFetching,
+    fetchError,
+    isSaving,
   };
 }
