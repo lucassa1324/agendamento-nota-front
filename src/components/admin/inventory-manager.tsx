@@ -12,13 +12,22 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -53,7 +62,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL, useSession } from "@/lib/auth-client";
 import {
   getInventoryFromStorage,
   type InventoryItem,
@@ -61,14 +72,74 @@ import {
   saveInventoryToStorage,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { InventoryAddForm } from "./inventory/inventory-add-form";
 
 export function InventoryManager() {
   const { toast } = useToast();
+  const { data: session } = useSession();
+  const { studio, isLoading: isStudioLoading } = useStudio();
+
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [showHistory, setShowHistory] = useState<InventoryItem | null>(null);
+  const [isLoadingItems, setIsLoadingItems] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
+
+  // Interface para tipagem segura da sessão
+  interface SessionUser {
+    businessId?: string;
+    business?: { id: string };
+  }
+
+  // Origem do ID: Consome do StudioContext (preferencial) ou da sessão
+  const user = session?.user as SessionUser | undefined;
+  const companyId = studio?.id || user?.businessId || user?.business?.id;
+
+  const fetchInventory = useCallback(async () => {
+    if (!companyId) return;
+
+    console.log('>>> [INVENTORY] Buscando itens para ID:', companyId);
+    setIsLoadingItems(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/inventory/company/${companyId}`, {
+        credentials: "include",
+      });
+
+      if (response.status === 500) {
+        toast({
+          title: "Erro temporário",
+          description: "Ocorreu um erro no servidor. Tente novamente em alguns instantes.",
+          variant: "destructive",
+        });
+        throw new Error("Erro 500 no servidor");
+      }
+
+      if (!response.ok) throw new Error("Falha ao buscar estoque");
+
+      const data = await response.json();
+      console.log('>>> [INVENTORY] Dados recebidos do Back-end:', data);
+      setInventory(data);
+    } catch (error) {
+      console.error("Erro ao buscar estoque:", error);
+      // Limpa a lista em caso de erro 500 ou outros erros de busca para evitar dados inconsistentes
+      setInventory([]);
+    } finally {
+      setIsLoadingItems(false);
+    }
+  }, [companyId, toast]); // Removido toast da dependência para evitar disparos indesejados no init
 
   useEffect(() => {
-    const loadedInventory = getInventoryFromStorage();
+    if (companyId) {
+      fetchInventory();
+    }
+  }, [companyId, fetchInventory]);
+
+  useEffect(() => {
+    // Só carrega do storage se não houver dados do servidor ainda e não estiver carregando
+    if (inventory.length === 0 && !isLoadingItems && !companyId) {
+      const loadedInventory = getInventoryFromStorage();
+      // ... rest of the existing storage logic ...
 
     // Migração/Correção automática para o Algodão
     let wasModified = false;
@@ -168,7 +239,8 @@ export function InventoryManager() {
       setInventory(initialInventory);
       saveInventoryToStorage(initialInventory);
     }
-  }, [toast]);
+  }
+}, [toast, companyId, inventory.length, isLoadingItems]);
 
   const updateInventory = (newInventory: InventoryItem[]) => {
     setInventory(newInventory);
@@ -178,7 +250,7 @@ export function InventoryManager() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "price" | "status">("name");
-  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [editingItem, setEditingItem] = useState<(Omit<InventoryItem, "quantity"> & { quantity: string | number }) | null>(null);
   const [transactionItem, setTransactionItem] = useState<{
     item: InventoryItem;
     type: "entrada" | "saida";
@@ -196,7 +268,15 @@ export function InventoryManager() {
     }
   }, [transactionItem]);
 
-  const [newItem, setNewItem] = useState({
+  const [newItem, setNewItem] = useState<{
+    name: string;
+    quantity: string;
+    minQuantity: string;
+    unit: string;
+    price: string;
+    secondaryUnit?: string;
+    conversionFactor?: string;
+  }>({
     name: "",
     quantity: "",
     minQuantity: "",
@@ -206,7 +286,7 @@ export function InventoryManager() {
     conversionFactor: "",
   });
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!newItem.name || !newItem.quantity || !newItem.price) {
       toast({
         title: "Campos obrigatórios",
@@ -216,55 +296,92 @@ export function InventoryManager() {
       return;
     }
 
-    const item: InventoryItem = {
-      id: Math.random().toString(36).substring(2, 11),
-      name: newItem.name,
-      quantity: Number(newItem.quantity),
-      minQuantity: Number(newItem.minQuantity) || 0,
-      unit: newItem.unit,
-      price: Number(newItem.price),
-      lastUpdate: new Date().toISOString(),
-      secondaryUnit: newItem.secondaryUnit || undefined,
-      conversionFactor: newItem.conversionFactor
-        ? Number(newItem.conversionFactor)
-        : undefined,
-      logs: [
-        {
-          id: Math.random().toString(36).substring(2, 11),
-          timestamp: new Date().toISOString(),
-          type: "entrada",
-          quantityChange: Number(newItem.quantity),
-          previousQuantity: 0,
-          newQuantity: Number(newItem.quantity),
-          notes: "Saldo inicial (criação do produto)",
-        },
-      ],
-    };
+    if (!companyId) {
+      toast({
+        title: "Erro de identificação",
+        description: "Não foi possível identificar sua empresa. Tente recarregar a página.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    updateInventory([...inventory, item]);
-    setNewItem({
-      name: "",
-      quantity: "",
-      minQuantity: "",
-      unit: "un",
-      price: "",
-      secondaryUnit: "",
-      conversionFactor: "",
-    });
-    setShowAddForm(false);
-    toast({
-      title: "Produto adicionado",
-      description: `${item.name} foi adicionado ao estoque.`,
-    });
+    setIsSaving(true);
+    try {
+      const rawPayload = {
+        companyId,
+        name: newItem.name,
+        initialQuantity: Number(newItem.quantity),
+        minQuantity: Number(newItem.minQuantity) || 0,
+        unitPrice: parseFloat(newItem.price.toString().replace(",", ".")).toFixed(2),
+        unit: newItem.unit,
+        secondaryUnit: newItem.secondaryUnit || undefined,
+        conversionFactor: newItem.conversionFactor
+          ? Number(newItem.conversionFactor)
+          : undefined,
+      };
+
+      // Limpeza estrita: Remove campos undefined ou strings vazias
+      const payload = Object.fromEntries(
+        Object.entries(rawPayload).filter(([_, v]) => v !== undefined && v !== "")
+      );
+
+      console.log(">>> [INVENTORY] Payload simplificado sendo enviado:", payload);
+
+      const response = await fetch(`${API_BASE_URL}/api/inventory`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(">>> [INVENTORY] Erro detalhado do Back-end:", errorData);
+        
+        // Se o Back-end enviar detalhes de validação (comum em 422)
+        const detailedMessage = errorData.error || errorData.message || (errorData.issues ? JSON.stringify(errorData.issues) : null);
+        
+        throw new Error(detailedMessage || "Falha ao salvar produto");
+      }
+
+      toast({
+        title: "Produto adicionado",
+        description: `${newItem.name} foi adicionado ao estoque.`,
+      });
+
+      setNewItem({
+        name: "",
+        quantity: "",
+        minQuantity: "",
+        unit: "un",
+        price: "",
+        secondaryUnit: "",
+        conversionFactor: "",
+      });
+      setShowAddForm(false);
+      fetchInventory(); // Atualiza a lista
+    } catch (error) {
+      console.error("Erro ao adicionar produto:", error);
+      const message = error instanceof Error ? error.message : "Ocorreu um erro ao tentar salvar o produto.";
+      toast({
+        title: "Erro ao adicionar",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleUpdateItem = () => {
+  const handleUpdateItem = async () => {
     if (!editingItem) return;
 
     if (
       !editingItem.name ||
-      editingItem.quantity < 0 ||
-      editingItem.price < 0
+      Number(editingItem.quantity) < 0 ||
+      (Number(editingItem.price) < 0 && Number(editingItem.unitPrice || 0) < 0)
     ) {
       toast({
         title: "Campos inválidos",
@@ -275,40 +392,60 @@ export function InventoryManager() {
       return;
     }
 
-    updateInventory(
-      inventory.map((item) => {
-        if (item.id === editingItem.id) {
-          const quantityChange = editingItem.quantity - item.quantity;
-          let updatedLogs = item.logs || [];
+    setIsSaving(true);
+    try {
+      const rawPayload = {
+        name: editingItem.name,
+        currentQuantity: Number(editingItem.quantity),
+        minQuantity: Number(editingItem.minQuantity) || 0,
+        unitPrice: parseFloat(
+          (editingItem.price || editingItem.unitPrice || 0).toString().replace(",", ".")
+        ).toFixed(2),
+        unit: editingItem.unit,
+        secondaryUnit: editingItem.secondaryUnit || null,
+        conversionFactor: editingItem.conversionFactor
+          ? Number(editingItem.conversionFactor)
+          : null,
+      };
 
-          if (quantityChange !== 0) {
-            const logEntry: InventoryLog = {
-              id: Math.random().toString(36).substring(2, 11),
-              timestamp: new Date().toISOString(),
-              type: "ajuste",
-              quantityChange: quantityChange,
-              previousQuantity: item.quantity,
-              newQuantity: editingItem.quantity,
-              notes: "Ajuste manual de estoque via edição",
-            };
-            updatedLogs = [logEntry, ...updatedLogs].slice(0, 50);
-          }
+      // Limpeza estrita: Remove campos undefined ou strings vazias (exceto nulls intencionais)
+      const payload = Object.fromEntries(
+        Object.entries(rawPayload).filter(([_, v]) => v !== undefined && v !== "")
+      );
 
-          return {
-            ...editingItem,
-            lastUpdate: new Date().toISOString(),
-            logs: updatedLogs,
-          };
-        }
-        return item;
-      }),
-    );
+      const response = await fetch(`${API_BASE_URL}/api/inventory/${editingItem.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        credentials: "include",
+      });
 
-    setEditingItem(null);
-    toast({
-      title: "Produto atualizado",
-      description: `${editingItem.name} foi atualizado com sucesso.`,
-    });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Erro ao atualizar produto.");
+      }
+
+      await fetchInventory(); // Busca dados frescos do banco
+      setEditingItem(null); // Fecha o modal APÓS o fetch
+
+      toast({
+        title: "Produto atualizado",
+        description: `${editingItem.name} foi atualizado com sucesso.`,
+      });
+    } catch (error) {
+      console.error("Erro ao atualizar produto:", error);
+      const message =
+        error instanceof Error ? error.message : "Ocorreu um erro ao tentar atualizar o produto.";
+      toast({
+        title: "Erro ao atualizar",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleTransaction = () => {
@@ -377,7 +514,7 @@ export function InventoryManager() {
         transactionItem.type === "entrada"
           ? "Entrada realizada"
           : "Saída realizada",
-      description: `${Number(transactionQuantity).toLocaleString("pt-BR")} ${
+      description: `${(Number(transactionQuantity) || 0).toLocaleString("pt-BR")} ${
         transactionUnit === "primary"
           ? itemToUpdate.unit
           : itemToUpdate.secondaryUnit || itemToUpdate.unit
@@ -391,29 +528,61 @@ export function InventoryManager() {
     setTransactionPrice("");
   };
 
-  const handleDeleteItem = (id: string) => {
-    updateInventory(inventory.filter((item) => item.id !== id));
-    toast({
-      title: "Produto removido",
-      description: "O item foi removido do estoque.",
-    });
+  const handleDeleteItem = async () => {
+    if (!itemToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/inventory/${itemToDelete.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Erro ao excluir produto.");
+      }
+
+      toast({
+        title: "Produto removido",
+        description: `${itemToDelete.name} foi removido com sucesso.`,
+      });
+
+      setItemToDelete(null);
+      fetchInventory(); // Atualiza a lista automaticamente
+    } catch (error) {
+      console.error("Erro ao excluir produto:", error);
+      const message =
+        error instanceof Error ? error.message : "Ocorreu um erro ao tentar excluir o produto.";
+      toast({
+        title: "Erro ao excluir",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const filteredAndSortedInventory = useMemo(() => {
     return inventory
       .filter((item) =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()),
+        item?.name?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
       .sort((a, b) => {
         if (sortBy === "name") {
-          return a.name.localeCompare(b.name);
+          return (a?.name || "").localeCompare(b?.name || "");
         }
         if (sortBy === "price") {
-          return a.price - b.price;
+          return (a?.price || 0) - (b?.price || 0);
         }
         if (sortBy === "status") {
-          const aStatus = a.quantity <= a.minQuantity ? 0 : 1;
-          const bStatus = b.quantity <= b.minQuantity ? 0 : 1;
+          const aQty = Number(a?.quantity || a?.currentQuantity || 0);
+          const aMin = Number(a?.minQuantity || 0);
+          const bQty = Number(b?.quantity || b?.currentQuantity || 0);
+          const bMin = Number(b?.minQuantity || 0);
+          const aStatus = aQty <= aMin ? 0 : 1;
+          const bStatus = bQty <= bMin ? 0 : 1;
           return aStatus - bStatus;
         }
         return 0;
@@ -421,8 +590,19 @@ export function InventoryManager() {
   }, [inventory, searchTerm, sortBy]);
 
   const lowStockItems = useMemo(() => {
-    return inventory.filter((item) => item.quantity <= item.minQuantity);
+    return inventory.filter((item) => item && Number(item.quantity || item?.currentQuantity || 0) <= Number(item.minQuantity || 0));
   }, [inventory]);
+
+  if (isStudioLoading || (isLoadingItems && inventory.length === 0)) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-100 space-y-4">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-muted-foreground animate-pulse">
+          Carregando estoque...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3 sm:space-y-6 w-full max-w-full px-0">
@@ -466,7 +646,7 @@ export function InventoryManager() {
                       variant="outline"
                       className="bg-white text-red-700 border-red-200 text-[9px] py-0 px-1.5"
                     >
-                      {item.name}: {item.quantity.toLocaleString("pt-BR")}{" "}
+                      {item.name}: {(Number(item.quantity || item?.currentQuantity || 0)).toLocaleString("pt-BR")}{" "}
                       {item.unit}
                     </Badge>
                   ))}
@@ -478,227 +658,13 @@ export function InventoryManager() {
       )}
 
       {showAddForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Novo Produto</CardTitle>
-            <CardDescription>Adicione um novo item ao estoque</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TooltipProvider>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="product-name">Nome do Produto</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          Insira o nome completo do item (ex: Henna, Pinça,
-                          etc).
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Input
-                    id="product-name"
-                    placeholder="Ex: Henna para Sobrancelhas"
-                    value={newItem.name}
-                    onChange={(e) =>
-                      setNewItem({ ...newItem, name: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="quantity">Quantidade Inicial</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Quantidade total que você tem disponível agora.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    step="0.001"
-                    placeholder="0.000"
-                    value={newItem.quantity}
-                    onChange={(e) =>
-                      setNewItem({ ...newItem, quantity: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="min-quantity">Quantidade Mínima</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          O sistema avisará quando o estoque for igual ou menor
-                          que este valor.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Input
-                    id="min-quantity"
-                    type="number"
-                    step="0.001"
-                    placeholder="0.000"
-                    value={newItem.minQuantity}
-                    onChange={(e) =>
-                      setNewItem({ ...newItem, minQuantity: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="price">Valor Unitário (R$)</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Preço de custo ou venda por unidade do produto.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    placeholder="0,00"
-                    value={newItem.price}
-                    onChange={(e) =>
-                      setNewItem({ ...newItem, price: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="unit">Unidade</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          Forma de medida do produto (unidade, quilo, litro,
-                          etc).
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Select
-                    value={newItem.unit}
-                    onValueChange={(value) =>
-                      setNewItem({ ...newItem, unit: value })
-                    }
-                  >
-                    <SelectTrigger id="unit">
-                      <SelectValue placeholder="Selecione a unidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="un">Unidade (un)</SelectItem>
-                      <SelectItem value="kg">Quilograma (kg)</SelectItem>
-                      <SelectItem value="g">Grama (g)</SelectItem>
-                      <SelectItem value="lt">Litro (lt)</SelectItem>
-                      <SelectItem value="ml">Mililitro (ml)</SelectItem>
-                      <SelectItem value="pct">Pacote (pct)</SelectItem>
-                      <SelectItem value="cx">Caixa (cx)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="secondary-unit">
-                      Unidade Secundária (Consumo)
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          Unidade menor usada para consumo (ex: se o produto é
-                          pacote, a secundária é gramas).
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Select
-                    value={newItem.secondaryUnit}
-                    onValueChange={(value) =>
-                      setNewItem({ ...newItem, secondaryUnit: value })
-                    }
-                  >
-                    <SelectTrigger id="secondary-unit">
-                      <SelectValue placeholder="Opcional" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="un">Unidade (un)</SelectItem>
-                      <SelectItem value="kg">Quilograma (kg)</SelectItem>
-                      <SelectItem value="g">Grama (g)</SelectItem>
-                      <SelectItem value="lt">Litro (lt)</SelectItem>
-                      <SelectItem value="ml">Mililitro (ml)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="conversion-factor">
-                      Fator de Conversão
-                    </Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          Quantas unidades secundárias tem em uma unidade
-                          principal? (Ex: 1 pacote tem 500g, fator = 500).
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <Input
-                    id="conversion-factor"
-                    type="number"
-                    step="0.001"
-                    placeholder="Ex: 500"
-                    value={newItem.conversionFactor}
-                    onChange={(e) =>
-                      setNewItem({
-                        ...newItem,
-                        conversionFactor: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            </TooltipProvider>
-            <div className="flex flex-col sm:flex-row gap-2 mt-4">
-              <Button onClick={handleAddItem} className="w-full sm:w-auto">
-                Adicionar
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowAddForm(false)}
-                className="w-full sm:w-auto"
-              >
-                Cancelar
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <InventoryAddForm
+          newItem={newItem}
+          setNewItem={setNewItem}
+          handleAddItem={handleAddItem}
+          setShowAddForm={setShowAddForm}
+          isLoading={isSaving}
+        />
       )}
 
       <Card className="w-full border-x-0 sm:border-x">
@@ -772,20 +738,20 @@ export function InventoryManager() {
                     <TableCell className="font-medium py-2 sm:py-4 px-2 sm:px-4">
                       <div className="flex flex-col min-w-0">
                         <span className="truncate max-w-20 xs:max-w-[120px] sm:max-w-37.5 md:max-w-45 lg:max-w-55 xl:max-w-75 2xl:max-w-none">
-                          {item.name}
+                          {item?.name}
                         </span>
                         <div className="flex items-center gap-1 mt-0.5 xl:hidden">
                           <span
                             className={cn(
                               "text-[9px] sm:text-xs",
-                              item.quantity <= item.minQuantity
+                              Number(item?.quantity || item?.currentQuantity || 0) <= Number(item?.minQuantity || 0)
                                 ? "text-red-600 font-bold"
                                 : "text-muted-foreground",
                             )}
                           >
-                            {item.quantity.toLocaleString("pt-BR")} {item.unit}
+                            {(Number(item?.quantity || item?.currentQuantity || 0)).toLocaleString("pt-BR")} {item?.unit}
                           </span>
-                          {item.quantity <= item.minQuantity && (
+                          {Number(item?.quantity || item?.currentQuantity || 0) <= Number(item?.minQuantity || 0) && (
                             <Badge
                               variant="outline"
                               className="h-3 px-1 text-[6px] sm:text-[8px] bg-red-50 text-red-700 border-red-200"
@@ -799,28 +765,28 @@ export function InventoryManager() {
                     <TableCell className="hidden xl:table-cell">
                       <span
                         className={
-                          item.quantity <= item.minQuantity
+                          Number(item?.quantity || item?.currentQuantity || 0) <= Number(item?.minQuantity || 0)
                             ? "text-red-600 font-semibold"
                             : ""
                         }
                       >
-                        {item.quantity.toLocaleString("pt-BR", {
+                        {(Number(item?.quantity || item?.currentQuantity || 0)).toLocaleString("pt-BR", {
                           minimumFractionDigits: 0,
                           maximumFractionDigits: 3,
                         })}
                       </span>
                     </TableCell>
                     <TableCell className="hidden 2xl:table-cell">
-                      {item.unit}
+                      {item?.unit}
                     </TableCell>
                     <TableCell className="px-2 sm:px-4 whitespace-nowrap">
                       {new Intl.NumberFormat("pt-BR", {
                         style: "currency",
                         currency: "BRL",
-                      }).format(item.price)}
+                      }).format(item?.price || item?.unitPrice || 0)}
                     </TableCell>
                     <TableCell className="hidden 2xl:table-cell">
-                      {item.quantity > item.minQuantity ? (
+                      {Number(item?.quantity || item?.currentQuantity || 0) > Number(item?.minQuantity || 0) ? (
                         <Badge
                           variant="outline"
                           className="bg-green-50 text-green-700 border-green-200"
@@ -838,7 +804,7 @@ export function InventoryManager() {
                       )}
                     </TableCell>
                     <TableCell className="hidden 2xl:table-cell text-muted-foreground whitespace-nowrap">
-                      {new Date(item.lastUpdate).toLocaleDateString("pt-BR")}
+                      {item?.lastUpdate ? new Date(item.lastUpdate).toLocaleDateString("pt-BR") : "---"}
                     </TableCell>
                     <TableCell className="text-right px-2 sm:px-4">
                       <div className="flex justify-end gap-1 sm:gap-1.5">
@@ -846,13 +812,18 @@ export function InventoryManager() {
                         <div className="flex xl:hidden">
                           <Select
                             onValueChange={(val) => {
-                              if (val === "edit") setEditingItem(item);
+                              if (val === "edit") {
+                                setEditingItem({
+                                  ...item,
+                                  quantity: Number(item.quantity || item.currentQuantity || 0)
+                                });
+                              }
                               if (val === "entrada")
                                 setTransactionItem({ item, type: "entrada" });
                               if (val === "saida")
                                 setTransactionItem({ item, type: "saida" });
                               if (val === "history") setShowHistory(item);
-                              if (val === "delete") handleDeleteItem(item.id);
+                              if (val === "delete") setItemToDelete(item);
                             }}
                           >
                             <SelectTrigger className="h-7 w-7 p-0 border-none bg-transparent focus:ring-0">
@@ -893,7 +864,10 @@ export function InventoryManager() {
                             variant="outline"
                             size="sm"
                             className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            onClick={() => setEditingItem(item)}
+                            onClick={() => setEditingItem({
+                              ...item,
+                              quantity: Number(item.quantity || item.currentQuantity || 0)
+                            })}
                             title="Editar"
                           >
                             <Pencil className="w-4 h-4" />
@@ -945,7 +919,7 @@ export function InventoryManager() {
                             variant="ghost"
                             size="sm"
                             className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                            onClick={() => handleDeleteItem(item.id)}
+                            onClick={() => setItemToDelete(item)}
                             title="Excluir"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -973,9 +947,9 @@ export function InventoryManager() {
                 : "Saída de Estoque"}
             </DialogTitle>
             <DialogDescription>
-              {transactionItem?.item.name} ({transactionItem?.item.quantity}{" "}
-              {transactionItem?.item.unit} atuais)
-            </DialogDescription>
+                  {transactionItem?.item.name} ({Number(transactionItem?.item?.quantity || transactionItem?.item?.currentQuantity || 0)}{" "}
+                  {transactionItem?.item.unit} atuais)
+                </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -1087,135 +1061,135 @@ export function InventoryManager() {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <Input
-                    id="edit-name"
-                    value={editingItem.name}
-                    onChange={(e) =>
-                      setEditingItem({ ...editingItem, name: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="edit-quantity">Quantidade</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Quantidade total que você tem disponível agora.</p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <Input
+                      id="edit-name"
+                      value={editingItem.name || ""}
+                      onChange={(e) =>
+                        setEditingItem({ ...editingItem, name: e.target.value })
+                      }
+                    />
                   </div>
-                  <Input
-                    id="edit-quantity"
-                    type="number"
-                    step="0.001"
-                    value={
-                      Number.isNaN(editingItem.quantity)
-                        ? ""
-                        : editingItem.quantity
-                    }
-                    onChange={(e) => {
-                      const val =
-                        e.target.value === ""
-                          ? Number.NaN
-                          : Number.parseFloat(e.target.value);
-                      setEditingItem({
-                        ...editingItem,
-                        quantity: val,
-                      });
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="edit-min-quantity">Quantidade Mínima</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          O sistema avisará quando o estoque for igual ou menor
-                          que este valor.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="edit-quantity">Quantidade</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Quantidade total que você tem disponível agora.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <Input
+                      id="edit-quantity"
+                      type="number"
+                      step="0.001"
+                      value={
+                        editingItem.quantity === undefined || Number.isNaN(Number(editingItem.quantity))
+                          ? "0"
+                          : editingItem.quantity
+                      }
+                      onChange={(e) => {
+                        const val = e.target.value === "" ? 0 : e.target.value;
+                        setEditingItem({
+                          ...editingItem,
+                          quantity: val,
+                        });
+                      }}
+                    />
                   </div>
-                  <Input
-                    id="edit-min-quantity"
-                    type="number"
-                    step="0.001"
-                    value={
-                      Number.isNaN(editingItem.minQuantity)
-                        ? ""
-                        : editingItem.minQuantity
-                    }
-                    onChange={(e) => {
-                      const val =
-                        e.target.value === ""
-                          ? Number.NaN
-                          : Number.parseFloat(e.target.value);
-                      setEditingItem({
-                        ...editingItem,
-                        minQuantity: val,
-                      });
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="edit-price">Valor Unitário (R$)</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Preço de custo ou venda por unidade do produto.</p>
-                      </TooltipContent>
-                    </Tooltip>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="edit-min-quantity">Quantidade Mínima</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            O sistema avisará quando o estoque for igual ou menor
+                            que este valor.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <Input
+                      id="edit-min-quantity"
+                      type="number"
+                      step="0.001"
+                      value={
+                        editingItem.minQuantity === undefined || Number.isNaN(editingItem.minQuantity)
+                          ? "0"
+                          : editingItem.minQuantity
+                      }
+                      onChange={(e) => {
+                        const val =
+                          e.target.value === ""
+                            ? 0
+                            : Number.parseFloat(e.target.value);
+                        setEditingItem({
+                          ...editingItem,
+                          minQuantity: val,
+                        });
+                      }}
+                    />
                   </div>
-                  <Input
-                    id="edit-price"
-                    type="number"
-                    step="0.01"
-                    value={
-                      Number.isNaN(editingItem.price) ? "" : editingItem.price
-                    }
-                    onChange={(e) => {
-                      const val =
-                        e.target.value === ""
-                          ? Number.NaN
-                          : Number.parseFloat(e.target.value);
-                      setEditingItem({
-                        ...editingItem,
-                        price: val,
-                      });
-                    }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <Label htmlFor="edit-unit">Unidade</Label>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>
-                          Forma de medida do produto (unidade, quilo, litro,
-                          etc).
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="edit-price">Valor Unitário (R$)</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Preço de custo ou venda por unidade do produto.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <Input
+                      id="edit-price"
+                      type="number"
+                      step="0.01"
+                      value={
+                        (editingItem.price || editingItem.unitPrice) === undefined || 
+                        Number.isNaN(editingItem.price || editingItem.unitPrice)
+                          ? "0"
+                          : (editingItem.price || editingItem.unitPrice)
+                      }
+                      onChange={(e) => {
+                        const val =
+                          e.target.value === ""
+                            ? 0
+                            : Number.parseFloat(e.target.value);
+                        setEditingItem({
+                          ...editingItem,
+                          price: val,
+                        });
+                      }}
+                    />
                   </div>
-                  <Select
-                    value={editingItem.unit}
-                    onValueChange={(value) =>
-                      setEditingItem({ ...editingItem, unit: value })
-                    }
-                  >
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <Label htmlFor="edit-unit">Unidade</Label>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>
+                            Forma de medida do produto (unidade, quilo, litro,
+                            etc).
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <Select
+                      value={editingItem.unit || "un"}
+                      onValueChange={(value) =>
+                        setEditingItem({ ...editingItem, unit: value })
+                      }
+                    >
                     <SelectTrigger id="edit-unit">
                       <SelectValue placeholder="Selecione a unidade" />
                     </SelectTrigger>
@@ -1312,10 +1286,12 @@ export function InventoryManager() {
             </TooltipProvider>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingItem(null)}>
+            <Button variant="outline" onClick={() => setEditingItem(null)} disabled={isSaving}>
               Cancelar
             </Button>
-            <Button onClick={handleUpdateItem}>Salvar Alterações</Button>
+            <Button onClick={handleUpdateItem} disabled={isSaving}>
+              {isSaving ? "Salvando..." : "Salvar Alterações"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1329,7 +1305,7 @@ export function InventoryManager() {
             <DialogTitle>Histórico de Movimentação</DialogTitle>
             <DialogDescription>
               {showHistory?.name} -{" "}
-              {showHistory?.quantity.toLocaleString("pt-BR")}{" "}
+              {(Number(showHistory?.quantity || showHistory?.currentQuantity || 0)).toLocaleString("pt-BR")}{" "}
               {showHistory?.unit} em estoque
             </DialogDescription>
           </DialogHeader>
@@ -1354,7 +1330,7 @@ export function InventoryManager() {
                     {showHistory.logs.map((log) => (
                       <TableRow key={log.id}>
                         <TableCell className="text-[10px] leading-tight">
-                          {new Date(log.timestamp).toLocaleString("pt-BR")}
+                          {log.timestamp ? new Date(log.timestamp).toLocaleString("pt-BR") : "---"}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -1377,16 +1353,16 @@ export function InventoryManager() {
                         <TableCell
                           className={cn(
                             "font-medium text-xs",
-                            log.quantityChange > 0
+                            (log.quantityChange || 0) > 0
                               ? "text-green-600"
                               : "text-red-600",
                           )}
                         >
-                          {log.quantityChange > 0 ? "+" : ""}
-                          {log.quantityChange.toLocaleString("pt-BR")}
+                          {(log.quantityChange || 0) > 0 ? "+" : ""}
+                          {(log.quantityChange || 0).toLocaleString("pt-BR")}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs">
-                          {log.newQuantity.toLocaleString("pt-BR")}
+                          {(log.newQuantity || 0).toLocaleString("pt-BR")}
                         </TableCell>
                         <TableCell
                           className="text-[11px] max-w-50 truncate"
@@ -1406,6 +1382,37 @@ export function InventoryManager() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!itemToDelete}
+        onOpenChange={(open) => !open && !isDeleting && setItemToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza que deseja excluir?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o produto{" "}
+              <span className="font-bold text-foreground">
+                {itemToDelete?.name}
+              </span>
+              ? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteItem();
+              }}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Excluindo..." : "Excluir Produto"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

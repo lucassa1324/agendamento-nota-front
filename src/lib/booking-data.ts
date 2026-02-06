@@ -30,9 +30,11 @@ export type InventoryItem = {
   id: string;
   name: string;
   quantity: number;
+  currentQuantity?: number; // Compatibilidade com Back-end (Drizzle camelCase)
   minQuantity: number;
   unit: string;
   price: number;
+  unitPrice?: number; // Compatibilidade com Back-end
   lastUpdate: string;
   secondaryUnit?: string;
   conversionFactor?: number;
