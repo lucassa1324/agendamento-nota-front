@@ -40,8 +40,12 @@ export function CTASection() {
     setPageVisibility(getPageVisibility());
 
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    if (studio?.config?.cta) {
-      setSettings(studio.config.cta as CTASettings);
+    const config = studio?.config as any;
+    const layoutGlobal = config?.layoutGlobal || config?.layout_global;
+    const dbCTA = config?.cta || layoutGlobal?.cta;
+
+    if (dbCTA) {
+      setSettings(dbCTA as CTASettings);
     } else {
       setSettings(getCTASettings());
     }

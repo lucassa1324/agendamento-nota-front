@@ -59,31 +59,18 @@ class SiteCustomizerService {
   }
 
   async getCustomization(companyId: string): Promise<SiteConfigData> {
+    const timestamp = Date.now();
     console.log(
-      `[CUSTOMIZER] Carregando configurações de: /api/settings/customization/${companyId}`,
+      `>>> [CACHE_CHECK] Buscando dados com timestamp: ${timestamp} para: /api/settings/customization/${companyId}`,
     );
     
-    // Para o GET (público), usamos headers mínimos se não houver sessão
-    // Isso evita o erro 401 para visitantes
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    // Se houver token, adicionamos, mas o GET deve ser permitido pelo back-end sem ele
-    try {
-      const authHeaders = await this.getAuthHeaders();
-      if (authHeaders.Authorization) {
-        headers.Authorization = authHeaders.Authorization;
-      }
-    } catch (_) {
-      // Falha ao pegar headers de auth não deve travar o GET público
-    }
-
-    const response = await fetch(`${this.baseUrl}/${companyId}`, {
+    const response = await fetch(`${this.baseUrl}/${companyId}?t=${timestamp}`, {
       method: "GET",
-      headers,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
       credentials: "include",
-      cache: "no-store", // Forçar cores sempre frescas
     });
     return this.handleResponse<SiteConfigData>(response);
   }

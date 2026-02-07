@@ -38,8 +38,8 @@ export function InventoryHistoryModal({
           <DialogTitle>Histórico de Movimentação</DialogTitle>
           <DialogDescription>
             {showHistory?.name} -{" "}
-            {(showHistory?.quantity || 0).toLocaleString("pt-BR")} {showHistory?.unit}{" "}
-            em estoque
+            {(showHistory?.quantity || 0).toLocaleString("pt-BR")}{" "}
+            {showHistory?.unit} em estoque
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
@@ -63,7 +63,9 @@ export function InventoryHistoryModal({
                   {showHistory.logs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="text-[10px] leading-tight">
-                        {log.timestamp ? new Date(log.timestamp).toLocaleString("pt-BR") : "---"}
+                        {log.timestamp
+                          ? new Date(log.timestamp).toLocaleString("pt-BR")
+                          : "---"}
                       </TableCell>
                       <TableCell>
                         <Badge

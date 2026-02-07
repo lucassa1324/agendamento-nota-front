@@ -85,9 +85,12 @@ export function ProfileManager() {
     if (!companyId) return;
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/settings/profile/${companyId}`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/settings/profile/${companyId}`,
+        {
+          credentials: "include",
+        },
+      );
       if (response.ok) {
         const data = await response.json();
         console.log(">>> [PROFILE] Dados recebidos:", data);
@@ -247,7 +250,8 @@ export function ProfileManager() {
     if (!file || !companyId) return;
 
     // 1. Validação básica de tamanho (opcional aqui, pois vamos comprimir)
-    if (file.size > 10 * 1024 * 1024) { // 10MB limite antes da compressão
+    if (file.size > 10 * 1024 * 1024) {
+      // 10MB limite antes da compressão
       toast({
         title: "Arquivo muito grande",
         description: "A imagem original deve ter no máximo 10MB.",
@@ -269,7 +273,9 @@ export function ProfileManager() {
       };
 
       const compressedFile = await imageCompression(file, options);
-      console.log(`>>> [LOGO] Original: ${(file.size / 1024 / 1024).toFixed(2)}MB | Comprimida: ${(compressedFile.size / 1024).toFixed(2)}KB`);
+      console.log(
+        `>>> [LOGO] Original: ${(file.size / 1024 / 1024).toFixed(2)}MB | Comprimida: ${(compressedFile.size / 1024).toFixed(2)}KB`,
+      );
 
       // 3. Upload Assíncrono com XHR (para acompanhar progresso real)
       const formData = new FormData();
@@ -277,11 +283,12 @@ export function ProfileManager() {
       formData.append("companyId", companyId);
 
       const xhr = new XMLHttpRequest();
-      
+
       const uploadPromise = new Promise((resolve, reject) => {
         xhr.upload.addEventListener("progress", (event) => {
           if (event.lengthComputable) {
-            const percentComplete = Math.round((event.loaded / event.total) * 50) + 50; // Os outros 50% são upload
+            const percentComplete =
+              Math.round((event.loaded / event.total) * 50) + 50; // Os outros 50% são upload
             setUploadProgress(percentComplete);
           }
         });
@@ -299,17 +306,19 @@ export function ProfileManager() {
           }
         });
 
-        xhr.addEventListener("error", () => reject(new Error("Erro na conexão durante o upload.")));
+        xhr.addEventListener("error", () =>
+          reject(new Error("Erro na conexão durante o upload.")),
+        );
         xhr.open("POST", `${API_BASE_URL}/api/settings/logo`);
         xhr.withCredentials = true;
         xhr.send(formData);
       });
 
       const response = (await uploadPromise) as { logoUrl: string };
-      
+
       // 4. Sucesso: Atualiza estados e StudioContext
       updateField("logoUrl", response.logoUrl);
-      
+
       // Cache local no StudioContext
       if (updateStudioInfo) {
         updateStudioInfo({ logoUrl: response.logoUrl });
@@ -319,12 +328,14 @@ export function ProfileManager() {
         title: "Logo Atualizada",
         description: "A nova logo foi carregada e salva com sucesso.",
       });
-
     } catch (error) {
       console.error("Erro no processo de logo:", error);
       toast({
         title: "Erro no Upload",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao processar a logo.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Ocorreu um erro ao processar a logo.",
         variant: "destructive",
       });
     } finally {
@@ -338,7 +349,9 @@ export function ProfileManager() {
     return (
       <div className="flex flex-col items-center justify-center min-h-25 space-y-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse">Carregando configurações...</p>
+        <p className="text-muted-foreground animate-pulse">
+          Carregando configurações...
+        </p>
       </div>
     );
   }
@@ -610,7 +623,8 @@ export function ProfileManager() {
                 className="bg-muted cursor-not-allowed"
               />
               <p className="text-[10px] text-muted-foreground">
-                O e-mail é definido no cadastro da empresa e não pode ser alterado aqui.
+                O e-mail é definido no cadastro da empresa e não pode ser
+                alterado aqui.
               </p>
             </div>
             <div className="space-y-2">
@@ -674,7 +688,9 @@ export function ProfileManager() {
               <label
                 htmlFor="logo-upload"
                 className={`relative border-2 border-dashed border-border rounded-lg p-8 text-center transition-colors cursor-pointer group flex flex-col items-center justify-center h-full ${
-                  isUploading ? "opacity-50 cursor-wait" : "hover:border-primary"
+                  isUploading
+                    ? "opacity-50 cursor-wait"
+                    : "hover:border-primary"
                 }`}
               >
                 {isUploading ? (

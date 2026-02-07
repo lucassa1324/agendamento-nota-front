@@ -367,20 +367,7 @@ export function SiteCustomizer() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={handleSaveGlobal}
-            disabled={!selectedBusinessId || isConfigSaving}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md transition-all active:scale-95 px-6 font-semibold"
-          >
-            {isConfigSaving ? (
-              <div className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-2" />
-            )}
-            {isConfigSaving ? "Salvando..." : "Salvar Tudo"}
-          </Button>
-        </div>
+        <div className="flex items-center gap-3"></div>
       </header>
 
       <div className="flex-1 flex overflow-hidden relative">

@@ -32,6 +32,7 @@ const iconMap: Record<string, LucideIcon> = {
   Award,
 };
 
+import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 import { useStudio } from "@/context/studio-context";
 import {
   getHeroSettings,
@@ -66,8 +67,13 @@ export function HeroSection() {
 
     // Carregar configurações iniciais
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    if (studio?.config?.hero) {
-      setCustomStyles(studio.config.hero);
+    const config = studio?.config as SiteConfigData | undefined;
+    const layoutGlobal = config?.layoutGlobal || config?.layout_global;
+    const dbHero = config?.hero || layoutGlobal?.hero;
+
+    if (dbHero) {
+      console.log(">>> [HERO_SYNC] Aplicando dados do banco no carregamento inicial:", dbHero.title);
+      setCustomStyles(dbHero);
     } else {
       setCustomStyles(getHeroSettings());
     }
@@ -77,6 +83,7 @@ export function HeroSection() {
       if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "UPDATE_HERO_SETTINGS") {
+        console.log(">>> [HERO_SYNC] Atualização recebida via MessageEvent:", event.data.settings.title);
         setCustomStyles((prev) => ({
           ...prev,
           ...event.data.settings,
@@ -100,9 +107,25 @@ export function HeroSection() {
       setPageVisibility(getPageVisibility());
     };
 
+    const handleDataReady = () => {
+      const cfg = studio?.config as SiteConfigData | undefined;
+      const lg = cfg?.layoutGlobal || cfg?.layout_global;
+      const heroFromDb = cfg?.hero || lg?.hero;
+      if (heroFromDb) {
+        console.log(">>> [HERO_SYNC] Aplicando dados do banco via evento DataReady:", heroFromDb.title);
+        setCustomStyles(heroFromDb);
+      }
+    };
+
+    const handleProfileUpdate = () => {
+      setProfile(getSiteProfile());
+    };
+
     window.addEventListener("message", handleMessage);
     window.addEventListener("heroSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+    window.addEventListener("siteProfileUpdated", handleProfileUpdate);
+    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
@@ -111,6 +134,8 @@ export function HeroSection() {
         "pageVisibilityUpdated",
         handleVisibilityUpdate,
       );
+      window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
+      window.removeEventListener("DataReady", handleDataReady);
     };
   }, [studio]);
 
@@ -248,7 +273,10 @@ export function HeroSection() {
               <Button
                 asChild
                 size="lg"
-                className="h-14 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                className={cn(
+                  "h-14 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                  getHighlightClass("hero-primary-button"),
+                )}
                 style={{
                   backgroundColor:
                     customStyles.primaryButtonColor || "var(--primary)",
@@ -267,7 +295,10 @@ export function HeroSection() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="h-14 px-8 text-base font-bold rounded-full bg-background/50 backdrop-blur-sm border-border hover:bg-background/80 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                className={cn(
+                  "h-14 px-8 text-base font-bold rounded-full bg-background/50 backdrop-blur-sm border-border hover:bg-background/80 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                  getHighlightClass("hero-secondary-button"),
+                )}
                 style={{
                   color:
                     customStyles.secondaryButtonTextColor ||

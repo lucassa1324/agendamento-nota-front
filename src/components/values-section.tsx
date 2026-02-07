@@ -38,6 +38,7 @@ import { useStudio } from "@/context/studio-context";
 import { getValuesSettings, type ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 const iconMap: Record<string, LucideIcon> = {
   Heart,
@@ -81,8 +82,11 @@ export function ValuesSection() {
 
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    if (studio?.config?.values) {
-      setSettings(studio.config.values as ValuesSettings);
+    if (studio) {
+      const config = studio?.config as SiteConfigData | undefined;
+      const layoutGlobal = config?.layoutGlobal || config?.layout_global;
+      const configValues = config?.values || layoutGlobal?.values;
+      setSettings(configValues || getValuesSettings());
     } else {
       setSettings(getValuesSettings());
     }
@@ -112,10 +116,12 @@ export function ValuesSection() {
 
     window.addEventListener("message", handleMessage);
     window.addEventListener("valuesSettingsUpdated", loadData);
+    window.addEventListener("DataReady", loadData);
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("valuesSettingsUpdated", loadData);
+      window.removeEventListener("DataReady", loadData);
     };
   }, [loadData]);
 

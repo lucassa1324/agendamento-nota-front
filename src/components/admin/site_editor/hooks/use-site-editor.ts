@@ -2,9 +2,23 @@ export interface LayoutGlobalSettings {
   siteColors?: ColorSettings;
   cores_base?: ColorSettings;
   fontes?: FontSettings;
+  visibleSections?: Record<string, boolean>;
+  pageVisibility?: Record<string, boolean>;
+  hero?: HeroSettings;
+  aboutHero?: HeroSettings;
+  story?: StorySettings;
+  team?: TeamSettings;
+  testimonials?: TestimonialsSettings;
+  services?: ServicesSettings;
+  values?: ValuesSettings;
+  gallery?: GallerySettings;
+  cta?: CTASettings;
+  header?: HeaderSettings;
+  footer?: FooterSettings;
 }
 
 export interface SiteConfigData {
+  [key: string]: unknown;
   hero?: HeroSettings;
   aboutHero?: HeroSettings;
   story?: StorySettings;
@@ -69,6 +83,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import {
   type BookingStepSettings,
@@ -147,6 +162,7 @@ import { siteCustomizerService } from "@/lib/site-customizer-service";
 
 export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const { toast } = useToast();
+  const { studio } = useStudio();
 
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
@@ -391,6 +407,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastSavedVisibleSections(loadedVisibleSections);
   }, []);
 
+  // (movido para baixo de loadExternalConfig para evitar uso antes da declaração)
+
   const loadExternalConfig = useCallback(
     (config: Record<string, unknown>) => {
       if (!config) return;
@@ -400,86 +418,112 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       
       const data = {
         ...config,
+        hero: (config.hero || layoutGlobal?.hero) as HeroSettings | undefined,
+        aboutHero: (config.aboutHero || layoutGlobal?.aboutHero) as HeroSettings | undefined,
+        story: (config.story || layoutGlobal?.story) as StorySettings | undefined,
+        team: (config.team || layoutGlobal?.team) as TeamSettings | undefined,
+        testimonials: (config.testimonials || layoutGlobal?.testimonials) as TestimonialsSettings | undefined,
+        services: (config.services || layoutGlobal?.services) as ServicesSettings | undefined,
+        values: (config.values || layoutGlobal?.values) as ValuesSettings | undefined,
+        gallery: (config.gallery || layoutGlobal?.gallery) as GallerySettings | undefined,
+        cta: (config.cta || layoutGlobal?.cta) as CTASettings | undefined,
+        header: (config.header || layoutGlobal?.header) as HeaderSettings | undefined,
+        footer: (config.footer || layoutGlobal?.footer) as FooterSettings | undefined,
         colors: (config.colors || layoutGlobal?.siteColors || layoutGlobal?.cores_base) as ColorSettings | undefined,
         theme: (config.theme || config.typography || layoutGlobal?.fontes) as FontSettings | undefined,
+        visibleSections: (config.visibleSections || layoutGlobal?.visibleSections) as Record<string, boolean> | undefined,
+        pageVisibility: (config.pageVisibility || layoutGlobal?.pageVisibility) as Record<string, boolean> | undefined,
       } as SiteConfigData;
 
       if (data.hero) {
         setHeroSettings(data.hero);
         setLastSavedHero(data.hero);
         setLastAppliedHero(data.hero);
+        saveHeroSettings(data.hero);
       }
 
       if (data.aboutHero) {
         setAboutHeroSettings(data.aboutHero);
         setLastSavedAboutHero(data.aboutHero);
         setLastAppliedAboutHero(data.aboutHero);
+        saveAboutHeroSettings(data.aboutHero);
       }
 
       if (data.story) {
         setStorySettings(data.story);
         setLastSavedStory(data.story);
         setLastAppliedStory(data.story);
+        saveStorySettings(data.story);
       }
 
       if (data.team) {
         setTeamSettings(data.team);
         setLastSavedTeam(data.team);
         setLastAppliedTeam(data.team);
+        saveTeamSettings(data.team);
       }
 
       if (data.testimonials) {
         setTestimonialsSettings(data.testimonials);
         setLastSavedTestimonials(data.testimonials);
         setLastAppliedTestimonials(data.testimonials);
+        saveTestimonialsSettings(data.testimonials);
       }
 
       if (data.theme) {
         setFontSettings(data.theme);
         setLastSavedFont(data.theme);
         setLastAppliedFont(data.theme);
+        saveFontSettings(data.theme);
       }
 
       if (data.colors) {
         setColorSettings(data.colors);
         setLastSavedColor(data.colors);
         setLastAppliedColor(data.colors);
+        saveColorSettings(data.colors);
       }
 
       if (data.services) {
         setServicesSettings(data.services);
         setLastSavedServices(data.services);
         setLastAppliedServices(data.services);
+        saveServicesSettings(data.services);
       }
 
       if (data.values) {
         setValuesSettings(data.values);
         setLastSavedValues(data.values);
         setLastAppliedValues(data.values);
+        saveValuesSettings(data.values);
       }
 
       if (data.gallery) {
         setGallerySettings(data.gallery);
         setLastSavedGallery(data.gallery);
         setLastAppliedGallery(data.gallery);
+        saveGallerySettings(data.gallery);
       }
 
       if (data.cta) {
         setCTASettings(data.cta);
         setLastSavedCTA(data.cta);
         setLastAppliedCTA(data.cta);
+        saveCTASettings(data.cta);
       }
 
       if (data.header) {
         setHeaderSettings(data.header);
         setLastSavedHeader(data.header);
         setLastAppliedHeader(data.header);
+        saveHeaderSettings(data.header);
       }
 
       if (data.footer) {
         setFooterSettings(data.footer);
         setLastSavedFooter(data.footer);
         setLastAppliedFooter(data.footer);
+        saveFooterSettings(data.footer);
       }
 
       if (data.bookingSteps) {
@@ -514,13 +558,17 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       if (data.pageVisibility) {
         setPageVisibility(data.pageVisibility);
         setLastSavedPageVisibility(data.pageVisibility);
+        savePageVisibility(data.pageVisibility);
       }
 
       if (data.visibleSections) {
         setVisibleSections(data.visibleSections);
         setLastSavedVisibleSections(data.visibleSections);
+        saveVisibleSections(data.visibleSections);
       }
-
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("DataReady"));
+      }
       // Sincroniza com o iframe se necessário
       const timer = setTimeout(() => {
         if (iframeRef.current?.contentWindow) {
@@ -812,6 +860,36 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setStorySettings((prev: StorySettings) => ({ ...prev, ...updates }));
   }, []);
 
+  // Hidratação inicial do Customizer a partir do StudioProvider (aplicação automática)
+  useEffect(() => {
+    const cfg = studio?.config as Record<string, unknown> | undefined;
+    if (!cfg) return;
+    loadExternalConfig(cfg);
+    const layoutGlobal =
+      (cfg as SiteConfigData).layoutGlobal ||
+      (cfg as SiteConfigData).layout_global;
+    const initialColors =
+      (cfg as SiteConfigData).colors ||
+      layoutGlobal?.siteColors ||
+      layoutGlobal?.cores_base;
+    const initialFonts =
+      (cfg as SiteConfigData).theme ||
+      (cfg as SiteConfigData).typography ||
+      layoutGlobal?.fontes;
+    if (iframeRef.current?.contentWindow) {
+      const win = iframeRef.current.contentWindow;
+      if (initialColors) {
+        win.postMessage({ type: "UPDATE_COLORS", settings: initialColors }, "*");
+      }
+      if (initialFonts) {
+        win.postMessage(
+          { type: "UPDATE_TYPOGRAPHY", settings: initialFonts },
+          "*",
+        );
+      }
+    }
+  }, [studio, loadExternalConfig, iframeRef]);
+
   const handleUpdateTeam = useCallback((updates: Partial<TeamSettings>) => {
     setTeamSettings((prev: TeamSettings) => ({ ...prev, ...updates }));
   }, []);
@@ -928,11 +1006,13 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   );
 
   const handleSectionVisibilityToggle = useCallback((sectionId: string) => {
-    setVisibleSections((prev: Record<string, boolean>) => ({
-      ...prev,
-
-      [sectionId]: !prev[sectionId],
-    }));
+    setVisibleSections((prev: Record<string, boolean>) => {
+      const isCurrentlyVisible = prev[sectionId] !== false;
+      return {
+        ...prev,
+        [sectionId]: !isCurrentlyVisible,
+      };
+    });
   }, []);
 
   // Notificamos o iframe sobre a mudança de visibilidade das páginas
@@ -1602,6 +1682,23 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         // Alinhamento com o Back-end: Converter 'colors' para 'layoutGlobal' com 'siteColors'
         const payload: Record<string, unknown> = { ...changes };
 
+        // Mapeamento de seções para layoutGlobal para persistência centralizada
+        const sectionsToGlobal = [
+          'hero', 'aboutHero', 'story', 'team', 'testimonials', 
+          'services', 'values', 'gallery', 'cta', 'header', 'footer'
+        ];
+
+        for (const section of sectionsToGlobal) {
+          if (changes[section]) {
+            payload.layoutGlobal = {
+              ...(payload.layoutGlobal as Record<string, unknown> || {}),
+              [section]: changes[section],
+            };
+            // Mantemos no root para compatibilidade imediata se necessário
+            // payload[section] = changes[section];
+          }
+        }
+
         if (changes.colors) {
           const colors = changes.colors as Record<string, string | undefined>;
           payload.layoutGlobal = {
@@ -1626,6 +1723,22 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             fontes: changes.theme,
           };
           delete payload.theme;
+        }
+
+        if (changes.visibleSections) {
+          payload.layoutGlobal = {
+            ...(payload.layoutGlobal as Record<string, unknown> || {}),
+            visibleSections: changes.visibleSections,
+          };
+          delete payload.visibleSections;
+        }
+
+        if (changes.pageVisibility) {
+          payload.layoutGlobal = {
+            ...(payload.layoutGlobal as Record<string, unknown> || {}),
+            pageVisibility: changes.pageVisibility,
+          };
+          delete payload.pageVisibility;
         }
 
         console.log("ENVIANDO PARA O BANCO:", payload);

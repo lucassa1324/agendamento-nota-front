@@ -856,6 +856,8 @@ export type ColorSettings = {
   secondary: string;
   background: string;
   text: string;
+  accent?: string;
+  buttonText?: string;
 };
 
 export const services: Service[] = [];

@@ -9,7 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarProvider } from "@/context/sidebar-context";
 import { StudioProvider } from "@/context/studio-context";
-import { API_BASE_URL, getSession, signOut, useSession } from "@/lib/auth-client";
+import {
+  API_BASE_URL,
+  getSession,
+  signOut,
+  useSession,
+} from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 function MobileNav({
@@ -75,23 +80,36 @@ function AdminLayoutContent({
         try {
           console.log(">>> [DASHBOARD_LAYOUT] Tentando getSession() manual...");
           const manualSession = await getSession();
-          console.log(">>> [DASHBOARD_LAYOUT] Resultado getSession() manual:", manualSession);
+          console.log(
+            ">>> [DASHBOARD_LAYOUT] Resultado getSession() manual:",
+            manualSession,
+          );
 
-          const diagRes = await fetch(`${API_BASE_URL}/diagnostics/headers`, { credentials: "include" });
+          const diagRes = await fetch(`${API_BASE_URL}/diagnostics/headers`, {
+            credentials: "include",
+          });
           if (diagRes.ok) {
             const diagData = await diagRes.json();
-            console.log(">>> [DASHBOARD_LAYOUT] Diagnóstico do Backend:", diagData);
+            console.log(
+              ">>> [DASHBOARD_LAYOUT] Diagnóstico do Backend:",
+              diagData,
+            );
           }
         } catch (e) {
-          console.error(">>> [DASHBOARD_LAYOUT] Erro ao buscar diagnóstico:", e);
+          console.error(
+            ">>> [DASHBOARD_LAYOUT] Erro ao buscar diagnóstico:",
+            e,
+          );
         }
       };
-      
+
       if (!session) {
         checkBackendAuth();
         // Pequeno delay para evitar falsos negativos em transições rápidas
         const timer = setTimeout(() => {
-          console.warn(">>> [DASHBOARD_LAYOUT] Redirecionando por falta de sessão.");
+          console.warn(
+            ">>> [DASHBOARD_LAYOUT] Redirecionando por falta de sessão.",
+          );
           router.push("/admin");
         }, 1000); // Aumentado para 1s para dar mais tempo ao diagnóstico
         return () => clearTimeout(timer);
@@ -140,7 +158,9 @@ function AdminLayoutContent({
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="text-muted-foreground animate-pulse">Verificando acesso...</p>
+          <p className="text-muted-foreground animate-pulse">
+            Verificando acesso...
+          </p>
         </div>
       </div>
     );

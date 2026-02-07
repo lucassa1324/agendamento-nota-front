@@ -11,7 +11,11 @@ import {
 } from "@/components/ui/dialog";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
-import { type Appointment, type AppointmentStatus, appointmentService } from "@/lib/api-appointments";
+import {
+  type Appointment,
+  type AppointmentStatus,
+  appointmentService,
+} from "@/lib/api-appointments";
 import {
   type Booking,
   type BookingStatus,
@@ -101,7 +105,7 @@ export function BookingsManager() {
 
   const loadBookings = async () => {
     if (!studio?.id) return;
-    
+
     setIsLoading(true);
     try {
       const apiAppointments = await appointmentService.listByCompany(studio.id);
@@ -114,7 +118,7 @@ export function BookingsManager() {
         description: "Não foi possível buscar os agendamentos no servidor.",
         variant: "destructive",
       });
-      
+
       // Fallback para storage se necessário durante transição
       const storageBookings = getBookingsFromStorage();
       if (storageBookings.length > 0) {
@@ -183,7 +187,9 @@ export function BookingsManager() {
   const statusCounts = useMemo(() => {
     const counts = {
       todos: filteredBookings.length,
-      pendente: filteredBookings.filter((b) => b.status === "pendente" || b.status === "pending").length,
+      pendente: filteredBookings.filter(
+        (b) => b.status === "pendente" || b.status === "pending",
+      ).length,
       confirmado: filteredBookings.filter((b) => b.status === "confirmado")
         .length,
       concluído: filteredBookings.filter((b) => b.status === "concluído")
@@ -224,7 +230,7 @@ export function BookingsManager() {
       }
 
       await loadBookings();
-      
+
       toast({
         title: `Status atualizado para ${newStatus}`,
         description: "O agendamento foi atualizado com sucesso.",

@@ -7,6 +7,7 @@ import { useStudio } from "@/context/studio-context";
 import { getTeamSettings, type TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function TeamSection() {
   const { studio } = useStudio();
@@ -18,8 +19,12 @@ export function TeamSection() {
 
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    if (studio?.config?.team) {
-      setSettings(studio.config.team as TeamSettings);
+    const config = studio?.config as SiteConfigData | undefined;
+    const layoutGlobal = config?.layoutGlobal || config?.layout_global;
+    const dbTeam = config?.team || layoutGlobal?.team;
+
+    if (dbTeam) {
+      setSettings(dbTeam as TeamSettings);
     } else {
       setSettings(getTeamSettings());
     }
@@ -49,10 +54,12 @@ export function TeamSection() {
 
     window.addEventListener("message", handleMessage);
     window.addEventListener("teamSettingsUpdated", loadData);
+    window.addEventListener("DataReady", loadData);
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("teamSettingsUpdated", loadData);
+    window.removeEventListener("DataReady", loadData);
     };
   }, [loadData]);
 

@@ -131,7 +131,9 @@ export function InventoryTable({
                 )}
               </TableCell>
               <TableCell className="hidden 2xl:table-cell text-muted-foreground whitespace-nowrap">
-                {item.lastUpdate ? new Date(item.lastUpdate).toLocaleDateString("pt-BR") : "---"}
+                {item.lastUpdate
+                  ? new Date(item.lastUpdate).toLocaleDateString("pt-BR")
+                  : "---"}
               </TableCell>
               <TableCell className="text-right px-2 sm:px-4">
                 <div className="flex justify-end gap-1 sm:gap-1.5">

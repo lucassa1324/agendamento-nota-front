@@ -211,7 +211,11 @@ interface BackendService {
   icon?: string;
   showOnHome?: boolean;
   conflictingServiceIds?: string[];
-  products?: { productId: string; quantity: number; useSecondaryUnit?: boolean }[];
+  products?: {
+    productId: string;
+    quantity: number;
+    useSecondaryUnit?: boolean;
+  }[];
 }
 
 export function ServicesManager() {
@@ -242,7 +246,8 @@ export function ServicesManager() {
   const { toast } = useToast();
   const params = useParams();
   const { studio, isLoading: studioLoading } = useStudio();
-  const rawSlug = (params as Record<string, string | string[] | undefined>)?.slug;
+  const rawSlug = (params as Record<string, string | string[] | undefined>)
+    ?.slug;
   const slugParam = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
 
   // Função auxiliar centralizada para obter headers de autenticação
@@ -255,11 +260,12 @@ export function ServicesManager() {
       return null;
     };
 
-    const sessionToken = typeof window !== "undefined" 
-      ? (localStorage.getItem("better-auth.session_token") || 
-         localStorage.getItem("better-auth.access_token") ||
-         getCookie("better-auth.session_token"))
-      : null;
+    const sessionToken =
+      typeof window !== "undefined"
+        ? localStorage.getItem("better-auth.session_token") ||
+          localStorage.getItem("better-auth.access_token") ||
+          getCookie("better-auth.session_token")
+        : null;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -287,12 +293,20 @@ export function ServicesManager() {
     }
     setIsLoading(true);
     try {
-      const loadUrl = `${API_URL}/company/${studio.id}`.replace(/([^:]\/)\/+/g, "$1");
+      const loadUrl = `${API_URL}/company/${studio.id}`.replace(
+        /([^:]\/)\/+/g,
+        "$1",
+      );
       console.log(">>> [SERVICES_MANAGER] Buscando serviços em:", loadUrl);
-      
+
       const authOptions = getAuthOptions();
-      
-      console.log(">>> [SERVICES_MANAGER] Header de Auth enviado:", authOptions.headers.Authorization ? "Bearer [TOKEN_PRESENTE]" : "NENHUM");
+
+      console.log(
+        ">>> [SERVICES_MANAGER] Header de Auth enviado:",
+        authOptions.headers.Authorization
+          ? "Bearer [TOKEN_PRESENTE]"
+          : "NENHUM",
+      );
 
       const response = await fetch(loadUrl, {
         ...authOptions,
@@ -309,16 +323,19 @@ export function ServicesManager() {
         console.error(">>> [SERVICES_MANAGER] Erro na resposta:", errorData);
         throw new Error(`Erro ao carregar serviços (${response.status})`);
       }
-      
+
       const data = await response.json();
       console.log(">>> [SERVICES_MANAGER] Dados recebidos:", data);
-      
+
       // Mapear os dados do Back-end (que usa strings decimais) de volta para numbers se necessário
       // e garantir que os campos opcionais existam
       const formattedServices = data.map((s: BackendService) => ({
         ...s,
         price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
-        duration: typeof s.duration === "string" ? parseInt(s.duration, 10) : s.duration,
+        duration:
+          typeof s.duration === "string"
+            ? parseInt(s.duration, 10)
+            : s.duration,
         conflictingServiceIds: s.conflictingServiceIds || [],
         products: s.products || [],
       }));
@@ -430,7 +447,7 @@ export function ServicesManager() {
           products: formData.products || [],
           showOnHome: formData.showOnHome ?? true,
         };
-        
+
         const putUrl = `${API_URL}/${editingId}`.replace(/([^:]\/)\/+/g, "$1");
         console.log(">>> [SERVICES_MANAGER] Disparando PUT para:", putUrl);
 
@@ -449,16 +466,17 @@ export function ServicesManager() {
         } catch {
           errorData = { raw: errorText };
         }
-        
+
         if (response.status === 500) {
-          console.error(">>> [ERRO 500] Resposta Completa do Servidor:", errorData);
+          console.error(
+            ">>> [ERRO 500] Resposta Completa do Servidor:",
+            errorData,
+          );
         }
 
         const error = errorData as { message?: string; raw?: string };
         throw new Error(
-          error.message || 
-          error.raw || 
-          "Erro ao salvar serviço no servidor"
+          error.message || error.raw || "Erro ao salvar serviço no servidor",
         );
       }
 
@@ -476,7 +494,10 @@ export function ServicesManager() {
       await loadServices();
 
       // Sincronizar localStorage para compatibilidade com outros componentes
-      const getUrl = `${API_URL}/company/${studio?.id}`.replace(/([^:]\/)\/+/g, "$1");
+      const getUrl = `${API_URL}/company/${studio?.id}`.replace(
+        /([^:]\/)\/+/g,
+        "$1",
+      );
       const responseGet = await fetch(getUrl, {
         ...authOptions,
       });
@@ -485,7 +506,10 @@ export function ServicesManager() {
         const formattedForStorage = latestData.map((s: BackendService) => ({
           ...s,
           price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
-          duration: typeof s.duration === "string" ? parseInt(s.duration, 10) : s.duration,
+          duration:
+            typeof s.duration === "string"
+              ? parseInt(s.duration, 10)
+              : s.duration,
         }));
         saveSettings(formattedForStorage);
       }
@@ -494,7 +518,9 @@ export function ServicesManager() {
       console.error("Erro ao salvar serviço:", err);
       toast({
         title: "Erro ao Salvar",
-        description: err.message || "Não foi possível persistir as alterações no Back-end.",
+        description:
+          err.message ||
+          "Não foi possível persistir as alterações no Back-end.",
         variant: "destructive",
       });
     }
@@ -643,8 +669,14 @@ export function ServicesManager() {
         duration: serviceForProducts.duration.toString(),
       };
 
-      const putProductsUrl = `${API_URL}/${serviceForProducts.id}`.replace(/([^:]\/)\/+/g, "$1");
-      console.log(">>> [SERVICES_MANAGER] Salvando produtos via PUT em:", putProductsUrl);
+      const putProductsUrl = `${API_URL}/${serviceForProducts.id}`.replace(
+        /([^:]\/)\/+/g,
+        "$1",
+      );
+      console.log(
+        ">>> [SERVICES_MANAGER] Salvando produtos via PUT em:",
+        putProductsUrl,
+      );
 
       const response = await fetch(putProductsUrl, {
         ...authOptions,
@@ -652,7 +684,8 @@ export function ServicesManager() {
         body: JSON.stringify(serviceData),
       });
 
-      if (!response.ok) throw new Error("Erro ao salvar produtos do serviço no servidor");
+      if (!response.ok)
+        throw new Error("Erro ao salvar produtos do serviço no servidor");
 
       toast({
         title: "Produtos Atualizados",
@@ -667,7 +700,10 @@ export function ServicesManager() {
       await loadServices();
 
       // Sincronizar localStorage
-      const syncUrl = `${API_URL}/company/${studio?.id}`.replace(/([^:]\/)\/+/g, "$1");
+      const syncUrl = `${API_URL}/company/${studio?.id}`.replace(
+        /([^:]\/)\/+/g,
+        "$1",
+      );
       const responseGet = await fetch(syncUrl, {
         ...authOptions,
       });
@@ -676,7 +712,10 @@ export function ServicesManager() {
         const formattedForStorage = latestData.map((s: BackendService) => ({
           ...s,
           price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
-          duration: typeof s.duration === "string" ? parseInt(s.duration, 10) : s.duration,
+          duration:
+            typeof s.duration === "string"
+              ? parseInt(s.duration, 10)
+              : s.duration,
         }));
         saveSettings(formattedForStorage);
       }
@@ -684,7 +723,8 @@ export function ServicesManager() {
       console.error("Erro ao salvar produtos:", error);
       toast({
         title: "Erro ao Salvar",
-        description: "Não foi possível salvar a configuração de produtos no Back-end.",
+        description:
+          "Não foi possível salvar a configuração de produtos no Back-end.",
         variant: "destructive",
       });
     }
@@ -708,7 +748,10 @@ export function ServicesManager() {
     const authOptions = getAuthOptions();
 
     try {
-      const deleteUrl = `${API_URL}/${serviceToDelete.id}`.replace(/([^:]\/)\/+/g, "$1");
+      const deleteUrl = `${API_URL}/${serviceToDelete.id}`.replace(
+        /([^:]\/)\/+/g,
+        "$1",
+      );
       console.log(">>> [SERVICES_MANAGER] Deletando via DELETE em:", deleteUrl);
 
       const response = await fetch(deleteUrl, {
@@ -733,7 +776,10 @@ export function ServicesManager() {
       await loadServices();
 
       // Sincronizar localStorage
-      const syncDeleteUrl = `${API_URL}/company/${studio?.id}`.replace(/([^:]\/)\/+/g, "$1");
+      const syncDeleteUrl = `${API_URL}/company/${studio?.id}`.replace(
+        /([^:]\/)\/+/g,
+        "$1",
+      );
       const responseGet = await fetch(syncDeleteUrl, {
         ...authOptions,
       });
@@ -742,7 +788,10 @@ export function ServicesManager() {
         const formattedForStorage = latestData.map((s: BackendService) => ({
           ...s,
           price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
-          duration: typeof s.duration === "string" ? parseInt(s.duration, 10) : s.duration,
+          duration:
+            typeof s.duration === "string"
+              ? parseInt(s.duration, 10)
+              : s.duration,
         }));
         saveSettings(formattedForStorage);
       }
@@ -1571,9 +1620,10 @@ export function ServicesManager() {
                         <TooltipContent className="max-w-62.5">
                           <p className="text-xs">
                             <strong>Configuração de Produtos:</strong> Defina
-                            quais itens do estoque são consumidos automaticamente
-                            ao concluir este serviço. Você pode configurar
-                            quantidades fracionadas (ex: gramas ou ml).
+                            quais itens do estoque são consumidos
+                            automaticamente ao concluir este serviço. Você pode
+                            configurar quantidades fracionadas (ex: gramas ou
+                            ml).
                           </p>
                         </TooltipContent>
                       </Tooltip>

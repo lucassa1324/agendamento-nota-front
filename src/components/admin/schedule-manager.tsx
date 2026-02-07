@@ -61,7 +61,10 @@ export function ScheduleManager() {
         businessService.getBlocks(studio.id),
       ]);
 
-      console.log("Intervalo vindo do banco:", settings?.interval || settings?.slotInterval);
+      console.log(
+        "Intervalo vindo do banco:",
+        settings?.interval || settings?.slotInterval,
+      );
 
       let finalSchedule: DaySchedule[];
 
@@ -78,13 +81,13 @@ export function ScheduleManager() {
       if (settings?.weekly?.length) {
         // Mapear do backend para o estado local
         const backendWeekly = settings.weekly;
-        
+
         // Função auxiliar para converter HH:mm ou mm para número de minutos
         const parseInterval = (val?: string) => {
           if (!val) return 30;
           if (val.includes(":")) {
-            const [hrs, mins] = val.split(":").map(n => parseInt(n, 10));
-            return (hrs * 60) + mins;
+            const [hrs, mins] = val.split(":").map((n) => parseInt(n, 10));
+            return hrs * 60 + mins;
           }
           return parseInt(val, 10) || 30;
         };
@@ -208,7 +211,8 @@ export function ScheduleManager() {
 
     toast({
       title: "Bloqueios Salvos Localmente",
-      description: "A lista de períodos bloqueados foi atualizada na interface.",
+      description:
+        "A lista de períodos bloqueados foi atualizada na interface.",
       className: "bg-orange-600 text-white border-none",
     });
   };
@@ -274,7 +278,8 @@ export function ScheduleManager() {
         className: "bg-green-600 text-white border-none",
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Ocorreu um erro inesperado.";
+      const message =
+        error instanceof Error ? error.message : "Ocorreu um erro inesperado.";
       toast({
         title: "Erro ao criar bloqueio",
         description: message,
@@ -306,7 +311,8 @@ export function ScheduleManager() {
         className: "bg-green-600 text-white border-none",
       });
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Erro ao excluir bloqueio.";
+      const message =
+        error instanceof Error ? error.message : "Erro ao excluir bloqueio.";
       toast({
         title: "Falha na Exclusão",
         description: message,
@@ -371,7 +377,9 @@ export function ScheduleManager() {
     return (
       <div className="flex flex-col items-center justify-center min-h-100 gap-4">
         <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-muted-foreground animate-pulse">Carregando configurações da agenda...</p>
+        <p className="text-muted-foreground animate-pulse">
+          Carregando configurações da agenda...
+        </p>
       </div>
     );
   }

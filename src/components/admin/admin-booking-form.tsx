@@ -68,8 +68,13 @@ export function AdminBookingForm({
       // Log para validar o Service ID e outros dados antes de enviar
       console.log("🔍 Validando dados para o Back-end:");
       console.log("Service ID:", service.id);
-      console.log("Is UUID:", /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(service.id));
-      
+      console.log(
+        "Is UUID:",
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          service.id,
+        ),
+      );
+
       const appointmentData = {
         companyId: studio.id,
         serviceId: service.id, // Vindo de service.id (prop do componente)
@@ -84,9 +89,13 @@ export function AdminBookingForm({
         notes: "Agendado via Admin",
       };
 
-      console.log("📤 Enviando agendamento via AppointmentService:", appointmentData);
+      console.log(
+        "📤 Enviando agendamento via AppointmentService:",
+        appointmentData,
+      );
 
-      const createdAppointment = await appointmentService.create(appointmentData);
+      const createdAppointment =
+        await appointmentService.create(appointmentData);
 
       // 2. Preparar objeto Legado para compatibilidade com o front antigo
       const booking: Booking = {
@@ -117,7 +126,7 @@ export function AdminBookingForm({
       const err = error as Error;
       console.error("🚨 Falha na submissão:", err.message);
       console.log("Pilha do erro:", err);
-      
+
       toast({
         title: "Erro ao criar agendamento",
         description: err.message || "Ocorreu um erro inesperado no servidor.",

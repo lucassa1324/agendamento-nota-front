@@ -43,6 +43,7 @@ import {
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 const iconMap: Record<string, LucideIcon> = {
   Sparkles,
@@ -92,10 +93,10 @@ export function ServicesSection() {
         (s: Service) => s?.showOnHome,
       );
       setServices(homeServices);
-
-      const configServices = studio?.config?.services as
-        | ServicesSettings
-        | undefined;
+  
+      const config = studio?.config as SiteConfigData | undefined;
+      const layoutGlobal = config?.layoutGlobal || config?.layout_global;
+      const configServices = config?.services || layoutGlobal?.services;
       setSettings(configServices || getServicesSettings());
       return;
     }
@@ -135,11 +136,13 @@ export function ServicesSection() {
     window.addEventListener("message", handleMessage);
     window.addEventListener("studioSettingsUpdated", loadData);
     window.addEventListener("servicesSettingsUpdated", loadData);
+    window.addEventListener("DataReady", loadData);
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("studioSettingsUpdated", loadData);
       window.removeEventListener("servicesSettingsUpdated", loadData);
+      window.removeEventListener("DataReady", loadData);
     };
   }, [loadData]);
 

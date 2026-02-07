@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface SectionBackgroundProps {
@@ -25,16 +26,21 @@ export function SectionBackground({
   gradientClassName,
   defaultImage,
 }: SectionBackgroundProps) {
+  const [imageError, setImageError] = useState(false);
   const bgImage = settings.bgImage || defaultImage;
   const showImage =
-    settings.bgType === "image" || (!settings.bgType && defaultImage);
+    (settings.bgType === "image" || (!settings.bgType && defaultImage)) &&
+    !imageError;
 
   return (
     <div
       className={cn(
-        "absolute inset-0 overflow-hidden pointer-events-none",
+        "absolute inset-0 overflow-hidden pointer-events-none min-h-100",
         className,
       )}
+      style={{
+        backgroundColor: "var(--background)",
+      }}
     >
       {/* Background Color Layer */}
       <div
@@ -63,6 +69,12 @@ export function SectionBackground({
               objectPosition: `${settings.imageX ?? 50}% ${settings.imageY ?? 50}%`,
             }}
             priority={!!defaultImage}
+            onError={() => {
+              console.warn(
+                `[IMAGE_LOAD_ERROR] Falha ao carregar imagem: ${bgImage}. Revertendo para cor de fundo.`,
+              );
+              setImageError(true);
+            }}
           />
         </div>
       )}

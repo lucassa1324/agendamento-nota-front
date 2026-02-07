@@ -25,12 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -99,17 +94,21 @@ export function InventoryManager() {
   const fetchInventory = useCallback(async () => {
     if (!companyId) return;
 
-    console.log('>>> [INVENTORY] Buscando itens para ID:', companyId);
+    console.log(">>> [INVENTORY] Buscando itens para ID:", companyId);
     setIsLoadingItems(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/inventory/company/${companyId}`, {
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/inventory/company/${companyId}`,
+        {
+          credentials: "include",
+        },
+      );
 
       if (response.status === 500) {
         toast({
           title: "Erro temporário",
-          description: "Ocorreu um erro no servidor. Tente novamente em alguns instantes.",
+          description:
+            "Ocorreu um erro no servidor. Tente novamente em alguns instantes.",
           variant: "destructive",
         });
         throw new Error("Erro 500 no servidor");
@@ -118,7 +117,7 @@ export function InventoryManager() {
       if (!response.ok) throw new Error("Falha ao buscar estoque");
 
       const data = await response.json();
-      console.log('>>> [INVENTORY] Dados recebidos do Back-end:', data);
+      console.log(">>> [INVENTORY] Dados recebidos do Back-end:", data);
       setInventory(data);
     } catch (error) {
       console.error("Erro ao buscar estoque:", error);
@@ -141,106 +140,106 @@ export function InventoryManager() {
       const loadedInventory = getInventoryFromStorage();
       // ... rest of the existing storage logic ...
 
-    // Migração/Correção automática para o Algodão
-    let wasModified = false;
-    const fixedInventory = loadedInventory.map((item) => {
-      if (item.name === "Algodão") {
-        let needsFix = false;
-        const updatedItem = { ...item };
+      // Migração/Correção automática para o Algodão
+      let wasModified = false;
+      const fixedInventory = loadedInventory.map((item) => {
+        if (item.name === "Algodão") {
+          let needsFix = false;
+          const updatedItem = { ...item };
 
-        // Se o fator for 0.5 (erro comum de confusão), corrige para 500
-        // Ou se não tiver fator/unidade secundária configurada corretamente
-        if (item.conversionFactor === 0.5 || !item.secondaryUnit) {
-          updatedItem.conversionFactor = 500;
-          updatedItem.secondaryUnit = "g";
-          needsFix = true;
+          // Se o fator for 0.5 (erro comum de confusão), corrige para 500
+          // Ou se não tiver fator/unidade secundária configurada corretamente
+          if (item.conversionFactor === 0.5 || !item.secondaryUnit) {
+            updatedItem.conversionFactor = 500;
+            updatedItem.secondaryUnit = "g";
+            needsFix = true;
+          }
+
+          // Se a quantidade caiu para 100 devido ao erro de cálculo (120 - 20), restaura para 120
+          // Se caiu para 80 (100 - 20), restaura para 100
+          if (item.quantity === 100) {
+            updatedItem.quantity = 120;
+            needsFix = true;
+          } else if (item.quantity === 80) {
+            updatedItem.quantity = 100;
+            needsFix = true;
+          }
+
+          if (needsFix) {
+            wasModified = true;
+            updatedItem.lastUpdate = new Date().toISOString().split("T")[0];
+            return updatedItem;
+          }
         }
-
-        // Se a quantidade caiu para 100 devido ao erro de cálculo (120 - 20), restaura para 120
-        // Se caiu para 80 (100 - 20), restaura para 100
-        if (item.quantity === 100) {
-          updatedItem.quantity = 120;
-          needsFix = true;
-        } else if (item.quantity === 80) {
-          updatedItem.quantity = 100;
-          needsFix = true;
-        }
-
-        if (needsFix) {
-          wasModified = true;
-          updatedItem.lastUpdate = new Date().toISOString().split("T")[0];
-          return updatedItem;
-        }
-      }
-      return item;
-    });
-
-    if (wasModified) {
-      setInventory(fixedInventory);
-      saveInventoryToStorage(fixedInventory);
-      toast({
-        title: "Dados Corrigidos",
-        description:
-          "O estoque e fator de conversão do Algodão foram ajustados automaticamente.",
+        return item;
       });
-    } else if (loadedInventory.length > 0) {
-      setInventory(loadedInventory);
-    } else {
-      // Dados iniciais caso não exista no storage
-      const initialInventory: InventoryItem[] = [
-        {
-          id: "1",
-          name: "Henna para Sobrancelhas - Castanho",
-          quantity: 8,
-          minQuantity: 5,
-          unit: "un",
-          price: 45.9,
-          lastUpdate: "2024-01-15",
-        },
-        {
-          id: "2",
-          name: "Pinça Profissional",
-          quantity: 3,
-          minQuantity: 3,
-          unit: "un",
-          price: 25.0,
-          lastUpdate: "2024-01-10",
-        },
-        {
-          id: "3",
-          name: "Algodão",
-          quantity: 120,
-          minQuantity: 50,
-          unit: "un",
-          secondaryUnit: "g",
-          conversionFactor: 500,
-          price: 12.5,
-          lastUpdate: "2025-12-31",
-        },
-        {
-          id: "4",
-          name: "Lápis para Sobrancelhas - Preto",
-          quantity: 15,
-          minQuantity: 10,
-          unit: "un",
-          price: 18.0,
-          lastUpdate: "2024-01-14",
-        },
-        {
-          id: "5",
-          name: "Gel Fixador",
-          quantity: 6,
-          minQuantity: 8,
-          unit: "un",
-          price: 35.0,
-          lastUpdate: "2024-01-08",
-        },
-      ];
-      setInventory(initialInventory);
-      saveInventoryToStorage(initialInventory);
+
+      if (wasModified) {
+        setInventory(fixedInventory);
+        saveInventoryToStorage(fixedInventory);
+        toast({
+          title: "Dados Corrigidos",
+          description:
+            "O estoque e fator de conversão do Algodão foram ajustados automaticamente.",
+        });
+      } else if (loadedInventory.length > 0) {
+        setInventory(loadedInventory);
+      } else {
+        // Dados iniciais caso não exista no storage
+        const initialInventory: InventoryItem[] = [
+          {
+            id: "1",
+            name: "Henna para Sobrancelhas - Castanho",
+            quantity: 8,
+            minQuantity: 5,
+            unit: "un",
+            price: 45.9,
+            lastUpdate: "2024-01-15",
+          },
+          {
+            id: "2",
+            name: "Pinça Profissional",
+            quantity: 3,
+            minQuantity: 3,
+            unit: "un",
+            price: 25.0,
+            lastUpdate: "2024-01-10",
+          },
+          {
+            id: "3",
+            name: "Algodão",
+            quantity: 120,
+            minQuantity: 50,
+            unit: "un",
+            secondaryUnit: "g",
+            conversionFactor: 500,
+            price: 12.5,
+            lastUpdate: "2025-12-31",
+          },
+          {
+            id: "4",
+            name: "Lápis para Sobrancelhas - Preto",
+            quantity: 15,
+            minQuantity: 10,
+            unit: "un",
+            price: 18.0,
+            lastUpdate: "2024-01-14",
+          },
+          {
+            id: "5",
+            name: "Gel Fixador",
+            quantity: 6,
+            minQuantity: 8,
+            unit: "un",
+            price: 35.0,
+            lastUpdate: "2024-01-08",
+          },
+        ];
+        setInventory(initialInventory);
+        saveInventoryToStorage(initialInventory);
+      }
     }
-  }
-}, [toast, companyId, inventory.length, isLoadingItems]);
+  }, [toast, companyId, inventory.length, isLoadingItems]);
 
   const updateInventory = (newInventory: InventoryItem[]) => {
     setInventory(newInventory);
@@ -250,7 +249,9 @@ export function InventoryManager() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "price" | "status">("name");
-  const [editingItem, setEditingItem] = useState<(Omit<InventoryItem, "quantity"> & { quantity: string | number }) | null>(null);
+  const [editingItem, setEditingItem] = useState<
+    (Omit<InventoryItem, "quantity"> & { quantity: string | number }) | null
+  >(null);
   const [transactionItem, setTransactionItem] = useState<{
     item: InventoryItem;
     type: "entrada" | "saida";
@@ -299,7 +300,8 @@ export function InventoryManager() {
     if (!companyId) {
       toast({
         title: "Erro de identificação",
-        description: "Não foi possível identificar sua empresa. Tente recarregar a página.",
+        description:
+          "Não foi possível identificar sua empresa. Tente recarregar a página.",
         variant: "destructive",
       });
       return;
@@ -312,7 +314,9 @@ export function InventoryManager() {
         name: newItem.name,
         initialQuantity: Number(newItem.quantity),
         minQuantity: Number(newItem.minQuantity) || 0,
-        unitPrice: parseFloat(newItem.price.toString().replace(",", ".")).toFixed(2),
+        unitPrice: parseFloat(
+          newItem.price.toString().replace(",", "."),
+        ).toFixed(2),
         unit: newItem.unit,
         secondaryUnit: newItem.secondaryUnit || undefined,
         conversionFactor: newItem.conversionFactor
@@ -322,10 +326,15 @@ export function InventoryManager() {
 
       // Limpeza estrita: Remove campos undefined ou strings vazias
       const payload = Object.fromEntries(
-        Object.entries(rawPayload).filter(([_, v]) => v !== undefined && v !== "")
+        Object.entries(rawPayload).filter(
+          ([_, v]) => v !== undefined && v !== "",
+        ),
       );
 
-      console.log(">>> [INVENTORY] Payload simplificado sendo enviado:", payload);
+      console.log(
+        ">>> [INVENTORY] Payload simplificado sendo enviado:",
+        payload,
+      );
 
       const response = await fetch(`${API_BASE_URL}/api/inventory`, {
         method: "POST",
@@ -339,10 +348,13 @@ export function InventoryManager() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error(">>> [INVENTORY] Erro detalhado do Back-end:", errorData);
-        
+
         // Se o Back-end enviar detalhes de validação (comum em 422)
-        const detailedMessage = errorData.error || errorData.message || (errorData.issues ? JSON.stringify(errorData.issues) : null);
-        
+        const detailedMessage =
+          errorData.error ||
+          errorData.message ||
+          (errorData.issues ? JSON.stringify(errorData.issues) : null);
+
         throw new Error(detailedMessage || "Falha ao salvar produto");
       }
 
@@ -364,7 +376,10 @@ export function InventoryManager() {
       fetchInventory(); // Atualiza a lista
     } catch (error) {
       console.error("Erro ao adicionar produto:", error);
-      const message = error instanceof Error ? error.message : "Ocorreu um erro ao tentar salvar o produto.";
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Ocorreu um erro ao tentar salvar o produto.";
       toast({
         title: "Erro ao adicionar",
         description: message,
@@ -399,7 +414,9 @@ export function InventoryManager() {
         currentQuantity: Number(editingItem.quantity),
         minQuantity: Number(editingItem.minQuantity) || 0,
         unitPrice: parseFloat(
-          (editingItem.price || editingItem.unitPrice || 0).toString().replace(",", ".")
+          (editingItem.price || editingItem.unitPrice || 0)
+            .toString()
+            .replace(",", "."),
         ).toFixed(2),
         unit: editingItem.unit,
         secondaryUnit: editingItem.secondaryUnit || null,
@@ -410,17 +427,22 @@ export function InventoryManager() {
 
       // Limpeza estrita: Remove campos undefined ou strings vazias (exceto nulls intencionais)
       const payload = Object.fromEntries(
-        Object.entries(rawPayload).filter(([_, v]) => v !== undefined && v !== "")
+        Object.entries(rawPayload).filter(
+          ([_, v]) => v !== undefined && v !== "",
+        ),
       );
 
-      const response = await fetch(`${API_BASE_URL}/api/inventory/${editingItem.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `${API_BASE_URL}/api/inventory/${editingItem.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          credentials: "include",
         },
-        body: JSON.stringify(payload),
-        credentials: "include",
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -437,7 +459,9 @@ export function InventoryManager() {
     } catch (error) {
       console.error("Erro ao atualizar produto:", error);
       const message =
-        error instanceof Error ? error.message : "Ocorreu um erro ao tentar atualizar o produto.";
+        error instanceof Error
+          ? error.message
+          : "Ocorreu um erro ao tentar atualizar o produto.";
       toast({
         title: "Erro ao atualizar",
         description: message,
@@ -533,10 +557,13 @@ export function InventoryManager() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/inventory/${itemToDelete.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/inventory/${itemToDelete.id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -553,7 +580,9 @@ export function InventoryManager() {
     } catch (error) {
       console.error("Erro ao excluir produto:", error);
       const message =
-        error instanceof Error ? error.message : "Ocorreu um erro ao tentar excluir o produto.";
+        error instanceof Error
+          ? error.message
+          : "Ocorreu um erro ao tentar excluir o produto.";
       toast({
         title: "Erro ao excluir",
         description: message,
@@ -590,7 +619,12 @@ export function InventoryManager() {
   }, [inventory, searchTerm, sortBy]);
 
   const lowStockItems = useMemo(() => {
-    return inventory.filter((item) => item && Number(item.quantity || item?.currentQuantity || 0) <= Number(item.minQuantity || 0));
+    return inventory.filter(
+      (item) =>
+        item &&
+        Number(item.quantity || item?.currentQuantity || 0) <=
+          Number(item.minQuantity || 0),
+    );
   }, [inventory]);
 
   if (isStudioLoading || (isLoadingItems && inventory.length === 0)) {
@@ -646,7 +680,10 @@ export function InventoryManager() {
                       variant="outline"
                       className="bg-white text-red-700 border-red-200 text-[9px] py-0 px-1.5"
                     >
-                      {item.name}: {(Number(item.quantity || item?.currentQuantity || 0)).toLocaleString("pt-BR")}{" "}
+                      {item.name}:{" "}
+                      {Number(
+                        item.quantity || item?.currentQuantity || 0,
+                      ).toLocaleString("pt-BR")}{" "}
                       {item.unit}
                     </Badge>
                   ))}
@@ -744,14 +781,21 @@ export function InventoryManager() {
                           <span
                             className={cn(
                               "text-[9px] sm:text-xs",
-                              Number(item?.quantity || item?.currentQuantity || 0) <= Number(item?.minQuantity || 0)
+                              Number(
+                                item?.quantity || item?.currentQuantity || 0,
+                              ) <= Number(item?.minQuantity || 0)
                                 ? "text-red-600 font-bold"
                                 : "text-muted-foreground",
                             )}
                           >
-                            {(Number(item?.quantity || item?.currentQuantity || 0)).toLocaleString("pt-BR")} {item?.unit}
+                            {Number(
+                              item?.quantity || item?.currentQuantity || 0,
+                            ).toLocaleString("pt-BR")}{" "}
+                            {item?.unit}
                           </span>
-                          {Number(item?.quantity || item?.currentQuantity || 0) <= Number(item?.minQuantity || 0) && (
+                          {Number(
+                            item?.quantity || item?.currentQuantity || 0,
+                          ) <= Number(item?.minQuantity || 0) && (
                             <Badge
                               variant="outline"
                               className="h-3 px-1 text-[6px] sm:text-[8px] bg-red-50 text-red-700 border-red-200"
@@ -765,12 +809,16 @@ export function InventoryManager() {
                     <TableCell className="hidden xl:table-cell">
                       <span
                         className={
-                          Number(item?.quantity || item?.currentQuantity || 0) <= Number(item?.minQuantity || 0)
+                          Number(
+                            item?.quantity || item?.currentQuantity || 0,
+                          ) <= Number(item?.minQuantity || 0)
                             ? "text-red-600 font-semibold"
                             : ""
                         }
                       >
-                        {(Number(item?.quantity || item?.currentQuantity || 0)).toLocaleString("pt-BR", {
+                        {Number(
+                          item?.quantity || item?.currentQuantity || 0,
+                        ).toLocaleString("pt-BR", {
                           minimumFractionDigits: 0,
                           maximumFractionDigits: 3,
                         })}
@@ -786,7 +834,8 @@ export function InventoryManager() {
                       }).format(item?.price || item?.unitPrice || 0)}
                     </TableCell>
                     <TableCell className="hidden 2xl:table-cell">
-                      {Number(item?.quantity || item?.currentQuantity || 0) > Number(item?.minQuantity || 0) ? (
+                      {Number(item?.quantity || item?.currentQuantity || 0) >
+                      Number(item?.minQuantity || 0) ? (
                         <Badge
                           variant="outline"
                           className="bg-green-50 text-green-700 border-green-200"
@@ -804,7 +853,9 @@ export function InventoryManager() {
                       )}
                     </TableCell>
                     <TableCell className="hidden 2xl:table-cell text-muted-foreground whitespace-nowrap">
-                      {item?.lastUpdate ? new Date(item.lastUpdate).toLocaleDateString("pt-BR") : "---"}
+                      {item?.lastUpdate
+                        ? new Date(item.lastUpdate).toLocaleDateString("pt-BR")
+                        : "---"}
                     </TableCell>
                     <TableCell className="text-right px-2 sm:px-4">
                       <div className="flex justify-end gap-1 sm:gap-1.5">
@@ -815,7 +866,9 @@ export function InventoryManager() {
                               if (val === "edit") {
                                 setEditingItem({
                                   ...item,
-                                  quantity: Number(item.quantity || item.currentQuantity || 0)
+                                  quantity: Number(
+                                    item.quantity || item.currentQuantity || 0,
+                                  ),
                                 });
                               }
                               if (val === "entrada")
@@ -864,10 +917,14 @@ export function InventoryManager() {
                             variant="outline"
                             size="sm"
                             className="h-8 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                            onClick={() => setEditingItem({
-                              ...item,
-                              quantity: Number(item.quantity || item.currentQuantity || 0)
-                            })}
+                            onClick={() =>
+                              setEditingItem({
+                                ...item,
+                                quantity: Number(
+                                  item.quantity || item.currentQuantity || 0,
+                                ),
+                              })
+                            }
                             title="Editar"
                           >
                             <Pencil className="w-4 h-4" />
@@ -947,9 +1004,14 @@ export function InventoryManager() {
                 : "Saída de Estoque"}
             </DialogTitle>
             <DialogDescription>
-                  {transactionItem?.item.name} ({Number(transactionItem?.item?.quantity || transactionItem?.item?.currentQuantity || 0)}{" "}
-                  {transactionItem?.item.unit} atuais)
-                </DialogDescription>
+              {transactionItem?.item.name} (
+              {Number(
+                transactionItem?.item?.quantity ||
+                  transactionItem?.item?.currentQuantity ||
+                  0,
+              )}{" "}
+              {transactionItem?.item.unit} atuais)
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -1061,135 +1123,138 @@ export function InventoryManager() {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                    <Input
-                      id="edit-name"
-                      value={editingItem.name || ""}
-                      onChange={(e) =>
-                        setEditingItem({ ...editingItem, name: e.target.value })
-                      }
-                    />
+                  <Input
+                    id="edit-name"
+                    value={editingItem.name || ""}
+                    onChange={(e) =>
+                      setEditingItem({ ...editingItem, name: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="edit-quantity">Quantidade</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Quantidade total que você tem disponível agora.</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5">
-                      <Label htmlFor="edit-quantity">Quantidade</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Quantidade total que você tem disponível agora.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Input
-                      id="edit-quantity"
-                      type="number"
-                      step="0.001"
-                      value={
-                        editingItem.quantity === undefined || Number.isNaN(Number(editingItem.quantity))
-                          ? "0"
-                          : editingItem.quantity
-                      }
-                      onChange={(e) => {
-                        const val = e.target.value === "" ? 0 : e.target.value;
-                        setEditingItem({
-                          ...editingItem,
-                          quantity: val,
-                        });
-                      }}
-                    />
+                  <Input
+                    id="edit-quantity"
+                    type="number"
+                    step="0.001"
+                    value={
+                      editingItem.quantity === undefined ||
+                      Number.isNaN(Number(editingItem.quantity))
+                        ? "0"
+                        : editingItem.quantity
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value === "" ? 0 : e.target.value;
+                      setEditingItem({
+                        ...editingItem,
+                        quantity: val,
+                      });
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="edit-min-quantity">Quantidade Mínima</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          O sistema avisará quando o estoque for igual ou menor
+                          que este valor.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5">
-                      <Label htmlFor="edit-min-quantity">Quantidade Mínima</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            O sistema avisará quando o estoque for igual ou menor
-                            que este valor.
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Input
-                      id="edit-min-quantity"
-                      type="number"
-                      step="0.001"
-                      value={
-                        editingItem.minQuantity === undefined || Number.isNaN(editingItem.minQuantity)
-                          ? "0"
-                          : editingItem.minQuantity
-                      }
-                      onChange={(e) => {
-                        const val =
-                          e.target.value === ""
-                            ? 0
-                            : Number.parseFloat(e.target.value);
-                        setEditingItem({
-                          ...editingItem,
-                          minQuantity: val,
-                        });
-                      }}
-                    />
+                  <Input
+                    id="edit-min-quantity"
+                    type="number"
+                    step="0.001"
+                    value={
+                      editingItem.minQuantity === undefined ||
+                      Number.isNaN(editingItem.minQuantity)
+                        ? "0"
+                        : editingItem.minQuantity
+                    }
+                    onChange={(e) => {
+                      const val =
+                        e.target.value === ""
+                          ? 0
+                          : Number.parseFloat(e.target.value);
+                      setEditingItem({
+                        ...editingItem,
+                        minQuantity: val,
+                      });
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="edit-price">Valor Unitário (R$)</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Preço de custo ou venda por unidade do produto.</p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5">
-                      <Label htmlFor="edit-price">Valor Unitário (R$)</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Preço de custo ou venda por unidade do produto.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Input
-                      id="edit-price"
-                      type="number"
-                      step="0.01"
-                      value={
-                        (editingItem.price || editingItem.unitPrice) === undefined || 
-                        Number.isNaN(editingItem.price || editingItem.unitPrice)
-                          ? "0"
-                          : (editingItem.price || editingItem.unitPrice)
-                      }
-                      onChange={(e) => {
-                        const val =
-                          e.target.value === ""
-                            ? 0
-                            : Number.parseFloat(e.target.value);
-                        setEditingItem({
-                          ...editingItem,
-                          price: val,
-                        });
-                      }}
-                    />
+                  <Input
+                    id="edit-price"
+                    type="number"
+                    step="0.01"
+                    value={
+                      (editingItem.price || editingItem.unitPrice) ===
+                        undefined ||
+                      Number.isNaN(editingItem.price || editingItem.unitPrice)
+                        ? "0"
+                        : editingItem.price || editingItem.unitPrice
+                    }
+                    onChange={(e) => {
+                      const val =
+                        e.target.value === ""
+                          ? 0
+                          : Number.parseFloat(e.target.value);
+                      setEditingItem({
+                        ...editingItem,
+                        price: val,
+                      });
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="edit-unit">Unidade</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          Forma de medida do produto (unidade, quilo, litro,
+                          etc).
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1.5">
-                      <Label htmlFor="edit-unit">Unidade</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            Forma de medida do produto (unidade, quilo, litro,
-                            etc).
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Select
-                      value={editingItem.unit || "un"}
-                      onValueChange={(value) =>
-                        setEditingItem({ ...editingItem, unit: value })
-                      }
-                    >
+                  <Select
+                    value={editingItem.unit || "un"}
+                    onValueChange={(value) =>
+                      setEditingItem({ ...editingItem, unit: value })
+                    }
+                  >
                     <SelectTrigger id="edit-unit">
                       <SelectValue placeholder="Selecione a unidade" />
                     </SelectTrigger>
@@ -1286,7 +1351,11 @@ export function InventoryManager() {
             </TooltipProvider>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingItem(null)} disabled={isSaving}>
+            <Button
+              variant="outline"
+              onClick={() => setEditingItem(null)}
+              disabled={isSaving}
+            >
               Cancelar
             </Button>
             <Button onClick={handleUpdateItem} disabled={isSaving}>
@@ -1305,7 +1374,9 @@ export function InventoryManager() {
             <DialogTitle>Histórico de Movimentação</DialogTitle>
             <DialogDescription>
               {showHistory?.name} -{" "}
-              {(Number(showHistory?.quantity || showHistory?.currentQuantity || 0)).toLocaleString("pt-BR")}{" "}
+              {Number(
+                showHistory?.quantity || showHistory?.currentQuantity || 0,
+              ).toLocaleString("pt-BR")}{" "}
               {showHistory?.unit} em estoque
             </DialogDescription>
           </DialogHeader>
@@ -1330,7 +1401,9 @@ export function InventoryManager() {
                     {showHistory.logs.map((log) => (
                       <TableRow key={log.id}>
                         <TableCell className="text-[10px] leading-tight">
-                          {log.timestamp ? new Date(log.timestamp).toLocaleString("pt-BR") : "---"}
+                          {log.timestamp
+                            ? new Date(log.timestamp).toLocaleString("pt-BR")
+                            : "---"}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -1399,7 +1472,9 @@ export function InventoryManager() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>
+              Cancelar
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();

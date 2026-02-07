@@ -7,6 +7,7 @@ import { SectionBackground } from "@/components/admin/site_editor/components/Sec
 import { useStudio } from "@/context/studio-context";
 import { getStorySettings, type StorySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function StorySection() {
   const { studio } = useStudio();
@@ -17,8 +18,12 @@ export function StorySection() {
 
   useEffect(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    if (studio?.config?.story) {
-      setSettings(studio.config.story as StorySettings);
+    const config = studio?.config as SiteConfigData | undefined;
+    const layoutGlobal = config?.layoutGlobal || config?.layout_global;
+    const dbStory = config?.story || layoutGlobal?.story;
+
+    if (dbStory) {
+      setSettings(dbStory as StorySettings);
     } else {
       setSettings(getStorySettings());
     }
@@ -44,13 +49,23 @@ export function StorySection() {
     const handleUpdate = () => {
       setSettings(getStorySettings());
     };
+    const handleDataReady = () => {
+      const cfg = studio?.config as SiteConfigData | undefined;
+      const lg = cfg?.layoutGlobal || cfg?.layout_global;
+      const storyFromDb = cfg?.story || lg?.story;
+      if (storyFromDb) {
+        setSettings(storyFromDb as StorySettings);
+      }
+    };
 
     window.addEventListener("message", handleMessage);
     window.addEventListener("storySettingsUpdated", handleUpdate);
+    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("storySettingsUpdated", handleUpdate);
+      window.removeEventListener("DataReady", handleDataReady);
     };
   }, [studio]);
 

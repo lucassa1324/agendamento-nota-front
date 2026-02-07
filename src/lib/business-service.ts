@@ -59,9 +59,13 @@ class BusinessService {
 
     if (sessionToken) {
       headers.Authorization = `Bearer ${sessionToken}`;
-      console.log(">>> [BusinessService] Sessão válida encontrada (token presente).");
+      console.log(
+        ">>> [BusinessService] Sessão válida encontrada (token presente).",
+      );
     } else {
-      console.warn(">>> [BusinessService] Nenhuma sessão encontrada. Requisições podem retornar 401.");
+      console.warn(
+        ">>> [BusinessService] Nenhuma sessão encontrada. Requisições podem retornar 401.",
+      );
     }
 
     return headers;
@@ -113,7 +117,7 @@ class BusinessService {
     }
 
     const data = await response.json();
-    
+
     // Normalizar slotInterval para interval se necessário
     if (data?.slotInterval && !data.interval) {
       data.interval = data.slotInterval;
@@ -138,16 +142,22 @@ class BusinessService {
     }
 
     const data = await response.json();
-    
+
     // Mapear do backend para o formato esperado pelo frontend se necessário
     if (Array.isArray(data)) {
-      return data.map((b: Partial<BlockPayload & { id?: string; startDate?: string; date?: string }>) => ({
-        id: b.id || Math.random().toString(36).slice(2, 11),
-        date: b.startDate || b.date || "",
-        startTime: b.startTime,
-        endTime: b.endTime,
-        reason: b.reason,
-      }));
+      return data.map(
+        (
+          b: Partial<
+            BlockPayload & { id?: string; startDate?: string; date?: string }
+          >,
+        ) => ({
+          id: b.id || Math.random().toString(36).slice(2, 11),
+          date: b.startDate || b.date || "",
+          startTime: b.startTime,
+          endTime: b.endTime,
+          reason: b.reason,
+        }),
+      );
     }
 
     return [];

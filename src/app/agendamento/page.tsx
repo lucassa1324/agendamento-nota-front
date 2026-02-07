@@ -2,7 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { Suspense, use, useEffect, useState } from "react";
+import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { BookingFlow } from "@/components/booking-flow";
+import { useStudio } from "@/context/studio-context";
 import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
 
 export default function AgendamentoPage({
@@ -11,6 +13,7 @@ export default function AgendamentoPage({
   searchParams: Promise<{ only?: string; preview?: string }>;
 }) {
   const router = useRouter();
+  const { studio } = useStudio();
   const searchParams = use(searchParamsPromise);
   const only = searchParams.only;
   const isPreview = searchParams.preview === "true";
@@ -21,6 +24,28 @@ export default function AgendamentoPage({
   const [isolatedSection, setIsolatedSection] = useState<string | null>(
     only || null,
   );
+
+  // Sincronização com os dados vindos do StudioContext (Banco de Dados)
+  useEffect(() => {
+    if (studio?.config) {
+      const config = studio.config as unknown as SiteConfigData;
+      
+      if (!isPreview) {
+        if (config.visibleSections) {
+          setVisibleSections(config.visibleSections);
+        }
+        
+        if (config.pageVisibility) {
+          if (config.pageVisibility.agendar === false) {
+            setIsVisible(false);
+            router.push("/");
+          } else {
+            setIsVisible(true);
+          }
+        }
+      }
+    }
+  }, [studio, isPreview, router]);
 
   useEffect(() => {
     setIsolatedSection(only || null);

@@ -17,7 +17,7 @@ export default function Home({
   searchParams: Promise<{ only?: string; preview?: string }>;
 }) {
   const router = useRouter();
-  const { slug, isLoading: studioLoading } = useStudio();
+  const { studio, slug, isLoading: studioLoading } = useStudio();
   const params = use(searchParams);
   const initialOnly = params?.only;
   const isPreview = params?.preview === "true";
@@ -30,6 +30,23 @@ export default function Home({
   const [isolatedSection, setIsolatedSection] = useState<string | null>(
     initialOnly || null,
   );
+
+  // Sincronização com os dados vindos do StudioContext (Banco de Dados)
+  useEffect(() => {
+    if (studio?.config) {
+      const config = studio.config as unknown as SiteConfigData;
+      
+      // Priorizamos os dados do banco, mas permitimos que o preview (message) sobrescreva
+      if (!isPreview) {
+        if (config.visibleSections) {
+          setVisibleSections(config.visibleSections);
+        }
+        if (config.pageVisibility) {
+          setPageVisibility(config.pageVisibility);
+        }
+      }
+    }
+  }, [studio, isPreview]);
 
   useEffect(() => {
     // Se não houver slug e não estiver carregando, redireciona para a landing page externa
@@ -94,7 +111,10 @@ export default function Home({
     };
 
     window.addEventListener("visibleSectionsUpdated", handleVisibilityUpdate);
-    window.addEventListener("pageVisibilityUpdated", handlePageVisibilityUpdate);
+    window.addEventListener(
+      "pageVisibilityUpdated",
+      handlePageVisibilityUpdate,
+    );
     window.addEventListener("message", handleMessage);
 
     return () => {

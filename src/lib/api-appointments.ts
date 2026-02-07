@@ -1,7 +1,11 @@
-
 import { API_BASE_URL, authClient } from "./auth-client";
 
-export type AppointmentStatus = "PENDING" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "POSTPONED";
+export type AppointmentStatus =
+  | "PENDING"
+  | "CONFIRMED"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "POSTPONED";
 
 export interface CreateAppointmentDTO {
   companyId: string;
@@ -47,11 +51,12 @@ class AppointmentService {
       return null;
     };
 
-    let sessionToken = typeof window !== "undefined" 
-      ? (localStorage.getItem("better-auth.session_token") || 
-         localStorage.getItem("better-auth.access_token") ||
-         getCookie("better-auth.session_token"))
-      : null;
+    let sessionToken =
+      typeof window !== "undefined"
+        ? localStorage.getItem("better-auth.session_token") ||
+          localStorage.getItem("better-auth.access_token") ||
+          getCookie("better-auth.session_token")
+        : null;
 
     // Se não encontrou manualmente, tenta via authClient (Better-Auth)
     if (!sessionToken && typeof window !== "undefined") {

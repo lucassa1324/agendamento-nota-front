@@ -3,10 +3,12 @@
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import { AboutHero } from "@/components/about-hero";
+import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { StorySection } from "@/components/story-section";
 import { TeamSection } from "@/components/team-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
 import { ValuesSection } from "@/components/values-section";
+import { useStudio } from "@/context/studio-context";
 import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
 
 export default function SobrePage({
@@ -15,6 +17,7 @@ export default function SobrePage({
   searchParams: Promise<{ only?: string; preview?: string }>;
 }) {
   const router = useRouter();
+  const { studio } = useStudio();
   const searchParams = use(searchParamsPromise);
   const only = searchParams.only;
   const isPreview = searchParams.preview === "true";
@@ -25,6 +28,29 @@ export default function SobrePage({
   const [isolatedSection, setIsolatedSection] = useState<string | null>(
     only || null,
   );
+
+  // Sincronização com os dados vindos do StudioContext (Banco de Dados)
+  useEffect(() => {
+    if (studio?.config) {
+      const config = studio.config as unknown as SiteConfigData;
+      
+      if (!isPreview) {
+        if (config.visibleSections) {
+          setVisibleSections(config.visibleSections);
+        }
+        
+        if (config.pageVisibility) {
+          // Reaproveita a lógica de checkVisibility do useEffect principal
+          if (config.pageVisibility.sobre === false) {
+            setIsVisible(false);
+            router.push("/");
+          } else {
+            setIsVisible(true);
+          }
+        }
+      }
+    }
+  }, [studio, isPreview, router]);
 
   useEffect(() => {
     setIsolatedSection(only || null);

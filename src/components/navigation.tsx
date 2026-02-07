@@ -193,6 +193,11 @@ export function Navigation({
     fontFamily: headerSettings.linksFont || "var(--font-body)",
   };
 
+  const activeLinkStyle = {
+    ...linksStyle,
+    borderBottom: `2px solid ${headerSettings.buttonBgColor || "var(--primary)"}`,
+  };
+
   return (
     <nav
       id="header"
@@ -230,7 +235,7 @@ export function Navigation({
                 className={`text-xs lg:text-sm font-medium transition-colors hover:opacity-80 ${
                   isActive(link.href) ? "" : "opacity-70"
                 }`}
-                style={linksStyle}
+                style={isActive(link.href) ? activeLinkStyle : linksStyle}
               >
                 {link.label}
               </Link>

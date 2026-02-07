@@ -81,11 +81,12 @@ export function AdminCalendar({
       return null;
     };
 
-    const sessionToken = typeof window !== "undefined" 
-      ? (localStorage.getItem("better-auth.session_token") || 
-         localStorage.getItem("better-auth.access_token") ||
-         getCookie("better-auth.session_token"))
-      : null;
+    const sessionToken =
+      typeof window !== "undefined"
+        ? localStorage.getItem("better-auth.session_token") ||
+          localStorage.getItem("better-auth.access_token") ||
+          getCookie("better-auth.session_token")
+        : null;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -109,16 +110,22 @@ export function AdminCalendar({
     try {
       const authOptions = getAuthOptions();
 
-      const response = await fetch(`${API_BASE_URL}/api/services/company/${studio.id}`, {
-        ...authOptions,
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/services/company/${studio.id}`,
+        {
+          ...authOptions,
+        },
+      );
 
       if (response.ok) {
         const data = await response.json();
         const formattedServices = data.map((s: Service) => ({
           ...s,
           price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
-          duration: typeof s.duration === "string" ? parseInt(s.duration, 10) : s.duration,
+          duration:
+            typeof s.duration === "string"
+              ? parseInt(s.duration, 10)
+              : s.duration,
         }));
         setServices(formattedServices);
       }
@@ -132,38 +139,44 @@ export function AdminCalendar({
 
     try {
       const appointments = await appointmentService.listByCompany(studio.id);
-      const mappedBookings: Booking[] = appointments.map((app: Appointment) => ({
-        id: app.id,
-        serviceId: app.serviceId,
-        serviceName: app.serviceNameSnapshot,
-        serviceDuration: parseInt(app.serviceDurationSnapshot, 10),
-        servicePrice: parseFloat(app.servicePriceSnapshot),
-        date: format(new Date(app.scheduledAt), "yyyy-MM-dd"),
-        time: format(new Date(app.scheduledAt), "HH:mm"),
-        clientName: app.customerName,
-        clientEmail: app.customerEmail,
-        clientPhone: app.customerPhone,
-        status: (app.status.toLowerCase() === "confirmed" 
-          ? "confirmado" 
-          : app.status.toLowerCase() === "completed"
-          ? "concluído"
-          : app.status.toLowerCase() === "cancelled"
-          ? "cancelado"
-          : "pending") as BookingStatus,
-        createdAt: app.createdAt,
-        notificationsSent: {
-          email: false,
-          whatsapp: false,
-        },
-      }));
+      const mappedBookings: Booking[] = appointments.map(
+        (app: Appointment) => ({
+          id: app.id,
+          serviceId: app.serviceId,
+          serviceName: app.serviceNameSnapshot,
+          serviceDuration: parseInt(app.serviceDurationSnapshot, 10),
+          servicePrice: parseFloat(app.servicePriceSnapshot),
+          date: format(new Date(app.scheduledAt), "yyyy-MM-dd"),
+          time: format(new Date(app.scheduledAt), "HH:mm"),
+          clientName: app.customerName,
+          clientEmail: app.customerEmail,
+          clientPhone: app.customerPhone,
+          status: (app.status.toLowerCase() === "confirmed"
+            ? "confirmado"
+            : app.status.toLowerCase() === "completed"
+              ? "concluído"
+              : app.status.toLowerCase() === "cancelled"
+                ? "cancelado"
+                : "pending") as BookingStatus,
+          createdAt: app.createdAt,
+          notificationsSent: {
+            email: false,
+            whatsapp: false,
+          },
+        }),
+      );
       setBookings(mappedBookings);
     } catch (error) {
       console.error("Erro ao carregar agendamentos no calendário:", error);
       // Tratamento gracioso: inicializa com lista vazia para não travar o componente
       setBookings([]);
-      
+
       // Opcional: mostrar toast apenas se não for um erro de "não autorizado" comum (silencioso)
-      if (error instanceof Object && "status" in error && error.status !== 401) {
+      if (
+        error instanceof Object &&
+        "status" in error &&
+        error.status !== 401
+      ) {
         toast({
           title: "Aviso",
           description: "Não foi possível carregar os agendamentos existentes.",
@@ -185,7 +198,7 @@ export function AdminCalendar({
     const handleStorageChange = () => loadData();
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("studioSettingsUpdated", loadData);
-    
+
     return () => {
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("studioSettingsUpdated", loadData);
@@ -239,16 +252,18 @@ export function AdminCalendar({
       // Aqui, vamos assumir que o admin seleciona um serviço principal ou que o backend suporta apenas um por vez.
       // O código original concatenava serviços. Vamos adaptar para criar um agendamento para cada serviço
       // OU criar apenas para o primeiro (dado que a API espera serviceId único).
-      
-      // Decisão: Vamos criar um agendamento para cada serviço selecionado, no mesmo horário (ou sequencial? 
+
+      // Decisão: Vamos criar um agendamento para cada serviço selecionado, no mesmo horário (ou sequencial?
       // O código original usava time único).
       // Se houver múltiplos serviços, vamos criar o primeiro e avisar, ou iterar.
       // Simplificação para garantir integridade com a API atual: Iterar e criar.
 
-      const scheduledAt = new Date(`${dateStr}T${selectedTime}:00`).toISOString();
+      const scheduledAt = new Date(
+        `${dateStr}T${selectedTime}:00`,
+      ).toISOString();
 
       for (const service of selectedServices) {
-         const appointmentData = {
+        const appointmentData = {
           companyId: studio.id,
           serviceId: service.id,
           customerId: null,
@@ -285,7 +300,7 @@ export function AdminCalendar({
 
         // Atualizar status no backend para confirmado, já que criamos como pendente por padrão na API
         if (booking.status === "confirmado") {
-           await appointmentService.updateStatus(result.id, "CONFIRMED");
+          await appointmentService.updateStatus(result.id, "CONFIRMED");
         }
 
         saveBookingToStorage(booking);
@@ -301,13 +316,13 @@ export function AdminCalendar({
       });
 
       window.dispatchEvent(new Event("storage"));
-
     } catch (error) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : typeof error === "object" && error !== null && "message" in error
-          ? String((error as Record<string, unknown>).message)
-          : "Falha ao salvar o agendamento no servidor.";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null && "message" in error
+            ? String((error as Record<string, unknown>).message)
+            : "Falha ao salvar o agendamento no servidor.";
       console.error("Erro ao criar agendamento rápido:", error);
       toast({
         title: "Erro ao criar",

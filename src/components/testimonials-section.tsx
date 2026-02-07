@@ -10,6 +10,7 @@ import {
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function TestimonialsSection() {
   const { studio } = useStudio();
@@ -22,8 +23,11 @@ export function TestimonialsSection() {
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studio) {
+      const config = studio?.config as SiteConfigData | undefined;
+      const layoutGlobal = config?.layoutGlobal || config?.layout_global;
       const testimonialsSettings =
-        (studio.config.testimonials as TestimonialsSettings) ||
+        (config?.testimonials as TestimonialsSettings) ||
+        (layoutGlobal?.testimonials as TestimonialsSettings) ||
         getTestimonialsSettings();
 
       // Se o studio tiver depoimentos específicos, usamos eles
@@ -65,10 +69,12 @@ export function TestimonialsSection() {
 
     window.addEventListener("message", handleMessage);
     window.addEventListener("testimonialsSettingsUpdated", loadData);
+    window.addEventListener("DataReady", loadData);
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("testimonialsSettingsUpdated", loadData);
+      window.removeEventListener("DataReady", loadData);
     };
   }, [loadData]);
 

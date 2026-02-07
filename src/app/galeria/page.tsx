@@ -3,7 +3,9 @@
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
+import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { GalleryGrid } from "@/components/gallery-grid";
+import { useStudio } from "@/context/studio-context";
 import {
   defaultGallerySettings,
   type GallerySettings,
@@ -18,6 +20,7 @@ export default function GaleriaPage({
   searchParams: Promise<{ only?: string; preview?: string }>;
 }) {
   const router = useRouter();
+  const { studio } = useStudio();
   const searchParams = use(searchParamsPromise);
   const initialOnly = searchParams.only;
   const isPreview = searchParams.preview === "true";
@@ -31,6 +34,32 @@ export default function GaleriaPage({
   const [gallerySettings, setGallerySettings] = useState<GallerySettings>(
     defaultGallerySettings,
   );
+
+  // Sincronização com os dados vindos do StudioContext (Banco de Dados)
+  useEffect(() => {
+    if (studio?.config) {
+      const config = studio.config as unknown as SiteConfigData;
+      
+      if (!isPreview) {
+        if (config.visibleSections) {
+          setVisibleSections(config.visibleSections);
+        }
+        
+        if (config.pageVisibility) {
+          if (config.pageVisibility.galeria === false) {
+            setIsVisible(false);
+            router.push("/");
+          } else {
+            setIsVisible(true);
+          }
+        }
+
+        if (config.gallery) {
+          setGallerySettings(config.gallery);
+        }
+      }
+    }
+  }, [studio, isPreview, router]);
 
   useEffect(() => {
     // Carregar configurações iniciais
