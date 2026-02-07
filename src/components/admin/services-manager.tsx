@@ -194,6 +194,7 @@ import {
   type InventoryItem,
   type Service,
   saveInventoryToStorage,
+  saveSettingsToStorage,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
@@ -209,8 +210,15 @@ interface BackendService {
   duration: string | number;
   price: string | number;
   icon?: string;
-  showOnHome?: boolean;
+  showOnHome?: boolean | string | number;
+  show_on_home?: boolean | string | number;
   conflictingServiceIds?: string[];
+  advanced_rules?: {
+    conflicts?: string[];
+  };
+  advancedRules?: {
+    conflicts?: string[];
+  };
   products?: {
     productId: string;
     quantity: number;
@@ -264,15 +272,29 @@ export function ServicesManager() {
       typeof window !== "undefined"
         ? localStorage.getItem("better-auth.session_token") ||
           localStorage.getItem("better-auth.access_token") ||
-          getCookie("better-auth.session_token")
+          getCookie("better-auth.session_token") ||
+          getCookie("session_token") || // Fallback para nomes comuns
+          getCookie("auth_token")
         : null;
+
+    // Se ainda não encontrou, tenta pegar de um cookie que comece com better-auth
+    let finalToken = sessionToken;
+    if (!finalToken && typeof document !== "undefined") {
+      const cookies = document.cookie.split(";");
+      const authCookie = cookies.find((c) =>
+        c.trim().startsWith("better-auth.session_token"),
+      );
+      if (authCookie) {
+        finalToken = authCookie.split("=")[1];
+      }
+    }
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
 
-    if (sessionToken) {
-      headers.Authorization = `Bearer ${sessionToken}`;
+    if (finalToken) {
+      headers.Authorization = `Bearer ${finalToken}`;
     }
 
     return {
@@ -320,7 +342,7 @@ export function ServicesManager() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error(">>> [SERVICES_MANAGER] Erro na resposta:", errorData);
+        console.warn(">>> [ADMIN_WARN] Erro na resposta:", errorData);
         throw new Error(`Erro ao carregar serviços (${response.status})`);
       }
 
@@ -328,21 +350,42 @@ export function ServicesManager() {
       console.log(">>> [SERVICES_MANAGER] Dados recebidos:", data);
 
       // Mapear os dados do Back-end (que usa strings decimais) de volta para numbers se necessário
-      // e garantir que os campos opcionais existam
-      const formattedServices = data.map((s: BackendService) => ({
-        ...s,
-        price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
-        duration:
-          typeof s.duration === "string"
-            ? parseInt(s.duration, 10)
-            : s.duration,
-        conflictingServiceIds: s.conflictingServiceIds || [],
-        products: s.products || [],
-      }));
+      // e garantir que os campos opcionais existam, tratando advanced_rules vs advancedRules
+      const formattedServices = (data as BackendService[]).map((s) => {
+        // Extrair conflitos de forma resiliente
+        const conflicts =
+          s.advanced_rules?.conflicts ||
+          s.advancedRules?.conflicts ||
+          s.conflictingServiceIds ||
+          [];
+
+        return {
+          ...s,
+          price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
+          duration:
+            typeof s.duration === "string"
+              ? parseInt(s.duration, 10)
+              : s.duration,
+          conflictingServiceIds: Array.isArray(conflicts) ? conflicts : [],
+          products: s.products || [],
+          showOnHome: Boolean(s.showOnHome), // Força conversão para boolean
+        };
+      });
+
+      console.log(">>> [SERVICES_MANAGER] Serviços formatados para UI:", formattedServices.map((s: Service) => ({
+        id: s.id,
+        name: s.name,
+        conflicts: s.conflictingServiceIds
+      })));
 
       setServices(formattedServices);
+      
+      // Sincronizar cache local com os dados do banco
+      const settings = getSettingsFromStorage();
+      settings.services = formattedServices;
+      saveSettingsToStorage(settings);
     } catch (error) {
-      console.error("Erro ao carregar serviços:", error);
+      console.warn(">>> [ADMIN_WARN] Erro ao carregar serviços:", error);
       toast({
         title: "Erro",
         description: "Não foi possível carregar a lista de serviços.",
@@ -356,9 +399,9 @@ export function ServicesManager() {
   const saveSettings = (updatedServices: Service[]) => {
     const settings = getSettingsFromStorage();
     settings.services = updatedServices;
-    localStorage.setItem("studioSettings", JSON.stringify(settings));
+    saveSettingsToStorage(settings);
     setServices(updatedServices);
-    window.dispatchEvent(new Event("studioSettingsUpdated"));
+    // window.dispatchEvent(new Event("studioSettingsUpdated")); // Já disparado por saveSettingsToStorage
   };
 
   const handleAdd = () => {
@@ -379,10 +422,20 @@ export function ServicesManager() {
   };
 
   const handleEdit = (service: Service) => {
+    console.log(">>> [SERVICES_MANAGER] Editando serviço:", service);
+
+    // Extração resiliente de conflitos (suporta advanced_rules, advancedRules ou conflictingServiceIds)
+    const conflicts =
+      service.advanced_rules?.conflicts ||
+      service.advancedRules?.conflicts ||
+      service.conflictingServiceIds ||
+      [];
+
     setEditingId(service.id);
     setFormData({
       ...service,
-      conflictingServiceIds: service.conflictingServiceIds || [],
+      showOnHome: Boolean(service.showOnHome),
+      conflictingServiceIds: Array.isArray(conflicts) ? conflicts : [],
       products: service.products || [],
     });
     setErrors({});
@@ -416,6 +469,11 @@ export function ServicesManager() {
     }
 
     // Criar objeto limpo apenas com o que o backend pediu explicitamente
+    // Garante que não haja conflitos com o próprio serviço (self-conflict)
+    const sanitizedConflicts = (formData.conflictingServiceIds || []).filter(
+      (id) => id !== editingId,
+    );
+
     const cleanData = {
       name: formData.name,
       description: formData.description,
@@ -423,10 +481,17 @@ export function ServicesManager() {
       price: Number(formData.price), // Enviar como número decimal
       companyId: studio?.id,
       icon: formData.icon || "Sparkles", // Ícone selecionado
-      showOnHome: formData.showOnHome ?? false, // Visibilidade na home
+      showOnHome: Boolean(formData.showOnHome), // Força boolean
+      advanced_rules: {
+        conflicts: sanitizedConflicts,
+      },
+      products: formData.products || [],
     };
 
-    console.log(">>> [SERVICES-MANAGER] Payload sendo enviado:", cleanData);
+    console.log(">>> [FRONT_SENDING] Payload completo:", {
+      ...cleanData,
+      advanced_rules_details: cleanData.advanced_rules, // Log explícito para conferência
+    });
 
     const authOptions = getAuthOptions();
 
@@ -441,20 +506,13 @@ export function ServicesManager() {
         });
       } else {
         // Atualizar serviço existente
-        const updateData = {
-          ...cleanData,
-          conflictingServiceIds: formData.conflictingServiceIds || [],
-          products: formData.products || [],
-          showOnHome: formData.showOnHome ?? true,
-        };
-
         const putUrl = `${API_URL}/${editingId}`.replace(/([^:]\/)\/+/g, "$1");
         console.log(">>> [SERVICES_MANAGER] Disparando PUT para:", putUrl);
 
         response = await fetch(putUrl, {
           ...authOptions,
           method: "PUT",
-          body: JSON.stringify(updateData),
+          body: JSON.stringify(cleanData),
         });
       }
 
@@ -468,8 +526,8 @@ export function ServicesManager() {
         }
 
         if (response.status === 500) {
-          console.error(
-            ">>> [ERRO 500] Resposta Completa do Servidor:",
+          console.warn(
+            ">>> [ADMIN_WARN] [ERRO 500] Resposta Completa do Servidor:",
             errorData,
           );
         }
@@ -485,13 +543,34 @@ export function ServicesManager() {
         description: `O serviço "${formData.name}" foi salvo com sucesso.`,
       });
 
+      // Atualização otimista do estado local
+      if (editingId) {
+        setServices((prev) =>
+          prev.map((s) =>
+            s.id === editingId
+              ? ({
+                  ...s,
+                  name: cleanData.name || s.name,
+                  description: cleanData.description || s.description,
+                  duration: cleanData.duration,
+                  price: cleanData.price,
+                  icon: cleanData.icon,
+                  showOnHome: cleanData.showOnHome,
+                  conflictingServiceIds: formData.conflictingServiceIds || [],
+                  products: formData.products || [],
+                } as Service)
+              : s,
+          ),
+        );
+      }
+
       setIsModalOpen(false);
       setEditingId(null);
       setFormData({});
       setConflictSearch("");
 
-      // Recarregar lista do banco para garantir sincronia
-      await loadServices();
+      // Recarregar lista do banco para garantir sincronia total em segundo plano
+      loadServices();
 
       // Sincronizar localStorage para compatibilidade com outros componentes
       const getUrl = `${API_URL}/company/${studio?.id}`.replace(
@@ -502,20 +581,23 @@ export function ServicesManager() {
         ...authOptions,
       });
       if (responseGet.ok) {
-        const latestData = await responseGet.json();
-        const formattedForStorage = latestData.map((s: BackendService) => ({
+        const latestData = (await responseGet.json()) as BackendService[];
+        const formattedForStorage = latestData.map((s) => ({
           ...s,
           price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
           duration:
             typeof s.duration === "string"
               ? parseInt(s.duration, 10)
               : s.duration,
-        }));
+          conflictingServiceIds:
+            s.advanced_rules?.conflicts || s.conflictingServiceIds || [],
+          showOnHome: Boolean(s.showOnHome),
+        })) as Service[];
         saveSettings(formattedForStorage);
       }
     } catch (error: unknown) {
       const err = error as Error;
-      console.error("Erro ao salvar serviço:", err);
+      console.warn(">>> [ADMIN_WARN] Erro ao salvar serviço:", err);
       toast({
         title: "Erro ao Salvar",
         description:
@@ -527,11 +609,20 @@ export function ServicesManager() {
   };
 
   const toggleConflict = (serviceId: string) => {
+    // Impedir que o serviço seja conflito de si mesmo
+    if (serviceId === editingId) {
+      console.warn(">>> [SERVICES_MANAGER] Tentativa de auto-conflito ignorada.");
+      return;
+    }
+
     const currentIds = formData.conflictingServiceIds || [];
     const isChecked = currentIds.includes(serviceId);
     const newIds = isChecked
       ? currentIds.filter((id) => id !== serviceId)
       : [...currentIds, serviceId];
+
+    console.log(">>> [SERVICES_MANAGER] Atualizando conflitos:", newIds);
+
     setFormData({
       ...formData,
       conflictingServiceIds: newIds,
@@ -720,7 +811,7 @@ export function ServicesManager() {
         saveSettings(formattedForStorage);
       }
     } catch (error) {
-      console.error("Erro ao salvar produtos:", error);
+      console.warn(">>> [ADMIN_WARN] Erro ao salvar produtos:", error);
       toast({
         title: "Erro ao Salvar",
         description:
@@ -796,7 +887,7 @@ export function ServicesManager() {
         saveSettings(formattedForStorage);
       }
     } catch (error) {
-      console.error("Erro ao excluir serviço:", error);
+      console.warn(">>> [ADMIN_WARN] Erro ao excluir serviço:", error);
       toast({
         title: "Erro ao Excluir",
         description: "Não foi possível remover o serviço do Back-end.",
@@ -996,7 +1087,7 @@ export function ServicesManager() {
             <div className="flex items-center space-x-2 pt-2">
               <Checkbox
                 id="showOnHome"
-                checked={formData.showOnHome || false}
+                checked={!!formData.showOnHome}
                 onCheckedChange={(checked) =>
                   setFormData({ ...formData, showOnHome: checked === true })
                 }
@@ -1050,9 +1141,9 @@ export function ServicesManager() {
                               .toLowerCase()
                               .includes(conflictSearch.toLowerCase())),
                       )
-                      .map((service) => (
+                      .map((service, index) => (
                         <div
-                          key={service.id}
+                          key={service.id ? `${service.id}-${index}` : `conflict-${index}`}
                           className={cn(
                             "flex items-start space-x-3 p-3 rounded-lg border transition-colors",
                             formData.conflictingServiceIds?.includes(service.id)
@@ -1584,8 +1675,8 @@ export function ServicesManager() {
             Nenhum serviço cadastrado.
           </div>
         ) : (
-          services.map((service) => (
-            <Card key={service.id}>
+          services.map((service, index) => (
+            <Card key={service.id ? `${service.id}-${index}` : `service-${index}`}>
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">

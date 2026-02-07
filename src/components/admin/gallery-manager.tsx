@@ -29,7 +29,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/lib/auth-client";
 import {
   type GalleryImage,
   getGalleryImages,
@@ -39,8 +41,11 @@ import {
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
+const API_URL = `${API_BASE_URL}/api/studios`.replace(/\/+$/, "");
+
 export function GalleryManager() {
   const { toast } = useToast();
+  const { studio } = useStudio();
   const [images, setImages] = useState<GalleryImage[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [urlInput, setUrlInput] = useState("");
@@ -51,11 +56,82 @@ export function GalleryManager() {
   const [filterCategory, setFilterCategory] = useState("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Função auxiliar centralizada para obter headers de autenticação
+  const getAuthOptions = () => {
+    const getCookie = (name: string) => {
+      if (typeof document === "undefined") return null;
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(";").shift();
+      return null;
+    };
+
+    const sessionToken =
+      typeof window !== "undefined"
+        ? localStorage.getItem("better-auth.session_token") ||
+          localStorage.getItem("better-auth.access_token") ||
+          getCookie("better-auth.session_token")
+        : null;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (sessionToken) {
+      headers.Authorization = `Bearer ${sessionToken}`;
+    }
+
+    return {
+      headers,
+      credentials: "include" as const,
+    };
+  };
+
+  const syncToBackend = async (updatedImages: GalleryImage[]) => {
+    if (!studio?.id) return;
+
+    try {
+      const authOptions = getAuthOptions();
+      const putUrl = `${API_URL}/${studio.id}/gallery`.replace(
+        /([^:]\/)\/+/g,
+        "$1",
+      );
+
+      console.log(">>> [GALLERY_MANAGER] Sincronizando galeria com o banco:", putUrl);
+
+      const response = await fetch(putUrl, {
+        ...authOptions,
+        method: "PUT",
+        body: JSON.stringify({ gallery: updatedImages }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Erro ao sincronizar galeria (${response.status})`);
+      }
+
+      console.log(">>> [GALLERY_MANAGER] Galeria sincronizada com sucesso!");
+    } catch (error) {
+      console.warn(">>> [ADMIN_WARN] Erro ao sincronizar galeria:", error);
+      toast({
+        title: "Erro de Sincronização",
+        description: "Não foi possível salvar as alterações no banco de dados.",
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     const loadData = () => {
-      const loadedImages = getGalleryImages();
-      const loadedServices = getServices();
-      setImages(loadedImages);
+      // Prioriza dados do studio vindos do banco via context
+      if (studio?.gallery) {
+        console.log(">>> [GALLERY_MANAGER] Carregando fotos do banco:", studio.gallery.length);
+        setImages(studio.gallery);
+      } else {
+        const loadedImages = getGalleryImages();
+        setImages(loadedImages);
+      }
+      
+      const loadedServices = studio?.services || getServices();
       setServices(loadedServices);
 
       // Define a categoria padrão como o primeiro serviço disponível se ainda não houver uma
@@ -74,7 +150,7 @@ export function GalleryManager() {
       window.removeEventListener("studioSettingsUpdated", loadData);
       window.removeEventListener("servicesUpdated", loadData);
     };
-  }, [categoryInput]);
+  }, [categoryInput, studio]);
 
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -115,6 +191,7 @@ export function GalleryManager() {
         setImages((prev) => {
           const updated = [newImage, ...prev];
           saveGalleryImages(updated);
+          syncToBackend(updated);
           return updated;
         });
       };
@@ -153,6 +230,7 @@ export function GalleryManager() {
     const updated = [newImage, ...images];
     setImages(updated);
     saveGalleryImages(updated);
+    syncToBackend(updated);
 
     setUrlInput("");
     setTitleInput("");
@@ -168,6 +246,7 @@ export function GalleryManager() {
     const updated = images.filter((img) => img.id !== id);
     setImages(updated);
     saveGalleryImages(updated);
+    syncToBackend(updated);
     toast({
       title: "Imagem removida",
       description: "A imagem foi excluída da galeria.",
@@ -180,6 +259,7 @@ export function GalleryManager() {
     );
     setImages(updated);
     saveGalleryImages(updated);
+    syncToBackend(updated);
   };
 
   const toggleShowOnHome = (id: string) => {
@@ -188,6 +268,7 @@ export function GalleryManager() {
     );
     setImages(updated);
     saveGalleryImages(updated);
+    syncToBackend(updated);
     const img = updated.find((i) => i.id === id);
     toast({
       title: img?.showOnHome ? "Destaque ativado" : "Destaque removido",
@@ -308,8 +389,8 @@ export function GalleryManager() {
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  {services.map((service) => (
-                    <SelectItem key={service.id} value={service.name}>
+                  {services.map((service, index) => (
+                    <SelectItem key={service.id ? `${service.id}-${index}` : `category-${index}`} value={service.name}>
                       {service.name}
                     </SelectItem>
                   ))}
@@ -366,8 +447,8 @@ export function GalleryManager() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Serviços</SelectItem>
-                  {services.map((service) => (
-                    <SelectItem key={service.id} value={service.name}>
+                  {services.map((service, index) => (
+                    <SelectItem key={service.id ? `${service.id}-${index}` : `filter-${index}`} value={service.name}>
                       {service.name}
                     </SelectItem>
                   ))}
@@ -450,9 +531,9 @@ export function GalleryManager() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {services.map((service) => (
+                      {services.map((service, index) => (
                         <SelectItem
-                          key={service.id}
+                          key={service.id ? `${service.id}-${index}` : `edit-cat-${index}`}
                           value={service.name}
                           className="text-xs"
                         >

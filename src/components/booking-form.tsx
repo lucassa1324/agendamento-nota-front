@@ -105,7 +105,7 @@ export function BookingForm({
 
       onConfirm(booking);
     } catch (error) {
-      console.error("Erro ao criar agendamento:", error);
+      console.warn(">>> [SITE_WARN] Erro ao criar agendamento:", error);
       // Aqui você poderia adicionar um toast de erro
     } finally {
       setIsLoading(false);
@@ -169,7 +169,15 @@ export function BookingForm({
         Seus Dados
       </h2>
 
-      <Card>
+      <Card
+        className="border-primary/20"
+        style={{
+          backgroundColor: settings?.cardBgColor || "#FFFFFF",
+          borderColor: settings?.accentColor
+            ? `${settings.accentColor}33`
+            : undefined,
+        }}
+      >
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">

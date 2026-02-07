@@ -169,6 +169,7 @@ export function ThemeInjector() {
     if (colors.background) {
       root.style.setProperty("--background", colors.background);
       root.style.setProperty("--card", colors.background);
+      root.style.setProperty("--card-bg", colors.background); // Nova variável para compatibilidade
       root.style.setProperty("--popover", colors.background);
       // Força o background do body para garantir que o Chrome aplique em toda a tela
       document.body.style.backgroundColor = colors.background;
@@ -226,7 +227,7 @@ export function ThemeInjector() {
           /* Colors (Mapped to Shadcn/UI variables) */
           ${colors.primary ? `--primary: ${colors.primary}; --ring: ${colors.primary};` : ""}
           ${colors.secondary ? `--secondary: ${colors.secondary}; --accent: ${colors.secondary}; --muted: ${colors.secondary}1a;` : ""}
-          ${colors.background ? `--background: ${colors.background}; --card: ${colors.background}; --popover: ${colors.background};` : ""}
+          ${colors.background ? `--background: ${colors.background}; --card: ${colors.background}; --card-bg: ${colors.background}; --popover: ${colors.background};` : ""}
           ${colors.text ? `--foreground: ${colors.text}; --card-foreground: ${colors.text}; --popover-foreground: ${colors.text}; --muted-foreground: ${colors.text}cc;` : ""}
         }
         

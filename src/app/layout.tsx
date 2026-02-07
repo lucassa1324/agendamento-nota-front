@@ -49,7 +49,7 @@ export async function generateMetadata(): Promise<Metadata> {
       };
     }
   } catch (error) {
-    console.error("Erro ao gerar metadata:", error);
+    console.warn(">>> [SITE_WARN] Erro ao gerar metadata:", error);
   }
 
   return {

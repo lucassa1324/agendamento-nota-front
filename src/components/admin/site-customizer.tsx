@@ -33,7 +33,6 @@ export function SiteCustomizer() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [selectedBusinessId, setSelectedBusinessId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -121,7 +120,7 @@ export function SiteCustomizer() {
     // Novos helpers para sincronização com o banco
     fetchCustomization,
     isFetching: isConfigFetching,
-    isSaving: isConfigSaving,
+    isSaving,
   } = useSiteEditor(iframeRef);
 
   const fetchBusinessData = useCallback(async () => {
@@ -143,10 +142,9 @@ export function SiteCustomizer() {
         const businessData = Array.isArray(data) ? data[0] : data;
 
         if (businessData) {
-          setBusinesses([businessData]);
-          setSelectedBusinessId(businessData.id);
-
-          if (businessData.id) {
+            setBusinesses([businessData]);
+  
+            if (businessData.id) {
             console.log(
               ">>> [CUSTOMIZER] Buscando customização via serviço...",
             );
@@ -157,14 +155,14 @@ export function SiteCustomizer() {
         }
       } else {
         const errorText = await response.text();
-        console.error(
-          `>>> [CUSTOMIZER] Erro ao buscar estúdio (${response.status}):`,
+        console.warn(
+          `>>> [ADMIN_WARN] Erro ao buscar estúdio (${response.status}):`,
           errorText,
         );
         setError(`Erro ao carregar dados (${response.status})`);
       }
     } catch (err) {
-      console.error(">>> [CUSTOMIZER] Erro de rede:", err);
+      console.warn(">>> [ADMIN_WARN] Erro de rede:", err);
       setError("Erro de conexão com o servidor.");
     } finally {
       setIsLoading(false);
@@ -290,6 +288,7 @@ export function SiteCustomizer() {
     pageVisibility,
     onPageVisibilityChange: handlePageVisibilityChange,
     onSaveGlobal: handleSaveGlobal,
+    isSaving,
     hasUnsavedGlobalChanges,
     pages,
     sections,

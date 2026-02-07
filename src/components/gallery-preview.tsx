@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Carousel,
@@ -12,10 +12,10 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useStudio } from "@/context/studio-context";
+import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 import {
   type GalleryImage as GalleryImageType,
   type GallerySettings,
-  getGalleryImages,
   getGallerySettings,
   getPageVisibility,
 } from "@/lib/booking-data";
@@ -39,40 +39,41 @@ export function GalleryPreview() {
     null,
   );
 
-  useEffect(() => {
-    setIsMounted(true);
-    setPageVisibility(getPageVisibility());
-
-    // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    if (studio?.config?.gallery) {
-      setSettings(studio.config.gallery as GallerySettings);
-    } else {
-      setSettings(getGallerySettings());
+  const loadData = useCallback(() => {
+    // Tenta pegar do cache primeiro para ser instantâneo
+    const cachedStudioStr = localStorage.getItem("studio_data");
+    let currentImages: GalleryImageType[] = [];
+    let currentConfig: SiteConfigData | null = null;
+    
+    if (studio) {
+      currentImages = studio.gallery || [];
+      currentConfig = studio.config as SiteConfigData;
+    } else if (cachedStudioStr) {
+      try {
+        const parsed = JSON.parse(cachedStudioStr);
+        currentImages = parsed.gallery || [];
+        currentConfig = parsed.config;
+      } catch (e) {
+        console.warn(">>> [SITE_WARN] Erro ao parsear studio_data do cache", e);
+      }
     }
 
-    const loadImages = () => {
-      // Se tivermos dados do studio via context (multi-tenant), usamos as imagens dele
-      if (studio?.gallery) {
-        setImages(studio.gallery.filter((img) => img.showOnHome).slice(0, 6));
-        return;
-      }
-      const allImages = getGalleryImages();
-      setImages(allImages.filter((img) => img.showOnHome).slice(0, 6));
-    };
+    // Filtra apenas as imagens marcadas para home
+    const homeImages = currentImages.filter((img) => img.showOnHome).slice(0, 6);
+    
+    console.log(">>> [GALLERY_SYNC] Imagens na Home:", homeImages.length);
+    setImages(homeImages);
 
-    const loadSettings = () => {
-      if (studio?.config?.gallery) {
-        setSettings(studio.config.gallery as GallerySettings);
-      } else {
-        setSettings(getGallerySettings());
-      }
-    };
+    const layoutGlobal = currentConfig?.layoutGlobal || currentConfig?.layout_global;
+    const configGallery = currentConfig?.gallery || layoutGlobal?.gallery;
+    setSettings((configGallery as GallerySettings) || getGallerySettings());
+    
+    setPageVisibility(getPageVisibility());
+  }, [studio]);
 
-    loadImages();
-
-    const handleVisibilityUpdate = () => {
-      setPageVisibility(getPageVisibility());
-    };
+  useEffect(() => {
+    setIsMounted(true);
+    loadData();
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
@@ -93,23 +94,27 @@ export function GalleryPreview() {
     };
 
     window.addEventListener("message", handleMessage);
-    window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
-    window.addEventListener("galleryUpdated", loadImages);
-    window.addEventListener("gallerySettingsUpdated", loadSettings);
+    window.addEventListener("pageVisibilityUpdated", () => setPageVisibility(getPageVisibility()));
+    window.addEventListener("galleryUpdated", loadData);
+    window.addEventListener("gallerySettingsUpdated", loadData);
+    window.addEventListener("DataReady", loadData);
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener(
-        "pageVisibilityUpdated",
-        handleVisibilityUpdate,
-      );
-      window.removeEventListener("galleryUpdated", loadImages);
-      window.removeEventListener("gallerySettingsUpdated", loadSettings);
+      window.removeEventListener("pageVisibilityUpdated", () => setPageVisibility(getPageVisibility()));
+      window.removeEventListener("galleryUpdated", loadData);
+      window.removeEventListener("gallerySettingsUpdated", loadData);
+      window.removeEventListener("DataReady", loadData);
     };
-  }, [studio]);
+  }, [loadData]);
 
   if (!isMounted || !settings) return null;
   if (pageVisibility.galeria === false) return null;
+  
+  // Se não houver imagens marcadas para home, a seção deve sumir
+  // No editor, permitimos renderizar para edição
+  const isPreview = typeof window !== "undefined" && window.location.search.includes("preview=true");
+  if (!isPreview && (!images || images.length === 0)) return null;
 
   return (
     <section

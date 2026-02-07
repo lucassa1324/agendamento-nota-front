@@ -75,7 +75,7 @@ export function BookingConfirmation({
       <Card
         className="border-primary/20"
         style={{
-          backgroundColor: settings?.cardBgColor || "transparent",
+          backgroundColor: settings?.cardBgColor || "#FFFFFF",
           borderColor: settings?.accentColor
             ? `${settings.accentColor}33`
             : undefined,

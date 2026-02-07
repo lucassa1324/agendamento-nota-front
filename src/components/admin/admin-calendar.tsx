@@ -677,8 +677,8 @@ export function AdminCalendar({
             <div className="grid gap-2">
               <Label>Serviços</Label>
               <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-md">
-                {services.map((service) => (
-                  <div key={service.id} className="flex items-center space-x-2">
+                {services.map((service, index) => (
+                  <div key={service.id ? `${service.id}-${index}` : `service-add-${index}`} className="flex items-center space-x-2">
                     <Checkbox
                       id={`service-${service.id}`}
                       checked={newBooking.serviceIds.includes(service.id)}

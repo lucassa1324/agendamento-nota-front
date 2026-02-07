@@ -51,7 +51,7 @@ export function LoginForm() {
           }
         }
       } catch (err) {
-        console.error(">>> [LOGIN_FORM] Erro ao verificar sessão:", err);
+        console.warn(">>> [ADMIN_WARN] Erro ao verificar sessão:", err);
       }
     };
     checkSession();
@@ -77,7 +77,7 @@ export function LoginForm() {
       const { data, error: authError } = result;
 
       if (authError) {
-        console.error(">>> [LOGIN_FLOW] Erro no signIn:", authError);
+        console.warn(">>> [ADMIN_WARN] Erro no signIn:", authError);
         setError(authError.message || "Email ou senha incorretos.");
         setIsLoading(false);
         return;
@@ -106,7 +106,7 @@ export function LoginForm() {
         setIsLoading(false);
       }
     } catch (err: unknown) {
-      console.error(">>> [LOGIN_FLOW] Erro crítico (catch):", err);
+      console.warn(">>> [ADMIN_WARN] Erro crítico (catch):", err);
       setError("Não foi possível conectar ao servidor.");
       setIsLoading(false);
     }

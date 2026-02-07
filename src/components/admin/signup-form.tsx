@@ -43,7 +43,7 @@ export function SignUpForm() {
       });
 
       if (authError) {
-        console.error(">>> [SIGNUP] Erro no cadastro:", authError);
+        console.warn(">>> [ADMIN_WARN] Erro no cadastro:", authError);
         setError(authError.message || "Erro ao criar conta.");
         setIsLoading(false);
         return;
@@ -58,7 +58,7 @@ export function SignUpForm() {
         window.location.href = adminLoginUrl;
       }
     } catch (err) {
-      console.error(">>> [SIGNUP] Erro inesperado durante o cadastro:", err);
+      console.warn(">>> [ADMIN_WARN] Erro inesperado durante o cadastro:", err);
       setError("Ocorreu um erro inesperado. Tente novamente.");
       setIsLoading(false);
     }

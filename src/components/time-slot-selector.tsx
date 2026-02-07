@@ -74,7 +74,7 @@ export function TimeSlotSelector({
       <Card
         className="border-primary/20 overflow-hidden relative"
         style={{
-          backgroundColor: settings?.cardBgColor || "var(--muted)",
+          backgroundColor: settings?.cardBgColor || "#FFFFFF",
           borderColor: settings?.accentColor
             ? `${settings.accentColor}33`
             : undefined,

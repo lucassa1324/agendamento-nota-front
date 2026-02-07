@@ -329,7 +329,7 @@ export function ProfileManager() {
         description: "A nova logo foi carregada e salva com sucesso.",
       });
     } catch (error) {
-      console.error("Erro no processo de logo:", error);
+      console.warn(">>> [ADMIN_WARN] Erro no processo de logo:", error);
       toast({
         title: "Erro no Upload",
         description:

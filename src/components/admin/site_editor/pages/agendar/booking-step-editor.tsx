@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import type { BookingStepSettings } from "@/lib/booking-data";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
@@ -30,8 +31,14 @@ export function BookingStepEditor({
   settings,
   onUpdate,
   onHighlight,
+  hasChanges,
+  onSave,
   title,
 }: BookingStepEditorProps) {
+  const handleSave = () => {
+    if (onSave) onSave();
+  };
+
   const handleAccordionChange = (values: string | string[]) => {
     if (onHighlight) {
       // O sectionId para os passos de agendamento deve corresponder aos IDs das seções no BookingFlow
@@ -325,6 +332,22 @@ export function BookingStepEditor({
           </Accordion>
         </TabsContent>
       </Tabs>
+
+      <div className="pt-2">
+        <Button
+          type="button"
+          disabled={!hasChanges}
+          onClick={handleSave}
+          className={cn(
+            "w-full h-11 text-sm font-bold transition-all duration-300",
+            hasChanges
+              ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+              : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
+          )}
+        >
+          {hasChanges ? "Salvar Alterações" : "Tudo Atualizado"}
+        </Button>
+      </div>
     </div>
   );
 }

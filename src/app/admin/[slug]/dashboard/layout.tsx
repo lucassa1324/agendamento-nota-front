@@ -96,8 +96,8 @@ function AdminLayoutContent({
             );
           }
         } catch (e) {
-          console.error(
-            ">>> [DASHBOARD_LAYOUT] Erro ao buscar diagnóstico:",
+          console.warn(
+            ">>> [ADMIN_WARN] Erro ao buscar diagnóstico:",
             e,
           );
         }

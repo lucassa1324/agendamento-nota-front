@@ -19,11 +19,10 @@ type BookingCalendarProps = {
 };
 
 export function BookingCalendar({
-  service,
   onDateSelect,
   onBack,
   settings,
-}: BookingCalendarProps) {
+}: Omit<BookingCalendarProps, "service">) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const weekSchedule = getWeekSchedule();
   const blockedPeriods = getBlockedPeriods();
@@ -99,43 +98,16 @@ export function BookingCalendar({
   };
 
   return (
-    <div>
-      <div className="mb-6">
-        <Button variant="ghost" onClick={onBack} className="mb-4">
-          <ChevronLeft className="w-4 h-4 mr-2" />
-          Voltar
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" onClick={onBack} size="sm" className="h-9">
+          <ChevronLeft className="w-4 h-4 mr-1" />
+          Voltar para serviços
         </Button>
-        <Card
-          className="border-primary/20 p-4"
-          style={{
-            backgroundColor: settings?.cardBgColor || "var(--muted)",
-            borderColor: settings?.accentColor
-              ? `${settings.accentColor}33`
-              : undefined,
-          }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="text-sm">
-              <span
-                className="font-semibold"
-                style={{
-                  color: settings?.titleColor || "var(--foreground)",
-                  fontFamily: settings?.titleFont || "var(--font-title)",
-                }}
-              >
-                {service.name}
-              </span>
-              <span className="text-muted-foreground">
-                {" "}
-                - R$ {service.price}
-              </span>
-            </div>
-          </div>
-        </Card>
       </div>
 
       <h2
-        className="text-2xl font-bold mb-6 text-center"
+        className="text-3xl font-bold text-center mb-8"
         style={{
           color: settings?.titleColor || "var(--foreground)",
           fontFamily: settings?.titleFont || "var(--font-title)",
@@ -144,7 +116,15 @@ export function BookingCalendar({
         {settings?.title || "Escolha a Data"}
       </h2>
 
-      <Card>
+      <Card
+        className="border-primary/20 overflow-hidden"
+        style={{
+          backgroundColor: settings?.cardBgColor || "#FFFFFF",
+          borderColor: settings?.accentColor
+            ? `${settings.accentColor}33`
+            : undefined,
+        }}
+      >
         <CardContent className="p-6">
           {/* Calendar Header */}
           <div className="flex items-center justify-between mb-6">

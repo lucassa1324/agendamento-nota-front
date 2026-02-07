@@ -4,7 +4,7 @@
  * de cada seção (Hero, Fontes, Serviços, etc).
  */
 
-import { ArrowLeft, RotateCcw, Settings2 } from "lucide-react";
+import { ArrowLeft, RotateCcw, Settings2, Loader2 } from "lucide-react";
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import type {
@@ -99,6 +99,7 @@ interface SidebarContentProps {
   onSaveBookingTime: () => void;
   onSaveBookingForm: () => void;
   onSaveBookingConfirmation: () => void;
+  isSaving?: boolean;
   hasFontChanges: boolean;
   hasColorChanges: boolean;
   hasHeroChanges: boolean;
@@ -193,6 +194,7 @@ export const SidebarContent = memo(
     onSaveBookingTime,
     onSaveBookingForm,
     onSaveBookingConfirmation,
+    isSaving,
     hasFontChanges,
     hasColorChanges,
     hasHeroChanges,
@@ -501,6 +503,7 @@ export const SidebarContent = memo(
           <Button
             type="button"
             disabled={
+              isSaving || (
               !hasUnsavedGlobalChanges &&
               !hasHeroChanges &&
               !hasAboutHeroChanges &&
@@ -519,52 +522,62 @@ export const SidebarContent = memo(
               !hasBookingTimeChanges &&
               !hasBookingFormChanges &&
               !hasBookingConfirmationChanges
+              )
             }
             onClick={onSaveGlobal}
             className={cn(
               "w-full font-bold py-6 rounded-xl transition-all duration-300",
-              hasUnsavedGlobalChanges ||
-                hasHeroChanges ||
-                hasAboutHeroChanges ||
-                hasStoryChanges ||
-                hasTeamChanges ||
-                hasTestimonialsChanges ||
-                hasFontChanges ||
-                hasServicesChanges ||
-                hasValuesChanges ||
-                hasGalleryChanges ||
-                hasCTAChanges ||
-                hasHeaderChanges ||
-                hasFooterChanges ||
-                hasBookingServiceChanges ||
-                hasBookingDateChanges ||
-                hasBookingTimeChanges ||
-                hasBookingFormChanges ||
-                hasBookingConfirmationChanges
-                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
-                : "bg-muted text-muted-foreground cursor-not-allowed",
+              isSaving
+                ? "bg-muted text-muted-foreground cursor-not-allowed"
+                : (hasUnsavedGlobalChanges ||
+                  hasHeroChanges ||
+                  hasAboutHeroChanges ||
+                  hasStoryChanges ||
+                  hasTeamChanges ||
+                  hasTestimonialsChanges ||
+                  hasFontChanges ||
+                  hasServicesChanges ||
+                  hasValuesChanges ||
+                  hasGalleryChanges ||
+                  hasCTAChanges ||
+                  hasHeaderChanges ||
+                  hasFooterChanges ||
+                  hasBookingServiceChanges ||
+                  hasBookingDateChanges ||
+                  hasBookingTimeChanges ||
+                  hasBookingFormChanges ||
+                  hasBookingConfirmationChanges
+                  ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+                  : "bg-muted text-muted-foreground cursor-not-allowed"),
             )}
           >
-            {hasUnsavedGlobalChanges ||
-            hasHeroChanges ||
-            hasAboutHeroChanges ||
-            hasStoryChanges ||
-            hasTeamChanges ||
-            hasTestimonialsChanges ||
-            hasFontChanges ||
-            hasServicesChanges ||
-            hasValuesChanges ||
-            hasGalleryChanges ||
-            hasCTAChanges ||
-            hasHeaderChanges ||
-            hasFooterChanges ||
-            hasBookingServiceChanges ||
-            hasBookingDateChanges ||
-            hasBookingTimeChanges ||
-            hasBookingFormChanges ||
-            hasBookingConfirmationChanges
-              ? "Publicar Site"
-              : "Tudo Atualizado"}
+            {isSaving ? (
+              <div className="flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Publicando...</span>
+              </div>
+            ) : (
+              hasUnsavedGlobalChanges ||
+              hasHeroChanges ||
+              hasAboutHeroChanges ||
+              hasStoryChanges ||
+              hasTeamChanges ||
+              hasTestimonialsChanges ||
+              hasFontChanges ||
+              hasServicesChanges ||
+              hasValuesChanges ||
+              hasGalleryChanges ||
+              hasCTAChanges ||
+              hasHeaderChanges ||
+              hasFooterChanges ||
+              hasBookingServiceChanges ||
+              hasBookingDateChanges ||
+              hasBookingTimeChanges ||
+              hasBookingFormChanges ||
+              hasBookingConfirmationChanges
+                ? "Publicar Site"
+                : "Tudo Atualizado"
+            )}
           </Button>
         </div>
       </div>

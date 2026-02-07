@@ -64,8 +64,8 @@ class AppointmentService {
         const { data: sessionData } = await authClient.getSession();
         sessionToken = sessionData?.session?.token || null;
       } catch (e) {
-        console.error(
-          ">>> [AppointmentService] Erro ao buscar sessão via authClient:",
+        console.warn(
+          ">>> [AppointmentService] Sessão não encontrada ou erro na busca:",
           e,
         );
       }
@@ -89,8 +89,8 @@ class AppointmentService {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       if (response.status === 500) {
-        console.error(
-          ">>> [ERRO 500] Detalhes do Servidor (API Appointments):",
+        console.warn(
+          `>>> [SITE_WARN] Erro ao buscar agendamentos (${response.status}):`,
           errorData,
         );
       }

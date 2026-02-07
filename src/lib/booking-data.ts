@@ -4,10 +4,17 @@ export type Service = {
   description: string;
   duration: number; // em minutos
   price: number;
-  showOnHome?: boolean;
+  showOnHome?: boolean | string | number;
+  show_on_home?: boolean | string | number;
   icon?: string;
   conflictGroupId?: string;
   conflictingServiceIds?: string[];
+  advanced_rules?: {
+    conflicts?: string[];
+  };
+  advancedRules?: {
+    conflicts?: string[];
+  };
   products?: {
     productId: string;
     quantity: number;
@@ -303,6 +310,9 @@ export type ServicesSettings = {
   cardTitleFont: string;
   cardDescriptionFont: string;
   cardPriceFont: string;
+  cardBorderRadius?: string;
+  cardBorderWidth?: string;
+  cardBorderColor?: string;
 };
 
 export const defaultServicesSettings: ServicesSettings = {
@@ -1185,7 +1195,7 @@ export function getBookingsFromStorage(): Booking[] {
     const parsed = JSON.parse(bookings);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.error("Error reading bookings from storage:", error);
+    console.warn(">>> [STORAGE_WARN] Erro ao ler agendamentos:", error);
     return [];
   }
 }
@@ -1242,7 +1252,7 @@ export function getInventoryFromStorage(): InventoryItem[] {
     const parsed = JSON.parse(inventory);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.error("Error reading inventory from storage:", error);
+    console.warn(">>> [STORAGE_WARN] Erro ao ler inventário:", error);
     return [];
   }
 }
@@ -1350,7 +1360,7 @@ export function getSettingsFromStorage(): StudioSettings {
 
     return parsed as StudioSettings;
   } catch (error) {
-    console.error("Error reading studioSettings from storage:", error);
+    console.warn(">>> [STORAGE_WARN] Erro ao ler configurações do estúdio:", error);
     return defaultValue;
   }
 }

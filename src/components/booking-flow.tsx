@@ -67,18 +67,74 @@ export function BookingFlow() {
 
   // Load initial settings
   useEffect(() => {
+    console.log('>>> [BOOKING_DEBUG] Studio data recebido:', {
+      hasStudio: !!studio,
+      hasConfig: !!studio?.config,
+      hasBookingSteps: !!studio?.config?.bookingSteps,
+      bookingSteps: studio?.config?.bookingSteps
+    });
+
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studio?.config?.bookingSteps) {
-      const steps = studio.config.bookingSteps as Record<
-        string,
-        BookingStepSettings
-      >;
-      if (steps.service) setServiceSettings(steps.service);
-      if (steps.date) setDateSettings(steps.date);
-      if (steps.time) setTimeSettings(steps.time);
-      if (steps.form) setFormSettings(steps.form);
-      if (steps.confirmation) setConfirmationSettings(steps.confirmation);
+      const steps = studio.config.bookingSteps as Record<string, unknown>;
+      
+      console.log('>>> [DEBUG_RAW] Estrutura completa bookingSteps:', steps);
+      
+      // Função para sanitizar cores
+      const sanitizeColor = (color: string | undefined): string | undefined => {
+        if (!color) return undefined;
+        const trimmed = color.trim();
+        if (trimmed.startsWith('#') || trimmed.startsWith('rgb') || trimmed.startsWith('hsl')) {
+          return trimmed;
+        }
+        return `#${trimmed}`;
+      };
+
+      const getStepSettings = (stepData: Record<string, unknown> | undefined): BookingStepSettings => {
+        if (!stepData) return {} as BookingStepSettings;
+        
+        // Prioridade absoluta para backgroundColor conforme normalização do back-end
+        const rawColor = (stepData.backgroundColor as string) ||
+                         ((stepData.cardConfig as Record<string, unknown>)?.backgroundColor as string) || 
+                         ((stepData.card_config as Record<string, unknown>)?.background_color as string) ||
+                         (stepData.cardBgColor as string) || 
+                         (stepData.card_bg_color as string);
+        
+        const finalColor = sanitizeColor(rawColor);
+        
+        if (finalColor) {
+          console.log('>>> [COLOR_APPLIED] Cor detectada:', finalColor);
+        }
+
+        return {
+          ...stepData,
+          cardBgColor: finalColor || "#FFFFFF",
+          bgColor: (stepData.bgColor as string) || finalColor || "transparent",
+        } as BookingStepSettings;
+      };
+
+      // Mapeamento priorizando chaves no plural conforme normalização (step1Services, step2Dates, etc)
+      const serviceSettingsData = getStepSettings((steps.step1Services || steps.step1Service || steps.service) as Record<string, unknown> | undefined);
+      const dateSettingsData = getStepSettings((steps.step2Dates || steps.step2Date || steps.date) as Record<string, unknown> | undefined);
+      const timeSettingsData = getStepSettings((steps.step3Times || steps.step3Time || steps.time) as Record<string, unknown> | undefined);
+      const formSettingsData = getStepSettings((steps.step4Form || steps.form) as Record<string, unknown> | undefined);
+      const confirmationSettingsData = getStepSettings((steps.step5Confirmation || steps.step4Confirmation || steps.confirmation) as Record<string, unknown> | undefined);
+
+      console.log('>>> [BOOKING_DEBUG] Aplicando cores do Studio (Mapeado):', {
+        serviceCardBg: serviceSettingsData.cardBgColor,
+        dateCardBg: dateSettingsData.cardBgColor,
+        timeCardBg: timeSettingsData.cardBgColor,
+        formCardBg: serviceSettingsData.cardBgColor, // Fallback pro form se necessário
+        confirmationCardBg: confirmationSettingsData.cardBgColor,
+      });
+
+      setServiceSettings(serviceSettingsData);
+      setDateSettings(dateSettingsData);
+      setTimeSettings(timeSettingsData);
+      setFormSettings(formSettingsData);
+      setConfirmationSettings(confirmationSettingsData);
     } else {
+      console.log('>>> [BOOKING_DEBUG] Studio sem config, usando padrões/storage');
       setServiceSettings(getBookingServiceSettings());
       setDateSettings(getBookingDateSettings());
       setTimeSettings(getBookingTimeSettings());
@@ -391,7 +447,6 @@ export function BookingFlow() {
               {renderStepHeader(dateSettings)}
               <div className="max-w-4xl mx-auto">
                 <BookingCalendar
-                  service={totalService}
                   onDateSelect={handleDateSelect}
                   onBack={() => setCurrentStep("service")}
                   settings={dateSettings}

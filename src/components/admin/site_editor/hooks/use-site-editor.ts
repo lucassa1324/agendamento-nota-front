@@ -1741,36 +1741,133 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
           delete payload.pageVisibility;
         }
 
+        // Normalização do appointmentFlow (bookingSteps) conforme back-end
+        const bookingChanges: Record<string, unknown> = {};
+        if (changes.bookingSteps) {
+          const steps = changes.bookingSteps as Record<string, any>;
+          
+          if (steps.service) {
+            bookingChanges.step1Services = {
+              ...steps.service,
+              bgType: steps.service.bgType,
+              bgColor: steps.service.bgColor,
+              cardConfig: {
+                backgroundColor:
+                  steps.service.cardConfig?.backgroundColor ||
+                  steps.service.cardBgColor ||
+                  steps.service.backgroundColor ||
+                  "#FFFFFF",
+              },
+            };
+          }
+          if (steps.date) {
+            bookingChanges.step2Dates = {
+              ...steps.date,
+              bgType: steps.date.bgType,
+              bgColor: steps.date.bgColor,
+              cardConfig: {
+                backgroundColor:
+                  steps.date.cardConfig?.backgroundColor ||
+                  steps.date.cardBgColor ||
+                  steps.date.backgroundColor ||
+                  "#FFFFFF",
+              },
+            };
+          }
+          if (steps.time) {
+            bookingChanges.step3Times = {
+              ...steps.time,
+              bgType: steps.time.bgType,
+              bgColor: steps.time.bgColor,
+              cardConfig: {
+                backgroundColor:
+                  steps.time.cardConfig?.backgroundColor ||
+                  steps.time.cardBgColor ||
+                  steps.time.backgroundColor ||
+                  "#FFFFFF",
+              },
+            };
+          }
+          if (steps.form) {
+            bookingChanges.step4Form = {
+              ...steps.form,
+              bgType: steps.form.bgType,
+              bgColor: steps.form.bgColor,
+              cardConfig: {
+                backgroundColor:
+                  steps.form.cardConfig?.backgroundColor ||
+                  steps.form.cardBgColor ||
+                  steps.form.backgroundColor ||
+                  "#FFFFFF",
+              },
+            };
+          }
+          if (steps.confirmation) {
+            bookingChanges.step5Confirmation = {
+              ...steps.confirmation,
+              bgType: steps.confirmation.bgType,
+              bgColor: steps.confirmation.bgColor,
+              cardConfig: {
+                backgroundColor:
+                  steps.confirmation.cardConfig?.backgroundColor ||
+                  steps.confirmation.cardBgColor ||
+                  steps.confirmation.backgroundColor ||
+                  "#FFFFFF",
+              },
+            };
+          }
+          
+          delete payload.bookingSteps;
+        }
+
+        if (Object.keys(bookingChanges).length > 0) {
+          payload.appointmentFlow = {
+            ...(payload.appointmentFlow as Record<string, unknown> || {}),
+            ...bookingChanges
+          };
+          // Também atualizar layoutGlobal.bookingSteps para redundância
+          const currentLayoutGlobal = (payload.layoutGlobal as Record<string, unknown>) || {};
+          payload.layoutGlobal = {
+            ...currentLayoutGlobal,
+            bookingSteps: {
+              ...( (currentLayoutGlobal.bookingSteps as Record<string, unknown>) || {} ),
+              ...bookingChanges
+            }
+          };
+        }
+
         console.log("ENVIANDO PARA O BANCO:", payload);
         await siteCustomizerService.saveCustomization(companyId, payload);
 
         // Pós-salvamento: recarrega do banco (sem cache) e aplica imediatamente
         try {
           const fresh = await siteCustomizerService.getCustomization(companyId);
-          loadExternalConfig(fresh as unknown as Record<string, unknown>);
+          if (fresh) {
+            loadExternalConfig(fresh as unknown as Record<string, unknown>);
 
-          // Sincronização explícita com o preview para cores e fontes (que são as mais sensíveis)
-          const layoutGlobal = fresh.layoutGlobal || fresh.layout_global;
-          const freshColors = fresh.colors || layoutGlobal?.siteColors || layoutGlobal?.cores_base;
-          const freshFonts = fresh.theme || fresh.typography || layoutGlobal?.fontes;
+            // Sincronização explícita com o preview para cores e fontes (que são as mais sensíveis)
+            const layoutGlobal = fresh.layoutGlobal || fresh.layout_global;
+            const freshColors = fresh.colors || layoutGlobal?.siteColors || layoutGlobal?.cores_base;
+            const freshFonts = fresh.theme || fresh.typography || layoutGlobal?.fontes;
 
-          if (iframeRef.current?.contentWindow) {
-            if (freshColors) {
-              iframeRef.current.contentWindow.postMessage(
-                { type: "UPDATE_COLORS", settings: freshColors },
-                "*",
-              );
-            }
-            if (freshFonts) {
-              iframeRef.current.contentWindow.postMessage(
-                { type: "UPDATE_TYPOGRAPHY", settings: freshFonts },
-                "*",
-              );
+            if (iframeRef.current?.contentWindow) {
+              if (freshColors) {
+                iframeRef.current.contentWindow.postMessage(
+                  { type: "UPDATE_COLORS", settings: freshColors },
+                  "*",
+                );
+              }
+              if (freshFonts) {
+                iframeRef.current.contentWindow.postMessage(
+                  { type: "UPDATE_TYPOGRAPHY", settings: freshFonts },
+                  "*",
+                );
+              }
             }
           }
         } catch (reloadErr) {
-          console.error(
-            "Falha ao recarregar dados do banco após salvar:",
+          console.warn(
+            ">>> [ADMIN_WARN] Falha ao recarregar dados do banco após salvar:",
             reloadErr,
           );
         }
@@ -1780,7 +1877,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
           description: "As alterações foram publicadas no seu site.",
         });
       } catch (err) {
-        console.error("Erro ao salvar no backend:", err);
+        console.warn(">>> [ADMIN_WARN] Erro ao salvar no backend:", err);
         toast({
           title: "Erro ao salvar",
           description:
@@ -2109,7 +2206,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         // Cast to unknown first to avoid partial match issues if types slightly differ
         loadExternalConfig(data as unknown as Record<string, unknown>);
       } catch (err) {
-        console.error("Failed to fetch customization", err);
+        console.warn(">>> [ADMIN_WARN] Falha ao buscar customização:", err);
         setFetchError("Falha ao carregar configurações do site.");
       } finally {
         setIsFetching(false);

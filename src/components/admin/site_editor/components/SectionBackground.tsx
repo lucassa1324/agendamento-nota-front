@@ -39,7 +39,10 @@ export function SectionBackground({
         className,
       )}
       style={{
-        backgroundColor: "var(--background)",
+        backgroundColor:
+          settings.bgType === "color"
+            ? settings.bgColor || "var(--background)"
+            : "var(--background)",
       }}
     >
       {/* Background Color Layer */}

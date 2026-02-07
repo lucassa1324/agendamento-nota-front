@@ -86,34 +86,89 @@ export function ServicesSection() {
     null,
   );
 
-  const loadData = useCallback(() => {
-    // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    if (studio) {
-      const homeServices = (studio?.services || []).filter(
-        (s: Service) => s?.showOnHome,
-      );
-      setServices(homeServices);
-  
-      const config = studio?.config as SiteConfigData | undefined;
-      const layoutGlobal = config?.layoutGlobal || config?.layout_global;
-      const configServices = config?.services || layoutGlobal?.services;
-      setSettings(configServices || getServicesSettings());
-      return;
+  const loadData = useCallback((forceRevalidate = false) => {
+    // Tenta pegar do cache primeiro para ser instantâneo
+    const cachedStudioStr = localStorage.getItem("studio_data");
+    const settings = getSettingsFromStorage();
+    
+    let currentServices: Service[] = [];
+    let currentConfig: SiteConfigData | null = null;
+    
+    // Se forceRevalidate for true, ignoramos o cache de configurações locais e usamos o context/API
+    const useCache = !forceRevalidate;
+
+    // 1. Prioridade para studioSettings (onde o ServicesManager salva)
+    if (useCache && settings && settings.services && settings.services.length > 0) {
+      currentServices = settings.services;
     }
 
-    const studioSettings = getSettingsFromStorage();
-    if (studioSettings?.services) {
-      const homeServices = studioSettings?.services?.filter(
-        (s: Service) => s?.showOnHome,
-      );
-      setServices(homeServices || []);
+    // 2. Context do studio (Dados vindos da API/Backend)
+    if (studio) {
+      if (currentServices.length === 0) {
+        currentServices = (studio.services || []);
+      }
+      currentConfig = studio.config as SiteConfigData;
+    } 
+    
+    // 3. Se ainda não encontrou, tenta o studio_data legado (Cache do Browser)
+    if (useCache && currentServices.length === 0 && cachedStudioStr) {
+      try {
+        const parsed = JSON.parse(cachedStudioStr);
+        currentServices = (parsed.services || []);
+        if (!currentConfig) currentConfig = parsed.config;
+      } catch (e) {
+        console.warn(">>> [SITE_WARN] Erro ao parsear studio_data do cache", e);
+      }
     }
-    setSettings(getServicesSettings());
+
+    // Normaliza todos os serviços para garantir que showOnHome seja boolean
+    const normalizedServices = currentServices.map((s: Service) => {
+      const isShowOnHome = s.showOnHome === true || 
+                          s.show_on_home === true || 
+                          s.showOnHome === "true" || 
+                          s.show_on_home === "true" || 
+                          s.showOnHome === 1 || 
+                          s.show_on_home === 1;
+      return {
+        ...s,
+        showOnHome: isShowOnHome
+      };
+    });
+
+    // Filtra apenas os serviços marcados para home
+    const homeServices = normalizedServices.filter((s: Service) => s?.showOnHome === true);
+    
+    const layoutGlobal = currentConfig?.layoutGlobal || currentConfig?.layout_global;
+    const configServices = currentConfig?.services || layoutGlobal?.services;
+    const finalSettings = configServices || getServicesSettings();
+
+    console.log(">>> [SITE_SERVICES] Sincronizando Serviços:", {
+      forceRevalidate,
+      total_recebido: currentServices.length,
+      filtrados_home: homeServices.length,
+      slug_contexto: studio?.slug,
+      tem_settings_cache: !!settings,
+      nomes_na_home: homeServices.map(s => s.name)
+    });
+
+    console.log('>>> [SITE_DEBUG] Config recebida:', {
+      cardBgColor: finalSettings.cardBgColor,
+      cardIconColor: finalSettings.cardIconColor,
+      cardTitleColor: finalSettings.cardTitleColor,
+      cardDescriptionColor: finalSettings.cardDescriptionColor,
+      hasLayoutGlobal: !!layoutGlobal,
+      servicesFromLayout: !!layoutGlobal?.services
+    });
+
+    setServices(homeServices);
+    setSettings(finalSettings);
   }, [studio]);
 
   useEffect(() => {
     setIsMounted(true);
-    loadData();
+    // Na primeira montagem no site oficial, forçamos a revalidação ignorando o cache local de settings
+    const isPreview = typeof window !== "undefined" && window.location.search.includes("preview=true");
+    loadData(!isPreview);
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
@@ -133,32 +188,45 @@ export function ServicesSection() {
       }
     };
 
+    const onSettingsUpdate = () => loadData();
+
     window.addEventListener("message", handleMessage);
-    window.addEventListener("studioSettingsUpdated", loadData);
-    window.addEventListener("servicesSettingsUpdated", loadData);
-    window.addEventListener("DataReady", loadData);
+    window.addEventListener("studioSettingsUpdated", onSettingsUpdate);
+    window.addEventListener("servicesSettingsUpdated", onSettingsUpdate);
+    window.addEventListener("servicesUpdated", onSettingsUpdate);
+    window.addEventListener("DataReady", onSettingsUpdate);
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("studioSettingsUpdated", loadData);
-      window.removeEventListener("servicesSettingsUpdated", loadData);
-      window.removeEventListener("DataReady", loadData);
+      window.removeEventListener("studioSettingsUpdated", onSettingsUpdate);
+      window.removeEventListener("servicesSettingsUpdated", onSettingsUpdate);
+      window.removeEventListener("servicesUpdated", onSettingsUpdate);
+      window.removeEventListener("DataReady", onSettingsUpdate);
     };
   }, [loadData]);
 
-  if (services.length === 0 || !settings) return null;
-
   if (!isMounted) {
     return (
-      <section id="servicos" className="py-24 bg-background">
+      <section id="services" className="py-24 bg-background animate-pulse">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="font-serif text-4xl font-bold mb-4">
-            Nossos Serviços
-          </h2>
+          <div className="h-10 w-64 bg-muted mx-auto mb-4 rounded" />
+          <div className="h-4 w-96 bg-muted mx-auto mb-12 rounded" />
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-64 bg-muted rounded-xl" />
+            ))}
+          </div>
         </div>
       </section>
     );
   }
+
+  // No editor (isPreview), permitimos renderizar mesmo sem serviços para o usuário poder configurar a seção
+  const isPreview = typeof window !== "undefined" && window.location.search.includes("preview=true");
+
+  // Se não houver serviços e não estivermos no editor, a seção não deve aparecer
+  if (!isPreview && services.length === 0) return null;
+  if (!settings) return null;
 
   return (
     <section
@@ -194,7 +262,7 @@ export function ServicesSection() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {services?.map((service: Service) => {
+          {services?.map((service: Service, index: number) => {
             // Usa o ícone definido no serviço ou tenta inferir pelo nome
             let Icon = Sparkles;
 
@@ -210,10 +278,13 @@ export function ServicesSection() {
 
             return (
               <Card
-                key={service?.id}
-                className="border-border hover:border-accent transition-colors overflow-hidden"
+                key={service?.id ? `${service.id}-${index}` : `service-${index}`}
+                className="border-border hover:border-accent transition-all duration-300 overflow-hidden"
                 style={{
-                  backgroundColor: settings?.cardBgColor || "transparent",
+                  backgroundColor: settings?.cardBgColor || "white",
+                  borderRadius: settings?.cardBorderRadius || "0.75rem",
+                  borderWidth: settings?.cardBorderWidth || "1px",
+                  borderColor: settings?.cardBorderColor || "var(--border)",
                 }}
               >
                 <CardContent className="p-6">
@@ -248,20 +319,24 @@ export function ServicesSection() {
                       color:
                         settings?.cardDescriptionColor || "var(--foreground)",
                       fontFamily:
-                        settings?.cardDescriptionFont || "var(--font-body)",
+                        settings?.cardDescriptionFont || "var(--font-text)",
                     }}
                   >
                     {service?.description}
                   </p>
-                  <p
-                    className="font-semibold"
-                    style={{
-                      color: settings?.cardPriceColor || "var(--primary)",
-                      fontFamily: settings?.cardPriceFont || "var(--font-body)",
-                    }}
-                  >
-                    A partir de R$ {service?.price?.toFixed(2) || "0,00"}
-                  </p>
+                  <div className="flex items-center justify-between mt-auto">
+                    <span
+                      className="font-bold text-lg"
+                      style={{
+                        color: settings?.cardPriceColor || "var(--primary)",
+                      }}
+                    >
+                      R$ {service?.price}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {service?.duration} min
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
             );

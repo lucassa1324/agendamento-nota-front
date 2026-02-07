@@ -95,18 +95,23 @@ export function ServiceSelector({
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
-        {services.map((service) => {
+        {services.map((service, index) => {
           const isSelected = selected.some((s) => s.id === service.id);
           const conflictMessage = !isSelected
             ? checkConflict(service, selected)
             : null;
           const isConflicting = !!conflictMessage;
 
+          // Log por card para debug de cor
+          if (settings?.cardBgColor) {
+            console.log(`>>> [CARD_PAINT] Aplicando ${settings.cardBgColor} no serviço: ${service.name}`);
+          }
+
           return (
             <Card
-              key={service.id}
+              key={service.id ? `${service.id}-${index}` : `service-select-${index}`}
               className={cn(
-                "border-border cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden",
+                "border-border cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden bg-transparent shadow-none",
                 isSelected && "ring-1",
                 isConflicting &&
                   "opacity-60 grayscale-[0.5] border-destructive/20 cursor-not-allowed",
@@ -116,9 +121,7 @@ export function ServiceSelector({
                   isSelected && settings?.accentColor
                     ? settings.accentColor
                     : undefined,
-                backgroundColor: isSelected
-                  ? settings?.cardBgColor || "var(--muted)"
-                  : undefined,
+                backgroundColor: settings?.cardBgColor || undefined,
               }}
               onClick={() => toggleService(service)}
             >
