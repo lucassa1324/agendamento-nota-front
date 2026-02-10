@@ -7,11 +7,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useStudio } from "@/context/studio-context";
-import { appointmentService } from "@/lib/api-appointments";
+import { useToast } from "@/hooks/use-toast";
+import { type ApiError, appointmentService } from "@/lib/api-appointments";
+import { API_BASE_URL } from "@/lib/auth-client";
 import {
   type Booking,
   type BookingStepSettings,
   type Service,
+  parseDuration,
   saveBookingToStorage,
   sendBookingNotifications,
 } from "@/lib/booking-data";
@@ -36,6 +39,7 @@ export function BookingForm({
   settings,
 }: BookingFormProps) {
   const { studio } = useStudio();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: initialBooking?.clientName || "",
@@ -60,9 +64,26 @@ export function BookingForm({
     setIsLoading(true);
 
     try {
-      // 1. Preparar o agendamento para o novo Back-end (Elysia)
-      const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
+      // 1. Preparar a data em ISO UTC
+      // Combinamos a data (YYYY-MM-DD) com o horário (HH:mm)
+      // Usamos a data local para criar o objeto e convertemos para ISO
+      const localDateTime = new Date(`${date}T${time}:00`);
+      const scheduledAt = localDateTime.toISOString();
 
+      // 2. Converter duração (minutos) para HH:mm
+      const durationMinutes = parseDuration(service.duration);
+      
+      const hours = Math.floor(durationMinutes / 60);
+      const mins = durationMinutes % 60;
+      const durationHHmm = `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+
+      // 3. Formatar preço como decimal string (ex: "150.00")
+      const priceValue = typeof service.price === "string"
+        ? parseFloat(service.price)
+        : service.price;
+      const priceSnapshot = priceValue.toFixed(2);
+
+      // 4. Montar o payload seguindo o contrato exato do backend
       const appointmentData = {
         companyId: studio.id,
         serviceId: service.id,
@@ -71,10 +92,14 @@ export function BookingForm({
         customerEmail: formData.email,
         customerPhone: formData.phone,
         serviceNameSnapshot: service.name,
-        servicePriceSnapshot: service.price.toString(),
-        serviceDurationSnapshot: service.duration.toString(),
+        servicePriceSnapshot: priceSnapshot,
+        serviceDurationSnapshot: durationHHmm,
+        customerId: null,
         notes: "",
+        studioId: studio.id, // Fallback mantido
       };
+
+      console.log(">>> [FINAL_PAYLOAD]", appointmentData);
 
       const result = await appointmentService.create(appointmentData);
 
@@ -105,8 +130,17 @@ export function BookingForm({
 
       onConfirm(booking);
     } catch (error) {
-      console.warn(">>> [SITE_WARN] Erro ao criar agendamento:", error);
-      // Aqui você poderia adicionar um toast de erro
+      const apiError = error as ApiError;
+      console.warn(">>> [SITE_WARN] Erro ao criar agendamento:", apiError);
+
+      toast({
+        title: "Erro ao criar agendamento",
+        description:
+          apiError.status === 401
+            ? "O sistema não permitiu o agendamento (Não Autorizado). Por favor, entre em contato com o estúdio."
+            : apiError.message || "Ocorreu um erro inesperado ao salvar seu agendamento.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +190,11 @@ export function BookingForm({
               className="font-semibold"
               style={{ color: settings?.accentColor || "var(--primary)" }}
             >
-              R$ {service.price.toFixed(2)}
+              R${" "}
+              {(typeof service.price === "string"
+                ? parseFloat(service.price)
+                : service.price
+              ).toFixed(2)}
             </div>
           </div>
         </Card>

@@ -77,7 +77,7 @@ export function BookingCard({
                   Email: {booking.clientEmail || "Não informado"}
                 </span>
                 <span className="text-[10px] uppercase font-bold text-muted-foreground/70">
-                  Valor: R$ {booking.servicePrice.toFixed(2)}
+                  Valor: R$ {(typeof booking.servicePrice === "string" ? parseFloat(booking.servicePrice) : (booking.servicePrice || 0)).toFixed(2)}
                 </span>
               </div>
               <div className="md:col-span-2 mt-2 pt-2 border-t border-border/50">

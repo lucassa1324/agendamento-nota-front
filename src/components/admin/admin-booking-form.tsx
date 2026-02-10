@@ -181,7 +181,7 @@ export function AdminBookingForm({
               className="font-semibold"
               style={{ color: settings?.accentColor || "var(--primary)" }}
             >
-              R$ {formData.price.toFixed(2)}
+              R$ {(typeof formData.price === "string" ? parseFloat(formData.price) : (formData.price || 0)).toFixed(2)}
             </div>
           </div>
         </Card>

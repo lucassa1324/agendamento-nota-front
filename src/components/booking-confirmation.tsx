@@ -154,7 +154,11 @@ export function BookingConfirmation({
                 <div>
                   <div className="font-medium">Valor</div>
                   <div className="text-sm text-muted-foreground">
-                    R$ {service.price}
+                    R${" "}
+                    {(typeof service.price === "string"
+                      ? parseFloat(service.price)
+                      : service.price
+                    ).toFixed(2)}
                   </div>
                 </div>
               </div>

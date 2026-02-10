@@ -32,7 +32,8 @@ export const authClient = createAuthClient({
   // O Better-Auth gerencia os cookies automaticamente
   session: {
     cookieCache: {
-      enabled: false, // Desabilitado para evitar que o cliente use cache de sessão expirada/nula
+      enabled: true, // Reabilitado para reduzir chamadas ao network e evitar ERR_ABORTED em paralelo
+      maxAge: 60, // Cache de 1 minuto
     },
   },
   // Tipagem para os campos customizados do usuário (slug, business)
@@ -57,3 +58,66 @@ export const {
   listSessions,
   revokeSession,
 } = authClient;
+
+/**
+ * Singleton para gerenciar a busca do token de sessão.
+ * Evita múltiplas chamadas paralelas ao endpoint de sessão (Race Conditions / ERR_ABORTED).
+ */
+let sessionPromise: Promise<string | null> | null = null;
+let lastToken: string | null = null;
+let lastFetchTime = 0;
+const CACHE_TTL = 30000; // 30 segundos
+
+export const getSessionToken = async (): Promise<string | null> => {
+  if (typeof window === "undefined") return null;
+
+  // 1. Tentar pegar de locais síncronos primeiro (LocalStorage/Cookies)
+  const getCookie = (name: string) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(";").shift();
+    return null;
+  };
+
+  const syncToken = 
+    localStorage.getItem("better-auth.session_token") ||
+    localStorage.getItem("better-auth.access_token") ||
+    getCookie("better-auth.session_token");
+
+  if (syncToken) return syncToken;
+
+  // 2. Verificar cache de memória válido
+  const now = Date.now();
+  if (lastToken && (now - lastFetchTime < CACHE_TTL)) {
+    return lastToken;
+  }
+
+  // 3. Se já houver uma requisição em curso, retornar a mesma promessa
+  if (sessionPromise) return sessionPromise;
+
+  // 4. Iniciar nova busca de sessão
+  sessionPromise = (async () => {
+    try {
+      const resp = await fetch(`${AUTH_BASE_URL}/get-session`, {
+        headers: { "Content-Type": "application/json" },
+        credentials: "include"
+      });
+      
+      if (resp.ok) {
+        const data = await resp.json();
+        const token = data?.session?.token || null;
+        lastToken = token;
+        lastFetchTime = Date.now();
+        return token;
+      }
+      return null;
+    } catch (e) {
+      console.error(">>> [AUTH_CLIENT] Erro ao buscar sessão via fetch direto:", e);
+      return null;
+    } finally {
+      sessionPromise = null;
+    }
+  })();
+
+  return sessionPromise;
+};

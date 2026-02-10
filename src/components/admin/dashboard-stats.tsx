@@ -1,14 +1,18 @@
 "use client";
 
 import { Calendar, DollarSign, TrendingUp, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useStudio } from "@/context/studio-context";
+import { appointmentService } from "@/lib/api-appointments";
 import {
   getBookingsFromStorage,
   getSettingsFromStorage,
 } from "@/lib/booking-data";
+import { businessService } from "@/lib/business-service";
 
 export function DashboardStats() {
+  const { studio } = useStudio();
   const [stats, setStats] = useState({
     totalBookings: 0,
     todayBookings: 0,
@@ -16,35 +20,67 @@ export function DashboardStats() {
     agendaStatus: true,
   });
 
+  const loadStats = useCallback(async () => {
+    if (!studio?.id) return;
+
+    try {
+      // Para as estatísticas, podemos buscar todos os agendamentos ou um range largo
+      // Por simplicidade e performance, vamos buscar o mês atual
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+
+      const [appointments, settings] = await Promise.all([
+        appointmentService.listByCompanyAdmin(studio.id, firstDay, lastDay),
+        businessService.getSettings(studio.id),
+      ]);
+
+      const todayStr = now.toISOString().split("T")[0];
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+
+      const todayBookings = appointments.filter((app) => {
+        const date = new Date(app.scheduledAt).toISOString().split("T")[0];
+        return date === todayStr;
+      }).length;
+
+      const monthRevenue = appointments
+        .filter((app) => {
+          const date = new Date(app.scheduledAt);
+          return (
+            app.status.toUpperCase() === "COMPLETED" &&
+            date.getMonth() === currentMonth &&
+            date.getFullYear() === currentYear
+          );
+        })
+        .reduce((sum, app) => {
+          const price = app.servicePriceSnapshot ? parseFloat(app.servicePriceSnapshot) : 0;
+          return sum + price;
+        }, 0);
+
+      setStats({
+        totalBookings: appointments.length,
+        todayBookings,
+        monthRevenue,
+        agendaStatus: settings?.agendaAberta ?? true,
+      });
+    } catch (error) {
+      console.error("Erro ao carregar estatísticas:", error);
+      // Fallback para storage se falhar
+      const bookings = getBookingsFromStorage();
+      const settings = getSettingsFromStorage();
+      setStats({
+        totalBookings: bookings.length,
+        todayBookings: bookings.filter(b => b.date === new Date().toISOString().split("T")[0]).length,
+        monthRevenue: 0, // Simplificado no fallback
+        agendaStatus: settings.agendaAberta,
+      });
+    }
+  }, [studio?.id]);
+
   useEffect(() => {
-    const bookings = getBookingsFromStorage();
-    const settings = getSettingsFromStorage();
-    const today = new Date().toISOString().split("T")[0];
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-
-    const todayBookings = bookings.filter((b) => b.date === today).length;
-
-    const monthRevenue = bookings
-      .filter((b) => {
-        const bookingDate = new Date(b.date);
-        return (
-          b.status === "concluído" &&
-          bookingDate.getMonth() === currentMonth &&
-          bookingDate.getFullYear() === currentYear
-        );
-      })
-      .reduce((sum, booking) => {
-        return sum + (booking.servicePrice || 0);
-      }, 0);
-
-    setStats({
-      totalBookings: bookings.length,
-      todayBookings,
-      monthRevenue,
-      agendaStatus: settings.agendaAberta,
-    });
-  }, []);
+    loadStats();
+  }, [loadStats]);
 
   const statCards = [
     {

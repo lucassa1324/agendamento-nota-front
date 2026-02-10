@@ -1033,7 +1033,7 @@ export function Reports() {
               <CardContent>
                 <div className="space-y-4">
                   {reportData.topServices.map((service, index) => (
-                    <div key={service.name} className="flex items-center gap-4">
+                    <div key={`${service.name}-${index}`} className="flex items-center gap-4">
                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-accent/10 text-accent font-bold text-sm">
                         {index + 1}
                       </div>

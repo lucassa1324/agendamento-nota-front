@@ -1,4 +1,4 @@
-import { API_BASE_URL, authClient } from "@/lib/auth-client";
+import { API_BASE_URL, getSessionToken } from "@/lib/auth-client";
 import type { BlockedPeriod, DaySchedule } from "@/lib/booking-data";
 
 type WeekdaySchedulePayload = {
@@ -25,33 +25,14 @@ type SettingsPayload = {
   interval?: string;
   slotInterval?: string; // Adicionado para suportar o campo que o backend retorna
   weekly: WeekdaySchedulePayload[];
+  agendaAberta?: boolean; // Adicionado para refletir o status da agenda no Dashboard
 };
 
 class BusinessService {
   private baseUrl = `${API_BASE_URL}/api/business/settings`;
 
   private async getAuthHeaders() {
-    const getCookie = (name: string) => {
-      if (typeof document === "undefined") return null;
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop()?.split(";").shift();
-      return null;
-    };
-
-    let sessionToken =
-      typeof window !== "undefined"
-        ? localStorage.getItem("better-auth.session_token") ||
-          localStorage.getItem("better-auth.access_token") ||
-          getCookie("better-auth.session_token")
-        : null;
-
-    if (!sessionToken && typeof window !== "undefined") {
-      try {
-        const { data: sessionData } = await authClient.getSession();
-        sessionToken = sessionData?.session?.token || null;
-      } catch (_) {}
-    }
+    const sessionToken = await getSessionToken();
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -105,11 +86,16 @@ class BusinessService {
     const response = await fetch(url, {
       method: "GET",
       headers,
-      credentials: "include",
+      // Removido credentials para permitir chamadas públicas se o backend suportar
+      credentials: headers.Authorization ? "include" : "omit",
     });
 
     if (!response.ok) {
       if (response.status === 404) return null;
+      if (response.status === 401) {
+        console.warn(`>>> [BusinessService] Acesso não autorizado ao buscar configurações para ${companyId}.`);
+        return null;
+      }
       const msg = await response.text().catch(() => "");
       throw new Error(
         msg || `Falha ao buscar configurações (${response.status})`,
@@ -133,10 +119,14 @@ class BusinessService {
     const response = await fetch(url, {
       method: "GET",
       headers,
-      credentials: "include",
+      credentials: headers.Authorization ? "include" : "omit",
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        console.warn(`>>> [BusinessService] Acesso não autorizado ao buscar bloqueios para ${companyId}.`);
+        return [];
+      }
       const msg = await response.text().catch(() => "");
       throw new Error(msg || `Falha ao buscar bloqueios (${response.status})`);
     }

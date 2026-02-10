@@ -4,7 +4,7 @@
  * de cada seção (Hero, Fontes, Serviços, etc).
  */
 
-import { ArrowLeft, RotateCcw, Settings2, Loader2 } from "lucide-react";
+import { ArrowLeft, Loader2, RotateCcw, Settings2 } from "lucide-react";
 import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import type {

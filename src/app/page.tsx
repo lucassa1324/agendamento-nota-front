@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
+import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { CTASection } from "@/components/cta-section";
 import { GalleryPreview } from "@/components/gallery-preview";
 import { HeroSection } from "@/components/hero-section";

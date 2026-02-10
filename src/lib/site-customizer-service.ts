@@ -3,13 +3,13 @@ import { API_BASE_URL, authClient } from "@/lib/auth-client";
 import { 
   defaultColorSettings, 
   defaultFontSettings, 
-  defaultHeroSettings, 
-  defaultHeaderSettings, 
   defaultFooterSettings,
-  defaultServicesSettings,
-  defaultValuesSettings,
   defaultGallerySettings,
-  defaultStorySettings
+  defaultHeaderSettings, 
+  defaultHeroSettings, 
+  defaultServicesSettings,
+  defaultStorySettings, 
+  defaultValuesSettings
 } from "./booking-data";
 
 const DEFAULT_SITE_CONFIG: SiteConfigData = {
@@ -139,11 +139,10 @@ class SiteCustomizerService {
       credentials: "include",
     });
     
-    const result = await this.handleResponse<void>(response);
+    await this.handleResponse<void>(response);
     if (response.ok) {
       console.log('>>> [FRONT_SAVE_SUCCESS] Banco atualizado.');
     }
-    return result;
   }
 }
 

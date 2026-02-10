@@ -68,8 +68,8 @@ export function ServiceSelector({
     });
   };
 
-  const totalPrice = selected.reduce((acc, s) => acc + s.price, 0);
-  const totalDuration = selected.reduce((acc, s) => acc + s.duration, 0);
+  const totalPrice = selected.reduce((acc, s) => acc + Number(s.price || 0), 0);
+  const totalDuration = selected.reduce((acc, s) => acc + Number(s.duration || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -197,7 +197,7 @@ export function ServiceSelector({
                     fontFamily: "var(--font-title)",
                   }}
                 >
-                  R$ {totalPrice}
+                  R$ {totalPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
                 <span className="text-muted-foreground text-sm flex items-center gap-1">
                   <Clock className="w-3 h-3" /> {totalDuration} min

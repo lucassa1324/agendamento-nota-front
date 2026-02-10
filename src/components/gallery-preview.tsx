@@ -12,7 +12,6 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useStudio } from "@/context/studio-context";
-import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 import {
   type GalleryImage as GalleryImageType,
   type GallerySettings,
@@ -21,6 +20,7 @@ import {
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function GalleryPreview() {
   const { studio } = useStudio();

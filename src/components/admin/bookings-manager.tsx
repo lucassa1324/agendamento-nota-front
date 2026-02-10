@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/correctness/useExhaustiveDependencies: useEffect dependencies are managed manually */
 "use client";
 
+import { format, parseISO } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -31,21 +32,34 @@ import { BookingStatusTabs } from "./bookings/booking-status-tabs";
 import { EditBookingModal } from "./edit-booking-modal";
 
 // Helper para converter tipos de agendamento da API para o formato legado do Front
-const mapApiToBooking = (api: Appointment): Booking => ({
-  id: api.id,
-  serviceId: api.serviceId,
-  serviceName: api.serviceNameSnapshot,
-  serviceDuration: parseInt(api.serviceDurationSnapshot, 10),
-  servicePrice: parseFloat(api.servicePriceSnapshot),
-  date: api.scheduledAt.split("T")[0],
-  time: api.scheduledAt.split("T")[1].substring(0, 5),
-  clientName: api.customerName,
-  clientEmail: api.customerEmail,
-  clientPhone: api.customerPhone,
-  status: api.status.toLowerCase() as BookingStatus,
-  createdAt: api.createdAt,
-  notificationsSent: { email: false, whatsapp: false },
-});
+const mapApiToBooking = (api: Appointment): Booking => {
+  // Converter serviceDurationSnapshot (HH:mm) para minutos (number)
+  let durationMinutes = 0;
+  if (api.serviceDurationSnapshot?.includes(":")) {
+    const [hours, minutes] = api.serviceDurationSnapshot.split(":").map(n => parseInt(n, 10));
+    durationMinutes = (hours * 60) + (minutes || 0);
+  } else if (api.serviceDurationSnapshot) {
+    durationMinutes = parseInt(api.serviceDurationSnapshot, 10);
+  }
+
+  const dateObj = parseISO(api.scheduledAt);
+
+  return {
+    id: api.id,
+    serviceId: api.serviceId,
+    serviceName: api.serviceNameSnapshot || "Serviço não informado",
+    serviceDuration: durationMinutes,
+    servicePrice: api.servicePriceSnapshot ? parseFloat(api.servicePriceSnapshot) : 0,
+    date: format(dateObj, "yyyy-MM-dd"),
+    time: format(dateObj, "HH:mm"),
+    clientName: api.customerName || "Cliente não informado",
+    clientEmail: api.customerEmail || "",
+    clientPhone: api.customerPhone || "",
+    status: api.status.toLowerCase() as BookingStatus,
+    createdAt: api.createdAt,
+    notificationsSent: { email: false, whatsapp: false },
+  };
+};
 
 // Helper para converter status legado para o novo formato da API
 const mapStatusToApi = (status: BookingStatus): AppointmentStatus => {
@@ -63,8 +77,14 @@ export function BookingsManager() {
   const { studio } = useStudio();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+  });
+  const [endDate, setEndDate] = useState<string>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+  });
   const [filterName, setFilterName] = useState<string>("");
   const [filterTime, setFilterTime] = useState<string>("");
   const [filterDay, setFilterDay] = useState<string>("");
@@ -82,33 +102,29 @@ export function BookingsManager() {
 
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Inicializar datas com o mês atual por padrão se não houver filtro
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString()
-      .split("T")[0];
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-      .toISOString()
-      .split("T")[0];
-
-    setStartDate(firstDay);
-    setEndDate(lastDay);
-  }, []);
-
-  // Recarregar agendamentos quando o studio ID estiver disponível
+  // Recarregar agendamentos quando o studio ID ou filtros de data mudarem
   useEffect(() => {
     if (studio?.id) {
       loadBookings();
     }
-  }, [studio?.id]);
+  }, [studio?.id, startDate, endDate]);
 
   const loadBookings = async () => {
     if (!studio?.id) return;
 
     setIsLoading(true);
     try {
-      const apiAppointments = await appointmentService.listByCompany(studio.id);
+      // Converter YYYY-MM-DD para ISO UTC para o backend se necessário, 
+      // ou enviar apenas a data se o backend aceitar. 
+      // O requisito pede ISO: 2025-02-10T00:00:00Z
+      const isoStart = startDate ? `${startDate}T00:00:00Z` : undefined;
+      const isoEnd = endDate ? `${endDate}T23:59:59Z` : undefined;
+
+      const apiAppointments = await appointmentService.listByCompanyAdmin(
+        studio.id,
+        isoStart,
+        isoEnd,
+      );
       const mappedBookings = apiAppointments.map(mapApiToBooking);
       setBookings(mappedBookings);
     } catch (error) {

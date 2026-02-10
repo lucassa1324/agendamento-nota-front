@@ -1,6 +1,6 @@
 "use client";
 
-import { addDays, format, isBefore, subDays } from "date-fns";
+import { addDays, endOfDay, format, isBefore, parseISO, startOfDay, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Calendar as CalendarIcon,
@@ -38,6 +38,8 @@ import { API_BASE_URL } from "@/lib/auth-client";
 import {
   type Booking,
   type BookingStatus,
+  getWeekSchedule,
+  parseDuration,
   type Service,
   saveBookingToStorage,
 } from "@/lib/booking-data";
@@ -64,7 +66,18 @@ export function AdminCalendar({
   const [services, setServices] = useState<Service[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedTime, setSelectedTime] = useState("");
+  const [slotInterval, setSlotInterval] = useState(10);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (studio?.id) {
+      const weekSchedule = getWeekSchedule();
+      const firstOpenDay = weekSchedule.find(d => d.isOpen);
+      if (firstOpenDay) {
+        setSlotInterval(firstOpenDay.interval);
+      }
+    }
+  }, [studio]);
 
   const [newBooking, setNewBooking] = useState({
     clientName: "",
@@ -122,10 +135,7 @@ export function AdminCalendar({
         const formattedServices = data.map((s: Service) => ({
           ...s,
           price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
-          duration:
-            typeof s.duration === "string"
-              ? parseInt(s.duration, 10)
-              : s.duration,
+          duration: parseDuration(s.duration),
         }));
         setServices(formattedServices);
       }
@@ -138,32 +148,46 @@ export function AdminCalendar({
     if (!studio?.id) return;
 
     try {
-      const appointments = await appointmentService.listByCompany(studio.id);
+      const isoStart = startOfDay(currentDate).toISOString();
+      const isoEnd = endOfDay(currentDate).toISOString();
+
+      const appointments = await appointmentService.listByCompanyAdmin(
+        studio.id,
+        isoStart,
+        isoEnd,
+      );
       const mappedBookings: Booking[] = appointments.map(
-        (app: Appointment) => ({
-          id: app.id,
-          serviceId: app.serviceId,
-          serviceName: app.serviceNameSnapshot,
-          serviceDuration: parseInt(app.serviceDurationSnapshot, 10),
-          servicePrice: parseFloat(app.servicePriceSnapshot),
-          date: format(new Date(app.scheduledAt), "yyyy-MM-dd"),
-          time: format(new Date(app.scheduledAt), "HH:mm"),
-          clientName: app.customerName,
-          clientEmail: app.customerEmail,
-          clientPhone: app.customerPhone,
-          status: (app.status.toLowerCase() === "confirmed"
-            ? "confirmado"
-            : app.status.toLowerCase() === "completed"
-              ? "concluído"
-              : app.status.toLowerCase() === "cancelled"
-                ? "cancelado"
-                : "pending") as BookingStatus,
-          createdAt: app.createdAt,
-          notificationsSent: {
-            email: false,
-            whatsapp: false,
-          },
-        }),
+        (app: Appointment) => {
+          // Converter serviceDurationSnapshot (HH:mm) para minutos (number)
+          const durationMinutes = parseDuration(app.serviceDurationSnapshot);
+
+          const dateObj = parseISO(app.scheduledAt);
+
+          return {
+            id: app.id,
+            serviceId: app.serviceId,
+            serviceName: app.serviceNameSnapshot || "Serviço não informado",
+            serviceDuration: durationMinutes,
+            servicePrice: app.servicePriceSnapshot ? parseFloat(app.servicePriceSnapshot) : 0,
+            date: format(dateObj, "yyyy-MM-dd"),
+            time: format(dateObj, "HH:mm"),
+            clientName: app.customerName || "Cliente não informado",
+            clientEmail: app.customerEmail || "",
+            clientPhone: app.customerPhone || "",
+            status: (app.status.toLowerCase() === "confirmed"
+              ? "confirmado"
+              : app.status.toLowerCase() === "completed"
+                ? "concluído"
+                : app.status.toLowerCase() === "cancelled"
+                  ? "cancelado"
+                  : "pending") as BookingStatus,
+            createdAt: app.createdAt,
+            notificationsSent: {
+              email: false,
+              whatsapp: false,
+            },
+          };
+        },
       );
       setBookings(mappedBookings);
     } catch (error) {
@@ -184,7 +208,7 @@ export function AdminCalendar({
         });
       }
     }
-  }, [studio?.id, toast]);
+  }, [studio?.id, toast, currentDate]);
 
   const loadData = useCallback(() => {
     loadServicesFromAPI();
@@ -263,6 +287,16 @@ export function AdminCalendar({
       ).toISOString();
 
       for (const service of selectedServices) {
+        const priceValue = typeof service.price === "string" ? parseFloat(service.price) : (service.price || 0);
+        
+        const durationMinutes = typeof service.duration === "string" 
+          ? parseInt(service.duration, 10) 
+          : (service.duration || 0);
+        
+        const hours = Math.floor(durationMinutes / 60);
+        const mins = durationMinutes % 60;
+        const durationHHmm = `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+
         const appointmentData = {
           companyId: studio.id,
           serviceId: service.id,
@@ -272,8 +306,8 @@ export function AdminCalendar({
           customerEmail: "", // O modal simples não pede email
           customerPhone: newBooking.clientPhone,
           serviceNameSnapshot: service.name,
-          servicePriceSnapshot: service.price.toFixed(2),
-          serviceDurationSnapshot: service.duration.toString(),
+          servicePriceSnapshot: priceValue.toFixed(2),
+          serviceDurationSnapshot: durationHHmm,
           notes: "Agendado via Admin Calendar (Criação Rápida)",
         };
 
@@ -332,26 +366,25 @@ export function AdminCalendar({
     }
   };
 
-  // Gerar horários do dia (de 10 em 10 minutos como na imagem)
-  const SLOT_INTERVAL = 10;
+  // Gerar horários do dia baseado no intervalo configurado
   const timeSlots = useMemo(() => {
     const slots = [];
     const startHour = 0;
     const endHour = 23;
 
     for (let hour = startHour; hour <= endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += SLOT_INTERVAL) {
+      for (let minute = 0; minute < 60; minute += slotInterval) {
         const time = `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
         slots.push(time);
       }
     }
     return slots;
-  }, []);
+  }, [slotInterval]);
 
   const occupiedSlots = useMemo(() => {
     if (!_service?.duration) return 0;
-    return Math.ceil(_service.duration / SLOT_INTERVAL);
-  }, [_service]);
+    return Math.ceil(_service.duration / slotInterval);
+  }, [_service, slotInterval]);
 
   const isTimeInPast = (time: string) => {
     const now = new Date();
@@ -462,7 +495,7 @@ export function AdminCalendar({
                 <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground ml-8">
                   <Clock className="w-3 h-3" />
                   Este procedimento ocupará {occupiedSlots} espaços de{" "}
-                  {SLOT_INTERVAL} min
+                  {slotInterval} min
                 </div>
               )}
             </div>

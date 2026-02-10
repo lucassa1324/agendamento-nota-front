@@ -192,6 +192,7 @@ import {
   getInventoryFromStorage,
   getSettingsFromStorage,
   type InventoryItem,
+  parseDuration,
   type Service,
   saveInventoryToStorage,
   saveSettingsToStorage,
@@ -362,10 +363,7 @@ export function ServicesManager() {
         return {
           ...s,
           price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
-          duration:
-            typeof s.duration === "string"
-              ? parseInt(s.duration, 10)
-              : s.duration,
+          duration: parseDuration(s.duration),
           conflictingServiceIds: Array.isArray(conflicts) ? conflicts : [],
           products: s.products || [],
           showOnHome: Boolean(s.showOnHome), // Força conversão para boolean
@@ -1692,7 +1690,11 @@ export function ServicesManager() {
                         {service.duration} min
                       </span>
                       <span className="text-accent font-semibold">
-                        R$ {service.price.toFixed(2)}
+                        R${" "}
+                        {(typeof service.price === "string"
+                          ? parseFloat(service.price)
+                          : service.price
+                        ).toFixed(2)}
                       </span>
                     </div>
                   </div>

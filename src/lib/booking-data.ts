@@ -496,6 +496,11 @@ export type BookingStepSettings = {
   imageY: number;
   accentColor?: string;
   cardBgColor?: string;
+  interval?: string | number;
+  slotInterval?: string | number;
+  step3Times?: {
+    interval?: string | number;
+  };
 };
 
 export const defaultBookingServiceSettings: BookingStepSettings = {
@@ -1053,18 +1058,27 @@ export function saveColorSettings(settings: ColorSettings): void {
   }
 }
 
-export function generateTimeSlotsForDate(date: string): string[] {
+export function generateTimeSlotsForDate(date: string, forcedInterval?: number, externalSchedule?: DaySchedule): string[] {
   const dateObj = new Date(`${date}T00:00:00`);
   const dayOfWeek = dateObj.getDay();
   const weekSchedule = getWeekSchedule();
-  const daySchedule = weekSchedule.find((d) => d.dayOfWeek === dayOfWeek);
+  const daySchedule = externalSchedule || weekSchedule.find((d) => d.dayOfWeek === dayOfWeek);
 
   if (!daySchedule || !daySchedule.isOpen) {
     return [];
   }
 
   const slots: string[] = [];
-  const { openTime, lunchStart, lunchEnd, closeTime, interval } = daySchedule;
+  const { openTime, lunchStart, lunchEnd, closeTime } = daySchedule;
+  const interval = forcedInterval || daySchedule.interval || 30; // Prioridade para o forçado, depois schedule, depois 30
+
+  console.log(`>>> [TIME_SLOTS] Gerando horários para o dia ${dayOfWeek}:`, {
+    interval: `${interval}min`,
+    open: openTime,
+    lunch: `${lunchStart} - ${lunchEnd}`,
+    close: closeTime,
+    isExternal: !!externalSchedule
+  });
 
   const timeToMinutes = (time: string) => {
     const [hours, minutes] = time.split(":").map(Number);
@@ -1095,17 +1109,34 @@ export function generateTimeSlotsForDate(date: string): string[] {
   return slots;
 }
 
+export function parseDuration(val?: string | number): number {
+  if (!val) return 0;
+  if (typeof val === "number") return val;
+  const strVal = String(val);
+  if (strVal.includes(":")) {
+    const [hrs, mins] = strVal.split(":").map((n) => parseInt(n, 10));
+    return hrs * 60 + (mins || 0);
+  }
+  return parseInt(strVal, 10) || 0;
+}
+
 export function getAvailableTimeSlots(
   date: string,
   serviceDuration = 60,
+  forcedInterval?: number,
+  externalBookings?: Booking[],
+  externalSchedule?: DaySchedule,
+  externalBlocks?: BlockedPeriod[],
 ): TimeSlot[] {
-  const allSlots = generateTimeSlotsForDate(date);
-  const bookings = getBookingsFromStorage();
-  const blockedPeriods = getBlockedPeriods();
+  const allSlots = generateTimeSlotsForDate(date, forcedInterval, externalSchedule);
+  const bookings = externalBookings || getBookingsFromStorage();
+  const blockedPeriods = externalBlocks || getBlockedPeriods();
   const dateObj = new Date(`${date}T00:00:00`);
   const dayOfWeek = dateObj.getDay();
   const weekSchedule = getWeekSchedule();
-  const daySchedule = weekSchedule.find((d) => d.dayOfWeek === dayOfWeek);
+  
+  // Usar schedule externo (do backend) se fornecido, senão fallback para localStorage
+  const daySchedule = externalSchedule || weekSchedule.find((d) => d.dayOfWeek === dayOfWeek);
 
   if (!daySchedule || !daySchedule.isOpen) {
     return [];
@@ -1143,11 +1174,22 @@ function isTimeSlotAvailable(
   };
 
   const startMinutes = timeToMinutes(time);
-  const endMinutes = startMinutes + duration;
+  const numericDuration = typeof duration === "string" ? parseInt(duration, 10) : duration;
+  const endMinutes = startMinutes + numericDuration;
+
+  // console.log(`>>> [AVAILABILITY_CHECK] ${time} (dur: ${duration}min):`, {
+  //   start: startMinutes,
+  //   end: endMinutes,
+  //   close: daySchedule.closeTime,
+  //   lunch: `${daySchedule.lunchStart}-${daySchedule.lunchEnd}`
+  // });
 
   // 1. Verificar se o dia todo está bloqueado
   const fullDayBlock = dayBlocks.find((b) => !b.startTime && !b.endTime);
-  if (fullDayBlock) return false;
+  if (fullDayBlock) {
+    console.log(`>>> [AVAILABILITY] ${time} indisponível: Dia bloqueado`);
+    return false;
+  }
 
   // 2. Verificar bloqueios de horário parcial
   for (const block of dayBlocks) {
@@ -1155,10 +1197,8 @@ function isTimeSlotAvailable(
       const blockStart = timeToMinutes(block.startTime);
       const blockEnd = timeToMinutes(block.endTime);
 
-      // Verificação rigorosa de interseção:
-      // Um slot está indisponível se o seu início ocorre antes do fim do bloqueio
-      // E o seu fim (início + duração do serviço) ocorre depois do início do bloqueio
       if (startMinutes < blockEnd && endMinutes > blockStart) {
+        console.log(`>>> [AVAILABILITY] ${time} indisponível: Conflito com bloqueio (${block.startTime}-${block.endTime})`);
         return false;
       }
     }
@@ -1166,13 +1206,22 @@ function isTimeSlotAvailable(
 
   // 3. Verificar se não ultrapassa horário de fechamento
   const closeMinutes = timeToMinutes(daySchedule.closeTime);
-  if (endMinutes > closeMinutes) return false;
+  if (endMinutes > closeMinutes) {
+    console.log(`>>> [AVAILABILITY] ${time} indisponível: Ultrapassa fechamento (${daySchedule.closeTime}). Start: ${time}, End: ${minutesToTime(endMinutes)}, Close: ${daySchedule.closeTime}`);
+    return false;
+  }
 
   // 4. Verificar se não conflita com horário de almoço
   const lunchStartMinutes = timeToMinutes(daySchedule.lunchStart);
   const lunchEndMinutes = timeToMinutes(daySchedule.lunchEnd);
-  if (startMinutes < lunchEndMinutes && endMinutes > lunchStartMinutes)
-    return false;
+  
+  // Se lunchStart === lunchEnd, não há almoço
+  if (lunchStartMinutes !== lunchEndMinutes) {
+    if (startMinutes < lunchEndMinutes && endMinutes > lunchStartMinutes) {
+      console.log(`>>> [AVAILABILITY] ${time} indisponível: Conflito com almoço (${daySchedule.lunchStart}-${daySchedule.lunchEnd}). Slot: ${time}-${minutesToTime(endMinutes)}, Lunch: ${daySchedule.lunchStart}-${daySchedule.lunchEnd}`);
+      return false;
+    }
+  }
 
   // 5. Verificar conflitos com outros agendamentos
   for (const booking of bookings) {
@@ -1180,12 +1229,19 @@ function isTimeSlotAvailable(
     const bookingEnd = bookingStart + booking.serviceDuration;
 
     if (startMinutes < bookingEnd && endMinutes > bookingStart) {
+      console.log(`>>> [AVAILABILITY] ${time} indisponível: Conflito com agendamento (${booking.time}, ${booking.serviceDuration}min). Slot: ${time}-${minutesToTime(endMinutes)}, Booking: ${booking.time}-${minutesToTime(bookingEnd)}`);
       return false;
     }
   }
 
   return true;
 }
+
+const minutesToTime = (minutes: number) => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+};
 
 export function getBookingsFromStorage(): Booking[] {
   if (typeof window === "undefined") return [];
@@ -1796,6 +1852,8 @@ async function sendWhatsAppNotification(
 export interface BusinessConfig {
   hero?: HeroSettings;
   typography?: FontSettings;
+  interval?: string | number;
+  slotInterval?: string | number;
   [key: string]: unknown;
 }
 

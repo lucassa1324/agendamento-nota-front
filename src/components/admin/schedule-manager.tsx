@@ -21,6 +21,7 @@ import {
   type DaySchedule,
   getBlockedPeriods,
   getWeekSchedule,
+  parseDuration,
   saveBlockedPeriods,
   saveWeekSchedule,
 } from "@/lib/booking-data";
@@ -82,17 +83,7 @@ export function ScheduleManager() {
         // Mapear do backend para o estado local
         const backendWeekly = settings.weekly;
 
-        // Função auxiliar para converter HH:mm ou mm para número de minutos
-        const parseInterval = (val?: string) => {
-          if (!val) return 30;
-          if (val.includes(":")) {
-            const [hrs, mins] = val.split(":").map((n) => parseInt(n, 10));
-            return hrs * 60 + mins;
-          }
-          return parseInt(val, 10) || 30;
-        };
-
-        const currentInterval = parseInterval(settings.interval);
+        const currentInterval = parseDuration(settings.interval);
 
         finalSchedule = Array.from({ length: 7 }, (_, i) => {
           const dayData = backendWeekly.find((d) => Number(d.dayOfWeek) === i);

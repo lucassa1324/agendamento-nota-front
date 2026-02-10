@@ -23,11 +23,39 @@ import {
   getBookingFormSettings,
   getBookingServiceSettings,
   getBookingTimeSettings,
+  parseDuration,
   type Service,
+  saveBlockedPeriods,
+  saveWeekSchedule,
 } from "@/lib/booking-data";
+import { businessService } from "@/lib/business-service";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 
 type BookingStep = "service" | "date" | "time" | "form" | "confirmation";
+
+interface StudioConfig {
+  weekly?: unknown[];
+  interval?: string | number;
+  slotInterval?: string | number;
+  appointmentFlow?: {
+    weekly?: unknown[];
+    interval?: string | number;
+    slotInterval?: string | number;
+    step3Times?: {
+      weekly?: unknown[];
+      interval?: string | number;
+    };
+  };
+  appointment_flow?: {
+    weekly?: unknown[];
+    interval?: string | number;
+    slotInterval?: string | number;
+    step3_times?: {
+      weekly?: unknown[];
+      interval?: string | number;
+    };
+  };
+}
 
 export function BookingFlow() {
   const { studio } = useStudio();
@@ -64,6 +92,125 @@ export function BookingFlow() {
   );
   const [confirmationSettings, setConfirmationSettings] =
     useState<BookingStepSettings>(defaultBookingConfirmationSettings);
+
+  // Sincronizar Horários e Intervalo do Backend
+  useEffect(() => {
+    if (!studio?.id) return;
+
+    const syncSchedule = async () => {
+      try {
+        console.log(">>> [BOOKING_FLOW] Sincronizando horários do backend para studio:", studio.id);
+        const [settings, blocks] = await Promise.all([
+          businessService.getSettings(studio.id),
+          businessService.getBlocks(studio.id),
+        ]);
+
+        // Fallback para dados vindos do Studio Context se a API de settings falhar (401)
+        const studioFallback = (studio as unknown || {}) as StudioConfig;
+        const configFallback = (studio?.config as unknown || {}) as StudioConfig;
+
+        const weeklyData = (settings?.weekly ||
+          studioFallback.weekly ||
+          configFallback.weekly ||
+          configFallback.appointmentFlow?.weekly ||
+          configFallback.appointment_flow?.weekly ||
+          configFallback.appointmentFlow?.step3Times?.weekly ||
+          configFallback.appointment_flow?.step3_times?.weekly) as unknown[] | undefined;
+        const intervalData = (settings?.interval ||
+          studioFallback.interval ||
+          studioFallback.slotInterval ||
+          configFallback.interval ||
+          configFallback.appointmentFlow?.interval ||
+          configFallback.appointmentFlow?.step3Times?.interval ||
+          configFallback.appointment_flow?.step3_times?.interval ||
+          configFallback.appointmentFlow?.slotInterval) as string | number | undefined;
+
+        console.log(">>> [BOOKING_FLOW] Dados recebidos:", {
+          hasWeekly: !!weeklyData,
+          interval: intervalData,
+          hasBlocks: !!blocks
+        });
+
+        if (weeklyData && Array.isArray(weeklyData) && weeklyData.length > 0) {
+          const dayNames = [
+            "Domingo",
+            "Segunda-feira",
+            "Terça-feira",
+            "Quarta-feira",
+            "Quinta-feira",
+            "Sexta-feira",
+            "Sábado",
+          ];
+
+          const currentInterval = parseDuration(intervalData) || 30;
+
+          const finalSchedule = Array.from({ length: 7 }, (_, i) => {
+            const dayData = weeklyData.find((d) => {
+              const day = d as Record<string, unknown>;
+              // Tenta dayOfWeek ou day_of_week
+              const dayIndex = day.dayOfWeek !== undefined ? Number(day.dayOfWeek) : Number(day.day_of_week);
+              return dayIndex === i;
+            }) as Record<string, unknown> | undefined;
+
+            if (dayData) {
+              const isOpen = dayData.status === "OPEN" || dayData.isOpen === true || dayData.is_open === true;
+              return {
+                dayOfWeek: i,
+                dayName: dayNames[i],
+                isOpen,
+                openTime: (dayData.morningStart ||
+                  dayData.openTime ||
+                  dayData.open_time ||
+                  "08:00") as string,
+                lunchStart: (dayData.morningEnd ||
+                  dayData.lunchStart ||
+                  dayData.lunch_start ||
+                  "12:00") as string,
+                lunchEnd: (dayData.afternoonStart ||
+                  dayData.lunchEnd ||
+                  dayData.lunch_end ||
+                  "13:00") as string,
+                closeTime: (dayData.afternoonEnd ||
+                  dayData.closeTime ||
+                  dayData.close_time ||
+                  "18:00") as string,
+                interval: currentInterval,
+              };
+            }
+            return {
+              dayOfWeek: i,
+              dayName: dayNames[i],
+              isOpen: false,
+              openTime: "08:00",
+              lunchStart: "12:00",
+              lunchEnd: "13:00",
+              closeTime: "18:00",
+              interval: currentInterval,
+            };
+          });
+
+          console.log(
+            ">>> [BOOKING_FLOW] Intervalo sincronizado:",
+            currentInterval,
+          );
+          saveWeekSchedule(finalSchedule);
+
+          if (blocks) {
+            saveBlockedPeriods(blocks);
+          }
+
+          console.log(">>> [BOOKING_FLOW] Schedule e Intervalo sincronizados com sucesso!");
+          // Forçar re-renderização disparando evento
+          window.dispatchEvent(new Event("storage"));
+          window.dispatchEvent(new Event("bookingTimeUpdate")); // Novo evento para forçar atualização do calendário
+        }
+      } catch (error) {
+        console.error(">>> [BOOKING_FLOW] Erro ao sincronizar horários:", error);
+      }
+    };
+
+    syncSchedule();
+  }, [studio]);
 
   // Load initial settings
   useEffect(() => {
@@ -119,6 +266,11 @@ export function BookingFlow() {
       const timeSettingsData = getStepSettings((steps.step3Times || steps.step3Time || steps.time) as Record<string, unknown> | undefined);
       const formSettingsData = getStepSettings((steps.step4Form || steps.form) as Record<string, unknown> | undefined);
       const confirmationSettingsData = getStepSettings((steps.step5Confirmation || steps.step4Confirmation || steps.confirmation) as Record<string, unknown> | undefined);
+
+      // Adicionar o intervalo global ao timeSettings se disponível no config do studio
+      if (studio?.config?.interval || studio?.config?.slotInterval) {
+        timeSettingsData.interval = studio.config.interval || studio.config.slotInterval;
+      }
 
       console.log('>>> [BOOKING_DEBUG] Aplicando cores do Studio (Mapeado):', {
         serviceCardBg: serviceSettingsData.cardBgColor,

@@ -25,6 +25,7 @@ import { useStudio } from "@/context/studio-context";
 import {
   type Booking,
   getSettingsFromStorage,
+  getWeekSchedule,
   type Service,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
@@ -42,7 +43,8 @@ export function AdminBookingFlow({
   onComplete,
   mode = "reschedule",
 }: AdminBookingFlowProps) {
-  const { slug } = useStudio();
+  const { slug, studio } = useStudio();
+
   const [currentStep, setCurrentStep] = useState<BookingStep>("service");
   const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>("");
@@ -50,6 +52,19 @@ export function AdminBookingFlow({
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(
     null,
   );
+  const [slotInterval, setSlotInterval] = useState(10);
+
+  useEffect(() => {
+    if (studio?.id) {
+      // O admin pode ter um intervalo diferente configurado na aba horários
+      // Vamos tentar pegar do primeiro dia aberto ou usar o default do sistema
+      const weekSchedule = getWeekSchedule();
+      const firstOpenDay = weekSchedule.find(d => d.isOpen);
+      if (firstOpenDay) {
+        setSlotInterval(firstOpenDay.interval);
+      }
+    }
+  }, [studio]);
 
   useEffect(() => {
     if (initialBooking) {
@@ -70,7 +85,6 @@ export function AdminBookingFlow({
     }
   }, [initialBooking, mode]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const slotInterval = 10;
   const defaultServiceDuration = 30;
 
   const monthNames = [
