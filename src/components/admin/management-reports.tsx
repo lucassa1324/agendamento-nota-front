@@ -4,14 +4,17 @@
 import {
   BarChart3,
   Calendar,
+  Check,
   DollarSign,
   Download,
+  Loader2,
   Pencil,
   Plus,
   Trash2,
   TrendingUp,
+  X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -46,102 +49,110 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Booking, Expense } from "@/lib/booking-data";
+import { useStudio } from "@/context/studio-context";
+import { expensesService, type Expense, type ExpenseCategory, type ProfitReport } from "@/lib/expenses-service";
+import { toast } from "sonner";
 
 export function ManagementReports() {
+  const { studio } = useStudio();
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [report, setReport] = useState<ProfitReport | null>(null);
+  const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Carregar dados iniciais
-  useEffect(() => {
-    // Carregar agendamentos do localStorage
-    const savedBookings = localStorage.getItem("bookings");
-    if (savedBookings) {
-      setBookings(JSON.parse(savedBookings));
+  const fetchExpenses = useCallback(async () => {
+    if (!studio?.id) return;
+    setIsLoadingExpenses(true);
+    try {
+      const data = await expensesService.list(studio.id);
+      setExpenses(data);
+    } catch (error) {
+      console.error("Erro ao carregar gastos:", error);
+      toast.error("Erro ao carregar lista de gastos.");
+    } finally {
+      setIsLoadingExpenses(false);
     }
+  }, [studio?.id]);
 
-    // Carregar gastos fixos do localStorage
-    const savedExpenses = localStorage.getItem("fixedExpenses");
-    if (savedExpenses) {
-      setExpenses(JSON.parse(savedExpenses));
+  const fetchReport = useCallback(async () => {
+    if (!studio?.id) return;
+    setIsLoadingReport(true);
+    try {
+      const data = await expensesService.getProfitReport(studio.id);
+      setReport(data);
+    } catch (error) {
+      console.error("Erro ao carregar relatório:", error);
+    } finally {
+      setIsLoadingReport(false);
     }
-  }, []);
+  }, [studio?.id]);
 
-  // Salvar gastos fixos sempre que houver alteração
   useEffect(() => {
-    localStorage.setItem("fixedExpenses", JSON.stringify(expenses));
-  }, [expenses]);
+    if (studio?.id) {
+      fetchExpenses();
+      fetchReport();
+    }
+  }, [studio?.id, fetchExpenses, fetchReport]);
 
   const [newExpense, setNewExpense] = useState<Partial<Expense>>({
     description: "",
-    value: undefined,
-    category: "",
-    isFixed: true,
+    value: "",
+    category: "GERAL" as ExpenseCategory,
   });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
 
-  const [categories, setCategories] = useState([
-    "Infraestrutura",
-    "Utilidades",
-    "Marketing",
-    "Produtos/Insumos",
-    "Pessoal",
-    "Sistemas/Software",
-    "Impostos",
-    "Geral",
-  ]);
+  const categories: { value: ExpenseCategory; label: string }[] = [
+    { value: "INFRAESTRUTURA", label: "Infraestrutura" },
+    { value: "UTILIDADES", label: "Utilidades" },
+    { value: "MARKETING", label: "Marketing" },
+    { value: "PRODUTOS_INSUMOS", label: "Produtos/Insumos" },
+    { value: "PESSOAL", label: "Pessoal" },
+    { value: "SISTEMAS_SOFTWARE", label: "Sistemas/Software" },
+    { value: "IMPOSTOS", label: "Impostos" },
+    { value: "GERAL", label: "Geral" },
+  ];
 
-  const handleAddCategory = () => {
-    if (
-      newCategoryName.trim() &&
-      !categories.includes(newCategoryName.trim())
-    ) {
-      setCategories([...categories, newCategoryName.trim()]);
-      setNewExpense({ ...newExpense, category: newCategoryName.trim() });
-      setNewCategoryName("");
-      setIsAddingCategory(false);
+  const handleSaveExpense = async () => {
+    if (!studio?.id) return;
+    if (!newExpense.description || !newExpense.value || !newExpense.category) {
+      toast.error("Por favor, preencha todos os campos.");
+      return;
     }
-  };
 
-  const handleAddExpense = () => {
-    if (newExpense.description && newExpense.value !== undefined) {
+    setIsSubmitting(true);
+    try {
       if (editingExpense) {
-        // Modo Edição
-        const updatedExpenses = expenses.map((e) =>
-          e.id === editingExpense.id
-            ? {
-                ...editingExpense,
-                description: newExpense.description as string,
-                value: Number(newExpense.value),
-                category: newExpense.category || "Geral",
-              }
-            : e,
-        );
-        setExpenses(updatedExpenses);
-        setEditingExpense(null);
+        await expensesService.update(editingExpense.id, {
+          description: newExpense.description,
+          value: String(newExpense.value),
+          category: newExpense.category as ExpenseCategory,
+        });
+        toast.success("Gasto atualizado com sucesso!");
       } else {
-        // Modo Criação
-        const expense: Expense = {
-          id: Math.random().toString(36).substr(2, 9),
-          description: newExpense.description as string,
-          value: Number(newExpense.value),
-          category: newExpense.category || "Geral",
-          date: new Date().toISOString().split("T")[0],
-          isFixed: true,
-        };
-        setExpenses([...expenses, expense]);
+        await expensesService.create({
+          companyId: studio.id,
+          description: newExpense.description,
+          value: String(newExpense.value),
+          category: newExpense.category as ExpenseCategory,
+          dueDate: new Date().toISOString(),
+        });
+        toast.success("Gasto adicionado com sucesso!");
       }
-      setNewExpense({
-        description: "",
-        value: undefined,
-        category: "",
-        isFixed: true,
-      });
+      
       setIsDialogOpen(false);
+      setEditingExpense(null);
+      setNewExpense({ description: "", value: "", category: "GERAL" });
+      
+      // Revalidar dados
+      fetchExpenses();
+      fetchReport();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao salvar gasto.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -151,26 +162,39 @@ export function ManagementReports() {
       description: expense.description,
       value: expense.value,
       category: expense.category,
-      isFixed: expense.isFixed,
     });
     setIsDialogOpen(true);
   };
 
-  const handleDeleteExpense = (id: string) => {
-    setExpenses(expenses.filter((e) => e.id !== id));
+  const handleDeleteExpense = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este gasto?")) return;
+    
+    try {
+      await expensesService.delete(id);
+      toast.success("Gasto excluído com sucesso!");
+      fetchExpenses();
+      fetchReport();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao excluir gasto.");
+    }
   };
 
-  const totalExpenses = expenses.reduce((acc, curr) => acc + curr.value, 0);
+  const handleTogglePaid = async (expense: Expense) => {
+    try {
+      await expensesService.update(expense.id, { isPaid: !expense.isPaid });
+      toast.success(expense.isPaid ? "Marcado como não pago" : "Marcado como pago!");
+      fetchExpenses();
+      fetchReport();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar status.");
+    }
+  };
 
-  // Calcular receita real apenas de agendamentos concluídos
-  const completedBookings = bookings.filter((b) => b.status === "concluído");
-  const totalRevenue = completedBookings.reduce(
-    (acc, curr) => acc + curr.servicePrice,
-    0,
-  );
-  const totalServices = completedBookings.length;
+  const totalExpenses = expenses.reduce((acc, curr) => acc + Number(curr.value), 0);
 
-  const operationalProfit = totalRevenue - totalExpenses;
+  const operationalProfit = report?.netProfit ?? 0;
+  const totalRevenue = report?.totalRevenue ?? 0;
+  const margin = report?.margin ?? 0;
 
   return (
     <div className="space-y-6">
@@ -299,15 +323,13 @@ export function ManagementReports() {
                   <Input
                     id="value"
                     type="number"
+                    step="0.01"
                     className="col-span-3"
                     value={newExpense.value ?? ""}
                     onChange={(e) =>
                       setNewExpense({
                         ...newExpense,
-                        value:
-                          e.target.value === ""
-                            ? undefined
-                            : Number(e.target.value),
+                        value: e.target.value,
                       })
                     }
                     onFocus={(e) => e.target.select()}
@@ -318,67 +340,23 @@ export function ManagementReports() {
                     Categoria
                   </Label>
                   <div className="col-span-3 space-y-2">
-                    {isAddingCategory ? (
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Nome da categoria"
-                          value={newCategoryName}
-                          onChange={(e) => setNewCategoryName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddCategory();
-                            }
-                          }}
-                        />
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={handleAddCategory}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          Add
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setIsAddingCategory(false)}
-                        >
-                          X
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        <Select
-                          value={newExpense.category}
-                          onValueChange={(value) =>
-                            setNewExpense({ ...newExpense, category: value })
-                          }
-                        >
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Selecione uma categoria" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categories.map((cat) => (
-                              <SelectItem key={cat} value={cat}>
-                                {cat}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setIsAddingCategory(true)}
-                          title="Criar nova categoria"
-                          className="shrink-0"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
+                    <Select
+                      value={newExpense.category}
+                      onValueChange={(value) =>
+                        setNewExpense({ ...newExpense, category: value as ExpenseCategory })
+                      }
+                    >
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Selecione uma categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
@@ -386,10 +364,20 @@ export function ManagementReports() {
                 <Button
                   variant="outline"
                   onClick={() => setIsDialogOpen(false)}
+                  disabled={isSubmitting}
                 >
                   Cancelar
                 </Button>
-                <Button onClick={handleAddExpense}>Salvar</Button>
+                <Button onClick={handleSaveExpense} disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    "Salvar"
+                  )}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -399,6 +387,7 @@ export function ManagementReports() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Status</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
@@ -406,44 +395,70 @@ export function ManagementReports() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {expenses.map((expense) => (
-                  <TableRow key={expense.id}>
-                    <TableCell className="font-medium">
-                      {expense.description}
-                    </TableCell>
-                    <TableCell>{expense.category}</TableCell>
-                    <TableCell className="text-right">
-                      R${" "}
-                      {expense.value.toLocaleString("pt-BR", {
-                        minimumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditExpense(expense)}
-                          className="h-8 w-8 text-muted-foreground hover:text-accent"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteExpense(expense.id)}
-                          className="h-8 w-8 text-destructive hover:text-destructive/90"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                {isLoadingExpenses ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
                     </TableCell>
                   </TableRow>
-                ))}
-                {expenses.length === 0 && (
+                ) : (
+                  expenses.map((expense) => (
+                    <TableRow key={expense.id}>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleTogglePaid(expense)}
+                          className={`h-8 w-8 rounded-full border ${
+                            expense.isPaid
+                              ? "bg-green-100 text-green-600 border-green-200"
+                              : "text-muted-foreground border-dashed"
+                          }`}
+                        >
+                          {expense.isPaid ? (
+                            <Check className="w-4 h-4" />
+                          ) : (
+                            <X className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </TableCell>
+                      <TableCell className={`font-medium ${expense.isPaid ? "text-muted-foreground line-through" : ""}`}>
+                        {expense.description}
+                      </TableCell>
+                      <TableCell>{categories.find(c => c.value === expense.category)?.label || expense.category}</TableCell>
+                      <TableCell className="text-right">
+                        R${" "}
+                        {Number(expense.value).toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditExpense(expense)}
+                            className="h-8 w-8 text-muted-foreground hover:text-accent"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteExpense(expense.id)}
+                            className="h-8 w-8 text-destructive hover:text-destructive/90"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+                {!isLoadingExpenses && expenses.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={4}
+                      colSpan={5}
                       className="text-center py-4 text-muted-foreground"
                     >
                       Nenhum gasto fixo cadastrado.
@@ -479,15 +494,21 @@ export function ManagementReports() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold">
-                  R${" "}
-                  {totalRevenue.toLocaleString("pt-BR", {
-                    minimumFractionDigits: 2,
-                  })}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Receita de atendimentos concluídos
-                </p>
+                {isLoadingReport ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold">
+                      R${" "}
+                      {totalRevenue.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Receita de atendimentos concluídos
+                    </p>
+                  </>
+                )}
               </div>
               <DollarSign className="w-8 h-8 text-muted-foreground" />
             </div>
@@ -503,15 +524,21 @@ export function ManagementReports() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-destructive">
-                  R${" "}
-                  {totalExpenses.toLocaleString("pt-BR", {
-                    minimumFractionDigits: 2,
-                  })}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Custos fixos operacionais
-                </p>
+                {isLoadingExpenses ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-destructive">
+                      R${" "}
+                      {totalExpenses.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Custos fixos operacionais
+                    </p>
+                  </>
+                )}
               </div>
               <TrendingUp className="w-8 h-8 text-muted-foreground rotate-180" />
             </div>
@@ -527,17 +554,23 @@ export function ManagementReports() {
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <p
-                  className={`text-2xl font-bold ${operationalProfit >= 0 ? "text-green-600" : "text-destructive"}`}
-                >
-                  R${" "}
-                  {operationalProfit.toLocaleString("pt-BR", {
-                    minimumFractionDigits: 2,
-                  })}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Receita - Despesas Fixas
-                </p>
+                {isLoadingReport ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                ) : (
+                  <>
+                    <p
+                      className={`text-2xl font-bold ${operationalProfit >= 0 ? "text-green-600" : "text-destructive"}`}
+                    >
+                      R${" "}
+                      {operationalProfit.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Margem de {margin.toFixed(1)}%
+                    </p>
+                  </>
+                )}
               </div>
               <BarChart3 className="w-8 h-8 text-muted-foreground" />
             </div>
@@ -547,15 +580,17 @@ export function ManagementReports() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Atendimentos
+              Status Geral
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold">{totalServices}</p>
+                <p className="text-2xl font-bold">
+                  {margin >= 20 ? "Saudável" : margin > 0 ? "Atenção" : "Crítico"}
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Total concluídos
+                  Baseado na margem de lucro
                 </p>
               </div>
               <Calendar className="w-8 h-8 text-muted-foreground" />
