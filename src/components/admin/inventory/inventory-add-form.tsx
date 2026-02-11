@@ -75,7 +75,7 @@ export function InventoryAddForm({
               <Input
                 id="name"
                 placeholder="Ex: Henna Profissional"
-                value={newItem.name}
+                value={newItem.name ?? ""}
                 disabled={isLoading}
                 onChange={(e) =>
                   setNewItem({ ...newItem, name: e.target.value })
@@ -99,7 +99,7 @@ export function InventoryAddForm({
                 type="number"
                 step="0.001"
                 placeholder="Ex: 10"
-                value={newItem.quantity}
+                value={newItem.quantity ?? ""}
                 disabled={isLoading}
                 onChange={(e) =>
                   setNewItem({ ...newItem, quantity: e.target.value })
@@ -108,7 +108,14 @@ export function InventoryAddForm({
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
-                <Label htmlFor="min-quantity">Estoque Mínimo</Label>
+                <Label htmlFor="min-quantity">
+                  Estoque Mínimo{" "}
+                  {newItem.secondaryUnit
+                    ? `(${newItem.secondaryUnit})`
+                    : newItem.unit
+                    ? `(${newItem.unit})`
+                    : ""}
+                </Label>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
@@ -117,6 +124,13 @@ export function InventoryAddForm({
                     <p>
                       O sistema avisará quando o estoque for igual ou menor que
                       este valor.
+                      {newItem.secondaryUnit && (
+                        <>
+                          <br />
+                          <strong>Dica:</strong> Use a unidade de consumo (
+                          {newItem.secondaryUnit}) para o alerta.
+                        </>
+                      )}
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -126,7 +140,7 @@ export function InventoryAddForm({
                 type="number"
                 step="0.001"
                 placeholder="Ex: 2"
-                value={newItem.minQuantity}
+                value={newItem.minQuantity ?? ""}
                 disabled={isLoading}
                 onChange={(e) =>
                   setNewItem({ ...newItem, minQuantity: e.target.value })
@@ -150,7 +164,7 @@ export function InventoryAddForm({
                 type="number"
                 step="0.01"
                 placeholder="Ex: 45.90"
-                value={newItem.price}
+                value={newItem.price ?? ""}
                 disabled={isLoading}
                 onChange={(e) =>
                   setNewItem({ ...newItem, price: e.target.value })
@@ -246,7 +260,7 @@ export function InventoryAddForm({
                 type="number"
                 step="0.001"
                 placeholder="Ex: 500"
-                value={newItem.conversionFactor}
+                value={newItem.conversionFactor ?? ""}
                 disabled={isLoading}
                 onChange={(e) =>
                   setNewItem({ ...newItem, conversionFactor: e.target.value })

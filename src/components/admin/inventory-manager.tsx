@@ -60,12 +60,8 @@ import {
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL, useSession } from "@/lib/auth-client";
-import {
-  getInventoryFromStorage,
-  type InventoryItem,
-  type InventoryLog,
-  saveInventoryToStorage,
-} from "@/lib/booking-data";
+import { inventoryService } from "@/lib/inventory-service";
+import type { InventoryItem, InventoryLog } from "@/lib/inventory-service";
 import { cn } from "@/lib/utils";
 import { InventoryAddForm } from "./inventory/inventory-add-form";
 
@@ -97,26 +93,7 @@ export function InventoryManager() {
     console.log(">>> [INVENTORY] Buscando itens para ID:", companyId);
     setIsLoadingItems(true);
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/inventory/company/${companyId}`,
-        {
-          credentials: "include",
-        },
-      );
-
-      if (response.status === 500) {
-        toast({
-          title: "Erro temporário",
-          description:
-            "Ocorreu um erro no servidor. Tente novamente em alguns instantes.",
-          variant: "destructive",
-        });
-        throw new Error("Erro 500 no servidor");
-      }
-
-      if (!response.ok) throw new Error("Falha ao buscar estoque");
-
-      const data = await response.json();
+      const data = await inventoryService.list(companyId);
       console.log(">>> [INVENTORY] Dados recebidos do Back-end:", data);
       setInventory(data);
     } catch (error) {
@@ -126,125 +103,13 @@ export function InventoryManager() {
     } finally {
       setIsLoadingItems(false);
     }
-  }, [companyId, toast]); // Removido toast da dependência para evitar disparos indesejados no init
+  }, [companyId]); // Removido toast da dependência para evitar disparos indesejados no init
 
   useEffect(() => {
     if (companyId) {
       fetchInventory();
     }
   }, [companyId, fetchInventory]);
-
-  useEffect(() => {
-    // Só carrega do storage se não houver dados do servidor ainda e não estiver carregando
-    if (inventory.length === 0 && !isLoadingItems && !companyId) {
-      const loadedInventory = getInventoryFromStorage();
-      // ... rest of the existing storage logic ...
-
-      // Migração/Correção automática para o Algodão
-      let wasModified = false;
-      const fixedInventory = loadedInventory.map((item) => {
-        if (item.name === "Algodão") {
-          let needsFix = false;
-          const updatedItem = { ...item };
-
-          // Se o fator for 0.5 (erro comum de confusão), corrige para 500
-          // Ou se não tiver fator/unidade secundária configurada corretamente
-          if (item.conversionFactor === 0.5 || !item.secondaryUnit) {
-            updatedItem.conversionFactor = 500;
-            updatedItem.secondaryUnit = "g";
-            needsFix = true;
-          }
-
-          // Se a quantidade caiu para 100 devido ao erro de cálculo (120 - 20), restaura para 120
-          // Se caiu para 80 (100 - 20), restaura para 100
-          if (item.quantity === 100) {
-            updatedItem.quantity = 120;
-            needsFix = true;
-          } else if (item.quantity === 80) {
-            updatedItem.quantity = 100;
-            needsFix = true;
-          }
-
-          if (needsFix) {
-            wasModified = true;
-            updatedItem.lastUpdate = new Date().toISOString().split("T")[0];
-            return updatedItem;
-          }
-        }
-        return item;
-      });
-
-      if (wasModified) {
-        setInventory(fixedInventory);
-        saveInventoryToStorage(fixedInventory);
-        toast({
-          title: "Dados Corrigidos",
-          description:
-            "O estoque e fator de conversão do Algodão foram ajustados automaticamente.",
-        });
-      } else if (loadedInventory.length > 0) {
-        setInventory(loadedInventory);
-      } else {
-        // Dados iniciais caso não exista no storage
-        const initialInventory: InventoryItem[] = [
-          {
-            id: "1",
-            name: "Henna para Sobrancelhas - Castanho",
-            quantity: 8,
-            minQuantity: 5,
-            unit: "un",
-            price: 45.9,
-            lastUpdate: "2024-01-15",
-          },
-          {
-            id: "2",
-            name: "Pinça Profissional",
-            quantity: 3,
-            minQuantity: 3,
-            unit: "un",
-            price: 25.0,
-            lastUpdate: "2024-01-10",
-          },
-          {
-            id: "3",
-            name: "Algodão",
-            quantity: 120,
-            minQuantity: 50,
-            unit: "un",
-            secondaryUnit: "g",
-            conversionFactor: 500,
-            price: 12.5,
-            lastUpdate: "2025-12-31",
-          },
-          {
-            id: "4",
-            name: "Lápis para Sobrancelhas - Preto",
-            quantity: 15,
-            minQuantity: 10,
-            unit: "un",
-            price: 18.0,
-            lastUpdate: "2024-01-14",
-          },
-          {
-            id: "5",
-            name: "Gel Fixador",
-            quantity: 6,
-            minQuantity: 8,
-            unit: "un",
-            price: 35.0,
-            lastUpdate: "2024-01-08",
-          },
-        ];
-        setInventory(initialInventory);
-        saveInventoryToStorage(initialInventory);
-      }
-    }
-  }, [toast, companyId, inventory.length, isLoadingItems]);
-
-  const updateInventory = (newInventory: InventoryItem[]) => {
-    setInventory(newInventory);
-    saveInventoryToStorage(newInventory);
-  };
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -265,7 +130,8 @@ export function InventoryManager() {
   useEffect(() => {
     if (transactionItem) {
       setTransactionUnit("primary");
-      setTransactionPrice(transactionItem.item.price.toString());
+      const itemPrice = transactionItem.item.price ?? transactionItem.item.unitPrice ?? 0;
+      setTransactionPrice(itemPrice.toString());
     }
   }, [transactionItem]);
 
@@ -336,27 +202,7 @@ export function InventoryManager() {
         payload,
       );
 
-      const response = await fetch(`${API_BASE_URL}/api/inventory`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error(">>> [INVENTORY] Erro detalhado do Back-end:", errorData);
-
-        // Se o Back-end enviar detalhes de validação (comum em 422)
-        const detailedMessage =
-          errorData.error ||
-          errorData.message ||
-          (errorData.issues ? JSON.stringify(errorData.issues) : null);
-
-        throw new Error(detailedMessage || "Falha ao salvar produto");
-      }
+      await inventoryService.create(payload);
 
       toast({
         title: "Produto adicionado",
@@ -432,22 +278,7 @@ export function InventoryManager() {
         ),
       );
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/inventory/${editingItem.id}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-          credentials: "include",
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Erro ao atualizar produto.");
-      }
+      await inventoryService.update(editingItem.id, payload);
 
       await fetchInventory(); // Busca dados frescos do banco
       setEditingItem(null); // Fecha o modal APÓS o fetch
@@ -472,7 +303,7 @@ export function InventoryManager() {
     }
   };
 
-  const handleTransaction = () => {
+  const handleTransaction = async () => {
     if (!transactionItem) return;
 
     let qty = Number(transactionQuantity);
@@ -491,65 +322,61 @@ export function InventoryManager() {
       qty = qty / itemToUpdate.conversionFactor;
     }
 
-    updateInventory(
-      inventory.map((item) => {
-        if (item.id === itemToUpdate.id) {
-          const isEntrada = transactionItem.type === "entrada";
-          const newQty = isEntrada
-            ? item.quantity + qty
-            : Math.max(0, item.quantity - qty);
+    setIsSaving(true);
+    try {
+      const isEntrada = transactionItem.type === "entrada";
+      const newPrice =
+        isEntrada && transactionPrice
+          ? Number(transactionPrice)
+          : undefined;
 
-          // Se for entrada e o preço mudou, atualizamos o preço do item
-          // Estamos usando a lógica de REAJUSTE (novo preço substitui o antigo)
-          // mas você poderia implementar Preço Médio aqui se preferir.
-          const newPrice =
-            isEntrada && transactionPrice
-              ? Number(transactionPrice)
-              : item.price;
+      await inventoryService.addLog(itemToUpdate.id, {
+        type: transactionItem.type,
+        quantityChange: isEntrada ? qty : -qty,
+        notes: `Movimentação manual (${
+          transactionUnit === "primary"
+            ? itemToUpdate.unit
+            : itemToUpdate.secondaryUnit || itemToUpdate.unit
+        })${isEntrada && newPrice ? ` - Preço atualizado` : ""}`,
+        // O backend deve lidar com o preço se enviado no log ou via update separado
+      });
 
-          const logEntry: InventoryLog = {
-            id: Math.random().toString(36).substring(2, 11),
-            timestamp: new Date().toISOString(),
-            type: transactionItem.type,
-            quantityChange: isEntrada ? qty : -qty,
-            previousQuantity: item.quantity,
-            newQuantity: newQty,
-            notes: `Movimentação manual (${
-              transactionUnit === "primary"
-                ? item.unit
-                : item.secondaryUnit || item.unit
-            })${isEntrada && newPrice !== item.price ? ` - Preço atualizado de R$ ${item.price.toFixed(2)} para R$ ${newPrice.toFixed(2)}` : ""}`,
-          };
+      // Se o preço mudou, fazemos um update no item também
+      if (isEntrada && newPrice) {
+        await inventoryService.update(itemToUpdate.id, {
+          unitPrice: newPrice,
+        });
+      }
 
-          return {
-            ...item,
-            quantity: newQty,
-            price: newPrice,
-            lastUpdate: new Date().toISOString(),
-            logs: [logEntry, ...(item.logs || [])].slice(0, 50),
-          };
-        }
-        return item;
-      }),
-    );
+      await fetchInventory();
 
-    toast({
-      title:
-        transactionItem.type === "entrada"
-          ? "Entrada realizada"
-          : "Saída realizada",
-      description: `${(Number(transactionQuantity) || 0).toLocaleString("pt-BR")} ${
-        transactionUnit === "primary"
-          ? itemToUpdate.unit
-          : itemToUpdate.secondaryUnit || itemToUpdate.unit
-      } de ${itemToUpdate.name} ${
-        transactionItem.type === "entrada" ? "adicionados" : "removidos"
-      }.`,
-    });
+      toast({
+        title:
+          transactionItem.type === "entrada"
+            ? "Entrada realizada"
+            : "Saída realizada",
+        description: `${(Number(transactionQuantity) || 0).toLocaleString("pt-BR")} ${
+          transactionUnit === "primary"
+            ? itemToUpdate.unit
+            : itemToUpdate.secondaryUnit || itemToUpdate.unit
+        } de ${itemToUpdate.name} ${
+          transactionItem.type === "entrada" ? "adicionados" : "removidos"
+        }.`,
+      });
 
-    setTransactionItem(null);
-    setTransactionQuantity("1");
-    setTransactionPrice("");
+      setTransactionItem(null);
+      setTransactionQuantity("1");
+      setTransactionPrice("");
+    } catch (error) {
+      console.error("Erro na movimentação:", error);
+      toast({
+        title: "Erro na movimentação",
+        description: "Não foi possível registrar a movimentação no servidor.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteItem = async () => {
@@ -557,18 +384,7 @@ export function InventoryManager() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/inventory/${itemToDelete.id}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        },
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Erro ao excluir produto.");
-      }
+      await inventoryService.delete(itemToDelete.id);
 
       toast({
         title: "Produto removido",
@@ -619,12 +435,16 @@ export function InventoryManager() {
   }, [inventory, searchTerm, sortBy]);
 
   const lowStockItems = useMemo(() => {
-    return inventory.filter(
-      (item) =>
-        item &&
-        Number(item.quantity || item?.currentQuantity || 0) <=
-          Number(item.minQuantity || 0),
-    );
+    return inventory.filter((item) => {
+      if (!item) return false;
+      const quantity = Number(item.quantity || item?.currentQuantity || 0);
+      const minQuantity = Number(item.minQuantity || 0);
+      const factor = Number(item.conversionFactor || 1);
+
+      // Se houver fator de conversão, comparamos a quantidade total em unidades de consumo
+      const effectiveQuantity = quantity * factor;
+      return effectiveQuantity <= minQuantity;
+    });
   }, [inventory]);
 
   if (isStudioLoading || (isLoadingItems && inventory.length === 0)) {
@@ -783,7 +603,9 @@ export function InventoryManager() {
                               "text-[9px] sm:text-xs",
                               Number(
                                 item?.quantity || item?.currentQuantity || 0,
-                              ) <= Number(item?.minQuantity || 0)
+                              ) *
+                                (item?.conversionFactor || 1) <=
+                                Number(item?.minQuantity || 0)
                                 ? "text-red-600 font-bold"
                                 : "text-muted-foreground",
                             )}
@@ -795,7 +617,9 @@ export function InventoryManager() {
                           </span>
                           {Number(
                             item?.quantity || item?.currentQuantity || 0,
-                          ) <= Number(item?.minQuantity || 0) && (
+                          ) *
+                            (item?.conversionFactor || 1) <=
+                            Number(item?.minQuantity || 0) && (
                             <Badge
                               variant="outline"
                               className="h-3 px-1 text-[6px] sm:text-[8px] bg-red-50 text-red-700 border-red-200"
@@ -811,7 +635,9 @@ export function InventoryManager() {
                         className={
                           Number(
                             item?.quantity || item?.currentQuantity || 0,
-                          ) <= Number(item?.minQuantity || 0)
+                          ) *
+                            (item?.conversionFactor || 1) <=
+                          Number(item?.minQuantity || 0)
                             ? "text-red-600 font-semibold"
                             : ""
                         }
@@ -834,7 +660,8 @@ export function InventoryManager() {
                       }).format(item?.price || item?.unitPrice || 0)}
                     </TableCell>
                     <TableCell className="hidden 2xl:table-cell">
-                      {Number(item?.quantity || item?.currentQuantity || 0) >
+                      {Number(item?.quantity || item?.currentQuantity || 0) *
+                        (item?.conversionFactor || 1) >
                       Number(item?.minQuantity || 0) ? (
                         <Badge
                           variant="outline"
@@ -1148,7 +975,7 @@ export function InventoryManager() {
                     type="number"
                     step="0.001"
                     value={
-                      editingItem.quantity === undefined ||
+                      editingItem.quantity == null ||
                       Number.isNaN(Number(editingItem.quantity))
                         ? "0"
                         : editingItem.quantity
@@ -1164,7 +991,14 @@ export function InventoryManager() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="edit-min-quantity">Quantidade Mínima</Label>
+                    <Label htmlFor="edit-min-quantity">
+                      Quantidade Mínima{" "}
+                      {editingItem.secondaryUnit
+                        ? `(${editingItem.secondaryUnit})`
+                        : editingItem.unit
+                        ? `(${editingItem.unit})`
+                        : ""}
+                    </Label>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
@@ -1173,6 +1007,13 @@ export function InventoryManager() {
                         <p>
                           O sistema avisará quando o estoque for igual ou menor
                           que este valor.
+                          {editingItem.secondaryUnit && (
+                            <>
+                              <br />
+                              <strong>Dica:</strong> Use a unidade de consumo (
+                              {editingItem.secondaryUnit}) para o alerta.
+                            </>
+                          )}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -1182,8 +1023,8 @@ export function InventoryManager() {
                     type="number"
                     step="0.001"
                     value={
-                      editingItem.minQuantity === undefined ||
-                      Number.isNaN(editingItem.minQuantity)
+                      editingItem.minQuantity == null ||
+                      Number.isNaN(Number(editingItem.minQuantity))
                         ? "0"
                         : editingItem.minQuantity
                     }
@@ -1216,11 +1057,10 @@ export function InventoryManager() {
                     type="number"
                     step="0.01"
                     value={
-                      (editingItem.price || editingItem.unitPrice) ===
-                        undefined ||
-                      Number.isNaN(editingItem.price || editingItem.unitPrice)
+                      (editingItem.price ?? editingItem.unitPrice) == null ||
+                      Number.isNaN(Number(editingItem.price ?? editingItem.unitPrice))
                         ? "0"
-                        : editingItem.price || editingItem.unitPrice
+                        : editingItem.price ?? editingItem.unitPrice
                     }
                     onChange={(e) => {
                       const val =
@@ -1330,8 +1170,8 @@ export function InventoryManager() {
                     step="0.001"
                     placeholder="Ex: 500"
                     value={
-                      editingItem.conversionFactor === undefined ||
-                      Number.isNaN(editingItem.conversionFactor)
+                      editingItem.conversionFactor == null ||
+                      Number.isNaN(Number(editingItem.conversionFactor))
                         ? ""
                         : editingItem.conversionFactor
                     }

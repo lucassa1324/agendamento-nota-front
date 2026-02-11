@@ -60,11 +60,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useStudio } from "@/context/studio-context";
+import { appointmentService } from "@/lib/api-appointments";
 import {
-  getBookingsFromStorage,
-  getInventoryFromStorage,
   type InventoryLog,
 } from "@/lib/booking-data";
+import { expensesService } from "@/lib/expenses-service";
+import { inventoryService, type InventoryItem } from "@/lib/inventory-service";
 import { cn } from "@/lib/utils";
 
 type GlobalInventoryLog = InventoryLog & {
@@ -84,6 +86,8 @@ type FinancialMovement = {
 };
 
 export function Reports() {
+  const { studio } = useStudio();
+  const [isLoading, setIsLoading] = useState(true);
   const [reportData, setReportData] = useState({
     totalRevenue: 0,
     monthlyRevenue: [] as { month: string; revenue: number }[],
@@ -104,144 +108,173 @@ export function Reports() {
   const [filterType, setFilterType] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const generateReports = useCallback(() => {
-    const bookings = getBookingsFromStorage();
-    const inventory = getInventoryFromStorage();
+  const generateReports = useCallback(async () => {
+    if (!studio?.id) return;
 
-    // Filtros de agendamentos por status
-    const completedBookings = bookings.filter((b) => b.status === "concluído");
-    const pendingBookings = bookings.filter((b) => b.status === "pendente");
-    const confirmedBookings = bookings.filter((b) => b.status === "confirmado");
-    const cancelledBookings = bookings.filter((b) => b.status === "cancelado");
+    setIsLoading(true);
+    try {
+      // Buscar dados reais da API
+      const [appointments, inventory, expenses] = await Promise.all([
+        appointmentService.listByCompanyAdmin(studio.id),
+        inventoryService.list(studio.id),
+        expensesService.list(studio.id),
+      ]);
 
-    // Valor total do inventário e contagem de estoque baixo
-    let lowStockCount = 0;
-    const totalInventoryValue = inventory.reduce((sum, item) => {
-      if (item.quantity <= item.minQuantity) lowStockCount++;
-      return sum + item.price * item.quantity;
-    }, 0);
+      console.log(">>> [REPORTS] Dados recebidos:", {
+        appointmentsCount: appointments.length,
+        inventoryCount: inventory.length,
+        expensesCount: expenses.length,
+      });
 
-    // Coletar todos os logs de todos os produtos e ordenar por data
-    const allLogs: GlobalInventoryLog[] = [];
-    const inventoryMovements: FinancialMovement[] = [];
-
-    inventory.forEach((item) => {
-      if (item.logs) {
-        item.logs.forEach((log) => {
-          allLogs.push({
-            ...log,
-            productName: item.name,
-            unit: item.unit,
-            price: item.price,
-          });
-
-          // Se for adição de estoque, consideramos como saída de caixa (compra)
-          if (log.type === "entrada") {
-            inventoryMovements.push({
-              id: `inv-${item.id}-${log.timestamp}`,
-              date: log.timestamp,
-              description: `Compra de Estoque: ${item.name}`,
-              type: "exit",
-              category: "Estoque",
-              amount: log.quantityChange * item.price,
-              status: "completed",
-            });
-          }
-        });
+      if (inventory.length > 0) {
+        console.log(">>> [REPORTS] Exemplo item estoque:", inventory[0]);
       }
-    });
 
-    const recentMovements = allLogs
-      .sort(
-        (a, b) =>
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-      )
-      .slice(0, 15);
+      // Filtros de agendamentos por status
+      const finishedBookings = appointments.filter((b) => b.status === "COMPLETED");
+      const pendingBookings = appointments.filter((b) => b.status === "PENDING");
+      const confirmedBookings = appointments.filter((b) => b.status === "CONFIRMED");
+      const cancelledBookings = appointments.filter((b) => b.status === "CANCELLED");
 
-    // Mapear agendamentos para movimentações financeiras (Apenas Concluídos)
-    const bookingMovements: FinancialMovement[] = bookings
-      .filter((booking) => booking.status === "concluído")
-      .map((booking) => ({
+      // Valor total do inventário e contagem de estoque baixo
+      let lowStockCount = 0;
+      const totalInventoryValue = inventory.reduce((sum, item) => {
+        const qty = Number(item.quantity ?? item.currentQuantity ?? 0);
+        const price = Number(item.price ?? item.unitPrice ?? 0);
+        const minQty = Number(item.minQuantity ?? 0);
+        const factor = Number(item.conversionFactor ?? 1);
+
+        if (qty * factor <= minQty) lowStockCount++;
+        return sum + price * qty;
+      }, 0);
+
+      // Coletar todos os logs de todos os produtos e ordenar por data
+      const allLogs: GlobalInventoryLog[] = [];
+      const inventoryMovements: FinancialMovement[] = [];
+
+      inventory.forEach((item) => {
+        const itemPrice = Number(item.price ?? item.unitPrice ?? 0);
+
+        if (item.logs && Array.isArray(item.logs)) {
+          item.logs.forEach((log) => {
+            allLogs.push({
+              ...log,
+              productName: item.name,
+              unit: item.unit,
+              price: itemPrice,
+            });
+
+            // Se for adição de estoque, consideramos como saída de caixa (compra)
+            if (log.type === "entrada") {
+              inventoryMovements.push({
+                id: `inv-${item.id}-${log.timestamp}`,
+                date: log.timestamp,
+                description: `Compra de Estoque: ${item.name}`,
+                type: "exit",
+                category: "Estoque",
+                amount: (log.quantityChange || 0) * itemPrice,
+                status: "completed",
+              });
+            }
+          });
+        }
+      });
+
+      const recentMovements = allLogs
+        .sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+        )
+        .slice(0, 15);
+
+      // Mapear agendamentos para movimentações financeiras (Apenas Concluídos)
+      const bookingMovements: FinancialMovement[] = finishedBookings.map((booking) => ({
         id: booking.id,
-        date: booking.date,
-        description: `Serviço: ${booking.serviceName}`,
+        date: booking.scheduledAt,
+        description: `Serviço: ${booking.serviceNameSnapshot}`,
         type: "entry",
         category: "Serviços",
-        amount: booking.servicePrice || 0,
+        amount: parseFloat(booking.servicePriceSnapshot) || 0,
         status: "completed",
       }));
 
-    // Combinar e ordenar todas as movimentações
-    const allMovements = [...bookingMovements, ...inventoryMovements].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    );
+      // Mapear gastos fixos para movimentações financeiras
+      const expenseMovements: FinancialMovement[] = expenses.map((expense) => ({
+        id: expense.id,
+        date: expense.dueDate,
+        description: `Gasto: ${expense.description}`,
+        type: "exit",
+        category: expense.category,
+        amount: parseFloat(expense.value) || 0,
+        status: expense.isPaid ? "completed" : "pending",
+      }));
 
-    // Total de faturamento (apenas concluídos)
-    const totalRevenue = completedBookings.reduce((sum, booking) => {
-      return sum + (booking.servicePrice || 0);
-    }, 0);
+      // Combinar e ordenar todas as movimentações
+      const allMovements = [...bookingMovements, ...inventoryMovements, ...expenseMovements].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      );
 
-    // Faturamento mensal (últimos 6 meses) - apenas concluídos
-    const monthlyData: { [key: string]: number } = {};
-    const monthNames = [
-      "Jan",
-      "Fev",
-      "Mar",
-      "Abr",
-      "Mai",
-      "Jun",
-      "Jul",
-      "Ago",
-      "Set",
-      "Out",
-      "Nov",
-      "Dez",
-    ];
+      // Total de faturamento (apenas concluídos)
+      const totalRevenue = finishedBookings.reduce((sum, booking) => {
+        return sum + (parseFloat(booking.servicePriceSnapshot) || 0);
+      }, 0);
 
-    completedBookings.forEach((booking) => {
-      const date = new Date(booking.date);
-      const monthKey = `${monthNames[date.getMonth()]}/${date.getFullYear().toString().slice(-2)}`;
-      monthlyData[monthKey] =
-        (monthlyData[monthKey] || 0) + (booking.servicePrice || 0);
-    });
+      // Faturamento mensal (últimos 6 meses) - apenas concluídos
+      const monthlyData: { [key: string]: number } = {};
+      const monthNames = [
+        "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+        "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+      ];
 
-    const monthlyRevenue = Object.entries(monthlyData)
-      .map(([month, revenue]) => ({ month, revenue }))
-      .slice(-6);
-
-    // Distribuição por serviço (apenas concluídos para métricas de faturamento)
-    const serviceCount: { [key: string]: number } = {};
-    completedBookings.forEach((booking) => {
-      const serviceNames = booking.serviceName.split(" + ");
-      serviceNames.forEach((name) => {
-        serviceCount[name] = (serviceCount[name] || 0) + 1;
+      finishedBookings.forEach((booking) => {
+        const date = new Date(booking.scheduledAt);
+        const monthKey = `${monthNames[date.getMonth()]}/${date.getFullYear().toString().slice(-2)}`;
+        monthlyData[monthKey] =
+          (monthlyData[monthKey] || 0) + (parseFloat(booking.servicePriceSnapshot) || 0);
       });
-    });
 
-    const serviceDistribution = Object.entries(serviceCount).map(
-      ([name, value]) => ({ name, value }),
-    );
+      const monthlyRevenue = Object.entries(monthlyData)
+        .map(([month, revenue]) => ({ month, revenue }))
+        .slice(-6);
 
-    const topServices = Object.entries(serviceCount)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+      // Distribuição por serviço (apenas concluídos para métricas de faturamento)
+      const serviceCount: { [key: string]: number } = {};
+      finishedBookings.forEach((booking) => {
+        const serviceNames = booking.serviceNameSnapshot.split(" + ");
+        serviceNames.forEach((name) => {
+          serviceCount[name] = (serviceCount[name] || 0) + 1;
+        });
+      });
 
-    setReportData({
-      totalRevenue,
-      monthlyRevenue,
-      serviceDistribution,
-      totalBookings: completedBookings.length,
-      pendingCount: pendingBookings.length,
-      confirmedCount: confirmedBookings.length,
-      cancelledCount: cancelledBookings.length,
-      recentMovements,
-      totalInventoryValue,
-      lowStockCount,
-      topServices,
-      financialMovements: allMovements,
-    });
-  }, []);
+      const serviceDistribution = Object.entries(serviceCount).map(
+        ([name, value]) => ({ name, value }),
+      );
+
+      const topServices = Object.entries(serviceCount)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      setReportData({
+        totalRevenue,
+        monthlyRevenue,
+        serviceDistribution,
+        totalBookings: finishedBookings.length,
+        pendingCount: pendingBookings.length,
+        confirmedCount: confirmedBookings.length,
+        cancelledCount: cancelledBookings.length,
+        recentMovements,
+        totalInventoryValue,
+        lowStockCount,
+        topServices,
+        financialMovements: allMovements,
+      });
+    } catch (error) {
+      console.error("Erro ao gerar relatórios:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [studio?.id]);
 
   // Dados filtrados para a tabela
   const filteredMovements = useMemo(() => {
@@ -307,7 +340,7 @@ export function Reports() {
     );
   }, [filteredMovements]);
 
-  const handleExport = (
+  const handleExport = async (
     type: "financeiro" | "agendamentos" | "estoque" | "geral",
   ) => {
     let csvContent = "";
@@ -327,7 +360,8 @@ export function Reports() {
       });
       csvContent += `\nTotal Agendamentos,${reportData.totalBookings}\n`;
     } else if (type === "estoque") {
-      const inventory = getInventoryFromStorage();
+      if (!studio?.id) return;
+      const inventory = await inventoryService.list(studio.id);
       csvContent = "Produto,Quantidade,Unidade,Preco,Valor Total\n";
       inventory.forEach((item) => {
         csvContent += `${item.name},${item.quantity},${item.unit},${item.price},${item.quantity * item.price}\n`;
@@ -402,7 +436,11 @@ export function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-accent">
-                  R$ {reportData.totalRevenue.toLocaleString("pt-BR")}
+                  {isLoading ? (
+                    <div className="h-8 w-24 bg-muted animate-pulse rounded" />
+                  ) : (
+                    `R$ ${reportData.totalRevenue.toLocaleString("pt-BR")}`
+                  )}
                 </div>
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-green-600 font-medium">
                   <TrendingUp className="w-3 h-3" />
@@ -419,7 +457,11 @@ export function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {reportData.totalBookings}
+                  {isLoading ? (
+                    <div className="h-8 w-16 bg-muted animate-pulse rounded" />
+                  ) : (
+                    reportData.totalBookings
+                  )}
                 </div>
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
                   <CheckCircle2 className="w-3 h-3 text-green-500" />
@@ -436,16 +478,20 @@ export function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
-                  {reportData.pendingCount + reportData.confirmedCount}
+                  {isLoading ? (
+                    <div className="h-8 w-16 bg-muted animate-pulse rounded" />
+                  ) : (
+                    reportData.pendingCount + reportData.confirmedCount
+                  )}
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                    <Clock className="w-2.5 h-2.5" /> {reportData.pendingCount}{" "}
-                    pend.
+                    <Clock className="w-2.5 h-2.5" />{" "}
+                    {isLoading ? "..." : reportData.pendingCount} pend.
                   </span>
                   <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                     <CalendarCheck className="w-2.5 h-2.5" />{" "}
-                    {reportData.confirmedCount} conf.
+                    {isLoading ? "..." : reportData.confirmedCount} conf.
                   </span>
                 </div>
               </CardContent>
@@ -459,7 +505,11 @@ export function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-500">
-                  {reportData.cancelledCount}
+                  {isLoading ? (
+                    <div className="h-8 w-16 bg-muted animate-pulse rounded" />
+                  ) : (
+                    reportData.cancelledCount
+                  )}
                 </div>
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
                   <XCircle className="w-3 h-3 text-red-400" />
@@ -476,7 +526,11 @@ export function Reports() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  R$ {reportData.totalInventoryValue.toLocaleString("pt-BR")}
+                  {isLoading ? (
+                    <div className="h-8 w-24 bg-muted animate-pulse rounded" />
+                  ) : (
+                    `R$ ${reportData.totalInventoryValue.toLocaleString("pt-BR")}`
+                  )}
                 </div>
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
                   <Package className="w-3 h-3" />

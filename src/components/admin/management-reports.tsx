@@ -149,8 +149,9 @@ export function ManagementReports() {
       // Revalidar dados
       fetchExpenses();
       fetchReport();
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao salvar gasto.");
+    } catch (error) {
+      const err = error as { message?: string };
+      toast.error(err.message || "Erro ao salvar gasto.");
     } finally {
       setIsSubmitting(false);
     }
@@ -174,8 +175,9 @@ export function ManagementReports() {
       toast.success("Gasto excluído com sucesso!");
       fetchExpenses();
       fetchReport();
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao excluir gasto.");
+    } catch (error) {
+      const err = error as { message?: string };
+      toast.error(err.message || "Erro ao excluir gasto.");
     }
   };
 
@@ -185,8 +187,9 @@ export function ManagementReports() {
       toast.success(expense.isPaid ? "Marcado como não pago" : "Marcado como pago!");
       fetchExpenses();
       fetchReport();
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao atualizar status.");
+    } catch (error) {
+      const err = error as { message?: string };
+      toast.error(err.message || "Erro ao atualizar status.");
     }
   };
 
