@@ -43,6 +43,7 @@ import {
   type Service,
   saveBookingToStorage,
 } from "@/lib/booking-data";
+import { businessService } from "@/lib/business-service";
 import { cn } from "@/lib/utils";
 
 type AdminCalendarProps = {
@@ -70,19 +71,46 @@ export function AdminCalendar({
   const { toast } = useToast();
 
   useEffect(() => {
-    if (studio?.id) {
-      const weekSchedule = getWeekSchedule();
-      const firstOpenDay = weekSchedule.find(d => d.isOpen);
-      if (firstOpenDay) {
-        setSlotInterval(firstOpenDay.interval);
+    async function loadSettings() {
+      if (studio?.id) {
+        try {
+          const settings = await businessService.getSettings(studio.id);
+          if (settings) {
+            // Tenta pegar o intervalo global ou o primeiro dia aberto
+            const interval = parseDuration(settings.interval || settings.slotInterval);
+            if (interval > 0) {
+              setSlotInterval(interval);
+              return;
+            }
+
+            if (settings.weekly) {
+              const firstOpenDay = settings.weekly.find(d => d.status === "OPEN");
+              if (firstOpenDay) {
+                // Se chegamos aqui, o intervalo global não existia, então tentamos deduzir ou usar o padrão
+                // mas por enquanto apenas removemos a variável não utilizada
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Erro ao carregar configurações no calendário admin:", error);
+        }
+
+        // Fallback para o que temos no localStorage
+        const weekSchedule = getWeekSchedule();
+        const firstOpenDay = weekSchedule.find(d => d.isOpen);
+        if (firstOpenDay) {
+          setSlotInterval(firstOpenDay.interval);
+        }
       }
     }
+    loadSettings();
   }, [studio]);
 
   const [newBooking, setNewBooking] = useState({
     clientName: "",
     clientPhone: "",
     serviceIds: [] as string[],
+    serviceObjects: [] as Service[],
   });
 
   const getAuthOptions = useCallback(() => {
@@ -123,10 +151,12 @@ export function AdminCalendar({
     try {
       const authOptions = getAuthOptions();
 
+      const timestamp = Date.now();
       const response = await fetch(
-        `${API_BASE_URL}/api/services/company/${studio.id}`,
+        `${API_BASE_URL}/api/services/company/${studio.id}?t=${timestamp}`,
         {
           ...authOptions,
+          cache: "no-store",
         },
       );
 
@@ -163,6 +193,15 @@ export function AdminCalendar({
 
           const dateObj = parseISO(app.scheduledAt);
 
+          // Mapear status da API para status legado do Front
+          const mapStatusFromApi = (status: string): BookingStatus => {
+            const s = status.toUpperCase();
+            if (s === "CONFIRMED") return "confirmado";
+            if (s === "COMPLETED") return "concluído";
+            if (s === "CANCELLED") return "cancelado";
+            return "pendente";
+          };
+
           return {
             id: app.id,
             serviceId: app.serviceId,
@@ -174,13 +213,7 @@ export function AdminCalendar({
             clientName: app.customerName || "Cliente não informado",
             clientEmail: app.customerEmail || "",
             clientPhone: app.customerPhone || "",
-            status: (app.status.toLowerCase() === "confirmed"
-              ? "confirmado"
-              : app.status.toLowerCase() === "completed"
-                ? "concluído"
-                : app.status.toLowerCase() === "cancelled"
-                  ? "cancelado"
-                  : "pending") as BookingStatus,
+            status: mapStatusFromApi(app.status),
             createdAt: app.createdAt,
             notificationsSent: {
               email: false,
@@ -217,7 +250,9 @@ export function AdminCalendar({
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
 
+  useEffect(() => {
     // Escutar mudanças no localStorage (ex: quando um agendamento é deletado/editado no BookingsManager)
     const handleStorageChange = () => loadData();
     window.addEventListener("storage", handleStorageChange);
@@ -342,7 +377,7 @@ export function AdminCalendar({
       }
 
       setIsAddDialogOpen(false);
-      setNewBooking({ clientName: "", clientPhone: "", serviceIds: [] });
+      setNewBooking({ clientName: "", clientPhone: "", serviceIds: [], serviceObjects: [] });
 
       toast({
         title: "Sucesso",
@@ -366,8 +401,13 @@ export function AdminCalendar({
     }
   };
 
-  // Gerar horários do dia baseado no intervalo configurado
+  // Gerar horários do dia baseado no intervalo configurado e horários de funcionamento
   const timeSlots = useMemo(() => {
+    // Usamos o dia atual para filtrar o horário de funcionamento se disponível
+    // Mas para o admin, geralmente mostramos o dia todo ou o intervalo configurado.
+    // Vamos usar a função utilitária para respeitar os horários de abertura/fechamento se possível,
+    // ou gerar 24h se o admin preferir visão total.
+    
     const slots = [];
     const startHour = 0;
     const endHour = 23;
@@ -430,25 +470,8 @@ export function AdminCalendar({
     );
   };
 
-  const isConflictSlot = (time: string) => {
-    if (!_service) return false;
-
-    const [currH, currM] = time.split(":").map(Number);
-    const currStart = currH * 60 + currM;
-    const duration = _service.duration || 30;
-    const currEnd = currStart + duration;
-
-    return bookings.some((b) => {
-      if (b.date !== dateStr || b.status === "cancelado") return false;
-
-      const [bH, bM] = b.time.split(":").map(Number);
-      const bStart = bH * 60 + bM;
-      const bEnd = bStart + b.serviceDuration;
-
-      // Verifica sobreposição: o agendamento que começaria em 'time'
-      // entraria no espaço de um agendamento já existente?
-      return currStart < bEnd && bStart < currEnd;
-    });
+  const isConflictSlot = () => {
+    return false;
   };
 
   return (
@@ -547,7 +570,7 @@ export function AdminCalendar({
               {timeSlots.map((time) => {
                 const booking = getOccupyingBooking(time);
                 const isPreview = isPreviewSlot(time);
-                const isConflict = isConflictSlot(time);
+                const isConflict = isConflictSlot();
                 const past = isTimeInPast(time);
 
                 return (
@@ -710,28 +733,51 @@ export function AdminCalendar({
             <div className="grid gap-2">
               <Label>Serviços</Label>
               <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto p-2 border rounded-md">
-                {services.map((service, index) => (
-                  <div key={service.id ? `${service.id}-${index}` : `service-add-${index}`} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`service-${service.id}`}
-                      checked={newBooking.serviceIds.includes(service.id)}
-                      onCheckedChange={(checked) => {
-                        setNewBooking((prev) => ({
-                          ...prev,
-                          serviceIds: checked
-                            ? [...prev.serviceIds, service.id]
-                            : prev.serviceIds.filter((id) => id !== service.id),
-                        }));
-                      }}
-                    />
-                    <label
-                      htmlFor={`service-${service.id}`}
-                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                {services.map((service, index) => {
+                  const isSelected = newBooking.serviceIds.includes(service.id);
+                  const isConflicting = false; // Desabilitado no admin
+                  
+                  return (
+                    <div 
+                      key={service.id ? `${service.id}-${index}` : `service-add-${index}`} 
+                      className={cn(
+                        "flex items-center space-x-2 p-1 rounded transition-colors",
+                        isConflicting && "opacity-40 grayscale-[0.8] bg-muted/30"
+                      )}
                     >
-                      {service.name} - R$ {service.price}
-                    </label>
-                  </div>
-                ))}
+                      <Checkbox
+                        id={`service-${service.id}`}
+                        checked={isSelected}
+                        disabled={isConflicting}
+                        onCheckedChange={(checked) => {
+                          setNewBooking((prev) => ({
+                            ...prev,
+                            serviceIds: checked
+                              ? [...prev.serviceIds, service.id]
+                              : prev.serviceIds.filter((id) => id !== service.id),
+                            serviceObjects: checked
+                              ? [...prev.serviceObjects, service]
+                              : prev.serviceObjects.filter((s) => s.id !== service.id),
+                          }));
+                        }}
+                      />
+                      <label
+                        htmlFor={`service-${service.id}`}
+                        className={cn(
+                          "text-sm font-medium leading-none cursor-pointer flex-1",
+                          isConflicting && "cursor-not-allowed"
+                        )}
+                      >
+                        {service.name} - R$ {service.price}
+                        {isConflicting && (
+                          <span className="text-[10px] text-destructive ml-2 font-normal">
+                            (Conflito)
+                          </span>
+                        )}
+                      </label>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

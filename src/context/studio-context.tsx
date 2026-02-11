@@ -13,6 +13,7 @@ import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-si
 import { API_BASE_URL, BASE_DOMAIN } from "@/lib/auth-client";
 import type { Business, ColorSettings, FontSettings, HeroSettings } from "@/lib/booking-data";
 import {
+  getStorageKey,
   saveColorSettings,
   saveCTASettings,
   saveFontSettings,
@@ -54,6 +55,43 @@ export function StudioProvider({
   const updateStudioInfo = useCallback((updates: Partial<Business>) => {
     setStudio((prev) => (prev ? { ...prev, ...updates } : null));
   }, []);
+
+  // --- NOVO: Sincronização de Fonte Única da Verdade (DB -> LocalStorage) ---
+  useEffect(() => {
+    if (studio?.services && studio.services.length > 0) {
+      try {
+        console.log(`>>> [STORAGE_SYNC] Iniciando sincronização de ${studio.services.length} serviços do Banco para LocalStorage...`);
+        
+        // 1. Limpeza de dados antigos/órfãos para garantir frescor
+        // Removemos tanto a chave global quanto a chave específica do usuário para evitar lixo
+        localStorage.removeItem("services");
+        localStorage.removeItem("studioSettings");
+        
+        const userServicesKey = getStorageKey("services");
+        const userSettingsKey = getStorageKey("studioSettings");
+        
+        if (userServicesKey !== "services") localStorage.removeItem(userServicesKey);
+        if (userSettingsKey !== "studioSettings") localStorage.removeItem(userSettingsKey);
+        
+        // 2. Sincronização via helper saveServices (preserva UUIDs originais do banco)
+        // O saveServices já utiliza o getStorageKey internamente
+        saveServices(studio.services);
+        
+        // Log detalhado para validação de UUIDs e Regras
+        console.log(">>> [STORAGE_SYNC] Amostra de UUIDs sincronizados:", studio.services.slice(0, 3).map(s => ({ name: s.name, id: s.id })));
+        
+        // 3. Log de confirmação conforme solicitado
+        console.log(">>> [STORAGE_SYNC] LocalStorage atualizado com as regras do Banco de Dados.");
+        
+        // Dispara evento para componentes que dependem de dados atualizados (como ServiceSelector)
+        window.dispatchEvent(new Event("servicesUpdated"));
+        window.dispatchEvent(new Event("studioSettingsUpdated"));
+      } catch (err) {
+        console.error(">>> [STORAGE_SYNC] Erro ao sincronizar serviços com LocalStorage:", err);
+      }
+    }
+  }, [studio?.services]);
+  // --------------------------------------------------------------------------
 
   useEffect(() => {
     if (initialSlug) {

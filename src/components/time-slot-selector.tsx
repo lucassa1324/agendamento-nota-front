@@ -117,8 +117,13 @@ export function TimeSlotSelector({
 
       // 2. Processar Agendamentos
       const dayAppointments = appointments.filter(app => {
-        // Usar format do date-fns para garantir comparação com data LOCAL (YYYY-MM-DD)
-        const appDate = format(new Date(app.scheduledAt), "yyyy-MM-dd");
+        // Garantir que estamos comparando a data no fuso local, já que o input 'date' (YYYY-MM-DD) é local
+        // Se app.scheduledAt for "2024-01-01T03:00:00Z" e estivermos no GTM-3, vira "2024-01-01T00:00:00" local
+        const dateObj = new Date(app.scheduledAt);
+        const appDate = format(dateObj, "yyyy-MM-dd");
+        
+        console.log(`>>> [DEBUG_SLOTS] Verificando agendamento: ${app.customerName} - Original: ${app.scheduledAt} -> Local: ${appDate} (Filtro: ${date})`);
+        
         return appDate === date && app.status !== 'CANCELLED';
       });
 
@@ -129,15 +134,21 @@ export function TimeSlotSelector({
         else if (apiStatus === 'cancelled') status = 'cancelado';
         else if (apiStatus === 'completed') status = 'concluído';
         
+        const dateObj = new Date(app.scheduledAt);
+        const bookingTime = format(dateObj, "HH:mm");
+        const duration = parseDuration(app.serviceDurationSnapshot) || 60;
+
+        console.log(`>>> [DEBUG_SLOTS] Agendamento convertido: ${app.customerName} @ ${bookingTime} (Duração: ${duration}min)`);
+
         return {
           id: app.id,
           serviceId: app.serviceId,
           serviceName: app.serviceNameSnapshot,
           // Corrigido: Converter "HH:mm" para minutos totais, senão parseInt("01:00") vira 1 minuto
-          serviceDuration: parseDuration(app.serviceDurationSnapshot) || 60,
+          serviceDuration: duration,
           servicePrice: parseFloat(app.servicePriceSnapshot),
-          date: format(new Date(app.scheduledAt), "yyyy-MM-dd"),
-          time: format(new Date(app.scheduledAt), "HH:mm"),
+          date: format(dateObj, "yyyy-MM-dd"),
+          time: bookingTime,
           clientName: app.customerName,
           clientEmail: app.customerEmail,
           clientPhone: app.customerPhone,
@@ -146,6 +157,8 @@ export function TimeSlotSelector({
           notificationsSent: { email: false, whatsapp: false }
         };
       });
+
+      console.log(">>> [DEBUG_SLOTS] Agendamentos finais para o dia:", convertedBookings);
 
       // 3. Gerar Slots
       const intervalToUse = backendInterval || currentDaySchedule?.interval || finalInterval;

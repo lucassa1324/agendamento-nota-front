@@ -423,11 +423,14 @@ export function ServicesManager() {
     console.log(">>> [SERVICES_MANAGER] Editando serviço:", service);
 
     // Extração resiliente de conflitos (suporta advanced_rules, advancedRules ou conflictingServiceIds)
-    const conflicts =
-      service.advanced_rules?.conflicts ||
-      service.advancedRules?.conflicts ||
-      service.conflictingServiceIds ||
-      [];
+    const getConflicts = (s: Service) => {
+      const advRules = s.advancedRules || s.advanced_rules;
+      if (Array.isArray(advRules)) return advRules;
+      if (advRules?.conflicts) return advRules.conflicts;
+      return s.conflictingServiceIds || s.conflicting_service_ids || [];
+    };
+
+    const conflicts = getConflicts(service);
 
     setEditingId(service.id);
     setFormData({

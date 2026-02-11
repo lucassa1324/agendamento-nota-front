@@ -14,38 +14,113 @@ import { cn } from "@/lib/utils";
 
 type ServiceSelectorProps = {
   onSelect: (services: Service[]) => void;
+  onConfirm?: () => void;
   selectedServices?: Service[];
   settings?: BookingStepSettings;
+  bypassConflicts?: boolean;
 };
 
 export function ServiceSelector({
   onSelect,
+  onConfirm,
   selectedServices: initialSelected = [],
   settings,
+  bypassConflicts = false,
 }: ServiceSelectorProps) {
   const { studio } = useStudio();
   const [services, setServices] = useState<Service[]>([]);
   const [selected, setSelected] = useState<Service[]>(initialSelected);
 
   useEffect(() => {
-    // Se tivermos dados do studio via context (multi-tenant), usamos os serviços dele
+    // Sincroniza o estado interno se initialSelected mudar (importante para reset)
+    setSelected(initialSelected);
+  }, [initialSelected]);
+
+  useEffect(() => {
+    // No flow do cliente, preferimos sempre os dados do studio vindos do context,
+    // que são buscados da API com cache: 'no-store'.
     if (studio?.services && studio.services.length > 0) {
+      console.log(">>> [SERVICE_SELECTOR] Usando serviços dinâmicos do banco (API):", studio.services.length);
+      console.log(">>> [SERVICE_SELECTOR] Detalhes dos serviços carregados:", studio.services.map(s => {
+        const advRules = s.advancedRules || s.advanced_rules;
+        const conflicts = Array.isArray(advRules) ? advRules : advRules?.conflicts;
+        return {
+          id: s.id,
+          name: s.name,
+          conflitos_id: s.conflicting_service_ids || s.conflictingServiceIds,
+          conflitos_rules: conflicts,
+          grupo: s.conflict_group_id || s.conflictGroupId
+        };
+      }));
       setServices(studio.services);
     } else {
+      // Fallback apenas se o studio ainda não carregou
       const settings = getSettingsFromStorage();
-      setServices(settings.services);
+      if (settings?.services) {
+        console.log(">>> [SERVICE_SELECTOR] Usando fallback do localStorage:", settings.services.length);
+        setServices(settings.services);
+      }
     }
   }, [studio]);
 
+  const extractConflicts = (s: Service): string[] => {
+     let list: (string | number)[] = [];
+     
+     // 1. Array direto em advancedRules ou advanced_rules (conforme log do usuário)
+     if (Array.isArray(s.advancedRules)) {
+       list = [...list, ...s.advancedRules];
+     } else if (s.advancedRules && typeof s.advancedRules === 'object' && 'conflicts' in s.advancedRules && Array.isArray(s.advancedRules.conflicts)) {
+       list = [...list, ...s.advancedRules.conflicts];
+     }
+     
+     if (Array.isArray(s.advanced_rules)) {
+       list = [...list, ...s.advanced_rules];
+     } else if (s.advanced_rules && typeof s.advanced_rules === 'object' && 'conflicts' in s.advanced_rules && Array.isArray(s.advanced_rules.conflicts)) {
+       list = [...list, ...s.advanced_rules.conflicts];
+     }
+ 
+     // 2. Campos diretos (conflicting_service_ids / conflictingServiceIds)
+     if (Array.isArray(s.conflicting_service_ids)) {
+       list = [...list, ...s.conflicting_service_ids];
+     }
+     if (Array.isArray(s.conflictingServiceIds)) {
+       list = [...list, ...s.conflictingServiceIds];
+     }
+ 
+     // Normalização: remover duplicados, nulos e converter para string
+     const normalized = Array.from(new Set(list.filter(Boolean).map(id => id.toString())));
+     
+     if (normalized.length > 0) {
+       console.log(`>>> [CONFLICT_PROCESS] Lista de IDs bloqueados extraída para ${s.name}:`, normalized);
+     }
+     
+     return normalized;
+   };
+
   const checkConflict = (service: Service, currentSelected: Service[]) => {
+    if (bypassConflicts) return null;
+    
+    const serviceId = service.id.toString();
+    const serviceGroupId = (service.conflict_group_id || service.conflictGroupId)?.toString();
+    
+    const serviceConflicts = extractConflicts(service);
+    
     for (const s of currentSelected) {
-      // Conflito individual (A bloqueia B)
-      if (service.conflictingServiceIds?.includes(s.id)) {
+      const selectedId = s.id.toString();
+      const selectedGroupId = (s.conflict_group_id || s.conflictGroupId)?.toString();
+      const selectedConflicts = extractConflicts(s);
+
+      // 1. Conflito por Grupo
+      if (serviceGroupId && selectedGroupId && serviceGroupId === selectedGroupId) {
+        return `O serviço "${service.name}" conflita com "${s.name}" (mesmo grupo: ${serviceGroupId})`;
+      }
+
+      // 2. Conflito individual (Bidirecional)
+      if (serviceConflicts.includes(selectedId)) {
         return `O serviço "${service.name}" bloqueia o serviço "${s.name}"`;
       }
 
-      // Conflito individual (B bloqueia A)
-      if (s.conflictingServiceIds?.includes(service.id)) {
+      if (selectedConflicts.includes(serviceId)) {
         return `O serviço "${s.name}" bloqueia o serviço "${service.name}"`;
       }
     }
@@ -53,20 +128,31 @@ export function ServiceSelector({
   };
 
   const toggleService = (service: Service) => {
-    setSelected((prev) => {
-      const isSelected = prev.some((s) => s.id === service.id);
-      if (isSelected) {
-        return prev.filter((s) => s.id !== service.id);
-      }
+    const isSelected = selected.some((s) => s.id === service.id);
+    
+    console.log(`>>> [CONFLICT_DEBUG] Clique em: ${service.name} (ID: ${service.id})`);
+    console.log(`>>> [CONFLICT_DEBUG] Conflitos Extraídos:`, extractConflicts(service));
+    console.log(`>>> [CONFLICT_DEBUG] Já selecionados:`, selected.map((s: Service) => s.id));
 
-      const conflict = checkConflict(service, prev);
+    if (isSelected) {
+      setSelected(selected.filter((s) => s.id !== service.id));
+      return;
+    }
+
+    if (!bypassConflicts) {
+      const conflict = checkConflict(service, selected);
       if (conflict) {
-        return prev;
+        console.warn(`>>> [CONFLICT_DEBUG] Bloqueado via Clique: ${conflict}`);
+        return;
       }
+    }
 
-      return [...prev, service];
-    });
+    setSelected([...selected, service]);
   };
+
+  useEffect(() => {
+    onSelect(selected);
+  }, [selected, onSelect]);
 
   const totalPrice = selected.reduce((acc, s) => acc + Number(s.price || 0), 0);
   const totalDuration = selected.reduce((acc, s) => acc + Number(s.duration || 0), 0);
@@ -97,15 +183,25 @@ export function ServiceSelector({
       <div className="grid md:grid-cols-2 gap-4">
         {services.map((service, index) => {
           const isSelected = selected.some((s) => s.id === service.id);
-          const conflictMessage = !isSelected
-            ? checkConflict(service, selected)
-            : null;
-          const isConflicting = !!conflictMessage;
+          
+          // Reatividade em tempo real: Lógica de Comparação Bidirecional
+          const isConflicting = !isSelected && !bypassConflicts && selected.some(s => {
+            const conflictsOfSelected = extractConflicts(s); // IDs que o já selecionado bloqueia
+            const conflictsOfCurrent = extractConflicts(service); // IDs que o card atual bloqueia
+            
+            const serviceId = service.id.toString();
+            const selectedId = s.id.toString();
+            
+            // Bloqueio por ID direto ou por Grupo
+            const serviceGroupId = (service.conflict_group_id || service.conflictGroupId)?.toString();
+            const selectedGroupId = (s.conflict_group_id || s.conflictGroupId)?.toString();
 
-          // Log por card para debug de cor
-          if (settings?.cardBgColor) {
-            console.log(`>>> [CARD_PAINT] Aplicando ${settings.cardBgColor} no serviço: ${service.name}`);
-          }
+            return conflictsOfSelected.includes(serviceId) || 
+                   conflictsOfCurrent.includes(selectedId) ||
+                   (serviceGroupId && selectedGroupId && serviceGroupId === selectedGroupId);
+          });
+
+          console.log(`>>> [UI_CHECK] Card: ${service.name} | Conflito detectado: ${isConflicting}`);
 
           return (
             <Card
@@ -113,17 +209,18 @@ export function ServiceSelector({
               className={cn(
                 "border-border cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden bg-transparent shadow-none",
                 isSelected && "ring-1",
-                isConflicting &&
-                  "opacity-60 grayscale-[0.5] border-destructive/20 cursor-not-allowed",
+                isConflicting && "opacity-40 grayscale cursor-not-allowed border-dashed pointer-events-none",
               )}
               style={{
                 borderColor:
                   isSelected && settings?.accentColor
                     ? settings.accentColor
-                    : undefined,
+                    : isConflicting 
+                      ? "var(--muted)" 
+                      : undefined,
                 backgroundColor: settings?.cardBgColor || undefined,
               }}
-              onClick={() => toggleService(service)}
+              onClick={() => !isConflicting && toggleService(service)}
             >
               {isSelected && (
                 <div
@@ -205,7 +302,7 @@ export function ServiceSelector({
               </div>
             </div>
             <Button
-              onClick={() => onSelect(selected)}
+              onClick={() => onConfirm ? onConfirm() : onSelect(selected)}
               className="px-8 font-bold shadow-md transition-all hover:scale-105 active:scale-95"
               style={{
                 backgroundColor: settings?.accentColor || "var(--primary)",

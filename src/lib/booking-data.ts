@@ -8,13 +8,15 @@ export type Service = {
   show_on_home?: boolean | string | number;
   icon?: string;
   conflictGroupId?: string;
+  conflict_group_id?: string;
   conflictingServiceIds?: string[];
+  conflicting_service_ids?: string[];
   advanced_rules?: {
     conflicts?: string[];
-  };
+  } | string[];
   advancedRules?: {
     conflicts?: string[];
-  };
+  } | string[];
   products?: {
     productId: string;
     quantity: number;
@@ -108,7 +110,7 @@ export type DaySchedule = {
 export type WeekSchedule = DaySchedule[];
 
 // Helper para isolamento de dados por usuário
-function getStorageKey(key: string): string {
+export function getStorageKey(key: string): string {
   if (typeof window === "undefined") return key;
   const userId = localStorage.getItem("current_admin_id");
   // Se não houver usuário logado (site público), tenta pegar o último usuário ativo ou usa modo compartilhado
@@ -1226,10 +1228,12 @@ function isTimeSlotAvailable(
   // 5. Verificar conflitos com outros agendamentos
   for (const booking of bookings) {
     const bookingStart = timeToMinutes(booking.time);
-    const bookingEnd = bookingStart + booking.serviceDuration;
+    const bookingDuration = typeof booking.serviceDuration === 'string' ? parseInt(booking.serviceDuration, 10) : booking.serviceDuration;
+    const bookingEnd = bookingStart + bookingDuration;
 
+    // Se o slot começa antes do fim do agendamento E termina depois do início do agendamento
     if (startMinutes < bookingEnd && endMinutes > bookingStart) {
-      console.log(`>>> [AVAILABILITY] ${time} indisponível: Conflito com agendamento (${booking.time}, ${booking.serviceDuration}min). Slot: ${time}-${minutesToTime(endMinutes)}, Booking: ${booking.time}-${minutesToTime(bookingEnd)}`);
+      console.log(`>>> [AVAILABILITY] ${time} indisponível: Conflito com agendamento (${booking.time}, ${bookingDuration}min). Slot: ${time}-${minutesToTime(endMinutes)}, Booking: ${booking.time}-${minutesToTime(bookingEnd)}`);
       return false;
     }
   }

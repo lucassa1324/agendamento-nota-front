@@ -13,6 +13,7 @@ import {
   type Booking,
   type BookingStepSettings,
   type Service,
+  parseDuration,
   saveBookingToStorage,
   sendBookingNotifications,
 } from "@/lib/booking-data";
@@ -65,27 +66,27 @@ export function AdminBookingForm({
       // 1. Preparar o agendamento para o novo Back-end (Elysia)
       const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
 
+      // Converter duração para HH:mm
+      const durationMinutes = parseDuration(service.duration);
+      const hours = Math.floor(durationMinutes / 60);
+      const mins = durationMinutes % 60;
+      const durationHHmm = `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+
       // Log para validar o Service ID e outros dados antes de enviar
       console.log("🔍 Validando dados para o Back-end:");
       console.log("Service ID:", service.id);
-      console.log(
-        "Is UUID:",
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          service.id,
-        ),
-      );
 
       const appointmentData = {
         companyId: studio.id,
-        serviceId: service.id, // Vindo de service.id (prop do componente)
-        customerId: null, // Enviar null para agendamentos manuais via Admin
+        serviceId: service.id, // String de IDs separados por vírgula (ex: "id1,id2")
+        customerId: null,
         scheduledAt,
         customerName: formData.name,
         customerEmail: formData.email,
         customerPhone: formData.phone,
-        serviceNameSnapshot: service.name,
-        servicePriceSnapshot: formData.price.toFixed(2), // String decimal
-        serviceDurationSnapshot: service.duration.toString(), // String minutos
+        serviceNameSnapshot: service.name, // Nomes reais separados por vírgula
+        servicePriceSnapshot: formData.price.toFixed(2), // String decimal: "460.00"
+        serviceDurationSnapshot: durationHHmm, // HH:mm: "03:20"
         notes: "Agendado via Admin",
       };
 
@@ -264,7 +265,13 @@ export function AdminBookingForm({
                 id="price"
                 type="number"
                 step="0.01"
-                value={Number.isNaN(formData.price) ? "" : formData.price}
+                value={
+                  formData.price === undefined ||
+                  formData.price === null ||
+                  Number.isNaN(formData.price)
+                    ? ""
+                    : formData.price.toString()
+                }
                 onChange={(e) => {
                   const val =
                     e.target.value === ""

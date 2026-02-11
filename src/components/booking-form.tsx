@@ -84,32 +84,34 @@ export function BookingForm({
       const priceSnapshot = priceValue.toFixed(2);
 
       // 4. Montar o payload seguindo o contrato exato do backend
+      // O backend agora aceita múltiplos IDs separados por vírgula em serviceId
+      // Ele usará o primeiro ID para a FK e o restante para processamento interno
       const appointmentData = {
         companyId: studio.id,
-        serviceId: service.id,
+        serviceId: service.id, // String de IDs separados por vírgula (ex: "id1,id2")
         scheduledAt,
         customerName: formData.name,
         customerEmail: formData.email,
         customerPhone: formData.phone,
-        serviceNameSnapshot: service.name,
-        servicePriceSnapshot: priceSnapshot,
-        serviceDurationSnapshot: durationHHmm,
+        serviceNameSnapshot: service.name, // Nomes reais dos serviços separados por vírgula
+        servicePriceSnapshot: priceSnapshot, // Soma dos preços (decimal string: "460.00")
+        serviceDurationSnapshot: durationHHmm, // Soma das durações (HH:mm: "03:20")
         customerId: null,
         notes: "",
-        studioId: studio.id, // Fallback mantido
+        studioId: studio.id,
       };
 
       console.log(">>> [FINAL_PAYLOAD]", appointmentData);
 
       const result = await appointmentService.create(appointmentData);
 
-      // 2. Manter compatibilidade com o objeto Booking legado para não quebrar o restante do front imediatamente
+      // 2. Manter compatibilidade com o objeto Booking legado
       const booking: Booking = {
         id: result.id,
         serviceId: service.id,
         serviceName: service.name,
-        serviceDuration: service.duration,
-        servicePrice: service.price,
+        serviceDuration: durationMinutes,
+        servicePrice: priceValue,
         date,
         time,
         clientName: formData.name,
@@ -133,12 +135,18 @@ export function BookingForm({
       const apiError = error as ApiError;
       console.warn(">>> [SITE_WARN] Erro ao criar agendamento:", apiError);
 
+      let errorMessage = apiError.message || "Ocorreu um erro inesperado ao salvar seu agendamento.";
+
+      // Tratamento específico para erro de horário comercial excedido
+      if (apiError.status === 400 && apiError.message?.includes("Selected time and total duration exceed business hours")) {
+        errorMessage = "O horário selecionado e a duração total dos serviços ultrapassam o horário de fechamento. Por favor, escolha um horário mais cedo ou selecione menos serviços.";
+      } else if (apiError.status === 401) {
+        errorMessage = "O sistema não permitiu o agendamento (Não Autorizado). Por favor, entre em contato com o estúdio.";
+      }
+
       toast({
         title: "Erro ao criar agendamento",
-        description:
-          apiError.status === 401
-            ? "O sistema não permitiu o agendamento (Não Autorizado). Por favor, entre em contato com o estúdio."
-            : apiError.message || "Ocorreu um erro inesperado ao salvar seu agendamento.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -184,7 +192,9 @@ export function BookingForm({
               {time}
             </div>
             <div className="text-xs text-muted-foreground">
-              Duração: {service.duration} minutos
+              Duração Total: {Math.floor(parseDuration(service.duration) / 60) > 0 
+                ? `${Math.floor(parseDuration(service.duration) / 60)}h ` 
+                : ""}{parseDuration(service.duration) % 60}min
             </div>
             <div
               className="font-semibold"

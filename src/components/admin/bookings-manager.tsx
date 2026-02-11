@@ -44,6 +44,18 @@ const mapApiToBooking = (api: Appointment): Booking => {
 
   const dateObj = parseISO(api.scheduledAt);
 
+  // Mapear status da API para status legado do Front
+  const mapStatusFromApi = (status: AppointmentStatus): BookingStatus => {
+    const map: Record<AppointmentStatus, BookingStatus> = {
+      PENDING: "pendente",
+      CONFIRMED: "confirmado",
+      COMPLETED: "concluído",
+      CANCELLED: "cancelado",
+      POSTPONED: "pendente", // Ou criar um novo status se necessário
+    };
+    return map[status] || "pendente";
+  };
+
   return {
     id: api.id,
     serviceId: api.serviceId,
@@ -55,7 +67,7 @@ const mapApiToBooking = (api: Appointment): Booking => {
     clientName: api.customerName || "Cliente não informado",
     clientEmail: api.customerEmail || "",
     clientPhone: api.customerPhone || "",
-    status: api.status.toLowerCase() as BookingStatus,
+    status: mapStatusFromApi(api.status),
     createdAt: api.createdAt,
     notificationsSent: { email: false, whatsapp: false },
   };
@@ -145,7 +157,7 @@ export function BookingsManager() {
     }
   };
 
-  const filteredBookings = useMemo(() => {
+  const bookingsAfterFilters = useMemo(() => {
     let filtered = [...bookings];
 
     // Filtro por Data Inicial
@@ -177,6 +189,12 @@ export function BookingsManager() {
       filtered = filtered.filter((b) => b.time.includes(filterTime));
     }
 
+    return filtered;
+  }, [bookings, startDate, endDate, filterName, filterTime, filterDay]);
+
+  const filteredBookings = useMemo(() => {
+    let filtered = [...bookingsAfterFilters];
+
     // Filtro por Status
     if (statusFilter !== "todos") {
       filtered = filtered.filter((b) => b.status === statusFilter);
@@ -190,31 +208,23 @@ export function BookingsManager() {
     });
 
     return filtered;
-  }, [
-    bookings,
-    startDate,
-    endDate,
-    filterName,
-    filterTime,
-    filterDay,
-    statusFilter,
-  ]);
+  }, [bookingsAfterFilters, statusFilter]);
 
   const statusCounts = useMemo(() => {
     const counts = {
-      todos: filteredBookings.length,
-      pendente: filteredBookings.filter(
+      todos: bookingsAfterFilters.length,
+      pendente: bookingsAfterFilters.filter(
         (b) => b.status === "pendente" || b.status === "pending",
       ).length,
-      confirmado: filteredBookings.filter((b) => b.status === "confirmado")
+      confirmado: bookingsAfterFilters.filter((b) => b.status === "confirmado")
         .length,
-      concluído: filteredBookings.filter((b) => b.status === "concluído")
+      concluído: bookingsAfterFilters.filter((b) => b.status === "concluído")
         .length,
-      cancelado: filteredBookings.filter((b) => b.status === "cancelado")
+      cancelado: bookingsAfterFilters.filter((b) => b.status === "cancelado")
         .length,
     };
     return counts;
-  }, [filteredBookings]);
+  }, [bookingsAfterFilters]);
 
   // Paginação
   const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);

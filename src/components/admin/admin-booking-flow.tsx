@@ -26,6 +26,7 @@ import {
   type Booking,
   getSettingsFromStorage,
   getWeekSchedule,
+  parseDuration,
   type Service,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
@@ -151,7 +152,12 @@ export function AdminBookingFlow({
 
   const handleServiceSelect = (services: Service[]) => {
     setSelectedServices(services);
-    setCurrentStep("date");
+  };
+
+  const handleServiceConfirm = () => {
+    if (selectedServices.length > 0) {
+      setCurrentStep("date");
+    }
   };
 
   const handleTimeSelect = (date: string, time: string) => {
@@ -179,9 +185,9 @@ export function AdminBookingFlow({
     if (selectedServices.length === 0) return null;
     return {
       id: selectedServices.map((s) => s.id).join(","),
-      name: selectedServices.map((s) => s.name).join(" + "),
+      name: selectedServices.map((s) => s.name).join(", "),
       price: selectedServices.reduce((acc, s) => acc + s.price, 0),
-      duration: selectedServices.reduce((acc, s) => acc + s.duration, 0),
+      duration: selectedServices.reduce((acc, s) => acc + parseDuration(s.duration), 0),
       description: selectedServices.map((s) => s.name).join(", "),
     } as Service;
   }, [selectedServices]);
@@ -255,10 +261,14 @@ export function AdminBookingFlow({
               Voltar para Agendamentos
             </Link>
           </Button>
-          <ServiceSelector
-            onSelect={handleServiceSelect}
-            selectedServices={selectedServices}
-          />
+          <div className="bg-card/50 rounded-lg p-6 border border-border">
+            <ServiceSelector
+              onSelect={handleServiceSelect}
+              onConfirm={handleServiceConfirm}
+              selectedServices={selectedServices}
+              bypassConflicts={true}
+            />
+          </div>
         </div>
       )}
 

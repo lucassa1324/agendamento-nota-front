@@ -381,8 +381,14 @@ export function BookingFlow() {
   ];
 
   const handleServiceSelect = (services: Service[]) => {
+    console.log(">>> [BOOKING_FLOW] Serviços selecionados:", services.map(s => s.name));
     setSelectedServices(services);
-    setCurrentStep("date");
+  };
+
+  const handleServiceConfirm = () => {
+    if (selectedServices.length > 0) {
+      setCurrentStep("date");
+    }
   };
 
   const handleDateSelect = (date: string) => {
@@ -423,12 +429,27 @@ export function BookingFlow() {
       }
       return null;
     }
+
+    // Se houver apenas um serviço, retorna ele diretamente para evitar perda de propriedades (como conflictingServiceIds)
+    if (selectedServices.length === 1) {
+      return selectedServices[0];
+    }
+
+    // Se houver múltiplos, cria o aglomerado
     return {
       id: selectedServices.map((s) => s.id).join(","),
-      name: selectedServices.map((s) => s.name).join(" + "),
-      price: selectedServices.reduce((acc, s) => acc + s.price, 0),
-      duration: selectedServices.reduce((acc, s) => acc + s.duration, 0),
+      name: selectedServices.map((s) => s.name).join(", "),
+      price: selectedServices.reduce((acc, s) => acc + (Number(s.price) || 0), 0),
+      duration: selectedServices.reduce((acc, s) => acc + parseDuration(s.duration), 0),
       description: selectedServices.map((s) => s.name).join(", "),
+      conflictingServiceIds: selectedServices.flatMap(s => s.conflictingServiceIds || []),
+      advancedRules: {
+        conflicts: selectedServices.flatMap(s => {
+          const advRules = s.advancedRules || s.advanced_rules;
+          if (Array.isArray(advRules)) return advRules;
+          return advRules?.conflicts || [];
+        })
+      }
     } as Service;
   }, [selectedServices, only]);
 
@@ -581,6 +602,7 @@ export function BookingFlow() {
               <div className="max-w-4xl mx-auto">
                 <ServiceSelector
                   onSelect={handleServiceSelect}
+                  onConfirm={handleServiceConfirm}
                   selectedServices={selectedServices}
                   settings={serviceSettings}
                 />
