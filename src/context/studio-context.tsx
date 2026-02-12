@@ -139,6 +139,13 @@ export function StudioProvider({
     async function fetchStudio() {
       let currentSlug = slug;
 
+      // EXCEÇÃO PARA ROTA MASTER: Se estivermos no painel master, não buscamos slug
+      if (typeof window !== "undefined" && window.location.pathname.startsWith("/admin/master")) {
+        console.log(">>> [StudioProvider] Rota MASTER detectada. Pulando busca de slug de estúdio.");
+        setIsLoading(false);
+        return;
+      }
+
       // Se não temos um slug inicial, tenta extrair do host ou query params
       if (!currentSlug && typeof window !== "undefined") {
         const urlParams = new URLSearchParams(window.location.search);

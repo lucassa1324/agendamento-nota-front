@@ -77,6 +77,7 @@ export function LayoutClientWrapper({
 
   const isAdminRoute =
     pathname?.startsWith("/admin") || pathname?.includes("/admin/");
+  
   const isLandingPage = !slug && pathname === "/";
   const isGlobalEdit =
     isolatedSection === "typography" || isolatedSection === "colors";
@@ -86,14 +87,18 @@ export function LayoutClientWrapper({
     return visibleSections[id] !== false;
   };
 
+  // REGRAS ESTRITAS PARA OCULTAR HEADER/FOOTER
   const showHeader =
     isSectionVisible("header") &&
     !isAdminRoute &&
-    !isLandingPage;
+    !isLandingPage &&
+    pathname !== "/admin/master"; // Garantia extra para a rota master
+
   const showFooter =
     isSectionVisible("footer") &&
     !isAdminRoute &&
-    !isLandingPage;
+    !isLandingPage &&
+    pathname !== "/admin/master"; // Garantia extra para a rota master
 
   return (
     <>

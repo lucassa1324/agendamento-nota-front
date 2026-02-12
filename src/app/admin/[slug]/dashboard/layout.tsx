@@ -119,12 +119,22 @@ function AdminLayoutContent({
         name: string;
         email: string;
         slug?: string;
+        role?: string;
         business?: {
           slug?: string;
         };
       }
 
       const user = session.user as AuthUser;
+
+      // Se for um Super Admin tentando acessar um dashboard de estúdio, permitimos?
+      // Pela regra de negócio, o Super Admin deve ir para /admin/master.
+      if (user.role === "SUPER_ADMIN") {
+        console.warn(">>> [DASHBOARD_LAYOUT] Super Admin acessando rota de estúdio. Redirecionando para Master.");
+        router.push("/admin/master");
+        return;
+      }
+
       const businessSlug = user?.business?.slug || user?.slug;
 
       if (businessSlug && businessSlug !== slug) {

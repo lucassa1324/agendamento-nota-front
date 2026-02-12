@@ -36,10 +36,13 @@ export const authClient = createAuthClient({
       maxAge: 60, // Cache de 1 minuto
     },
   },
-  // Tipagem para os campos customizados do usuário (slug, business)
+  // Tipagem para os campos customizados do usuário (slug, business, role)
   user: {
     additionalFields: {
       slug: {
+        type: "string",
+      },
+      role: {
         type: "string",
       },
       business: {
@@ -79,7 +82,7 @@ export const getSessionToken = async (): Promise<string | null> => {
     return null;
   };
 
-  const syncToken = 
+  const syncToken =
     localStorage.getItem("better-auth.session_token") ||
     localStorage.getItem("better-auth.access_token") ||
     getCookie("better-auth.session_token");
@@ -102,7 +105,7 @@ export const getSessionToken = async (): Promise<string | null> => {
         headers: { "Content-Type": "application/json" },
         credentials: "include"
       });
-      
+
       if (resp.ok) {
         const data = await resp.json();
         const token = data?.session?.token || null;

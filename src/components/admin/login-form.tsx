@@ -18,6 +18,7 @@ import { getSession, signIn } from "@/lib/auth-client";
 
 interface AuthUser {
   slug?: string;
+  role?: string;
   business?: {
     slug?: string;
   };
@@ -30,6 +31,36 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
+  // Função auxiliar para redirecionar baseada na role (Regra de Ouro)
+  const handleRoleRedirection = (user: AuthUser & { email?: string }) => {
+    console.log(">>> [DEBUG_ROLES] Analisando usuário para redirecionamento:", {
+      email: user.email,
+      role: user.role,
+      slug: user.slug,
+      businessSlug: user?.business?.slug
+    });
+
+    // PRIORIDADE MÁXIMA: SUPER_ADMIN ou Email do Proprietário (Lucas)
+    // Usamos um "Hard Redirect" para limpar contextos de estúdio/tenant
+    if (user.role === "SUPER_ADMIN" || user.email === "lucassa1324@gmail.com") {
+      console.log(">>> [LOGIN_FLOW] SUPER_ADMIN detectado. Forçando HARD REDIRECT para /admin/master");
+      window.location.href = "/admin/master";
+      return true;
+    }
+
+    // 2º Lugar: Verificação de Administrador de Estúdio (Multi-tenant)
+    const businessSlug = user?.business?.slug || user?.slug;
+    if (user.role === "ADMIN" && businessSlug) {
+      console.log(`>>> [LOGIN_FLOW] ADMIN detectado. Redirecionando para /admin/${businessSlug}/dashboard/overview`);
+      router.push(`/admin/${businessSlug}/dashboard/overview`);
+      return true;
+    }
+
+    // 3º Lugar: Usuário sem estúdio ou sem role definida (Fallback)
+    console.warn(">>> [LOGIN_FLOW] Usuário sem role ADMIN/SUPER_ADMIN ou sem slug.");
+    return false;
+  };
+
   // Verifica se já existe sessão ao carregar a página
   useEffect(() => {
     const checkSession = async () => {
@@ -40,13 +71,9 @@ export function LoginForm() {
             ">>> [LOGIN_FORM] Sessão ativa encontrada. Redirecionando...",
           );
           const user = data.user as AuthUser;
-          const businessSlug = user?.business?.slug || user?.slug;
-
-          if (businessSlug) {
-            router.push(`/admin/${businessSlug}/dashboard/overview`);
-          } else {
+          if (!handleRoleRedirection(user)) {
             console.warn(
-              ">>> [LOGIN_FORM] Sessão encontrada mas sem slug vinculado.",
+              ">>> [LOGIN_FORM] Sessão encontrada mas sem slug ou role vinculados.",
             );
           }
         }
@@ -87,19 +114,12 @@ export function LoginForm() {
         console.log(">>> [LOGIN_FLOW] Login bem-sucedido via Better-Auth.");
 
         const user = data.user as AuthUser;
-        const businessSlug = user?.business?.slug || user?.slug;
-
-        if (!businessSlug) {
-          console.warn(">>> [LOGIN_FLOW] Sem slug vinculado.");
-          setError("Sua conta não possui um estúdio vinculado.");
+        if (!handleRoleRedirection(user)) {
+          console.warn(">>> [LOGIN_FLOW] Sem slug ou role vinculados.");
+          setError("Sua conta não possui as permissões necessárias ou um estúdio vinculado.");
           setIsLoading(false);
           return;
         }
-
-        console.log(
-          `>>> [LOGIN_FLOW] Redirecionando para /admin/${businessSlug}/dashboard/overview`,
-        );
-        router.push(`/admin/${businessSlug}/dashboard/overview`);
       } else {
         console.warn(">>> [LOGIN_FLOW] Login retornou sem dados e sem erro.");
         setError("Erro inesperado no login.");
