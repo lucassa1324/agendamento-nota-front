@@ -13,11 +13,11 @@ import {
 } from "@/components/ui/carousel";
 import { useStudio } from "@/context/studio-context";
 import {
-  type GalleryImage as GalleryImageType,
   type GallerySettings,
   getGallerySettings,
   getPageVisibility,
 } from "@/lib/booking-data";
+import { GalleryItem, galleryService } from "@/lib/gallery-service";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
@@ -25,7 +25,8 @@ import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 export function GalleryPreview() {
   const { studio } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
-  const [images, setImages] = useState<GalleryImageType[]>([]);
+  const [images, setImages] = useState<GalleryItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [settings, setSettings] = useState<GallerySettings | null>(null);
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
     {
@@ -39,36 +40,61 @@ export function GalleryPreview() {
     null,
   );
 
-  const loadData = useCallback(() => {
-    // Tenta pegar do cache primeiro para ser instantâneo
-    const cachedStudioStr = localStorage.getItem("studio_data");
-    let currentImages: GalleryImageType[] = [];
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    // Carrega configurações
     let currentConfig: SiteConfigData | null = null;
     
-    if (studio) {
-      currentImages = studio.gallery || [];
-      currentConfig = studio.config as SiteConfigData;
-    } else if (cachedStudioStr) {
-      try {
-        const parsed = JSON.parse(cachedStudioStr);
-        currentImages = parsed.gallery || [];
-        currentConfig = parsed.config;
-      } catch (e) {
-        console.warn(">>> [SITE_WARN] Erro ao parsear studio_data do cache", e);
+    try {
+      if (studio) {
+        currentConfig = studio.config as SiteConfigData;
+        
+        // Busca imagens da nova API
+        try {
+          // Buscamos todas as imagens e filtramos localmente para garantir robustez,
+          // já que o filtro showInHome na API pode variar entre implementações.
+          const allImages = await galleryService.getPublicGallery(studio.id);
+          console.log(">>> [GALLERY_SYNC] Total de imagens na galeria:", allImages?.length || 0);
+          
+          const homeImages = Array.isArray(allImages) 
+            ? allImages.filter(img => img.showInHome || (img as any).show_in_home || (img as any).showOnHome)
+            : [];
+            
+          console.log(">>> [GALLERY_SYNC] Imagens marcadas para Home:", homeImages.length);
+          setImages(homeImages.slice(0, 6));
+        } catch (error) {
+          console.warn(">>> [SITE_WARN] Erro ao carregar galeria via API", error);
+          setImages([]);
+        }
+      } else {
+        const cachedStudioStr = localStorage.getItem("studio_data");
+        if (cachedStudioStr) {
+          try {
+            const parsed = JSON.parse(cachedStudioStr);
+            currentConfig = parsed.config;
+            
+            if (parsed.id) {
+               const allImages = await galleryService.getPublicGallery(parsed.id);
+               const homeImages = Array.isArray(allImages) 
+                 ? allImages.filter(img => img.showInHome || (img as any).show_in_home || (img as any).showOnHome)
+                 : [];
+               setImages(homeImages.slice(0, 6));
+            }
+          } catch (e) {
+            console.warn(">>> [SITE_WARN] Erro ao parsear studio_data do cache", e);
+            setImages([]);
+          }
+        }
       }
+
+      const layoutGlobal = currentConfig?.layoutGlobal || currentConfig?.layout_global;
+      const configGallery = currentConfig?.gallery || layoutGlobal?.gallery;
+      setSettings((configGallery as GallerySettings) || getGallerySettings());
+      
+      setPageVisibility(getPageVisibility());
+    } finally {
+      setIsLoading(false);
     }
-
-    // Filtra apenas as imagens marcadas para home
-    const homeImages = currentImages.filter((img) => img.showOnHome).slice(0, 6);
-    
-    console.log(">>> [GALLERY_SYNC] Imagens na Home:", homeImages.length);
-    setImages(homeImages);
-
-    const layoutGlobal = currentConfig?.layoutGlobal || currentConfig?.layout_global;
-    const configGallery = currentConfig?.gallery || layoutGlobal?.gallery;
-    setSettings((configGallery as GallerySettings) || getGallerySettings());
-    
-    setPageVisibility(getPageVisibility());
   }, [studio]);
 
   useEffect(() => {
@@ -78,7 +104,11 @@ export function GalleryPreview() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_GALLERY_SETTINGS") {
+      if (event.data.type === "UPDATE_GALLERY_SETTINGS" || event.data.type === "REFRESH_GALLERY" || event.data.type === "DataReady") {
+        loadData();
+      }
+
+      if (event.data.type === "UPDATE_GALLERY_SETTINGS" && event.data.settings) {
         setSettings((prev) =>
           prev ? { ...prev, ...event.data.settings } : prev,
         );
@@ -108,13 +138,49 @@ export function GalleryPreview() {
     };
   }, [loadData]);
 
-  if (!isMounted || !settings) return null;
+  if (!isMounted) return null;
+  
+  // Se não houver configurações, retornamos o esqueleto enquanto aguardamos o StudioProvider
+  if (!settings) {
+    return (
+      <section className="py-20 md:py-32 bg-muted/10">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-10 w-64 bg-muted animate-pulse rounded-lg" />
+            <div className="h-4 w-96 bg-muted animate-pulse rounded-lg" />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (pageVisibility.galeria === false) return null;
   
-  // Se não houver imagens marcadas para home, a seção deve sumir
-  // No editor, permitimos renderizar para edição
   const isPreview = typeof window !== "undefined" && window.location.search.includes("preview=true");
-  if (!isPreview && (!images || images.length === 0)) return null;
+
+  // Se estiver carregando, mostra um estado de esqueleto para evitar saltos de layout
+  if (isLoading) {
+    return (
+      <section className="py-20 md:py-32 bg-muted/10">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-10 w-64 bg-muted animate-pulse rounded-lg" />
+            <div className="h-4 w-96 bg-muted animate-pulse rounded-lg" />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full mt-16">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="aspect-square bg-muted animate-pulse rounded-lg" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+  
+  // Só esconde a seção se NÃO estiver no preview do editor E (não estiver carregando E não tiver imagens)
+  if (!isPreview && !isLoading && (!images || images.length === 0)) {
+    return null;
+  }
 
   return (
     <section
@@ -158,7 +224,7 @@ export function GalleryPreview() {
                   className="aspect-square rounded-lg overflow-hidden hover:scale-105 transition-transform relative"
                 >
                   <Image
-                    src={image?.url || ""}
+                    src={image?.imageUrl || ""}
                     alt={image?.title || ""}
                     fill
                     className="w-full h-full object-cover"
@@ -183,7 +249,7 @@ export function GalleryPreview() {
                     >
                       <div className="aspect-square rounded-lg overflow-hidden relative group">
                         <Image
-                          src={image?.url || ""}
+                          src={image?.imageUrl || ""}
                           alt={image?.title || ""}
                           fill
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"

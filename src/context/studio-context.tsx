@@ -196,13 +196,29 @@ export function StudioProvider({
         const fetchUrl = `${API_BASE_URL}/api/business/slug/${currentSlug}?t=${timestamp}`;
         console.log(`>>> [CACHE_CHECK] StudioProvider buscando studio via: ${fetchUrl}`);
 
-        const response = await fetch(fetchUrl, {
-          credentials: "include",
-          cache: "no-store",
-          headers: {
-            Accept: "application/json",
-          },
-        });
+        let response;
+        try {
+          response = await fetch(fetchUrl, {
+            credentials: "include",
+            cache: "no-store",
+            headers: {
+              Accept: "application/json",
+            },
+          });
+        } catch (fetchErr: any) {
+          console.error(">>> [StudioProvider] Falha Crítica na Rede ao buscar Studio:", fetchErr.message);
+          
+          // PLANO B: Tentar carregar do cache local se a rede falhar
+          const cachedStudio = localStorage.getItem("studio_data");
+          if (cachedStudio) {
+            console.log(">>> [StudioProvider] Plano B: Carregando dados do LocalStorage devido a falha de rede.");
+            const parsed = JSON.parse(cachedStudio);
+            setStudio(parsed);
+            setIsLoading(false);
+            return;
+          }
+          throw fetchErr; // Re-lança se não houver cache
+        }
 
         if (response.ok) {
           // Blindagem contra JSON vazio ou malformado
@@ -510,6 +526,17 @@ export function StudioProvider({
             ? err.message
             : "Erro de conexão com o servidor.",
         );
+
+        // Plano C: Se tudo falhar, tenta usar o que estiver no cache mesmo que o erro tenha sido após o fetch
+        if (typeof window !== "undefined") {
+          const cachedStudio = localStorage.getItem("studio_data");
+          if (cachedStudio && !studio) {
+             console.log(">>> [StudioProvider] Plano C: Usando cache após erro de processamento.");
+             try {
+               setStudio(JSON.parse(cachedStudio));
+             } catch (_) {}
+          }
+        }
       } finally {
         setIsLoading(false);
       }

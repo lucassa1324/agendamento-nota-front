@@ -5,20 +5,17 @@ import { useEffect, useState } from "react";
 import { ImageModal } from "@/components/image-modal";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
-import {
-  type GalleryImage,
-  getGalleryImages,
-  getServices,
-} from "@/lib/booking-data";
+import { GalleryItem, galleryService } from "@/lib/gallery-service";
 
 export function GalleryGrid() {
   const { studio } = useStudio();
-  const [images, setImages] = useState<GalleryImage[]>([]);
+  const [images, setImages] = useState<GalleryItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; label: string }[]>(
     [],
   );
-  const [selectedImage, setSelectedImage] = useState<GalleryImage | null>(null);
+  const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("todos");
+  const [isLoading, setIsLoading] = useState(false);
 
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -27,32 +24,45 @@ export function GalleryGrid() {
   };
 
   useEffect(() => {
-    const loadData = () => {
-      // Se tivermos dados do studio via context (multi-tenant), usamos eles
-      if (studio) {
-        const allImages = studio.gallery || [];
-        const allServices = studio.services || [];
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        // Se tivermos dados do studio via context (multi-tenant), usamos eles
+        if (studio) {
+          const allImages = await galleryService.getPublicGallery(studio.id);
+          const allServices = studio.services || [];
 
-        setImages(allImages);
+          setImages(allImages);
 
-        const dynamicCategories = [
-          { id: "todos", label: "Todos" },
-          ...allServices.map((s) => ({ id: s.name, label: s.name })),
-        ];
-        setCategories(dynamicCategories);
-        return;
+          const dynamicCategories = [
+            { id: "todos", label: "Todos" },
+            ...allServices.map((s) => ({ id: s.name, label: s.name })),
+          ];
+          setCategories(dynamicCategories);
+          return;
+        }
+
+        // Fallback para cache se studio ainda não carregou
+        const cachedStudioStr = localStorage.getItem("studio_data");
+        if (cachedStudioStr) {
+          const parsed = JSON.parse(cachedStudioStr);
+          if (parsed.id) {
+            const allImages = await galleryService.getPublicGallery(parsed.id);
+            setImages(allImages);
+            
+            const allServices = parsed.services || [];
+            const dynamicCategories = [
+              { id: "todos", label: "Todos" },
+              ...allServices.map((s: any) => ({ id: s.name, label: s.name })),
+            ];
+            setCategories(dynamicCategories);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar galeria:", error);
+      } finally {
+        setIsLoading(false);
       }
-
-      const allImages = getGalleryImages();
-      const allServices = getServices();
-
-      setImages(allImages);
-
-      const dynamicCategories = [
-        { id: "todos", label: "Todos" },
-        ...allServices.map((s) => ({ id: s.name, label: s.name })),
-      ];
-      setCategories(dynamicCategories);
     };
 
     loadData();
@@ -102,8 +112,15 @@ export function GalleryGrid() {
         ))}
       </div>
 
+      {/* Loading state */}
+      {isLoading && (
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+        </div>
+      )}
+
       {/* Gallery Grid */}
-      {filteredImages.length > 0 ? (
+      {!isLoading && filteredImages.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredImages.map((image) => (
             <button
@@ -121,8 +138,8 @@ export function GalleryGrid() {
                   </div>
                 ) : (
                   <Image
-                    src={image.url}
-                    alt={image.title}
+                    src={image.imageUrl}
+                    alt={image.title || ""}
                     fill
                     className="object-cover"
                     onError={() => handleImageError(image.id)}
@@ -131,12 +148,12 @@ export function GalleryGrid() {
                 )}
               </div>
               <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                <p className="text-white font-medium">{image.title}</p>
+                <p className="text-white font-medium">{image.title || "Sem título"}</p>
               </div>
             </button>
           ))}
         </div>
-      ) : (
+      ) : !isLoading && (
         <div className="text-center py-20 bg-secondary/10 rounded-xl border border-dashed">
           <p className="text-muted-foreground">
             {selectedCategory === "todos"
@@ -149,7 +166,12 @@ export function GalleryGrid() {
       {/* Image Modal */}
       {selectedImage && (
         <ImageModal
-          image={selectedImage}
+          image={{
+            ...selectedImage,
+            url: selectedImage.imageUrl,
+            title: selectedImage.title || "Sem título",
+            category: selectedImage.category || "Geral",
+          }}
           onClose={() => setSelectedImage(null)}
         />
       )}

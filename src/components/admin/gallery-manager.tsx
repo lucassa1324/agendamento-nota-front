@@ -33,124 +33,106 @@ import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "@/lib/auth-client";
 import {
-  type GalleryImage,
-  getGalleryImages,
   getServices,
   type Service,
-  saveGalleryImages,
 } from "@/lib/booking-data";
+import {
+  GalleryItem,
+  galleryService,
+} from "@/lib/gallery-service";
 import { cn } from "@/lib/utils";
-
-const API_URL = `${API_BASE_URL}/api/studios`.replace(/\/+$/, "");
 
 export function GalleryManager() {
   const { toast } = useToast();
   const { studio } = useStudio();
-  const [images, setImages] = useState<GalleryImage[]>([]);
+  const [images, setImages] = useState<GalleryItem[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [urlInput, setUrlInput] = useState("");
   const [titleInput, setTitleInput] = useState("");
   const [categoryInput, setCategoryInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Função auxiliar centralizada para obter headers de autenticação
-  const getAuthOptions = () => {
-    const getCookie = (name: string) => {
-      if (typeof document === "undefined") return null;
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop()?.split(";").shift();
-      return null;
-    };
-
-    const sessionToken =
-      typeof window !== "undefined"
-        ? localStorage.getItem("better-auth.session_token") ||
-          localStorage.getItem("better-auth.access_token") ||
-          getCookie("better-auth.session_token")
-        : null;
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (sessionToken) {
-      headers.Authorization = `Bearer ${sessionToken}`;
-    }
-
-    return {
-      headers,
-      credentials: "include" as const,
-    };
-  };
-
-  const syncToBackend = async (updatedImages: GalleryImage[]) => {
+  const loadData = async () => {
     if (!studio?.id) return;
-
+    
+    setIsLoading(true);
     try {
-      const authOptions = getAuthOptions();
-      const putUrl = `${API_URL}/${studio.id}/gallery`.replace(
-        /([^:]\/)\/+/g,
-        "$1",
-      );
-
-      console.log(">>> [GALLERY_MANAGER] Sincronizando galeria com o banco:", putUrl);
-
-      const response = await fetch(putUrl, {
-        ...authOptions,
-        method: "PUT",
-        body: JSON.stringify({ gallery: updatedImages }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Erro ao sincronizar galeria (${response.status})`);
+      console.log(">>> [GalleryManager] Carregando dados para studio:", studio.id);
+      
+      // 1. Carregar imagens da galeria
+      const remoteImages = await galleryService.getPublicGallery(studio.id);
+      setImages(remoteImages);
+      
+      // 2. Tentar obter serviços de múltiplas fontes
+      let loadedServices: Service[] = [];
+      
+      // Fonte A: Contexto do Studio (ideal)
+      if (studio?.services && studio.services.length > 0) {
+        console.log(">>> [GalleryManager] Serviços carregados via StudioContext:", studio.services.length);
+        loadedServices = studio.services;
+      } 
+      // Fonte B: LocalStorage/Legacy fallback
+      else {
+        const legacyServices = getServices();
+        if (legacyServices && legacyServices.length > 0) {
+          console.log(">>> [GalleryManager] Serviços carregados via LocalStorage/Fallback:", legacyServices.length);
+          loadedServices = legacyServices;
+        }
       }
 
-      console.log(">>> [GALLERY_MANAGER] Galeria sincronizada com sucesso!");
+      // Fonte C: API Direta (Fallback final se as outras falharem)
+      if (loadedServices.length === 0) {
+        console.log(">>> [GalleryManager] Nenhuma fonte local tem serviços. Tentando API direta...");
+        try {
+          const servicesTimestamp = Date.now();
+          const servicesUrl = `${API_BASE_URL}/api/services/company/${studio.id}?t=${servicesTimestamp}`;
+          const response = await fetch(servicesUrl);
+          if (response.ok) {
+            const apiServices = await response.json();
+            if (Array.isArray(apiServices) && apiServices.length > 0) {
+              console.log(">>> [GalleryManager] Serviços carregados via API direta:", apiServices.length);
+              loadedServices = apiServices;
+            }
+          }
+        } catch (apiError) {
+          console.error(">>> [GalleryManager] Erro ao buscar serviços via API:", apiError);
+        }
+      }
+        
+      setServices(loadedServices);
+
+      if (loadedServices.length > 0 && !categoryInput) {
+        setCategoryInput(loadedServices[0].name);
+      }
     } catch (error) {
-      console.warn(">>> [ADMIN_WARN] Erro ao sincronizar galeria:", error);
+      console.error("Erro ao carregar galeria:", error);
       toast({
-        title: "Erro de Sincronização",
-        description: "Não foi possível salvar as alterações no banco de dados.",
+        title: "Erro",
+        description: "Não foi possível carregar as imagens da galeria.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    const loadData = () => {
-      // Prioriza dados do studio vindos do banco via context
-      if (studio?.gallery) {
-        console.log(">>> [GALLERY_MANAGER] Carregando fotos do banco:", studio.gallery.length);
-        setImages(studio.gallery);
-      } else {
-        const loadedImages = getGalleryImages();
-        setImages(loadedImages);
-      }
-      
-      const loadedServices = studio?.services || getServices();
-      setServices(loadedServices);
-
-      // Define a categoria padrão como o primeiro serviço disponível se ainda não houver uma
-      if (loadedServices.length > 0 && !categoryInput) {
-        setCategoryInput(loadedServices[0].name);
-      }
-    };
-
     loadData();
 
-    // Escuta atualizações nos serviços (vindo do ServicesManager ou SiteCustomizer)
     window.addEventListener("studioSettingsUpdated", loadData);
     window.addEventListener("servicesUpdated", loadData);
+    window.addEventListener("DataReady", loadData);
 
     return () => {
       window.removeEventListener("studioSettingsUpdated", loadData);
       window.removeEventListener("servicesUpdated", loadData);
+      window.removeEventListener("DataReady", loadData);
     };
-  }, [categoryInput, studio]);
+  }, [studio?.id, studio?.services]);
 
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -160,52 +142,69 @@ export function GalleryManager() {
 
   const filteredImages = images.filter((img) => {
     const matchesSearch =
-      img.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      img.category.toLowerCase().includes(searchQuery.toLowerCase());
+      (img.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (img.category || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory =
       filterCategory === "all" || img.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
+    // Verificação de segurança: Só prossegue se houver estúdio carregado
+    if (!studio?.id) {
+      toast({
+        title: "Erro de Autenticação",
+        description: "Estúdio não identificado. Tente recarregar a página.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsUploading(true);
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = event.target?.result as string;
-        const newImage: GalleryImage = {
-          id: Math.random().toString(36).substr(2, 9),
-          url: base64,
-          title: file.name.split(".")[0],
-          category:
-            categoryInput ||
-            (services.length > 0 ? services[0].name : "Sem Categoria"),
-          createdAt: new Date().toISOString(),
-          showOnHome: false,
-        };
-
-        setImages((prev) => {
-          const updated = [newImage, ...prev];
-          saveGalleryImages(updated);
-          syncToBackend(updated);
-          return updated;
+    try {
+      for (const file of Array.from(files)) {
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onload = (event) => resolve(event.target?.result as string);
         });
-      };
-      reader.readAsDataURL(file);
-    });
+        reader.readAsDataURL(file);
+        const base64 = await base64Promise;
 
-    setIsUploading(false);
-    toast({
-      title: "Upload concluído",
-      description: `${files.length} imagem(ns) adicionada(s) com sucesso.`,
-    });
+        await galleryService.create({
+          imageUrl: base64,
+          title: file.name.split(".")[0],
+          category: categoryInput || (services.length > 0 ? services[0].name : "Geral"),
+          showInHome: false,
+        });
+      }
+      
+      await loadData();
+      
+      // Notificar Home
+      window.dispatchEvent(new Event("galleryUpdated"));
+
+      toast({
+        title: "Upload concluído",
+        description: `${files.length} imagem(ns) adicionada(s) com sucesso.`,
+      });
+    } catch (error: any) {
+      console.error(">>> [GalleryManager] Erro no upload:", error);
+      toast({
+        title: "Erro no upload",
+        description: error.message || "Ocorreu um erro ao enviar as imagens.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
-  const handleAddByUrl = () => {
+  const handleAddByUrl = async () => {
     const trimmedUrl = urlInput.trim();
     if (!trimmedUrl) {
       toast({
@@ -216,66 +215,112 @@ export function GalleryManager() {
       return;
     }
 
-    const newImage: GalleryImage = {
-      id: Math.random().toString(36).substr(2, 9),
-      url: trimmedUrl,
-      title: titleInput.trim() || "Nova Imagem",
-      category:
-        categoryInput ||
-        (services.length > 0 ? services[0].name : "Sem Categoria"),
-      createdAt: new Date().toISOString(),
-      showOnHome: false,
-    };
+    if (!studio?.id) {
+      toast({
+        title: "Erro de Autenticação",
+        description: "Estúdio não identificado. Tente recarregar a página.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const updated = [newImage, ...images];
-    setImages(updated);
-    saveGalleryImages(updated);
-    syncToBackend(updated);
+    setIsUploading(true);
+    try {
+      await galleryService.create({
+        imageUrl: trimmedUrl,
+        title: titleInput || "Sem título",
+        category: categoryInput || (services.length > 0 ? services[0].name : "Geral"),
+        showInHome: false,
+      });
 
-    setUrlInput("");
-    setTitleInput("");
-    // Não limpamos a categoria para facilitar adições em massa da mesma categoria
+      setUrlInput("");
+      setTitleInput("");
+      await loadData();
 
-    toast({
-      title: "Imagem adicionada",
-      description: "A imagem via URL foi incluída na galeria.",
-    });
+      // Notificar Home
+      window.dispatchEvent(new Event("galleryUpdated"));
+
+      toast({
+        title: "Sucesso",
+        description: "Imagem adicionada à galeria.",
+      });
+    } catch (error: any) {
+      console.error(">>> [GalleryManager] Erro ao adicionar via URL:", error);
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível adicionar a imagem.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    const updated = images.filter((img) => img.id !== id);
-    setImages(updated);
-    saveGalleryImages(updated);
-    syncToBackend(updated);
-    toast({
-      title: "Imagem removida",
-      description: "A imagem foi excluída da galeria.",
-    });
+  const handleDelete = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta imagem?")) return;
+
+    try {
+      await galleryService.delete(id);
+      setImages((prev) => prev.filter((img) => img.id !== id));
+      
+      // Notificar Home
+      window.dispatchEvent(new Event("galleryUpdated"));
+
+      toast({
+        title: "Imagem excluída",
+        description: "A imagem foi removida da galeria.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao excluir",
+        description: "Não foi possível remover a imagem.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleUpdateCategory = (id: string, newCategory: string) => {
-    const updated = images.map((img) =>
-      img.id === id ? { ...img, category: newCategory } : img,
-    );
-    setImages(updated);
-    saveGalleryImages(updated);
-    syncToBackend(updated);
+  const handleUpdateCategory = async (id: string, newCategory: string) => {
+    try {
+      await galleryService.update(id, { category: newCategory });
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === id ? { ...img, category: newCategory } : img,
+        ),
+      );
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível atualizar a categoria.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const toggleShowOnHome = (id: string) => {
-    const updated = images.map((img) =>
-      img.id === id ? { ...img, showOnHome: !img.showOnHome } : img,
-    );
-    setImages(updated);
-    saveGalleryImages(updated);
-    syncToBackend(updated);
-    const img = updated.find((i) => i.id === id);
-    toast({
-      title: img?.showOnHome ? "Destaque ativado" : "Destaque removido",
-      description: img?.showOnHome
-        ? "A imagem será exibida na página inicial."
-        : "A imagem não será mais exibida na página inicial.",
-    });
+  const toggleShowOnHome = async (id: string, currentState: boolean) => {
+    try {
+      await galleryService.update(id, { showInHome: !currentState });
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === id ? { ...img, showInHome: !currentState } : img,
+        ),
+      );
+
+      // Notificar outros componentes (como o Preview da Home) que a galeria mudou
+      window.dispatchEvent(new Event("galleryUpdated"));
+
+      toast({
+        title: currentState ? "Removida da Home" : "Adicionada à Home",
+        description: currentState
+          ? "A imagem não aparecerá mais no carrossel inicial."
+          : "A imagem agora aparecerá no carrossel inicial.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível alterar o status da imagem.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -283,12 +328,17 @@ export function GalleryManager() {
       <div className="flex flex-col gap-2">
         <h2 className="text-2xl font-bold">Gerenciar Galeria</h2>
         <p className="text-muted-foreground text-sm">
-          Adicione e organize as fotos dos seus trabalhos. As imagens serão
-          salvas localmente.
+          Adicione e organize as fotos dos seus trabalhos. As imagens são
+          salvas e sincronizadas com o servidor.
         </p>
       </div>
 
       <div className="grid gap-6">
+        {isLoading && (
+          <div className="flex items-center justify-center p-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          </div>
+        )}
         {/* Upload Card */}
         <Card className="border-none shadow-sm bg-card/50 backdrop-blur-sm">
           <CardHeader className="pb-4">
@@ -476,8 +526,8 @@ export function GalleryManager() {
                   ) : (
                     <div className="w-full h-full relative">
                       <Image
-                        src={img.url}
-                        alt={img.title}
+                        src={img.imageUrl}
+                        alt={img.title || ""}
                         fill
                         className="object-cover transition-transform group-hover:scale-105"
                         onError={() => handleImageError(img.id)}
@@ -497,17 +547,17 @@ export function GalleryManager() {
                     </Button>
                     <Button
                       type="button"
-                      variant={img.showOnHome ? "default" : "secondary"}
+                      variant={img.showInHome ? "default" : "secondary"}
                       size="icon"
                       className={cn(
                         "rounded-full w-12 h-12 shadow-lg scale-90 group-hover:scale-100 transition-transform",
-                        img.showOnHome
+                        img.showInHome
                           ? "bg-[#D946EF] hover:bg-[#C026D3] text-white"
                           : "bg-white/90 hover:bg-white text-black",
                       )}
-                      onClick={() => toggleShowOnHome(img.id)}
+                      onClick={() => toggleShowOnHome(img.id, img.showInHome)}
                       title={
-                        img.showOnHome
+                        img.showInHome
                           ? "Remover da página inicial"
                           : "Mostrar na página inicial"
                       }
@@ -515,16 +565,16 @@ export function GalleryManager() {
                       <Home className="w-6 h-6" />
                     </Button>
                   </div>
-                  {img.showOnHome && (
+                  {img.showInHome && (
                     <div className="absolute top-2 left-2 bg-[#D946EF] text-white p-1.5 rounded-full shadow-lg z-10">
                       <Home className="w-3.5 h-3.5" />
                     </div>
                   )}
                 </div>
                 <div className="p-3 space-y-2">
-                  <p className="text-sm font-medium truncate">{img.title}</p>
+                  <p className="text-sm font-medium truncate">{img.title || "Sem título"}</p>
                   <Select
-                    value={img.category}
+                    value={img.category || ""}
                     onValueChange={(val) => handleUpdateCategory(img.id, val)}
                   >
                     <SelectTrigger className="h-8 text-xs bg-muted/50 border-none">

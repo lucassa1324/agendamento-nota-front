@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 type GalleryImage = {
   id: string | number;
   url?: string;
+  imageUrl?: string;
   query?: string;
   title: string;
   category: string;
@@ -33,6 +34,7 @@ export function ImageModal({ image, onClose }: ImageModalProps) {
   }, [onClose]);
 
   const imageUrl =
+    image.imageUrl ||
     image.url ||
     `https://images.unsplash.com/photo-1560750588-73207b1ef5b8?auto=format&fit=crop&q=80&w=800&h=800&query=${image.query}`;
 
