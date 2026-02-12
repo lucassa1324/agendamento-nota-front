@@ -100,6 +100,8 @@ export function ProfileManager() {
           description: data.description || "",
           titleSuffix: data.titleSuffix || "",
           phone: data.phone || "",
+          email: studio?.email || session?.user?.email || data.email || "",
+          address: data.address || "",
           instagram: data.instagram || "",
           whatsapp: data.whatsapp || "",
           facebook: data.facebook || "",
@@ -175,15 +177,29 @@ export function ProfileManager() {
     setSaveSuccess(false);
 
     try {
-      // Adiciona o ID obrigatório ao payload de mudanças
+      // O backend agora espera o objeto completo conforme a nova especificação
       const payload = {
-        ...changes,
-        companyId,
+        siteName: profile.name,
+        titleSuffix: profile.titleSuffix,
+        description: profile.description,
+        instagram: profile.instagram,
+        showInstagram: profile.showInstagram,
+        whatsapp: profile.whatsapp,
+        showWhatsapp: profile.showWhatsapp,
+        facebook: profile.facebook,
+        showFacebook: profile.showFacebook,
+        tiktok: profile.tiktok,
+        showTiktok: profile.showTiktok,
+        linkedin: profile.linkedin,
+        showLinkedin: profile.showLinkedin,
+        phone: profile.phone,
+        email: profile.email || "",
+        address: profile.address || "",
       };
 
-      console.log(">>> [PROFILE] Enviando apenas alterações:", payload);
+      console.log(">>> [PROFILE] Enviando payload completo:", payload);
 
-      const response = await fetch(`${API_BASE_URL}/api/settings/profile`, {
+      const response = await fetch(`${API_BASE_URL}/api/settings/profile/${companyId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

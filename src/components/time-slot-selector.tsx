@@ -85,8 +85,20 @@ export function TimeSlotSelector({
 
       // 1. Processar Horários de Funcionamento (Schedule)
       let currentDaySchedule: DaySchedule | undefined;
+
+      // Se a agenda estiver fechada globalmente, não mostramos slots
+      if (settings && settings.agendaAberta === false) {
+        console.log(">>> [TIME_SLOT_SELECTOR] Agenda está fechada globalmente (agendaAberta = false)");
+        setTimeSlots([]);
+        setIsLoadingBookings(false);
+        return;
+      }
+
       if (settings?.weekly) {
-        const dayOfWeek = parseISO(date).getDay();
+        // Corrigido: parseISO(date).getDay() retorna o dia em UTC, o que causa erro de fuso.
+        // Usamos o construtor Date com a string T00:00:00 para garantir fuso local.
+        const localDate = new Date(`${date}T00:00:00`);
+        const dayOfWeek = localDate.getDay();
         const apiDay = settings.weekly.find(w => parseInt(w.dayOfWeek, 10) === dayOfWeek);
         
         if (apiDay) {

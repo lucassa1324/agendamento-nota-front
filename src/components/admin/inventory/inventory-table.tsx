@@ -43,14 +43,45 @@ export function InventoryTable({
   setShowHistory,
   handleDeleteItem,
 }: InventoryTableProps) {
+  const formatQuantity = (item: InventoryItem) => {
+    const qty = item.quantity || item.currentQuantity || 0;
+    const factor = item.conversionFactor || 1;
+    
+    // Se tiver fator de conversão e unidade secundária, mostra o cálculo
+    // Mas se a unidade secundária for "caixa", mantemos a primária como principal
+    const isSecondaryBox = item.secondaryUnit?.toLowerCase().includes("caixa") || 
+                          item.secondaryUnit?.toLowerCase().includes("cx");
+
+    if (factor > 1 && item.secondaryUnit && !isSecondaryBox) {
+      const secondaryQty = qty * factor;
+      
+      // Se for um número inteiro, mostra sem decimais, senão mostra até 2
+      const formattedSecondary = Number.isInteger(secondaryQty) 
+        ? secondaryQty.toString() 
+        : secondaryQty.toFixed(2).replace('.', ',');
+
+      return (
+        <div className="flex flex-col">
+          <span className="font-bold text-sm">
+            {formattedSecondary} {item.secondaryUnit}
+          </span>
+          <span className="text-[10px] text-muted-foreground font-normal">
+            ({qty.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {item.unit})
+          </span>
+        </div>
+      );
+    }
+
+    return `${qty.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} ${item.unit}`;
+  };
+
   return (
     <div className="overflow-x-auto w-full max-w-full">
       <Table className="w-full min-w-full">
         <TableHeader>
           <TableRow className="text-[10px] sm:text-xs">
             <TableHead className="px-2 sm:px-4">Produto</TableHead>
-            <TableHead className="hidden xl:table-cell">Quantidade</TableHead>
-            <TableHead className="hidden 2xl:table-cell">Unidade</TableHead>
+            <TableHead className="hidden xl:table-cell">Estoque</TableHead>
             <TableHead className="px-2 sm:px-4">Valor Unit.</TableHead>
             <TableHead className="hidden 2xl:table-cell">Status</TableHead>
             <TableHead className="hidden 2xl:table-cell">
@@ -68,7 +99,7 @@ export function InventoryTable({
                     {item.name}
                   </span>
                   <div className="flex items-center gap-1 mt-0.5 xl:hidden">
-                    <span
+                    <div
                       className={cn(
                         "text-[9px] sm:text-xs",
                         (item.quantity || 0) <= (item.minQuantity || 0)
@@ -76,8 +107,8 @@ export function InventoryTable({
                           : "text-muted-foreground",
                       )}
                     >
-                      {(item.quantity || 0).toLocaleString("pt-BR")} {item.unit}
-                    </span>
+                      {formatQuantity(item)}
+                    </div>
                     {(item.quantity || 0) <= (item.minQuantity || 0) && (
                       <Badge
                         variant="outline"
@@ -90,21 +121,15 @@ export function InventoryTable({
                 </div>
               </TableCell>
               <TableCell className="hidden xl:table-cell">
-                <span
+                <div
                   className={
                     (item.quantity || 0) <= (item.minQuantity || 0)
                       ? "text-red-600 font-semibold"
                       : ""
                   }
                 >
-                  {(item.quantity || 0).toLocaleString("pt-BR", {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 3,
-                  })}
-                </span>
-              </TableCell>
-              <TableCell className="hidden 2xl:table-cell">
-                {item.unit}
+                  {formatQuantity(item)}
+                </div>
               </TableCell>
               <TableCell className="px-2 sm:px-4 whitespace-nowrap">
                 {new Intl.NumberFormat("pt-BR", {

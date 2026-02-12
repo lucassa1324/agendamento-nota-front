@@ -14,7 +14,8 @@ import {
   TrendingUp,
   X,
 } from "lucide-react";
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -50,8 +51,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useStudio } from "@/context/studio-context";
-import { expensesService, type Expense, type ExpenseCategory, type ProfitReport } from "@/lib/expenses-service";
-import { toast } from "sonner";
+import { type Expense, type ExpenseCategory, expensesService, type ProfitReport } from "@/lib/expenses-service";
 
 export function ManagementReports() {
   const { studio } = useStudio();
@@ -276,9 +276,8 @@ export function ManagementReports() {
                 setEditingExpense(null);
                 setNewExpense({
                   description: "",
-                  value: undefined,
-                  category: "",
-                  isFixed: true,
+                  value: "",
+                  category: "GERAL",
                 });
               }
             }}

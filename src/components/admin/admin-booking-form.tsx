@@ -12,8 +12,8 @@ import { appointmentService } from "@/lib/api-appointments";
 import {
   type Booking,
   type BookingStepSettings,
-  type Service,
   parseDuration,
+  type Service,
   saveBookingToStorage,
   sendBookingNotifications,
 } from "@/lib/booking-data";

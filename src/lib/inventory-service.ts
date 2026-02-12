@@ -2,8 +2,10 @@ import { API_BASE_URL, getSessionToken } from "./auth-client";
 
 export interface InventoryLog {
   id?: string;
-  type: "entrada" | "saida" | "ajuste";
+  type: "entrada" | "saida" | "ajuste" | "venda" | "servico";
   quantityChange: number;
+  previousQuantity?: number;
+  newQuantity?: number;
   reason?: string;
   notes?: string;
   timestamp: string;
@@ -100,6 +102,16 @@ class InventoryService {
       method: "POST",
       headers,
       body: JSON.stringify(log),
+    });
+    return this.handleResponse(response);
+  }
+
+  async subtract(id: string, quantity: number): Promise<InventoryItem> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${this.baseUrl}/${id}/subtract`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ quantity }),
     });
     return this.handleResponse(response);
   }

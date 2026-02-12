@@ -59,9 +59,9 @@ import {
 } from "@/components/ui/tooltip";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
-import { API_BASE_URL, useSession } from "@/lib/auth-client";
+import { useSession } from "@/lib/auth-client";
+import type { InventoryItem } from "@/lib/inventory-service";
 import { inventoryService } from "@/lib/inventory-service";
-import type { InventoryItem, InventoryLog } from "@/lib/inventory-service";
 import { cn } from "@/lib/utils";
 import { InventoryAddForm } from "./inventory/inventory-add-form";
 
@@ -832,12 +832,22 @@ export function InventoryManager() {
             </DialogTitle>
             <DialogDescription>
               {transactionItem?.item.name} (
-              {Number(
-                transactionItem?.item?.quantity ||
-                  transactionItem?.item?.currentQuantity ||
-                  0,
-              )}{" "}
-              {transactionItem?.item.unit} atuais)
+              {(() => {
+                const item = transactionItem?.item;
+                if (!item) return "0";
+                const qty = Number(item.quantity || item.currentQuantity || 0);
+                const factor = Number(item.conversionFactor || 1);
+                
+                if (factor > 1 && item.secondaryUnit) {
+                  const secondaryQty = qty * factor;
+                  const formattedSecondary = Number.isInteger(secondaryQty) 
+                    ? secondaryQty.toString() 
+                    : secondaryQty.toFixed(2).replace('.', ',');
+                  return `${formattedSecondary} ${item.secondaryUnit} / ${qty.toLocaleString("pt-BR")} ${item.unit}`;
+                }
+                
+                return `${qty.toLocaleString("pt-BR")} ${item.unit}`;
+              })()} atuais)
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

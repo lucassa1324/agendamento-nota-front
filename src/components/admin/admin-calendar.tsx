@@ -19,6 +19,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -688,6 +689,9 @@ export function AdminCalendar({
               <Plus className="w-5 h-5 text-primary" />
               Novo Agendamento (Admin)
             </DialogTitle>
+            <DialogDescription>
+              Crie um novo agendamento manualmente no calendário.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="bg-muted/50 p-3 rounded-lg text-sm space-y-1">

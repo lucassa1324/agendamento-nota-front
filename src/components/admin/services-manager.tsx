@@ -165,6 +165,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -189,20 +190,32 @@ import {
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import {
+  type InventoryItem as BookingInventoryItem,
   getInventoryFromStorage,
   getSettingsFromStorage,
-  type InventoryItem,
   parseDuration,
   type Service,
   saveInventoryToStorage,
   saveSettingsToStorage,
 } from "@/lib/booking-data";
+import { inventoryService } from "@/lib/inventory-service";
 import { cn } from "@/lib/utils";
 
 const API_URL = `${API_BASE_URL}/api/services`.replace(/\/+$/, "");
 
 console.log(">>> [SERVICES_MANAGER] API_BASE_URL:", API_BASE_URL);
 console.log(">>> [SERVICES_MANAGER] API_URL configurada para:", API_URL);
+
+interface ServiceResourceItem {
+  inventoryId?: string;
+  inventory_id?: string;
+  productId?: string;
+  product_id?: string;
+  quantity: number | string;
+  unit?: string;
+  useSecondaryUnit?: boolean;
+  use_secondary_unit?: boolean;
+}
 
 interface BackendService {
   id: string;
@@ -214,23 +227,24 @@ interface BackendService {
   showOnHome?: boolean | string | number;
   show_on_home?: boolean | string | number;
   conflictingServiceIds?: string[];
+  conflicting_service_ids?: string[];
   advanced_rules?: {
     conflicts?: string[];
   };
   advancedRules?: {
     conflicts?: string[];
   };
-  products?: {
-    productId: string;
-    quantity: number;
-    useSecondaryUnit?: boolean;
-  }[];
+  resources?: ServiceResourceItem[];
+  serviceResources?: ServiceResourceItem[];
+  service_resources?: ServiceResourceItem[];
+  // Campo legado do backend (se ainda existir)
+  products?: ServiceResourceItem[];
 }
 
 export function ServicesManager() {
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [allProducts, setAllProducts] = useState<InventoryItem[]>([]);
+  const [allProducts, setAllProducts] = useState<BookingInventoryItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -307,7 +321,23 @@ export function ServicesManager() {
   useEffect(() => {
     if (!studio?.id) return;
     loadServices();
-    setAllProducts(getInventoryFromStorage());
+    
+    // Carregar produtos da API em vez do localStorage
+    const loadInventory = async () => {
+      try {
+        const data = await inventoryService.list(studio.id);
+        const bookingInventoryData = data as unknown as BookingInventoryItem[];
+        setAllProducts(bookingInventoryData);
+        // Opcional: manter localStorage sincronizado para compatibilidade legada
+        saveInventoryToStorage(bookingInventoryData);
+      } catch (error) {
+        console.error(">>> [SERVICES_MANAGER] Erro ao carregar estoque:", error);
+        // Fallback para localStorage se a API falhar
+        setAllProducts(getInventoryFromStorage());
+      }
+    };
+    
+    loadInventory();
   }, [studio?.id]);
 
   const loadServices = async () => {
@@ -348,7 +378,7 @@ export function ServicesManager() {
       }
 
       const data = await response.json();
-      console.log(">>> [SERVICES_MANAGER] Dados recebidos:", data);
+      console.log(">>> [SERVICES_MANAGER] Dados crus da API:", data);
 
       // Mapear os dados do Back-end (que usa strings decimais) de volta para numbers se necessário
       // e garantir que os campos opcionais existam, tratando advanced_rules vs advancedRules
@@ -358,25 +388,52 @@ export function ServicesManager() {
           s.advanced_rules?.conflicts ||
           s.advancedRules?.conflicts ||
           s.conflictingServiceIds ||
+          s.conflicting_service_ids ||
           [];
+
+        // Mapear resources para products (UI legada) para manter compatibilidade
+        // Suporta tanto camelCase quanto snake_case do banco
+        const rawResources = s.resources || s.serviceResources || s.service_resources || [];
+        const mappedProducts = rawResources.map((r: ServiceResourceItem) => ({
+          productId: (r.inventoryId || r.inventory_id || r.productId || r.product_id || "") as string,
+          quantity: typeof r.quantity === "string" ? parseFloat(r.quantity) : r.quantity,
+          useSecondaryUnit: !!(r.useSecondaryUnit || r.use_secondary_unit)
+        }));
+
+        // Fallback para o campo 'products' legado se resources estiver vazio
+        const finalProducts = mappedProducts.length > 0 
+          ? mappedProducts 
+          : (s.products || []).map((p: ServiceResourceItem) => ({
+              productId: (p.productId || p.product_id || p.inventoryId || p.inventory_id || "") as string,
+              quantity: typeof p.quantity === "string" ? parseFloat(p.quantity) : p.quantity,
+              useSecondaryUnit: !!(p.useSecondaryUnit || p.use_secondary_unit)
+            }));
+
+        const finalResources = rawResources.map((r: ServiceResourceItem) => ({
+          inventoryId: (r.inventoryId || r.inventory_id || r.productId || r.product_id || "") as string,
+          quantity: typeof r.quantity === "string" ? parseFloat(r.quantity) : (r.quantity || 0),
+          unit: r.unit || "un",
+          useSecondaryUnit: !!(r.useSecondaryUnit || r.use_secondary_unit)
+        }));
 
         return {
           ...s,
           price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
           duration: parseDuration(s.duration),
           conflictingServiceIds: Array.isArray(conflicts) ? conflicts : [],
-          products: s.products || [],
-          showOnHome: Boolean(s.showOnHome), // Força conversão para boolean
+          products: finalProducts,
+          resources: finalResources,
+          showOnHome: Boolean(s.showOnHome || s.show_on_home),
         };
       });
 
-      console.log(">>> [SERVICES_MANAGER] Serviços formatados para UI:", formattedServices.map((s: Service) => ({
-        id: s.id,
+      console.log(">>> [SERVICES_MANAGER] Serviços formatados com produtos:", formattedServices.map((s) => ({
         name: s.name,
-        conflicts: s.conflictingServiceIds
+        productCount: s.products?.length || 0,
+        products: s.products
       })));
 
-      setServices(formattedServices);
+      setServices(formattedServices as Service[]);
       
       // Sincronizar cache local com os dados do banco
       const settings = getSettingsFromStorage();
@@ -475,6 +532,19 @@ export function ServicesManager() {
       (id) => id !== editingId,
     );
 
+    // Mapear produtos para o formato 'resources' esperado pelo backend
+    const resources = (formData.products || []).map(p => {
+      const inventoryItem = allProducts.find(i => i.id === p.productId);
+      return {
+        inventoryId: p.productId,
+        quantity: p.quantity,
+        unit: p.useSecondaryUnit 
+          ? (inventoryItem?.secondaryUnit || inventoryItem?.unit || "") 
+          : (inventoryItem?.unit || ""),
+        useSecondaryUnit: !!p.useSecondaryUnit
+      };
+    });
+
     const cleanData = {
       name: formData.name,
       description: formData.description,
@@ -486,7 +556,7 @@ export function ServicesManager() {
       advanced_rules: {
         conflicts: sanitizedConflicts,
       },
-      products: formData.products || [],
+      resources: resources,
     };
 
     console.log(">>> [FRONT_SENDING] Payload completo:", {
@@ -559,6 +629,7 @@ export function ServicesManager() {
                   showOnHome: cleanData.showOnHome,
                   conflictingServiceIds: formData.conflictingServiceIds || [],
                   products: formData.products || [],
+                  resources: resources,
                 } as Service)
               : s,
           ),
@@ -710,7 +781,7 @@ export function ServicesManager() {
     }
   };
 
-  const handleSaveConversion = (productId: string) => {
+  const handleSaveConversion = async (productId: string) => {
     if (!conversionData.secondaryUnit || conversionData.conversionFactor <= 0) {
       toast({
         title: "Dados Inválidos",
@@ -721,31 +792,51 @@ export function ServicesManager() {
       return;
     }
 
-    const updatedInventory = allProducts.map((p) =>
-      p.id === productId
-        ? {
-            ...p,
-            secondaryUnit: conversionData.secondaryUnit,
-            conversionFactor: conversionData.conversionFactor,
-          }
-        : p,
-    );
+    try {
+      // Atualizar no back-end via API
+      await inventoryService.update(productId, {
+        secondaryUnit: conversionData.secondaryUnit,
+        conversionFactor: conversionData.conversionFactor,
+      });
 
-    saveInventoryToStorage(updatedInventory);
-    setAllProducts(updatedInventory);
-    setEditingConversionId(null);
+      // Recarregar estoque para atualizar estado local
+      const updatedInventoryRaw = await inventoryService.list(studio?.id || "");
+      const updatedInventory = updatedInventoryRaw as unknown as BookingInventoryItem[];
+      setAllProducts(updatedInventory);
+      
+      // Sincronizar localStorage (opcional, mas bom para consistência legado)
+      saveInventoryToStorage(updatedInventory);
+      
+      setEditingConversionId(null);
 
-    toast({
-      title: "Conversão Salva",
-      description: "A unidade de consumo foi configurada com sucesso.",
-    });
+      toast({
+        title: "Conversão Salva",
+        description: "A unidade de consumo foi configurada com sucesso no servidor.",
+      });
+    } catch (error) {
+      console.error(">>> [SERVICES_MANAGER] Erro ao salvar conversão:", error);
+      toast({
+        title: "Erro ao Salvar",
+        description: "Não foi possível salvar a conversão no servidor.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleOpenProductModal = (service: Service) => {
-    setAllProducts(getInventoryFromStorage());
+  const handleOpenProductModal = async (service: Service) => {
     setServiceForProducts(service);
     setInnerProductSearch("");
     setIsProductModalOpen(true);
+    
+    // Garantir que os produtos estejam atualizados ao abrir o modal
+    if (studio?.id) {
+      try {
+        const data = await inventoryService.list(studio.id);
+        setAllProducts(data as unknown as BookingInventoryItem[]);
+      } catch (error) {
+        console.error(">>> [SERVICES_MANAGER] Erro ao atualizar produtos ao abrir modal:", error);
+      }
+    }
   };
 
   const handleSaveServiceProducts = async () => {
@@ -754,12 +845,45 @@ export function ServicesManager() {
     const authOptions = getAuthOptions();
 
     try {
+      // Garantir que temos os produtos do estoque carregados para pegar as unidades corretas
+      let currentAllProducts = allProducts;
+      if (currentAllProducts.length === 0 && studio?.id) {
+        console.log(">>> [SERVICES_MANAGER] Recarregando estoque antes de salvar...");
+        const data = await inventoryService.list(studio.id);
+        currentAllProducts = data as unknown as BookingInventoryItem[];
+        setAllProducts(currentAllProducts);
+      }
+
+      // Mapear produtos da UI para o formato 'resources' esperado pelo backend
+      const resources = (serviceForProducts.products || []).map((p) => {
+        const inventoryItem = currentAllProducts.find((i) => i.id === p.productId);
+        return {
+          inventoryId: p.productId,
+          quantity: p.quantity,
+          unit: p.useSecondaryUnit
+            ? inventoryItem?.secondaryUnit || inventoryItem?.unit || ""
+            : inventoryItem?.unit || "",
+          useSecondaryUnit: !!p.useSecondaryUnit,
+        };
+      });
+
+      console.log(">>> [SERVICES_MANAGER] Recursos para salvar:", resources);
+
       const serviceData = {
         ...serviceForProducts,
         companyId: studio?.id,
         price: serviceForProducts.price.toFixed(2),
         duration: serviceForProducts.duration.toString(),
+        resources: resources,
       };
+
+      // Remover o campo 'products' legado e outros campos extras antes de enviar
+      const { 
+        products: _, 
+        serviceResources: __, 
+        service_resources: ___, 
+        ...serviceDataToSubmit 
+      } = serviceData as Record<string, unknown>;
 
       const putProductsUrl = `${API_URL}/${serviceForProducts.id}`.replace(
         /([^:]\/)\/+/g,
@@ -773,15 +897,21 @@ export function ServicesManager() {
       const response = await fetch(putProductsUrl, {
         ...authOptions,
         method: "PUT",
-        body: JSON.stringify(serviceData),
+        body: JSON.stringify(serviceDataToSubmit),
       });
 
-      if (!response.ok)
-        throw new Error("Erro ao salvar produtos do serviço no servidor");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error(">>> [SERVICES_MANAGER] Erro ao salvar:", errorData);
+        throw new Error(`Erro ao salvar produtos do serviço: ${response.status}`);
+      }
+
+      const updatedService = await response.json();
+      console.log(">>> [SERVICES_MANAGER] Resposta do save (PUT):", updatedService);
 
       toast({
         title: "Produtos Atualizados",
-        description: `A configuração de produtos para "${serviceForProducts.name}" foi salva.`,
+        description: `A configuração de produtos para "${serviceForProducts.name}" foi salva com sucesso.`,
       });
 
       setIsProductModalOpen(false);
@@ -922,6 +1052,11 @@ export function ServicesManager() {
             <DialogTitle>
               {editingId ? "Editar Serviço" : "Novo Serviço"}
             </DialogTitle>
+            <DialogDescription>
+              {editingId 
+                ? "Atualize as informações do serviço selecionado." 
+                : "Preencha os dados abaixo para cadastrar um novo serviço no sistema."}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
@@ -1236,14 +1371,13 @@ export function ServicesManager() {
               <Package className="w-5 h-5 text-accent" />
               Produtos: {serviceForProducts?.name}
             </DialogTitle>
+            <DialogDescription>
+              Configure os produtos consumidos. Use a unidade secundária para
+              ajustes finos (ex: gramas).
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-            <p className="text-sm text-muted-foreground">
-              Configure os produtos consumidos. Use a unidade secundária para
-              ajustes finos (ex: gramas).
-            </p>
-
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="relative flex-1">
@@ -1273,6 +1407,9 @@ export function ServicesManager() {
                 <DialogContent className="sm:max-w-100">
                   <DialogHeader>
                     <DialogTitle>Adicionar Produto ao Serviço</DialogTitle>
+                    <DialogDescription>
+                      Pesquise e selecione um produto do estoque para vincular a este serviço.
+                    </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-2">
                     <div className="relative">

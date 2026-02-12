@@ -1744,7 +1744,17 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         // Normalização do appointmentFlow (bookingSteps) conforme back-end
         const bookingChanges: Record<string, unknown> = {};
         if (changes.bookingSteps) {
-          const steps = changes.bookingSteps as Record<string, any>;
+          interface StepConfig {
+            bgType?: string;
+            bgColor?: string;
+            backgroundColor?: string;
+            cardBgColor?: string;
+            cardConfig?: {
+              backgroundColor?: string;
+            };
+            [key: string]: unknown;
+          }
+          const steps = changes.bookingSteps as Record<string, StepConfig>;
           
           if (steps.service) {
             bookingChanges.step1Services = {

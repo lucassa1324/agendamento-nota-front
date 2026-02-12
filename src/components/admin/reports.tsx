@@ -62,11 +62,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStudio } from "@/context/studio-context";
 import { appointmentService } from "@/lib/api-appointments";
-import {
-  type InventoryLog,
+import type {
+  InventoryItem,
+  InventoryLog,
 } from "@/lib/booking-data";
 import { expensesService } from "@/lib/expenses-service";
-import { inventoryService, type InventoryItem } from "@/lib/inventory-service";
+import { inventoryService } from "@/lib/inventory-service";
 import { cn } from "@/lib/utils";
 
 type GlobalInventoryLog = InventoryLog & {
@@ -114,11 +115,13 @@ export function Reports() {
     setIsLoading(true);
     try {
       // Buscar dados reais da API
-      const [appointments, inventory, expenses] = await Promise.all([
+      const [appointments, inventoryRaw, expenses] = await Promise.all([
         appointmentService.listByCompanyAdmin(studio.id),
         inventoryService.list(studio.id),
         expensesService.list(studio.id),
       ]);
+
+      const inventory = inventoryRaw as unknown as InventoryItem[];
 
       console.log(">>> [REPORTS] Dados recebidos:", {
         appointmentsCount: appointments.length,
@@ -156,7 +159,7 @@ export function Reports() {
         const itemPrice = Number(item.price ?? item.unitPrice ?? 0);
 
         if (item.logs && Array.isArray(item.logs)) {
-          item.logs.forEach((log) => {
+          item.logs.forEach((log: InventoryLog) => {
             allLogs.push({
               ...log,
               productName: item.name,
@@ -1260,7 +1263,7 @@ export function Reports() {
                           {log.unit}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {log.newQuantity.toLocaleString("pt-BR")} {log.unit}
+                          {(log.newQuantity ?? 0).toLocaleString("pt-BR")} {log.unit}
                         </TableCell>
                         <TableCell
                           className="text-[11px] text-muted-foreground italic max-w-50 truncate"

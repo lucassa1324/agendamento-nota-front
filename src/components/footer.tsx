@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { useStudio } from "@/context/studio-context";
 import {
   defaultFooterSettings,
+  defaultSiteProfile,
   type FooterSettings,
   getFooterSettings,
   getPageVisibility,
@@ -47,9 +48,14 @@ export function Footer({
   );
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
-  >({});
+  >({ footer: true });
+  const [mounted, setMounted] = useState(false);
 
   const only = searchParams.get("only");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (externalFooterSettings) {
@@ -60,18 +66,46 @@ export function Footer({
   useEffect(() => {
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     const baseProfile = getSiteProfile();
+
     if (studio) {
-      setProfile({
+      // Função auxiliar para validar se um dado é útil (não nulo, não vazio, não apenas espaços)
+      const isValid = (val: unknown): val is string => 
+        val !== null && val !== undefined && String(val).trim() !== "";
+
+      const mergedProfile: SiteProfile = {
         ...baseProfile,
-        name: studio.name || baseProfile.name,
-        // Você pode adicionar outros campos do studio aqui se houver mapeamento
-      });
+        name: isValid(studio.siteName) ? studio.siteName : (isValid(studio.name) ? studio.name : baseProfile.name),
+        description: isValid(studio.description) ? studio.description : baseProfile.description,
+        phone: isValid(studio.phone) ? studio.phone : baseProfile.phone,
+        email: isValid(studio.email) ? studio.email : baseProfile.email,
+        address: isValid(studio.address) ? studio.address : baseProfile.address,
+        instagram: isValid(studio.instagram) ? studio.instagram : baseProfile.instagram,
+        facebook: isValid(studio.facebook) ? studio.facebook : baseProfile.facebook,
+        whatsapp: isValid(studio.whatsapp) ? studio.whatsapp : baseProfile.whatsapp,
+        tiktok: isValid(studio.tiktok) ? studio.tiktok : baseProfile.tiktok,
+        linkedin: isValid(studio.linkedin) ? studio.linkedin : baseProfile.linkedin,
+        x: isValid(studio.x) ? studio.x : baseProfile.x,
+        logoUrl: isValid(studio.logoUrl) ? studio.logoUrl : baseProfile.logoUrl,
+        titleSuffix: studio.titleSuffix || baseProfile.titleSuffix || "",
+        
+        // Para booleanos, garantimos que se o dado vier do banco como true/false, usamos ele. 
+        // Se vier nulo/undefined, usamos o que está no localStorage.
+        showInstagram: studio.showInstagram ?? baseProfile.showInstagram ?? true,
+        showFacebook: studio.showFacebook ?? baseProfile.showFacebook ?? true,
+        showWhatsapp: studio.showWhatsapp ?? baseProfile.showWhatsapp ?? true,
+        showTiktok: studio.showTiktok ?? baseProfile.showTiktok ?? false,
+        showLinkedin: studio.showLinkedin ?? baseProfile.showLinkedin ?? false,
+        showX: studio.showX ?? baseProfile.showX ?? false,
+      };
+      setProfile(mergedProfile);
     } else {
       setProfile(baseProfile);
     }
 
     setPageVisibility(getPageVisibility());
-    setVisibleSections(getVisibleSections());
+    // Forçar visibilidade do footer para teste
+    const currentVisible = getVisibleSections();
+    setVisibleSections({ ...currentVisible, footer: true });
 
     if (!externalFooterSettings) {
       if (studio?.config?.footer) {
@@ -153,14 +187,38 @@ export function Footer({
   // Se estivermos isolando algo que não seja o footer, escondemos o footer
   if (only && only !== "footer") return null;
 
-  // Se o footer estiver desativado nas seções visíveis, e não estivermos isolando ele
+  // TRAVAS DE RENDERIZAÇÃO
   if (!only && visibleSections.footer === false) return null;
+  
+  // Para evitar erro de hidratação, no primeiro render (SSR e primeira batida do client)
+  // usamos o defaultSiteProfile. Após o mount, usamos o profile real.
+  const activeProfileRaw = mounted ? (profile || getSiteProfile()) : defaultSiteProfile;
 
-  if (!profile) return null;
+  // Garantimos que campos essenciais tenham sempre um fallback estático, conforme solicitado
+   // Função auxiliar para validar se uma string não está vazia
+    const isNotEmpty = (val: string | undefined | null): val is string => 
+      !!val && val.trim() !== "";
+
+    const activeProfile = {
+       ...activeProfileRaw,
+       name: isNotEmpty(studio?.siteName) ? studio.siteName : (isNotEmpty(studio?.name) ? studio.name : (isNotEmpty(activeProfileRaw.name) ? activeProfileRaw.name : "Lucas studio")),
+       phone: isNotEmpty(studio?.phone) ? studio.phone : (isNotEmpty(activeProfileRaw.phone) ? activeProfileRaw.phone : "(11) 99999-9999"),
+       email: isNotEmpty(studio?.email) ? studio.email : (isNotEmpty(activeProfileRaw.email) && !activeProfileRaw.email.includes("lucasstudio.com") ? activeProfileRaw.email : "lucassa1324@gmail.com"),
+       address: isNotEmpty(studio?.address) ? studio.address : (isNotEmpty(activeProfileRaw.address) ? activeProfileRaw.address : "São Paulo, SP"),
+       instagram: isNotEmpty(studio?.instagram) ? studio.instagram : (isNotEmpty(activeProfileRaw.instagram) ? activeProfileRaw.instagram : "lucas_studio"),
+       facebook: isNotEmpty(studio?.facebook) ? studio.facebook : (isNotEmpty(activeProfileRaw.facebook) ? activeProfileRaw.facebook : "lucas_studio"),
+       whatsapp: isNotEmpty(studio?.whatsapp) ? studio.whatsapp : (isNotEmpty(activeProfileRaw.whatsapp) ? activeProfileRaw.whatsapp : "5511999999999"),
+       // Se não houver configuração explícita, mostramos as redes sociais por padrão
+       showInstagram: activeProfileRaw.showInstagram ?? studio?.showInstagram ?? true,
+       showFacebook: activeProfileRaw.showFacebook ?? studio?.showFacebook ?? true,
+       showWhatsapp: activeProfileRaw.showWhatsapp ?? studio?.showWhatsapp ?? true,
+     };
 
   const footerStyle = {
     backgroundColor: footerSettings.bgColor || "var(--background)",
     fontFamily: footerSettings.bodyFont || "var(--font-body)",
+    minHeight: "100px", // Garantir altura mínima para teste
+    display: "block",   // Garantir display block para teste
   };
 
   const titleStyle = {
@@ -186,17 +244,17 @@ export function Footer({
   return (
     <footer
       id="footer"
-      className={`border-t border-border transition-colors duration-300 ${!footerSettings.bgColor ? "bg-secondary/30" : ""}`}
+      className={`relative z-50 border-t border-border transition-colors duration-300 ${!footerSettings.bgColor ? "bg-secondary/30" : ""}`}
       style={footerStyle}
     >
       <div className="container mx-auto px-4 py-12">
         <div className="grid md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              {profile.logoUrl && (
+              {activeProfile.logoUrl && (
                 <Image
-                  src={profile.logoUrl}
-                  alt={profile.name}
+                  src={activeProfile.logoUrl}
+                  alt={activeProfile.name}
                   width={120}
                   height={40}
                   className="h-10 w-auto object-contain"
@@ -204,14 +262,14 @@ export function Footer({
                 />
               )}
               <h3 className="font-serif text-2xl font-bold" style={titleStyle}>
-                {profile.name}
+                {activeProfile.name || "Nossa Empresa"}
               </h3>
             </div>
             <p
               className={`text-sm leading-relaxed ${!footerSettings.textColor ? "text-muted-foreground" : ""}`}
               style={textStyle}
             >
-              {profile.description}
+              {activeProfile.description || activeProfile.titleSuffix}
             </p>
           </div>
 
@@ -274,22 +332,22 @@ export function Footer({
             <ul
               className={`space-y-2 text-sm ${!footerSettings.textColor ? "text-muted-foreground" : ""}`}
             >
-              {profile.phone && (
+              {activeProfile.phone && (
                 <li className="flex items-center gap-2" style={textStyle}>
                   <Phone className="w-4 h-4" style={iconStyle} />
-                  <span>{profile.phone}</span>
+                  <span>{activeProfile.phone}</span>
                 </li>
               )}
-              {profile.email && (
+              {activeProfile.email && (
                 <li className="flex items-center gap-2" style={textStyle}>
                   <Mail className="w-4 h-4" style={iconStyle} />
-                  <span>{profile.email}</span>
+                  <span>{activeProfile.email}</span>
                 </li>
               )}
-              {profile.address && (
+              {activeProfile.address && (
                 <li className="flex items-center gap-2" style={textStyle}>
                   <MapPin className="w-4 h-4" style={iconStyle} />
-                  <span>{profile.address}</span>
+                  <span>{activeProfile.address}</span>
                 </li>
               )}
             </ul>
@@ -300,9 +358,9 @@ export function Footer({
               Redes Sociais
             </h4>
             <div className="flex gap-4">
-              {profile.showInstagram && profile.instagram && (
+              {activeProfile.showInstagram && activeProfile.instagram && (
                 <a
-                  href={`https://instagram.com/${profile.instagram}`}
+                  href={`https://instagram.com/${activeProfile.instagram}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:opacity-80 ${!footerSettings.iconColor ? "bg-accent/10" : ""}`}
@@ -314,9 +372,9 @@ export function Footer({
                   />
                 </a>
               )}
-              {profile.showFacebook && profile.facebook && (
+              {activeProfile.showFacebook && activeProfile.facebook && (
                 <a
-                  href={`https://facebook.com/${profile.facebook}`}
+                  href={`https://facebook.com/${activeProfile.facebook}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:opacity-80 ${!footerSettings.iconColor ? "bg-accent/10" : ""}`}
@@ -328,9 +386,9 @@ export function Footer({
                   />
                 </a>
               )}
-              {profile.showWhatsapp && profile.whatsapp && (
+              {activeProfile.showWhatsapp && activeProfile.whatsapp && (
                 <a
-                  href={`https://wa.me/${profile.whatsapp}`}
+                  href={`https://wa.me/${activeProfile.whatsapp}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:opacity-80 ${!footerSettings.iconColor ? "bg-accent/10" : ""}`}
@@ -342,9 +400,9 @@ export function Footer({
                   />
                 </a>
               )}
-              {profile.showTiktok && profile.tiktok && (
+              {activeProfile.showTiktok && activeProfile.tiktok && (
                 <a
-                  href={`https://tiktok.com/@${profile.tiktok}`}
+                  href={`https://tiktok.com/@${activeProfile.tiktok}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="TikTok"
@@ -366,9 +424,9 @@ export function Footer({
                   </svg>
                 </a>
               )}
-              {profile.showLinkedin && profile.linkedin && (
+              {activeProfile.showLinkedin && activeProfile.linkedin && (
                 <a
-                  href={`https://linkedin.com/in/${profile.linkedin}`}
+                  href={`https://linkedin.com/in/${activeProfile.linkedin}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="LinkedIn"
@@ -381,9 +439,9 @@ export function Footer({
                   />
                 </a>
               )}
-              {profile.showX && profile.x && (
+              {activeProfile.showX && activeProfile.x && (
                 <a
-                  href={`https://x.com/${profile.x}`}
+                  href={`https://x.com/${activeProfile.x}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="X (Twitter)"
@@ -414,7 +472,7 @@ export function Footer({
           style={textStyle}
         >
           <p>
-            &copy; {new Date().getFullYear()} {profile.name}. Todos os direitos
+            &copy; {new Date().getFullYear()} {activeProfile.name}. Todos os direitos
             reservados.
           </p>
         </div>

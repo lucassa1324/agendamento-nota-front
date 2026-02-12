@@ -24,6 +24,7 @@ import {
   savePageVisibility,
   saveServices,
   saveServicesSettings,
+  saveSiteProfile,
   saveValuesSettings,
   saveVisibleSections,
 } from "@/lib/booking-data";
@@ -58,39 +59,74 @@ export function StudioProvider({
 
   // --- NOVO: Sincronização de Fonte Única da Verdade (DB -> LocalStorage) ---
   useEffect(() => {
-    if (studio?.services && studio.services.length > 0) {
+    if (studio) {
       try {
-        console.log(`>>> [STORAGE_SYNC] Iniciando sincronização de ${studio.services.length} serviços do Banco para LocalStorage...`);
+        console.log(">>> [STORAGE_SYNC] Sincronizando dados do Banco para LocalStorage...");
         
-        // 1. Limpeza de dados antigos/órfãos para garantir frescor
-        // Removemos tanto a chave global quanto a chave específica do usuário para evitar lixo
-        localStorage.removeItem("services");
-        localStorage.removeItem("studioSettings");
+        // Sincronização do Perfil do Site - SOMENTE se tivermos dados válidos do banco
+         const currentStoredProfile = typeof window !== "undefined" ? JSON.parse(localStorage.getItem(getStorageKey("siteProfile")) || "{}") : {};
+         
+         // Função auxiliar para validar se uma string do banco não é vazia
+          const getValidValue = (apiVal: string | undefined | null, storageVal: string) => {
+            return (apiVal && apiVal.trim() !== "" && !apiVal.includes("exemplo.com") && !apiVal.includes("lucasstudio.com")) ? apiVal.trim() : storageVal;
+          };
+
+          const profile = {
+             name: (studio.siteName?.trim() || studio.name?.trim()) || currentStoredProfile.name || "",
+             description: getValidValue(studio.description, currentStoredProfile.description),
+             phone: getValidValue(studio.phone, currentStoredProfile.phone),
+             email: getValidValue(studio.email, currentStoredProfile.email),
+             address: getValidValue(studio.address, currentStoredProfile.address),
+             instagram: getValidValue(studio.instagram, currentStoredProfile.instagram),
+             facebook: getValidValue(studio.facebook, currentStoredProfile.facebook),
+             whatsapp: getValidValue(studio.whatsapp, currentStoredProfile.whatsapp),
+             tiktok: getValidValue(studio.tiktok, currentStoredProfile.tiktok),
+             linkedin: getValidValue(studio.linkedin, currentStoredProfile.linkedin),
+             x: getValidValue(studio.x, currentStoredProfile.x),
+             logoUrl: getValidValue(studio.logoUrl, currentStoredProfile.logoUrl),
+             showInstagram: studio.showInstagram ?? currentStoredProfile.showInstagram ?? true,
+             showFacebook: studio.showFacebook ?? currentStoredProfile.showFacebook ?? true,
+             showWhatsapp: studio.showWhatsapp ?? currentStoredProfile.showWhatsapp ?? true,
+             showTiktok: studio.showTiktok ?? currentStoredProfile.showTiktok ?? false,
+             showLinkedin: studio.showLinkedin ?? currentStoredProfile.showLinkedin ?? false,
+             showX: studio.showX ?? currentStoredProfile.showX ?? false,
+          };
+         
+         // Log de verificação final antes de salvar
+          if (profile.phone && profile.phone.trim() !== "") {
+            console.log(">>> [FINAL_SYNC_CHECK] Telefone final:", profile.phone);
+          }
+          
+          // Forçamos a sincronização sempre que houver um estúdio carregado
+          saveSiteProfile(profile);
+
+        if (studio.services && studio.services.length > 0) {
+          console.log(`>>> [STORAGE_SYNC] Sincronizando ${studio.services.length} serviços...`);
+          
+          // 1. Limpeza de dados antigos/órfãos para garantir frescor
+          localStorage.removeItem("services");
+          localStorage.removeItem("studioSettings");
+          
+          const userServicesKey = getStorageKey("services");
+          const userSettingsKey = getStorageKey("studioSettings");
+          
+          if (userServicesKey !== "services") localStorage.removeItem(userServicesKey);
+          if (userSettingsKey !== "studioSettings") localStorage.removeItem(userSettingsKey);
+          
+          // 2. Sincronização via helper saveServices
+          saveServices(studio.services);
+          
+          // Dispara eventos para componentes
+          window.dispatchEvent(new Event("servicesUpdated"));
+          window.dispatchEvent(new Event("studioSettingsUpdated"));
+        }
         
-        const userServicesKey = getStorageKey("services");
-        const userSettingsKey = getStorageKey("studioSettings");
-        
-        if (userServicesKey !== "services") localStorage.removeItem(userServicesKey);
-        if (userSettingsKey !== "studioSettings") localStorage.removeItem(userSettingsKey);
-        
-        // 2. Sincronização via helper saveServices (preserva UUIDs originais do banco)
-        // O saveServices já utiliza o getStorageKey internamente
-        saveServices(studio.services);
-        
-        // Log detalhado para validação de UUIDs e Regras
-        console.log(">>> [STORAGE_SYNC] Amostra de UUIDs sincronizados:", studio.services.slice(0, 3).map(s => ({ name: s.name, id: s.id })));
-        
-        // 3. Log de confirmação conforme solicitado
-        console.log(">>> [STORAGE_SYNC] LocalStorage atualizado com as regras do Banco de Dados.");
-        
-        // Dispara evento para componentes que dependem de dados atualizados (como ServiceSelector)
-        window.dispatchEvent(new Event("servicesUpdated"));
-        window.dispatchEvent(new Event("studioSettingsUpdated"));
+        console.log(">>> [STORAGE_SYNC] LocalStorage atualizado com sucesso.");
       } catch (err) {
-        console.error(">>> [STORAGE_SYNC] Erro ao sincronizar serviços com LocalStorage:", err);
+        console.error(">>> [STORAGE_SYNC] Erro ao sincronizar dados com LocalStorage:", err);
       }
     }
-  }, [studio?.services]);
+  }, [studio]);
   // --------------------------------------------------------------------------
 
   useEffect(() => {
@@ -103,40 +139,49 @@ export function StudioProvider({
     async function fetchStudio() {
       let currentSlug = slug;
 
-      // Se não temos um slug inicial, tenta extrair do host
+      // Se não temos um slug inicial, tenta extrair do host ou query params
       if (!currentSlug && typeof window !== "undefined") {
-        const host = window.location.host;
-        console.log(
-          `>>> [StudioProvider] Analisando HOST para extração de SLUG: ${host}`,
-        );
+        const urlParams = new URLSearchParams(window.location.search);
+        const slugParam = urlParams.get("slug");
 
-        // Caso especial para desenvolvimento: subdomínio em localhost (ex: lucas-studio.localhost:3000)
-        if (host.includes(".localhost")) {
-          const parts = host.split(".");
-          if (parts.length > 1 && parts[0] !== "www") {
-            currentSlug = parts[0];
-            console.log(
-              `>>> [StudioProvider] SLUG extraído do subdomínio LOCALHOST: ${currentSlug}`,
-            );
-            setSlug(currentSlug);
+        if (slugParam) {
+          currentSlug = slugParam;
+          console.log(`>>> [StudioProvider] SLUG extraído dos QUERY PARAMS: ${currentSlug}`);
+          setSlug(currentSlug);
+        } else {
+          const host = window.location.host;
+          console.log(
+            `>>> [StudioProvider] Analisando HOST para extração de SLUG: ${host}`,
+          );
+
+          // Caso especial para desenvolvimento: subdomínio em localhost (ex: lucas-studio.localhost:3000)
+          if (host.includes(".localhost")) {
+            const parts = host.split(".");
+            if (parts.length > 1 && parts[0] !== "www") {
+              currentSlug = parts[0];
+              console.log(
+                `>>> [StudioProvider] SLUG extraído do subdomínio LOCALHOST: ${currentSlug}`,
+              );
+              setSlug(currentSlug);
+            }
           }
-        }
-        // Caso para produção: subdomínio do BASE_DOMAIN
-        else if (
-          BASE_DOMAIN &&
-          host.endsWith(BASE_DOMAIN) &&
-          host !== BASE_DOMAIN &&
-          host !== `www.${BASE_DOMAIN}`
-        ) {
-          const possibleSlug = host
-            .replace(`.${BASE_DOMAIN}`, "")
-            .replace("www.", "");
-          if (possibleSlug) {
-            currentSlug = possibleSlug;
-            console.log(
-              `>>> [StudioProvider] SLUG extraído do subdomínio PRODUÇÃO: ${currentSlug}`,
-            );
-            setSlug(currentSlug);
+          // Caso para produção: subdomínio do BASE_DOMAIN
+          else if (
+            BASE_DOMAIN &&
+            host.endsWith(BASE_DOMAIN) &&
+            host !== BASE_DOMAIN &&
+            host !== `www.${BASE_DOMAIN}`
+          ) {
+            const possibleSlug = host
+              .replace(`.${BASE_DOMAIN}`, "")
+              .replace("www.", "");
+            if (possibleSlug) {
+              currentSlug = possibleSlug;
+              console.log(
+                `>>> [StudioProvider] SLUG extraído do subdomínio PRODUÇÃO: ${currentSlug}`,
+              );
+              setSlug(currentSlug);
+            }
           }
         }
       }
@@ -174,6 +219,48 @@ export function StudioProvider({
               ">>> [StudioProvider] Dados do studio carregados com sucesso:",
               data?.id,
             );
+            // Log de depuração da resposta bruta da API do Studio
+            console.log(">>> [DEBUG_API] Dados do Studio (Slug):", data);
+
+            // --- NOVO: Chamada Adicional para Perfil Público ---
+            let publicProfileData = null;
+            if (data?.id) {
+              try {
+                console.log(`>>> [DEBUG_API] Buscando perfil público para Business ID: ${data.id}`);
+                const profileRes = await fetch(`${API_BASE_URL}/api/settings/profile/${data.id}`, {
+                  cache: "no-store",
+                  headers: { Accept: "application/json" }
+                });
+                
+                if (profileRes.ok) {
+                  publicProfileData = await profileRes.json();
+                  console.log(">>> [DEBUG_API] Perfil público carregado com sucesso:", publicProfileData);
+                } else {
+                  console.warn(`>>> [DEBUG_API] Falha ao carregar perfil público: ${profileRes.status}`);
+                }
+              } catch (profileErr) {
+                console.error(">>> [DEBUG_API] Erro na chamada do perfil público:", profileErr);
+              }
+            }
+
+            // Mesclamos os dados do studio com os dados do perfil público de forma não destrutiva
+            // Só sobrescrevemos se o dado do perfil público for válido (não vazio)
+            // IMPORTANTE: Não sobrescrevemos campos de identificação ou configurações estruturais
+            const studioWithProfile = { ...data };
+            if (publicProfileData) {
+              const protectedKeys = ["id", "slug", "email", "config", "services", "gallery", "testimonials", "createdAt", "updatedAt"];
+              
+              Object.keys(publicProfileData).forEach(key => {
+                if (protectedKeys.includes(key)) return;
+                
+                const val = (publicProfileData as any)[key];
+                const isPlaceholder = typeof val === "string" && (val.includes("exemplo.com") || val.includes("lucasstudio.com"));
+                
+                if (val !== null && val !== undefined && !isPlaceholder && (typeof val !== "string" || val.trim() !== "")) {
+                  (studioWithProfile as any)[key] = val;
+                }
+              });
+            }
 
             // --- NOVO: Limpeza Preventiva e Log de IDs ---
             if (typeof window !== "undefined" && data?.id) {
@@ -260,7 +347,7 @@ export function StudioProvider({
             });
 
             const initialStudio: Business = {
-                    ...data,
+                    ...studioWithProfile,
                     services: data.services || [], // Garante que services existe
                     config: initialConfig as unknown as Business["config"]
                   };

@@ -1,3 +1,12 @@
+import { inventoryService } from "./inventory-service";
+
+export type ServiceResource = {
+  inventoryId: string;
+  quantity: number;
+  unit: string;
+  useSecondaryUnit: boolean;
+};
+
 export type Service = {
   id: string;
   name: string;
@@ -17,6 +26,8 @@ export type Service = {
   advancedRules?: {
     conflicts?: string[];
   } | string[];
+  resources?: ServiceResource[];
+  // Mantido para compatibilidade temporária com componentes legados
   products?: {
     productId: string;
     quantity: number;
@@ -25,14 +36,15 @@ export type Service = {
 };
 
 export type InventoryLog = {
-  id: string;
+  id?: string;
   timestamp: string;
   type: "entrada" | "saida" | "ajuste" | "venda" | "servico";
   quantityChange: number;
-  previousQuantity: number;
-  newQuantity: number;
+  previousQuantity?: number;
+  newQuantity?: number;
   notes?: string;
   userName?: string;
+  reason?: string;
 };
 
 export type InventoryItem = {
@@ -977,20 +989,20 @@ export const defaultGoogleCalendarSettings: GoogleCalendarSettings = {
 };
 
 export const defaultSiteProfile: SiteProfile = {
-  name: "Brow Studio",
+  name: "",
   description:
     "Especialistas em design de sobrancelhas, dedicados a realçar sua beleza natural.",
   titleSuffix: "Agendamento Online",
   logoUrl: "",
-  instagram: "browstudio",
-  whatsapp: "5511999999999",
-  facebook: "browstudio",
+  instagram: "",
+  whatsapp: "",
+  facebook: "",
   tiktok: "",
   linkedin: "",
   x: "",
-  phone: "(11) 99999-9999",
-  email: "contato@browstudio.com",
-  address: "São Paulo, SP",
+  phone: "",
+  email: "",
+  address: "",
   showInstagram: true,
   showWhatsapp: true,
   showFacebook: true,
@@ -1324,6 +1336,98 @@ export function saveInventoryToStorage(inventory: InventoryItem[]): void {
   }
 }
 
+export async function subtractInventoryForServiceAsync(
+  serviceIds: string | string[],
+  companyId: string,
+): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    const ids = Array.isArray(serviceIds) ? serviceIds : [serviceIds];
+
+    // 1. Buscar estoque atual da API
+    const inventory = await inventoryService.list(companyId);
+    if (!inventory || inventory.length === 0) {
+      return { success: false, message: "Estoque vazio ou não encontrado." };
+    }
+
+    // 2. Buscar configurações (para obter detalhes dos serviços e seus produtos)
+    const settings = getSettingsFromStorage();
+    const logs: string[] = [];
+    let updatedAny = false;
+
+    for (const serviceId of ids) {
+      const service = settings.services.find((s: Service) => s.id === serviceId);
+      if (!service) continue;
+
+      // Priorizar 'resources' (novo formato) sobre 'products' (legado)
+      const itemsToSubtract = service.resources?.length
+        ? service.resources.map((r) => ({
+            productId: r.inventoryId,
+            quantity: r.quantity,
+            useSecondaryUnit: r.useSecondaryUnit,
+          }))
+        : service.products || [];
+
+      if (itemsToSubtract.length === 0) continue;
+
+      for (const serviceProduct of itemsToSubtract) {
+        const product = inventory.find((p) => p.id === serviceProduct.productId);
+
+        if (product) {
+          let quantityToSubtract = serviceProduct.quantity;
+          let unitLabel = product.unit;
+
+          // Lógica de conversão de unidade
+          if (
+            serviceProduct.useSecondaryUnit &&
+            product.conversionFactor &&
+            product.conversionFactor > 0
+          ) {
+            quantityToSubtract =
+              serviceProduct.quantity / product.conversionFactor;
+            unitLabel = product.secondaryUnit || product.unit;
+          }
+
+          if (product.quantity < quantityToSubtract) {
+            logs.push(
+              `Estoque insuficiente para ${product.name}: necessário ${serviceProduct.quantity}${unitLabel}, disponível ${product.quantity.toLocaleString("pt-BR")}${product.unit}`,
+            );
+          }
+          
+          // 3. Realizar a baixa de estoque via API (novo endpoint /subtract)
+          await inventoryService.subtract(product.id, quantityToSubtract);
+
+          updatedAny = true;
+        }
+      }
+    }
+
+    if (!updatedAny) {
+      return {
+        success: true,
+        message: "Nenhum produto vinculado a este serviço para baixar.",
+      };
+    }
+
+    if (logs.length > 0) {
+      return {
+        success: true,
+        message: `Estoque atualizado, mas houve alertas:\n${logs.join("\n")}`,
+      };
+    }
+
+    return { success: true, message: "Estoque atualizado com sucesso via API" };
+  } catch (error) {
+    console.error(">>> [SUBTRACT_INVENTORY_ERROR]", error);
+    return {
+      success: false,
+      message: "Erro ao atualizar estoque no servidor.",
+    };
+  }
+}
+
 export function subtractInventoryForService(serviceIds: string | string[]): {
   success: boolean;
   message: string;
@@ -1339,9 +1443,20 @@ export function subtractInventoryForService(serviceIds: string | string[]): {
 
   for (const serviceId of ids) {
     const service = settings.services.find((s: Service) => s.id === serviceId);
-    if (!service || !service.products) continue;
+    if (!service) continue;
 
-    for (const serviceProduct of service.products) {
+    // Priorizar 'resources' (novo formato) sobre 'products' (legado)
+    const itemsToSubtract = service.resources?.length
+      ? service.resources.map((r) => ({
+          productId: r.inventoryId,
+          quantity: r.quantity,
+          useSecondaryUnit: r.useSecondaryUnit,
+        }))
+      : service.products || [];
+
+    if (itemsToSubtract.length === 0) continue;
+
+    for (const serviceProduct of itemsToSubtract) {
       const inventoryProductIndex = updatedInventory.findIndex(
         (p) => p.id === serviceProduct.productId,
       );
@@ -1865,6 +1980,23 @@ export interface Business {
   id: string;
   name: string;
   slug: string;
+  siteName?: string;
+  description?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  instagram?: string;
+  facebook?: string;
+  whatsapp?: string;
+  tiktok?: string;
+  linkedin?: string;
+  x?: string;
+  showInstagram?: boolean;
+  showFacebook?: boolean;
+  showWhatsapp?: boolean;
+  showTiktok?: boolean;
+  showLinkedin?: boolean;
+  showX?: boolean;
   titleSuffix?: string;
   logoUrl?: string;
   config: BusinessConfig;

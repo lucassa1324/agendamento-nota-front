@@ -87,6 +87,9 @@ export function EditBookingModal({
           <DialogTitle className="text-2xl font-bold text-gray-800">
             Editar Agendamento
           </DialogTitle>
+          <DialogDescription>
+            Atualize as informações do agendamento selecionado.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -21,7 +22,7 @@ import {
   type Booking,
   type BookingStatus,
   getBookingsFromStorage,
-  subtractInventoryForService,
+  subtractInventoryForServiceAsync,
 } from "@/lib/booking-data";
 import { AdminBookingFlow } from "./admin-booking-flow";
 import { BookingCard } from "./bookings/booking-card";
@@ -244,12 +245,23 @@ export function BookingsManager() {
       // Se o status for concluído, subtrair produtos do estoque
       if (newStatus === "concluído") {
         const booking = bookings.find((b) => b.id === bookingId);
-        if (booking) {
-          const result = subtractInventoryForService(booking.serviceId);
+        if (booking && studio?.id) {
+          // Usar a versão assíncrona que chama a API
+          const result = await subtractInventoryForServiceAsync(
+            booking.serviceId,
+            studio.id,
+          );
           if (result.success) {
             toast({
               title: "Estoque atualizado",
               description: result.message,
+            });
+          } else {
+            // Se falhar a subtração via API, avisamos mas não impedimos a conclusão
+            toast({
+              title: "Aviso de estoque",
+              description: result.message,
+              variant: "destructive",
             });
           }
         }
@@ -381,6 +393,9 @@ export function BookingsManager() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Adiar Agendamento</DialogTitle>
+            <DialogDescription>
+              Selecione uma nova data e horário para o agendamento de {bookingToReschedule?.clientName}.
+            </DialogDescription>
           </DialogHeader>
           {bookingToReschedule && (
             <AdminBookingFlow
