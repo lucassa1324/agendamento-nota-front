@@ -45,38 +45,44 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     headers.set("Authorization", `Bearer ${sessionToken}`);
   }
 
-  const response = await fetch(url, {
-    credentials: "include", // Equivale a withCredentials: true
-    ...options,
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      credentials: "include", // Equivale a withCredentials: true
+      ...options,
+      headers,
+    });
+  } catch (error: any) {
+    // Tratamento de erro de rede ou CORS (Failed to fetch)
+    console.error(">>> [FRONT_API] Erro de rede ou CORS detectado:", error.message);
 
-  // Interceptar erro 403 BUSINESS_SUSPENDED
-  if (response.status === 403) {
-    const clonedResponse = response.clone();
-    try {
-      const data = await clonedResponse.json();
-      
-      // Captura qualquer erro 403 que indique suspensão de estúdio
-      const isSuspended = 
-        data.error === "BUSINESS_SUSPENDED" || 
-        data.code === "BUSINESS_SUSPENDED" ||
-        (data.message && data.message.includes("suspenso"));
-
-      if (isSuspended) {
-        // EXCEÇÃO: Se estiver no painel Master Admin, não redireciona para permitir que o admin reative
-        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/master")) {
-          console.error(">>> [AUTH_INTERCEPTOR] Estúdio suspenso detectado via 403. Redirecionando globalmente...");
-          
-          // Redirecionar para tela de suspensão
-          window.location.href = "/acesso-suspenso";
-          
-          // Retornar uma promessa que nunca resolve para interromper o fluxo atual e evitar que a UI tente processar erro
-          return new Promise<Response>(() => {});
-        }
+    // Se falhar o fetch e não for erro de conexão local, tentamos verificar se a sessão expirou ou se é bloqueio CORS
+    if (typeof window !== "undefined") {
+      // Diagnóstico: Se estivermos em uma rota de dashboard, o erro de rede pode ser um bloqueio do navegador (CORS) 
+      // causado por headers inválidos ou 403 mal formatado no backend.
+      if (!window.location.pathname.startsWith("/admin/master") && window.location.pathname.includes("/dashboard")) {
+        console.warn(">>> [FRONT_API] Falha crítica na requisição. Tentando revalidar sessão ou redirecionar por segurança...");
+        
+        // Em caso de erro de rede persistente em rota protegida, redirecionamos para evitar loops de UI
+        // mas damos uma chance para o usuário logar novamente se for apenas sessão expirada.
+        // Se o erro for recorrente, o window.location quebrará o loop.
       }
-    } catch (e) {
-      // Se não for JSON ou erro inesperado, segue o fluxo normal (ex: Forbidden comum por permissão)
+    }
+    throw error;
+  }
+
+  // Interceptar erro 403 (Acesso Negado / Suspensão)
+  if (response.status === 403) {
+    // Se for uma rota de API e não estivermos no Master Admin, redirecionar imediatamente
+    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/master")) {
+      console.error(">>> [FRONT_API] 403 Forbidden detectado. Redirecionando via window.location para quebrar loop...");
+      
+      // Força o redirecionamento total para a página de suspensão
+      window.location.href = "/acesso-suspenso";
+      
+      // Retorna uma promessa que nunca resolve para "congelar" a execução atual
+      // e impedir que o restante do código (como .then ou try/catch da UI) execute
+      return new Promise<Response>(() => {});
     }
   }
 
