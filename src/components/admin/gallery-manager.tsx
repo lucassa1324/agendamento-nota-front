@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
+import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/auth-client";
 import {
   getServices,
@@ -90,7 +91,7 @@ export function GalleryManager() {
         try {
           const servicesTimestamp = Date.now();
           const servicesUrl = `${API_BASE_URL}/api/services/company/${studio.id}?t=${servicesTimestamp}`;
-          const response = await fetch(servicesUrl);
+          const response = await customFetch(servicesUrl);
           if (response.ok) {
             const apiServices = await response.json();
             if (Array.isArray(apiServices) && apiServices.length > 0) {

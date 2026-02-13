@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useStudio } from "@/context/studio-context";
+import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/auth-client";
 
 const availableIcons = [
@@ -273,51 +274,6 @@ export function ServicesManager() {
     ?.slug;
   const slugParam = Array.isArray(rawSlug) ? rawSlug[0] : rawSlug;
 
-  // Função auxiliar centralizada para obter headers de autenticação
-  const getAuthOptions = () => {
-    const getCookie = (name: string) => {
-      if (typeof document === "undefined") return null;
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop()?.split(";").shift();
-      return null;
-    };
-
-    const sessionToken =
-      typeof window !== "undefined"
-        ? localStorage.getItem("better-auth.session_token") ||
-          localStorage.getItem("better-auth.access_token") ||
-          getCookie("better-auth.session_token") ||
-          getCookie("session_token") || // Fallback para nomes comuns
-          getCookie("auth_token")
-        : null;
-
-    // Se ainda não encontrou, tenta pegar de um cookie que comece com better-auth
-    let finalToken = sessionToken;
-    if (!finalToken && typeof document !== "undefined") {
-      const cookies = document.cookie.split(";");
-      const authCookie = cookies.find((c) =>
-        c.trim().startsWith("better-auth.session_token"),
-      );
-      if (authCookie) {
-        finalToken = authCookie.split("=")[1];
-      }
-    }
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (finalToken) {
-      headers.Authorization = `Bearer ${finalToken}`;
-    }
-
-    return {
-      headers,
-      credentials: "include" as const,
-    };
-  };
-
   useEffect(() => {
     if (!studio?.id) return;
     loadServices();
@@ -352,18 +308,7 @@ export function ServicesManager() {
       );
       console.log(">>> [SERVICES_MANAGER] Buscando serviços em:", loadUrl);
 
-      const authOptions = getAuthOptions();
-
-      console.log(
-        ">>> [SERVICES_MANAGER] Header de Auth enviado:",
-        authOptions.headers.Authorization
-          ? "Bearer [TOKEN_PRESENTE]"
-          : "NENHUM",
-      );
-
-      const response = await fetch(loadUrl, {
-        ...authOptions,
-      });
+      const response = await customFetch(loadUrl);
 
       console.log(">>> [SERVICES_MANAGER] Resposta da API:", {
         status: response.status,
@@ -564,14 +509,11 @@ export function ServicesManager() {
       advanced_rules_details: cleanData.advanced_rules, // Log explícito para conferência
     });
 
-    const authOptions = getAuthOptions();
-
     try {
       let response: Response;
       if (!editingId) {
         // Criar novo serviço
-        response = await fetch(API_URL, {
-          ...authOptions,
+        response = await customFetch(API_URL, {
           method: "POST",
           body: JSON.stringify(cleanData),
         });
@@ -580,8 +522,7 @@ export function ServicesManager() {
         const putUrl = `${API_URL}/${editingId}`.replace(/([^:]\/)\/+/g, "$1");
         console.log(">>> [SERVICES_MANAGER] Disparando PUT para:", putUrl);
 
-        response = await fetch(putUrl, {
-          ...authOptions,
+        response = await customFetch(putUrl, {
           method: "PUT",
           body: JSON.stringify(cleanData),
         });
@@ -649,9 +590,7 @@ export function ServicesManager() {
         /([^:]\/)\/+/g,
         "$1",
       );
-      const responseGet = await fetch(getUrl, {
-        ...authOptions,
-      });
+      const responseGet = await customFetch(getUrl);
       if (responseGet.ok) {
         const latestData = (await responseGet.json()) as BackendService[];
         const formattedForStorage = latestData.map((s) => ({
@@ -842,8 +781,6 @@ export function ServicesManager() {
   const handleSaveServiceProducts = async () => {
     if (!serviceForProducts) return;
 
-    const authOptions = getAuthOptions();
-
     try {
       // Garantir que temos os produtos do estoque carregados para pegar as unidades corretas
       let currentAllProducts = allProducts;
@@ -894,8 +831,7 @@ export function ServicesManager() {
         putProductsUrl,
       );
 
-      const response = await fetch(putProductsUrl, {
-        ...authOptions,
+      const response = await customFetch(putProductsUrl, {
         method: "PUT",
         body: JSON.stringify(serviceDataToSubmit),
       });
@@ -926,9 +862,7 @@ export function ServicesManager() {
         /([^:]\/)\/+/g,
         "$1",
       );
-      const responseGet = await fetch(syncUrl, {
-        ...authOptions,
-      });
+      const responseGet = await customFetch(syncUrl);
       if (responseGet.ok) {
         const latestData = await responseGet.json();
         const formattedForStorage = latestData.map((s: BackendService) => ({
@@ -967,8 +901,6 @@ export function ServicesManager() {
   const confirmDelete = async () => {
     if (!serviceToDelete) return;
 
-    const authOptions = getAuthOptions();
-
     try {
       const deleteUrl = `${API_URL}/${serviceToDelete.id}`.replace(
         /([^:]\/)\/+/g,
@@ -976,8 +908,7 @@ export function ServicesManager() {
       );
       console.log(">>> [SERVICES_MANAGER] Deletando via DELETE em:", deleteUrl);
 
-      const response = await fetch(deleteUrl, {
-        ...authOptions,
+      const response = await customFetch(deleteUrl, {
         method: "DELETE",
       });
 
@@ -1002,9 +933,7 @@ export function ServicesManager() {
         /([^:]\/)\/+/g,
         "$1",
       );
-      const responseGet = await fetch(syncDeleteUrl, {
-        ...authOptions,
-      });
+      const responseGet = await customFetch(syncDeleteUrl);
       if (responseGet.ok) {
         const latestData = await responseGet.json();
         const formattedForStorage = latestData.map((s: BackendService) => ({

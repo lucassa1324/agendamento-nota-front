@@ -27,6 +27,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
+import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL, useSession } from "@/lib/auth-client";
 import type { SiteProfile } from "@/lib/booking-data";
 
@@ -85,7 +86,7 @@ export function ProfileManager() {
     if (!companyId) return;
     setIsLoading(true);
     try {
-      const response = await fetch(
+      const response = await customFetch(
         `${API_BASE_URL}/api/settings/profile/${companyId}`,
         {
           credentials: "include",
@@ -199,7 +200,7 @@ export function ProfileManager() {
 
       console.log(">>> [PROFILE] Enviando payload completo:", payload);
 
-      const response = await fetch(`${API_BASE_URL}/api/settings/profile/${companyId}`, {
+      const response = await customFetch(`${API_BASE_URL}/api/settings/profile/${companyId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

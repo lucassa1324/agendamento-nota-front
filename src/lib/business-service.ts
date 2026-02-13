@@ -1,4 +1,5 @@
-import { API_BASE_URL, getSessionToken } from "@/lib/auth-client";
+import { API_BASE_URL } from "@/lib/auth-client";
+import { customFetch } from "@/lib/api-client";
 import type { BlockedPeriod, DaySchedule } from "@/lib/booking-data";
 
 type WeekdaySchedulePayload = {
@@ -31,29 +32,7 @@ type SettingsPayload = {
 class BusinessService {
   private baseUrl = `${API_BASE_URL}/api/business/settings`;
 
-  private async getAuthHeaders() {
-    const sessionToken = await getSessionToken();
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (sessionToken) {
-      headers.Authorization = `Bearer ${sessionToken}`;
-      console.log(
-        ">>> [BusinessService] Sessão válida encontrada (token presente).",
-      );
-    } else {
-      console.warn(
-        ">>> [BusinessService] Nenhuma sessão encontrada. Requisições podem retornar 401.",
-      );
-    }
-
-    return headers;
-  }
-
   async saveSettings(payload: SettingsPayload) {
-    const headers = await this.getAuthHeaders();
     const url = `${this.baseUrl}/${payload.companyId}`;
 
     // Remove companyId do corpo para evitar erro de additionalProperties: false
@@ -62,9 +41,8 @@ class BusinessService {
 
     console.log("JSON enviado (Settings):", JSON.stringify(rest, null, 2));
 
-    const response = await fetch(url, {
+    const response = await customFetch(url, {
       method: "PUT",
-      headers,
       body: JSON.stringify(rest),
       credentials: "include",
     });
@@ -80,14 +58,12 @@ class BusinessService {
   }
 
   async getSettings(companyId: string): Promise<SettingsPayload | null> {
-    const headers = await this.getAuthHeaders();
     const url = `${this.baseUrl}/${companyId}`;
 
-    const response = await fetch(url, {
+    const response = await customFetch(url, {
       method: "GET",
-      headers,
       // Removido credentials para permitir chamadas públicas se o backend suportar
-      credentials: headers.Authorization ? "include" : "omit",
+      credentials: "include", // customFetch gerencia Authorization
     });
 
     if (!response.ok) {
@@ -113,13 +89,11 @@ class BusinessService {
   }
 
   async getBlocks(companyId: string): Promise<BlockedPeriod[]> {
-    const headers = await this.getAuthHeaders();
     const url = `${this.baseUrl}/${companyId}/blocks`;
 
-    const response = await fetch(url, {
+    const response = await customFetch(url, {
       method: "GET",
-      headers,
-      credentials: headers.Authorization ? "include" : "omit",
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -154,7 +128,6 @@ class BusinessService {
   }
 
   async createBlock(payload: BlockPayload) {
-    const headers = await this.getAuthHeaders();
     const url = `${this.baseUrl}/${payload.companyId}/blocks`;
 
     // Remove companyId do corpo pois já está na URL
@@ -163,9 +136,8 @@ class BusinessService {
 
     console.log("JSON enviado (Block):", JSON.stringify(rest, null, 2));
 
-    const response = await fetch(url, {
+    const response = await customFetch(url, {
       method: "POST",
-      headers,
       body: JSON.stringify(rest),
       credentials: "include",
     });
@@ -179,12 +151,10 @@ class BusinessService {
   }
 
   async deleteBlock(companyId: string, blockId: string) {
-    const headers = await this.getAuthHeaders();
     const url = `${this.baseUrl}/${companyId}/blocks/${blockId}`;
 
-    const response = await fetch(url, {
+    const response = await customFetch(url, {
       method: "DELETE",
-      headers,
       credentials: "include",
     });
 

@@ -1,4 +1,5 @@
-import { API_BASE_URL, getSessionToken } from "./auth-client";
+import { API_BASE_URL } from "./auth-client";
+import { customFetch } from "./api-client";
 
 export type ExpenseCategory =
   | "INFRAESTRUTURA"
@@ -40,17 +41,6 @@ export interface ProfitReport {
 class ExpensesService {
   private baseUrl = `${API_BASE_URL}/api/expenses`;
 
-  private async getAuthHeaders() {
-    const sessionToken = await getSessionToken();
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (sessionToken) {
-      headers.Authorization = `Bearer ${sessionToken}`;
-    }
-    return headers;
-  }
-
   private async handleResponse(response: Response) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -64,38 +54,29 @@ class ExpensesService {
   }
 
   async list(companyId: string): Promise<Expense[]> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}?companyId=${companyId}`, {
-      headers,
-    });
+    const response = await customFetch(`${this.baseUrl}?companyId=${companyId}`);
     return this.handleResponse(response);
   }
 
   async create(data: CreateExpenseDTO): Promise<Expense> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(this.baseUrl, {
+    const response = await customFetch(this.baseUrl, {
       method: "POST",
-      headers,
       body: JSON.stringify(data),
     });
     return this.handleResponse(response);
   }
 
   async update(id: string, data: Partial<Expense>): Promise<Expense> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}/${id}`, {
+    const response = await customFetch(`${this.baseUrl}/${id}`, {
       method: "PATCH",
-      headers,
       body: JSON.stringify(data),
     });
     return this.handleResponse(response);
   }
 
   async delete(id: string): Promise<void> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}/${id}`, {
+    const response = await customFetch(`${this.baseUrl}/${id}`, {
       method: "DELETE",
-      headers,
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -107,10 +88,7 @@ class ExpensesService {
   }
 
   async getProfitReport(companyId: string): Promise<ProfitReport> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${API_BASE_URL}/api/reports/profit?companyId=${companyId}`, {
-      headers,
-    });
+    const response = await customFetch(`${API_BASE_URL}/api/reports/profit?companyId=${companyId}`);
     return this.handleResponse(response);
   }
 }

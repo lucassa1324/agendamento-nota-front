@@ -1,17 +1,22 @@
 "use client";
 
-import { PanelLeftClose, PanelLeftOpen, Save } from "lucide-react";
+import { Activity, PanelLeftClose, PanelLeftOpen, Save } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { useSidebar } from "@/context/sidebar-context";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { useToast } from "@/hooks/use-toast";
+import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/auth-client";
 import type { Business } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
@@ -26,6 +31,7 @@ import { useSiteEditor } from "./site_editor/hooks/use-site-editor";
 export function SiteCustomizer() {
   const { isSidebarOpen, setIsSidebarOpen: onToggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
+  const { toast } = useToast();
   const params = useParams();
   const slug = params?.slug as string;
 
@@ -35,6 +41,7 @@ export function SiteCustomizer() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const {
     heroSettings,
@@ -123,6 +130,53 @@ export function SiteCustomizer() {
     isSaving,
   } = useSiteEditor(iframeRef);
 
+  const handleToggleStatus = async () => {
+    const business = businesses[0];
+    if (!business || !business.id) return;
+
+    const newStatus = !business.active;
+    setIsUpdatingStatus(true);
+
+    try {
+      console.log(`>>> [CUSTOMIZER] Atualizando status para: ${newStatus}`);
+      
+      // Usa o endpoint de status do usuário (que controla o acesso do estúdio)
+      // Buscamos o ID do usuário através do business ou usamos o business.id se for o mesmo
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/users/${business.id}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ active: newStatus }),
+          credentials: "include",
+        }
+      );
+
+      if (response.ok) {
+        setBusinesses(prev => 
+          prev.map(b => b.id === business.id ? { ...b, active: newStatus } : b)
+        );
+        
+        toast({
+          title: "Status Atualizado",
+          description: `O acesso ao estúdio foi ${newStatus ? "ativado" : "desativado"} com sucesso.`,
+        });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Erro ao atualizar status");
+      }
+    } catch (err) {
+      console.error(">>> [CUSTOMIZER_ERROR] Falha ao alternar status:", err);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Não foi possível alterar o status de acesso. Verifique sua conexão.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
   const fetchBusinessData = useCallback(async () => {
     if (!slug) return;
     setIsLoading(true);
@@ -130,7 +184,7 @@ export function SiteCustomizer() {
     try {
       console.log(`>>> [CUSTOMIZER] Buscando dados para o slug: ${slug}`);
       // Ajustado de /api/studios para /api/business conforme confirmado pelo back-end
-      const response = await fetch(
+      const response = await customFetch(
         `${API_BASE_URL}/api/business/slug/${slug}`,
         {
           credentials: "include",
@@ -366,7 +420,37 @@ export function SiteCustomizer() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3"></div>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 bg-muted/30 px-3 py-1.5 rounded-lg border border-border/50">
+            <div className="flex flex-col items-end mr-1">
+              <Label 
+                htmlFor="access-switch" 
+                className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-1"
+              >
+                Acesso ao Site
+              </Label>
+              <div className="flex items-center gap-1.5">
+                {isUpdatingStatus ? (
+                  <Activity className="w-3 h-3 animate-spin text-primary" />
+                ) : (
+                  <Badge 
+                    variant={businesses[0]?.active ? "default" : "destructive"} 
+                    className="h-4 px-1.5 text-[9px] uppercase font-bold"
+                  >
+                    {businesses[0]?.active ? "Ativo" : "Suspenso"}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            <Switch
+              id="access-switch"
+              checked={businesses[0]?.active ?? true}
+              onCheckedChange={handleToggleStatus}
+              disabled={isUpdatingStatus || !businesses[0]}
+              className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-destructive"
+            />
+          </div>
+        </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden relative">

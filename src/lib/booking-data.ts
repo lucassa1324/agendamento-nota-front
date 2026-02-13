@@ -1980,6 +1980,7 @@ export interface Business {
   id: string;
   name: string;
   slug: string;
+  active?: boolean;
   siteName?: string;
   description?: string;
   phone?: string;

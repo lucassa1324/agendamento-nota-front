@@ -1,4 +1,5 @@
-import { API_BASE_URL, getSessionToken } from "./auth-client";
+import { API_BASE_URL } from "./auth-client";
+import { customFetch } from "./api-client";
 
 export interface InventoryLog {
   id?: string;
@@ -30,17 +31,6 @@ export interface InventoryItem {
 class InventoryService {
   private baseUrl = `${API_BASE_URL}/api/inventory`;
 
-  private async getAuthHeaders() {
-    const sessionToken = await getSessionToken();
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (sessionToken) {
-      headers.Authorization = `Bearer ${sessionToken}`;
-    }
-    return headers;
-  }
-
   private async handleResponse(response: Response) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -54,38 +44,29 @@ class InventoryService {
   }
 
   async list(companyId: string): Promise<InventoryItem[]> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}/company/${companyId}`, {
-      headers,
-    });
+    const response = await customFetch(`${this.baseUrl}/company/${companyId}`);
     return this.handleResponse(response);
   }
 
   async create(data: Partial<InventoryItem>): Promise<InventoryItem> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(this.baseUrl, {
+    const response = await customFetch(this.baseUrl, {
       method: "POST",
-      headers,
       body: JSON.stringify(data),
     });
     return this.handleResponse(response);
   }
 
   async update(id: string, data: Partial<InventoryItem>): Promise<InventoryItem> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}/${id}`, {
+    const response = await customFetch(`${this.baseUrl}/${id}`, {
       method: "PATCH",
-      headers,
       body: JSON.stringify(data),
     });
     return this.handleResponse(response);
   }
 
   async delete(id: string): Promise<void> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}/${id}`, {
+    const response = await customFetch(`${this.baseUrl}/${id}`, {
       method: "DELETE",
-      headers,
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -97,20 +78,16 @@ class InventoryService {
   }
 
   async addLog(id: string, log: Omit<InventoryLog, "timestamp">): Promise<InventoryItem> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}/${id}/logs`, {
+    const response = await customFetch(`${this.baseUrl}/${id}/logs`, {
       method: "POST",
-      headers,
       body: JSON.stringify(log),
     });
     return this.handleResponse(response);
   }
 
   async subtract(id: string, quantity: number): Promise<InventoryItem> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}/${id}/subtract`, {
+    const response = await customFetch(`${this.baseUrl}/${id}/subtract`, {
       method: "POST",
-      headers,
       body: JSON.stringify({ quantity }),
     });
     return this.handleResponse(response);

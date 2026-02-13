@@ -1,4 +1,5 @@
-import { API_BASE_URL, getSessionToken } from "./auth-client";
+import { API_BASE_URL } from "./auth-client";
+import { customFetch } from "./api-client";
 
 export type AppointmentStatus =
   | "PENDING"
@@ -52,22 +53,6 @@ export interface ApiError {
 class AppointmentService {
   private baseUrl = `${API_BASE_URL}/api/appointments`;
 
-  private async getAuthHeaders(skipWarning = false) {
-    const sessionToken = await getSessionToken();
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (sessionToken) {
-      headers.Authorization = `Bearer ${sessionToken}`;
-    } else if (!skipWarning) {
-      console.warn(">>> [AppointmentService] Nenhum token encontrado!");
-    }
-
-    return headers;
-  }
-
   private async handleResponse(response: Response) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -94,35 +79,22 @@ class AppointmentService {
   }
 
   async create(data: CreateAppointmentDTO): Promise<Appointment> {
-    // Para criação (fluxo público), não avisamos se não houver token
-    const headers = await this.getAuthHeaders(true);
-    
     console.log(">>> [AppointmentService] POST /appointments", {
-      hasAuth: !!headers.Authorization,
       companyId: data.companyId
     });
 
-    const response = await fetch(`${this.baseUrl}`, {
+    const response = await customFetch(`${this.baseUrl}`, {
       method: "POST",
-      headers,
       body: JSON.stringify(data),
-      // Removido credentials: "include" para evitar envio de cookies em rota pública 
-      // que podem causar 401 se estiverem expirados ou forem inválidos
     });
     return this.handleResponse(response);
   }
 
   async listByCompany(companyId: string): Promise<Appointment[]> {
-    // Para listagem por empresa (verificar disponibilidade no fluxo público), não avisamos se não houver token
-    const headers = await this.getAuthHeaders(true);
+    console.log(`>>> [AppointmentService] GET /appointments/company/${companyId}`);
 
-    console.log(`>>> [AppointmentService] GET /appointments/company/${companyId}`, {
-      hasAuth: !!headers.Authorization
-    });
-
-    const response = await fetch(`${this.baseUrl}/company/${companyId}`, {
+    const response = await customFetch(`${this.baseUrl}/company/${companyId}`, {
       method: "GET",
-      headers,
     });
     return this.handleResponse(response);
   }
@@ -132,8 +104,6 @@ class AppointmentService {
     startDate?: string,
     endDate?: string,
   ): Promise<Appointment[]> {
-    const headers = await this.getAuthHeaders();
-
     const params = new URLSearchParams();
     if (startDate) params.append("startDate", startDate);
     if (endDate) params.append("endDate", endDate);
@@ -141,13 +111,8 @@ class AppointmentService {
     const queryString = params.toString();
     const url = `${this.baseUrl}/admin/company/${companyId}${queryString ? `?${queryString}` : ""}`;
 
-    // console.log(`>>> [AppointmentService] GET ${url}`, {
-    //   hasAuth: !!headers.Authorization,
-    // });
-
-    const response = await fetch(url, {
+    const response = await customFetch(url, {
       method: "GET",
-      headers,
       credentials: "include",
     });
     return this.handleResponse(response);
@@ -157,10 +122,8 @@ class AppointmentService {
     id: string,
     status: AppointmentStatus,
   ): Promise<Appointment> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}/${id}/status`, {
+    const response = await customFetch(`${this.baseUrl}/${id}/status`, {
       method: "PATCH",
-      headers,
       body: JSON.stringify({ status }),
       credentials: "include",
     });
@@ -168,10 +131,8 @@ class AppointmentService {
   }
 
   async delete(id: string): Promise<void> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}/${id}`, {
+    const response = await customFetch(`${this.baseUrl}/${id}`, {
       method: "DELETE",
-      headers,
       credentials: "include",
     });
     if (!response.ok) {

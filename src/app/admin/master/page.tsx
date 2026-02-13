@@ -51,6 +51,7 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/auth-client";
 
 interface UserMasterData {
@@ -61,6 +62,7 @@ interface UserMasterData {
   active: boolean;
   createdAt: string;
   companyId: string | null;
+  businessId?: string | null; // Adicionado para compatibilidade com o backend
   companyName: string | null;
   companySlug: string | null;
 }
@@ -104,7 +106,7 @@ export default function MasterDashboardPage() {
     setIsLoading(true);
     try {
       // 1. Buscar Estatísticas
-      const statsRes = await fetch(`${API_BASE_URL}/api/admin/master/stats`, {
+      const statsRes = await customFetch(`${API_BASE_URL}/api/admin/master/stats`, {
         credentials: "include",
       });
       if (statsRes.status === 403) return handleForbidden();
@@ -114,7 +116,7 @@ export default function MasterDashboardPage() {
       }
 
       // 2. Buscar Usuários e Estúdios
-      const usersRes = await fetch(`${API_BASE_URL}/api/admin/master/users`, {
+      const usersRes = await customFetch(`${API_BASE_URL}/api/admin/master/users`, {
         credentials: "include",
         headers: { "Accept": "application/json" },
       });
@@ -139,13 +141,21 @@ export default function MasterDashboardPage() {
     fetchData();
   }, [fetchData]);
 
-  const toggleUserStatus = async (id: string, currentStatus: boolean) => {
+  const toggleUserStatus = async (user: UserMasterData) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/master/users/${id}/status`, {
+      const { id, active: currentStatus } = user;
+      const targetId = user.companyId || user.businessId;
+      
+      console.log('>>> [MASTER_ADMIN] ID enviado:', targetId);
+
+      const response = await customFetch(`${API_BASE_URL}/api/admin/master/users/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ active: !currentStatus }),
+        body: JSON.stringify({ 
+          active: !currentStatus,
+          companyId: targetId 
+        }),
       });
 
       if (response.status === 403) return handleForbidden();
@@ -174,7 +184,7 @@ export default function MasterDashboardPage() {
     
     setIsUpdatingEmail(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/master/users/${editingUser.id}/email`, {
+      const response = await customFetch(`${API_BASE_URL}/api/admin/master/users/${editingUser.id}/email`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -411,7 +421,7 @@ export default function MasterDashboardPage() {
                         <div className="flex justify-center">
                           <Switch 
                             checked={user.active}
-                            onCheckedChange={() => toggleUserStatus(user.id, user.active)}
+                            onCheckedChange={() => toggleUserStatus(user)}
                             disabled={user.role === 'SUPER_ADMIN'} // Não permite desativar a si mesmo ou outros masters
                           />
                         </div>
@@ -453,7 +463,7 @@ export default function MasterDashboardPage() {
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
                                 className="text-red-600 cursor-pointer"
-                                onClick={() => toggleUserStatus(user.id, user.active)}
+                                onClick={() => toggleUserStatus(user)}
                               >
                                 <Power className="mr-2 h-4 w-4" /> 
                                 {user.active ? "Desativar Conta" : "Ativar Conta"}

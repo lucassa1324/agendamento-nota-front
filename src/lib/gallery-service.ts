@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./auth-client";
+import { customFetch } from "./api-client";
 
 export interface GalleryItem {
   id: string;
@@ -31,36 +32,13 @@ export interface UpdateGalleryDTO {
 class GalleryService {
   private baseUrl = `${API_BASE_URL}/api/gallery`;
 
-  private async getAuthHeaders() {
-    if (typeof window === "undefined") return {};
-
-    // Better-Auth armazena a sessão em cookies e no localStorage
-    const sessionToken = localStorage.getItem("better-auth.session_token") ||
-      localStorage.getItem("better-auth.access_token");
-
-    // Log de Segurança para diagnóstico de 401
-    console.log(">>> [GalleryService] Preparando requisição. Token presente no LocalStorage:", !!sessionToken);
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (sessionToken) {
-      headers.Authorization = `Bearer ${sessionToken}`;
-    }
-
-    return headers;
-  }
-
   // --- Rotas Privadas (Admin) ---
 
   async create(data: CreateGalleryDTO): Promise<GalleryItem> {
-    const headers = await this.getAuthHeaders();
     console.log(">>> [GalleryService] POST /api/gallery - Enviando com credentials: include");
 
-    const response = await fetch(this.baseUrl, {
+    const response = await customFetch(this.baseUrl, {
       method: "POST",
-      headers,
       body: JSON.stringify(data),
       credentials: "include", // ESSENCIAL para enviar cookies de sessão do Better-Auth
     });
@@ -75,10 +53,8 @@ class GalleryService {
   }
 
   async update(id: string, data: UpdateGalleryDTO): Promise<GalleryItem> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}/${id}`, {
+    const response = await customFetch(`${this.baseUrl}/${id}`, {
       method: "PATCH",
-      headers,
       body: JSON.stringify(data),
       credentials: "include", // ESSENCIAL
     });
@@ -92,10 +68,8 @@ class GalleryService {
   }
 
   async delete(id: string): Promise<void> {
-    const headers = await this.getAuthHeaders();
-    const response = await fetch(`${this.baseUrl}/${id}`, {
+    const response = await customFetch(`${this.baseUrl}/${id}`, {
       method: "DELETE",
-      headers,
       credentials: "include", // ESSENCIAL
     });
 
@@ -115,7 +89,7 @@ class GalleryService {
     const queryString = params.toString();
     const url = `${this.baseUrl}/public/${businessId}${queryString ? `?${queryString}` : ""}`;
 
-    const response = await fetch(url);
+    const response = await customFetch(url);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));

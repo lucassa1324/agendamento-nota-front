@@ -8,7 +8,8 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarProvider } from "@/context/sidebar-context";
-import { StudioProvider } from "@/context/studio-context";
+import { StudioProvider, useStudio } from "@/context/studio-context";
+import { customFetch } from "@/lib/api-client";
 import {
   API_BASE_URL,
   getSession,
@@ -59,6 +60,7 @@ function AdminLayoutContent({
   const slug = propSlug;
 
   const { data: session, isPending: isLoadingSession } = useSession();
+  const { isLoading: isLoadingStudio } = useStudio();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [adminUser, setAdminUser] = useState<{
@@ -84,8 +86,9 @@ function AdminLayoutContent({
             ">>> [DASHBOARD_LAYOUT] Resultado getSession() manual:",
             manualSession,
           );
-
-          const diagRes = await fetch(`${API_BASE_URL}/diagnostics/headers`, {
+          
+          // Usando customFetch para o diagnóstico
+          const diagRes = await customFetch(`${API_BASE_URL}/diagnostics/headers`, {
             credentials: "include",
           });
           if (diagRes.ok) {
@@ -161,9 +164,11 @@ function AdminLayoutContent({
   };
 
   const isPersonalizacao = pathname?.includes("/personalizacao");
-
+  const isMaster = pathname?.startsWith("/admin/master");
+  
   // Enquanto estiver carregando ou validando, mostra o loading
-  if (isLoadingSession || isCheckingSession || !isAuthenticated) {
+  // Também aguarda o carregamento do estúdio (exceto para rota master)
+  if (isLoadingSession || isCheckingSession || !isAuthenticated || (isLoadingStudio && !isMaster)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">

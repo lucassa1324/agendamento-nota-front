@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
+import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL, BASE_DOMAIN } from "@/lib/auth-client";
 import type { Business, ColorSettings, FontSettings, HeroSettings } from "@/lib/booking-data";
 import {
@@ -205,7 +206,7 @@ export function StudioProvider({
 
         let response: Response;
         try {
-          response = await fetch(fetchUrl, {
+          response = await customFetch(fetchUrl, {
             credentials: "include",
             cache: "no-store",
             headers: {
@@ -251,7 +252,7 @@ export function StudioProvider({
             if (data?.id) {
               try {
                 console.log(`>>> [DEBUG_API] Buscando perfil público para Business ID: ${data.id}`);
-                const profileRes = await fetch(`${API_BASE_URL}/api/settings/profile/${data.id}`, {
+                const profileRes = await customFetch(`${API_BASE_URL}/api/settings/profile/${data.id}`, {
                   cache: "no-store",
                   headers: { Accept: "application/json" }
                 });
@@ -378,6 +379,15 @@ export function StudioProvider({
                   
                   setStudio(initialStudio);
 
+                  // 6. Guarda de Rota: Se o estúdio estiver inativo, redirecionar (Exceto para Master Admin)
+                  if (initialStudio.active === false) {
+                    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/master")) {
+                      console.error(">>> [STUDIO_GUARD] Estúdio inativo detectado no carregamento inicial. Redirecionando...");
+                      window.location.href = "/acesso-suspenso";
+                      return;
+                    }
+                  }
+
                   // Busca serviços explicitamente se não vieram no objeto business
                   // Isso resolve o problema de serviços não aparecerem no site público
                   if (!data.services || data.services.length === 0) {
@@ -386,7 +396,7 @@ export function StudioProvider({
                     console.log(`>>> [StudioProvider] Buscando serviços separadamente (Rota Pública): ${servicesUrl}`);
                     
                     // Removido credentials: "include" para evitar 401 em rotas públicas que não precisam de auth
-                    fetch(servicesUrl)
+                    customFetch(servicesUrl)
                       .then(res => {
                         if (res.status === 401) {
                           console.warn(">>> [SITE_WARN] Acesso restrito à API de serviços (401). Usando dados locais/padrão.");
@@ -572,6 +582,16 @@ export function StudioProvider({
       // router.replace("/"); // Opcional: redirecionar para home
     }
   }, [error, slug, router, isLoading, studio]);
+
+  // Monitora mudanças no status de ativação do estúdio (Guarda de Rota)
+  useEffect(() => {
+    if (studio && studio.active === false) {
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/master") && !window.location.pathname.startsWith("/acesso-suspenso")) {
+        console.error(">>> [STUDIO_GUARD] Estúdio inativo detectado via monitoramento. Redirecionando...");
+        window.location.href = "/acesso-suspenso";
+      }
+    }
+  }, [studio]);
 
   return (
     <StudioContext.Provider
