@@ -5,7 +5,11 @@ import { useEffect, useState } from "react";
 import { ImageModal } from "@/components/image-modal";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
-import { GalleryItem, galleryService } from "@/lib/gallery-service";
+import { type GalleryItem, galleryService } from "@/lib/gallery-service";
+
+interface Service {
+  name: string;
+}
 
 export function GalleryGrid() {
   const { studio } = useStudio();
@@ -50,10 +54,10 @@ export function GalleryGrid() {
             const allImages = await galleryService.getPublicGallery(parsed.id);
             setImages(allImages);
             
-            const allServices = parsed.services || [];
+            const allServices = (parsed.services || []) as Service[];
             const dynamicCategories = [
               { id: "todos", label: "Todos" },
-              ...allServices.map((s: any) => ({ id: s.name, label: s.name })),
+              ...allServices.map((s) => ({ id: s.name, label: s.name })),
             ];
             setCategories(dynamicCategories);
           }

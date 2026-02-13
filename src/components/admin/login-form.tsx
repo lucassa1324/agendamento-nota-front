@@ -3,7 +3,7 @@
 import { Lock, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -32,7 +32,7 @@ export function LoginForm() {
   const router = useRouter();
 
   // Função auxiliar para redirecionar baseada na role (Regra de Ouro)
-  const handleRoleRedirection = (user: AuthUser & { email?: string }) => {
+  const handleRoleRedirection = useCallback((user: AuthUser & { email?: string }) => {
     console.log(">>> [DEBUG_ROLES] Analisando usuário para redirecionamento:", {
       email: user.email,
       role: user.role,
@@ -59,7 +59,7 @@ export function LoginForm() {
     // 3º Lugar: Usuário sem estúdio ou sem role definida (Fallback)
     console.warn(">>> [LOGIN_FLOW] Usuário sem role ADMIN/SUPER_ADMIN ou sem slug.");
     return false;
-  };
+  }, [router]);
 
   // Verifica se já existe sessão ao carregar a página
   useEffect(() => {
@@ -82,7 +82,7 @@ export function LoginForm() {
       }
     };
     checkSession();
-  }, [router]);
+  }, [handleRoleRedirection]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

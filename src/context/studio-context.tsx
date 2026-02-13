@@ -203,7 +203,7 @@ export function StudioProvider({
         const fetchUrl = `${API_BASE_URL}/api/business/slug/${currentSlug}?t=${timestamp}`;
         console.log(`>>> [CACHE_CHECK] StudioProvider buscando studio via: ${fetchUrl}`);
 
-        let response;
+        let response: Response;
         try {
           response = await fetch(fetchUrl, {
             credentials: "include",
@@ -212,8 +212,9 @@ export function StudioProvider({
               Accept: "application/json",
             },
           });
-        } catch (fetchErr: any) {
-          console.error(">>> [StudioProvider] Falha Crítica na Rede ao buscar Studio:", fetchErr.message);
+        } catch (fetchErr: unknown) {
+          const errorMessage = fetchErr instanceof Error ? fetchErr.message : "Erro desconhecido";
+          console.error(">>> [StudioProvider] Falha Crítica na Rede ao buscar Studio:", errorMessage);
           
           // PLANO B: Tentar carregar do cache local se a rede falhar
           const cachedStudio = localStorage.getItem("studio_data");
@@ -276,11 +277,11 @@ export function StudioProvider({
               Object.keys(publicProfileData).forEach(key => {
                 if (protectedKeys.includes(key)) return;
                 
-                const val = (publicProfileData as any)[key];
+                const val = (publicProfileData as Record<string, unknown>)[key];
                 const isPlaceholder = typeof val === "string" && (val.includes("exemplo.com") || val.includes("lucasstudio.com"));
                 
                 if (val !== null && val !== undefined && !isPlaceholder && (typeof val !== "string" || val.trim() !== "")) {
-                  (studioWithProfile as any)[key] = val;
+                  (studioWithProfile as Record<string, unknown>)[key] = val;
                 }
               });
             }
@@ -537,11 +538,18 @@ export function StudioProvider({
         // Plano C: Se tudo falhar, tenta usar o que estiver no cache mesmo que o erro tenha sido após o fetch
         if (typeof window !== "undefined") {
           const cachedStudio = localStorage.getItem("studio_data");
-          if (cachedStudio && !studio) {
-             console.log(">>> [StudioProvider] Plano C: Usando cache após erro de processamento.");
-             try {
-               setStudio(JSON.parse(cachedStudio));
-             } catch (_) {}
+          if (cachedStudio) {
+             setStudio(prev => {
+               if (!prev) {
+                 console.log(">>> [StudioProvider] Plano C: Usando cache após erro de processamento.");
+                 try {
+                   return JSON.parse(cachedStudio);
+                 } catch (_) {
+                   return prev;
+                 }
+               }
+               return prev;
+             });
           }
         }
       } finally {
@@ -558,8 +566,12 @@ export function StudioProvider({
       // Podemos usar router.replace para não sujar o histórico
       router.replace("/404");
       console.warn("Studio não encontrado para o slug:", slug);
+    } else if (error && !isLoading && !studio) {
+      // Se houve um erro genérico e não temos studio carregado, redireciona para home ou erro
+      console.error("Erro crítico ao carregar studio:", error);
+      // router.replace("/"); // Opcional: redirecionar para home
     }
-  }, [error, slug, router]);
+  }, [error, slug, router, isLoading, studio]);
 
   return (
     <StudioContext.Provider

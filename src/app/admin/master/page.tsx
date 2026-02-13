@@ -1,19 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { 
-  Users,
-  Store,
+  AlertTriangle, 
   Calendar,
   CheckCircle2,
-  Search, 
-  Power, 
-  MoreHorizontal,
   ExternalLink,
+  MoreHorizontal,
   Pencil,
-  Mail,
-  ShieldAlert
+  Power, 
+  Search, 
+  ShieldAlert,
+  Store,
+  Trash2,
+  Users
 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from "@/components/ui/card";
 import { 
   Dialog,
   DialogContent,
@@ -22,25 +31,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -49,6 +39,17 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { API_BASE_URL } from "@/lib/auth-client";
 
@@ -59,6 +60,7 @@ interface UserMasterData {
   role: string;
   active: boolean;
   createdAt: string;
+  companyId: string | null;
   companyName: string | null;
   companySlug: string | null;
 }
@@ -82,8 +84,23 @@ export default function MasterDashboardPage() {
   const [editingUser, setEditingUser] = useState<UserMasterData | null>(null);
   const [newEmail, setNewEmail] = useState("");
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
+  
+  // Estados para Exclusão de Conta
+  const [userToDelete, setUserToDelete] = useState<UserMasterData | null>(null);
+  const [confirmCode, setConfirmCode] = useState("");
+  const [generatedCode, setGeneratedCode] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchData = async () => {
+  const handleForbidden = useCallback(() => {
+    toast({
+      title: "Acesso Negado",
+      description: "Você não tem permissão de Super Admin.",
+      variant: "destructive",
+    });
+    window.location.href = "/admin"; // Redireciona para login
+  }, [toast]);
+
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       // 1. Buscar Estatísticas
@@ -116,20 +133,11 @@ export default function MasterDashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleForbidden = () => {
-    toast({
-      title: "Acesso Negado",
-      description: "Você não tem permissão de Super Admin.",
-      variant: "destructive",
-    });
-    window.location.href = "/admin"; // Redireciona para login
-  };
+  }, [handleForbidden, toast]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const toggleUserStatus = async (id: string, currentStatus: boolean) => {
     try {
@@ -152,6 +160,7 @@ export default function MasterDashboardPage() {
         description: `Usuário ${!currentStatus ? 'ativado' : 'desativado'} com sucesso.`,
       });
     } catch (error) {
+      console.error(">>> [MASTER_ADMIN] Erro ao atualizar status:", error);
       toast({
         title: "Erro",
         description: "Não foi possível alterar o status do usuário.",
@@ -189,10 +198,11 @@ export default function MasterDashboardPage() {
         description: "Email atualizado com sucesso." 
       });
       setEditingUser(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "O email pode já estar em uso.";
       toast({
         title: "Erro na Atualização",
-        description: error.message || "O email pode já estar em uso.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -200,10 +210,65 @@ export default function MasterDashboardPage() {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!userToDelete || confirmCode !== generatedCode) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/admin/master/users/${userToDelete.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (response.status === 403) return handleForbidden();
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || "Erro ao excluir usuário");
+      }
+
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      
+      // Atualiza estatísticas também
+      if (stats) {
+        setStats({
+          ...stats,
+          totalUsers: stats.totalUsers - 1,
+          totalCompanies: userToDelete.companyId ? stats.totalCompanies - 1 : stats.totalCompanies,
+          activeCompanies: userToDelete.active && userToDelete.companyId ? stats.activeCompanies - 1 : stats.activeCompanies,
+        });
+      }
+
+      toast({
+        title: "Usuário Excluído",
+        description: "A conta e todos os dados vinculados foram removidos permanentemente.",
+      });
+      
+      setUserToDelete(null);
+      setConfirmCode("");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Erro ao tentar excluir a conta.";
+      toast({
+        title: "Erro na Exclusão",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const openDeleteModal = (user: UserMasterData) => {
+    setConfirmCode(""); // Limpa o input anterior
+    const code = Math.floor(1000 + Math.random() * 9000).toString();
+    setGeneratedCode(code);
+    setUserToDelete(user); // Define o usuário por último para disparar o modal
+  };
+
   const filteredUsers = users.filter(u => 
     u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (u.companyName && u.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
+    (u.companyName?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -352,33 +417,61 @@ export default function MasterDashboardPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                            <DropdownMenuItem 
-                              className="cursor-pointer"
-                              onClick={() => {
-                                setEditingUser(user);
-                                setNewEmail(user.email);
+                        <div className="flex justify-end items-center gap-1">
+                          {user.role !== 'SUPER_ADMIN' && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              type="button"
+                              className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteModal(user);
                               }}
+                              title="Excluir Conta permanentemente"
                             >
-                              <Pencil className="mr-2 h-4 w-4" /> Editar Email
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-red-600 cursor-pointer"
-                              onClick={() => toggleUserStatus(user.id, user.active)}
-                            >
-                              <Power className="mr-2 h-4 w-4" /> 
-                              {user.active ? "Desativar Conta" : "Ativar Conta"}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" type="button" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuItem 
+                                className="cursor-pointer"
+                                onClick={() => {
+                                  setEditingUser(user);
+                                  setNewEmail(user.email);
+                                }}
+                              >
+                                <Pencil className="mr-2 h-4 w-4" /> Editar Email
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-red-600 cursor-pointer"
+                                onClick={() => toggleUserStatus(user.id, user.active)}
+                              >
+                                <Power className="mr-2 h-4 w-4" /> 
+                                {user.active ? "Desativar Conta" : "Ativar Conta"}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-red-600 focus:text-red-600 cursor-pointer font-semibold"
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  openDeleteModal(user);
+                                }}
+                                disabled={user.role === 'SUPER_ADMIN'}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Excluir permanentemente
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -425,6 +518,74 @@ export default function MasterDashboardPage() {
             </Button>
             <Button onClick={handleUpdateEmail} disabled={isUpdatingEmail || !newEmail}>
               {isUpdatingEmail ? "Salvando..." : "Salvar Alteração"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Exclusão de Conta */}
+      <Dialog key={userToDelete?.id || 'delete-modal'} open={!!userToDelete} onOpenChange={(open) => { if (!open) setUserToDelete(null); }}>
+        <DialogContent className="sm:max-w-112.5 border-red-100 z-9999">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Exclusão Crítica de Conta
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-slate-900 font-medium">
+              Esta ação é <span className="text-red-600 underline">irreversível</span> e apagará permanentemente todos os dados vinculados a <strong>{userToDelete?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="bg-red-50 border border-red-100 p-4 rounded-lg space-y-3 text-sm text-red-800">
+            <p className="font-bold flex items-center gap-2">
+              O que será apagado:
+            </p>
+            <ul className="list-disc list-inside space-y-1 opacity-90">
+              <li>Dados do Usuário e Login</li>
+              <li>Configurações do Estúdio ({userToDelete?.companyName || "N/A"})</li>
+              <li>Todos os Agendamentos e Clientes</li>
+              <li>Galeria de Fotos e Serviços</li>
+            </ul>
+          </div>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2 text-center py-2 bg-slate-50 rounded-md border border-slate-200">
+              <Label className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Código de Confirmação</Label>
+              <div className="text-3xl font-mono tracking-[0.5em] font-black text-slate-800 select-none">
+                {generatedCode}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirm-code" className="text-sm font-semibold">Digite o código acima para confirmar:</Label>
+              <Input
+                id="confirm-code"
+                placeholder="0000"
+                className="text-center font-mono text-xl tracking-widest h-12"
+                maxLength={4}
+                value={confirmCode}
+                onChange={(e) => setConfirmCode(e.target.value)}
+                disabled={isDeleting}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setUserToDelete(null)} 
+              disabled={isDeleting}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteUser} 
+              disabled={isDeleting || confirmCode !== generatedCode}
+              className="flex-1 font-bold"
+            >
+              {isDeleting ? "Excluindo..." : "Confirmar Exclusão"}
             </Button>
           </DialogFooter>
         </DialogContent>

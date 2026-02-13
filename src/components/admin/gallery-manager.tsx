@@ -11,7 +11,7 @@ import {
   Upload,
 } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -37,7 +37,7 @@ import {
   type Service,
 } from "@/lib/booking-data";
 import {
-  GalleryItem,
+  type GalleryItem,
   galleryService,
 } from "@/lib/gallery-service";
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ export function GalleryManager() {
   const [filterCategory, setFilterCategory] = useState("all");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!studio?.id) return;
     
     setIsLoading(true);
@@ -118,7 +118,7 @@ export function GalleryManager() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [studio?.id, studio?.services, categoryInput, toast]);
 
   useEffect(() => {
     loadData();
@@ -132,7 +132,7 @@ export function GalleryManager() {
       window.removeEventListener("servicesUpdated", loadData);
       window.removeEventListener("DataReady", loadData);
     };
-  }, [studio?.id, studio?.services]);
+  }, [loadData]);
 
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -191,11 +191,12 @@ export function GalleryManager() {
         title: "Upload concluído",
         description: `${files.length} imagem(ns) adicionada(s) com sucesso.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro ao enviar as imagens.";
       console.error(">>> [GalleryManager] Erro no upload:", error);
       toast({
         title: "Erro no upload",
-        description: error.message || "Ocorreu um erro ao enviar as imagens.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -244,11 +245,12 @@ export function GalleryManager() {
         title: "Sucesso",
         description: "Imagem adicionada à galeria.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Não foi possível adicionar a imagem.";
       console.error(">>> [GalleryManager] Erro ao adicionar via URL:", error);
       toast({
         title: "Erro",
-        description: error.message || "Não foi possível adicionar a imagem.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -270,7 +272,7 @@ export function GalleryManager() {
         title: "Imagem excluída",
         description: "A imagem foi removida da galeria.",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Erro ao excluir",
         description: "Não foi possível remover a imagem.",
@@ -287,7 +289,7 @@ export function GalleryManager() {
           img.id === id ? { ...img, category: newCategory } : img,
         ),
       );
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Erro ao atualizar",
         description: "Não foi possível atualizar a categoria.",
@@ -314,7 +316,7 @@ export function GalleryManager() {
           ? "A imagem não aparecerá mais no carrossel inicial."
           : "A imagem agora aparecerá no carrossel inicial.",
       });
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: "Erro ao atualizar",
         description: "Não foi possível alterar o status da imagem.",

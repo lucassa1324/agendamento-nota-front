@@ -17,7 +17,7 @@ import {
   getGallerySettings,
   getPageVisibility,
 } from "@/lib/booking-data";
-import { GalleryItem, galleryService } from "@/lib/gallery-service";
+import { type GalleryItem, galleryService } from "@/lib/gallery-service";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
@@ -57,7 +57,10 @@ export function GalleryPreview() {
           console.log(">>> [GALLERY_SYNC] Total de imagens na galeria:", allImages?.length || 0);
           
           const homeImages = Array.isArray(allImages) 
-            ? allImages.filter(img => img.showInHome || (img as any).show_in_home || (img as any).showOnHome)
+            ? allImages.filter(img => {
+                const item = img as GalleryItem & { show_in_home?: boolean; showOnHome?: boolean };
+                return item.showInHome || item.show_in_home || item.showOnHome;
+              })
             : [];
             
           console.log(">>> [GALLERY_SYNC] Imagens marcadas para Home:", homeImages.length);
@@ -76,7 +79,10 @@ export function GalleryPreview() {
             if (parsed.id) {
                const allImages = await galleryService.getPublicGallery(parsed.id);
                const homeImages = Array.isArray(allImages) 
-                 ? allImages.filter(img => img.showInHome || (img as any).show_in_home || (img as any).showOnHome)
+                 ? allImages.filter(img => {
+                     const item = img as GalleryItem & { show_in_home?: boolean; showOnHome?: boolean };
+                     return item.showInHome || item.show_in_home || item.showOnHome;
+                   })
                  : [];
                setImages(homeImages.slice(0, 6));
             }

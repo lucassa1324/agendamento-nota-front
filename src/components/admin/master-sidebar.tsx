@@ -4,8 +4,8 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
   LogOut,
-  Users,
   User,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

@@ -1,7 +1,7 @@
 "use client";
 
+import { BarChart3, DollarSign, TrendingUp, Users } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Users, DollarSign } from "lucide-react";
 
 export default function ReportsPage() {
   return (

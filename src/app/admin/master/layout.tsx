@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useSession } from "@/lib/auth-client";
-import { MasterSidebar } from "@/components/admin/master-sidebar";
 import { Loader2 } from "lucide-react";
-import { signOut } from "@/lib/auth-client";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { MasterSidebar } from "@/components/admin/master-sidebar";
+import { signOut, useSession } from "@/lib/auth-client";
 
 export default function MasterLayout({
   children,

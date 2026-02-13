@@ -130,7 +130,7 @@ export function ProfileManager() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, companyId]);
+  }, [toast, companyId, studio?.email, session?.user?.email]);
 
   useEffect(() => {
     if (companyId) {
