@@ -1,10 +1,14 @@
 "use client";
 
 import { 
+  Activity,
   AlertTriangle, 
   Calendar,
+  CalendarDays, 
   CheckCircle2,
   ExternalLink,
+  Info,
+  KeyRound,
   MoreHorizontal,
   Pencil,
   Power, 
@@ -36,6 +40,7 @@ import {
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuLabel, 
+  DropdownMenuPortal,
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
@@ -67,6 +72,32 @@ interface UserMasterData {
   companySlug: string | null;
 }
 
+interface UserDetails {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    active: boolean;
+    createdAt: string;
+  };
+  business: {
+    id: string;
+    name: string;
+    slug: string;
+    active: boolean;
+  } | null;
+  stats: {
+    totalAppointments: number;
+    totalServices: number;
+    totalEmployees: number;
+  };
+  auth: {
+    lastLogin: string | null;
+    loginCount: number;
+  };
+}
+
 interface MasterStats {
   totalUsers: number;
   totalCompanies: number;
@@ -92,6 +123,15 @@ export default function MasterDashboardPage() {
   const [confirmCode, setConfirmCode] = useState("");
   const [generatedCode, setGeneratedCode] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Estados para Reset de Senha
+  const [userToReset, setUserToReset] = useState<UserMasterData | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
+
+  // Estados para Detalhes (Raio-X)
+  const [viewingUser, setViewingUser] = useState<UserMasterData | null>(null);
+  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
   const handleForbidden = useCallback(() => {
     toast({
@@ -225,7 +265,7 @@ export default function MasterDashboardPage() {
 
     setIsDeleting(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/admin/master/users/${userToDelete.id}`, {
+      const response = await customFetch(`${API_BASE_URL}/api/admin/master/users/${userToDelete.id}`, {
         method: "DELETE",
         credentials: "include",
       });
@@ -273,6 +313,68 @@ export default function MasterDashboardPage() {
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedCode(code);
     setUserToDelete(user); // Define o usuário por último para disparar o modal
+  };
+
+  const handleResetPassword = async () => {
+    if (!userToReset) return;
+
+    setIsResetting(true);
+    try {
+      const response = await customFetch(`${API_BASE_URL}/api/admin/master/users/${userToReset.id}/reset-password`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (response.status === 403) return handleForbidden();
+      
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || "Erro ao resetar senha");
+      }
+
+      toast({
+        title: "Senha Resetada",
+        description: `A senha de ${userToReset.name} foi alterada para Mudar@123`,
+      });
+      setUserToReset(null);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Erro ao resetar senha.";
+      toast({
+        title: "Erro no Reset",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const fetchUserDetails = async (user: UserMasterData) => {
+    setViewingUser(user);
+    setIsLoadingDetails(true);
+    setUserDetails(null);
+    
+    try {
+      const response = await customFetch(`${API_BASE_URL}/api/admin/master/users/${user.id}/details`, {
+        credentials: "include",
+      });
+
+      if (response.status === 403) return handleForbidden();
+      
+      if (!response.ok) throw new Error("Falha ao buscar detalhes");
+      
+      const data = await response.json();
+      setUserDetails(data);
+    } catch (error) {
+      console.error(">>> [MASTER_ADMIN] Erro ao carregar detalhes:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar o Raio-X do usuário.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingDetails(false);
+    }
   };
 
   const filteredUsers = users.filter(u => 
@@ -383,7 +485,11 @@ export default function MasterDashboardPage() {
                   </TableRow>
                 ) : (
                   filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
+                    <TableRow 
+                      key={user.id} 
+                      className="cursor-pointer hover:bg-slate-50/50"
+                      onClick={() => fetchUserDetails(user)}
+                    >
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium">{user.name}</span>
@@ -422,6 +528,7 @@ export default function MasterDashboardPage() {
                           <Switch 
                             checked={user.active}
                             onCheckedChange={() => toggleUserStatus(user)}
+                            onClick={(e) => e.stopPropagation()}
                             disabled={user.role === 'SUPER_ADMIN'} // Não permite desativar a si mesmo ou outros masters
                           />
                         </div>
@@ -444,42 +551,71 @@ export default function MasterDashboardPage() {
                             </Button>
                           )}
                           <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" type="button" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
+                            <DropdownMenuTrigger 
+                              className="p-2 hover:bg-slate-100 rounded-full transition-colors outline-none"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                              <DropdownMenuItem 
-                                className="cursor-pointer"
-                                onClick={() => {
-                                  setEditingUser(user);
-                                  setNewEmail(user.email);
-                                }}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" /> Editar Email
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="text-red-600 cursor-pointer"
-                                onClick={() => toggleUserStatus(user)}
-                              >
-                                <Power className="mr-2 h-4 w-4" /> 
-                                {user.active ? "Desativar Conta" : "Ativar Conta"}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="text-red-600 focus:text-red-600 cursor-pointer font-semibold"
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  openDeleteModal(user);
-                                }}
-                                disabled={user.role === 'SUPER_ADMIN'}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" /> Excluir permanentemente
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
+                              <DropdownMenuPortal>
+                                <DropdownMenuContent 
+                                  align="end" 
+                                  style={{ zIndex: 99999 }}
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                  <DropdownMenuItem 
+                                    className="cursor-pointer"
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setEditingUser(user);
+                                      setNewEmail(user.email);
+                                    }}
+                                  >
+                                    <Pencil className="mr-2 h-4 w-4" /> Editar Email
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="cursor-pointer"
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      setUserToReset(user);
+                                    }}
+                                  >
+                                    <KeyRound className="mr-2 h-4 w-4" /> Resetar Senha
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    className="cursor-pointer"
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      fetchUserDetails(user);
+                                    }}
+                                  >
+                                    <Info className="mr-2 h-4 w-4" /> Ver Detalhes (Raio-X)
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem 
+                                    className="text-red-600 cursor-pointer"
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      toggleUserStatus(user);
+                                    }}
+                                  >
+                                    <Power className="mr-2 h-4 w-4" /> 
+                                    {user.active ? "Desativar Conta" : "Ativar Conta"}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    className="text-red-600 focus:text-red-600 cursor-pointer font-semibold"
+                                    onSelect={(e) => {
+                                      e.preventDefault();
+                                      openDeleteModal(user);
+                                    }}
+                                    disabled={user.role === 'SUPER_ADMIN'}
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Excluir permanentemente
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenuPortal>
                           </DropdownMenu>
                         </div>
                       </TableCell>
@@ -492,9 +628,195 @@ export default function MasterDashboardPage() {
         </CardContent>
       </Card>
 
+      {/* Modal de Reset de Senha */}
+      <Dialog open={!!userToReset} onOpenChange={(open) => !open && setUserToReset(null)}>
+        <DialogContent className="sm:max-w-md" style={{ zIndex: 100000 }}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-amber-500" />
+              Resetar Senha
+            </DialogTitle>
+            <DialogDescription>
+              Você está prestes a resetar a senha do usuário <strong>{userToReset?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-amber-50 border border-amber-200 p-4 rounded-md text-amber-800 text-sm space-y-2">
+            <p className="font-semibold flex items-center gap-1">
+              <ShieldAlert className="h-4 w-4" /> Importante:
+            </p>
+            <p>A nova senha será definida como: <code className="bg-amber-200 px-1 rounded font-bold">Mudar@123</code></p>
+            <p>O usuário deverá alterar essa senha assim que fizer o primeiro acesso.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUserToReset(null)} disabled={isResetting}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleResetPassword} 
+              disabled={isResetting}
+              className="bg-amber-600 hover:bg-amber-700 border-none"
+            >
+              {isResetting ? "Resetando..." : "Confirmar Reset"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Detalhes (Raio-X) */}
+      <Dialog open={!!viewingUser} onOpenChange={(open) => !open && setViewingUser(null)}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" style={{ zIndex: 100000 }}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-2xl">
+              <Activity className="h-6 w-6 text-blue-500" />
+              Raio-X do Usuário
+            </DialogTitle>
+            <DialogDescription>
+              Dados detalhados e estatísticas de uso da plataforma.
+            </DialogDescription>
+          </DialogHeader>
+
+          {isLoadingDetails ? (
+            <div className="py-12 flex flex-col items-center justify-center space-y-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <p className="text-muted-foreground animate-pulse">Consultando base de dados...</p>
+            </div>
+          ) : userDetails ? (
+            <div className="space-y-6 py-4">
+              {/* Seção de Perfil */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Nome Completo</Label>
+                  <p className="font-semibold text-lg">{userDetails?.user?.name}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Email de Acesso</Label>
+                  <p className="font-semibold">{userDetails?.user?.email}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Status da Conta</Label>
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${userDetails?.user?.active ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                    <span className="font-medium">{userDetails?.user?.active ? 'Ativo' : 'Suspenso'}</span>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground uppercase">Membro desde</Label>
+                  <p className="font-medium">{userDetails?.user?.createdAt ? new Date(userDetails.user.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'}</p>
+                </div>
+              </div>
+
+              <DropdownMenuSeparator />
+
+              {/* Seção do Estúdio */}
+              <div className="space-y-4">
+                <h4 className="font-bold flex items-center gap-2">
+                  <Store className="h-4 w-4 text-blue-500" />
+                  Informações do Estúdio
+                </h4>
+                {userDetails?.business ? (
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground uppercase">Nome do Estúdio</Label>
+                      <p className="font-semibold">{userDetails?.business?.name}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground uppercase">Slug / URL</Label>
+                      <a 
+                        href={`https://${userDetails?.business?.slug}.seusistema.com`} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="font-medium text-blue-600 flex items-center gap-1 hover:underline"
+                      >
+                        {userDetails?.business?.slug} <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-300 text-center">
+                    <p className="text-sm text-muted-foreground italic">Este usuário ainda não possui um estúdio vinculado.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Seção de Estatísticas */}
+              <div className="space-y-4">
+                <h4 className="font-bold flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-blue-500" />
+                  Estatísticas de Uso
+                </h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <Card className="bg-blue-50/30 border-blue-100">
+                    <CardContent className="pt-4 text-center">
+                      <p className="text-2xl font-bold text-blue-700">{userDetails?.stats?.totalAppointments}</p>
+                      <p className="text-[10px] text-blue-600 uppercase font-bold">Agendamentos</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-slate-50 border-slate-200">
+                    <CardContent className="pt-4 text-center">
+                      <p className="text-2xl font-bold text-slate-700">{userDetails?.stats?.totalServices}</p>
+                      <p className="text-[10px] text-slate-600 uppercase font-bold">Serviços</p>
+                    </CardContent>
+                  </Card>
+                  <Card className="bg-slate-50 border-slate-200">
+                    <CardContent className="pt-4 text-center">
+                      <p className="text-2xl font-bold text-slate-700">{userDetails?.stats?.totalEmployees}</p>
+                      <p className="text-[10px] text-slate-600 uppercase font-bold">Equipe</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Seção de Autenticação */}
+              <div className="bg-slate-900 text-white p-4 rounded-lg flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-slate-800 rounded-md">
+                    <ShieldAlert className="h-5 w-5 text-slate-400" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase font-bold">Último Acesso</p>
+                    <p className="text-sm font-medium">
+                      {userDetails?.auth?.lastLogin 
+                        ? new Date(userDetails?.auth?.lastLogin).toLocaleString('pt-BR') 
+                        : 'Nunca acessou'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-slate-400 uppercase font-bold">Total Logins</p>
+                  <p className="text-xl font-bold text-blue-400">{userDetails?.auth?.loginCount}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              Não foi possível carregar os detalhes.
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingUser(null)}>
+              Fechar Raio-X
+            </Button>
+            {viewingUser && (
+              <Button 
+                variant="ghost" 
+                className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                onClick={() => {
+                  setViewingUser(null);
+                  setUserToReset(viewingUser);
+                }}
+              >
+                Resetar Senha
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de Edição de Email */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
-        <DialogContent className="sm:max-w-106.25">
+        <DialogContent className="sm:max-w-106.25" style={{ zIndex: 100000 }}>
           <DialogHeader>
             <DialogTitle>Editar Email de Acesso</DialogTitle>
             <DialogDescription>
@@ -535,7 +857,7 @@ export default function MasterDashboardPage() {
 
       {/* Modal de Exclusão de Conta */}
       <Dialog key={userToDelete?.id || 'delete-modal'} open={!!userToDelete} onOpenChange={(open) => { if (!open) setUserToDelete(null); }}>
-        <DialogContent className="sm:max-w-112.5 border-red-100 z-9999">
+        <DialogContent className="sm:max-w-112.5 border-red-100" style={{ zIndex: 100000 }}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />
