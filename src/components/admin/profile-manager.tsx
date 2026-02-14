@@ -29,7 +29,8 @@ import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL, useSession } from "@/lib/auth-client";
-import type { SiteProfile } from "@/lib/booking-data";
+import { type SiteProfile, saveSiteProfile } from "@/lib/booking-data";
+import { getFullImageUrl } from "@/lib/utils";
 
 export function ProfileManager() {
   const { toast } = useToast();
@@ -120,6 +121,7 @@ export function ProfileManager() {
 
         setProfile(loadedProfile);
         initialProfileRef.current = loadedProfile;
+        saveSiteProfile(loadedProfile);
       }
     } catch (error) {
       console.error("Erro ao buscar perfil:", error);
@@ -196,6 +198,7 @@ export function ProfileManager() {
         phone: profile.phone,
         email: profile.email || "",
         address: profile.address || "",
+        logoUrl: profile.logoUrl,
       };
 
       console.log(">>> [PROFILE] Enviando payload completo:", payload);
@@ -266,12 +269,20 @@ export function ProfileManager() {
     const file = e.target.files?.[0];
     if (!file || !companyId) return;
 
-    // 1. Validação básica de tamanho (opcional aqui, pois vamos comprimir)
+    // 1. Validação básica de tipo e tamanho (10MB)
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Formato inválido",
+        description: "Por favor, selecione um arquivo de imagem (PNG, JPG ou SVG).",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (file.size > 10 * 1024 * 1024) {
-      // 10MB limite antes da compressão
       toast({
         title: "Arquivo muito grande",
-        description: "A imagem original deve ter no máximo 10MB.",
+        description: "A imagem deve ter no máximo 10MB.",
         variant: "destructive",
       });
       return;
@@ -283,21 +294,33 @@ export function ProfileManager() {
     try {
       // 2. Compressão no Client-side
       const options = {
-        maxSizeMB: 0.2, // 200KB alvo
-        maxWidthOrHeight: 800, // Máximo 800px de largura/altura
+        maxSizeMB: 0.5, // Aumentado levemente para melhor qualidade
+        maxWidthOrHeight: 1200, // Aumentado para logos mais nítidas
         useWebWorker: true,
-        onProgress: (p: number) => setUploadProgress(Math.round(p * 0.5)), // 50% do progresso é compressão
+        onProgress: (p: number) => setUploadProgress(Math.round(p * 0.5)),
       };
 
-      const compressedFile = await imageCompression(file, options);
+      const compressedBlob = await imageCompression(file, options);
+      
+      // Converter Blob de volta para File para garantir que o backend receba os metadados corretos
+      const compressedFile = new File([compressedBlob], file.name, { 
+        type: file.type,
+        lastModified: Date.now()
+      });
+
       console.log(
         `>>> [LOGO] Original: ${(file.size / 1024 / 1024).toFixed(2)}MB | Comprimida: ${(compressedFile.size / 1024).toFixed(2)}KB`,
       );
 
-      // 3. Upload Assíncrono com XHR (para acompanhar progresso real)
+      // 3. Upload Assíncrono com XHR
       const formData = new FormData();
+      // O Back-end espera a chave 'file' para o upload da logo
       formData.append("file", compressedFile);
-      formData.append("companyId", companyId);
+      
+      // O Back-end exige obrigatoriamente o nome 'businessId'
+      formData.append("businessId", companyId);
+      
+      // Caso o backend exija o tipo da logo (ex: 'main', 'logo')
 
       const xhr = new XMLHttpRequest();
 
@@ -305,7 +328,7 @@ export function ProfileManager() {
         xhr.upload.addEventListener("progress", (event) => {
           if (event.lengthComputable) {
             const percentComplete =
-              Math.round((event.loaded / event.total) * 50) + 50; // Os outros 50% são upload
+              Math.round((event.loaded / event.total) * 50) + 50;
             setUploadProgress(percentComplete);
           }
         });
@@ -318,6 +341,13 @@ export function ProfileManager() {
             } catch {
               reject(new Error("Erro ao processar resposta do servidor."));
             }
+          } else if (xhr.status === 422) {
+            try {
+              const errorData = JSON.parse(xhr.responseText);
+              reject(new Error(errorData.message || errorData.error || "Erro de validação no servidor."));
+            } catch {
+              reject(new Error("Erro 422: O servidor rejeitou os dados enviados."));
+            }
           } else {
             reject(new Error(`Erro no upload: ${xhr.status}`));
           }
@@ -326,19 +356,66 @@ export function ProfileManager() {
         xhr.addEventListener("error", () =>
           reject(new Error("Erro na conexão durante o upload.")),
         );
+
         xhr.open("POST", `${API_BASE_URL}/api/settings/logo`);
+        
+        // IMPORTANTE: NÃO definir Content-Type manual para FormData. 
+        // O navegador deve definir automaticamente com o 'boundary' correto.
         xhr.withCredentials = true;
         xhr.send(formData);
       });
 
-      const response = (await uploadPromise) as { logoUrl: string };
+      const response = (await uploadPromise) as {
+        logoUrl?: string;
+        url?: string;
+        path?: string;
+        data?: {
+          logoUrl?: string;
+          url?: string;
+        };
+      };
+
+      console.log(">>> [ADMIN_DEBUG] Resposta completa do upload:", response);
+
+      const logoUrl = response.logoUrl || response.url || response.path || (response.data?.logoUrl) || (response.data?.url);
+
+      console.log(">>> [ADMIN_DEBUG] logoUrl extraído:", logoUrl);
+
+      if (!logoUrl) {
+        throw new Error("O servidor não retornou a URL da imagem.");
+      }
 
       // 4. Sucesso: Atualiza estados e StudioContext
-      updateField("logoUrl", response.logoUrl);
+      updateField("logoUrl", logoUrl);
 
       // Cache local no StudioContext
       if (updateStudioInfo) {
-        updateStudioInfo({ logoUrl: response.logoUrl });
+        updateStudioInfo({ logoUrl: logoUrl });
+      }
+
+      // 5. Sincronização Final: Recarrega os dados do banco para garantir persistência
+      await fetchProfile();
+
+      // Dispara evento para componentes que não usam Context (como FaviconUpdater)
+      window.dispatchEvent(new CustomEvent("siteProfileUpdated"));
+      
+      // Notifica o Header/Footer se estiverem em um iframe (preview)
+      if (typeof window !== "undefined" && window.self !== window.top) {
+        window.parent.postMessage(
+          { 
+            type: "UPDATE_HEADER_SETTINGS", 
+            settings: { logoUrl: getFullImageUrl(logoUrl) } 
+          }, 
+          "*"
+        );
+      }
+
+      // Atualiza o dado inicial para não marcar como dirty apenas pelo upload
+      if (initialProfileRef.current) {
+        initialProfileRef.current = {
+          ...initialProfileRef.current,
+          logoUrl: logoUrl
+        };
       }
 
       toast({
@@ -372,6 +449,8 @@ export function ProfileManager() {
       </div>
     );
   }
+
+
 
   return (
     <div className="space-y-6">
@@ -752,7 +831,7 @@ export function ProfileManager() {
                   </Label>
                   <div className="h-32 w-full bg-muted rounded-lg flex items-center justify-center p-4 border border-border overflow-hidden">
                     <Image
-                      src={profile.logoUrl}
+                      src={getFullImageUrl(profile.logoUrl)}
                       alt="Logo preview"
                       width={200}
                       height={128}

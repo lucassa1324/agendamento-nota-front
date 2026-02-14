@@ -17,6 +17,7 @@ import {
   type HeaderSettings,
   type SiteProfile,
 } from "@/lib/booking-data";
+import { getFullImageUrl } from "@/lib/utils";
 
 export function Navigation({
   externalHeaderSettings,
@@ -59,7 +60,7 @@ export function Navigation({
       setProfile({
         ...baseProfile,
         name: studio.name || baseProfile.name,
-        // Você pode adicionar outros campos do studio aqui se houver mapeamento
+        logoUrl: studio.logoUrl || baseProfile.logoUrl,
       });
     } else {
       setProfile(baseProfile);
@@ -213,7 +214,7 @@ export function Navigation({
           >
             {profile?.logoUrl ? (
               <Image
-                src={profile.logoUrl}
+                src={getFullImageUrl(profile.logoUrl)}
                 alt={siteName}
                 width={100}
                 height={40}
