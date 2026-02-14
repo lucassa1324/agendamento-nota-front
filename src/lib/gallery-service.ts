@@ -1,5 +1,5 @@
-import { API_BASE_URL } from "./auth-client";
 import { customFetch } from "./api-client";
+import { API_BASE_URL } from "./auth-client";
 
 export interface GalleryItem {
   id: string;

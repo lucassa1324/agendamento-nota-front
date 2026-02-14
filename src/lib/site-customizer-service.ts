@@ -1,6 +1,6 @@
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
-import { API_BASE_URL } from "@/lib/auth-client";
 import { customFetch } from "@/lib/api-client";
+import { API_BASE_URL } from "@/lib/auth-client";
 import { 
   defaultColorSettings, 
   defaultFontSettings, 

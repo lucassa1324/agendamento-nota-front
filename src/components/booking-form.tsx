@@ -9,12 +9,11 @@ import { Label } from "@/components/ui/label";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { type ApiError, appointmentService } from "@/lib/api-appointments";
-import { API_BASE_URL } from "@/lib/auth-client";
 import {
   type Booking,
   type BookingStepSettings,
-  type Service,
   parseDuration,
+  type Service,
   saveBookingToStorage,
   sendBookingNotifications,
 } from "@/lib/booking-data";

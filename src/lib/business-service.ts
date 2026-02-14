@@ -1,5 +1,5 @@
-import { API_BASE_URL } from "@/lib/auth-client";
 import { customFetch } from "@/lib/api-client";
+import { API_BASE_URL } from "@/lib/auth-client";
 import type { BlockedPeriod, DaySchedule } from "@/lib/booking-data";
 
 type WeekdaySchedulePayload = {
