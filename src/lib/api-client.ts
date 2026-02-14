@@ -1,4 +1,4 @@
-import { getSessionToken, signOut } from "./auth-client";
+import { getSessionToken } from "./auth-client";
 
 /**
  * Utilitário global para fetch com interceptação de erros específicos
@@ -26,7 +26,7 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     try {
       const body = JSON.parse(options.body);
       businessId = body.companyId || body.businessId || body.id || "N/A";
-    } catch (e) {
+    } catch {
       // Body não é JSON ou erro ao parsear
     }
   }
@@ -52,9 +52,10 @@ export async function customFetch(url: string, options: RequestInit = {}) {
       ...options,
       headers,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Tratamento de erro de rede ou CORS (Failed to fetch)
-    console.error(">>> [FRONT_API] Erro de rede ou CORS detectado:", error.message);
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
+    console.error(">>> [FRONT_API] Erro de rede ou CORS detectado:", errorMessage);
 
     // Se falhar o fetch e não for erro de conexão local, tentamos verificar se a sessão expirou ou se é bloqueio CORS
     if (typeof window !== "undefined") {
