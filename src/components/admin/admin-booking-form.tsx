@@ -75,6 +75,7 @@ export function AdminBookingForm({
       // Log para validar o Service ID e outros dados antes de enviar
       console.log("🔍 Validando dados para o Back-end:");
       console.log("Service ID:", service.id);
+      console.log("Studio ID:", studio.id);
 
       const appointmentData = {
         companyId: studio.id,
@@ -85,7 +86,7 @@ export function AdminBookingForm({
         customerEmail: formData.email,
         customerPhone: formData.phone,
         serviceNameSnapshot: service.name, // Nomes reais separados por vírgula
-        servicePriceSnapshot: formData.price.toFixed(2), // String decimal: "460.00"
+        servicePriceSnapshot: Number(formData.price || 0).toFixed(2), // String decimal: "460.00"
         serviceDurationSnapshot: durationHHmm, // HH:mm: "03:20"
         notes: "Agendado via Admin",
       };
