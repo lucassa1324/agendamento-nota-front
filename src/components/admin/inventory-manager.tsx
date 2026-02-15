@@ -4,6 +4,7 @@ import {
   AlertCircle,
   ArrowDownCircle,
   ArrowUpCircle,
+  Check,
   HelpCircle,
   History,
   Package,
@@ -43,6 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Table,
   TableBody,
@@ -60,7 +62,7 @@ import {
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { useSession } from "@/lib/auth-client";
-import type { InventoryItem } from "@/lib/inventory-service";
+import type { InventoryItem, InventoryLog } from "@/lib/inventory-service";
 import { inventoryService } from "@/lib/inventory-service";
 import { cn } from "@/lib/utils";
 import { InventoryAddForm } from "./inventory/inventory-add-form";
@@ -72,8 +74,11 @@ export function InventoryManager() {
 
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [showHistory, setShowHistory] = useState<InventoryItem | null>(null);
+  const [historyLogs, setHistoryLogs] = useState<InventoryLog[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isLoadingItems, setIsLoadingItems] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
 
@@ -110,6 +115,32 @@ export function InventoryManager() {
       fetchInventory();
     }
   }, [companyId, fetchInventory]);
+
+  useEffect(() => {
+    if (showHistory) {
+      const fetchHistory = async () => {
+        setIsLoadingHistory(true);
+        try {
+          const logs = await inventoryService.getLogs(showHistory.id);
+          // Ordenar logs por data decrescente (caso não venha ordenado)
+          const sortedLogs = logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          setHistoryLogs(sortedLogs);
+        } catch (error) {
+          console.error("Erro ao buscar histórico:", error);
+          toast({
+            title: "Erro",
+            description: "Não foi possível carregar o histórico.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoadingHistory(false);
+        }
+      };
+      fetchHistory();
+    } else {
+      setHistoryLogs([]);
+    }
+  }, [showHistory, toast]);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -306,6 +337,15 @@ export function InventoryManager() {
   const handleTransaction = async () => {
     if (!transactionItem) return;
 
+    if (!companyId || companyId === 'N/A') {
+        toast({
+            title: "Erro de identificação",
+            description: "ID da empresa não identificado. Tente recarregar a página.",
+            variant: "destructive",
+        });
+        return;
+    }
+
     let qty = Number(transactionQuantity);
     if (Number.isNaN(qty) || qty <= 0) {
       toast({
@@ -330,26 +370,34 @@ export function InventoryManager() {
           ? Number(transactionPrice)
           : undefined;
 
-      await inventoryService.addLog(itemToUpdate.id, {
-        type: transactionItem.type,
-        quantityChange: isEntrada ? qty : -qty,
-        notes: `Movimentação manual (${
-          transactionUnit === "primary"
-            ? itemToUpdate.unit
-            : itemToUpdate.secondaryUnit || itemToUpdate.unit
-        })${isEntrada && newPrice ? ` - Preço atualizado` : ""}`,
-        // O backend deve lidar com o preço se enviado no log ou via update separado
+      // Chama a nova rota de transação
+      await inventoryService.createTransaction({
+          productId: itemToUpdate.id,
+          type: isEntrada ? "ENTRY" : "EXIT",
+          quantity: qty,
+          reason: `Movimentação manual (${
+            transactionUnit === "primary"
+              ? itemToUpdate.unit
+              : itemToUpdate.secondaryUnit || itemToUpdate.unit
+          })${isEntrada && newPrice ? ` - Preço atualizado` : ""}`,
+          companyId: companyId
       });
 
-      // Se o preço mudou, fazemos um update no item também
+      // Se o preço mudou, fazemos um update no item também (operação separada por enquanto)
       if (isEntrada && newPrice) {
+        const priceValue = typeof newPrice === 'string'
+          ? parseFloat((newPrice as string).replace(',', '.'))
+          : newPrice;
+          
         await inventoryService.update(itemToUpdate.id, {
-          unitPrice: newPrice,
+          unitPrice: Number(Number(priceValue || 0).toFixed(2)),
         });
       }
 
       await fetchInventory();
 
+      // Show success state briefly before closing
+      setIsSuccess(true);
       toast({
         title:
           transactionItem.type === "entrada"
@@ -364,18 +412,31 @@ export function InventoryManager() {
         }.`,
       });
 
-      setTransactionItem(null);
-      setTransactionQuantity("1");
-      setTransactionPrice("");
-    } catch (error) {
+      // Wait a bit to show the success state
+      setTimeout(() => {
+        setTransactionItem(null);
+        setTransactionQuantity("1");
+        setTransactionPrice("");
+        setIsSuccess(false);
+        setIsSaving(false);
+      }, 1000);
+    } catch (error: unknown) {
       console.error("Erro na movimentação:", error);
+      const message =
+        error instanceof Error
+          ? error.message
+          : (error as { response?: { data?: { error?: string } } })?.response?.data
+              ?.error || "Não foi possível registrar a movimentação no servidor.";
       toast({
         title: "Erro na movimentação",
-        description: "Não foi possível registrar a movimentação no servidor.",
+        description: message,
         variant: "destructive",
       });
+      setIsSaving(false); // Reset loading state on error
     } finally {
-      setIsSaving(false);
+      if (!isSuccess) { // Only reset if not success (success resets in timeout)
+         setIsSaving(false);
+      }
     }
   };
 
@@ -614,6 +675,20 @@ export function InventoryManager() {
                               item?.quantity || item?.currentQuantity || 0,
                             ).toLocaleString("pt-BR")}{" "}
                             {item?.unit}
+                            {Number(item?.conversionFactor || 1) > 1 &&
+                              item?.secondaryUnit && (
+                                <span className="text-muted-foreground ml-1">
+                                  (
+                                  {(
+                                    Number(
+                                      item?.quantity ||
+                                        item?.currentQuantity ||
+                                        0,
+                                    ) * Number(item?.conversionFactor || 1)
+                                  ).toLocaleString("pt-BR")}{" "}
+                                  {item?.secondaryUnit})
+                                </span>
+                              )}
                           </span>
                           {Number(
                             item?.quantity || item?.currentQuantity || 0,
@@ -642,12 +717,24 @@ export function InventoryManager() {
                             : ""
                         }
                       >
-                        {Number(
-                          item?.quantity || item?.currentQuantity || 0,
-                        ).toLocaleString("pt-BR", {
-                          minimumFractionDigits: 0,
-                          maximumFractionDigits: 3,
-                        })}
+                        {(() => {
+                           const qty = Number(item?.quantity || item?.currentQuantity || 0);
+                           const factor = Number(item?.conversionFactor || 1);
+                           const formattedQty = qty.toLocaleString("pt-BR", {
+                             minimumFractionDigits: 0,
+                             maximumFractionDigits: 3,
+                           });
+                           
+                           if (factor > 1 && item?.secondaryUnit) {
+                             const totalSecondary = qty * factor;
+                             const formattedSecondary = Number.isInteger(totalSecondary)
+                               ? totalSecondary.toString()
+                               : totalSecondary.toFixed(2).replace('.', ',');
+                             return `${formattedQty} ${item.unit} (${formattedSecondary} ${item.secondaryUnit})`;
+                           }
+                           
+                           return formattedQty;
+                        })()}
                       </span>
                     </TableCell>
                     <TableCell className="hidden 2xl:table-cell">
@@ -884,31 +971,35 @@ export function InventoryManager() {
             )}
             {transactionItem?.item.secondaryUnit &&
               transactionItem?.item.conversionFactor && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="transaction-unit" className="text-right">
+                <div className="grid grid-cols-4 items-start gap-4">
+                  <Label className="text-right pt-2">
                     Unidade
                   </Label>
-                  <Select
-                    value={transactionUnit}
-                    onValueChange={(value: "primary" | "secondary") =>
-                      setTransactionUnit(value)
-                    }
-                  >
-                    <SelectTrigger id="transaction-unit" className="col-span-3">
-                      <SelectValue placeholder="Selecione a unidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="primary">
-                        {transactionItem.item.unit} (Principal)
-                      </SelectItem>
-                      <SelectItem value="secondary">
-                        {transactionItem.item.secondaryUnit} (Secundária - 1{" "}
-                        {transactionItem.item.unit} ={" "}
-                        {transactionItem.item.conversionFactor}
-                        {transactionItem.item.secondaryUnit})
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="col-span-3">
+                    <RadioGroup
+                      value={transactionUnit}
+                      onValueChange={(value: "primary" | "secondary") =>
+                        setTransactionUnit(value)
+                      }
+                      className="flex flex-col space-y-2"
+                    >
+                      <div className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-accent">
+                        <RadioGroupItem value="primary" id="unit-primary" />
+                        <Label htmlFor="unit-primary" className="cursor-pointer flex-1">
+                          {transactionItem.item.unit} (Principal)
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-accent">
+                        <RadioGroupItem value="secondary" id="unit-secondary" />
+                        <Label htmlFor="unit-secondary" className="cursor-pointer flex-1">
+                          {transactionItem.item.secondaryUnit} (Secundária - 1{" "}
+                          {transactionItem.item.unit} ={" "}
+                          {transactionItem.item.conversionFactor}{" "}
+                          {transactionItem.item.secondaryUnit})
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
                 </div>
               )}
           </div>
@@ -919,13 +1010,30 @@ export function InventoryManager() {
             <Button
               onClick={handleTransaction}
               className={
-                transactionItem?.type === "entrada"
+                isSuccess
+                  ? "bg-green-600 hover:bg-green-700"
+                  : transactionItem?.type === "entrada"
                   ? "bg-green-600 hover:bg-green-700"
                   : "bg-red-600 hover:bg-red-700"
               }
+              disabled={isSaving || isSuccess}
             >
-              Confirmar{" "}
-              {transactionItem?.type === "entrada" ? "Entrada" : "Saída"}
+              {isSaving ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Processando...
+                </div>
+              ) : isSuccess ? (
+                <div className="flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  Sucesso!
+                </div>
+              ) : (
+                <>
+                  Confirmar{" "}
+                  {transactionItem?.type === "entrada" ? "Entrada" : "Saída"}
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1231,7 +1339,12 @@ export function InventoryManager() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            {!showHistory?.logs || showHistory.logs.length === 0 ? (
+            {isLoadingHistory ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-muted-foreground mt-2">Carregando histórico...</p>
+              </div>
+            ) : !historyLogs || historyLogs.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">
                 Nenhuma movimentação registrada.
               </p>
@@ -1248,7 +1361,7 @@ export function InventoryManager() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {showHistory.logs.map((log) => (
+                    {historyLogs.map((log) => (
                       <TableRow key={log.id}>
                         <TableCell className="text-[10px] leading-tight">
                           {log.timestamp
@@ -1260,17 +1373,18 @@ export function InventoryManager() {
                             variant="outline"
                             className={cn(
                               "text-[10px] px-1 py-0 h-5",
-                              log.type === "entrada"
+                              (log.type === "entrada" || log.type === "ENTRY")
                                 ? "bg-green-50 text-green-700 border-green-200"
-                                : log.type === "saida" ||
+                                : (log.type === "saida" || log.type === "EXIT" ||
                                     log.type === "servico" ||
-                                    log.type === "venda"
+                                    log.type === "venda")
                                   ? "bg-red-50 text-red-700 border-red-200"
                                   : "bg-blue-50 text-blue-700 border-blue-200",
                             )}
                           >
-                            {log.type.charAt(0).toUpperCase() +
-                              log.type.slice(1)}
+                            {log.type === "ENTRY" ? "Entrada" : 
+                             log.type === "EXIT" ? "Saída" :
+                             log.type.charAt(0).toUpperCase() + log.type.slice(1)}
                           </Badge>
                         </TableCell>
                         <TableCell
@@ -1289,9 +1403,9 @@ export function InventoryManager() {
                         </TableCell>
                         <TableCell
                           className="text-[11px] max-w-50 truncate"
-                          title={log.notes}
+                          title={log.notes || log.reason}
                         >
-                          {log.notes}
+                          {log.notes || log.reason || "-"}
                         </TableCell>
                       </TableRow>
                     ))}

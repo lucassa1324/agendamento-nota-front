@@ -3,7 +3,7 @@ import { API_BASE_URL } from "./auth-client";
 
 export interface InventoryLog {
   id?: string;
-  type: "entrada" | "saida" | "ajuste" | "venda" | "servico";
+  type: "ENTRY" | "EXIT" | "entrada" | "saida" | "ajuste" | "venda" | "servico";
   quantityChange: number;
   previousQuantity?: number;
   newQuantity?: number;
@@ -28,8 +28,33 @@ export interface InventoryItem {
   logs?: InventoryLog[];
 }
 
+export interface TransactionPayload {
+  productId: string;
+  type: "ENTRY" | "EXIT";
+  quantity: number;
+  reason: string;
+  companyId: string;
+}
+
 class InventoryService {
   private baseUrl = `${API_BASE_URL}/api/inventory`;
+
+  async createTransaction(payload: TransactionPayload): Promise<{ product: InventoryItem; log: InventoryLog }> {
+    if (!payload.companyId || payload.companyId === 'N/A') {
+      throw new Error('ID da empresa inválido. Recarregue a página.');
+    }
+    const response = await customFetch(`${this.baseUrl}/transactions`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    return this.handleResponse(response);
+  }
+
+  async getLogs(productId: string): Promise<InventoryLog[]> {
+    const response = await customFetch(`${this.baseUrl}/${productId}/logs`);
+    return this.handleResponse(response);
+  }
+
 
   private async handleResponse(response: Response) {
     if (!response.ok) {

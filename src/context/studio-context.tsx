@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   type ReactNode,
@@ -144,6 +144,10 @@ export function StudioProvider({
   // --- NOVO: Sincronização do Título da Página (Aba do Navegador) ---
   useEffect(() => {
     if (studio && typeof window !== "undefined") {
+      // Apenas acessando pathname para garantir que o efeito rode na troca de rota
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const _ = pathname;
+
       const siteName = studio.siteName || studio.name || "Agendamento";
       const suffix = studio.titleSuffix?.trim();
       
@@ -155,7 +159,6 @@ export function StudioProvider({
         document.title = siteName;
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studio, pathname]);
   // --------------------------------------------------------------------------
 

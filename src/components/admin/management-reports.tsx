@@ -341,17 +341,17 @@ export function ManagementReports() {
                   <Label htmlFor="category" className="text-right">
                     Categoria
                   </Label>
-                  <div className="col-span-3 space-y-2">
+                  <div className="col-span-3 space-y-2 relative">
                     <Select
                       value={newExpense.category}
                       onValueChange={(value) =>
                         setNewExpense({ ...newExpense, category: value as ExpenseCategory })
                       }
                     >
-                      <SelectTrigger className="flex-1">
+                      <SelectTrigger className="flex-1 w-full">
                         <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-9999 max-h-50">
                         {categories.map((cat) => (
                           <SelectItem key={cat.value} value={cat.value}>
                             {cat.label}
