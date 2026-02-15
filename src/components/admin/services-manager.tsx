@@ -17,6 +17,7 @@ import {
   Gem,
   Heart,
   Laptop,
+  Loader2,
   Medal,
   Moon,
   Music,
@@ -179,6 +180,7 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -245,6 +247,7 @@ interface BackendService {
 export function ServicesManager() {
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [allProducts, setAllProducts] = useState<BookingInventoryItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -421,24 +424,36 @@ export function ServicesManager() {
     setIsModalOpen(true);
   };
 
+  const getConflicts = (s: Service) => {
+    const advRules = s.advancedRules || s.advanced_rules;
+    if (Array.isArray(advRules)) return advRules;
+    if (advRules?.conflicts) return advRules.conflicts;
+    return s.conflictingServiceIds || s.conflicting_service_ids || [];
+  };
+
   const handleEdit = (service: Service) => {
     console.log(">>> [SERVICES_MANAGER] Editando serviço:", service);
 
-    // Extração resiliente de conflitos (suporta advanced_rules, advancedRules ou conflictingServiceIds)
-    const getConflicts = (s: Service) => {
-      const advRules = s.advancedRules || s.advanced_rules;
-      if (Array.isArray(advRules)) return advRules;
-      if (advRules?.conflicts) return advRules.conflicts;
-      return s.conflictingServiceIds || s.conflicting_service_ids || [];
-    };
-
     const conflicts = getConflicts(service);
+
+    // Identificar conflitos inversos: serviços que listam o serviço atual como conflito
+    const inverseConflicts = services
+      .filter((s) => {
+        const sConflicts = getConflicts(s);
+        return Array.isArray(sConflicts) && sConflicts.includes(service.id);
+      })
+      .map((s) => s.id);
+
+    // Mesclar conflitos diretos e inversos, removendo duplicatas
+    const allConflicts = Array.from(
+      new Set([...(Array.isArray(conflicts) ? conflicts : []), ...inverseConflicts]),
+    );
 
     setEditingId(service.id);
     setFormData({
       ...service,
       showOnHome: Boolean(service.showOnHome),
-      conflictingServiceIds: Array.isArray(conflicts) ? conflicts : [],
+      conflictingServiceIds: allConflicts,
       products: service.products || [],
     });
     setErrors({});
@@ -470,6 +485,8 @@ export function ServicesManager() {
       });
       return;
     }
+
+    setIsSaving(true);
 
     // Criar objeto limpo apenas com o que o backend pediu explicitamente
     // Garante que não haja conflitos com o próprio serviço (self-conflict)
@@ -577,6 +594,84 @@ export function ServicesManager() {
         );
       }
 
+      // Sincronização bidirecional de conflitos
+      try {
+        const savedService = await response.clone().json().catch(() => null);
+        const finalId = savedService?.id || editingId;
+
+        if (finalId) {
+          const otherServices = services.filter((s) => s.id !== finalId);
+          const updatePromises: Promise<Response>[] = [];
+
+          otherServices.forEach((s) => {
+            const sConflicts = getConflicts(s);
+            const shouldConflict = sanitizedConflicts.includes(s.id);
+            const hasConflict = sConflicts.includes(finalId);
+            let newConflicts: string[] | null = null;
+
+            if (shouldConflict && !hasConflict) {
+              newConflicts = [...sConflicts, finalId];
+            } else if (!shouldConflict && hasConflict) {
+              newConflicts = sConflicts.filter((id) => id !== finalId);
+            }
+
+            if (newConflicts) {
+              console.log(
+                `>>> [SERVICES_MANAGER] Sincronizando conflito em ${s.name}:`,
+                newConflicts,
+              );
+
+              // Tenta usar recursos existentes ou mapear de produtos se necessário
+              // Nota: 's' vem do estado 'services', que deve ter 'resources' populado do backend
+              const sResources = s.resources || (s.products || []).map(p => {
+                 const inventoryItem = allProducts.find(i => i.id === p.productId);
+                 return {
+                   inventoryId: p.productId,
+                   quantity: p.quantity,
+                   unit: inventoryItem?.unit || "",
+                   useSecondaryUnit: !!p.useSecondaryUnit
+                 };
+              });
+
+              const payload = {
+                name: s.name,
+                description: s.description,
+                duration: Math.floor(Number(s.duration)),
+                price: Number(s.price),
+                companyId: studio?.id,
+                icon: s.icon || "Sparkles",
+                showOnHome: Boolean(s.showOnHome),
+                advanced_rules: {
+                  conflicts: newConflicts,
+                },
+                resources: sResources,
+              };
+
+              const putUrl = `${API_URL}/${s.id}`.replace(/([^:]\/)\/+/g, "$1");
+              updatePromises.push(
+                customFetch(putUrl, {
+                  method: "PUT",
+                  body: JSON.stringify(payload),
+                }),
+              );
+            }
+          });
+
+          if (updatePromises.length > 0) {
+            await Promise.allSettled(updatePromises);
+            console.log(
+              ">>> [SERVICES_MANAGER] Sincronização bidirecional concluída.",
+            );
+          }
+        }
+      } catch (syncError) {
+        console.warn(
+          ">>> [SERVICES_MANAGER] Erro na sincronização bidirecional:",
+          syncError,
+        );
+        // Não falha o processo principal, apenas loga
+      }
+
       setIsModalOpen(false);
       setEditingId(null);
       setFormData({});
@@ -616,6 +711,8 @@ export function ServicesManager() {
           "Não foi possível persistir as alterações no Back-end.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1044,14 +1141,14 @@ export function ServicesManager() {
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Selecione um ícone" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-100001">
                   {Array.from(
                     new Set(availableIcons.map((i) => i.category)),
                   ).map((category) => (
                     <SelectGroup key={category}>
-                      <div className="text-[10px] uppercase text-muted-foreground px-2 py-1.5 font-bold tracking-wider">
+                      <SelectLabel className="text-[10px] uppercase text-muted-foreground px-2 py-1.5 font-bold tracking-wider">
                         {category}
-                      </div>
+                      </SelectLabel>
                       {availableIcons
                         .filter((icon) => icon.category === category)
                         .map(({ id, Icon, label }) => (
@@ -1246,15 +1343,25 @@ export function ServicesManager() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleCancel}>
+            <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
               Cancelar
             </Button>
             <Button
               onClick={handleSave}
               className="bg-accent hover:bg-accent/90 text-accent-foreground"
+              disabled={isSaving}
             >
-              <Save className="w-4 h-4 mr-2" />
-              Salvar
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Salvar
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

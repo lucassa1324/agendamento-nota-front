@@ -43,7 +43,10 @@ export function AdminBookingForm({
     name: initialBooking?.clientName || "",
     email: initialBooking?.clientEmail || "",
     phone: initialBooking?.clientPhone || "",
-    price: initialBooking?.servicePrice ?? service.price,
+    // Garante que o preço seja tratado como número para evitar zeros à esquerda (ex: "0450.00")
+    price: initialBooking?.servicePrice 
+      ? Number(initialBooking.servicePrice) 
+      : Number(service.price || 0),
   });
 
   const formattedDate = new Date(`${date}T00:00:00`).toLocaleDateString(
