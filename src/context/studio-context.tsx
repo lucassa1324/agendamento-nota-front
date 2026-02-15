@@ -155,6 +155,7 @@ export function StudioProvider({
         document.title = siteName;
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studio, pathname]);
   // --------------------------------------------------------------------------
 
