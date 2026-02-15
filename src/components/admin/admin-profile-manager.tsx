@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, KeyRound, Loader2, Mail, User } from "lucide-react";
+import { Calendar, Check, KeyRound, Loader2, Mail, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,11 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { authClient } from "@/lib/auth-client";
+import { useStudio } from "@/context/studio-context";
 
 export function AdminProfileManager() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { data: session } = authClient.useSession();
+  const { studio } = useStudio();
 
   const [profile, setProfile] = useState({
     name: "",
@@ -155,6 +157,28 @@ export function AdminProfileManager() {
                 O e-mail de login não pode ser alterado diretamente aqui.
               </p>
             </div>
+
+            {studio?.createdAt && (
+              <div className="space-y-2">
+                <Label htmlFor="payment-date">Data de Pagamento da Plataforma</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="payment-date"
+                    className="pl-10 bg-muted"
+                    value={new Date(studio.createdAt).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                    disabled
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Data de início da sua assinatura.
+                </p>
+              </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (

@@ -351,7 +351,7 @@ export function ManagementReports() {
                       <SelectTrigger className="flex-1 w-full">
                         <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
-                      <SelectContent className="z-9999 max-h-50">
+                      <SelectContent className="z-100001 max-h-50" position="popper">
                         {categories.map((cat) => (
                           <SelectItem key={cat.value} value={cat.value}>
                             {cat.label}

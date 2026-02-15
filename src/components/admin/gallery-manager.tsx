@@ -367,8 +367,8 @@ export function GalleryManager() {
                 ref={fileInputRef}
                 onChange={handleFileUpload}
               />
-              <div className="bg-[#D946EF]/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                <ImageIcon className="w-8 h-8 text-[#D946EF]" />
+              <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                <ImageIcon className="w-8 h-8 text-primary" />
               </div>
               <p className="text-muted-foreground mb-4">
                 Arraste imagens aqui ou clique para selecionar
@@ -376,7 +376,7 @@ export function GalleryManager() {
               <Button
                 type="button"
                 variant="default"
-                className="bg-[#D946EF] hover:bg-[#C026D3] text-white rounded-full px-6"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6"
                 disabled={isUploading}
               >
                 <Upload className="w-4 h-4 mr-2" />
@@ -468,7 +468,7 @@ export function GalleryManager() {
             )}
             <Button
               type="button"
-              className="w-full bg-[#D946EF] hover:bg-[#C026D3] text-white"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={handleAddByUrl}
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -555,7 +555,7 @@ export function GalleryManager() {
                       className={cn(
                         "rounded-full w-12 h-12 shadow-lg scale-90 group-hover:scale-100 transition-transform",
                         img.showInHome
-                          ? "bg-[#D946EF] hover:bg-[#C026D3] text-white"
+                          ? "bg-primary hover:bg-primary/90 text-primary-foreground"
                           : "bg-white/90 hover:bg-white text-black",
                       )}
                       onClick={() => toggleShowOnHome(img.id, img.showInHome)}
@@ -569,7 +569,7 @@ export function GalleryManager() {
                     </Button>
                   </div>
                   {img.showInHome && (
-                    <div className="absolute top-2 left-2 bg-[#D946EF] text-white p-1.5 rounded-full shadow-lg z-10">
+                    <div className="absolute top-2 left-2 bg-primary text-primary-foreground p-1.5 rounded-full shadow-lg z-10">
                       <Home className="w-3.5 h-3.5" />
                     </div>
                   )}
