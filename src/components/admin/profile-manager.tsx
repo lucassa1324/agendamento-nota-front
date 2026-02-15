@@ -223,6 +223,9 @@ export function ProfileManager() {
       // Atualiza o dado inicial após salvar com sucesso
       initialProfileRef.current = { ...profile };
 
+      // Atualiza o contexto global para refletir as mudanças imediatamente
+      updateStudioInfo(payload);
+
       toast({
         title: "Perfil Atualizado",
         description: "As informações do site foram salvas com sucesso.",

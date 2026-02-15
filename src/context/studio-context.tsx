@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   createContext,
   type ReactNode,
@@ -53,6 +53,7 @@ export function StudioProvider({
   const [error, setError] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(initialSlug || null);
   const router = useRouter();
+  const pathname = usePathname();
 
   const updateStudioInfo = useCallback((updates: Partial<Business>) => {
     setStudio((prev) => (prev ? { ...prev, ...updates } : null));
@@ -139,6 +140,22 @@ export function StudioProvider({
       }
     }
   }, [studio]);
+
+  // --- NOVO: Sincronização do Título da Página (Aba do Navegador) ---
+  useEffect(() => {
+    if (studio && typeof window !== "undefined") {
+      const siteName = studio.siteName || studio.name || "Agendamento";
+      const suffix = studio.titleSuffix?.trim();
+      
+      if (suffix) {
+        // Verifica se o sufixo já começa com separador comum
+        const hasSeparator = /^[-|–—]/.test(suffix);
+        document.title = hasSeparator ? `${siteName} ${suffix}` : `${siteName} - ${suffix}`;
+      } else {
+        document.title = siteName;
+      }
+    }
+  }, [studio, pathname]);
   // --------------------------------------------------------------------------
 
   useEffect(() => {
