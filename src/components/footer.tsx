@@ -73,12 +73,20 @@ export function Footer({
       const isValid = (val: unknown): val is string => 
         val !== null && val !== undefined && String(val).trim() !== "";
 
+      // LOG DE DIAGNÓSTICO DO ESTÚDIO
+      console.log(">>> [FOOTER] Objeto Studio Recebido:", {
+        contact: studio.contact,
+        email_root: studio.email,
+        phone: studio.phone,
+        address: studio.address
+      });
+
       const mergedProfile: SiteProfile = {
         ...baseProfile,
         name: isValid(studio.siteName) ? studio.siteName : (isValid(studio.name) ? studio.name : baseProfile.name),
         description: isValid(studio.description) ? studio.description : baseProfile.description,
         phone: isValid(studio.phone) ? studio.phone : baseProfile.phone,
-        email: isValid(studio.email) ? studio.email : baseProfile.email,
+        email: isValid(studio.contact?.email) ? studio.contact.email : (isValid(studio.email) ? studio.email : "contato@estudio.com"),
         address: isValid(studio.address) ? studio.address : baseProfile.address,
         instagram: isValid(studio.instagram) ? studio.instagram : baseProfile.instagram,
         facebook: isValid(studio.facebook) ? studio.facebook : baseProfile.facebook,
@@ -204,7 +212,13 @@ export function Footer({
        ...activeProfileRaw,
        name: isNotEmpty(studio?.siteName) ? studio.siteName : (isNotEmpty(studio?.name) ? studio.name : (isNotEmpty(activeProfileRaw.name) ? activeProfileRaw.name : "Lucas studio")),
        phone: isNotEmpty(studio?.phone) ? studio.phone : (isNotEmpty(activeProfileRaw.phone) ? activeProfileRaw.phone : "(11) 99999-9999"),
-       email: isNotEmpty(studio?.email) ? studio.email : (isNotEmpty(activeProfileRaw.email) && !activeProfileRaw.email.includes("lucasstudio.com") ? activeProfileRaw.email : "lucassa1324@gmail.com"),
+       // Prioridade estrita: studio.contact.email > studio.email > fallback fixo
+        // Removemos activeProfileRaw.email da cadeia para evitar persistência de dados antigos de desenvolvimento
+        email: (studio?.contact?.email && studio.contact.email.trim() !== "") 
+          ? studio.contact.email 
+          : ((studio?.email && studio.email.trim() !== "") 
+            ? studio.email 
+            : "contato@estudio.com"),
        address: isNotEmpty(studio?.address) ? studio.address : (isNotEmpty(activeProfileRaw.address) ? activeProfileRaw.address : "São Paulo, SP"),
        instagram: isNotEmpty(studio?.instagram) ? studio.instagram : (isNotEmpty(activeProfileRaw.instagram) ? activeProfileRaw.instagram : "lucas_studio"),
        facebook: isNotEmpty(studio?.facebook) ? studio.facebook : (isNotEmpty(activeProfileRaw.facebook) ? activeProfileRaw.facebook : "lucas_studio"),
@@ -214,6 +228,10 @@ export function Footer({
        showFacebook: activeProfileRaw.showFacebook ?? studio?.showFacebook ?? true,
        showWhatsapp: activeProfileRaw.showWhatsapp ?? studio?.showWhatsapp ?? true,
      };
+
+     if (mounted) {
+       console.log(">>> [FOOTER] Email atual:", activeProfile.email);
+     }
 
   const footerStyle = {
     backgroundColor: footerSettings.bgColor || "var(--background)",

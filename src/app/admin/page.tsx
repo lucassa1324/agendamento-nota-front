@@ -1,8 +1,8 @@
 import { LoginForm } from "@/components/admin/login-form";
 
 export const metadata = {
-  title: "Admin Login | Brow Studio",
-  description: "Área administrativa do Brow Studio",
+  title: "Admin Login",
+  description: "Área administrativa",
 };
 
 export default function AdminPage() {

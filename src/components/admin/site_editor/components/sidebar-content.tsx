@@ -23,6 +23,7 @@ import type {
   ValuesSettings,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { HeroEditor } from "../../customizer/hero-editor";
 import { ColorEditor } from "../layout/color-editor";
 import { FooterEditor } from "../layout/footer-editor";
 import { HeaderEditor } from "../layout/header-editor";
@@ -34,7 +35,6 @@ import { ValuesEditor as AboutValuesEditor } from "../pages/about/values-editor"
 import { BookingStepEditor } from "../pages/agendar/booking-step-editor";
 import { CTAEditor } from "../pages/home/cta-editor";
 import { GalleryEditor } from "../pages/home/gallery-editor";
-import { HeroEditor } from "../pages/home/hero-editor";
 import { ServicesEditor } from "../pages/home/services-editor";
 import { ValuesEditor } from "../pages/home/values-editor";
 import { SidebarNav } from "../sidebar-nav";

@@ -1,6 +1,8 @@
 "use client";
 
-import { RotateCcw, Upload } from "lucide-react";
+import imageCompression from "browser-image-compression";
+import { Loader2, RotateCcw, Upload } from "lucide-react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +32,56 @@ export function BackgroundEditor({
   onUpdate,
   sectionId = "section",
 }: BackgroundEditorProps) {
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validações básicas
+    if (!file.type.startsWith("image/")) {
+      alert("Por favor, selecione um arquivo de imagem.");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("A imagem deve ter no máximo 10MB.");
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Compressão
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+        useWebWorker: true,
+      };
+
+      const compressedFile = await imageCompression(file, options);
+      
+      // Converter para Base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onload = (event) => resolve(event.target?.result as string);
+        reader.onerror = (error) => reject(error);
+      });
+      reader.readAsDataURL(compressedFile);
+      const base64 = await base64Promise;
+
+      // Atualizar estado
+      onUpdate({ bgImage: base64 });
+    } catch (error) {
+      console.error("Erro ao processar imagem:", error);
+      alert("Erro ao processar imagem. Tente novamente.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <fieldset
       className="space-y-6 pt-2 border-none p-0 m-0"
@@ -125,11 +177,29 @@ export function BackgroundEditor({
                 placeholder="https://..."
               />
             </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleImageUpload}
+              disabled={isUploading}
+            />
             <Button
               variant="outline"
               className="w-full h-10 border-dashed text-xs gap-2"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
             >
-              <Upload className="w-3.5 h-3.5" /> Fazer Upload
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Processando...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3.5 h-3.5" /> Fazer Upload
+                </>
+              )}
             </Button>
           </fieldset>
 

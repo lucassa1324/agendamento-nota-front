@@ -1,0 +1,16 @@
+  correcao-contraste-e-limpeza-linter             [m 5b4a807 Ajuste de contraste dos botões, correção de erros do linter e melhorias de tipos
+  deploy/vercel-prep                              [m 07a20f0 feat: finalize environment variables and subdomain logic for Vercel deployment
+  editor-site-melhorias                           [m 9d0c486 feat: Implementa correções e melhorias no editor de site
+  feat/auth-subdomain-integration                 [m cda7c54 feat: setup external landing page redirect and fix navigation routes
+  feat/env-and-port-config                        [m 975b1fa feat: Configure environment variables for API URL and force frontend port
+  feat/responsive-inventory-table                 [m d0e03f1 feat: improve responsiveness of inventory table for small screens
+  feat/services-modal-and-linting                 [m 345f0e9 feat: Ajustes no SiteCustomizer, correção de zoom, erros de console e compilação
+  feature-bloqueio-periodo-e-navegacao-agenda     [m bb4cc47 feat: bloqueio por periodo e navegacao entre dias na agenda
+  feature/fluxo-e-calendario                      [m ec41193 feat: Implementa fluxo de caixa e calendário 24h, corrige status 'concluído'
+  feature/service-conflict-management             [m 8a45a94 feat: Implement service conflict management and linting fixes
+  feature/sistema-galeria-e-sincronizacao-servicos[m eb4a962 fix: corrige loop de cores no titulo, sincronizacao da galeria e layout do editor
+  fix-inventory-corrections                       [m 4db9068 [[34morigin/fix-inventory-corrections[m] feat: Implementar relatórios financeiros reais e persistência de gastos fixos
+  fix/auth-e-servicos                             [m 419439e feat: integra configuracoes de agenda e bloqueios com o backend
+* [32mfix/inventory-management-refinement             [m 4ba9593 feat-logo-sync-and-display-fixes
+  fix/vercel-final-cleanup                        [m 17bd06b fix: final environment variable cleanup and code formatting for Vercel deployment
+  main                                            [m eb48f3e [[34morigin/main[m] fix: import API_BASE_URL in dashboard layout

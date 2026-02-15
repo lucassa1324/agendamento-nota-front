@@ -69,14 +69,22 @@ export function StudioProvider({
          
          // Função auxiliar para validar se uma string do banco não é vazia
           const getValidValue = (apiVal: string | undefined | null, storageVal: string) => {
-            return (apiVal && apiVal.trim() !== "" && !apiVal.includes("exemplo.com") && !apiVal.includes("lucasstudio.com")) ? apiVal.trim() : storageVal;
+            // Se o dado existe na API e não é apenas espaço em branco, PRIORIDADE TOTAL
+            if (apiVal && apiVal.trim() !== "") {
+              return apiVal.trim();
+            }
+            // Só retorna o storage se a API vier nula ou vazia
+            return storageVal;
           };
 
           const profile = {
              name: (studio.siteName?.trim() || studio.name?.trim()) || currentStoredProfile.name || "",
              description: getValidValue(studio.description, currentStoredProfile.description),
              phone: getValidValue(studio.phone, currentStoredProfile.phone),
-             email: getValidValue(studio.email, currentStoredProfile.email),
+             // E-MAIL: Prioridade absoluta para o dado do banco. Se existir, IGNORA o storage.
+             email: (studio.contact?.email && studio.contact.email.trim() !== "") 
+                    ? studio.contact.email 
+                    : ((studio.email && studio.email.trim() !== "") ? studio.email : currentStoredProfile.email),
              address: getValidValue(studio.address, currentStoredProfile.address),
              instagram: getValidValue(studio.instagram, currentStoredProfile.instagram),
              facebook: getValidValue(studio.facebook, currentStoredProfile.facebook),
@@ -96,6 +104,9 @@ export function StudioProvider({
          // Log de verificação final antes de salvar
           if (profile.phone && profile.phone.trim() !== "") {
             console.log(">>> [FINAL_SYNC_CHECK] Telefone final:", profile.phone);
+          }
+          if (profile.email && profile.email.trim() !== "") {
+            console.log(">>> [FINAL_SYNC_CHECK] Email final:", profile.email);
           }
           
           // Forçamos a sincronização sempre que houver um estúdio carregado

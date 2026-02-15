@@ -2004,4 +2004,8 @@ export interface Business {
   services?: Service[];
   gallery?: GalleryImage[];
   testimonials?: Testimonial[];
+  contact?: {
+    email?: string;
+    phone?: string;
+  };
 }
