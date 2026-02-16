@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { authClient } from "@/lib/auth-client";
-import { useStudio } from "@/context/studio-context";
 
 export function AdminProfileManager() {
   const { toast } = useToast();
@@ -160,17 +160,22 @@ export function AdminProfileManager() {
 
             {studio?.createdAt && (
               <div className="space-y-2">
-                <Label htmlFor="payment-date">Data de Pagamento da Plataforma</Label>
+                <Label htmlFor="payment-date">
+                  Data de Pagamento da Plataforma
+                </Label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="payment-date"
                     className="pl-10 bg-muted"
-                    value={new Date(studio.createdAt).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    })}
+                    value={new Date(studio.createdAt).toLocaleDateString(
+                      "pt-BR",
+                      {
+                        day: "2-digit",
+                        month: "long",
+                        year: "numeric",
+                      },
+                    )}
                     disabled
                   />
                 </div>

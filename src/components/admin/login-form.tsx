@@ -135,11 +135,10 @@ export function LoginForm() {
   return (
     <Card className="shadow-lg">
       <CardHeader className="space-y-1">
-        <CardTitle className="flex items-center gap-2 text-2xl">
-          <Lock className="w-6 h-6 text-primary" />
+        <CardTitle className="text-2xl text-center">
           Login Administrativo
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-center">
           Entre com suas credenciais para acessar o painel
         </CardDescription>
       </CardHeader>

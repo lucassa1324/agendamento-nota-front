@@ -18,12 +18,13 @@ import {
   Plug,
   User,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import { BASE_DOMAIN } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
+import { cn, getFullImageUrl } from "@/lib/utils";
 
 interface AdminNavItem {
   title: string;
@@ -150,7 +151,22 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
 
   return (
     <aside className="w-64 bg-card border-r border-border flex flex-col h-screen lg:sticky lg:top-0 z-50 shadow-xl">
-      {/* Sidebar Header */}
+      {/* Sidebar Header - Logo do Cliente */}
+      {studio?.logoUrl && (
+        <div className="p-4 border-b border-border flex justify-center items-center bg-white/50">
+          <div className="relative w-full h-16 flex items-center justify-center">
+            <Image
+              src={getFullImageUrl(studio.logoUrl)}
+              alt="Logo do Studio"
+              fill
+              className="object-contain"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* User Profile */}
       <div className="p-4 border-b border-border space-y-4">
         <div className="flex items-center gap-3 px-2">
           <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">

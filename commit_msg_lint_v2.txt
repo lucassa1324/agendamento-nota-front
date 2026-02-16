@@ -1,0 +1,4 @@
+chore: remove dependência não utilizada do linter no studio-context
+
+- Referencia pathname explicitamente dentro do useEffect para justificar a dependência
+- Resolve aviso "dependency is unnecessary"

@@ -65,6 +65,30 @@ export function StudioProvider({
       try {
         console.log(">>> [STORAGE_SYNC] Sincronizando dados do Banco para LocalStorage...");
         
+        // --- LOGO LEAK FIX: Limpeza de cache ao trocar de estúdio ---
+        if (typeof window !== "undefined") {
+          const lastSlug = localStorage.getItem("studio_last_slug");
+          // Se temos um slug e ele mudou, limpamos o cache para evitar vazamento de dados
+          if (studio.slug && lastSlug && lastSlug !== studio.slug) {
+            console.log(`>>> [CONTEXT] Troca de estúdio detectada (${lastSlug} -> ${studio.slug}). Limpando cache sensível.`);
+            
+            // Remove chaves específicas do usuário anterior
+            localStorage.removeItem(getStorageKey("siteProfile"));
+            localStorage.removeItem(getStorageKey("services"));
+            localStorage.removeItem(getStorageKey("studioSettings"));
+            
+            // Remove chaves compartilhadas (legado/fallback)
+            localStorage.removeItem("siteProfile");
+            localStorage.removeItem("services");
+            localStorage.removeItem("studioSettings");
+          }
+          
+          // Atualiza o slug atual no storage
+          if (studio.slug) {
+            localStorage.setItem("studio_last_slug", studio.slug);
+          }
+        }
+        
         // Sincronização do Perfil do Site - SOMENTE se tivermos dados válidos do banco
          const currentStoredProfile = typeof window !== "undefined" ? JSON.parse(localStorage.getItem(getStorageKey("siteProfile")) || "{}") : {};
          
