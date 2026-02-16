@@ -5,16 +5,19 @@ import {
   BarChart3,
   Calendar,
   Check,
+  ChevronDown,
+  ChevronRight,
   DollarSign,
   Download,
   Loader2,
   Pencil,
   Plus,
+  Repeat,
   Trash2,
   TrendingUp,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,6 +56,7 @@ import {
 import { useStudio } from "@/context/studio-context";
 import { type Expense, type ExpenseCategory, expensesService, type ProfitReport } from "@/lib/expenses-service";
 
+
 export function ManagementReports() {
   const { studio } = useStudio();
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -60,6 +64,7 @@ export function ManagementReports() {
   const [isLoadingExpenses, setIsLoadingExpenses] = useState(false);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const fetchExpenses = useCallback(async () => {
     if (!studio?.id) return;
@@ -103,6 +108,11 @@ export function ManagementReports() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [editingGroupExpenses, setEditingGroupExpenses] = useState<Expense[]>([]);
+
+  const [expenseType, setExpenseType] = useState<"single" | "fixed" | "installment">("single");
+  const [installmentsCount, setInstallmentsCount] = useState(2);
+  const [footerView, setFooterView] = useState<"month" | "year">("month");
 
   const categories: { value: ExpenseCategory; label: string }[] = [
     { value: "INFRAESTRUTURA", label: "Infraestrutura" },
@@ -124,7 +134,19 @@ export function ManagementReports() {
 
     setIsSubmitting(true);
     try {
-      if (editingExpense) {
+      if (editingGroupExpenses.length > 0) {
+        await Promise.all(editingGroupExpenses.map(expense => {
+          const match = expense.description.match(/ \(\d+\/\d+\)$/);
+          const suffix = match ? match[0] : "";
+          
+          return expensesService.update(expense.id, {
+            description: (newExpense.description || "") + suffix,
+            value: String(newExpense.value),
+            category: newExpense.category as ExpenseCategory,
+          });
+        }));
+        toast.success("Parcelamento atualizado com sucesso!");
+      } else if (editingExpense) {
         await expensesService.update(editingExpense.id, {
           description: newExpense.description,
           value: String(newExpense.value),
@@ -132,19 +154,34 @@ export function ManagementReports() {
         });
         toast.success("Gasto atualizado com sucesso!");
       } else {
-        await expensesService.create({
+        const baseValue = newExpense.value;
+        const baseDesc = newExpense.description;
+        const category = newExpense.category as ExpenseCategory;
+
+        const payload = {
           companyId: studio.id,
-          description: newExpense.description,
-          value: String(newExpense.value),
-          category: newExpense.category as ExpenseCategory,
+          description: baseDesc,
+          value: String(baseValue),
+          category,
           dueDate: new Date().toISOString(),
-        });
+          type: expenseType === "installment" ? "PARCELADO" : undefined,
+          totalInstallments: expenseType === "installment" ? installmentsCount : undefined,
+        };
+
+        if (expenseType === "fixed") {
+          payload.description = `${baseDesc} [FIXO]`;
+        }
+
+        await expensesService.create(payload);
         toast.success("Gasto adicionado com sucesso!");
       }
       
       setIsDialogOpen(false);
       setEditingExpense(null);
+      setEditingGroupExpenses([]);
       setNewExpense({ description: "", value: "", category: "GERAL" });
+      setExpenseType("single");
+      setInstallmentsCount(2);
       
       // Revalidar dados
       fetchExpenses();
@@ -159,11 +196,21 @@ export function ManagementReports() {
 
   const handleEditExpense = (expense: Expense) => {
     setEditingExpense(expense);
+    
+    let type: "single" | "fixed" | "installment" = "single";
+    let desc = expense.description;
+
+    if (expense.description.includes("[FIXO]")) {
+        type = "fixed";
+        desc = expense.description.replace(" [FIXO]", "");
+    }
+
     setNewExpense({
-      description: expense.description,
+      description: desc,
       value: expense.value,
       category: expense.category,
     });
+    setExpenseType(type);
     setIsDialogOpen(true);
   };
 
@@ -181,6 +228,40 @@ export function ManagementReports() {
     }
   };
 
+  const handleEditGroup = (groupExpenses: Expense[]) => {
+    setEditingGroupExpenses(groupExpenses);
+    
+    const first = groupExpenses[0];
+    const match = first.description.match(/(.*?) \(\d+\/\d+\)$/);
+    const baseDesc = match ? match[1] : first.description;
+
+    setNewExpense({
+      description: baseDesc,
+      value: first.value,
+      category: first.category,
+    });
+    setExpenseType("installment");
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteGroup = async (groupExpenses: Expense[]) => {
+    const first = groupExpenses[0];
+    const match = first.description.match(/(.*?) \(\d+\/\d+\)$/);
+    const baseDesc = match ? match[1] : first.description;
+    
+    if (!confirm(`Tem certeza que deseja excluir todas as ${groupExpenses.length} parcelas de "${baseDesc}"?`)) return;
+
+    try {
+      await Promise.all(groupExpenses.map(e => expensesService.delete(e.id)));
+      toast.success("Parcelamento excluído com sucesso!");
+      fetchExpenses();
+      fetchReport();
+    } catch (error) {
+      const err = error as { message?: string };
+      toast.error(err.message || "Erro ao excluir parcelamento.");
+    }
+  };
+
   const handleTogglePaid = async (expense: Expense) => {
     try {
       await expensesService.update(expense.id, { isPaid: !expense.isPaid });
@@ -193,11 +274,40 @@ export function ManagementReports() {
     }
   };
 
-  const totalExpenses = expenses.reduce((acc, curr) => acc + Number(curr.value), 0);
+  const toggleGroup = (key: string) => {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedGroups(newExpanded);
+  };
 
-  const operationalProfit = report?.netProfit ?? 0;
+  const filteredTotalExpenses = expenses.reduce((acc, curr) => {
+    const isFixed = curr.description.includes("[FIXO]");
+    const value = Number(curr.value);
+    const date = new Date(curr.dueDate || curr.createdAt);
+    const now = new Date();
+    
+    if (footerView === "month") {
+      if (isFixed) return acc + value;
+      if (date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) {
+        return acc + value;
+      }
+      return acc;
+    } else {
+      if (isFixed) return acc + (value * 12);
+      if (date.getFullYear() === now.getFullYear()) {
+        return acc + value;
+      }
+      return acc;
+    }
+  }, 0);
+
   const totalRevenue = report?.totalRevenue ?? 0;
-  const margin = report?.margin ?? 0;
+  const operationalProfit = totalRevenue - filteredTotalExpenses;
+  const margin = totalRevenue !== 0 ? (operationalProfit / totalRevenue) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -274,6 +384,7 @@ export function ManagementReports() {
               setIsDialogOpen(open);
               if (!open) {
                 setEditingExpense(null);
+                setEditingGroupExpenses([]);
                 setNewExpense({
                   description: "",
                   value: "",
@@ -291,17 +402,65 @@ export function ManagementReports() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  {editingExpense
+                  {editingGroupExpenses.length > 0
+                    ? "Editar Parcelamento"
+                    : editingExpense
                     ? "Editar Gasto Fixo"
                     : "Adicionar Gasto Fixo"}
                 </DialogTitle>
                 <DialogDescription>
-                  {editingExpense
+                  {editingGroupExpenses.length > 0
+                    ? "Altere os dados de todas as parcelas deste grupo."
+                    : editingExpense
                     ? "Altere os dados do gasto operacional."
                     : "Preencha os dados do novo gasto operacional."}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                {editingGroupExpenses.length === 0 && (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="type" className="text-right">
+                      Tipo
+                    </Label>
+                    <div className="col-span-3">
+                      <Select
+                        value={expenseType}
+                        onValueChange={(val) => setExpenseType(val as "single" | "fixed" | "installment")}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent
+                          usePortal={false}
+                          className="z-10001"
+                          position="popper"
+                          sideOffset={5}
+                        >
+                          <SelectItem value="single">Gasto Único</SelectItem>
+                          <SelectItem value="fixed">Gasto Fixo (Mensal)</SelectItem>
+                          <SelectItem value="installment">Compra Parcelada</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+
+                {expenseType === "installment" && editingGroupExpenses.length === 0 && (
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="installments" className="text-right">
+                      Parcelas
+                    </Label>
+                    <Input
+                      id="installments"
+                      type="number"
+                      min={2}
+                      className="col-span-3"
+                      value={installmentsCount}
+                      onChange={(e) => setInstallmentsCount(Number(e.target.value))}
+                    />
+                  </div>
+                )}
+
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="description" className="text-right">
                     Descrição
@@ -320,7 +479,7 @@ export function ManagementReports() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="value" className="text-right">
-                    Valor (R$)
+                    Valor {expenseType === "installment" ? "(Parcela)" : "(R$)"}
                   </Label>
                   <Input
                     id="value"
@@ -341,7 +500,7 @@ export function ManagementReports() {
                   <Label htmlFor="category" className="text-right">
                     Categoria
                   </Label>
-                  <div className="col-span-3 space-y-2 relative">
+                  <div className="col-span-3 space-y-2">
                     <Select
                       value={newExpense.category}
                       onValueChange={(value) =>
@@ -351,7 +510,12 @@ export function ManagementReports() {
                       <SelectTrigger className="flex-1 w-full">
                         <SelectValue placeholder="Selecione uma categoria" />
                       </SelectTrigger>
-                      <SelectContent className="z-100001 max-h-50" position="popper">
+                      <SelectContent
+                        usePortal={false}
+                        className="z-10001 max-h-50"
+                        position="popper"
+                        sideOffset={5}
+                      >
                         {categories.map((cat) => (
                           <SelectItem key={cat.value} value={cat.value}>
                             {cat.label}
@@ -404,58 +568,197 @@ export function ManagementReports() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  expenses.map((expense) => (
-                    <TableRow key={expense.id}>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleTogglePaid(expense)}
-                          className={`h-8 w-8 rounded-full border ${
-                            expense.isPaid
-                              ? "bg-green-100 text-green-600 border-green-200"
-                              : "text-muted-foreground border-dashed"
-                          }`}
-                        >
-                          {expense.isPaid ? (
-                            <Check className="w-4 h-4" />
-                          ) : (
-                            <X className="w-4 h-4" />
-                          )}
-                        </Button>
-                      </TableCell>
-                      <TableCell className={`font-medium ${expense.isPaid ? "text-muted-foreground line-through" : ""}`}>
-                        {expense.description}
-                      </TableCell>
-                      <TableCell>{categories.find(c => c.value === expense.category)?.label || expense.category}</TableCell>
-                      <TableCell className="text-right">
-                        R${" "}
-                        {Number(expense.value).toLocaleString("pt-BR", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditExpense(expense)}
-                            className="h-8 w-8 text-muted-foreground hover:text-accent"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteExpense(expense.id)}
-                            className="h-8 w-8 text-destructive hover:text-destructive/90"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  (() => {
+                    const processedGroups = new Set<string>();
+
+                    return expenses.map((expense) => {
+                      const installmentMatch = expense.description.match(/(.*?) \((\d+)\/(\d+)\)$/);
+
+                      if (installmentMatch) {
+                        const baseDesc = installmentMatch[1];
+                        const total = installmentMatch[3];
+                        const groupKey = `${baseDesc}-${total}`;
+
+                        if (processedGroups.has(groupKey)) return null;
+                        processedGroups.add(groupKey);
+
+                        const groupExpenses = expenses.filter(e => {
+                          const m = e.description.match(/(.*?) \((\d+)\/(\d+)\)$/);
+                          return m && m[1] === baseDesc && m[3] === total;
+                        }).sort((a, b) => {
+                          const mA = a.description.match(/\((\d+)\//);
+                          const mB = b.description.match(/\((\d+)\//);
+                          return (Number(mA?.[1] || 0) - Number(mB?.[1] || 0));
+                        });
+
+                        const isExpanded = expandedGroups.has(groupKey);
+
+                        return (
+                          <React.Fragment key={groupKey}>
+                            <TableRow className="bg-muted/30 hover:bg-muted/50">
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleGroup(groupKey)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                </Button>
+                              </TableCell>
+                              <TableCell className="font-medium">
+                                {baseDesc} (Parcelado {groupExpenses.length}x)
+                              </TableCell>
+                              <TableCell>{categories.find(c => c.value === expense.category)?.label || expense.category}</TableCell>
+                              <TableCell className="text-right">
+                                R${" "}
+                                {Number(expense.value).toLocaleString("pt-BR", {
+                                  minimumFractionDigits: 2,
+                                })}
+                                <span className="text-xs text-muted-foreground ml-1">/parc</span>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleEditGroup(groupExpenses)}
+                                    className="h-8 w-8 text-muted-foreground hover:text-accent"
+                                    title="Editar todas as parcelas"
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteGroup(groupExpenses)}
+                                    className="h-8 w-8 text-destructive hover:text-destructive/90"
+                                    title="Excluir todas as parcelas"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                            {isExpanded && groupExpenses.map(child => (
+                              <TableRow key={child.id} className="bg-muted/10">
+                                <TableCell>
+                                  <div className="flex justify-end pr-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleTogglePaid(child)}
+                                      className={`h-6 w-6 rounded-full border ${
+                                        child.isPaid
+                                          ? "bg-green-100 text-green-600 border-green-200"
+                                          : "text-muted-foreground border-dashed"
+                                      }`}
+                                    >
+                                      {child.isPaid ? (
+                                        <Check className="w-3 h-3" />
+                                      ) : (
+                                        <X className="w-3 h-3" />
+                                      )}
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                                <TableCell className={`pl-10 text-sm ${child.isPaid ? "text-muted-foreground line-through" : ""}`}>
+                                  {child.description}
+                                </TableCell>
+                                <TableCell></TableCell>
+                                <TableCell className="text-right text-muted-foreground text-sm">
+                                  R${" "}
+                                  {Number(child.value).toLocaleString("pt-BR", {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleEditExpense(child)}
+                                      className="h-8 w-8 text-muted-foreground hover:text-accent"
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() => handleDeleteExpense(child.id)}
+                                      className="h-8 w-8 text-destructive hover:text-destructive/90"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </React.Fragment>
+                        );
+                      }
+
+                      return (
+                        <TableRow key={expense.id}>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleTogglePaid(expense)}
+                              className={`h-8 w-8 rounded-full border ${
+                                expense.isPaid
+                                  ? "bg-green-100 text-green-600 border-green-200"
+                                  : "text-muted-foreground border-dashed"
+                              }`}
+                            >
+                              {expense.isPaid ? (
+                                <Check className="w-4 h-4" />
+                              ) : (
+                                <X className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </TableCell>
+                          <TableCell className={`font-medium ${expense.isPaid ? "text-muted-foreground line-through" : ""}`}>
+                            {expense.description.includes("[FIXO]") ? (
+                              <div className="flex items-center gap-2">
+                                {expense.description.replace(" [FIXO]", "")}
+                                <Repeat className="w-3 h-3 text-muted-foreground" />
+                              </div>
+                            ) : (
+                              expense.description
+                            )}
+                          </TableCell>
+                          <TableCell>{categories.find(c => c.value === expense.category)?.label || expense.category}</TableCell>
+                          <TableCell className="text-right">
+                            R${" "}
+                            {Number(expense.value).toLocaleString("pt-BR", {
+                              minimumFractionDigits: 2,
+                            })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditExpense(expense)}
+                                className="h-8 w-8 text-muted-foreground hover:text-accent"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteExpense(expense.id)}
+                                className="h-8 w-8 text-destructive hover:text-destructive/90"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    });
+                  })()
                 )}
                 {!isLoadingExpenses && expenses.length === 0 && (
                   <TableRow>
@@ -470,14 +773,26 @@ export function ManagementReports() {
               </TableBody>
             </Table>
           </div>
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex justify-end items-center gap-4">
+            <Select
+              value={footerView}
+              onValueChange={(val) => setFooterView(val as "month" | "year")}
+            >
+              <SelectTrigger className="w-35">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">Este Mês</SelectItem>
+                <SelectItem value="year">Previsão Anual</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="text-right">
               <p className="text-sm text-muted-foreground">
-                Total em Gastos Fixos
+                Total Calculado
               </p>
               <p className="text-2xl font-bold text-destructive">
                 R${" "}
-                {totalExpenses.toLocaleString("pt-BR", {
+                {filteredTotalExpenses.toLocaleString("pt-BR", {
                   minimumFractionDigits: 2,
                 })}
               </p>
@@ -532,7 +847,7 @@ export function ManagementReports() {
                   <>
                     <p className="text-2xl font-bold text-destructive">
                       R${" "}
-                      {totalExpenses.toLocaleString("pt-BR", {
+                      {filteredTotalExpenses.toLocaleString("pt-BR", {
                         minimumFractionDigits: 2,
                       })}
                     </p>

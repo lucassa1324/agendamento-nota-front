@@ -1,6 +1,7 @@
 "use client";
 
-import { Calendar, Clock, Edit2 } from "lucide-react";
+import { Calendar, Clock, Edit2, Loader2 } from "lucide-react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,8 +10,11 @@ import type { Booking, BookingStatus } from "@/lib/booking-data";
 interface BookingCardProps {
   booking: Booking;
   getStatusBadge: (status: BookingStatus) => string;
-  handleStatusChange: (bookingId: string, newStatus: BookingStatus) => void;
-  handleDelete: (bookingId: string) => void;
+  handleStatusChange: (
+    bookingId: string,
+    newStatus: BookingStatus,
+  ) => Promise<void>;
+  handleDelete: (bookingId: string) => Promise<void>;
   onReschedule: (booking: Booking) => void;
   onEdit: (booking: Booking) => void;
 }
@@ -23,6 +27,28 @@ export function BookingCard({
   onReschedule,
   onEdit,
 }: BookingCardProps) {
+  const [loadingAction, setLoadingAction] = useState<string | null>(null);
+
+  const onStatusChange = async (action: string, status: BookingStatus) => {
+    if (loadingAction) return;
+    setLoadingAction(action);
+    try {
+      await handleStatusChange(booking.id, status);
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
+  const onDelete = async () => {
+    if (loadingAction) return;
+    setLoadingAction("delete");
+    try {
+      await handleDelete(booking.id);
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   return (
     <Card className="overflow-hidden border-none shadow-sm bg-card/50 hover:shadow-md transition-shadow">
       <CardContent className="p-0">
@@ -77,7 +103,11 @@ export function BookingCard({
                   Email: {booking.clientEmail || "Não informado"}
                 </span>
                 <span className="text-[10px] uppercase font-bold text-muted-foreground/70">
-                  Valor: R$ {(typeof booking.servicePrice === "string" ? parseFloat(booking.servicePrice) : (booking.servicePrice || 0)).toFixed(2)}
+                  Valor: R${" "}
+                  {(typeof booking.servicePrice === "string"
+                    ? parseFloat(booking.servicePrice)
+                    : booking.servicePrice || 0
+                  ).toFixed(2)}
                 </span>
               </div>
               <div className="md:col-span-2 mt-2 pt-2 border-t border-border/50">
@@ -93,48 +123,68 @@ export function BookingCard({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleStatusChange(booking.id, "confirmado")}
-                className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium"
+                onClick={() => onStatusChange("confirmar", "confirmado")}
+                disabled={!!loadingAction}
+                className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium disabled:opacity-50"
               >
+                {loadingAction === "confirmar" ? (
+                  <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+                ) : null}
                 Confirmar
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleStatusChange(booking.id, "concluído")}
-                className="h-8 text-green-600 hover:text-green-700 hover:bg-green-50 font-medium"
+                onClick={() => onStatusChange("concluir", "concluído")}
+                disabled={!!loadingAction}
+                className="h-8 text-green-600 hover:text-green-700 hover:bg-green-50 font-medium disabled:opacity-50"
               >
+                {loadingAction === "concluir" ? (
+                  <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+                ) : null}
                 Concluir
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleStatusChange(booking.id, "pendente")}
-                className="h-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 font-medium"
+                onClick={() => onStatusChange("pendente", "pendente")}
+                disabled={!!loadingAction}
+                className="h-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 font-medium disabled:opacity-50"
               >
+                {loadingAction === "pendente" ? (
+                  <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+                ) : null}
                 Pendente
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleStatusChange(booking.id, "cancelado")}
-                className="h-8 text-red-400 hover:text-red-500 hover:bg-red-50 font-medium"
+                onClick={() => onStatusChange("cancelar", "cancelado")}
+                disabled={!!loadingAction}
+                className="h-8 text-red-400 hover:text-red-500 hover:bg-red-50 font-medium disabled:opacity-50"
               >
+                {loadingAction === "cancelar" ? (
+                  <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+                ) : null}
                 Cancelar
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onReschedule(booking)}
-                className="h-8 text-muted-foreground hover:bg-secondary font-medium"
-              >
-                Adiar
-              </Button>
+              {booking.status !== "cancelado" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onReschedule(booking)}
+                  disabled={!!loadingAction}
+                  className="h-8 text-muted-foreground hover:bg-secondary font-medium disabled:opacity-50"
+                >
+                  Adiar
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => onEdit(booking)}
-                className="h-8 text-primary hover:bg-primary/5 font-medium"
+                disabled={!!loadingAction}
+                className="h-8 text-primary hover:bg-primary/5 font-medium disabled:opacity-50"
               >
                 <Edit2 className="w-3 h-3 mr-1.5" />
                 Editar
@@ -142,9 +192,13 @@ export function BookingCard({
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={() => handleDelete(booking.id)}
-                className="h-8 font-medium"
+                onClick={onDelete}
+                disabled={!!loadingAction}
+                className="h-8 font-medium disabled:opacity-50"
               >
+                {loadingAction === "delete" ? (
+                  <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+                ) : null}
                 Apagar
               </Button>
             </div>

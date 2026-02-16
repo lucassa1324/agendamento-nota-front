@@ -467,7 +467,7 @@ export function ServicesManager() {
       duration:
         !formData.duration ||
         Number.isNaN(formData.duration) ||
-        formData.duration < 15,
+        formData.duration < 10,
       price:
         formData.price === undefined ||
         Number.isNaN(formData.price) ||
@@ -1202,13 +1202,20 @@ export function ServicesManager() {
                       setErrors({ ...errors, duration: false });
                   }}
                   placeholder="60"
-                  min="15"
-                  step="15"
+                  min="10"
+                  step="5"
                   className={cn(
                     errors.duration &&
                       "border-destructive focus-visible:ring-destructive",
                   )}
                 />
+                {(formData.duration !== undefined &&
+                  !Number.isNaN(formData.duration) &&
+                  formData.duration < 10) && (
+                  <p className="text-[10px] text-destructive font-medium mt-1">
+                    ⚠️ Mínimo de 10 minutos permitido
+                  </p>
+                )}
               </div>
 
               <div>

@@ -110,6 +110,19 @@ export function AdminProfileManager() {
     }
   };
 
+  const getNextInvoiceDate = (dateString: string | Date) => {
+    const date = new Date(dateString);
+    const today = new Date();
+    // Cria data para este mês com o mesmo dia
+    const nextInvoice = new Date(today.getFullYear(), today.getMonth(), date.getDate());
+    
+    // Se a data deste mês já passou, avança para o próximo mês
+    if (nextInvoice < today) {
+      nextInvoice.setMonth(nextInvoice.getMonth() + 1);
+    }
+    return nextInvoice;
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <Card>
@@ -159,29 +172,56 @@ export function AdminProfileManager() {
             </div>
 
             {studio?.createdAt && (
-              <div className="space-y-2">
-                <Label htmlFor="payment-date">
-                  Data de Pagamento da Plataforma
-                </Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    id="payment-date"
-                    className="pl-10 bg-muted"
-                    value={new Date(studio.createdAt).toLocaleDateString(
-                      "pt-BR",
-                      {
-                        day: "2-digit",
-                        month: "long",
-                        year: "numeric",
-                      },
-                    )}
-                    disabled
-                  />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="payment-date">
+                    Data de Pagamento da Plataforma
+                  </Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="payment-date"
+                      className="pl-10 bg-muted"
+                      value={new Date(studio.createdAt).toLocaleDateString(
+                        "pt-BR",
+                        {
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric",
+                        },
+                      )}
+                      disabled
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Data de início da sua assinatura.
+                  </p>
                 </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Data de início da sua assinatura.
-                </p>
+
+                <div className="space-y-2">
+                  <Label htmlFor="next-invoice">
+                    Data da Próxima Fatura
+                  </Label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="next-invoice"
+                      className="pl-10 bg-muted"
+                      value={getNextInvoiceDate(studio.createdAt).toLocaleDateString(
+                        "pt-BR",
+                        {
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric",
+                        },
+                      )}
+                      disabled
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Previsão da sua próxima cobrança.
+                  </p>
+                </div>
               </div>
             )}
 

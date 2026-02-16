@@ -29,6 +29,8 @@ export interface CreateExpenseDTO {
   value: string; // decimal string
   category: ExpenseCategory;
   dueDate: string; // ISO string
+  type?: string;
+  totalInstallments?: number;
 }
 
 export interface ProfitReport {

@@ -334,37 +334,7 @@ export function GoogleCalendarManager() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Import className="w-5 h-5 text-primary" />
-                Importar Agendamentos
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label
-                  htmlFor="importFile"
-                  className="cursor-pointer border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 flex flex-col items-center justify-center gap-2 hover:bg-accent/50 transition-colors"
-                >
-                  <Upload className="w-8 h-8 text-muted-foreground" />
-                  <span className="text-sm font-medium">
-                    Clique para selecionar arquivo
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Suporta .csv ou .ics
-                  </span>
-                  <Input
-                    id="importFile"
-                    type="file"
-                    accept=".csv,.ics"
-                    className="hidden"
-                    onChange={handleImportFile}
-                  />
-                </Label>
-              </div>
-            </CardContent>
-          </Card>
+
         </div>
       </div>
 
@@ -377,13 +347,7 @@ export function GoogleCalendarManager() {
               para backup ou integração externa.
             </p>
           </div>
-          <div className="flex items-start gap-2">
-            <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-            <p>
-              <strong>Importação:</strong> Adicione agendamentos em massa a
-              partir de arquivos exportados anteriormente.
-            </p>
-          </div>
+
         </CardContent>
       </Card>
     </div>
