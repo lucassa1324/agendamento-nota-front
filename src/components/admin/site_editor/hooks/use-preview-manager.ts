@@ -82,10 +82,10 @@ export function usePreviewManager(
   const currentWidth = previewMode === "mobile" ? mobileWidth : desktopWidth;
 
   const desktopScale = isAutoZoom
-    ? Math.min(1, (containerWidth - 48) / desktopWidth)
+    ? Math.max(0.5, Math.min(1, (containerWidth - 48) / desktopWidth))
     : manualScale;
   const mobileScale = isAutoZoom
-    ? Math.min(1, (containerWidth - 48) / mobileWidth)
+    ? Math.max(0.5, Math.min(1, (containerWidth - 48) / mobileWidth))
     : manualScale;
 
   const reloadPreview = useCallback(() => {

@@ -43,7 +43,7 @@ export function PreviewFrame({
       <div className="flex-1 flex flex-col h-full min-w-0 bg-muted/5 overflow-hidden">
         <div
           ref={containerRef}
-          className="flex-1 bg-muted/10 relative flex items-center justify-center overflow-hidden p-2 lg:p-4 group min-w-0"
+          className="flex-1 bg-muted/10 relative flex items-center overflow-auto p-2 lg:p-4 group min-w-0"
         >
           {/* Setas de Ajuste Manual */}
           <div className="absolute inset-y-0 left-2 lg:left-4 flex items-center pointer-events-none z-20">
@@ -99,11 +99,12 @@ export function PreviewFrame({
               alignItems: "center",
               justifyContent: "center",
               position: "relative",
+              margin: "auto",
             }}
           >
             <div
               className={cn(
-                "transition-all duration-500 ease-in-out shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden bg-white flex flex-col shrink-0 will-change-transform",
+                "transition-transform duration-300 ease shadow-[0_20px_50px_rgba(0,0,0,0.15)] overflow-hidden bg-white flex flex-col shrink-0 will-change-transform",
                 previewMode === "desktop"
                   ? "rounded-xl border border-border"
                   : "rounded-[3rem] border-12 border-black",
@@ -120,7 +121,7 @@ export function PreviewFrame({
                   previewMode === "desktop" && isAutoZoom
                     ? "none"
                     : `scale(${previewMode === "mobile" ? mobileScale : desktopScale})`,
-                transformOrigin: "center center",
+                transformOrigin: "top center",
               }}
             >
               {/* Browser Header (Desktop Only) */}

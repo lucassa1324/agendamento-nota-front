@@ -11,6 +11,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,27 @@ export function HeaderControls({
   setManualWidth,
   reloadPreview,
 }: HeaderControlsProps) {
+  const currentScale = previewMode === "mobile" ? mobileScale : desktopScale;
+  const [zoomInputValue, setZoomInputValue] = useState(
+    Math.round(currentScale * 100).toString(),
+  );
+
+  useEffect(() => {
+    setZoomInputValue(Math.round(currentScale * 100).toString());
+  }, [currentScale]);
+
+  const handleZoomCommit = () => {
+    let value = parseInt(zoomInputValue.replace(/\D/g, ""), 10);
+    if (Number.isNaN(value)) {
+      value = Math.round(currentScale * 100);
+    }
+    // Limites: 10% a 300%
+    value = Math.max(10, Math.min(300, value));
+    setManualScale(value / 100);
+    setIsAutoZoom(false);
+    setZoomInputValue(value.toString());
+  };
+
   return (
     <div className="flex items-center bg-muted/50 rounded-full p-1 gap-1 ml-2 shrink-0">
       <div className="flex items-center gap-0.5 mr-1 lg:mr-2">
@@ -46,8 +68,6 @@ export function HeaderControls({
           size="icon"
           className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
           onClick={() => {
-            const currentScale =
-              previewMode === "mobile" ? mobileScale : desktopScale;
             setManualScale(Math.max(0.1, currentScale - 0.1));
             setIsAutoZoom(false);
           }}
@@ -55,20 +75,29 @@ export function HeaderControls({
         >
           <ZoomOut className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
         </Button>
-        <span className="text-[10px] lg:text-xs font-bold min-w-10 text-center">
-          {Math.round(
-            (previewMode === "mobile" ? mobileScale : desktopScale) * 100,
-          )}
-          %
-        </span>
+        <div className="relative flex items-center justify-center min-w-12">
+          <input
+            type="text"
+            className="w-full bg-transparent text-center text-[10px] lg:text-xs font-bold focus:outline-none focus:ring-1 focus:ring-ring rounded px-0.5 py-0.5"
+            value={zoomInputValue}
+            onChange={(e) => setZoomInputValue(e.target.value)}
+            onBlur={handleZoomCommit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.currentTarget.blur();
+              }
+            }}
+          />
+          <span className="absolute right-0 text-[10px] lg:text-xs font-bold pointer-events-none opacity-50">
+            %
+          </span>
+        </div>
         <Button
           type="button"
           variant="ghost"
           size="icon"
           className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
           onClick={() => {
-            const currentScale =
-              previewMode === "mobile" ? mobileScale : desktopScale;
             setManualScale(Math.min(2, currentScale + 0.1));
             setIsAutoZoom(false);
           }}
@@ -82,7 +111,7 @@ export function HeaderControls({
           size="icon"
           className={cn(
             "rounded-full w-7 h-7 lg:w-8 lg:h-8",
-            isAutoZoom && "bg-background shadow-sm",
+            isAutoZoom && "bg-background shadow-sm text-foreground",
           )}
           onClick={() => setIsAutoZoom(true)}
           title="Ajustar à Tela (Auto)"
@@ -100,7 +129,7 @@ export function HeaderControls({
           size="icon"
           className={cn(
             "rounded-full w-7 h-7 lg:w-8 lg:h-8",
-            previewMode === "desktop" && "bg-background shadow-sm",
+            previewMode === "desktop" && "bg-background shadow-sm text-foreground",
           )}
           onClick={() => {
             setPreviewMode("desktop");
@@ -116,7 +145,7 @@ export function HeaderControls({
           size="icon"
           className={cn(
             "rounded-full w-7 h-7 lg:w-8 lg:h-8",
-            previewMode === "mobile" && "bg-background shadow-sm",
+            previewMode === "mobile" && "bg-background shadow-sm text-foreground",
           )}
           onClick={() => {
             setPreviewMode("mobile");
