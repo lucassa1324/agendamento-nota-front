@@ -5,15 +5,15 @@ import {
   Calendar,
   CheckCircle2,
   Download,
-  ExternalLink,
+  // ExternalLink,
   FileSpreadsheet,
   FileText,
   Import,
-  RefreshCw,
-  Save,
+  // RefreshCw,
+  // Save,
   Upload,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,56 +22,17 @@ import { useToast } from "@/hooks/use-toast";
 import {
   type Booking,
   type BookingStatus,
-  type GoogleCalendarSettings,
   getBookingsFromStorage,
-  getGoogleCalendarSettings,
   saveBookingsToStorage,
-  saveGoogleCalendarSettings,
 } from "@/lib/booking-data";
 
 export function GoogleCalendarManager() {
-  const [settings, setSettings] = useState<GoogleCalendarSettings>({
-    enabled: false,
-    calendarUrl: "",
-    lastSync: null,
-  });
   const [exportRange, setExportRange] = useState({
     start: format(new Date(), "yyyy-MM-dd"),
     end: format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
   });
 
   const { toast } = useToast();
-
-  const loadSettings = useCallback(() => {
-    const saved = getGoogleCalendarSettings();
-    setSettings(saved);
-  }, []);
-
-  useEffect(() => {
-    loadSettings();
-  }, [loadSettings]);
-
-  const saveSettings = () => {
-    saveGoogleCalendarSettings(settings);
-    toast({
-      title: "Configuração salva",
-      description: "As configurações do Google Calendar foram atualizadas",
-    });
-  };
-
-  const syncNow = () => {
-    const newSettings = {
-      ...settings,
-      lastSync: new Date().toISOString(),
-    };
-    setSettings(newSettings);
-    saveGoogleCalendarSettings(newSettings);
-    toast({
-      title: "Sincronização iniciada",
-      description:
-        "Seus agendamentos estão sendo sincronizados com o Google Calendar",
-    });
-  };
 
   const handleExportICS = () => {
     const bookings = getBookingsFromStorage();
@@ -316,73 +277,8 @@ export function GoogleCalendarManager() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Coluna 1: Configuração e Sincronização */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <RefreshCw className="w-5 h-5 text-primary" />
-                Sincronização Automática
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="calendarUrl">
-                  URL do iCal do Google Calendar
-                </Label>
-                <Input
-                  id="calendarUrl"
-                  type="url"
-                  value={settings.calendarUrl}
-                  onChange={(e) =>
-                    setSettings({ ...settings, calendarUrl: e.target.value })
-                  }
-                  placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"
-                  className="mt-2"
-                />
-              </div>
+      <div className="grid grid-cols-1 gap-6">
 
-              <div className="flex gap-3">
-                <Button onClick={saveSettings} className="flex-1">
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar
-                </Button>
-                <Button
-                  onClick={syncNow}
-                  variant="outline"
-                  disabled={!settings.calendarUrl}
-                  className="flex-1"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Sincronizar
-                </Button>
-              </div>
-
-              {settings.lastSync && (
-                <p className="text-xs text-muted-foreground text-center">
-                  Última sincronização:{" "}
-                  {new Date(settings.lastSync).toLocaleString("pt-BR")}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="bg-blue-50 border-blue-200">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <ExternalLink className="w-4 h-4" />
-                Como obter a URL iCal
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="text-xs space-y-1 text-blue-800">
-              <p>1. No Google Calendar, clique nos 3 pontos da sua agenda.</p>
-              <p>2. "Configurações e compartilhamento".</p>
-              <p>3. Role até "Integrar agenda".</p>
-              <p>4. Copie o "Endereço secreto no formato iCal".</p>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Coluna 2: Exportar e Importar */}
         <div className="space-y-6">

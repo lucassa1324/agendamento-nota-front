@@ -15,12 +15,13 @@ import {
   Package,
   Palette,
   PieChart,
-  Plug,
+  // Plug,
   User,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
+import { PushNotificationsButton } from "@/components/admin/push-notifications-button";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import { BASE_DOMAIN } from "@/lib/auth-client";
@@ -79,11 +80,13 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
   {
     group: "Integrações",
     items: [
+      /*
       {
         title: "Integrações",
         href: "/admin/dashboard/integracoes",
         icon: Plug,
       },
+      */
       {
         title: "Google Calendar",
         href: "/admin/dashboard/google",
@@ -191,6 +194,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
           <ExternalLink className="w-4 h-4 group-hover:text-primary transition-colors" />
           Ir para o site
         </a>
+        <PushNotificationsButton />
       </div>
 
       {/* Sidebar Navigation */}

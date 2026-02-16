@@ -1,4 +1,4 @@
-import { NotificationsManager } from "@/components/admin/notifications-manager";
+import { PushNotificationSettings } from "@/components/admin/push-notification-settings";
 
 export default function NotificacoesPage() {
   return (
@@ -8,10 +8,10 @@ export default function NotificacoesPage() {
           Notificações
         </h2>
         <p className="text-muted-foreground">
-          Configure notificações por email e WhatsApp
+          Gerencie suas preferências de notificação push e alertas.
         </p>
       </div>
-      <NotificationsManager />
+      <PushNotificationSettings />
     </div>
   );
 }
