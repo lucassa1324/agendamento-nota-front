@@ -98,6 +98,19 @@ export function ManagementReports() {
       fetchExpenses();
       fetchReport();
     }
+
+    const handleUpdate = () => {
+      if (studio?.id) {
+        console.log(">>> [MANAGEMENT_REPORTS] Atualizando relatório devido a mudança no estoque");
+        fetchExpenses();
+        fetchReport();
+      }
+    };
+
+    window.addEventListener("inventoryUpdated", handleUpdate);
+    return () => {
+      window.removeEventListener("inventoryUpdated", handleUpdate);
+    };
   }, [studio?.id, fetchExpenses, fetchReport]);
 
   const [newExpense, setNewExpense] = useState<Partial<Expense>>({

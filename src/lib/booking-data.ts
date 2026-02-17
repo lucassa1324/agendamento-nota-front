@@ -38,7 +38,7 @@ export type Service = {
 export type InventoryLog = {
   id?: string;
   timestamp: string;
-  type: "entrada" | "saida" | "ajuste" | "venda" | "servico";
+  type: "entrada" | "saida" | "ajuste" | "venda" | "servico" | "ENTRY" | "EXIT";
   quantityChange: number;
   previousQuantity?: number;
   newQuantity?: number;
@@ -49,6 +49,7 @@ export type InventoryLog = {
 
 export type InventoryItem = {
   id: string;
+  companyId?: string;
   name: string;
   quantity: number;
   currentQuantity?: number; // Compatibilidade com Back-end (Drizzle camelCase)
@@ -59,6 +60,7 @@ export type InventoryItem = {
   lastUpdate: string;
   secondaryUnit?: string;
   conversionFactor?: number;
+  isShared?: boolean;
   logs?: InventoryLog[];
 };
 
@@ -1357,6 +1359,9 @@ export async function subtractInventoryForServiceAsync(
     const logs: string[] = [];
     let updatedAny = false;
 
+    // Mapa para agregar itens (Product ID -> Quantidade Total)
+    const aggregatedItems: Record<string, { quantity: number; product: InventoryItem; name: string }> = {};
+
     for (const serviceId of ids) {
       const service = settings.services.find((s: Service) => s.id === serviceId);
       if (!service) continue;
@@ -1377,7 +1382,6 @@ export async function subtractInventoryForServiceAsync(
 
         if (product) {
           let quantityToSubtract = serviceProduct.quantity;
-          let unitLabel = product.unit;
 
           // Lógica de conversão de unidade
           if (
@@ -1387,21 +1391,54 @@ export async function subtractInventoryForServiceAsync(
           ) {
             quantityToSubtract =
               serviceProduct.quantity / product.conversionFactor;
-            unitLabel = product.secondaryUnit || product.unit;
           }
 
-          if (product.quantity < quantityToSubtract) {
-            logs.push(
-              `Estoque insuficiente para ${product.name}: necessário ${serviceProduct.quantity}${unitLabel}, disponível ${product.quantity.toLocaleString("pt-BR")}${product.unit}`,
-            );
-          }
-          
-          // 3. Realizar a baixa de estoque via API (novo endpoint /subtract)
-          await inventoryService.subtract(product.id, quantityToSubtract);
+          // Verificação de EPI/Reutilização
+          const isReusable = product.isShared === true;
 
-          updatedAny = true;
+          if (aggregatedItems[product.id]) {
+            if (isReusable) {
+              // Se é reutilizável, usamos a quantidade máxima necessária (não soma)
+              // Ex: Serviço A precisa de 1 par de luvas, Serviço B precisa de 1 par. Total = 1 par.
+              aggregatedItems[product.id].quantity = Math.max(aggregatedItems[product.id].quantity, quantityToSubtract);
+            } else {
+              // Se não é reutilizável (ex: ml de shampoo), somamos
+              aggregatedItems[product.id].quantity += quantityToSubtract;
+            }
+          } else {
+            aggregatedItems[product.id] = { 
+              quantity: quantityToSubtract, 
+              product: product,
+              name: product.name
+            };
+          }
         }
       }
+    }
+
+    // 3. Processar a subtração dos itens agregados
+    for (const productId in aggregatedItems) {
+      const { quantity, product, name } = aggregatedItems[productId];
+      const quantityToSubtract = quantity;
+
+      const currentQty = Number(product.quantity);
+      const minQty = Number(product.minQuantity || 0);
+
+      if (currentQty < quantityToSubtract) {
+        logs.push(
+          `Estoque insuficiente para ${name}: necessário ${quantityToSubtract.toLocaleString("pt-BR")}${product.unit}, disponível ${currentQty.toLocaleString("pt-BR")}${product.unit}`,
+        );
+      } else {
+         const newQty = currentQty - quantityToSubtract;
+         if (newQty <= minQty) {
+            logs.push(`Atenção: Estoque baixo de ${name} (${newQty.toLocaleString("pt-BR")}${product.unit}). Mínimo: ${minQty}${product.unit}`);
+         }
+      }
+      
+      // Realizar a baixa de estoque via API
+      console.log("[DEBUG_PAYLOAD]", { quantity: quantityToSubtract });
+      await inventoryService.subtract(product.id, quantityToSubtract);
+      updatedAny = true;
     }
 
     if (!updatedAny) {
@@ -1409,6 +1446,10 @@ export async function subtractInventoryForServiceAsync(
         success: true,
         message: "Nenhum produto vinculado a este serviço para baixar.",
       };
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("inventoryUpdated"));
     }
 
     if (logs.length > 0) {
@@ -1420,13 +1461,15 @@ export async function subtractInventoryForServiceAsync(
 
     return { success: true, message: "Estoque atualizado com sucesso via API" };
   } catch (error) {
-    console.error(">>> [SUBTRACT_INVENTORY_ERROR]", error);
+    const err = error as any;
+    console.error("[SUBTRACT_INVENTORY_ERROR]", err.response?.data || err.message || err);
     return {
       success: false,
       message: "Erro ao atualizar estoque no servidor.",
     };
   }
 }
+
 
 export function subtractInventoryForService(serviceIds: string | string[]): {
   success: boolean;
@@ -2009,4 +2052,286 @@ export interface Business {
     email?: string;
     phone?: string;
   };
+}
+
+/**
+ * Calcula os recursos consumidos por um agendamento, aplicando as regras de compartilhamento (isShared).
+ * - Se isShared = true: Conta apenas a primeira ocorrência do item (deduplicação por agendamento).
+ * - Se isShared = false: Soma todas as ocorrências (consumo bruto).
+ */
+export function calculateBookingResources(
+  booking: Booking,
+  services: Service[],
+  inventory: InventoryItem[],
+): { item: InventoryItem; quantity: number; mode: string }[] {
+  // 1. Identificar todos os IDs de serviço (pode ser string ou array)
+  const serviceIds = Array.isArray(booking.serviceId)
+    ? booking.serviceId
+    : [booking.serviceId];
+
+  // 2. Mapear serviços na ordem em que aparecem
+  const servicesInOrder = serviceIds
+    .map((id) => services.find((s) => s.id === id))
+    .filter((s): s is Service => !!s);
+
+  // 3. Processar recursos
+  const resourceMap = new Map<
+    string,
+    { item: InventoryItem; quantity: number; mode: string }
+  >();
+  const processedSharedItems = new Set<string>();
+
+  servicesInOrder.forEach((service) => {
+    const resList = service.resources || service.products || [];
+
+    resList.forEach((r) => {
+      const item = r as {
+        inventoryId?: string;
+        productId?: string;
+        quantity: number | string;
+      };
+      const invId = item.inventoryId || item.productId;
+      if (!invId) return;
+
+      const inventoryItem = inventory.find((i) => i.id === invId);
+      if (!inventoryItem) return;
+
+      const qty = Number(r.quantity);
+      const isShared = inventoryItem.isShared === true;
+
+      if (isShared) {
+        // Se for compartilhado:
+        // "contabiliza os itens em comum so do primeiro item, ignora os itens em comum do segundo"
+        if (!processedSharedItems.has(invId)) {
+          resourceMap.set(invId, {
+            item: inventoryItem,
+            quantity: qty,
+            mode: "Compartilhado",
+          });
+          processedSharedItems.add(invId);
+        }
+        // Se já foi processado (está no Set), ignoramos as ocorrências seguintes
+      } else {
+        // Não compartilhado: soma tudo
+        const current = resourceMap.get(invId);
+        if (current) {
+          current.quantity += qty;
+        } else {
+          resourceMap.set(invId, {
+            item: inventoryItem,
+            quantity: qty,
+            mode: "Não compartilhado",
+          });
+        }
+      }
+    });
+  });
+
+  return Array.from(resourceMap.values());
+}
+
+export async function returnInventoryForServiceAsync(
+  serviceIds: string | string[],
+  companyId: string,
+): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    const ids = Array.isArray(serviceIds) ? serviceIds : [serviceIds];
+
+    // 1. Buscar estoque atual da API
+    const inventory = await inventoryService.list(companyId);
+    if (!inventory || inventory.length === 0) {
+      return { success: false, message: "Estoque vazio ou não encontrado." };
+    }
+
+    // 2. Buscar configurações
+    const settings = getSettingsFromStorage();
+    let updatedAny = false;
+
+    // Mapa para agregar itens (Product ID -> Quantidade Total)
+    const aggregatedItems: Record<
+      string,
+      { quantity: number; product: InventoryItem; name: string; useSecondaryUnit: boolean }
+    > = {};
+
+    for (const serviceId of ids) {
+      const service = settings.services.find(
+        (s: Service) => s.id === serviceId,
+      );
+      if (!service) continue;
+
+      const itemsToReturn = service.resources?.length
+        ? service.resources.map((r) => ({
+            productId: r.inventoryId,
+            quantity: r.quantity,
+            useSecondaryUnit: r.useSecondaryUnit,
+          }))
+        : service.products || [];
+
+      if (itemsToReturn.length === 0) continue;
+
+      for (const serviceProduct of itemsToReturn) {
+        const product = inventory.find(
+          (p) => p.id === serviceProduct.productId,
+        );
+
+        if (product) {
+          let quantityToReturn = serviceProduct.quantity;
+
+          // Lógica de conversão de unidade
+          if (
+            serviceProduct.useSecondaryUnit &&
+            product.conversionFactor &&
+            product.conversionFactor > 0
+          ) {
+            quantityToReturn =
+              serviceProduct.quantity / product.conversionFactor;
+          }
+
+          // Verificação de EPI/Reutilização
+          const isReusable = product.isShared === true;
+
+          if (aggregatedItems[product.id]) {
+            if (isReusable) {
+              aggregatedItems[product.id].quantity = Math.max(
+                aggregatedItems[product.id].quantity,
+                quantityToReturn,
+              );
+            } else {
+              aggregatedItems[product.id].quantity += quantityToReturn;
+            }
+          } else {
+            aggregatedItems[product.id] = {
+              quantity: quantityToReturn,
+              product: product,
+              name: product.name,
+              useSecondaryUnit: !!serviceProduct.useSecondaryUnit,
+            };
+          }
+        }
+      }
+    }
+
+    // 3. Processar a devolução dos itens agregados
+    for (const productId in aggregatedItems) {
+      const { quantity, product } = aggregatedItems[productId];
+      
+      console.log(`>>> [RETURN_INVENTORY] Estornando ${product.name}. Qtd: ${quantity}`);
+
+      await inventoryService.createTransaction({
+        productId: product.id,
+        type: "ENTRY",
+        quantity: quantity,
+        reason: "Reversão de status (Concluído -> Pendente)",
+        companyId: companyId,
+      });
+
+      updatedAny = true;
+    }
+
+    if (!updatedAny) {
+      return {
+        success: true,
+        message: "Nenhum produto vinculado a este serviço para devolver.",
+      };
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("inventoryUpdated"));
+    }
+
+    return {
+      success: true,
+      message: "Estoque atualizado (produtos devolvidos) com sucesso.",
+    };
+  } catch (error) {
+    console.error(">>> [RETURN_INVENTORY_ERROR]", error);
+    return {
+      success: false,
+      message: "Erro ao atualizar estoque no servidor.",
+    };
+  }
+}
+
+export async function calculateInventoryReturn(
+  serviceIds: string | string[],
+  companyId: string,
+): Promise<{ name: string; quantity: string }[]> {
+  const inventory = await inventoryService.list(companyId);
+  const settings = getSettingsFromStorage();
+  const ids = Array.isArray(serviceIds) ? serviceIds : [serviceIds];
+
+  // Mapa para agregar itens
+  const aggregatedItems: Record<
+    string,
+    { quantity: number; product: InventoryItem; unitLabel: string }
+  > = {};
+
+  for (const serviceId of ids) {
+    const service = settings.services.find((s: Service) => s.id === serviceId);
+    if (!service) continue;
+
+    const itemsToReturn = service.resources?.length
+      ? service.resources.map((r) => ({
+          productId: r.inventoryId,
+          quantity: r.quantity,
+          useSecondaryUnit: r.useSecondaryUnit,
+        }))
+      : service.products || [];
+
+    for (const req of itemsToReturn) {
+      const product = inventory.find((p) => p.id === req.productId);
+      if (!product) continue;
+
+      let quantityToReturn = req.quantity;
+      
+      // Normalizar para unidade primária se necessário
+      if (
+        req.useSecondaryUnit &&
+        product.conversionFactor &&
+        product.conversionFactor > 0
+      ) {
+        quantityToReturn = req.quantity / product.conversionFactor;
+      }
+
+      const isReusable = product.isShared === true;
+      // Sempre usamos a unidade primária para o cálculo agregado e exibição
+      // para garantir consistência com o backend
+      const unitLabel = product.unit;
+      
+      if (aggregatedItems[product.id]) {
+        if (isReusable) {
+          aggregatedItems[product.id].quantity = Math.max(
+            aggregatedItems[product.id].quantity,
+            quantityToReturn,
+          );
+        } else {
+          aggregatedItems[product.id].quantity += quantityToReturn;
+        }
+      } else {
+        aggregatedItems[product.id] = {
+          quantity: quantityToReturn,
+          product: product,
+          unitLabel: unitLabel,
+        };
+      }
+    }
+  }
+
+  return Object.values(aggregatedItems).map((item) => {
+    // Formatar quantidade para evitar muitas casas decimais se for float
+    const formattedQty = Number.isInteger(item.quantity) 
+      ? item.quantity.toString() 
+      : item.quantity.toFixed(2).replace(/\.?0+$/, "");
+      
+    console.log(
+      `>>> [CALC_RETURN] Item: ${item.product.name}, Display: ${formattedQty} ${item.unitLabel}`,
+    );
+    return {
+      name: item.product.name,
+      quantity: `${formattedQty} ${item.unitLabel}`,
+    };
+  });
 }

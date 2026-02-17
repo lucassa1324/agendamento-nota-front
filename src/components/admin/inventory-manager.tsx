@@ -7,9 +7,11 @@ import {
   Check,
   HelpCircle,
   History,
+  Loader2,
   Package,
   Pencil,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
 } from "lucide-react";
@@ -45,6 +47,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Table,
   TableBody,
@@ -92,13 +95,13 @@ export function InventoryManager() {
   const user = session?.user as SessionUser | undefined;
   const companyId = studio?.id || user?.businessId || user?.business?.id;
 
-  const fetchInventory = useCallback(async () => {
+  const fetchInventory = useCallback(async (forceRefresh = false) => {
     if (!companyId) return;
 
-    console.log(">>> [INVENTORY] Buscando itens para ID:", companyId);
+    console.log(">>> [INVENTORY] Buscando itens para ID:", companyId, forceRefresh ? "(Forçando Refresh)" : "");
     setIsLoadingItems(true);
     try {
-      const data = await inventoryService.list(companyId);
+      const data = await inventoryService.list(companyId, forceRefresh);
       console.log(">>> [INVENTORY] Dados recebidos do Back-end:", data);
       setInventory(data);
     } catch (error) {
@@ -115,6 +118,19 @@ export function InventoryManager() {
       fetchInventory();
     }
   }, [companyId, fetchInventory]);
+
+  // Sincronização de estoque via evento global (disparado por booking-data.ts)
+  useEffect(() => {
+    const handleInventoryUpdate = () => {
+      console.log(">>> [INVENTORY] Evento de atualização recebido. Recarregando...");
+      fetchInventory(true);
+    };
+
+    window.addEventListener("inventoryUpdated", handleInventoryUpdate);
+    return () => {
+      window.removeEventListener("inventoryUpdated", handleInventoryUpdate);
+    };
+  }, [fetchInventory]);
 
   useEffect(() => {
     if (showHistory) {
@@ -174,6 +190,7 @@ export function InventoryManager() {
     price: string;
     secondaryUnit?: string;
     conversionFactor?: string;
+    isShared?: boolean;
   }>({
     name: "",
     quantity: "",
@@ -182,6 +199,7 @@ export function InventoryManager() {
     price: "",
     secondaryUnit: "",
     conversionFactor: "",
+    isShared: false,
   });
 
   const handleAddItem = async () => {
@@ -219,6 +237,7 @@ export function InventoryManager() {
         conversionFactor: newItem.conversionFactor
           ? Number(newItem.conversionFactor)
           : undefined,
+        isShared: newItem.isShared,
       };
 
       // Limpeza estrita: Remove campos undefined ou strings vazias
@@ -248,6 +267,7 @@ export function InventoryManager() {
         price: "",
         secondaryUnit: "",
         conversionFactor: "",
+        isShared: false,
       });
       setShowAddForm(false);
       fetchInventory(); // Atualiza a lista
@@ -300,12 +320,13 @@ export function InventoryManager() {
         conversionFactor: editingItem.conversionFactor
           ? Number(editingItem.conversionFactor)
           : null,
+        isShared: editingItem.isShared,
       };
 
-      // Limpeza estrita: Remove campos undefined ou strings vazias (exceto nulls intencionais)
+      // Limpeza estrita: Remove campos undefined ou strings vazias (exceto nulls intencionais e booleanos)
       const payload = Object.fromEntries(
         Object.entries(rawPayload).filter(
-          ([_, v]) => v !== undefined && v !== "",
+          ([_, v]) => v !== undefined && v !== ""
         ),
       );
 
@@ -530,13 +551,28 @@ export function InventoryManager() {
             Controle de entrada e saída de produtos
           </p>
         </div>
-        <Button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="w-full sm:w-auto shrink-0 h-7 sm:h-9 text-[10px] sm:text-sm px-2 sm:px-3 mt-0.5 sm:mt-0"
-        >
-          <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-          Adicionar Produto
-        </Button>
+        <div className="flex w-full sm:w-auto gap-2">
+          <Button
+            variant="outline"
+            onClick={() => fetchInventory(true)}
+            disabled={isLoadingItems}
+            className="flex-1 sm:flex-none h-7 sm:h-9 text-[10px] sm:text-sm px-2 sm:px-3 mt-0.5 sm:mt-0"
+          >
+            {isLoadingItems ? (
+              <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin mr-1 sm:mr-2" />
+            ) : (
+              <RefreshCw className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            )}
+            Atualizar
+          </Button>
+          <Button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="flex-1 sm:flex-none h-7 sm:h-9 text-[10px] sm:text-sm px-2 sm:px-3 mt-0.5 sm:mt-0"
+          >
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+            Adicionar Produto
+          </Button>
+        </div>
       </div>
 
       {lowStockItems.length > 0 && (
@@ -1304,6 +1340,34 @@ export function InventoryManager() {
                       });
                     }}
                   />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="edit-is-shared">Item de uso compartilhado (EPI)</Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>
+                          Se ativado, este item será cobrado apenas uma vez por atendimento, mesmo que o cliente realize múltiplos serviços que o utilizem.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <div className="flex items-center h-10">
+                    <Switch
+                      id="edit-is-shared"
+                      checked={editingItem.isShared || false}
+                      onCheckedChange={(checked) =>
+                        setEditingItem({ ...editingItem, isShared: checked })
+                      }
+                      disabled={isSaving}
+                    />
+                    <Label htmlFor="edit-is-shared" className="ml-2 cursor-pointer">
+                      {editingItem.isShared ? "Sim" : "Não"}
+                    </Label>
+                  </div>
                 </div>
               </div>
             </TooltipProvider>

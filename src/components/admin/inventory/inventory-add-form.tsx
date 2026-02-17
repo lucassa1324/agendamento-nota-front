@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
@@ -26,6 +27,7 @@ interface InventoryAddFormProps {
     unit: string;
     secondaryUnit?: string;
     conversionFactor?: string;
+    isShared?: boolean;
   };
   setNewItem: (item: {
     name: string;
@@ -35,6 +37,7 @@ interface InventoryAddFormProps {
     unit: string;
     secondaryUnit?: string;
     conversionFactor?: string;
+    isShared?: boolean;
   }) => void;
   handleAddItem: () => void;
   setShowAddForm: (show: boolean) => void;
@@ -266,6 +269,35 @@ export function InventoryAddForm({
                   setNewItem({ ...newItem, conversionFactor: e.target.value })
                 }
               />
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Label htmlFor="is-shared">Item de uso compartilhado (EPI)</Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>
+                      Se ativado, este item será cobrado apenas uma vez por atendimento, mesmo que o cliente realize múltiplos serviços que o utilizem.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="flex items-center h-10">
+                <Switch
+                  id="is-shared"
+                  checked={newItem.isShared || false}
+                  onCheckedChange={(checked) =>
+                    setNewItem({ ...newItem, isShared: checked })
+                  }
+                  disabled={isLoading}
+                />
+                <Label htmlFor="is-shared" className="ml-2 cursor-pointer">
+                  {newItem.isShared ? "Sim" : "Não"}
+                </Label>
+              </div>
             </div>
           </div>
         </TooltipProvider>

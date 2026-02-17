@@ -5,6 +5,16 @@ import { format, parseISO } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,8 +32,9 @@ import {
   type Booking,
   type BookingStatus,
   getBookingsFromStorage,
-  subtractInventoryForServiceAsync,
+  calculateBookingResources,
 } from "@/lib/booking-data";
+import { type InventoryItem, inventoryService } from "@/lib/inventory-service";
 import { AdminBookingFlow } from "./admin-booking-flow";
 import { BookingCard } from "./bookings/booking-card";
 import { BookingEmptyState } from "./bookings/booking-empty-state";
@@ -57,9 +68,19 @@ const mapApiToBooking = (api: Appointment): Booking => {
     return map[status] || "pendente";
   };
 
+  // Extrair IDs de serviços adicionais das notas (Multi-Serviço)
+  let serviceIds: string[] = [api.serviceId];
+  if (api.notes) {
+    const match = api.notes.match(/IDs:\s*([\w\s,-]+)/);
+    if (match?.[1]) {
+      const extractedIds = match[1].split(',').map(id => id.trim()).filter(Boolean);
+      serviceIds = Array.from(new Set([...serviceIds, ...extractedIds]));
+    }
+  }
+
   return {
     id: api.id,
-    serviceId: api.serviceId,
+    serviceId: serviceIds.length > 1 ? serviceIds : serviceIds[0],
     serviceName: api.serviceNameSnapshot || "Serviço não informado",
     serviceDuration: durationMinutes,
     servicePrice: api.servicePriceSnapshot ? parseFloat(api.servicePriceSnapshot) : 0,
@@ -88,7 +109,9 @@ const mapStatusToApi = (status: BookingStatus): AppointmentStatus => {
 
 export function BookingsManager() {
   const { studio } = useStudio();
+  const services = studio?.services || [];
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [startDate, setStartDate] = useState<string>(() => {
     const now = new Date();
@@ -98,6 +121,12 @@ export function BookingsManager() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
   });
+  const [pendingReversion, setPendingReversion] = useState<{
+    bookingId: string;
+    newStatus: BookingStatus;
+    itemsToReturn: { name: string; quantity: string }[];
+  } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [filterName, setFilterName] = useState<string>("");
   const [filterTime, setFilterTime] = useState<string>("");
   const [filterDay, setFilterDay] = useState<string>("");
@@ -119,13 +148,27 @@ export function BookingsManager() {
   useEffect(() => {
     if (studio?.id) {
       loadBookings();
+      loadInventory();
     }
   }, [studio?.id, startDate, endDate]);
+
+  const loadInventory = async () => {
+    if (!studio?.id) return;
+    try {
+      const items = await inventoryService.list(studio.id, true);
+      setInventory(items);
+    } catch (error) {
+      console.error("Erro ao carregar estoque:", error);
+    }
+  };
 
   const loadBookings = async () => {
     if (!studio?.id) return;
 
     setIsLoading(true);
+    // Também recarrega o estoque para garantir sincronia
+    loadInventory();
+    
     try {
       // Converter YYYY-MM-DD para ISO UTC para o backend se necessário, 
       // ou enviar apenas a data se o backend aceitar. 
@@ -234,38 +277,13 @@ export function BookingsManager() {
     currentPage * itemsPerPage,
   );
 
-  const handleStatusChange = async (
+  const processStatusUpdate = async (
     bookingId: string,
-    newStatus: BookingStatus,
+    newStatus: BookingStatus
   ) => {
     try {
       const apiStatus = mapStatusToApi(newStatus);
       await appointmentService.updateStatus(bookingId, apiStatus);
-
-      // Se o status for concluído, subtrair produtos do estoque
-      if (newStatus === "concluído") {
-        const booking = bookings.find((b) => b.id === bookingId);
-        if (booking && studio?.id) {
-          // Usar a versão assíncrona que chama a API
-          const result = await subtractInventoryForServiceAsync(
-            booking.serviceId,
-            studio.id,
-          );
-          if (result.success) {
-            toast({
-              title: "Estoque atualizado",
-              description: result.message,
-            });
-          } else {
-            // Se falhar a subtração via API, avisamos mas não impedimos a conclusão
-            toast({
-              title: "Aviso de estoque",
-              description: result.message,
-              variant: "destructive",
-            });
-          }
-        }
-      }
 
       await loadBookings();
 
@@ -281,6 +299,41 @@ export function BookingsManager() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleStatusChange = async (
+    bookingId: string,
+    newStatus: BookingStatus
+  ) => {
+    const booking = bookings.find((b) => b.id === bookingId);
+    if (!booking) return;
+
+    // Lógica de reversão de estoque: Concluído -> Pendente
+    if (booking.status === "concluído" && newStatus === "pendente") {
+      // Backend: "Zero Cálculo". Apenas gatilhamos a ação.
+      // A lista de itens retornados será calculada pelo backend baseado no histórico de logs.
+      setPendingReversion({ bookingId, newStatus, itemsToReturn: [] });
+      return;
+    }
+
+    setIsProcessing(true);
+    await processStatusUpdate(bookingId, newStatus);
+    setIsProcessing(false);
+  };
+
+  const handleConfirmReversion = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!pendingReversion) return;
+
+    setIsProcessing(true);
+
+    const { bookingId, newStatus } = pendingReversion;
+    
+    // O Backend lida com a lógica de estorno ao receber o status PENDING
+    await processStatusUpdate(bookingId, newStatus);
+    
+    setPendingReversion(null);
+    setIsProcessing(false);
   };
 
   const handleDelete = async (bookingId: string) => {
@@ -374,6 +427,8 @@ export function BookingsManager() {
             <BookingCard
               key={booking.id}
               booking={booking}
+              inventory={inventory}
+              services={services}
               getStatusBadge={getStatusBadge}
               handleStatusChange={handleStatusChange}
               handleDelete={handleDelete}
@@ -426,6 +481,37 @@ export function BookingsManager() {
           });
         }}
       />
+
+      <AlertDialog
+        open={!!pendingReversion}
+        onOpenChange={(open) => !open && setPendingReversion(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reverter Atendimento?</AlertDialogTitle>
+            <AlertDialogDescription asChild className="space-y-4">
+              <div>
+                <p>
+                  Ao voltar este serviço para pendente, o saldo de insumos consumidos 
+                  será estornado automaticamente para o estoque com base no histórico de uso.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isProcessing}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleConfirmReversion}
+              disabled={isProcessing}
+            >
+              {isProcessing ? "Processando..." : "Confirmar Reversão"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -22,6 +22,7 @@ export interface InventoryItem {
   unit: string;
   secondaryUnit?: string;
   conversionFactor?: number;
+  isShared?: boolean;
   price: number;
   unitPrice?: number;
   lastUpdate: string;
@@ -68,8 +69,11 @@ class InventoryService {
     return response.json();
   }
 
-  async list(companyId: string): Promise<InventoryItem[]> {
-    const response = await customFetch(`${this.baseUrl}/company/${companyId}`);
+  async list(companyId: string, forceRefresh = false): Promise<InventoryItem[]> {
+    const url = forceRefresh 
+      ? `${this.baseUrl}/company/${companyId}?t=${Date.now()}` 
+      : `${this.baseUrl}/company/${companyId}`;
+    const response = await customFetch(url);
     return this.handleResponse(response);
   }
 

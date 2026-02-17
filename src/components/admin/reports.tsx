@@ -393,6 +393,16 @@ export function Reports() {
 
   useEffect(() => {
     generateReports();
+
+    const handleUpdate = () => {
+      console.log(">>> [REPORTS] Atualizando relatório devido a mudança no estoque");
+      generateReports();
+    };
+
+    window.addEventListener("inventoryUpdated", handleUpdate);
+    return () => {
+      window.removeEventListener("inventoryUpdated", handleUpdate);
+    };
   }, [generateReports]);
 
   const COLORS = ["#d4a574", "#8b6f47", "#c9956e", "#a67c52", "#b8936a"];
