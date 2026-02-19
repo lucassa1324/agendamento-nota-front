@@ -12,8 +12,8 @@ export const API_BASE_URL =
 
 // Configura a URL base do Better Auth
 // O Better-Auth EXIGE uma URL absoluta no baseURL para funcionar corretamente no client-side.
-// Mesmo usando Rewrites no Next.js, o client precisa saber a origem absoluta.
-export const AUTH_BASE_URL = `${API_BASE_URL}/api/auth`;
+// IMPORTANTE: Não adicionar "/api/auth" aqui, pois o cliente do Better Auth já adiciona automaticamente.
+export const AUTH_BASE_URL = API_BASE_URL;
 
 console.log(">>> [AUTH_CLIENT] API_BASE_URL configurada como:", API_BASE_URL);
 console.log(">>> [AUTH_CLIENT] AUTH_BASE_URL configurada como:", AUTH_BASE_URL);

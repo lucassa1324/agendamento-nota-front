@@ -1,8 +1,8 @@
 "use client";
 
+import { differenceInDays } from "date-fns";
 import { Calendar, Clock, DollarSign, TrendingUp, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { differenceInDays } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import { appointmentService } from "@/lib/api-appointments";
