@@ -16,7 +16,7 @@ import { businessService } from "@/lib/business-service";
 export function DashboardStats() {
   const { studio } = useStudio();
   const { data: session } = useSession();
-  const [sessionData, setSessionData] = useState<any | null>(null);
+  const [sessionData, setSessionData] = useState<typeof authClient.$Infer.Session | null>(null);
   const [billingError, setBillingError] = useState(false);
   const [stats, setStats] = useState({
     totalBookings: 0,
@@ -149,7 +149,10 @@ export function DashboardStats() {
     
     // Tenta pegar da sessão atualizada (fetch) ou do hook (cache), igual ao TrialBanner
     const currentSession = sessionData || session;
-    const userBusiness = currentSession?.user?.business as { daysLeft?: number; slug?: string; trialEndsAt?: string } | undefined;
+    const userWithBusiness = currentSession?.user as
+      | { business?: { daysLeft?: number; slug?: string; trialEndsAt?: string } }
+      | undefined;
+    const userBusiness = userWithBusiness?.business;
     const isOwner = userBusiness?.slug === studio.slug;
     
     if (isOwner && typeof userBusiness?.daysLeft === 'number') {
