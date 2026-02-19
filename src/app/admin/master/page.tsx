@@ -1,33 +1,34 @@
 "use client";
 
-import { 
+import {
   Activity,
-  AlertTriangle, 
+  AlertTriangle,
   Calendar,
-  CalendarDays, 
+  CalendarDays,
   CheckCircle2,
+  CreditCard,
   ExternalLink,
   Info,
   KeyRound,
   MoreHorizontal,
   Pencil,
-  Power, 
-  Search, 
+  Power,
+  Search,
   ShieldAlert,
   Store,
   Trash2,
-  Users
+  Users,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
-import { 
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -35,25 +36,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuPortal,
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@/lib/api-client";
@@ -96,6 +97,17 @@ interface UserDetails {
     lastLogin: string | null;
     loginCount: number;
   };
+  financial?: {
+    status: string;
+    nextInvoiceDate: string | null;
+    lastPaymentDate: string | null;
+    history: Array<{
+      id: string;
+      value: number;
+      dueDate: string;
+      status: string;
+    }>;
+  };
 }
 
 interface MasterStats {
@@ -112,12 +124,12 @@ export default function MasterDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
-  
+
   // Estados para Edição de Email
   const [editingUser, setEditingUser] = useState<UserMasterData | null>(null);
   const [newEmail, setNewEmail] = useState("");
   const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
-  
+
   // Estados para Exclusão de Conta
   const [userToDelete, setUserToDelete] = useState<UserMasterData | null>(null);
   const [confirmCode, setConfirmCode] = useState("");
@@ -146,9 +158,12 @@ export default function MasterDashboardPage() {
     setIsLoading(true);
     try {
       // 1. Buscar Estatísticas
-      const statsRes = await customFetch(`${API_BASE_URL}/api/admin/master/stats`, {
-        credentials: "include",
-      });
+      const statsRes = await customFetch(
+        `${API_BASE_URL}/api/admin/master/stats`,
+        {
+          credentials: "include",
+        },
+      );
       if (statsRes.status === 403) return handleForbidden();
       if (statsRes.ok) {
         const statsData = await statsRes.json();
@@ -156,13 +171,16 @@ export default function MasterDashboardPage() {
       }
 
       // 2. Buscar Usuários e Estúdios
-      const usersRes = await customFetch(`${API_BASE_URL}/api/admin/master/users`, {
-        credentials: "include",
-        headers: { "Accept": "application/json" },
-      });
+      const usersRes = await customFetch(
+        `${API_BASE_URL}/api/admin/master/users`,
+        {
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        },
+      );
       if (usersRes.status === 403) return handleForbidden();
       if (!usersRes.ok) throw new Error("Falha ao buscar usuários");
-      
+
       const usersData = await usersRes.json();
       setUsers(usersData);
     } catch (error) {
@@ -185,29 +203,32 @@ export default function MasterDashboardPage() {
     try {
       const { id, active: currentStatus } = user;
       const targetId = user.companyId || user.businessId;
-      
-      console.log('>>> [MASTER_ADMIN] ID enviado:', targetId);
 
-      const response = await customFetch(`${API_BASE_URL}/api/admin/master/users/${id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ 
-          active: !currentStatus,
-          companyId: targetId 
-        }),
-      });
+      console.log(">>> [MASTER_ADMIN] ID enviado:", targetId);
+
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/users/${id}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            active: !currentStatus,
+            companyId: targetId,
+          }),
+        },
+      );
 
       if (response.status === 403) return handleForbidden();
       if (!response.ok) throw new Error("Falha ao atualizar status");
 
-      setUsers(prev => 
-        prev.map(u => u.id === id ? { ...u, active: !currentStatus } : u)
+      setUsers((prev) =>
+        prev.map((u) => (u.id === id ? { ...u, active: !currentStatus } : u)),
       );
 
       toast({
         title: "Status Atualizado",
-        description: `Usuário ${!currentStatus ? 'ativado' : 'desativado'} com sucesso.`,
+        description: `Usuário ${!currentStatus ? "ativado" : "desativado"} com sucesso.`,
       });
     } catch (error) {
       console.error(">>> [MASTER_ADMIN] Erro ao atualizar status:", error);
@@ -221,35 +242,43 @@ export default function MasterDashboardPage() {
 
   const handleUpdateEmail = async () => {
     if (!editingUser || !newEmail) return;
-    
+
     setIsUpdatingEmail(true);
     try {
-      const response = await customFetch(`${API_BASE_URL}/api/admin/master/users/${editingUser.id}/email`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: newEmail }),
-      });
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/users/${editingUser.id}/email`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ email: newEmail }),
+        },
+      );
 
       if (response.status === 403) return handleForbidden();
-      
+
       const result = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(result.error || "Erro ao atualizar email");
       }
 
-      setUsers(prev => 
-        prev.map(u => u.id === editingUser.id ? { ...u, email: newEmail } : u)
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === editingUser.id ? { ...u, email: newEmail } : u,
+        ),
       );
 
-      toast({ 
-        title: "Sucesso", 
-        description: "Email atualizado com sucesso." 
+      toast({
+        title: "Sucesso",
+        description: "Email atualizado com sucesso.",
       });
       setEditingUser(null);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "O email pode já estar em uso.";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "O email pode já estar em uso.";
       toast({
         title: "Erro na Atualização",
         description: errorMessage,
@@ -265,10 +294,13 @@ export default function MasterDashboardPage() {
 
     setIsDeleting(true);
     try {
-      const response = await customFetch(`${API_BASE_URL}/api/admin/master/users/${userToDelete.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/users/${userToDelete.id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        },
+      );
 
       if (response.status === 403) return handleForbidden();
 
@@ -277,27 +309,36 @@ export default function MasterDashboardPage() {
         throw new Error(result.error || "Erro ao excluir usuário");
       }
 
-      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
-      
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete.id));
+
       // Atualiza estatísticas também
       if (stats) {
         setStats({
           ...stats,
           totalUsers: stats.totalUsers - 1,
-          totalCompanies: userToDelete.companyId ? stats.totalCompanies - 1 : stats.totalCompanies,
-          activeCompanies: userToDelete.active && userToDelete.companyId ? stats.activeCompanies - 1 : stats.activeCompanies,
+          totalCompanies: userToDelete.companyId
+            ? stats.totalCompanies - 1
+            : stats.totalCompanies,
+          activeCompanies:
+            userToDelete.active && userToDelete.companyId
+              ? stats.activeCompanies - 1
+              : stats.activeCompanies,
         });
       }
 
       toast({
         title: "Usuário Excluído",
-        description: "A conta e todos os dados vinculados foram removidos permanentemente.",
+        description:
+          "A conta e todos os dados vinculados foram removidos permanentemente.",
       });
-      
+
       setUserToDelete(null);
       setConfirmCode("");
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Erro ao tentar excluir a conta.";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Erro ao tentar excluir a conta.";
       toast({
         title: "Erro na Exclusão",
         description: errorMessage,
@@ -320,13 +361,16 @@ export default function MasterDashboardPage() {
 
     setIsResetting(true);
     try {
-      const response = await customFetch(`${API_BASE_URL}/api/admin/master/users/${userToReset.id}/reset-password`, {
-        method: "POST",
-        credentials: "include",
-      });
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/users/${userToReset.id}/reset-password`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
 
       if (response.status === 403) return handleForbidden();
-      
+
       if (!response.ok) {
         const result = await response.json();
         throw new Error(result.error || "Erro ao resetar senha");
@@ -338,7 +382,8 @@ export default function MasterDashboardPage() {
       });
       setUserToReset(null);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Erro ao resetar senha.";
+      const errorMessage =
+        error instanceof Error ? error.message : "Erro ao resetar senha.";
       toast({
         title: "Erro no Reset",
         description: errorMessage,
@@ -353,18 +398,38 @@ export default function MasterDashboardPage() {
     setViewingUser(user);
     setIsLoadingDetails(true);
     setUserDetails(null);
-    
+
     try {
-      const response = await customFetch(`${API_BASE_URL}/api/admin/master/users/${user.id}/details`, {
-        credentials: "include",
-      });
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/users/${user.id}/details`,
+        {
+          credentials: "include",
+        },
+      );
 
       if (response.status === 403) return handleForbidden();
-      
+
       if (!response.ok) throw new Error("Falha ao buscar detalhes");
-      
+
       const data = await response.json();
-      setUserDetails(data);
+
+      // Buscar dados financeiros
+      let financialData: UserDetails["financial"] | undefined;
+      try {
+        const finRes = await customFetch(
+          `${API_BASE_URL}/api/admin/financial-details?email=${user.email}`,
+          {
+            credentials: "include",
+          },
+        );
+        if (finRes.ok) {
+          financialData = await finRes.json();
+        }
+      } catch (error) {
+        console.error("Erro ao buscar dados financeiros:", error);
+      }
+
+      setUserDetails({ ...data, financial: financialData });
     } catch (error) {
       console.error(">>> [MASTER_ADMIN] Erro ao carregar detalhes:", error);
       toast({
@@ -377,60 +442,69 @@ export default function MasterDashboardPage() {
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (u.companyName?.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredUsers = users.filter(
+    (u) =>
+      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      u.companyName?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       {/* Cabeçalho */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Painel de Controle Master</h1>
-        <p className="text-muted-foreground">Gerencie todos os usuários e estúdios da plataforma.</p>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Painel de Controle Master
+        </h1>
+        <p className="text-muted-foreground">
+          Gerencie todos os usuários e estúdios da plataforma.
+        </p>
       </div>
 
       {/* Cards de Estatísticas */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total de Usuários
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalUsers ?? "..."}</div>
+            <div className="text-2xl font-bold">
+              {stats?.totalUsers ?? "..."}
+            </div>
             <p className="text-xs text-muted-foreground">Contas registradas</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Estúdios Ativos</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Estúdios Ativos
+            </CardTitle>
             <Store className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.activeCompanies ?? "..."}</div>
-            <p className="text-xs text-muted-foreground">de {stats?.totalCompanies ?? "..."} totais</p>
+            <div className="text-2xl font-bold">
+              {stats?.activeCompanies ?? "..."}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              de {stats?.totalCompanies ?? "..."} totais
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Agendamentos</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total de Agendamentos
+            </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats?.totalAppointments ?? "..."}</div>
+            <div className="text-2xl font-bold">
+              {stats?.totalAppointments ?? "..."}
+            </div>
             <p className="text-xs text-muted-foreground">Em toda a rede</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Status do Sistema</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">Operacional</div>
-            <p className="text-xs text-muted-foreground">Back-end conectado</p>
           </CardContent>
         </Card>
       </div>
@@ -485,21 +559,27 @@ export default function MasterDashboardPage() {
                   </TableRow>
                 ) : (
                   filteredUsers.map((user) => (
-                    <TableRow 
-                      key={user.id} 
+                    <TableRow
+                      key={user.id}
                       className="cursor-pointer hover:bg-slate-50/50"
                       onClick={() => fetchUserDetails(user)}
                     >
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium">{user.name}</span>
-                          <span className="text-xs text-muted-foreground">{user.email}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {user.email}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${ 
-                          user.role === 'SUPER_ADMIN' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-700' 
-                        }`}>
+                        <span
+                          className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                            user.role === "SUPER_ADMIN"
+                              ? "bg-purple-100 text-purple-700"
+                              : "bg-slate-100 text-slate-700"
+                          }`}
+                        >
                           {user.role}
                         </span>
                       </TableCell>
@@ -507,7 +587,7 @@ export default function MasterDashboardPage() {
                         {user.companyName ? (
                           <div className="flex items-center space-x-1">
                             <span>{user.companyName}</span>
-                            <a 
+                            <a
                               href={`/admin/${user.companySlug}/dashboard/overview`}
                               target="_blank"
                               rel="noreferrer"
@@ -517,28 +597,30 @@ export default function MasterDashboardPage() {
                             </a>
                           </div>
                         ) : (
-                          <span className="text-muted-foreground text-xs italic">Sem estúdio</span>
+                          <span className="text-muted-foreground text-xs italic">
+                            Sem estúdio
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="text-xs">
-                        {new Date(user.createdAt).toLocaleDateString('pt-BR')}
+                        {new Date(user.createdAt).toLocaleDateString("pt-BR")}
                       </TableCell>
                       <TableCell className="text-center">
                         <div className="flex justify-center">
-                          <Switch 
+                          <Switch
                             checked={user.active}
                             onCheckedChange={() => toggleUserStatus(user)}
                             onClick={(e) => e.stopPropagation()}
-                            disabled={user.role === 'SUPER_ADMIN'} // Não permite desativar a si mesmo ou outros masters
+                            disabled={user.role === "SUPER_ADMIN"} // Não permite desativar a si mesmo ou outros masters
                           />
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end items-center gap-1">
-                          {user.role !== 'SUPER_ADMIN' && (
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
+                          {user.role !== "SUPER_ADMIN" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               type="button"
                               className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
                               onClick={(e) => {
@@ -551,71 +633,77 @@ export default function MasterDashboardPage() {
                             </Button>
                           )}
                           <DropdownMenu>
-                            <DropdownMenuTrigger 
+                            <DropdownMenuTrigger
                               className="p-2 hover:bg-slate-100 rounded-full transition-colors outline-none"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <MoreHorizontal className="h-4 w-4" />
                             </DropdownMenuTrigger>
-                              <DropdownMenuPortal>
-                                <DropdownMenuContent 
-                                  align="end" 
-                                  style={{ zIndex: 99999 }}
-                                  onClick={(e) => e.stopPropagation()}
+                            <DropdownMenuPortal>
+                              <DropdownMenuContent
+                                align="end"
+                                style={{ zIndex: 99999 }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                                <DropdownMenuItem
+                                  className="cursor-pointer"
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setEditingUser(user);
+                                    setNewEmail(user.email);
+                                  }}
                                 >
-                                  <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                                  <DropdownMenuItem 
-                                    className="cursor-pointer"
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      setEditingUser(user);
-                                      setNewEmail(user.email);
-                                    }}
-                                  >
-                                    <Pencil className="mr-2 h-4 w-4" /> Editar Email
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    className="cursor-pointer"
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      setUserToReset(user);
-                                    }}
-                                  >
-                                    <KeyRound className="mr-2 h-4 w-4" /> Resetar Senha
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    className="cursor-pointer"
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      fetchUserDetails(user);
-                                    }}
-                                  >
-                                    <Info className="mr-2 h-4 w-4" /> Ver Detalhes (Raio-X)
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem 
-                                    className="text-red-600 cursor-pointer"
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      toggleUserStatus(user);
-                                    }}
-                                  >
-                                    <Power className="mr-2 h-4 w-4" /> 
-                                    {user.active ? "Desativar Conta" : "Ativar Conta"}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
-                                    className="text-red-600 focus:text-red-600 cursor-pointer font-semibold"
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      openDeleteModal(user);
-                                    }}
-                                    disabled={user.role === 'SUPER_ADMIN'}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" /> Excluir permanentemente
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenuPortal>
+                                  <Pencil className="mr-2 h-4 w-4" /> Editar
+                                  Email
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="cursor-pointer"
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setUserToReset(user);
+                                  }}
+                                >
+                                  <KeyRound className="mr-2 h-4 w-4" /> Resetar
+                                  Senha
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="cursor-pointer"
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    fetchUserDetails(user);
+                                  }}
+                                >
+                                  <Info className="mr-2 h-4 w-4" /> Ver Detalhes
+                                  (Raio-X)
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-red-600 cursor-pointer"
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    toggleUserStatus(user);
+                                  }}
+                                >
+                                  <Power className="mr-2 h-4 w-4" />
+                                  {user.active
+                                    ? "Desativar Conta"
+                                    : "Ativar Conta"}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-red-600 focus:text-red-600 cursor-pointer font-semibold"
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    openDeleteModal(user);
+                                  }}
+                                  disabled={user.role === "SUPER_ADMIN"}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                  permanentemente
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenuPortal>
                           </DropdownMenu>
                         </div>
                       </TableCell>
@@ -629,7 +717,10 @@ export default function MasterDashboardPage() {
       </Card>
 
       {/* Modal de Reset de Senha */}
-      <Dialog open={!!userToReset} onOpenChange={(open) => !open && setUserToReset(null)}>
+      <Dialog
+        open={!!userToReset}
+        onOpenChange={(open) => !open && setUserToReset(null)}
+      >
         <DialogContent className="sm:max-w-md" style={{ zIndex: 100000 }}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -637,23 +728,36 @@ export default function MasterDashboardPage() {
               Resetar Senha
             </DialogTitle>
             <DialogDescription>
-              Você está prestes a resetar a senha do usuário <strong>{userToReset?.name}</strong>.
+              Você está prestes a resetar a senha do usuário{" "}
+              <strong>{userToReset?.name}</strong>.
             </DialogDescription>
           </DialogHeader>
           <div className="bg-amber-50 border border-amber-200 p-4 rounded-md text-amber-800 text-sm space-y-2">
             <p className="font-semibold flex items-center gap-1">
               <ShieldAlert className="h-4 w-4" /> Importante:
             </p>
-            <p>A nova senha será definida como: <code className="bg-amber-200 px-1 rounded font-bold">Mudar@123</code></p>
-            <p>O usuário deverá alterar essa senha assim que fizer o primeiro acesso.</p>
+            <p>
+              A nova senha será definida como:{" "}
+              <code className="bg-amber-200 px-1 rounded font-bold">
+                Mudar@123
+              </code>
+            </p>
+            <p>
+              O usuário deverá alterar essa senha assim que fizer o primeiro
+              acesso.
+            </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setUserToReset(null)} disabled={isResetting}>
+            <Button
+              variant="outline"
+              onClick={() => setUserToReset(null)}
+              disabled={isResetting}
+            >
               Cancelar
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleResetPassword} 
+            <Button
+              variant="destructive"
+              onClick={handleResetPassword}
               disabled={isResetting}
               className="bg-amber-600 hover:bg-amber-700 border-none"
             >
@@ -664,8 +768,14 @@ export default function MasterDashboardPage() {
       </Dialog>
 
       {/* Modal de Detalhes (Raio-X) */}
-      <Dialog open={!!viewingUser} onOpenChange={(open) => !open && setViewingUser(null)}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" style={{ zIndex: 100000 }}>
+      <Dialog
+        open={!!viewingUser}
+        onOpenChange={(open) => !open && setViewingUser(null)}
+      >
+        <DialogContent
+          className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
+          style={{ zIndex: 100000 }}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-2xl">
               <Activity className="h-6 w-6 text-blue-500" />
@@ -679,30 +789,53 @@ export default function MasterDashboardPage() {
           {isLoadingDetails ? (
             <div className="py-12 flex flex-col items-center justify-center space-y-4">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <p className="text-muted-foreground animate-pulse">Consultando base de dados...</p>
+              <p className="text-muted-foreground animate-pulse">
+                Consultando base de dados...
+              </p>
             </div>
           ) : userDetails ? (
             <div className="space-y-6 py-4">
               {/* Seção de Perfil */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Nome Completo</Label>
-                  <p className="font-semibold text-lg">{userDetails?.user?.name}</p>
+                  <Label className="text-xs text-muted-foreground uppercase">
+                    Nome Completo
+                  </Label>
+                  <p className="font-semibold text-lg">
+                    {userDetails?.user?.name}
+                  </p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Email de Acesso</Label>
+                  <Label className="text-xs text-muted-foreground uppercase">
+                    Email de Acesso
+                  </Label>
                   <p className="font-semibold">{userDetails?.user?.email}</p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Status da Conta</Label>
+                  <Label className="text-xs text-muted-foreground uppercase">
+                    Status da Conta
+                  </Label>
                   <div className="flex items-center gap-2">
-                    <span className={`h-2 w-2 rounded-full ${userDetails?.user?.active ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                    <span className="font-medium">{userDetails?.user?.active ? 'Ativo' : 'Suspenso'}</span>
+                    <span
+                      className={`h-2 w-2 rounded-full ${userDetails?.user?.active ? "bg-green-500" : "bg-red-500"}`}
+                    ></span>
+                    <span className="font-medium">
+                      {userDetails?.user?.active ? "Ativo" : "Suspenso"}
+                    </span>
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground uppercase">Membro desde</Label>
-                  <p className="font-medium">{userDetails?.user?.createdAt ? new Date(userDetails.user.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'}</p>
+                  <Label className="text-xs text-muted-foreground uppercase">
+                    Membro desde
+                  </Label>
+                  <p className="font-medium">
+                    {userDetails?.user?.createdAt
+                      ? new Date(userDetails.user.createdAt).toLocaleDateString(
+                          "pt-BR",
+                          { day: "2-digit", month: "long", year: "numeric" },
+                        )
+                      : "-"}
+                  </p>
                 </div>
               </div>
 
@@ -717,24 +850,33 @@ export default function MasterDashboardPage() {
                 {userDetails?.business ? (
                   <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground uppercase">Nome do Estúdio</Label>
-                      <p className="font-semibold">{userDetails?.business?.name}</p>
+                      <Label className="text-xs text-muted-foreground uppercase">
+                        Nome do Estúdio
+                      </Label>
+                      <p className="font-semibold">
+                        {userDetails?.business?.name}
+                      </p>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground uppercase">Slug / URL</Label>
-                      <a 
-                        href={`https://${userDetails?.business?.slug}.seusistema.com`} 
-                        target="_blank" 
+                      <Label className="text-xs text-muted-foreground uppercase">
+                        Slug / URL
+                      </Label>
+                      <a
+                        href={`https://${userDetails?.business?.slug}.seusistema.com`}
+                        target="_blank"
                         rel="noreferrer"
                         className="font-medium text-blue-600 flex items-center gap-1 hover:underline"
                       >
-                        {userDetails?.business?.slug} <ExternalLink className="h-3 w-3" />
+                        {userDetails?.business?.slug}{" "}
+                        <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
                   </div>
                 ) : (
                   <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-300 text-center">
-                    <p className="text-sm text-muted-foreground italic">Este usuário ainda não possui um estúdio vinculado.</p>
+                    <p className="text-sm text-muted-foreground italic">
+                      Este usuário ainda não possui um estúdio vinculado.
+                    </p>
                   </div>
                 )}
               </div>
@@ -748,20 +890,32 @@ export default function MasterDashboardPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <Card className="bg-blue-50/30 border-blue-100">
                     <CardContent className="pt-4 text-center">
-                      <p className="text-2xl font-bold text-blue-700">{userDetails?.stats?.totalAppointments}</p>
-                      <p className="text-[10px] text-blue-600 uppercase font-bold">Agendamentos</p>
+                      <p className="text-2xl font-bold text-blue-700">
+                        {userDetails?.stats?.totalAppointments}
+                      </p>
+                      <p className="text-[10px] text-blue-600 uppercase font-bold">
+                        Agendamentos
+                      </p>
                     </CardContent>
                   </Card>
                   <Card className="bg-slate-50 border-slate-200">
                     <CardContent className="pt-4 text-center">
-                      <p className="text-2xl font-bold text-slate-700">{userDetails?.stats?.totalServices}</p>
-                      <p className="text-[10px] text-slate-600 uppercase font-bold">Serviços</p>
+                      <p className="text-2xl font-bold text-slate-700">
+                        {userDetails?.stats?.totalServices}
+                      </p>
+                      <p className="text-[10px] text-slate-600 uppercase font-bold">
+                        Serviços
+                      </p>
                     </CardContent>
                   </Card>
                   <Card className="bg-slate-50 border-slate-200">
                     <CardContent className="pt-4 text-center">
-                      <p className="text-2xl font-bold text-slate-700">{userDetails?.stats?.totalEmployees}</p>
-                      <p className="text-[10px] text-slate-600 uppercase font-bold">Equipe</p>
+                      <p className="text-2xl font-bold text-slate-700">
+                        {userDetails?.stats?.totalEmployees}
+                      </p>
+                      <p className="text-[10px] text-slate-600 uppercase font-bold">
+                        Equipe
+                      </p>
                     </CardContent>
                   </Card>
                 </div>
@@ -774,17 +928,151 @@ export default function MasterDashboardPage() {
                     <ShieldAlert className="h-5 w-5 text-slate-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-400 uppercase font-bold">Último Acesso</p>
+                    <p className="text-xs text-slate-400 uppercase font-bold">
+                      Último Acesso
+                    </p>
                     <p className="text-sm font-medium">
-                      {userDetails?.auth?.lastLogin 
-                        ? new Date(userDetails?.auth?.lastLogin).toLocaleString('pt-BR') 
-                        : 'Nunca acessou'}
+                      {userDetails?.auth?.lastLogin
+                        ? new Date(userDetails?.auth?.lastLogin).toLocaleString(
+                            "pt-BR",
+                          )
+                        : "Nunca acessou"}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-slate-400 uppercase font-bold">Total Logins</p>
-                  <p className="text-xl font-bold text-blue-400">{userDetails?.auth?.loginCount}</p>
+                  <p className="text-xs text-slate-400 uppercase font-bold">
+                    Total Logins
+                  </p>
+                  <p className="text-xl font-bold text-blue-400">
+                    {userDetails?.auth?.loginCount}
+                  </p>
+                </div>
+              </div>
+
+              <DropdownMenuSeparator />
+
+              {/* Seção Financeira */}
+              <div className="space-y-4">
+                <h4 className="font-bold flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-blue-500" />
+                  Financeiro (Asaas)
+                </h4>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground uppercase">
+                        Status Assinatura
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-bold ${
+                            userDetails?.financial?.status === "Ativo"
+                              ? "bg-green-100 text-green-700"
+                              : userDetails?.financial?.status === "Vencido"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {userDetails?.financial?.status || "Não identificado"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground uppercase">
+                        Próxima Fatura
+                      </Label>
+                      <p className="font-medium">
+                        {userDetails?.financial?.nextInvoiceDate
+                          ? new Date(
+                              userDetails.financial.nextInvoiceDate,
+                            ).toLocaleDateString("pt-BR")
+                          : "-"}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground uppercase">
+                        Último Pagamento
+                      </Label>
+                      <p className="font-medium">
+                        {userDetails?.financial?.lastPaymentDate
+                          ? new Date(
+                              userDetails.financial.lastPaymentDate,
+                            ).toLocaleDateString("pt-BR")
+                          : "-"}
+                      </p>
+                    </div>
+                    <div className="flex items-end">
+                      {!userDetails?.user?.active && (
+                        <Button
+                          size="sm"
+                          className="w-full bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            if (viewingUser) {
+                              toggleUserStatus(viewingUser);
+                              // Atualiza localmente o modal para refletir a mudança
+                              setUserDetails((prev) =>
+                                prev
+                                  ? {
+                                      ...prev,
+                                      user: { ...prev.user, active: true },
+                                    }
+                                  : null,
+                              );
+                            }
+                          }}
+                        >
+                          <CheckCircle2 className="mr-2 h-4 w-4" />
+                          Conceder Acesso Manual
+                        </Button>
+                      )}
+                      {userDetails?.user?.active && (
+                        <div className="text-xs text-green-600 flex items-center font-medium">
+                          <CheckCircle2 className="mr-1 h-3 w-3" /> Acesso
+                          Liberado
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {userDetails?.financial?.history &&
+                    userDetails.financial.history.length > 0 && (
+                      <div className="pt-2 border-t border-slate-200">
+                        <Label className="text-xs text-muted-foreground uppercase mb-2 block">
+                          Histórico Recente
+                        </Label>
+                        <div className="space-y-2">
+                          {userDetails.financial.history.map((payment) => (
+                            <div
+                              key={payment.id}
+                              className="flex justify-between text-sm items-center bg-white p-2 rounded border border-slate-100"
+                            >
+                              <span className="font-medium">
+                                R$ {payment.value.toFixed(2)}
+                              </span>
+                              <span className="text-slate-500 text-xs">
+                                {new Date(payment.dueDate).toLocaleDateString(
+                                  "pt-BR",
+                                )}
+                              </span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                  payment.status === "RECEIVED" ||
+                                  payment.status === "CONFIRMED"
+                                    ? "bg-green-100 text-green-700"
+                                    : payment.status === "OVERDUE"
+                                      ? "bg-red-100 text-red-700"
+                                      : "bg-yellow-100 text-yellow-700"
+                                }`}
+                              >
+                                {payment.status}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                 </div>
               </div>
             </div>
@@ -799,8 +1087,8 @@ export default function MasterDashboardPage() {
               Fechar Raio-X
             </Button>
             {viewingUser && (
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className="text-red-500 hover:text-red-600 hover:bg-red-50"
                 onClick={() => {
                   setViewingUser(null);
@@ -815,12 +1103,16 @@ export default function MasterDashboardPage() {
       </Dialog>
 
       {/* Modal de Edição de Email */}
-      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+      <Dialog
+        open={!!editingUser}
+        onOpenChange={(open) => !open && setEditingUser(null)}
+      >
         <DialogContent className="sm:max-w-106.25" style={{ zIndex: 100000 }}>
           <DialogHeader>
             <DialogTitle>Editar Email de Acesso</DialogTitle>
             <DialogDescription>
-              Altere o email do usuário <strong>{editingUser?.name}</strong>. Isso mudará o login dele.
+              Altere o email do usuário <strong>{editingUser?.name}</strong>.
+              Isso mudará o login dele.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -837,18 +1129,28 @@ export default function MasterDashboardPage() {
                 placeholder="exemplo@email.com"
               />
             </div>
-            {editingUser?.role === 'SUPER_ADMIN' && (
+            {editingUser?.role === "SUPER_ADMIN" && (
               <div className="flex items-center space-x-2 text-amber-600 bg-amber-50 p-2 rounded border border-amber-200 text-xs">
                 <ShieldAlert className="h-4 w-4 shrink-0" />
-                <span>Atenção: Você está alterando o email de um administrador Master.</span>
+                <span>
+                  Atenção: Você está alterando o email de um administrador
+                  Master.
+                </span>
               </div>
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingUser(null)} disabled={isUpdatingEmail}>
+            <Button
+              variant="outline"
+              onClick={() => setEditingUser(null)}
+              disabled={isUpdatingEmail}
+            >
               Cancelar
             </Button>
-            <Button onClick={handleUpdateEmail} disabled={isUpdatingEmail || !newEmail}>
+            <Button
+              onClick={handleUpdateEmail}
+              disabled={isUpdatingEmail || !newEmail}
+            >
               {isUpdatingEmail ? "Salvando..." : "Salvar Alteração"}
             </Button>
           </DialogFooter>
@@ -856,15 +1158,27 @@ export default function MasterDashboardPage() {
       </Dialog>
 
       {/* Modal de Exclusão de Conta */}
-      <Dialog key={userToDelete?.id || 'delete-modal'} open={!!userToDelete} onOpenChange={(open) => { if (!open) setUserToDelete(null); }}>
-        <DialogContent className="sm:max-w-112.5 border-red-100" style={{ zIndex: 100000 }}>
+      <Dialog
+        key={userToDelete?.id || "delete-modal"}
+        open={!!userToDelete}
+        onOpenChange={(open) => {
+          if (!open) setUserToDelete(null);
+        }}
+      >
+        <DialogContent
+          className="sm:max-w-112.5 border-red-100"
+          style={{ zIndex: 100000 }}
+        >
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <AlertTriangle className="h-5 w-5" />
               Exclusão Crítica de Conta
             </DialogTitle>
             <DialogDescription className="pt-2 text-slate-900 font-medium">
-              Esta ação é <span className="text-red-600 underline">irreversível</span> e apagará permanentemente todos os dados vinculados a <strong>{userToDelete?.name}</strong>.
+              Esta ação é{" "}
+              <span className="text-red-600 underline">irreversível</span> e
+              apagará permanentemente todos os dados vinculados a{" "}
+              <strong>{userToDelete?.name}</strong>.
             </DialogDescription>
           </DialogHeader>
 
@@ -874,7 +1188,9 @@ export default function MasterDashboardPage() {
             </p>
             <ul className="list-disc list-inside space-y-1 opacity-90">
               <li>Dados do Usuário e Login</li>
-              <li>Configurações do Estúdio ({userToDelete?.companyName || "N/A"})</li>
+              <li>
+                Configurações do Estúdio ({userToDelete?.companyName || "N/A"})
+              </li>
               <li>Todos os Agendamentos e Clientes</li>
               <li>Galeria de Fotos e Serviços</li>
             </ul>
@@ -882,14 +1198,18 @@ export default function MasterDashboardPage() {
 
           <div className="space-y-4 py-2">
             <div className="space-y-2 text-center py-2 bg-slate-50 rounded-md border border-slate-200">
-              <Label className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Código de Confirmação</Label>
+              <Label className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">
+                Código de Confirmação
+              </Label>
               <div className="text-3xl font-mono tracking-[0.5em] font-black text-slate-800 select-none">
                 {generatedCode}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirm-code" className="text-sm font-semibold">Digite o código acima para confirmar:</Label>
+              <Label htmlFor="confirm-code" className="text-sm font-semibold">
+                Digite o código acima para confirmar:
+              </Label>
               <Input
                 id="confirm-code"
                 placeholder="0000"
@@ -903,17 +1223,17 @@ export default function MasterDashboardPage() {
           </div>
 
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button 
-              variant="outline" 
-              onClick={() => setUserToDelete(null)} 
+            <Button
+              variant="outline"
+              onClick={() => setUserToDelete(null)}
               disabled={isDeleting}
               className="flex-1"
             >
               Cancelar
             </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDeleteUser} 
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
               disabled={isDeleting || confirmCode !== generatedCode}
               className="flex-1 font-bold"
             >

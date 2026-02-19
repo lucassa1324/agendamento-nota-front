@@ -5,6 +5,9 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, Suspense, use, useEffect, useState } from "react";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { SubscriptionBlockScreen } from "@/components/admin/subscription-block-screen";
+import { TrialBanner } from "@/components/admin/trial-banner";
+import { FeedbackWidget } from "@/components/feedback-widget";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarProvider } from "@/context/sidebar-context";
@@ -46,6 +49,17 @@ function MobileNav({
       </SheetContent>
     </Sheet>
   );
+}
+
+interface AuthUser {
+  name: string;
+  email: string;
+  slug?: string;
+  role?: string;
+  business?: {
+    slug?: string;
+    subscriptionStatus?: string;
+  };
 }
 
 function AdminLayoutContent({
@@ -118,16 +132,6 @@ function AdminLayoutContent({
         return () => clearTimeout(timer);
       }
 
-      interface AuthUser {
-        name: string;
-        email: string;
-        slug?: string;
-        role?: string;
-        business?: {
-          slug?: string;
-        };
-      }
-
       const user = session.user as AuthUser;
 
       // Se for um Super Admin tentando acessar um dashboard de estúdio, permitimos?
@@ -181,6 +185,17 @@ function AdminLayoutContent({
     );
   }
 
+  const user = session?.user as AuthUser | undefined;
+  const subscriptionStatus = user?.business?.subscriptionStatus;
+
+  if (
+    subscriptionStatus === "past_due" ||
+    subscriptionStatus === "unpaid" ||
+    subscriptionStatus === "canceled"
+  ) {
+    return <SubscriptionBlockScreen status={subscriptionStatus} />;
+  }
+
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row">
       {/* Botão Mobile para abrir Sidebar */}
@@ -221,7 +236,9 @@ function AdminLayoutContent({
               />
             </div>
           )}
+          {!isPersonalizacao && <TrialBanner />}
           {children}
+          <FeedbackWidget />
         </main>
       </div>
     </div>

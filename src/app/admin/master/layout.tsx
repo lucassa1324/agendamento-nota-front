@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MasterSidebar } from "@/components/admin/master-sidebar";
+import { FeedbackWidget } from "@/components/feedback-widget";
 import { signOut, useSession } from "@/lib/auth-client";
 
 export default function MasterLayout({
@@ -70,6 +71,7 @@ export default function MasterLayout({
       <div className="flex-1 flex flex-col min-w-0 h-full relative">
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
           {children}
+          <FeedbackWidget />
         </main>
       </div>
     </div>

@@ -154,7 +154,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
 
   return (
     <aside className="w-64 bg-card border-r border-border flex flex-col h-screen lg:sticky lg:top-0 z-50 shadow-xl">
-      {/* Sidebar Header - Logo do Cliente */}
+      {/* Sidebar Header - Logo do Cliente ou Placeholder */}
       {studio?.logoUrl && (
         <div className="p-4 border-b border-border flex justify-center items-center bg-white/50">
           <div className="relative w-full h-16 flex items-center justify-center">

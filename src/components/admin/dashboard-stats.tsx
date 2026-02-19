@@ -1,10 +1,12 @@
 "use client";
 
-import { Calendar, DollarSign, TrendingUp, Users } from "lucide-react";
+import { Calendar, Clock, DollarSign, TrendingUp, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { differenceInDays } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import { appointmentService } from "@/lib/api-appointments";
+import { authClient, useSession } from "@/lib/auth-client";
 import {
   getBookingsFromStorage,
   getSettingsFromStorage,
@@ -13,6 +15,9 @@ import { businessService } from "@/lib/business-service";
 
 export function DashboardStats() {
   const { studio } = useStudio();
+  const { data: session } = useSession();
+  const [sessionData, setSessionData] = useState<any | null>(null);
+  const [billingError, setBillingError] = useState(false);
   const [stats, setStats] = useState({
     totalBookings: 0,
     todayBookings: 0,
@@ -24,6 +29,7 @@ export function DashboardStats() {
     if (!studio?.id) return;
 
     try {
+      setBillingError(false);
       // Para as estatísticas, podemos buscar todos os agendamentos ou um range largo
       // Por simplicidade e performance, vamos buscar o mês atual
       const now = new Date();
@@ -64,14 +70,24 @@ export function DashboardStats() {
         monthRevenue,
         agendaStatus: settings?.agendaAberta ?? true,
       });
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Erro ao carregar estatísticas:", error);
+      
+      const isBillingError = 
+        (typeof error === "object" && error !== null && "status" in error && (error as { status: unknown }).status === 402) || 
+        (error instanceof Error && error.message.includes("BILLING_REQUIRED"));
+
+      if (isBillingError) {
+        setBillingError(true);
+        return;
+      }
+
       // Fallback para storage se falhar
       const bookings = getBookingsFromStorage();
       const settings = getSettingsFromStorage();
       setStats({
         totalBookings: bookings.length,
-        todayBookings: bookings.filter(b => b.date === new Date().toISOString().split("T")[0]).length,
+        todayBookings: bookings.filter((b: { date: string }) => b.date === new Date().toISOString().split("T")[0]).length,
         monthRevenue: 0, // Simplificado no fallback
         agendaStatus: settings.agendaAberta,
       });
@@ -82,32 +98,83 @@ export function DashboardStats() {
     loadStats();
   }, [loadStats]);
 
+  // Busca dados atualizados da sessão para garantir que temos o status mais recente (Igual ao TrialBanner)
+  useEffect(() => {
+    const fetchSession = async () => {
+      try {
+        const result = await authClient.getSession();
+        if (result.data) {
+          setSessionData(result.data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar sessão no Dashboard:", error);
+      }
+    };
+    fetchSession();
+  }, []);
+
   const statCards = [
     {
       title: "Agendamentos Hoje",
-      value: stats.todayBookings,
+      value: billingError ? "---" : stats.todayBookings,
       icon: Calendar,
-      color: "text-blue-500",
+      color: billingError ? "text-muted-foreground" : "text-blue-500",
     },
     {
       title: "Total de Agendamentos",
-      value: stats.totalBookings,
+      value: billingError ? "---" : stats.totalBookings,
       icon: Users,
-      color: "text-green-500",
+      color: billingError ? "text-muted-foreground" : "text-green-500",
     },
     {
       title: "Faturamento do Mês",
-      value: `R$ ${stats.monthRevenue.toFixed(2)}`,
+      value: billingError ? "---" : `R$ ${stats.monthRevenue.toFixed(2)}`,
       icon: DollarSign,
-      color: "text-accent",
+      color: billingError ? "text-muted-foreground" : "text-accent",
     },
     {
       title: "Status da Agenda",
-      value: stats.agendaStatus ? "Aberta" : "Fechada",
+      value: billingError ? "---" : (stats.agendaStatus ? "Aberta" : "Fechada"),
       icon: TrendingUp,
-      color: stats.agendaStatus ? "text-green-500" : "text-red-500",
+      color: billingError ? "text-muted-foreground" : (stats.agendaStatus ? "text-green-500" : "text-red-500"),
     },
   ];
+
+  // Adiciona card de dias restantes se estiver em trial
+  if (studio?.subscriptionStatus === "trialing" || studio?.subscriptionStatus === "trial") {
+    let daysLeft = 0;
+    
+    // Lógica unificada com o Banner: Prioriza daysLeft da SESSÃO (mais atual), senão do studio, senão calcula via trialEndsAt
+    // NUNCA usar createdAt + 14
+    
+    // Tenta pegar da sessão atualizada (fetch) ou do hook (cache), igual ao TrialBanner
+    const currentSession = sessionData || session;
+    const userBusiness = currentSession?.user?.business as { daysLeft?: number; slug?: string; trialEndsAt?: string } | undefined;
+    const isOwner = userBusiness?.slug === studio.slug;
+    
+    if (isOwner && typeof userBusiness?.daysLeft === 'number') {
+      daysLeft = userBusiness.daysLeft;
+    } else if (typeof studio.daysLeft === 'number') {
+      daysLeft = studio.daysLeft;
+    } else {
+      // Fallback para trialEndsAt (Sessão ou Studio)
+      const trialEndsAt = (isOwner && userBusiness?.trialEndsAt) ? userBusiness.trialEndsAt : studio.trialEndsAt;
+      
+      if (trialEndsAt) {
+        const endDate = new Date(trialEndsAt);
+        const today = new Date();
+        const diff = differenceInDays(endDate, today);
+        daysLeft = diff < 0 ? 0 : diff;
+      }
+    }
+
+    statCards.push({
+      title: "Tempo Restante",
+      value: `${daysLeft} dias`,
+      icon: Clock,
+      color: daysLeft <= 3 ? "text-red-500" : "text-blue-500",
+    });
+  }
 
   return (
     <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">

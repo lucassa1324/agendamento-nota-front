@@ -72,11 +72,11 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     throw error;
   }
 
-  // Interceptar erro 403 (Acesso Negado / Suspensão)
-  if (response.status === 403) {
+  // Interceptar erro 403 (Acesso Negado / Suspensão) ou 402 (Pagamento Necessário)
+  if (response.status === 403 || response.status === 402) {
     // Se for uma rota de API e não estivermos no Master Admin, redirecionar imediatamente
     if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/master")) {
-      console.error(">>> [FRONT_API] 403 Forbidden detectado. Redirecionando via window.location para quebrar loop...");
+      console.error(`>>> [FRONT_API] ${response.status} detectado. Redirecionando via window.location para quebrar loop...`);
       
       // Força o redirecionamento total para a página de suspensão
       window.location.href = "/acesso-suspenso";

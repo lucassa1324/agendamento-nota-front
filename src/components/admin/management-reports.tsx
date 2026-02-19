@@ -3,7 +3,7 @@
 
 import {
   BarChart3,
-  Calendar,
+
   Check,
   ChevronDown,
   ChevronRight,
@@ -907,26 +907,7 @@ export function ManagementReports() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Status Geral
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold">
-                  {margin >= 20 ? "Saudável" : margin > 0 ? "Atenção" : "Crítico"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Baseado na margem de lucro
-                </p>
-              </div>
-              <Calendar className="w-8 h-8 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+
       </div>
     </div>
   );

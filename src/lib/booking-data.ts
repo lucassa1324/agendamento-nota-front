@@ -1461,7 +1461,7 @@ export async function subtractInventoryForServiceAsync(
 
     return { success: true, message: "Estoque atualizado com sucesso via API" };
   } catch (error) {
-    const err = error as any;
+    const err = error as { response?: { data?: unknown }; message?: string };
     console.error("[SUBTRACT_INVENTORY_ERROR]", err.response?.data || err.message || err);
     return {
       success: false,
@@ -2025,6 +2025,10 @@ export interface Business {
   slug: string;
   createdAt?: string;
   active?: boolean;
+  subscriptionStatus?: string;
+  trialEndsAt?: string;
+  daysLeft?: number;
+  accessType?: string;
   siteName?: string;
   description?: string;
   phone?: string;

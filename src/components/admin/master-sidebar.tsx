@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
   LogOut,
+  Store,
   User,
   Users,
 } from "lucide-react";
@@ -33,6 +34,11 @@ const MASTER_NAVIGATION: MasterNavGroup[] = [
         icon: Users,
       },
       {
+        title: "Empresas",
+        href: "/admin/master/businesses",
+        icon: Store,
+      },
+      {
         title: "Relatórios",
         href: "/admin/master/relatorios",
         icon: BarChart3,
@@ -57,6 +63,16 @@ export function MasterSidebar({ adminUser, handleLogout }: MasterSidebarProps) {
 
   return (
     <aside className="w-64 bg-card border-r border-border flex flex-col h-screen lg:sticky lg:top-0 z-50 shadow-xl">
+      {/* Platform Logo Placeholder */}
+      <div className="h-16 flex items-center justify-center border-b border-border bg-sidebar-accent/10">
+        <div className="flex items-center gap-2 font-bold text-xl text-primary tracking-tight">
+          <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+            <span className="text-lg">B</span>
+          </div>
+          <span>Brow Studio</span>
+        </div>
+      </div>
+
       {/* Sidebar Header */}
       <div className="p-4 border-b border-border space-y-4">
         <div className="flex items-center gap-3 px-2">
