@@ -208,7 +208,7 @@ export function AccessReleaseModal({
                     type="number" 
                     min={1} 
                     value={manualDays} 
-                    onChange={(e) => setManualDays(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setManualDays(parseInt(e.target.value, 10) || 0)}
                     className="h-8 w-24 text-sm bg-background text-foreground"
                   />
                   <span className="text-xs font-medium text-primary mt-2 block">
@@ -246,7 +246,7 @@ export function AccessReleaseModal({
                     type="number" 
                     min={1} 
                     value={trialDays} 
-                    onChange={(e) => setTrialDays(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setTrialDays(parseInt(e.target.value, 10) || 0)}
                     className="h-8 w-24 text-sm bg-background text-foreground"
                   />
                   <span className="text-xs font-medium text-primary mt-2 block">
