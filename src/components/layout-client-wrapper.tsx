@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
+import type { SiteConfigData } from "@/lib/site-config-types";
 import { Footer } from "@/components/footer";
 import { Navigation } from "@/components/navigation";
 import { useStudio } from "@/context/studio-context";

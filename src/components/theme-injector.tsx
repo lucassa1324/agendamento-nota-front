@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type {
   LayoutGlobalSettings,
   SiteConfigData,
-} from "@/components/admin/site_editor/hooks/use-site-editor";
+} from "@/lib/site-config-types";
 import { useStudio } from "@/context/studio-context";
 import {
   type ColorSettings,

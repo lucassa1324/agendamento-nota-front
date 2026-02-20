@@ -26,7 +26,7 @@ import type {
   TestimonialsSettings,
   ValuesSettings,
 } from "@/lib/booking-data";
-import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
+import type { SiteConfigData } from "@/lib/site-config-types";
 import {
   getStorageKey,
   saveColorSettings,
