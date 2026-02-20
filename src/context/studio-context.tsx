@@ -9,7 +9,6 @@ import {
   useEffect,
   useState,
 } from "react";
-import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL, BASE_DOMAIN } from "@/lib/auth-client";
 import type {
@@ -27,6 +26,7 @@ import type {
   TestimonialsSettings,
   ValuesSettings,
 } from "@/lib/booking-data";
+import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import {
   getStorageKey,
   saveColorSettings,

@@ -1,90 +1,3 @@
-export interface LayoutGlobalSettings {
-  siteColors?: ColorSettings;
-  cores_base?: ColorSettings;
-  fontes?: FontSettings;
-  visibleSections?: Record<string, boolean>;
-  pageVisibility?: Record<string, boolean>;
-  hero?: HeroSettings;
-  aboutHero?: HeroSettings;
-  story?: StorySettings;
-  team?: TeamSettings;
-  testimonials?: TestimonialsSettings;
-  services?: ServicesSettings;
-  values?: ValuesSettings;
-  gallery?: GallerySettings;
-  cta?: CTASettings;
-  header?: HeaderSettings;
-  footer?: FooterSettings;
-}
-
-export interface SiteConfigData {
-  [key: string]: unknown;
-  hero?: HeroSettings;
-  aboutHero?: HeroSettings;
-  story?: StorySettings;
-  team?: TeamSettings;
-  testimonials?: TestimonialsSettings;
-  theme?: FontSettings;
-  typography?: FontSettings; // Alinhamento com o Back-end
-  colors?: ColorSettings;
-  services?: ServicesSettings;
-  values?: ValuesSettings;
-  gallery?: GallerySettings;
-  cta?: CTASettings;
-  header?: HeaderSettings;
-  footer?: FooterSettings;
-  pageVisibility?: Record<string, boolean>;
-  visibleSections?: Record<string, boolean>;
-  layoutGlobal?: LayoutGlobalSettings; // Suporte para estrutura aninhada do banco
-  layout_global?: LayoutGlobalSettings; // Suporte para snake_case do banco
-  bookingSteps?: {
-    service?: BookingStepSettings;
-    date?: BookingStepSettings;
-    time?: BookingStepSettings;
-    form?: BookingStepSettings;
-    confirmation?: BookingStepSettings;
-  };
-}
-
-/**
- * useSiteEditor: Hook de Orquestração do Estado do Site
- *
- * Este é o hook "cérebro" do editor de site. Ele gerencia todo o estado das configurações
- * visíveis no painel e garante que essas mudanças sejam persistidas e refletidas no preview.
- *
- * Responsabilidades principais:
- *
- * 1. Gestão de Estados de Seção:
- *    - Mantém os dados atuais de cada seção do site (Hero, Serviços, Galeria, etc.).
- *    - Gerencia estados temporários de edição (o que o usuário está digitando no momento).
- *    - Controla os estados "Dirty" (compara o estado atual com o último salvo para habilitar botões).
- *
- * 2. Persistência de Dados:
- *    - Ao carregar, recupera as configurações salvas do `localStorage`.
- *    - Ao clicar em 'Salvar', grava as alterações permanentemente no armazenamento do navegador.
- *
- * 3. Sincronização em Tempo Real (PostMessage):
- *    - Possui um mecanismo que envia mensagens (`postMessage`) para o iframe do preview sempre
- *      que qualquer configuração é alterada. Isso permite que o usuário veja as mudanças
- *      instantaneamente enquanto digita, sem precisar recarregar.
- *
- * 4. Controle de Visibilidade:
- *    - Gerencia quais páginas e quais seções específicas do site estão ativas ou ocultas.
- *
- * 5. Sistema de Feedback:
- *    - Integrado com o sistema de `Toast` para notificar o usuário sobre o sucesso ou falha
- *      ao salvar as alterações.
- */
-
-import {
-  type RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import { useStudio } from "@/context/studio-context";
-import { useToast } from "@/hooks/use-toast";
 import {
   type BookingStepSettings,
   type ColorSettings,
@@ -132,8 +45,6 @@ import {
   getVisibleSections,
   type HeaderSettings,
   type HeroSettings,
-  type ServicesSettings,
-  type StorySettings,
   saveAboutHeroSettings,
   saveBookingConfirmationSettings,
   saveBookingDateSettings,
@@ -154,11 +65,26 @@ import {
   saveTestimonialsSettings,
   saveValuesSettings,
   saveVisibleSections,
+  type ServicesSettings,
+  type StorySettings,
   type TeamSettings,
   type TestimonialsSettings,
   type ValuesSettings,
 } from "@/lib/booking-data";
+import type { LayoutGlobalSettings, SiteConfigData } from "@/lib/site-config-types";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useStudio } from "@/context/studio-context";
+import { useToast } from "@/hooks/use-toast";
+
+export type { LayoutGlobalSettings, SiteConfigData };
+
 
 export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const { toast } = useToast();
