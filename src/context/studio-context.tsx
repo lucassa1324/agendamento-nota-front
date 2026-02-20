@@ -255,9 +255,12 @@ export function StudioProvider({
         return;
       }
 
+      // Normalização do slug para evitar erros de case-sensitivity e garantir consistência
+      const finalSlug = currentSlug.toLowerCase();
+
       try {
         const timestamp = Date.now();
-        const fetchUrl = `${API_BASE_URL}/api/business/slug/${currentSlug}?t=${timestamp}`;
+        const fetchUrl = `${API_BASE_URL}/api/business/slug/${finalSlug}?t=${timestamp}`;
         console.log(`>>> [CACHE_CHECK] StudioProvider buscando studio via: ${fetchUrl}`);
 
         let response: Response;
@@ -636,17 +639,12 @@ export function StudioProvider({
   }, [slug]);
 
   useEffect(() => {
-    if (error === "Studio não encontrado") {
-      // Redireciona para uma página de erro ou home se o studio não existir
-      // Podemos usar router.replace para não sujar o histórico
-      router.replace("/404");
-      console.warn("Studio não encontrado para o slug:", slug);
-    } else if (error && !isLoading && !studio) {
-      // Se houve um erro genérico e não temos studio carregado, redireciona para home ou erro
-      console.error("Erro crítico ao carregar studio:", error);
-      // router.replace("/"); // Opcional: redirecionar para home
+    // REMOVIDO: Redirecionamento automático para /404 ou home
+    // O tratamento de erro agora é feito visualmente no render do provider
+    if (error) {
+      console.warn(">>> [StudioProvider] Erro detectado:", error);
     }
-  }, [error, slug, router, isLoading, studio]);
+  }, [error]);
 
   // Monitora mudanças no status de ativação do estúdio (Guarda de Rota)
   useEffect(() => {
@@ -657,6 +655,29 @@ export function StudioProvider({
       }
     }
   }, [studio]);
+
+  // Tratamento visual para erro 404 (Studio não encontrado)
+  if (!isLoading && error === "Studio não encontrado") {
+    return (
+      <StudioContext.Provider 
+        value={{ studio: null, isLoading: false, error, slug, updateStudioInfo }}
+      >
+        <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
+          <h1 className="text-6xl font-bold mb-4">404</h1>
+          <h2 className="text-2xl font-semibold mb-6">Studio não encontrado</h2>
+          <p className="text-zinc-500 mb-8 max-w-md">
+            O estabelecimento que você está procurando não existe ou o endereço está incorreto.
+          </p>
+          <button 
+            onClick={() => window.location.href = "/"}
+            className="px-6 py-2 bg-zinc-900 text-white rounded-md hover:bg-zinc-800 transition-colors"
+          >
+            Voltar para o início
+          </button>
+        </div>
+      </StudioContext.Provider>
+    );
+  }
 
   return (
     <StudioContext.Provider
