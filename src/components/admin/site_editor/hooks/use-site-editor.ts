@@ -1,4 +1,13 @@
 import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { useStudio } from "@/context/studio-context";
+import { useToast } from "@/hooks/use-toast";
+import {
   type BookingStepSettings,
   type ColorSettings,
   type CTASettings,
@@ -45,6 +54,8 @@ import {
   getVisibleSections,
   type HeaderSettings,
   type HeroSettings,
+  type ServicesSettings,
+  type StorySettings,
   saveAboutHeroSettings,
   saveBookingConfirmationSettings,
   saveBookingDateSettings,
@@ -65,23 +76,12 @@ import {
   saveTestimonialsSettings,
   saveValuesSettings,
   saveVisibleSections,
-  type ServicesSettings,
-  type StorySettings,
   type TeamSettings,
   type TestimonialsSettings,
   type ValuesSettings,
 } from "@/lib/booking-data";
 import type { LayoutGlobalSettings, SiteConfigData } from "@/lib/site-config-types";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
-import {
-  type RefObject,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-import { useStudio } from "@/context/studio-context";
-import { useToast } from "@/hooks/use-toast";
 
 export type { LayoutGlobalSettings, SiteConfigData };
 

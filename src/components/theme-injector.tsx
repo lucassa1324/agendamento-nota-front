@@ -2,10 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import type {
-  LayoutGlobalSettings,
-  SiteConfigData,
-} from "@/lib/site-config-types";
 import { useStudio } from "@/context/studio-context";
 import {
   type ColorSettings,
@@ -13,6 +9,10 @@ import {
   getColorSettings,
   getFontSettings,
 } from "@/lib/booking-data";
+import type {
+  LayoutGlobalSettings,
+  SiteConfigData,
+} from "@/lib/site-config-types";
 
 export function ThemeInjector() {
   const pathname = usePathname();

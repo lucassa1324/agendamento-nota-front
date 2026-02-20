@@ -26,7 +26,6 @@ import type {
   TestimonialsSettings,
   ValuesSettings,
 } from "@/lib/booking-data";
-import type { SiteConfigData } from "@/lib/site-config-types";
 import {
   getStorageKey,
   saveColorSettings,
@@ -43,6 +42,7 @@ import {
   saveValuesSettings,
   saveVisibleSections,
 } from "@/lib/booking-data";
+import type { SiteConfigData } from "@/lib/site-config-types";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
 
 interface StudioContextType {

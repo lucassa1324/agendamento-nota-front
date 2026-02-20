@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import type { SiteConfigData } from "@/lib/site-config-types";
 import { Footer } from "@/components/footer";
 import { Navigation } from "@/components/navigation";
 import { useStudio } from "@/context/studio-context";
@@ -11,6 +10,7 @@ import {
   getVisibleSections,
   type HeaderSettings,
 } from "@/lib/booking-data";
+import type { SiteConfigData } from "@/lib/site-config-types";
 
 export function LayoutClientWrapper({
   children,
