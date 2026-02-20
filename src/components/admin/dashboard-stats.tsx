@@ -27,68 +27,68 @@ export function DashboardStats() {
 
   const loadStats = useCallback(async () => {
     if (!studio?.id) return;
-
     try {
       setBillingError(false);
-      // Para as estatísticas, podemos buscar todos os agendamentos ou um range largo
-      // Por simplicidade e performance, vamos buscar o mês atual
       const now = new Date();
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
-
-      const [appointments, settings] = await Promise.all([
+      const [appointmentsResult, settingsResult] = await Promise.allSettled([
         appointmentService.listByCompanyAdmin(studio.id, firstDay, lastDay),
         businessService.getSettings(studio.id),
       ]);
-
+      const appointments = appointmentsResult.status === "fulfilled" ? appointmentsResult.value : [];
+      const settings = settingsResult.status === "fulfilled" ? settingsResult.value : null;
+      if (appointmentsResult.status === "rejected") {
+        console.error("Dashboard: Falha ao carregar agendamentos:", appointmentsResult.reason);
+      }
+      if (settingsResult.status === "rejected") {
+        console.warn("Dashboard: Falha ao carregar configurações (usando padrões):", settingsResult.reason);
+      }
       const todayStr = now.toISOString().split("T")[0];
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
-
-      const todayBookings = appointments.filter((app) => {
-        const date = new Date(app.scheduledAt).toISOString().split("T")[0];
-        return date === todayStr;
-      }).length;
-
-      const monthRevenue = appointments
-        .filter((app) => {
-          const date = new Date(app.scheduledAt);
-          return (
-            app.status.toUpperCase() === "COMPLETED" &&
-            date.getMonth() === currentMonth &&
-            date.getFullYear() === currentYear
-          );
-        })
-        .reduce((sum, app) => {
-          const price = app.servicePriceSnapshot ? parseFloat(app.servicePriceSnapshot) : 0;
-          return sum + price;
-        }, 0);
-
+      const todayBookings = Array.isArray(appointments)
+        ? appointments.filter((app) => {
+            const date = new Date(app.scheduledAt).toISOString().split("T")[0];
+            return date === todayStr;
+          }).length
+        : 0;
+      const monthRevenue = Array.isArray(appointments)
+        ? appointments
+            .filter((app) => {
+              const date = new Date(app.scheduledAt);
+              return (
+                app.status.toUpperCase() === "COMPLETED" &&
+                date.getMonth() === currentMonth &&
+                date.getFullYear() === currentYear
+              );
+            })
+            .reduce((sum, app) => {
+              const price = app.servicePriceSnapshot ? parseFloat(app.servicePriceSnapshot) : 0;
+              return sum + price;
+            }, 0)
+        : 0;
       setStats({
-        totalBookings: appointments.length,
+        totalBookings: Array.isArray(appointments) ? appointments.length : 0,
         todayBookings,
         monthRevenue,
         agendaStatus: settings?.agendaAberta ?? true,
       });
     } catch (error: unknown) {
-      console.error("Erro ao carregar estatísticas:", error);
-      
-      const isBillingError = 
-        (typeof error === "object" && error !== null && "status" in error && (error as { status: unknown }).status === 402) || 
+      console.error("Erro crítico (inesperado) ao carregar estatísticas:", error);
+      const isBillingError =
+        (typeof error === "object" && error !== null && "status" in error && (error as { status: unknown }).status === 402) ||
         (error instanceof Error && error.message.includes("BILLING_REQUIRED"));
-
       if (isBillingError) {
         setBillingError(true);
         return;
       }
-
-      // Fallback para storage se falhar
       const bookings = getBookingsFromStorage();
       const settings = getSettingsFromStorage();
       setStats({
         totalBookings: bookings.length,
         todayBookings: bookings.filter((b: { date: string }) => b.date === new Date().toISOString().split("T")[0]).length,
-        monthRevenue: 0, // Simplificado no fallback
+        monthRevenue: 0,
         agendaStatus: settings.agendaAberta,
       });
     }
