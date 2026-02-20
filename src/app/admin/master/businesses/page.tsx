@@ -19,6 +19,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -47,6 +54,8 @@ export default function MasterBusinessesPage() {
   const [companies, setCompanies] = useState<CompanyMasterData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [subscriptionFilter, setSubscriptionFilter] = useState<string>("all");
+  const [accessFilter, setAccessFilter] = useState<string>("all");
   const [selectedCompany, setSelectedCompany] = useState<CompanyMasterData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
@@ -105,12 +114,25 @@ export default function MasterBusinessesPage() {
     setSelectedCompany(null);
   };
 
-  const filteredCompanies = companies.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.ownerEmail?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCompanies = companies
+    .filter(
+      (c) =>
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.slug.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.ownerEmail?.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+    .filter((c) =>
+      subscriptionFilter === "all"
+        ? true
+        : c.subscriptionStatus === subscriptionFilter,
+    )
+    .filter((c) =>
+      accessFilter === "all"
+        ? true
+        : accessFilter === "manual"
+          ? c.accessType === "manual"
+          : c.accessType !== "manual",
+    );
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -144,8 +166,8 @@ export default function MasterBusinessesPage() {
           <CardDescription>
             Visualize status de pagamento e libere acesso manualmente.
           </CardDescription>
-          <div className="flex items-center space-x-2 pt-4">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap gap-2 pt-4">
+            <div className="relative flex-1 min-w-60">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome, slug ou email..."
@@ -153,6 +175,34 @@ export default function MasterBusinessesPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+            </div>
+            <div className="flex gap-2">
+              <Select
+                value={subscriptionFilter}
+                onValueChange={setSubscriptionFilter}
+              >
+                <SelectTrigger className="w-40" size="sm">
+                  <SelectValue placeholder="Assinatura" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos status</SelectItem>
+                  <SelectItem value="active">Ativas</SelectItem>
+                  <SelectItem value="trialing">Trial</SelectItem>
+                  <SelectItem value="past_due">Pagamento pendente</SelectItem>
+                  <SelectItem value="unpaid">Não pago</SelectItem>
+                  <SelectItem value="canceled">Canceladas</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={accessFilter} onValueChange={setAccessFilter}>
+                <SelectTrigger className="w-40" size="sm">
+                  <SelectValue placeholder="Tipo acesso" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos acessos</SelectItem>
+                  <SelectItem value="manual">Acesso manual</SelectItem>
+                  <SelectItem value="automatic">Automático/padrão</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <Button variant="outline" onClick={fetchCompanies}>
               Atualizar

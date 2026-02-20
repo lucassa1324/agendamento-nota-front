@@ -252,7 +252,7 @@ export function SiteCustomizer() {
     activePageData,
     activeSectionData,
     previewUrl,
-  } = useNavigationManager(iframeRef);
+  } = useNavigationManager(iframeRef, slug);
 
   const sidebarProps = {
     activeSection,

@@ -39,6 +39,7 @@ import {
 
 export function useNavigationManager(
   iframeRef: RefObject<HTMLIFrameElement | null>,
+  slug?: string,
 ) {
   const [activePage, setActivePage] = useState("layout");
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -64,6 +65,9 @@ export function useNavigationManager(
         : activePageData?.path || "/";
 
     const baseUrl = path === "/" ? "/?preview=true" : `${path}?preview=true`;
+    
+    // Adiciona o slug se disponível para garantir o contexto correto no iframe
+    const urlWithSlug = slug ? `${baseUrl}&slug=${slug}` : baseUrl;
 
     // Adicionamos o parâmetro 'only' na URL inicial para garantir que o
     // primeiro render já venha isolado, evitando o flash da home inteira.
@@ -72,8 +76,8 @@ export function useNavigationManager(
       activeSection &&
       activeSection !== "typography" &&
       activeSection !== "colors";
-    return shouldIsolate ? `${baseUrl}&only=${activeSection}` : baseUrl;
-  }, [activePage, activePageData, activeSection]);
+    return shouldIsolate ? `${urlWithSlug}&only=${activeSection}` : urlWithSlug;
+  }, [activePage, activePageData, activeSection, slug]);
 
   const togglePageExpansion = useCallback(
     (pageId: string) => {

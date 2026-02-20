@@ -12,7 +12,7 @@ import {
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL, BASE_DOMAIN } from "@/lib/auth-client";
-import type { Business, ColorSettings, FontSettings, HeroSettings } from "@/lib/booking-data";
+import type { Business, ColorSettings, FontSettings, HeroSettings, StorySettings, TeamSettings, TestimonialsSettings, ServicesSettings, ValuesSettings, GallerySettings, CTASettings, FooterSettings, HeaderSettings } from "@/lib/booking-data";
 import {
   getStorageKey,
   saveColorSettings,

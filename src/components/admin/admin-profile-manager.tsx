@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Check, KeyRound, Loader2, Mail, User } from "lucide-react";
+import { AlertTriangle, Calendar, Check, KeyRound, Loader2, Mail, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,12 +15,14 @@ import { Label } from "@/components/ui/label";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { authClient } from "@/lib/auth-client";
+import { SubscriptionCancellationModal } from "./subscription-cancellation-modal";
 
 export function AdminProfileManager() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { data: session } = authClient.useSession();
   const { studio } = useStudio();
+  const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
 
   const [profile, setProfile] = useState({
     name: "",
@@ -317,6 +319,52 @@ export function AdminProfileManager() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Seção de Cancelamento de Assinatura */}
+      <Card className="md:col-span-2 border-red-200 bg-red-50/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-red-700">
+            <AlertTriangle className="w-5 h-5" />
+            Zona de Perigo
+          </CardTitle>
+          <CardDescription className="text-red-600/80">
+            Ações sensíveis relacionadas à sua conta e assinatura
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 border border-red-200 rounded-lg bg-white">
+            <div className="space-y-1">
+              <h4 className="text-sm font-medium text-red-900">
+                Cancelar Assinatura
+              </h4>
+              <p className="text-xs text-red-700/80 max-w-md">
+                Ao cancelar, você perderá acesso aos recursos premium ao final do
+                ciclo de cobrança atual. Essa ação não pode ser desfeita.
+              </p>
+            </div>
+            <Button
+              variant="destructive"
+              onClick={() => setIsCancellationModalOpen(true)}
+            >
+              Cancelar Assinatura
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <SubscriptionCancellationModal
+        isOpen={isCancellationModalOpen}
+        onClose={() => setIsCancellationModalOpen(false)}
+        nextInvoiceDate={
+          studio?.createdAt
+            ? getNextInvoiceDate(studio.createdAt).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+              })
+            : new Date().toLocaleDateString("pt-BR")
+        }
+      />
     </div>
   );
 }

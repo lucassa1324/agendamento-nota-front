@@ -47,6 +47,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -123,6 +130,9 @@ export default function MasterDashboardPage() {
   const [stats, setStats] = useState<MasterStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
   const { toast } = useToast();
 
   // Estados para Edição de Email
@@ -442,12 +452,36 @@ export default function MasterDashboardPage() {
     }
   };
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.companyName?.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredUsers = users
+    .filter(
+      (u) =>
+        u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        u.companyName?.toLowerCase().includes(searchTerm.toLowerCase()),
+    )
+    .filter((u) => (roleFilter === "all" ? true : u.role === roleFilter))
+    .filter((u) =>
+      statusFilter === "all"
+        ? true
+        : statusFilter === "active"
+          ? u.active
+          : !u.active,
+    )
+    .filter((u) =>
+      companyFilter === "all"
+        ? true
+        : companyFilter === "with-company"
+          ? !!u.companyId || !!u.businessId
+          : !u.companyId && !u.businessId,
+    )
+    .sort((a, b) => {
+      // Prioridade: SUPER_ADMIN primeiro
+      if (a.role === "SUPER_ADMIN" && b.role !== "SUPER_ADMIN") return -1;
+      if (a.role !== "SUPER_ADMIN" && b.role === "SUPER_ADMIN") return 1;
+
+      // Secundário: Ordem alfabética de nome
+      return a.name.localeCompare(b.name);
+    });
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -516,8 +550,8 @@ export default function MasterDashboardPage() {
           <CardDescription>
             Ative/desative contas ou altere dados de acesso.
           </CardDescription>
-          <div className="flex items-center space-x-2 pt-4">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap gap-2 pt-4">
+            <div className="relative flex-1 min-w-60">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nome, email ou estúdio..."
@@ -525,6 +559,39 @@ export default function MasterDashboardPage() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+            </div>
+            <div className="flex gap-2">
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger className="w-35" size="sm">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas roles</SelectItem>
+                  <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="USER">User</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-35" size="sm">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos status</SelectItem>
+                  <SelectItem value="active">Ativos</SelectItem>
+                  <SelectItem value="inactive">Inativos</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                <SelectTrigger className="w-40" size="sm">
+                  <SelectValue placeholder="Estúdio" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos estúdios</SelectItem>
+                  <SelectItem value="with-company">Com estúdio</SelectItem>
+                  <SelectItem value="without-company">Sem estúdio</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <Button variant="outline" onClick={fetchData}>
               Atualizar Lista

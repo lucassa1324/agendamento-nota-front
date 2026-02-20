@@ -4,7 +4,14 @@ import { createAuthClient } from "better-auth/react";
 const cleanUrl = (url?: string) => {
   if (!url) return "";
   // Garante que a URL não termine com barra e seja absoluta
-  return url.replace(/\/$/, "");
+  let cleaned = url.replace(/\/$/, "");
+  
+  // Remove /api/auth do final se existir, para evitar duplicação pelo Better Auth
+  if (cleaned.endsWith("/api/auth")) {
+    cleaned = cleaned.substring(0, cleaned.length - "/api/auth".length);
+  }
+  
+  return cleaned;
 };
 
 export const API_BASE_URL =
@@ -101,7 +108,8 @@ export const getSessionToken = async (): Promise<string | null> => {
   // 4. Iniciar nova busca de sessão
   sessionPromise = (async () => {
     try {
-      const resp = await fetch(`${AUTH_BASE_URL}/get-session`, {
+      // Ajuste: Adiciona /api/auth explicitamente pois removemos do AUTH_BASE_URL
+      const resp = await fetch(`${AUTH_BASE_URL}/api/auth/get-session`, {
         headers: { "Content-Type": "application/json" },
         credentials: "include"
       });
