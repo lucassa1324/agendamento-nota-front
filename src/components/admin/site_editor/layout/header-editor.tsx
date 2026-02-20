@@ -77,7 +77,7 @@ export function HeaderEditor({
                   />
                   <Input
                     type="text"
-                    value={settings.bgColor}
+                    value={settings.bgColor || ""}
                     placeholder="Padrão do Site"
                     onChange={(e) => onUpdate({ bgColor: e.target.value })}
                     className="h-8 text-xs flex-1"
@@ -224,7 +224,7 @@ export function HeaderEditor({
                   />
                   <Input
                     type="text"
-                    value={settings.textColor}
+                    value={settings.textColor || ""}
                     placeholder="Padrão do Site"
                     onChange={(e) => onUpdate({ textColor: e.target.value })}
                     className="h-8 text-xs flex-1"
@@ -277,7 +277,7 @@ export function HeaderEditor({
                   />
                   <Input
                     type="text"
-                    value={settings.buttonBgColor}
+                    value={settings.buttonBgColor || ""}
                     placeholder="Padrão do Site"
                     onChange={(e) =>
                       onUpdate({ buttonBgColor: e.target.value })
@@ -314,7 +314,7 @@ export function HeaderEditor({
                   />
                   <Input
                     type="text"
-                    value={settings.buttonTextColor}
+                    value={settings.buttonTextColor || ""}
                     placeholder="Padrão do Site"
                     onChange={(e) =>
                       onUpdate({ buttonTextColor: e.target.value })

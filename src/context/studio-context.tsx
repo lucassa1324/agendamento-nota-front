@@ -385,25 +385,34 @@ export function StudioProvider({
                  
                  // Mapeamento ultra-flexível para o background e outras cores
                  const finalColors: ColorSettings = {
-                   primary: (config.colors?.primary as string) || (layoutColors?.primary as string) || "#bf6e8a",
-                   secondary: (config.colors?.secondary as string) || (layoutColors?.secondary as string) || "#4b5563",
-                   background: (config.colors?.background as string) || (layoutColors?.background as string) || "#ffffff",
-                   text: (config.colors?.text as string) || (layoutColors?.text as string) || "#111827",
-                   accent: (config.colors?.accent as string) || (layoutColors?.accent as string) || "#bf6e8a",
-                   buttonText: (config.colors?.buttonText as string) || (layoutColors?.buttonText as string) || "#ffffff",
+                   primary: (layoutColors?.primary as string) || (config.colors?.primary as string) || "#bf6e8a",
+                   secondary: (layoutColors?.secondary as string) || (config.colors?.secondary as string) || "#4b5563",
+                   background: (layoutColors?.background as string) || (config.colors?.background as string) || "#ffffff",
+                   text: (layoutColors?.text as string) || (config.colors?.text as string) || "#111827",
+                   accent: (layoutColors?.accent as string) || (config.colors?.accent as string) || "#bf6e8a",
+                   buttonText: (layoutColors?.buttonText as string) || (config.colors?.buttonText as string) || "#ffffff",
                  };
  
-                 const configObj = config as Record<string, unknown>;
-                 const layoutGlobalLegacy = configObj.layout_global as Record<string, unknown> | undefined;
-
                  const mappedResult = {
                    ...config,
                    colors: finalColors,
-                   hero: (config.hero || layoutGlobal?.hero || layoutGlobalLegacy?.hero) as HeroSettings | undefined,
-                   theme: (config.theme || config.typography || layoutGlobal?.fontes || layoutGlobal?.typography) as FontSettings | undefined,
-                   visibleSections: (config.visibleSections || config.visible_sections || layoutGlobal?.visibleSections || layoutGlobal?.visible_sections) as Record<string, boolean> | undefined,
-                   pageVisibility: (config.pageVisibility || config.page_visibility || layoutGlobal?.pageVisibility || layoutGlobal?.page_visibility) as Record<string, boolean> | undefined,
-                   bookingSteps: (config.bookingSteps || config.booking_steps || config.appointmentFlow || config.appointment_flow || layoutGlobal?.bookingSteps || layoutGlobal?.appointmentFlow) as SiteConfigData["bookingSteps"],
+                   // Prioridade para layoutGlobal (configurações salvas mais recentes) sobre o root config
+                   hero: (layoutGlobal?.hero || config.hero) as HeroSettings | undefined,
+                   aboutHero: (layoutGlobal?.aboutHero || config.aboutHero) as HeroSettings | undefined,
+                   story: (layoutGlobal?.story || config.story) as StorySettings | undefined,
+                   team: (layoutGlobal?.team || config.team) as TeamSettings | undefined,
+                   testimonials: (layoutGlobal?.testimonials || config.testimonials) as TestimonialsSettings | undefined,
+                   services: (layoutGlobal?.services || config.services) as ServicesSettings | undefined,
+                   values: (layoutGlobal?.values || config.values) as ValuesSettings | undefined,
+                   gallery: (layoutGlobal?.gallery || config.gallery) as GallerySettings | undefined,
+                   cta: (layoutGlobal?.cta || config.cta) as CTASettings | undefined,
+                   header: (layoutGlobal?.header || config.header) as HeaderSettings | undefined,
+                   footer: (layoutGlobal?.footer || config.footer) as FooterSettings | undefined,
+                   
+                   theme: (layoutGlobal?.fontes || layoutGlobal?.typography || config.theme || config.typography) as FontSettings | undefined,
+                   visibleSections: (layoutGlobal?.visibleSections || layoutGlobal?.visible_sections || config.visibleSections || config.visible_sections) as Record<string, boolean> | undefined,
+                   pageVisibility: (layoutGlobal?.pageVisibility || layoutGlobal?.page_visibility || config.pageVisibility || config.page_visibility) as Record<string, boolean> | undefined,
+                   bookingSteps: (layoutGlobal?.bookingSteps || layoutGlobal?.appointmentFlow || config.bookingSteps || config.booking_steps || config.appointmentFlow || config.appointment_flow) as SiteConfigData["bookingSteps"],
                  };
 
                  console.log(">>> [DEBUG_SYNC] bookingSteps mapeado:", !!mappedResult.bookingSteps);
