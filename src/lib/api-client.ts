@@ -48,8 +48,8 @@ export async function customFetch(url: string, options: RequestInit = {}) {
   let response: Response;
   try {
     response = await fetch(url, {
-      credentials: "include", // Equivale a withCredentials: true
       ...options,
+      credentials: "include", // Equivale a withCredentials: true (força envio de cookies)
       headers,
     });
   } catch (error: unknown) {
