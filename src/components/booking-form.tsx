@@ -71,15 +71,16 @@ export function BookingForm({
 
       // 2. Converter duração (minutos) para HH:mm
       const durationMinutes = parseDuration(service.duration);
-      
+
       const hours = Math.floor(durationMinutes / 60);
       const mins = durationMinutes % 60;
       const durationHHmm = `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
 
       // 3. Formatar preço como decimal string (ex: "150.00")
-      const priceValue = typeof service.price === "string"
-        ? parseFloat(service.price)
-        : service.price;
+      const priceValue =
+        typeof service.price === "string"
+          ? parseFloat(service.price)
+          : service.price;
       const priceSnapshot = priceValue.toFixed(2);
 
       // 4. Montar o payload seguindo o contrato exato do backend
@@ -134,13 +135,22 @@ export function BookingForm({
       const apiError = error as ApiError;
       console.warn(">>> [SITE_WARN] Erro ao criar agendamento:", apiError);
 
-      let errorMessage = apiError.message || "Ocorreu um erro inesperado ao salvar seu agendamento.";
+      let errorMessage =
+        apiError.message ||
+        "Ocorreu um erro inesperado ao salvar seu agendamento.";
 
       // Tratamento específico para erro de horário comercial excedido
-      if (apiError.status === 400 && apiError.message?.includes("Selected time and total duration exceed business hours")) {
-        errorMessage = "O horário selecionado e a duração total dos serviços ultrapassam o horário de fechamento. Por favor, escolha um horário mais cedo ou selecione menos serviços.";
+      if (
+        apiError.status === 400 &&
+        apiError.message?.includes(
+          "Selected time and total duration exceed business hours",
+        )
+      ) {
+        errorMessage =
+          "O horário selecionado e a duração total dos serviços ultrapassam o horário de fechamento. Por favor, escolha um horário mais cedo ou selecione menos serviços.";
       } else if (apiError.status === 401) {
-        errorMessage = "O sistema não permitiu o agendamento (Não Autorizado). Por favor, entre em contato com o estúdio.";
+        errorMessage =
+          "O sistema não permitiu o agendamento (Não Autorizado). Por favor, entre em contato com o estúdio.";
       }
 
       toast({
@@ -191,9 +201,11 @@ export function BookingForm({
               {time}
             </div>
             <div className="text-xs text-muted-foreground">
-              Duração Total: {Math.floor(parseDuration(service.duration) / 60) > 0 
-                ? `${Math.floor(parseDuration(service.duration) / 60)}h ` 
-                : ""}{parseDuration(service.duration) % 60}min
+              Duração Total:{" "}
+              {Math.floor(parseDuration(service.duration) / 60) > 0
+                ? `${Math.floor(parseDuration(service.duration) / 60)}h `
+                : ""}
+              {parseDuration(service.duration) % 60}min
             </div>
             <div
               className="font-semibold"

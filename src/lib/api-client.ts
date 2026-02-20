@@ -9,7 +9,7 @@ export async function customFetch(url: string, options: RequestInit = {}) {
 
   // Tentar extrair businessId da URL ou do corpo da requisição
   let businessId = "N/A";
-  
+
   // 1. Verificar na URL
   if (url.includes("/api/business/")) {
     const parts = url.split("/api/business/");
@@ -20,9 +20,13 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     const match = url.match(/companyId=([^&]+)/);
     if (match) businessId = match[1];
   }
-  
+
   // 2. Se for POST/PATCH e ainda for N/A, tentar extrair do body
-  if (businessId === "N/A" && options.body && typeof options.body === 'string') {
+  if (
+    businessId === "N/A" &&
+    options.body &&
+    typeof options.body === "string"
+  ) {
     try {
       const body = JSON.parse(options.body);
       businessId = body.companyId || body.businessId || body.id || "N/A";
@@ -31,11 +35,11 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     }
   }
 
-  console.log('>>> [FRONT_API] Enviando ID:', businessId);
+  console.log(">>> [FRONT_API] Enviando ID:", businessId);
   console.log(`>>> [FRONT_API] Enviando para: ${url}`);
 
   const headers = new Headers(options.headers || {});
-  
+
   // Garantir Content-Type para requisições com body
   if (options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -54,16 +58,25 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     });
   } catch (error: unknown) {
     // Tratamento de erro de rede ou CORS (Failed to fetch)
-    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
-    console.error(">>> [FRONT_API] Erro de rede ou CORS detectado:", errorMessage);
+    const errorMessage =
+      error instanceof Error ? error.message : "Erro desconhecido";
+    console.error(
+      ">>> [FRONT_API] Erro de rede ou CORS detectado:",
+      errorMessage,
+    );
 
     // Se falhar o fetch e não for erro de conexão local, tentamos verificar se a sessão expirou ou se é bloqueio CORS
     if (typeof window !== "undefined") {
-      // Diagnóstico: Se estivermos em uma rota de dashboard, o erro de rede pode ser um bloqueio do navegador (CORS) 
+      // Diagnóstico: Se estivermos em uma rota de dashboard, o erro de rede pode ser um bloqueio do navegador (CORS)
       // causado por headers inválidos ou 403 mal formatado no backend.
-      if (!window.location.pathname.startsWith("/admin/master") && window.location.pathname.includes("/dashboard")) {
-        console.warn(">>> [FRONT_API] Falha crítica na requisição. Tentando revalidar sessão ou redirecionar por segurança...");
-        
+      if (
+        !window.location.pathname.startsWith("/admin/master") &&
+        window.location.pathname.includes("/dashboard")
+      ) {
+        console.warn(
+          ">>> [FRONT_API] Falha crítica na requisição. Tentando revalidar sessão ou redirecionar por segurança...",
+        );
+
         // Em caso de erro de rede persistente em rota protegida, redirecionamos para evitar loops de UI
         // mas damos uma chance para o usuário logar novamente se for apenas sessão expirada.
         // Se o erro for recorrente, o window.location quebrará o loop.
@@ -75,12 +88,17 @@ export async function customFetch(url: string, options: RequestInit = {}) {
   // Interceptar erro 403 (Acesso Negado / Suspensão) ou 402 (Pagamento Necessário)
   if (response.status === 403 || response.status === 402) {
     // Se for uma rota de API e não estivermos no Master Admin, redirecionar imediatamente
-    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/admin/master")) {
-      console.error(`>>> [FRONT_API] ${response.status} detectado. Redirecionando via window.location para quebrar loop...`);
-      
+    if (
+      typeof window !== "undefined" &&
+      !window.location.pathname.startsWith("/admin/master")
+    ) {
+      console.error(
+        `>>> [FRONT_API] ${response.status} detectado. Redirecionando via window.location para quebrar loop...`,
+      );
+
       // Força o redirecionamento total para a página de suspensão
       window.location.href = "/acesso-suspenso";
-      
+
       // Retorna uma promessa que nunca resolve para "congelar" a execução atual
       // e impedir que o restante do código (como .then ou try/catch da UI) execute
       return new Promise<Response>(() => {});
@@ -90,11 +108,11 @@ export async function customFetch(url: string, options: RequestInit = {}) {
   // Interceptar erro 401 para fallback de cache
   if (response.status === 401) {
     if (typeof window !== "undefined") {
-      const cachedStudio = localStorage.getItem('studio_data');
-      if (cachedStudio && url.includes('/studio/')) {
-        return new Response(cachedStudio, { 
-          status: 200, 
-          headers: { 'Content-Type': 'application/json' } 
+      const cachedStudio = localStorage.getItem("studio_data");
+      if (cachedStudio && url.includes("/studio/")) {
+        return new Response(cachedStudio, {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
         });
       }
     }

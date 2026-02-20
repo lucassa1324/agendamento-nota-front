@@ -100,11 +100,14 @@ function AdminLayoutContent({
             ">>> [DASHBOARD_LAYOUT] Resultado getSession() manual:",
             manualSession,
           );
-          
+
           // Usando customFetch para o diagnóstico
-          const diagRes = await customFetch(`${API_BASE_URL}/diagnostics/headers`, {
-            credentials: "include",
-          });
+          const diagRes = await customFetch(
+            `${API_BASE_URL}/diagnostics/headers`,
+            {
+              credentials: "include",
+            },
+          );
           if (diagRes.ok) {
             const diagData = await diagRes.json();
             console.log(
@@ -113,10 +116,7 @@ function AdminLayoutContent({
             );
           }
         } catch (e) {
-          console.warn(
-            ">>> [ADMIN_WARN] Erro ao buscar diagnóstico:",
-            e,
-          );
+          console.warn(">>> [ADMIN_WARN] Erro ao buscar diagnóstico:", e);
         }
       };
 
@@ -137,7 +137,9 @@ function AdminLayoutContent({
       // Se for um Super Admin tentando acessar um dashboard de estúdio, permitimos?
       // Pela regra de negócio, o Super Admin deve ir para /admin/master.
       if (user.role === "SUPER_ADMIN") {
-        console.warn(">>> [DASHBOARD_LAYOUT] Super Admin acessando rota de estúdio. Redirecionando para Master.");
+        console.warn(
+          ">>> [DASHBOARD_LAYOUT] Super Admin acessando rota de estúdio. Redirecionando para Master.",
+        );
         router.push("/admin/master");
         return;
       }
@@ -169,10 +171,15 @@ function AdminLayoutContent({
 
   const isPersonalizacao = pathname?.includes("/personalizacao");
   const isMaster = pathname?.startsWith("/admin/master");
-  
+
   // Enquanto estiver carregando ou validando, mostra o loading
   // Também aguarda o carregamento do estúdio (exceto para rota master)
-  if (isLoadingSession || isCheckingSession || !isAuthenticated || (isLoadingStudio && !isMaster)) {
+  if (
+    isLoadingSession ||
+    isCheckingSession ||
+    !isAuthenticated ||
+    (isLoadingStudio && !isMaster)
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">

@@ -44,8 +44,8 @@ export function AdminBookingForm({
     email: initialBooking?.clientEmail || "",
     phone: initialBooking?.clientPhone || "",
     // Garante que o preço seja tratado como número para evitar zeros à esquerda (ex: "0450.00")
-    price: initialBooking?.servicePrice 
-      ? Number(initialBooking.servicePrice) 
+    price: initialBooking?.servicePrice
+      ? Number(initialBooking.servicePrice)
       : Number(service.price || 0),
   });
 
@@ -186,7 +186,11 @@ export function AdminBookingForm({
               className="font-semibold"
               style={{ color: settings?.accentColor || "var(--primary)" }}
             >
-              R$ {(typeof formData.price === "string" ? parseFloat(formData.price) : (formData.price || 0)).toFixed(2)}
+              R${" "}
+              {(typeof formData.price === "string"
+                ? parseFloat(formData.price)
+                : formData.price || 0
+              ).toFixed(2)}
             </div>
           </div>
         </Card>

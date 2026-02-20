@@ -412,27 +412,51 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const loadExternalConfig = useCallback(
     (config: Record<string, unknown>) => {
       if (!config) return;
-      
+
       // Mapeamento flexível para suportar layoutGlobal/layout_global do banco
-      const layoutGlobal = (config.layoutGlobal || config.layout_global) as Record<string, unknown> | undefined;
-      
+      const layoutGlobal = (config.layoutGlobal || config.layout_global) as
+        | Record<string, unknown>
+        | undefined;
+
       const data = {
         ...config,
         hero: (layoutGlobal?.hero || config.hero) as HeroSettings | undefined,
-        aboutHero: (layoutGlobal?.aboutHero || config.aboutHero) as HeroSettings | undefined,
-        story: (layoutGlobal?.story || config.story) as StorySettings | undefined,
+        aboutHero: (layoutGlobal?.aboutHero || config.aboutHero) as
+          | HeroSettings
+          | undefined,
+        story: (layoutGlobal?.story || config.story) as
+          | StorySettings
+          | undefined,
         team: (layoutGlobal?.team || config.team) as TeamSettings | undefined,
-        testimonials: (layoutGlobal?.testimonials || config.testimonials) as TestimonialsSettings | undefined,
-        services: (layoutGlobal?.services || config.services) as ServicesSettings | undefined,
-        values: (layoutGlobal?.values || config.values) as ValuesSettings | undefined,
-        gallery: (layoutGlobal?.gallery || config.gallery) as GallerySettings | undefined,
+        testimonials: (layoutGlobal?.testimonials || config.testimonials) as
+          | TestimonialsSettings
+          | undefined,
+        services: (layoutGlobal?.services || config.services) as
+          | ServicesSettings
+          | undefined,
+        values: (layoutGlobal?.values || config.values) as
+          | ValuesSettings
+          | undefined,
+        gallery: (layoutGlobal?.gallery || config.gallery) as
+          | GallerySettings
+          | undefined,
         cta: (layoutGlobal?.cta || config.cta) as CTASettings | undefined,
-        header: (layoutGlobal?.header || config.header) as HeaderSettings | undefined,
-        footer: (layoutGlobal?.footer || config.footer) as FooterSettings | undefined,
-        colors: (layoutGlobal?.siteColors || layoutGlobal?.cores_base || config.colors) as ColorSettings | undefined,
-        theme: (layoutGlobal?.fontes || config.theme || config.typography) as FontSettings | undefined,
-        visibleSections: (layoutGlobal?.visibleSections || config.visibleSections) as Record<string, boolean> | undefined,
-        pageVisibility: (layoutGlobal?.pageVisibility || config.pageVisibility) as Record<string, boolean> | undefined,
+        header: (layoutGlobal?.header || config.header) as
+          | HeaderSettings
+          | undefined,
+        footer: (layoutGlobal?.footer || config.footer) as
+          | FooterSettings
+          | undefined,
+        colors: (layoutGlobal?.siteColors ||
+          layoutGlobal?.cores_base ||
+          config.colors) as ColorSettings | undefined,
+        theme: (layoutGlobal?.fontes || config.theme || config.typography) as
+          | FontSettings
+          | undefined,
+        visibleSections: (layoutGlobal?.visibleSections ||
+          config.visibleSections) as Record<string, boolean> | undefined,
+        pageVisibility: (layoutGlobal?.pageVisibility ||
+          config.pageVisibility) as Record<string, boolean> | undefined,
       } as SiteConfigData;
 
       if (data.hero) {
@@ -879,7 +903,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     if (iframeRef.current?.contentWindow) {
       const win = iframeRef.current.contentWindow;
       if (initialColors) {
-        win.postMessage({ type: "UPDATE_COLORS", settings: initialColors }, "*");
+        win.postMessage(
+          { type: "UPDATE_COLORS", settings: initialColors },
+          "*",
+        );
       }
       if (initialFonts) {
         win.postMessage(
@@ -1684,14 +1711,23 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
         // Mapeamento de seções para layoutGlobal para persistência centralizada
         const sectionsToGlobal = [
-          'hero', 'aboutHero', 'story', 'team', 'testimonials', 
-          'services', 'values', 'gallery', 'cta', 'header', 'footer'
+          "hero",
+          "aboutHero",
+          "story",
+          "team",
+          "testimonials",
+          "services",
+          "values",
+          "gallery",
+          "cta",
+          "header",
+          "footer",
         ];
 
         for (const section of sectionsToGlobal) {
           if (changes[section]) {
             payload.layoutGlobal = {
-              ...(payload.layoutGlobal as Record<string, unknown> || {}),
+              ...((payload.layoutGlobal as Record<string, unknown>) || {}),
               [section]: changes[section],
             };
             // Mantemos no root para compatibilidade imediata se necessário
@@ -1702,7 +1738,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         if (changes.colors) {
           const colors = changes.colors as Record<string, string | undefined>;
           payload.layoutGlobal = {
-            ...(payload.layoutGlobal as Record<string, unknown> || {}),
+            ...((payload.layoutGlobal as Record<string, unknown>) || {}),
             siteColors: {
               primary: colors.primary,
               secondary: colors.secondary,
@@ -1719,7 +1755,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         if (changes.theme) {
           payload.typography = changes.theme;
           payload.layoutGlobal = {
-            ...(payload.layoutGlobal as Record<string, unknown> || {}),
+            ...((payload.layoutGlobal as Record<string, unknown>) || {}),
             fontes: changes.theme,
           };
           delete payload.theme;
@@ -1727,7 +1763,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
         if (changes.visibleSections) {
           payload.layoutGlobal = {
-            ...(payload.layoutGlobal as Record<string, unknown> || {}),
+            ...((payload.layoutGlobal as Record<string, unknown>) || {}),
             visibleSections: changes.visibleSections,
           };
           delete payload.visibleSections;
@@ -1735,7 +1771,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
         if (changes.pageVisibility) {
           payload.layoutGlobal = {
-            ...(payload.layoutGlobal as Record<string, unknown> || {}),
+            ...((payload.layoutGlobal as Record<string, unknown>) || {}),
             pageVisibility: changes.pageVisibility,
           };
           delete payload.pageVisibility;
@@ -1755,7 +1791,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             [key: string]: unknown;
           }
           const steps = changes.bookingSteps as Record<string, StepConfig>;
-          
+
           if (steps.service) {
             bookingChanges.step1Services = {
               ...steps.service,
@@ -1826,23 +1862,27 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
               },
             };
           }
-          
+
           delete payload.bookingSteps;
         }
 
         if (Object.keys(bookingChanges).length > 0) {
           payload.appointmentFlow = {
-            ...(payload.appointmentFlow as Record<string, unknown> || {}),
-            ...bookingChanges
+            ...((payload.appointmentFlow as Record<string, unknown>) || {}),
+            ...bookingChanges,
           };
           // Também atualizar layoutGlobal.bookingSteps para redundância
-          const currentLayoutGlobal = (payload.layoutGlobal as Record<string, unknown>) || {};
+          const currentLayoutGlobal =
+            (payload.layoutGlobal as Record<string, unknown>) || {};
           payload.layoutGlobal = {
             ...currentLayoutGlobal,
             bookingSteps: {
-              ...( (currentLayoutGlobal.bookingSteps as Record<string, unknown>) || {} ),
-              ...bookingChanges
-            }
+              ...((currentLayoutGlobal.bookingSteps as Record<
+                string,
+                unknown
+              >) || {}),
+              ...bookingChanges,
+            },
           };
         }
 
@@ -1857,8 +1897,12 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
             // Sincronização explícita com o preview para cores e fontes (que são as mais sensíveis)
             const layoutGlobal = fresh.layoutGlobal || fresh.layout_global;
-            const freshColors = fresh.colors || layoutGlobal?.siteColors || layoutGlobal?.cores_base;
-            const freshFonts = fresh.theme || fresh.typography || layoutGlobal?.fontes;
+            const freshColors =
+              fresh.colors ||
+              layoutGlobal?.siteColors ||
+              layoutGlobal?.cores_base;
+            const freshFonts =
+              fresh.theme || fresh.typography || layoutGlobal?.fontes;
 
             if (iframeRef.current?.contentWindow) {
               if (freshColors) {

@@ -24,16 +24,24 @@ export default function MasterLayout({
 
     if (!isPending) {
       if (!session) {
-        console.warn(">>> [MASTER_LAYOUT] Sem sessão ativa. Redirecionando para login.");
+        console.warn(
+          ">>> [MASTER_LAYOUT] Sem sessão ativa. Redirecionando para login.",
+        );
         router.push("/admin");
         return;
       }
 
       const user = session.user as { role?: string; email?: string };
-      
+
       // Validação rigorosa de Super Admin
-      if (user.role !== "SUPER_ADMIN" && user.email !== "lucassa1324@gmail.com") {
-        console.error(">>> [MASTER_LAYOUT] Acesso negado. Usuário não é SUPER_ADMIN:", user.email);
+      if (
+        user.role !== "SUPER_ADMIN" &&
+        user.email !== "lucassa1324@gmail.com"
+      ) {
+        console.error(
+          ">>> [MASTER_LAYOUT] Acesso negado. Usuário não é SUPER_ADMIN:",
+          user.email,
+        );
         router.push("/admin"); // Redireciona para o login administrativo comum
         return;
       }

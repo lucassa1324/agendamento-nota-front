@@ -60,7 +60,7 @@ export function AdminBookingFlow({
       // O admin pode ter um intervalo diferente configurado na aba horários
       // Vamos tentar pegar do primeiro dia aberto ou usar o default do sistema
       const weekSchedule = getWeekSchedule();
-      const firstOpenDay = weekSchedule.find(d => d.isOpen);
+      const firstOpenDay = weekSchedule.find((d) => d.isOpen);
       if (firstOpenDay) {
         setSlotInterval(firstOpenDay.interval);
       }
@@ -187,7 +187,10 @@ export function AdminBookingFlow({
       id: selectedServices.map((s) => s.id).join(","),
       name: selectedServices.map((s) => s.name).join(", "),
       price: selectedServices.reduce((acc, s) => acc + s.price, 0),
-      duration: selectedServices.reduce((acc, s) => acc + parseDuration(s.duration), 0),
+      duration: selectedServices.reduce(
+        (acc, s) => acc + parseDuration(s.duration),
+        0,
+      ),
       description: selectedServices.map((s) => s.name).join(", "),
     } as Service;
   }, [selectedServices]);

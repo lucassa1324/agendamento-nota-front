@@ -6,7 +6,11 @@ import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-si
 import { Footer } from "@/components/footer";
 import { Navigation } from "@/components/navigation";
 import { useStudio } from "@/context/studio-context";
-import { type FooterSettings, getVisibleSections, type HeaderSettings } from "@/lib/booking-data";
+import {
+  type FooterSettings,
+  getVisibleSections,
+  type HeaderSettings,
+} from "@/lib/booking-data";
 
 export function LayoutClientWrapper({
   children,
@@ -21,7 +25,9 @@ export function LayoutClientWrapper({
   const [footerSettings, setFooterSettings] = useState<
     FooterSettings | undefined
   >(undefined);
-  const [visibleSections, setVisibleSections] = useState<Record<string, boolean>>({});
+  const [visibleSections, setVisibleSections] = useState<
+    Record<string, boolean>
+  >({});
   const [isolatedSection, setIsolatedSection] = useState<string | null>(null);
 
   // Sincronização com os dados vindos do StudioContext (Banco de Dados)
@@ -77,7 +83,7 @@ export function LayoutClientWrapper({
 
   const isAdminRoute =
     pathname?.startsWith("/admin") || pathname?.includes("/admin/");
-  
+
   const isLandingPage = !slug && pathname === "/";
   const isGlobalEdit =
     isolatedSection === "typography" || isolatedSection === "colors";

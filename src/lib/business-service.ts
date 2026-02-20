@@ -69,7 +69,9 @@ class BusinessService {
     if (!response.ok) {
       if (response.status === 404) return null;
       if (response.status === 401) {
-        console.warn(`>>> [BusinessService] Acesso não autorizado ao buscar configurações para ${companyId}.`);
+        console.warn(
+          `>>> [BusinessService] Acesso não autorizado ao buscar configurações para ${companyId}.`,
+        );
         return null;
       }
       const msg = await response.text().catch(() => "");
@@ -98,7 +100,9 @@ class BusinessService {
 
     if (!response.ok) {
       if (response.status === 401) {
-        console.warn(`>>> [BusinessService] Acesso não autorizado ao buscar bloqueios para ${companyId}.`);
+        console.warn(
+          `>>> [BusinessService] Acesso não autorizado ao buscar bloqueios para ${companyId}.`,
+        );
         return [];
       }
       const msg = await response.text().catch(() => "");

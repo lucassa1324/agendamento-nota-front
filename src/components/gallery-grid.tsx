@@ -53,7 +53,7 @@ export function GalleryGrid() {
           if (parsed.id) {
             const allImages = await galleryService.getPublicGallery(parsed.id);
             setImages(allImages);
-            
+
             const allServices = (parsed.services || []) as Service[];
             const dynamicCategories = [
               { id: "todos", label: "Todos" },
@@ -152,19 +152,23 @@ export function GalleryGrid() {
                 )}
               </div>
               <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                <p className="text-white font-medium">{image.title || "Sem título"}</p>
+                <p className="text-white font-medium">
+                  {image.title || "Sem título"}
+                </p>
               </div>
             </button>
           ))}
         </div>
-      ) : !isLoading && (
-        <div className="text-center py-20 bg-secondary/10 rounded-xl border border-dashed">
-          <p className="text-muted-foreground">
-            {selectedCategory === "todos"
-              ? "Nenhuma imagem na galeria ainda."
-              : `Nenhuma imagem encontrada para a categoria "${selectedCategory}".`}
-          </p>
-        </div>
+      ) : (
+        !isLoading && (
+          <div className="text-center py-20 bg-secondary/10 rounded-xl border border-dashed">
+            <p className="text-muted-foreground">
+              {selectedCategory === "todos"
+                ? "Nenhuma imagem na galeria ainda."
+                : `Nenhuma imagem encontrada para a categoria "${selectedCategory}".`}
+            </p>
+          </div>
+        )
       )}
 
       {/* Image Modal */}

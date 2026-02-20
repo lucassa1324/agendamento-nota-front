@@ -59,7 +59,7 @@ export function TeamSection() {
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("teamSettingsUpdated", loadData);
-    window.removeEventListener("DataReady", loadData);
+      window.removeEventListener("DataReady", loadData);
     };
   }, [loadData]);
 

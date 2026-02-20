@@ -72,7 +72,10 @@ export function HeroSection() {
     const dbHero = config?.hero || layoutGlobal?.hero;
 
     if (dbHero) {
-      console.log(">>> [HERO_SYNC] Aplicando dados do banco no carregamento inicial:", dbHero.title);
+      console.log(
+        ">>> [HERO_SYNC] Aplicando dados do banco no carregamento inicial:",
+        dbHero.title,
+      );
       setCustomStyles(dbHero);
     } else {
       setCustomStyles(getHeroSettings());
@@ -83,7 +86,10 @@ export function HeroSection() {
       if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "UPDATE_HERO_SETTINGS") {
-        console.log(">>> [HERO_SYNC] Atualização recebida via MessageEvent:", event.data.settings.title);
+        console.log(
+          ">>> [HERO_SYNC] Atualização recebida via MessageEvent:",
+          event.data.settings.title,
+        );
         setCustomStyles((prev) => ({
           ...prev,
           ...event.data.settings,
@@ -112,7 +118,10 @@ export function HeroSection() {
       const lg = cfg?.layoutGlobal || cfg?.layout_global;
       const heroFromDb = cfg?.hero || lg?.hero;
       if (heroFromDb) {
-        console.log(">>> [HERO_SYNC] Aplicando dados do banco via evento DataReady:", heroFromDb.title);
+        console.log(
+          ">>> [HERO_SYNC] Aplicando dados do banco via evento DataReady:",
+          heroFromDb.title,
+        );
         setCustomStyles(heroFromDb);
       }
     };

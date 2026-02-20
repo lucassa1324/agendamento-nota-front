@@ -33,14 +33,8 @@ import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/auth-client";
-import {
-  getServices,
-  type Service,
-} from "@/lib/booking-data";
-import {
-  type GalleryItem,
-  galleryService,
-} from "@/lib/gallery-service";
+import { getServices, type Service } from "@/lib/booking-data";
+import { type GalleryItem, galleryService } from "@/lib/gallery-service";
 import { cn } from "@/lib/utils";
 
 export function GalleryManager() {
@@ -59,35 +53,46 @@ export function GalleryManager() {
 
   const loadData = useCallback(async () => {
     if (!studio?.id) return;
-    
+
     setIsLoading(true);
     try {
-      console.log(">>> [GalleryManager] Carregando dados para studio:", studio.id);
-      
+      console.log(
+        ">>> [GalleryManager] Carregando dados para studio:",
+        studio.id,
+      );
+
       // 1. Carregar imagens da galeria
       const remoteImages = await galleryService.getPublicGallery(studio.id);
       setImages(remoteImages);
-      
+
       // 2. Tentar obter serviços de múltiplas fontes
       let loadedServices: Service[] = [];
-      
+
       // Fonte A: Contexto do Studio (ideal)
       if (studio?.services && studio.services.length > 0) {
-        console.log(">>> [GalleryManager] Serviços carregados via StudioContext:", studio.services.length);
+        console.log(
+          ">>> [GalleryManager] Serviços carregados via StudioContext:",
+          studio.services.length,
+        );
         loadedServices = studio.services;
-      } 
+      }
       // Fonte B: LocalStorage/Legacy fallback
       else {
         const legacyServices = getServices();
         if (legacyServices && legacyServices.length > 0) {
-          console.log(">>> [GalleryManager] Serviços carregados via LocalStorage/Fallback:", legacyServices.length);
+          console.log(
+            ">>> [GalleryManager] Serviços carregados via LocalStorage/Fallback:",
+            legacyServices.length,
+          );
           loadedServices = legacyServices;
         }
       }
 
       // Fonte C: API Direta (Fallback final se as outras falharem)
       if (loadedServices.length === 0) {
-        console.log(">>> [GalleryManager] Nenhuma fonte local tem serviços. Tentando API direta...");
+        console.log(
+          ">>> [GalleryManager] Nenhuma fonte local tem serviços. Tentando API direta...",
+        );
         try {
           const servicesTimestamp = Date.now();
           const servicesUrl = `${API_BASE_URL}/api/services/company/${studio.id}?t=${servicesTimestamp}`;
@@ -95,15 +100,21 @@ export function GalleryManager() {
           if (response.ok) {
             const apiServices = await response.json();
             if (Array.isArray(apiServices) && apiServices.length > 0) {
-              console.log(">>> [GalleryManager] Serviços carregados via API direta:", apiServices.length);
+              console.log(
+                ">>> [GalleryManager] Serviços carregados via API direta:",
+                apiServices.length,
+              );
               loadedServices = apiServices;
             }
           }
         } catch (apiError) {
-          console.error(">>> [GalleryManager] Erro ao buscar serviços via API:", apiError);
+          console.error(
+            ">>> [GalleryManager] Erro ao buscar serviços via API:",
+            apiError,
+          );
         }
       }
-        
+
       setServices(loadedServices);
 
       if (loadedServices.length > 0 && !categoryInput) {
@@ -178,13 +189,14 @@ export function GalleryManager() {
         await galleryService.create({
           imageUrl: base64,
           title: file.name.split(".")[0],
-          category: categoryInput || (services.length > 0 ? services[0].name : "Geral"),
+          category:
+            categoryInput || (services.length > 0 ? services[0].name : "Geral"),
           showInHome: false,
         });
       }
-      
+
       await loadData();
-      
+
       // Notificar Home
       window.dispatchEvent(new Event("galleryUpdated"));
 
@@ -193,7 +205,10 @@ export function GalleryManager() {
         description: `${files.length} imagem(ns) adicionada(s) com sucesso.`,
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro ao enviar as imagens.";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Ocorreu um erro ao enviar as imagens.";
       console.error(">>> [GalleryManager] Erro no upload:", error);
       toast({
         title: "Erro no upload",
@@ -231,7 +246,8 @@ export function GalleryManager() {
       await galleryService.create({
         imageUrl: trimmedUrl,
         title: titleInput || "Sem título",
-        category: categoryInput || (services.length > 0 ? services[0].name : "Geral"),
+        category:
+          categoryInput || (services.length > 0 ? services[0].name : "Geral"),
         showInHome: false,
       });
 
@@ -247,7 +263,10 @@ export function GalleryManager() {
         description: "Imagem adicionada à galeria.",
       });
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Não foi possível adicionar a imagem.";
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível adicionar a imagem.";
       console.error(">>> [GalleryManager] Erro ao adicionar via URL:", error);
       toast({
         title: "Erro",
@@ -265,7 +284,7 @@ export function GalleryManager() {
     try {
       await galleryService.delete(id);
       setImages((prev) => prev.filter((img) => img.id !== id));
-      
+
       // Notificar Home
       window.dispatchEvent(new Event("galleryUpdated"));
 
@@ -331,8 +350,8 @@ export function GalleryManager() {
       <div className="flex flex-col gap-2">
         <h2 className="text-2xl font-bold">Gerenciar Galeria</h2>
         <p className="text-muted-foreground text-sm">
-          Adicione e organize as fotos dos seus trabalhos. As imagens são
-          salvas e sincronizadas com o servidor.
+          Adicione e organize as fotos dos seus trabalhos. As imagens são salvas
+          e sincronizadas com o servidor.
         </p>
       </div>
 
@@ -443,7 +462,14 @@ export function GalleryManager() {
                 </SelectTrigger>
                 <SelectContent>
                   {services.map((service, index) => (
-                    <SelectItem key={service.id ? `${service.id}-${index}` : `category-${index}`} value={service.name}>
+                    <SelectItem
+                      key={
+                        service.id
+                          ? `${service.id}-${index}`
+                          : `category-${index}`
+                      }
+                      value={service.name}
+                    >
                       {service.name}
                     </SelectItem>
                   ))}
@@ -501,7 +527,14 @@ export function GalleryManager() {
                 <SelectContent>
                   <SelectItem value="all">Todos os Serviços</SelectItem>
                   {services.map((service, index) => (
-                    <SelectItem key={service.id ? `${service.id}-${index}` : `filter-${index}`} value={service.name}>
+                    <SelectItem
+                      key={
+                        service.id
+                          ? `${service.id}-${index}`
+                          : `filter-${index}`
+                      }
+                      value={service.name}
+                    >
                       {service.name}
                     </SelectItem>
                   ))}
@@ -575,7 +608,9 @@ export function GalleryManager() {
                   )}
                 </div>
                 <div className="p-3 space-y-2">
-                  <p className="text-sm font-medium truncate">{img.title || "Sem título"}</p>
+                  <p className="text-sm font-medium truncate">
+                    {img.title || "Sem título"}
+                  </p>
                   <Select
                     value={img.category || ""}
                     onValueChange={(val) => handleUpdateCategory(img.id, val)}
@@ -586,7 +621,11 @@ export function GalleryManager() {
                     <SelectContent>
                       {services.map((service, index) => (
                         <SelectItem
-                          key={service.id ? `${service.id}-${index}` : `edit-cat-${index}`}
+                          key={
+                            service.id
+                              ? `${service.id}-${index}`
+                              : `edit-cat-${index}`
+                          }
                           value={service.name}
                           className="text-xs"
                         >

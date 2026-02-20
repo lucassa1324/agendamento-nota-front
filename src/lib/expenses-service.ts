@@ -56,7 +56,9 @@ class ExpensesService {
   }
 
   async list(companyId: string): Promise<Expense[]> {
-    const response = await customFetch(`${this.baseUrl}?companyId=${companyId}`);
+    const response = await customFetch(
+      `${this.baseUrl}?companyId=${companyId}`,
+    );
     return this.handleResponse(response);
   }
 
@@ -90,7 +92,9 @@ class ExpensesService {
   }
 
   async getProfitReport(companyId: string): Promise<ProfitReport> {
-    const response = await customFetch(`${API_BASE_URL}/api/reports/profit?companyId=${companyId}`);
+    const response = await customFetch(
+      `${API_BASE_URL}/api/reports/profit?companyId=${companyId}`,
+    );
     return this.handleResponse(response);
   }
 }

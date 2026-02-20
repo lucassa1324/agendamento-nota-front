@@ -280,7 +280,7 @@ export function ServicesManager() {
   useEffect(() => {
     if (!studio?.id) return;
     loadServices();
-    
+
     // Carregar produtos da API em vez do localStorage
     const loadInventory = async () => {
       try {
@@ -290,12 +290,15 @@ export function ServicesManager() {
         // Opcional: manter localStorage sincronizado para compatibilidade legada
         saveInventoryToStorage(bookingInventoryData);
       } catch (error) {
-        console.error(">>> [SERVICES_MANAGER] Erro ao carregar estoque:", error);
+        console.error(
+          ">>> [SERVICES_MANAGER] Erro ao carregar estoque:",
+          error,
+        );
         // Fallback para localStorage se a API falhar
         setAllProducts(getInventoryFromStorage());
       }
     };
-    
+
     loadInventory();
   }, [studio?.id]);
 
@@ -341,27 +344,52 @@ export function ServicesManager() {
 
         // Mapear resources para products (UI legada) para manter compatibilidade
         // Suporta tanto camelCase quanto snake_case do banco
-        const rawResources = s.resources || s.serviceResources || s.service_resources || [];
+        const rawResources =
+          s.resources || s.serviceResources || s.service_resources || [];
         const mappedProducts = rawResources.map((r: ServiceResourceItem) => ({
-          productId: (r.inventoryId || r.inventory_id || r.productId || r.product_id || "") as string,
-          quantity: typeof r.quantity === "string" ? parseFloat(r.quantity) : r.quantity,
-          useSecondaryUnit: !!(r.useSecondaryUnit || r.use_secondary_unit)
+          productId: (r.inventoryId ||
+            r.inventory_id ||
+            r.productId ||
+            r.product_id ||
+            "") as string,
+          quantity:
+            typeof r.quantity === "string"
+              ? parseFloat(r.quantity)
+              : r.quantity,
+          useSecondaryUnit: !!(r.useSecondaryUnit || r.use_secondary_unit),
         }));
 
         // Fallback para o campo 'products' legado se resources estiver vazio
-        const finalProducts = mappedProducts.length > 0 
-          ? mappedProducts 
-          : (s.products || []).map((p: ServiceResourceItem) => ({
-              productId: (p.productId || p.product_id || p.inventoryId || p.inventory_id || "") as string,
-              quantity: typeof p.quantity === "string" ? parseFloat(p.quantity) : p.quantity,
-              useSecondaryUnit: !!(p.useSecondaryUnit || p.use_secondary_unit)
-            }));
+        const finalProducts =
+          mappedProducts.length > 0
+            ? mappedProducts
+            : (s.products || []).map((p: ServiceResourceItem) => ({
+                productId: (p.productId ||
+                  p.product_id ||
+                  p.inventoryId ||
+                  p.inventory_id ||
+                  "") as string,
+                quantity:
+                  typeof p.quantity === "string"
+                    ? parseFloat(p.quantity)
+                    : p.quantity,
+                useSecondaryUnit: !!(
+                  p.useSecondaryUnit || p.use_secondary_unit
+                ),
+              }));
 
         const finalResources = rawResources.map((r: ServiceResourceItem) => ({
-          inventoryId: (r.inventoryId || r.inventory_id || r.productId || r.product_id || "") as string,
-          quantity: typeof r.quantity === "string" ? parseFloat(r.quantity) : (r.quantity || 0),
+          inventoryId: (r.inventoryId ||
+            r.inventory_id ||
+            r.productId ||
+            r.product_id ||
+            "") as string,
+          quantity:
+            typeof r.quantity === "string"
+              ? parseFloat(r.quantity)
+              : r.quantity || 0,
           unit: r.unit || "un",
-          useSecondaryUnit: !!(r.useSecondaryUnit || r.use_secondary_unit)
+          useSecondaryUnit: !!(r.useSecondaryUnit || r.use_secondary_unit),
         }));
 
         return {
@@ -375,14 +403,17 @@ export function ServicesManager() {
         };
       });
 
-      console.log(">>> [SERVICES_MANAGER] Serviços formatados com produtos:", formattedServices.map((s) => ({
-        name: s.name,
-        productCount: s.products?.length || 0,
-        products: s.products
-      })));
+      console.log(
+        ">>> [SERVICES_MANAGER] Serviços formatados com produtos:",
+        formattedServices.map((s) => ({
+          name: s.name,
+          productCount: s.products?.length || 0,
+          products: s.products,
+        })),
+      );
 
       setServices(formattedServices as Service[]);
-      
+
       // Sincronizar cache local com os dados do banco
       const settings = getSettingsFromStorage();
       settings.services = formattedServices;
@@ -446,7 +477,10 @@ export function ServicesManager() {
 
     // Mesclar conflitos diretos e inversos, removendo duplicatas
     const allConflicts = Array.from(
-      new Set([...(Array.isArray(conflicts) ? conflicts : []), ...inverseConflicts]),
+      new Set([
+        ...(Array.isArray(conflicts) ? conflicts : []),
+        ...inverseConflicts,
+      ]),
     );
 
     setEditingId(service.id);
@@ -495,15 +529,15 @@ export function ServicesManager() {
     );
 
     // Mapear produtos para o formato 'resources' esperado pelo backend
-    const resources = (formData.products || []).map(p => {
-      const inventoryItem = allProducts.find(i => i.id === p.productId);
+    const resources = (formData.products || []).map((p) => {
+      const inventoryItem = allProducts.find((i) => i.id === p.productId);
       return {
         inventoryId: p.productId,
         quantity: p.quantity,
-        unit: p.useSecondaryUnit 
-          ? (inventoryItem?.secondaryUnit || inventoryItem?.unit || "") 
-          : (inventoryItem?.unit || ""),
-        useSecondaryUnit: !!p.useSecondaryUnit
+        unit: p.useSecondaryUnit
+          ? inventoryItem?.secondaryUnit || inventoryItem?.unit || ""
+          : inventoryItem?.unit || "",
+        useSecondaryUnit: !!p.useSecondaryUnit,
       };
     });
 
@@ -596,7 +630,10 @@ export function ServicesManager() {
 
       // Sincronização bidirecional de conflitos
       try {
-        const savedService = await response.clone().json().catch(() => null);
+        const savedService = await response
+          .clone()
+          .json()
+          .catch(() => null);
         const finalId = savedService?.id || editingId;
 
         if (finalId) {
@@ -623,15 +660,19 @@ export function ServicesManager() {
 
               // Tenta usar recursos existentes ou mapear de produtos se necessário
               // Nota: 's' vem do estado 'services', que deve ter 'resources' populado do backend
-              const sResources = s.resources || (s.products || []).map(p => {
-                 const inventoryItem = allProducts.find(i => i.id === p.productId);
-                 return {
-                   inventoryId: p.productId,
-                   quantity: p.quantity,
-                   unit: inventoryItem?.unit || "",
-                   useSecondaryUnit: !!p.useSecondaryUnit
-                 };
-              });
+              const sResources =
+                s.resources ||
+                (s.products || []).map((p) => {
+                  const inventoryItem = allProducts.find(
+                    (i) => i.id === p.productId,
+                  );
+                  return {
+                    inventoryId: p.productId,
+                    quantity: p.quantity,
+                    unit: inventoryItem?.unit || "",
+                    useSecondaryUnit: !!p.useSecondaryUnit,
+                  };
+                });
 
               const payload = {
                 name: s.name,
@@ -719,7 +760,9 @@ export function ServicesManager() {
   const toggleConflict = (serviceId: string) => {
     // Impedir que o serviço seja conflito de si mesmo
     if (serviceId === editingId) {
-      console.warn(">>> [SERVICES_MANAGER] Tentativa de auto-conflito ignorada.");
+      console.warn(
+        ">>> [SERVICES_MANAGER] Tentativa de auto-conflito ignorada.",
+      );
       return;
     }
 
@@ -837,17 +880,19 @@ export function ServicesManager() {
 
       // Recarregar estoque para atualizar estado local
       const updatedInventoryRaw = await inventoryService.list(studio?.id || "");
-      const updatedInventory = updatedInventoryRaw as unknown as BookingInventoryItem[];
+      const updatedInventory =
+        updatedInventoryRaw as unknown as BookingInventoryItem[];
       setAllProducts(updatedInventory);
-      
+
       // Sincronizar localStorage (opcional, mas bom para consistência legado)
       saveInventoryToStorage(updatedInventory);
-      
+
       setEditingConversionId(null);
 
       toast({
         title: "Conversão Salva",
-        description: "A unidade de consumo foi configurada com sucesso no servidor.",
+        description:
+          "A unidade de consumo foi configurada com sucesso no servidor.",
       });
     } catch (error) {
       console.error(">>> [SERVICES_MANAGER] Erro ao salvar conversão:", error);
@@ -863,14 +908,17 @@ export function ServicesManager() {
     setServiceForProducts(service);
     setInnerProductSearch("");
     setIsProductModalOpen(true);
-    
+
     // Garantir que os produtos estejam atualizados ao abrir o modal
     if (studio?.id) {
       try {
         const data = await inventoryService.list(studio.id);
         setAllProducts(data as unknown as BookingInventoryItem[]);
       } catch (error) {
-        console.error(">>> [SERVICES_MANAGER] Erro ao atualizar produtos ao abrir modal:", error);
+        console.error(
+          ">>> [SERVICES_MANAGER] Erro ao atualizar produtos ao abrir modal:",
+          error,
+        );
       }
     }
   };
@@ -882,7 +930,9 @@ export function ServicesManager() {
       // Garantir que temos os produtos do estoque carregados para pegar as unidades corretas
       let currentAllProducts = allProducts;
       if (currentAllProducts.length === 0 && studio?.id) {
-        console.log(">>> [SERVICES_MANAGER] Recarregando estoque antes de salvar...");
+        console.log(
+          ">>> [SERVICES_MANAGER] Recarregando estoque antes de salvar...",
+        );
         const data = await inventoryService.list(studio.id);
         currentAllProducts = data as unknown as BookingInventoryItem[];
         setAllProducts(currentAllProducts);
@@ -890,7 +940,9 @@ export function ServicesManager() {
 
       // Mapear produtos da UI para o formato 'resources' esperado pelo backend
       const resources = (serviceForProducts.products || []).map((p) => {
-        const inventoryItem = currentAllProducts.find((i) => i.id === p.productId);
+        const inventoryItem = currentAllProducts.find(
+          (i) => i.id === p.productId,
+        );
         return {
           inventoryId: p.productId,
           quantity: p.quantity,
@@ -912,11 +964,11 @@ export function ServicesManager() {
       };
 
       // Remover o campo 'products' legado e outros campos extras antes de enviar
-      const { 
-        products: _, 
-        serviceResources: __, 
-        service_resources: ___, 
-        ...serviceDataToSubmit 
+      const {
+        products: _,
+        serviceResources: __,
+        service_resources: ___,
+        ...serviceDataToSubmit
       } = serviceData as Record<string, unknown>;
 
       const putProductsUrl = `${API_URL}/${serviceForProducts.id}`.replace(
@@ -936,11 +988,16 @@ export function ServicesManager() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error(">>> [SERVICES_MANAGER] Erro ao salvar:", errorData);
-        throw new Error(`Erro ao salvar produtos do serviço: ${response.status}`);
+        throw new Error(
+          `Erro ao salvar produtos do serviço: ${response.status}`,
+        );
       }
 
       const updatedService = await response.json();
-      console.log(">>> [SERVICES_MANAGER] Resposta do save (PUT):", updatedService);
+      console.log(
+        ">>> [SERVICES_MANAGER] Resposta do save (PUT):",
+        updatedService,
+      );
 
       toast({
         title: "Produtos Atualizados",
@@ -1079,8 +1136,8 @@ export function ServicesManager() {
               {editingId ? "Editar Serviço" : "Novo Serviço"}
             </DialogTitle>
             <DialogDescription>
-              {editingId 
-                ? "Atualize as informações do serviço selecionado." 
+              {editingId
+                ? "Atualize as informações do serviço selecionado."
                 : "Preencha os dados abaixo para cadastrar um novo serviço no sistema."}
             </DialogDescription>
           </DialogHeader>
@@ -1209,13 +1266,13 @@ export function ServicesManager() {
                       "border-destructive focus-visible:ring-destructive",
                   )}
                 />
-                {(formData.duration !== undefined &&
+                {formData.duration !== undefined &&
                   !Number.isNaN(formData.duration) &&
-                  formData.duration < 10) && (
-                  <p className="text-[10px] text-destructive font-medium mt-1">
-                    ⚠️ Mínimo de 10 minutos permitido
-                  </p>
-                )}
+                  formData.duration < 10 && (
+                    <p className="text-[10px] text-destructive font-medium mt-1">
+                      ⚠️ Mínimo de 10 minutos permitido
+                    </p>
+                  )}
               </div>
 
               <div>
@@ -1312,7 +1369,11 @@ export function ServicesManager() {
                       )
                       .map((service, index) => (
                         <div
-                          key={service.id ? `${service.id}-${index}` : `conflict-${index}`}
+                          key={
+                            service.id
+                              ? `${service.id}-${index}`
+                              : `conflict-${index}`
+                          }
                           className={cn(
                             "flex items-start space-x-3 p-3 rounded-lg border transition-colors",
                             formData.conflictingServiceIds?.includes(service.id)
@@ -1350,7 +1411,11 @@ export function ServicesManager() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleCancel} disabled={isSaving}>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSaving}
+            >
               Cancelar
             </Button>
             <Button
@@ -1451,7 +1516,8 @@ export function ServicesManager() {
                   <DialogHeader>
                     <DialogTitle>Adicionar Produto ao Serviço</DialogTitle>
                     <DialogDescription>
-                      Pesquise e selecione um produto do estoque para vincular a este serviço.
+                      Pesquise e selecione um produto do estoque para vincular a
+                      este serviço.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-2">
@@ -1857,7 +1923,9 @@ export function ServicesManager() {
           </div>
         ) : (
           services.map((service, index) => (
-            <Card key={service.id ? `${service.id}-${index}` : `service-${index}`}>
+            <Card
+              key={service.id ? `${service.id}-${index}` : `service-${index}`}
+            >
               <CardContent className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">

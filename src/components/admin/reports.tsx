@@ -62,10 +62,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStudio } from "@/context/studio-context";
 import { appointmentService } from "@/lib/api-appointments";
-import type {
-  InventoryItem,
-  InventoryLog,
-} from "@/lib/booking-data";
+import type { InventoryItem, InventoryLog } from "@/lib/booking-data";
 import { expensesService } from "@/lib/expenses-service";
 import { inventoryService } from "@/lib/inventory-service";
 import { cn } from "@/lib/utils";
@@ -134,10 +131,18 @@ export function Reports() {
       }
 
       // Filtros de agendamentos por status
-      const finishedBookings = appointments.filter((b) => b.status === "COMPLETED");
-      const pendingBookings = appointments.filter((b) => b.status === "PENDING");
-      const confirmedBookings = appointments.filter((b) => b.status === "CONFIRMED");
-      const cancelledBookings = appointments.filter((b) => b.status === "CANCELLED");
+      const finishedBookings = appointments.filter(
+        (b) => b.status === "COMPLETED",
+      );
+      const pendingBookings = appointments.filter(
+        (b) => b.status === "PENDING",
+      );
+      const confirmedBookings = appointments.filter(
+        (b) => b.status === "CONFIRMED",
+      );
+      const cancelledBookings = appointments.filter(
+        (b) => b.status === "CANCELLED",
+      );
 
       // Valor total do inventário e contagem de estoque baixo
       let lowStockCount = 0;
@@ -191,15 +196,17 @@ export function Reports() {
         .slice(0, 15);
 
       // Mapear agendamentos para movimentações financeiras (Apenas Concluídos)
-      const bookingMovements: FinancialMovement[] = finishedBookings.map((booking) => ({
-        id: booking.id,
-        date: booking.scheduledAt,
-        description: `Serviço: ${booking.serviceNameSnapshot}`,
-        type: "entry",
-        category: "Serviços",
-        amount: parseFloat(booking.servicePriceSnapshot) || 0,
-        status: "completed",
-      }));
+      const bookingMovements: FinancialMovement[] = finishedBookings.map(
+        (booking) => ({
+          id: booking.id,
+          date: booking.scheduledAt,
+          description: `Serviço: ${booking.serviceNameSnapshot}`,
+          type: "entry",
+          category: "Serviços",
+          amount: parseFloat(booking.servicePriceSnapshot) || 0,
+          status: "completed",
+        }),
+      );
 
       // Mapear gastos fixos para movimentações financeiras
       const expenseMovements: FinancialMovement[] = expenses.map((expense) => ({
@@ -213,9 +220,11 @@ export function Reports() {
       }));
 
       // Combinar e ordenar todas as movimentações
-      const allMovements = [...bookingMovements, ...inventoryMovements, ...expenseMovements].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
+      const allMovements = [
+        ...bookingMovements,
+        ...inventoryMovements,
+        ...expenseMovements,
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       // Total de faturamento (apenas concluídos)
       const totalRevenue = finishedBookings.reduce((sum, booking) => {
@@ -225,15 +234,26 @@ export function Reports() {
       // Faturamento mensal (últimos 6 meses) - apenas concluídos
       const monthlyData: { [key: string]: number } = {};
       const monthNames = [
-        "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
-        "Jul", "Ago", "Set", "Out", "Nov", "Dez",
+        "Jan",
+        "Fev",
+        "Mar",
+        "Abr",
+        "Mai",
+        "Jun",
+        "Jul",
+        "Ago",
+        "Set",
+        "Out",
+        "Nov",
+        "Dez",
       ];
 
       finishedBookings.forEach((booking) => {
         const date = new Date(booking.scheduledAt);
         const monthKey = `${monthNames[date.getMonth()]}/${date.getFullYear().toString().slice(-2)}`;
         monthlyData[monthKey] =
-          (monthlyData[monthKey] || 0) + (parseFloat(booking.servicePriceSnapshot) || 0);
+          (monthlyData[monthKey] || 0) +
+          (parseFloat(booking.servicePriceSnapshot) || 0);
       });
 
       const monthlyRevenue = Object.entries(monthlyData)
@@ -395,7 +415,9 @@ export function Reports() {
     generateReports();
 
     const handleUpdate = () => {
-      console.log(">>> [REPORTS] Atualizando relatório devido a mudança no estoque");
+      console.log(
+        ">>> [REPORTS] Atualizando relatório devido a mudança no estoque",
+      );
       generateReports();
     };
 
@@ -1100,7 +1122,10 @@ export function Reports() {
               <CardContent>
                 <div className="space-y-4">
                   {reportData.topServices.map((service, index) => (
-                    <div key={`${service.name}-${index}`} className="flex items-center gap-4">
+                    <div
+                      key={`${service.name}-${index}`}
+                      className="flex items-center gap-4"
+                    >
                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-accent/10 text-accent font-bold text-sm">
                         {index + 1}
                       </div>
@@ -1273,7 +1298,8 @@ export function Reports() {
                           {log.unit}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
-                          {(log.newQuantity ?? 0).toLocaleString("pt-BR")} {log.unit}
+                          {(log.newQuantity ?? 0).toLocaleString("pt-BR")}{" "}
+                          {log.unit}
                         </TableCell>
                         <TableCell
                           className="text-[11px] text-muted-foreground italic max-w-50 truncate"

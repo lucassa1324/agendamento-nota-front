@@ -203,12 +203,15 @@ export function ProfileManager() {
 
       console.log(">>> [PROFILE] Enviando payload completo:", payload);
 
-      const response = await customFetch(`${API_BASE_URL}/api/settings/profile/${companyId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        credentials: "include",
-      });
+      const response = await customFetch(
+        `${API_BASE_URL}/api/settings/profile/${companyId}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          credentials: "include",
+        },
+      );
 
       if (!response.ok) {
         if (response.status === 422) {
@@ -276,7 +279,8 @@ export function ProfileManager() {
     if (!file.type.startsWith("image/")) {
       toast({
         title: "Formato inválido",
-        description: "Por favor, selecione um arquivo de imagem (PNG, JPG ou SVG).",
+        description:
+          "Por favor, selecione um arquivo de imagem (PNG, JPG ou SVG).",
         variant: "destructive",
       });
       return;
@@ -304,11 +308,11 @@ export function ProfileManager() {
       };
 
       const compressedBlob = await imageCompression(file, options);
-      
+
       // Converter Blob de volta para File para garantir que o backend receba os metadados corretos
-      const compressedFile = new File([compressedBlob], file.name, { 
+      const compressedFile = new File([compressedBlob], file.name, {
         type: file.type,
-        lastModified: Date.now()
+        lastModified: Date.now(),
       });
 
       console.log(
@@ -319,10 +323,10 @@ export function ProfileManager() {
       const formData = new FormData();
       // O Back-end espera a chave 'file' para o upload da logo
       formData.append("file", compressedFile);
-      
+
       // O Back-end exige obrigatoriamente o nome 'businessId'
       formData.append("businessId", companyId);
-      
+
       // Caso o backend exija o tipo da logo (ex: 'main', 'logo')
 
       const xhr = new XMLHttpRequest();
@@ -347,9 +351,17 @@ export function ProfileManager() {
           } else if (xhr.status === 422) {
             try {
               const errorData = JSON.parse(xhr.responseText);
-              reject(new Error(errorData.message || errorData.error || "Erro de validação no servidor."));
+              reject(
+                new Error(
+                  errorData.message ||
+                    errorData.error ||
+                    "Erro de validação no servidor.",
+                ),
+              );
             } catch {
-              reject(new Error("Erro 422: O servidor rejeitou os dados enviados."));
+              reject(
+                new Error("Erro 422: O servidor rejeitou os dados enviados."),
+              );
             }
           } else {
             reject(new Error(`Erro no upload: ${xhr.status}`));
@@ -361,8 +373,8 @@ export function ProfileManager() {
         );
 
         xhr.open("POST", `${API_BASE_URL}/api/settings/logo`);
-        
-        // IMPORTANTE: NÃO definir Content-Type manual para FormData. 
+
+        // IMPORTANTE: NÃO definir Content-Type manual para FormData.
         // O navegador deve definir automaticamente com o 'boundary' correto.
         xhr.withCredentials = true;
         xhr.send(formData);
@@ -380,7 +392,12 @@ export function ProfileManager() {
 
       console.log(">>> [ADMIN_DEBUG] Resposta completa do upload:", response);
 
-      const logoUrl = response.logoUrl || response.url || response.path || (response.data?.logoUrl) || (response.data?.url);
+      const logoUrl =
+        response.logoUrl ||
+        response.url ||
+        response.path ||
+        response.data?.logoUrl ||
+        response.data?.url;
 
       console.log(">>> [ADMIN_DEBUG] logoUrl extraído:", logoUrl);
 
@@ -401,15 +418,15 @@ export function ProfileManager() {
 
       // Dispara evento para componentes que não usam Context (como FaviconUpdater)
       window.dispatchEvent(new CustomEvent("siteProfileUpdated"));
-      
+
       // Notifica o Header/Footer se estiverem em um iframe (preview)
       if (typeof window !== "undefined" && window.self !== window.top) {
         window.parent.postMessage(
-          { 
-            type: "UPDATE_HEADER_SETTINGS", 
-            settings: { logoUrl: getFullImageUrl(logoUrl) } 
-          }, 
-          "*"
+          {
+            type: "UPDATE_HEADER_SETTINGS",
+            settings: { logoUrl: getFullImageUrl(logoUrl) },
+          },
+          "*",
         );
       }
 
@@ -417,7 +434,7 @@ export function ProfileManager() {
       if (initialProfileRef.current) {
         initialProfileRef.current = {
           ...initialProfileRef.current,
-          logoUrl: logoUrl
+          logoUrl: logoUrl,
         };
       }
 
@@ -452,8 +469,6 @@ export function ProfileManager() {
       </div>
     );
   }
-
-
 
   return (
     <div className="space-y-6">

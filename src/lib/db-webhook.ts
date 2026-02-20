@@ -21,11 +21,14 @@ export const companies = pgTable("companies", {
 const dbUrl = process.env.DATABASE_URL;
 
 if (!dbUrl) {
-  console.warn("Warning: DATABASE_URL is not defined. Database operations will fail.");
+  console.warn(
+    "Warning: DATABASE_URL is not defined. Database operations will fail.",
+  );
 }
 
 // Fallback para evitar erro no build se a variável não estiver definida
 // O postgres.js conecta preguiçosamente, então isso não deve causar erro a menos que uma query seja executada
-const connectionString = dbUrl || "postgres://postgres:postgres@localhost:5432/postgres";
+const connectionString =
+  dbUrl || "postgres://postgres:postgres@localhost:5432/postgres";
 const queryClient = postgres(connectionString);
 export const db = drizzle(queryClient, { schema: { user, companies } });

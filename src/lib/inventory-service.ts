@@ -40,9 +40,11 @@ export interface TransactionPayload {
 class InventoryService {
   private baseUrl = `${API_BASE_URL}/api/inventory`;
 
-  async createTransaction(payload: TransactionPayload): Promise<{ product: InventoryItem; log: InventoryLog }> {
-    if (!payload.companyId || payload.companyId === 'N/A') {
-      throw new Error('ID da empresa inválido. Recarregue a página.');
+  async createTransaction(
+    payload: TransactionPayload,
+  ): Promise<{ product: InventoryItem; log: InventoryLog }> {
+    if (!payload.companyId || payload.companyId === "N/A") {
+      throw new Error("ID da empresa inválido. Recarregue a página.");
     }
     const response = await customFetch(`${this.baseUrl}/transactions`, {
       method: "POST",
@@ -56,7 +58,6 @@ class InventoryService {
     return this.handleResponse(response);
   }
 
-
   private async handleResponse(response: Response) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -69,9 +70,12 @@ class InventoryService {
     return response.json();
   }
 
-  async list(companyId: string, forceRefresh = false): Promise<InventoryItem[]> {
-    const url = forceRefresh 
-      ? `${this.baseUrl}/company/${companyId}?t=${Date.now()}` 
+  async list(
+    companyId: string,
+    forceRefresh = false,
+  ): Promise<InventoryItem[]> {
+    const url = forceRefresh
+      ? `${this.baseUrl}/company/${companyId}?t=${Date.now()}`
       : `${this.baseUrl}/company/${companyId}`;
     const response = await customFetch(url);
     return this.handleResponse(response);
@@ -85,7 +89,10 @@ class InventoryService {
     return this.handleResponse(response);
   }
 
-  async update(id: string, data: Partial<InventoryItem>): Promise<InventoryItem> {
+  async update(
+    id: string,
+    data: Partial<InventoryItem>,
+  ): Promise<InventoryItem> {
     const response = await customFetch(`${this.baseUrl}/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
@@ -106,7 +113,10 @@ class InventoryService {
     }
   }
 
-  async addLog(id: string, log: Omit<InventoryLog, "timestamp">): Promise<InventoryItem> {
+  async addLog(
+    id: string,
+    log: Omit<InventoryLog, "timestamp">,
+  ): Promise<InventoryItem> {
     const response = await customFetch(`${this.baseUrl}/${id}/logs`, {
       method: "POST",
       body: JSON.stringify(log),

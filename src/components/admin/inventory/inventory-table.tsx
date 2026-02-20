@@ -46,19 +46,20 @@ export function InventoryTable({
   const formatQuantity = (item: InventoryItem) => {
     const qty = item.quantity || item.currentQuantity || 0;
     const factor = item.conversionFactor || 1;
-    
+
     // Se tiver fator de conversão e unidade secundária, mostra o cálculo
     // Mas se a unidade secundária for "caixa", mantemos a primária como principal
-    const isSecondaryBox = item.secondaryUnit?.toLowerCase().includes("caixa") || 
-                          item.secondaryUnit?.toLowerCase().includes("cx");
+    const isSecondaryBox =
+      item.secondaryUnit?.toLowerCase().includes("caixa") ||
+      item.secondaryUnit?.toLowerCase().includes("cx");
 
     if (factor > 1 && item.secondaryUnit && !isSecondaryBox) {
       const secondaryQty = qty * factor;
-      
+
       // Se for um número inteiro, mostra sem decimais, senão mostra até 2
-      const formattedSecondary = Number.isInteger(secondaryQty) 
-        ? secondaryQty.toString() 
-        : secondaryQty.toFixed(2).replace('.', ',');
+      const formattedSecondary = Number.isInteger(secondaryQty)
+        ? secondaryQty.toString()
+        : secondaryQty.toFixed(2).replace(".", ",");
 
       return (
         <div className="flex flex-col">
@@ -66,7 +67,8 @@ export function InventoryTable({
             {formattedSecondary} {item.secondaryUnit}
           </span>
           <span className="text-[10px] text-muted-foreground font-normal">
-            ({qty.toLocaleString("pt-BR", { maximumFractionDigits: 3 })} {item.unit})
+            ({qty.toLocaleString("pt-BR", { maximumFractionDigits: 3 })}{" "}
+            {item.unit})
           </span>
         </div>
       );

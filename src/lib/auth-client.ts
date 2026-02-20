@@ -5,12 +5,12 @@ const cleanUrl = (url?: string) => {
   if (!url) return "";
   // Garante que a URL não termine com barra e seja absoluta
   let cleaned = url.replace(/\/$/, "");
-  
+
   // Remove /api/auth do final se existir, para evitar duplicação pelo Better Auth
   if (cleaned.endsWith("/api/auth")) {
     cleaned = cleaned.substring(0, cleaned.length - "/api/auth".length);
   }
-  
+
   return cleaned;
 };
 
@@ -98,7 +98,7 @@ export const getSessionToken = async (): Promise<string | null> => {
 
   // 2. Verificar cache de memória válido
   const now = Date.now();
-  if (lastToken && (now - lastFetchTime < CACHE_TTL)) {
+  if (lastToken && now - lastFetchTime < CACHE_TTL) {
     return lastToken;
   }
 
@@ -111,7 +111,7 @@ export const getSessionToken = async (): Promise<string | null> => {
       // Ajuste: Adiciona /api/auth explicitamente pois removemos do AUTH_BASE_URL
       const resp = await fetch(`${AUTH_BASE_URL}/api/auth/get-session`, {
         headers: { "Content-Type": "application/json" },
-        credentials: "include"
+        credentials: "include",
       });
 
       if (resp.ok) {
@@ -123,7 +123,10 @@ export const getSessionToken = async (): Promise<string | null> => {
       }
       return null;
     } catch (e) {
-      console.error(">>> [AUTH_CLIENT] Erro ao buscar sessão via fetch direto:", e);
+      console.error(
+        ">>> [AUTH_CLIENT] Erro ao buscar sessão via fetch direto:",
+        e,
+      );
       return null;
     } finally {
       sessionPromise = null;

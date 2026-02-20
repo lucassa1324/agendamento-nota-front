@@ -56,13 +56,13 @@ class AppointmentService {
   private async handleResponse(response: Response) {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      
+
       // Se for 401, podemos dar uma mensagem mais específica
       if (response.status === 401) {
         console.error(">>> [AppointmentService] Erro 401: Não autorizado!", {
           url: response.url,
           statusText: response.statusText,
-          errorData
+          errorData,
         });
       }
 
@@ -72,7 +72,7 @@ class AppointmentService {
         url: response.url,
         code: errorData.code || "UNKNOWN_ERROR",
         message: errorData.message || "Ocorreu um erro inesperado",
-        raw: errorData
+        raw: errorData,
       };
     }
     return response.json();
@@ -80,7 +80,7 @@ class AppointmentService {
 
   async create(data: CreateAppointmentDTO): Promise<Appointment> {
     console.log(">>> [AppointmentService] POST /appointments", {
-      companyId: data.companyId
+      companyId: data.companyId,
     });
 
     const response = await customFetch(`${this.baseUrl}`, {
@@ -91,7 +91,9 @@ class AppointmentService {
   }
 
   async listByCompany(companyId: string): Promise<Appointment[]> {
-    console.log(`>>> [AppointmentService] GET /appointments/company/${companyId}`);
+    console.log(
+      `>>> [AppointmentService] GET /appointments/company/${companyId}`,
+    );
 
     const response = await customFetch(`${this.baseUrl}/company/${companyId}`, {
       method: "GET",

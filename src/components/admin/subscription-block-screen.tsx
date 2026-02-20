@@ -18,7 +18,9 @@ interface SubscriptionBlockScreenProps {
   status: string;
 }
 
-export function SubscriptionBlockScreen({ status }: SubscriptionBlockScreenProps) {
+export function SubscriptionBlockScreen({
+  status,
+}: SubscriptionBlockScreenProps) {
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -48,7 +50,9 @@ export function SubscriptionBlockScreen({ status }: SubscriptionBlockScreenProps
       }
     } catch (error) {
       console.error("Erro ao gerar pagamento:", error);
-      toast.error("Não foi possível gerar o link de pagamento. Tente novamente.");
+      toast.error(
+        "Não foi possível gerar o link de pagamento. Tente novamente.",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -114,13 +118,18 @@ export function SubscriptionBlockScreen({ status }: SubscriptionBlockScreenProps
         <CardContent className="space-y-4 pt-4">
           <div className="bg-muted/50 p-4 rounded-lg text-sm text-center">
             <p className="font-medium mb-1">Valor da Assinatura</p>
-            <p className="text-2xl font-bold text-primary">R$ 49,90<span className="text-sm font-normal text-muted-foreground">/mês</span></p>
+            <p className="text-2xl font-bold text-primary">
+              R$ 49,90
+              <span className="text-sm font-normal text-muted-foreground">
+                /mês
+              </span>
+            </p>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-3">
-          <Button 
-            className="w-full h-12 text-base font-semibold shadow-md" 
-            size="lg" 
+          <Button
+            className="w-full h-12 text-base font-semibold shadow-md"
+            size="lg"
             onClick={handleSubscribe}
             disabled={isLoading}
           >

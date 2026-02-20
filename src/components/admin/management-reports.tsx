@@ -3,7 +3,6 @@
 
 import {
   BarChart3,
-
   Check,
   ChevronDown,
   ChevronRight,
@@ -54,8 +53,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useStudio } from "@/context/studio-context";
-import { type Expense, type ExpenseCategory, expensesService, type ProfitReport } from "@/lib/expenses-service";
-
+import {
+  type Expense,
+  type ExpenseCategory,
+  expensesService,
+  type ProfitReport,
+} from "@/lib/expenses-service";
 
 export function ManagementReports() {
   const { studio } = useStudio();
@@ -101,7 +104,9 @@ export function ManagementReports() {
 
     const handleUpdate = () => {
       if (studio?.id) {
-        console.log(">>> [MANAGEMENT_REPORTS] Atualizando relatório devido a mudança no estoque");
+        console.log(
+          ">>> [MANAGEMENT_REPORTS] Atualizando relatório devido a mudança no estoque",
+        );
         fetchExpenses();
         fetchReport();
       }
@@ -121,9 +126,13 @@ export function ManagementReports() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [editingGroupExpenses, setEditingGroupExpenses] = useState<Expense[]>([]);
+  const [editingGroupExpenses, setEditingGroupExpenses] = useState<Expense[]>(
+    [],
+  );
 
-  const [expenseType, setExpenseType] = useState<"single" | "fixed" | "installment">("single");
+  const [expenseType, setExpenseType] = useState<
+    "single" | "fixed" | "installment"
+  >("single");
   const [installmentsCount, setInstallmentsCount] = useState(2);
   const [footerView, setFooterView] = useState<"month" | "year">("month");
 
@@ -148,16 +157,18 @@ export function ManagementReports() {
     setIsSubmitting(true);
     try {
       if (editingGroupExpenses.length > 0) {
-        await Promise.all(editingGroupExpenses.map(expense => {
-          const match = expense.description.match(/ \(\d+\/\d+\)$/);
-          const suffix = match ? match[0] : "";
-          
-          return expensesService.update(expense.id, {
-            description: (newExpense.description || "") + suffix,
-            value: String(newExpense.value),
-            category: newExpense.category as ExpenseCategory,
-          });
-        }));
+        await Promise.all(
+          editingGroupExpenses.map((expense) => {
+            const match = expense.description.match(/ \(\d+\/\d+\)$/);
+            const suffix = match ? match[0] : "";
+
+            return expensesService.update(expense.id, {
+              description: (newExpense.description || "") + suffix,
+              value: String(newExpense.value),
+              category: newExpense.category as ExpenseCategory,
+            });
+          }),
+        );
         toast.success("Parcelamento atualizado com sucesso!");
       } else if (editingExpense) {
         await expensesService.update(editingExpense.id, {
@@ -178,7 +189,8 @@ export function ManagementReports() {
           category,
           dueDate: new Date().toISOString(),
           type: expenseType === "installment" ? "PARCELADO" : undefined,
-          totalInstallments: expenseType === "installment" ? installmentsCount : undefined,
+          totalInstallments:
+            expenseType === "installment" ? installmentsCount : undefined,
         };
 
         if (expenseType === "fixed") {
@@ -188,14 +200,14 @@ export function ManagementReports() {
         await expensesService.create(payload);
         toast.success("Gasto adicionado com sucesso!");
       }
-      
+
       setIsDialogOpen(false);
       setEditingExpense(null);
       setEditingGroupExpenses([]);
       setNewExpense({ description: "", value: "", category: "GERAL" });
       setExpenseType("single");
       setInstallmentsCount(2);
-      
+
       // Revalidar dados
       fetchExpenses();
       fetchReport();
@@ -209,13 +221,13 @@ export function ManagementReports() {
 
   const handleEditExpense = (expense: Expense) => {
     setEditingExpense(expense);
-    
+
     let type: "single" | "fixed" | "installment" = "single";
     let desc = expense.description;
 
     if (expense.description.includes("[FIXO]")) {
-        type = "fixed";
-        desc = expense.description.replace(" [FIXO]", "");
+      type = "fixed";
+      desc = expense.description.replace(" [FIXO]", "");
     }
 
     setNewExpense({
@@ -229,7 +241,7 @@ export function ManagementReports() {
 
   const handleDeleteExpense = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este gasto?")) return;
-    
+
     try {
       await expensesService.delete(id);
       toast.success("Gasto excluído com sucesso!");
@@ -243,7 +255,7 @@ export function ManagementReports() {
 
   const handleEditGroup = (groupExpenses: Expense[]) => {
     setEditingGroupExpenses(groupExpenses);
-    
+
     const first = groupExpenses[0];
     const match = first.description.match(/(.*?) \(\d+\/\d+\)$/);
     const baseDesc = match ? match[1] : first.description;
@@ -261,11 +273,16 @@ export function ManagementReports() {
     const first = groupExpenses[0];
     const match = first.description.match(/(.*?) \(\d+\/\d+\)$/);
     const baseDesc = match ? match[1] : first.description;
-    
-    if (!confirm(`Tem certeza que deseja excluir todas as ${groupExpenses.length} parcelas de "${baseDesc}"?`)) return;
+
+    if (
+      !confirm(
+        `Tem certeza que deseja excluir todas as ${groupExpenses.length} parcelas de "${baseDesc}"?`,
+      )
+    )
+      return;
 
     try {
-      await Promise.all(groupExpenses.map(e => expensesService.delete(e.id)));
+      await Promise.all(groupExpenses.map((e) => expensesService.delete(e.id)));
       toast.success("Parcelamento excluído com sucesso!");
       fetchExpenses();
       fetchReport();
@@ -278,7 +295,9 @@ export function ManagementReports() {
   const handleTogglePaid = async (expense: Expense) => {
     try {
       await expensesService.update(expense.id, { isPaid: !expense.isPaid });
-      toast.success(expense.isPaid ? "Marcado como não pago" : "Marcado como pago!");
+      toast.success(
+        expense.isPaid ? "Marcado como não pago" : "Marcado como pago!",
+      );
       fetchExpenses();
       fetchReport();
     } catch (error) {
@@ -302,15 +321,18 @@ export function ManagementReports() {
     const value = Number(curr.value);
     const date = new Date(curr.dueDate || curr.createdAt);
     const now = new Date();
-    
+
     if (footerView === "month") {
       if (isFixed) return acc + value;
-      if (date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) {
+      if (
+        date.getMonth() === now.getMonth() &&
+        date.getFullYear() === now.getFullYear()
+      ) {
         return acc + value;
       }
       return acc;
     } else {
-      if (isFixed) return acc + (value * 12);
+      if (isFixed) return acc + value * 12;
       if (date.getFullYear() === now.getFullYear()) {
         return acc + value;
       }
@@ -320,7 +342,8 @@ export function ManagementReports() {
 
   const totalRevenue = report?.totalRevenue ?? 0;
   const operationalProfit = totalRevenue - filteredTotalExpenses;
-  const margin = totalRevenue !== 0 ? (operationalProfit / totalRevenue) * 100 : 0;
+  const margin =
+    totalRevenue !== 0 ? (operationalProfit / totalRevenue) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -418,15 +441,15 @@ export function ManagementReports() {
                   {editingGroupExpenses.length > 0
                     ? "Editar Parcelamento"
                     : editingExpense
-                    ? "Editar Gasto Fixo"
-                    : "Adicionar Gasto Fixo"}
+                      ? "Editar Gasto Fixo"
+                      : "Adicionar Gasto Fixo"}
                 </DialogTitle>
                 <DialogDescription>
                   {editingGroupExpenses.length > 0
                     ? "Altere os dados de todas as parcelas deste grupo."
                     : editingExpense
-                    ? "Altere os dados do gasto operacional."
-                    : "Preencha os dados do novo gasto operacional."}
+                      ? "Altere os dados do gasto operacional."
+                      : "Preencha os dados do novo gasto operacional."}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -438,7 +461,11 @@ export function ManagementReports() {
                     <div className="col-span-3">
                       <Select
                         value={expenseType}
-                        onValueChange={(val) => setExpenseType(val as "single" | "fixed" | "installment")}
+                        onValueChange={(val) =>
+                          setExpenseType(
+                            val as "single" | "fixed" | "installment",
+                          )
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -450,29 +477,36 @@ export function ManagementReports() {
                           sideOffset={5}
                         >
                           <SelectItem value="single">Gasto Único</SelectItem>
-                          <SelectItem value="fixed">Gasto Fixo (Mensal)</SelectItem>
-                          <SelectItem value="installment">Compra Parcelada</SelectItem>
+                          <SelectItem value="fixed">
+                            Gasto Fixo (Mensal)
+                          </SelectItem>
+                          <SelectItem value="installment">
+                            Compra Parcelada
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                 )}
 
-                {expenseType === "installment" && editingGroupExpenses.length === 0 && (
-                  <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="installments" className="text-right">
-                      Parcelas
-                    </Label>
-                    <Input
-                      id="installments"
-                      type="number"
-                      min={2}
-                      className="col-span-3"
-                      value={installmentsCount}
-                      onChange={(e) => setInstallmentsCount(Number(e.target.value))}
-                    />
-                  </div>
-                )}
+                {expenseType === "installment" &&
+                  editingGroupExpenses.length === 0 && (
+                    <div className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor="installments" className="text-right">
+                        Parcelas
+                      </Label>
+                      <Input
+                        id="installments"
+                        type="number"
+                        min={2}
+                        className="col-span-3"
+                        value={installmentsCount}
+                        onChange={(e) =>
+                          setInstallmentsCount(Number(e.target.value))
+                        }
+                      />
+                    </div>
+                  )}
 
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="description" className="text-right">
@@ -517,7 +551,10 @@ export function ManagementReports() {
                     <Select
                       value={newExpense.category}
                       onValueChange={(value) =>
-                        setNewExpense({ ...newExpense, category: value as ExpenseCategory })
+                        setNewExpense({
+                          ...newExpense,
+                          category: value as ExpenseCategory,
+                        })
                       }
                     >
                       <SelectTrigger className="flex-1 w-full">
@@ -585,7 +622,9 @@ export function ManagementReports() {
                     const processedGroups = new Set<string>();
 
                     return expenses.map((expense) => {
-                      const installmentMatch = expense.description.match(/(.*?) \((\d+)\/(\d+)\)$/);
+                      const installmentMatch = expense.description.match(
+                        /(.*?) \((\d+)\/(\d+)\)$/,
+                      );
 
                       if (installmentMatch) {
                         const baseDesc = installmentMatch[1];
@@ -595,14 +634,18 @@ export function ManagementReports() {
                         if (processedGroups.has(groupKey)) return null;
                         processedGroups.add(groupKey);
 
-                        const groupExpenses = expenses.filter(e => {
-                          const m = e.description.match(/(.*?) \((\d+)\/(\d+)\)$/);
-                          return m && m[1] === baseDesc && m[3] === total;
-                        }).sort((a, b) => {
-                          const mA = a.description.match(/\((\d+)\//);
-                          const mB = b.description.match(/\((\d+)\//);
-                          return (Number(mA?.[1] || 0) - Number(mB?.[1] || 0));
-                        });
+                        const groupExpenses = expenses
+                          .filter((e) => {
+                            const m = e.description.match(
+                              /(.*?) \((\d+)\/(\d+)\)$/,
+                            );
+                            return m && m[1] === baseDesc && m[3] === total;
+                          })
+                          .sort((a, b) => {
+                            const mA = a.description.match(/\((\d+)\//);
+                            const mB = b.description.match(/\((\d+)\//);
+                            return Number(mA?.[1] || 0) - Number(mB?.[1] || 0);
+                          });
 
                         const isExpanded = expandedGroups.has(groupKey);
 
@@ -616,26 +659,38 @@ export function ManagementReports() {
                                   onClick={() => toggleGroup(groupKey)}
                                   className="h-8 w-8 p-0"
                                 >
-                                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
                                 </Button>
                               </TableCell>
                               <TableCell className="font-medium">
                                 {baseDesc} (Parcelado {groupExpenses.length}x)
                               </TableCell>
-                              <TableCell>{categories.find(c => c.value === expense.category)?.label || expense.category}</TableCell>
+                              <TableCell>
+                                {categories.find(
+                                  (c) => c.value === expense.category,
+                                )?.label || expense.category}
+                              </TableCell>
                               <TableCell className="text-right">
                                 R${" "}
                                 {Number(expense.value).toLocaleString("pt-BR", {
                                   minimumFractionDigits: 2,
                                 })}
-                                <span className="text-xs text-muted-foreground ml-1">/parc</span>
+                                <span className="text-xs text-muted-foreground ml-1">
+                                  /parc
+                                </span>
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2">
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => handleEditGroup(groupExpenses)}
+                                    onClick={() =>
+                                      handleEditGroup(groupExpenses)
+                                    }
                                     className="h-8 w-8 text-muted-foreground hover:text-accent"
                                     title="Editar todas as parcelas"
                                   >
@@ -644,7 +699,9 @@ export function ManagementReports() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => handleDeleteGroup(groupExpenses)}
+                                    onClick={() =>
+                                      handleDeleteGroup(groupExpenses)
+                                    }
                                     className="h-8 w-8 text-destructive hover:text-destructive/90"
                                     title="Excluir todas as parcelas"
                                   >
@@ -653,60 +710,71 @@ export function ManagementReports() {
                                 </div>
                               </TableCell>
                             </TableRow>
-                            {isExpanded && groupExpenses.map(child => (
-                              <TableRow key={child.id} className="bg-muted/10">
-                                <TableCell>
-                                  <div className="flex justify-end pr-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleTogglePaid(child)}
-                                      className={`h-6 w-6 rounded-full border ${
-                                        child.isPaid
-                                          ? "bg-green-100 text-green-600 border-green-200"
-                                          : "text-muted-foreground border-dashed"
-                                      }`}
-                                    >
-                                      {child.isPaid ? (
-                                        <Check className="w-3 h-3" />
-                                      ) : (
-                                        <X className="w-3 h-3" />
-                                      )}
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                                <TableCell className={`pl-10 text-sm ${child.isPaid ? "text-muted-foreground line-through" : ""}`}>
-                                  {child.description}
-                                </TableCell>
-                                <TableCell></TableCell>
-                                <TableCell className="text-right text-muted-foreground text-sm">
-                                  R${" "}
-                                  {Number(child.value).toLocaleString("pt-BR", {
-                                    minimumFractionDigits: 2,
-                                  })}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <div className="flex justify-end gap-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleEditExpense(child)}
-                                      className="h-8 w-8 text-muted-foreground hover:text-accent"
-                                    >
-                                      <Pencil className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleDeleteExpense(child.id)}
-                                      className="h-8 w-8 text-destructive hover:text-destructive/90"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                            {isExpanded &&
+                              groupExpenses.map((child) => (
+                                <TableRow
+                                  key={child.id}
+                                  className="bg-muted/10"
+                                >
+                                  <TableCell>
+                                    <div className="flex justify-end pr-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleTogglePaid(child)}
+                                        className={`h-6 w-6 rounded-full border ${
+                                          child.isPaid
+                                            ? "bg-green-100 text-green-600 border-green-200"
+                                            : "text-muted-foreground border-dashed"
+                                        }`}
+                                      >
+                                        {child.isPaid ? (
+                                          <Check className="w-3 h-3" />
+                                        ) : (
+                                          <X className="w-3 h-3" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell
+                                    className={`pl-10 text-sm ${child.isPaid ? "text-muted-foreground line-through" : ""}`}
+                                  >
+                                    {child.description}
+                                  </TableCell>
+                                  <TableCell></TableCell>
+                                  <TableCell className="text-right text-muted-foreground text-sm">
+                                    R${" "}
+                                    {Number(child.value).toLocaleString(
+                                      "pt-BR",
+                                      {
+                                        minimumFractionDigits: 2,
+                                      },
+                                    )}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end gap-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => handleEditExpense(child)}
+                                        className="h-8 w-8 text-muted-foreground hover:text-accent"
+                                      >
+                                        <Pencil className="w-4 h-4" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() =>
+                                          handleDeleteExpense(child.id)
+                                        }
+                                        className="h-8 w-8 text-destructive hover:text-destructive/90"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
                           </React.Fragment>
                         );
                       }
@@ -731,7 +799,9 @@ export function ManagementReports() {
                               )}
                             </Button>
                           </TableCell>
-                          <TableCell className={`font-medium ${expense.isPaid ? "text-muted-foreground line-through" : ""}`}>
+                          <TableCell
+                            className={`font-medium ${expense.isPaid ? "text-muted-foreground line-through" : ""}`}
+                          >
                             {expense.description.includes("[FIXO]") ? (
                               <div className="flex items-center gap-2">
                                 {expense.description.replace(" [FIXO]", "")}
@@ -741,7 +811,11 @@ export function ManagementReports() {
                               expense.description
                             )}
                           </TableCell>
-                          <TableCell>{categories.find(c => c.value === expense.category)?.label || expense.category}</TableCell>
+                          <TableCell>
+                            {categories.find(
+                              (c) => c.value === expense.category,
+                            )?.label || expense.category}
+                          </TableCell>
                           <TableCell className="text-right">
                             R${" "}
                             {Number(expense.value).toLocaleString("pt-BR", {
@@ -800,9 +874,7 @@ export function ManagementReports() {
               </SelectContent>
             </Select>
             <div className="text-right">
-              <p className="text-sm text-muted-foreground">
-                Total Calculado
-              </p>
+              <p className="text-sm text-muted-foreground">Total Calculado</p>
               <p className="text-2xl font-bold text-destructive">
                 R${" "}
                 {filteredTotalExpenses.toLocaleString("pt-BR", {
@@ -906,8 +978,6 @@ export function ManagementReports() {
             </div>
           </CardContent>
         </Card>
-
-
       </div>
     </div>
   );

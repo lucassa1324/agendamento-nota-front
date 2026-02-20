@@ -35,7 +35,9 @@ class GalleryService {
   // --- Rotas Privadas (Admin) ---
 
   async create(data: CreateGalleryDTO): Promise<GalleryItem> {
-    console.log(">>> [GalleryService] POST /api/gallery - Enviando com credentials: include");
+    console.log(
+      ">>> [GalleryService] POST /api/gallery - Enviando com credentials: include",
+    );
 
     const response = await customFetch(this.baseUrl, {
       method: "POST",
@@ -45,8 +47,14 @@ class GalleryService {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      console.error(">>> [GalleryService] Erro 401 ou outro no POST:", response.status, error);
-      throw new Error(error.message || `Erro ${response.status} ao criar imagem na galeria`);
+      console.error(
+        ">>> [GalleryService] Erro 401 ou outro no POST:",
+        response.status,
+        error,
+      );
+      throw new Error(
+        error.message || `Erro ${response.status} ao criar imagem na galeria`,
+      );
     }
 
     return response.json();
@@ -61,7 +69,10 @@ class GalleryService {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || `Erro ${response.status} ao atualizar imagem na galeria`);
+      throw new Error(
+        error.message ||
+          `Erro ${response.status} ao atualizar imagem na galeria`,
+      );
     }
 
     return response.json();
@@ -75,16 +86,22 @@ class GalleryService {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || `Erro ${response.status} ao excluir imagem da galeria`);
+      throw new Error(
+        error.message || `Erro ${response.status} ao excluir imagem da galeria`,
+      );
     }
   }
 
   // --- Rotas Públicas ---
 
-  async getPublicGallery(businessId: string, filters?: { category?: string; showInHome?: boolean }): Promise<GalleryItem[]> {
+  async getPublicGallery(
+    businessId: string,
+    filters?: { category?: string; showInHome?: boolean },
+  ): Promise<GalleryItem[]> {
     const params = new URLSearchParams();
     if (filters?.category) params.append("category", filters.category);
-    if (filters?.showInHome !== undefined) params.append("showInHome", String(filters.showInHome));
+    if (filters?.showInHome !== undefined)
+      params.append("showInHome", String(filters.showInHome));
 
     const queryString = params.toString();
     const url = `${this.baseUrl}/public/${businessId}${queryString ? `?${queryString}` : ""}`;

@@ -99,15 +99,19 @@ export function BookingFlow() {
 
     const syncSchedule = async () => {
       try {
-        console.log(">>> [BOOKING_FLOW] Sincronizando horários do backend para studio:", studio.id);
+        console.log(
+          ">>> [BOOKING_FLOW] Sincronizando horários do backend para studio:",
+          studio.id,
+        );
         const [settings, blocks] = await Promise.all([
           businessService.getSettings(studio.id),
           businessService.getBlocks(studio.id),
         ]);
 
         // Fallback para dados vindos do Studio Context se a API de settings falhar (401)
-        const studioFallback = (studio as unknown || {}) as StudioConfig;
-        const configFallback = (studio?.config as unknown || {}) as StudioConfig;
+        const studioFallback = ((studio as unknown) || {}) as StudioConfig;
+        const configFallback = ((studio?.config as unknown) ||
+          {}) as StudioConfig;
 
         const weeklyData = (settings?.weekly ||
           studioFallback.weekly ||
@@ -115,7 +119,9 @@ export function BookingFlow() {
           configFallback.appointmentFlow?.weekly ||
           configFallback.appointment_flow?.weekly ||
           configFallback.appointmentFlow?.step3Times?.weekly ||
-          configFallback.appointment_flow?.step3_times?.weekly) as unknown[] | undefined;
+          configFallback.appointment_flow?.step3_times?.weekly) as
+          | unknown[]
+          | undefined;
         const intervalData = (settings?.interval ||
           studioFallback.interval ||
           studioFallback.slotInterval ||
@@ -123,12 +129,15 @@ export function BookingFlow() {
           configFallback.appointmentFlow?.interval ||
           configFallback.appointmentFlow?.step3Times?.interval ||
           configFallback.appointment_flow?.step3_times?.interval ||
-          configFallback.appointmentFlow?.slotInterval) as string | number | undefined;
+          configFallback.appointmentFlow?.slotInterval) as
+          | string
+          | number
+          | undefined;
 
         console.log(">>> [BOOKING_FLOW] Dados recebidos:", {
           hasWeekly: !!weeklyData,
           interval: intervalData,
-          hasBlocks: !!blocks
+          hasBlocks: !!blocks,
         });
 
         if (weeklyData && Array.isArray(weeklyData) && weeklyData.length > 0) {
@@ -148,12 +157,18 @@ export function BookingFlow() {
             const dayData = weeklyData.find((d) => {
               const day = d as Record<string, unknown>;
               // Tenta dayOfWeek ou day_of_week
-              const dayIndex = day.dayOfWeek !== undefined ? Number(day.dayOfWeek) : Number(day.day_of_week);
+              const dayIndex =
+                day.dayOfWeek !== undefined
+                  ? Number(day.dayOfWeek)
+                  : Number(day.day_of_week);
               return dayIndex === i;
             }) as Record<string, unknown> | undefined;
 
             if (dayData) {
-              const isOpen = dayData.status === "OPEN" || dayData.isOpen === true || dayData.is_open === true;
+              const isOpen =
+                dayData.status === "OPEN" ||
+                dayData.isOpen === true ||
+                dayData.is_open === true;
               return {
                 dayOfWeek: i,
                 dayName: dayNames[i],
@@ -199,13 +214,18 @@ export function BookingFlow() {
             saveBlockedPeriods(blocks);
           }
 
-          console.log(">>> [BOOKING_FLOW] Schedule e Intervalo sincronizados com sucesso!");
+          console.log(
+            ">>> [BOOKING_FLOW] Schedule e Intervalo sincronizados com sucesso!",
+          );
           // Forçar re-renderização disparando evento
           window.dispatchEvent(new Event("storage"));
           window.dispatchEvent(new Event("bookingTimeUpdate")); // Novo evento para forçar atualização do calendário
         }
       } catch (error) {
-        console.error(">>> [BOOKING_FLOW] Erro ao sincronizar horários:", error);
+        console.error(
+          ">>> [BOOKING_FLOW] Erro ao sincronizar horários:",
+          error,
+        );
       }
     };
 
@@ -214,43 +234,52 @@ export function BookingFlow() {
 
   // Load initial settings
   useEffect(() => {
-    console.log('>>> [BOOKING_DEBUG] Studio data recebido:', {
+    console.log(">>> [BOOKING_DEBUG] Studio data recebido:", {
       hasStudio: !!studio,
       hasConfig: !!studio?.config,
       hasBookingSteps: !!studio?.config?.bookingSteps,
-      bookingSteps: studio?.config?.bookingSteps
+      bookingSteps: studio?.config?.bookingSteps,
     });
 
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studio?.config?.bookingSteps) {
       const steps = studio.config.bookingSteps as Record<string, unknown>;
-      
-      console.log('>>> [DEBUG_RAW] Estrutura completa bookingSteps:', steps);
-      
+
+      console.log(">>> [DEBUG_RAW] Estrutura completa bookingSteps:", steps);
+
       // Função para sanitizar cores
       const sanitizeColor = (color: string | undefined): string | undefined => {
         if (!color) return undefined;
         const trimmed = color.trim();
-        if (trimmed.startsWith('#') || trimmed.startsWith('rgb') || trimmed.startsWith('hsl')) {
+        if (
+          trimmed.startsWith("#") ||
+          trimmed.startsWith("rgb") ||
+          trimmed.startsWith("hsl")
+        ) {
           return trimmed;
         }
         return `#${trimmed}`;
       };
 
-      const getStepSettings = (stepData: Record<string, unknown> | undefined): BookingStepSettings => {
+      const getStepSettings = (
+        stepData: Record<string, unknown> | undefined,
+      ): BookingStepSettings => {
         if (!stepData) return {} as BookingStepSettings;
-        
+
         // Prioridade absoluta para backgroundColor conforme normalização do back-end
-        const rawColor = (stepData.backgroundColor as string) ||
-                         ((stepData.cardConfig as Record<string, unknown>)?.backgroundColor as string) || 
-                         ((stepData.card_config as Record<string, unknown>)?.background_color as string) ||
-                         (stepData.cardBgColor as string) || 
-                         (stepData.card_bg_color as string);
-        
+        const rawColor =
+          (stepData.backgroundColor as string) ||
+          ((stepData.cardConfig as Record<string, unknown>)
+            ?.backgroundColor as string) ||
+          ((stepData.card_config as Record<string, unknown>)
+            ?.background_color as string) ||
+          (stepData.cardBgColor as string) ||
+          (stepData.card_bg_color as string);
+
         const finalColor = sanitizeColor(rawColor);
-        
+
         if (finalColor) {
-          console.log('>>> [COLOR_APPLIED] Cor detectada:', finalColor);
+          console.log(">>> [COLOR_APPLIED] Cor detectada:", finalColor);
         }
 
         return {
@@ -261,18 +290,37 @@ export function BookingFlow() {
       };
 
       // Mapeamento priorizando chaves no plural conforme normalização (step1Services, step2Dates, etc)
-      const serviceSettingsData = getStepSettings((steps.step1Services || steps.step1Service || steps.service) as Record<string, unknown> | undefined);
-      const dateSettingsData = getStepSettings((steps.step2Dates || steps.step2Date || steps.date) as Record<string, unknown> | undefined);
-      const timeSettingsData = getStepSettings((steps.step3Times || steps.step3Time || steps.time) as Record<string, unknown> | undefined);
-      const formSettingsData = getStepSettings((steps.step4Form || steps.form) as Record<string, unknown> | undefined);
-      const confirmationSettingsData = getStepSettings((steps.step5Confirmation || steps.step4Confirmation || steps.confirmation) as Record<string, unknown> | undefined);
+      const serviceSettingsData = getStepSettings(
+        (steps.step1Services || steps.step1Service || steps.service) as
+          | Record<string, unknown>
+          | undefined,
+      );
+      const dateSettingsData = getStepSettings(
+        (steps.step2Dates || steps.step2Date || steps.date) as
+          | Record<string, unknown>
+          | undefined,
+      );
+      const timeSettingsData = getStepSettings(
+        (steps.step3Times || steps.step3Time || steps.time) as
+          | Record<string, unknown>
+          | undefined,
+      );
+      const formSettingsData = getStepSettings(
+        (steps.step4Form || steps.form) as Record<string, unknown> | undefined,
+      );
+      const confirmationSettingsData = getStepSettings(
+        (steps.step5Confirmation ||
+          steps.step4Confirmation ||
+          steps.confirmation) as Record<string, unknown> | undefined,
+      );
 
       // Adicionar o intervalo global ao timeSettings se disponível no config do studio
       if (studio?.config?.interval || studio?.config?.slotInterval) {
-        timeSettingsData.interval = studio.config.interval || studio.config.slotInterval;
+        timeSettingsData.interval =
+          studio.config.interval || studio.config.slotInterval;
       }
 
-      console.log('>>> [BOOKING_DEBUG] Aplicando cores do Studio (Mapeado):', {
+      console.log(">>> [BOOKING_DEBUG] Aplicando cores do Studio (Mapeado):", {
         serviceCardBg: serviceSettingsData.cardBgColor,
         dateCardBg: dateSettingsData.cardBgColor,
         timeCardBg: timeSettingsData.cardBgColor,
@@ -286,7 +334,9 @@ export function BookingFlow() {
       setFormSettings(formSettingsData);
       setConfirmationSettings(confirmationSettingsData);
     } else {
-      console.log('>>> [BOOKING_DEBUG] Studio sem config, usando padrões/storage');
+      console.log(
+        ">>> [BOOKING_DEBUG] Studio sem config, usando padrões/storage",
+      );
       setServiceSettings(getBookingServiceSettings());
       setDateSettings(getBookingDateSettings());
       setTimeSettings(getBookingTimeSettings());
@@ -381,7 +431,10 @@ export function BookingFlow() {
   ];
 
   const handleServiceSelect = (services: Service[]) => {
-    console.log(">>> [BOOKING_FLOW] Serviços selecionados:", services.map(s => s.name));
+    console.log(
+      ">>> [BOOKING_FLOW] Serviços selecionados:",
+      services.map((s) => s.name),
+    );
     setSelectedServices(services);
   };
 
@@ -439,17 +492,25 @@ export function BookingFlow() {
     return {
       id: selectedServices.map((s) => s.id).join(","),
       name: selectedServices.map((s) => s.name).join(", "),
-      price: selectedServices.reduce((acc, s) => acc + (Number(s.price) || 0), 0),
-      duration: selectedServices.reduce((acc, s) => acc + parseDuration(s.duration), 0),
+      price: selectedServices.reduce(
+        (acc, s) => acc + (Number(s.price) || 0),
+        0,
+      ),
+      duration: selectedServices.reduce(
+        (acc, s) => acc + parseDuration(s.duration),
+        0,
+      ),
       description: selectedServices.map((s) => s.name).join(", "),
-      conflictingServiceIds: selectedServices.flatMap(s => s.conflictingServiceIds || []),
+      conflictingServiceIds: selectedServices.flatMap(
+        (s) => s.conflictingServiceIds || [],
+      ),
       advancedRules: {
-        conflicts: selectedServices.flatMap(s => {
+        conflicts: selectedServices.flatMap((s) => {
           const advRules = s.advancedRules || s.advanced_rules;
           if (Array.isArray(advRules)) return advRules;
           return advRules?.conflicts || [];
-        })
-      }
+        }),
+      },
     } as Service;
   }, [selectedServices, only]);
 

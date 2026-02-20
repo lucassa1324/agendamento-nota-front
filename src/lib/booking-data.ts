@@ -20,12 +20,16 @@ export type Service = {
   conflict_group_id?: string;
   conflictingServiceIds?: string[];
   conflicting_service_ids?: string[];
-  advanced_rules?: {
-    conflicts?: string[];
-  } | string[];
-  advancedRules?: {
-    conflicts?: string[];
-  } | string[];
+  advanced_rules?:
+    | {
+        conflicts?: string[];
+      }
+    | string[];
+  advancedRules?:
+    | {
+        conflicts?: string[];
+      }
+    | string[];
   resources?: ServiceResource[];
   // Mantido para compatibilidade temporária com componentes legados
   products?: {
@@ -1074,11 +1078,16 @@ export function saveColorSettings(settings: ColorSettings): void {
   }
 }
 
-export function generateTimeSlotsForDate(date: string, forcedInterval?: number, externalSchedule?: DaySchedule): string[] {
+export function generateTimeSlotsForDate(
+  date: string,
+  forcedInterval?: number,
+  externalSchedule?: DaySchedule,
+): string[] {
   const dateObj = new Date(`${date}T00:00:00`);
   const dayOfWeek = dateObj.getDay();
   const weekSchedule = getWeekSchedule();
-  const daySchedule = externalSchedule || weekSchedule.find((d) => d.dayOfWeek === dayOfWeek);
+  const daySchedule =
+    externalSchedule || weekSchedule.find((d) => d.dayOfWeek === dayOfWeek);
 
   if (!daySchedule || !daySchedule.isOpen) {
     return [];
@@ -1093,7 +1102,7 @@ export function generateTimeSlotsForDate(date: string, forcedInterval?: number, 
     open: openTime,
     lunch: `${lunchStart} - ${lunchEnd}`,
     close: closeTime,
-    isExternal: !!externalSchedule
+    isExternal: !!externalSchedule,
   });
 
   const timeToMinutes = (time: string) => {
@@ -1144,15 +1153,20 @@ export function getAvailableTimeSlots(
   externalSchedule?: DaySchedule,
   externalBlocks?: BlockedPeriod[],
 ): TimeSlot[] {
-  const allSlots = generateTimeSlotsForDate(date, forcedInterval, externalSchedule);
+  const allSlots = generateTimeSlotsForDate(
+    date,
+    forcedInterval,
+    externalSchedule,
+  );
   const bookings = externalBookings || getBookingsFromStorage();
   const blockedPeriods = externalBlocks || getBlockedPeriods();
   const dateObj = new Date(`${date}T00:00:00`);
   const dayOfWeek = dateObj.getDay();
   const weekSchedule = getWeekSchedule();
-  
+
   // Usar schedule externo (do backend) se fornecido, senão fallback para localStorage
-  const daySchedule = externalSchedule || weekSchedule.find((d) => d.dayOfWeek === dayOfWeek);
+  const daySchedule =
+    externalSchedule || weekSchedule.find((d) => d.dayOfWeek === dayOfWeek);
 
   if (!daySchedule || !daySchedule.isOpen) {
     return [];
@@ -1190,7 +1204,8 @@ function isTimeSlotAvailable(
   };
 
   const startMinutes = timeToMinutes(time);
-  const numericDuration = typeof duration === "string" ? parseInt(duration, 10) : duration;
+  const numericDuration =
+    typeof duration === "string" ? parseInt(duration, 10) : duration;
   const endMinutes = startMinutes + numericDuration;
 
   // console.log(`>>> [AVAILABILITY_CHECK] ${time} (dur: ${duration}min):`, {
@@ -1214,7 +1229,9 @@ function isTimeSlotAvailable(
       const blockEnd = timeToMinutes(block.endTime);
 
       if (startMinutes < blockEnd && endMinutes > blockStart) {
-        console.log(`>>> [AVAILABILITY] ${time} indisponível: Conflito com bloqueio (${block.startTime}-${block.endTime})`);
+        console.log(
+          `>>> [AVAILABILITY] ${time} indisponível: Conflito com bloqueio (${block.startTime}-${block.endTime})`,
+        );
         return false;
       }
     }
@@ -1223,18 +1240,22 @@ function isTimeSlotAvailable(
   // 3. Verificar se não ultrapassa horário de fechamento
   const closeMinutes = timeToMinutes(daySchedule.closeTime);
   if (endMinutes > closeMinutes) {
-    console.log(`>>> [AVAILABILITY] ${time} indisponível: Ultrapassa fechamento (${daySchedule.closeTime}). Start: ${time}, End: ${minutesToTime(endMinutes)}, Close: ${daySchedule.closeTime}`);
+    console.log(
+      `>>> [AVAILABILITY] ${time} indisponível: Ultrapassa fechamento (${daySchedule.closeTime}). Start: ${time}, End: ${minutesToTime(endMinutes)}, Close: ${daySchedule.closeTime}`,
+    );
     return false;
   }
 
   // 4. Verificar se não conflita com horário de almoço
   const lunchStartMinutes = timeToMinutes(daySchedule.lunchStart);
   const lunchEndMinutes = timeToMinutes(daySchedule.lunchEnd);
-  
+
   // Se lunchStart === lunchEnd, não há almoço
   if (lunchStartMinutes !== lunchEndMinutes) {
     if (startMinutes < lunchEndMinutes && endMinutes > lunchStartMinutes) {
-      console.log(`>>> [AVAILABILITY] ${time} indisponível: Conflito com almoço (${daySchedule.lunchStart}-${daySchedule.lunchEnd}). Slot: ${time}-${minutesToTime(endMinutes)}, Lunch: ${daySchedule.lunchStart}-${daySchedule.lunchEnd}`);
+      console.log(
+        `>>> [AVAILABILITY] ${time} indisponível: Conflito com almoço (${daySchedule.lunchStart}-${daySchedule.lunchEnd}). Slot: ${time}-${minutesToTime(endMinutes)}, Lunch: ${daySchedule.lunchStart}-${daySchedule.lunchEnd}`,
+      );
       return false;
     }
   }
@@ -1242,12 +1263,17 @@ function isTimeSlotAvailable(
   // 5. Verificar conflitos com outros agendamentos
   for (const booking of bookings) {
     const bookingStart = timeToMinutes(booking.time);
-    const bookingDuration = typeof booking.serviceDuration === 'string' ? parseInt(booking.serviceDuration, 10) : booking.serviceDuration;
+    const bookingDuration =
+      typeof booking.serviceDuration === "string"
+        ? parseInt(booking.serviceDuration, 10)
+        : booking.serviceDuration;
     const bookingEnd = bookingStart + bookingDuration;
 
     // Se o slot começa antes do fim do agendamento E termina depois do início do agendamento
     if (startMinutes < bookingEnd && endMinutes > bookingStart) {
-      console.log(`>>> [AVAILABILITY] ${time} indisponível: Conflito com agendamento (${booking.time}, ${bookingDuration}min). Slot: ${time}-${minutesToTime(endMinutes)}, Booking: ${booking.time}-${minutesToTime(bookingEnd)}`);
+      console.log(
+        `>>> [AVAILABILITY] ${time} indisponível: Conflito com agendamento (${booking.time}, ${bookingDuration}min). Slot: ${time}-${minutesToTime(endMinutes)}, Booking: ${booking.time}-${minutesToTime(bookingEnd)}`,
+      );
       return false;
     }
   }
@@ -1360,10 +1386,15 @@ export async function subtractInventoryForServiceAsync(
     let updatedAny = false;
 
     // Mapa para agregar itens (Product ID -> Quantidade Total)
-    const aggregatedItems: Record<string, { quantity: number; product: InventoryItem; name: string }> = {};
+    const aggregatedItems: Record<
+      string,
+      { quantity: number; product: InventoryItem; name: string }
+    > = {};
 
     for (const serviceId of ids) {
-      const service = settings.services.find((s: Service) => s.id === serviceId);
+      const service = settings.services.find(
+        (s: Service) => s.id === serviceId,
+      );
       if (!service) continue;
 
       // Priorizar 'resources' (novo formato) sobre 'products' (legado)
@@ -1378,7 +1409,9 @@ export async function subtractInventoryForServiceAsync(
       if (itemsToSubtract.length === 0) continue;
 
       for (const serviceProduct of itemsToSubtract) {
-        const product = inventory.find((p) => p.id === serviceProduct.productId);
+        const product = inventory.find(
+          (p) => p.id === serviceProduct.productId,
+        );
 
         if (product) {
           let quantityToSubtract = serviceProduct.quantity;
@@ -1400,16 +1433,19 @@ export async function subtractInventoryForServiceAsync(
             if (isReusable) {
               // Se é reutilizável, usamos a quantidade máxima necessária (não soma)
               // Ex: Serviço A precisa de 1 par de luvas, Serviço B precisa de 1 par. Total = 1 par.
-              aggregatedItems[product.id].quantity = Math.max(aggregatedItems[product.id].quantity, quantityToSubtract);
+              aggregatedItems[product.id].quantity = Math.max(
+                aggregatedItems[product.id].quantity,
+                quantityToSubtract,
+              );
             } else {
               // Se não é reutilizável (ex: ml de shampoo), somamos
               aggregatedItems[product.id].quantity += quantityToSubtract;
             }
           } else {
-            aggregatedItems[product.id] = { 
-              quantity: quantityToSubtract, 
+            aggregatedItems[product.id] = {
+              quantity: quantityToSubtract,
               product: product,
-              name: product.name
+              name: product.name,
             };
           }
         }
@@ -1429,12 +1465,14 @@ export async function subtractInventoryForServiceAsync(
           `Estoque insuficiente para ${name}: necessário ${quantityToSubtract.toLocaleString("pt-BR")}${product.unit}, disponível ${currentQty.toLocaleString("pt-BR")}${product.unit}`,
         );
       } else {
-         const newQty = currentQty - quantityToSubtract;
-         if (newQty <= minQty) {
-            logs.push(`Atenção: Estoque baixo de ${name} (${newQty.toLocaleString("pt-BR")}${product.unit}). Mínimo: ${minQty}${product.unit}`);
-         }
+        const newQty = currentQty - quantityToSubtract;
+        if (newQty <= minQty) {
+          logs.push(
+            `Atenção: Estoque baixo de ${name} (${newQty.toLocaleString("pt-BR")}${product.unit}). Mínimo: ${minQty}${product.unit}`,
+          );
+        }
       }
-      
+
       // Realizar a baixa de estoque via API
       console.log("[DEBUG_PAYLOAD]", { quantity: quantityToSubtract });
       await inventoryService.subtract(product.id, quantityToSubtract);
@@ -1462,14 +1500,16 @@ export async function subtractInventoryForServiceAsync(
     return { success: true, message: "Estoque atualizado com sucesso via API" };
   } catch (error) {
     const err = error as { response?: { data?: unknown }; message?: string };
-    console.error("[SUBTRACT_INVENTORY_ERROR]", err.response?.data || err.message || err);
+    console.error(
+      "[SUBTRACT_INVENTORY_ERROR]",
+      err.response?.data || err.message || err,
+    );
     return {
       success: false,
       message: "Erro ao atualizar estoque no servidor.",
     };
   }
 }
-
 
 export function subtractInventoryForService(serviceIds: string | string[]): {
   success: boolean;
@@ -1578,7 +1618,10 @@ export function getSettingsFromStorage(): StudioSettings {
 
     return parsed as StudioSettings;
   } catch (error) {
-    console.warn(">>> [STORAGE_WARN] Erro ao ler configurações do estúdio:", error);
+    console.warn(
+      ">>> [STORAGE_WARN] Erro ao ler configurações do estúdio:",
+      error,
+    );
     return defaultValue;
   }
 }
@@ -2157,7 +2200,12 @@ export async function returnInventoryForServiceAsync(
     // Mapa para agregar itens (Product ID -> Quantidade Total)
     const aggregatedItems: Record<
       string,
-      { quantity: number; product: InventoryItem; name: string; useSecondaryUnit: boolean }
+      {
+        quantity: number;
+        product: InventoryItem;
+        name: string;
+        useSecondaryUnit: boolean;
+      }
     > = {};
 
     for (const serviceId of ids) {
@@ -2221,8 +2269,10 @@ export async function returnInventoryForServiceAsync(
     // 3. Processar a devolução dos itens agregados
     for (const productId in aggregatedItems) {
       const { quantity, product } = aggregatedItems[productId];
-      
-      console.log(`>>> [RETURN_INVENTORY] Estornando ${product.name}. Qtd: ${quantity}`);
+
+      console.log(
+        `>>> [RETURN_INVENTORY] Estornando ${product.name}. Qtd: ${quantity}`,
+      );
 
       await inventoryService.createTransaction({
         productId: product.id,
@@ -2290,7 +2340,7 @@ export async function calculateInventoryReturn(
       if (!product) continue;
 
       let quantityToReturn = req.quantity;
-      
+
       // Normalizar para unidade primária se necessário
       if (
         req.useSecondaryUnit &&
@@ -2304,7 +2354,7 @@ export async function calculateInventoryReturn(
       // Sempre usamos a unidade primária para o cálculo agregado e exibição
       // para garantir consistência com o backend
       const unitLabel = product.unit;
-      
+
       if (aggregatedItems[product.id]) {
         if (isReusable) {
           aggregatedItems[product.id].quantity = Math.max(
@@ -2326,10 +2376,10 @@ export async function calculateInventoryReturn(
 
   return Object.values(aggregatedItems).map((item) => {
     // Formatar quantidade para evitar muitas casas decimais se for float
-    const formattedQty = Number.isInteger(item.quantity) 
-      ? item.quantity.toString() 
+    const formattedQty = Number.isInteger(item.quantity)
+      ? item.quantity.toString()
       : item.quantity.toFixed(2).replace(/\.?0+$/, "");
-      
+
     console.log(
       `>>> [CALC_RETURN] Item: ${item.product.name}, Display: ${formattedQty} ${item.unitLabel}`,
     );

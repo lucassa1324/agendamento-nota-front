@@ -2,7 +2,10 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import type { LayoutGlobalSettings, SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
+import type {
+  LayoutGlobalSettings,
+  SiteConfigData,
+} from "@/components/admin/site_editor/hooks/use-site-editor";
 import { useStudio } from "@/context/studio-context";
 import {
   type ColorSettings,
@@ -55,7 +58,9 @@ export function ThemeInjector() {
         const config = studio.config as SiteConfigData;
 
         // Mapeamento flexível para suportar diferentes estruturas de config (camelCase ou snake_case)
-        const layoutGlobal = (config.layoutGlobal || config.layout_global) as LayoutGlobalSettings | undefined;
+        const layoutGlobal = (config.layoutGlobal || config.layout_global) as
+          | LayoutGlobalSettings
+          | undefined;
         if (layoutGlobal) {
           console.log(
             ">>> [LAYOUT_SYNC] Dados do Hero carregados do banco:",
@@ -64,13 +69,9 @@ export function ThemeInjector() {
           window.dispatchEvent(new Event("DataReady"));
         }
         const apiColors =
-          config.colors ||
-          layoutGlobal?.siteColors ||
-          layoutGlobal?.cores_base;
+          config.colors || layoutGlobal?.siteColors || layoutGlobal?.cores_base;
         const apiFonts =
-          config.typography ||
-          config.theme ||
-          layoutGlobal?.fontes;
+          config.typography || config.theme || layoutGlobal?.fontes;
 
         if (apiColors && Object.keys(apiColors).length > 0) {
           console.log(
@@ -79,7 +80,9 @@ export function ThemeInjector() {
           );
           setColors(apiColors);
         } else {
-          console.warn("[THEME_AUTO_APPLY] Config presente, mas apiColors vazio. Aplicando fallback padrão no carregamento.");
+          console.warn(
+            "[THEME_AUTO_APPLY] Config presente, mas apiColors vazio. Aplicando fallback padrão no carregamento.",
+          );
           setColors(getColorSettings());
         }
 
@@ -90,9 +93,7 @@ export function ThemeInjector() {
         }
 
         if (studio.id) {
-          console.log(
-            `[THEME] Customização ativa para empresa: ${studio.id}`,
-          );
+          console.log(`[THEME] Customização ativa para empresa: ${studio.id}`);
         }
       } else {
         // Se não houver config da API, usamos os padrões globais
@@ -183,7 +184,10 @@ export function ThemeInjector() {
     }
     if (colors.accent) {
       root.style.setProperty("--accent", colors.accent);
-      root.style.setProperty("--accent-foreground", colors.buttonText || "#ffffff");
+      root.style.setProperty(
+        "--accent-foreground",
+        colors.buttonText || "#ffffff",
+      );
     }
     if (colors.buttonText) {
       root.style.setProperty("--primary-foreground", colors.buttonText);
@@ -191,7 +195,9 @@ export function ThemeInjector() {
     }
 
     if (colors.primary || colors.background) {
-      console.log(`[THEME_SUCCESS] Cores injetadas do banco no :root: Primária=${colors.primary}, Fundo=${colors.background}`);
+      console.log(
+        `[THEME_SUCCESS] Cores injetadas do banco no :root: Primária=${colors.primary}, Fundo=${colors.background}`,
+      );
     } else {
       console.log("[THEME_DOM] Variáveis CSS injetadas diretamente no :root");
     }

@@ -86,88 +86,105 @@ export function ServicesSection() {
     null,
   );
 
-  const loadData = useCallback((forceRevalidate = false) => {
-    // Tenta pegar do cache primeiro para ser instantâneo
-    const cachedStudioStr = localStorage.getItem("studio_data");
-    const settings = getSettingsFromStorage();
-    
-    let currentServices: Service[] = [];
-    let currentConfig: SiteConfigData | null = null;
-    
-    // Se forceRevalidate for true, ignoramos o cache de configurações locais e usamos o context/API
-    const useCache = !forceRevalidate;
+  const loadData = useCallback(
+    (forceRevalidate = false) => {
+      // Tenta pegar do cache primeiro para ser instantâneo
+      const cachedStudioStr = localStorage.getItem("studio_data");
+      const settings = getSettingsFromStorage();
 
-    // 1. Prioridade para studioSettings (onde o ServicesManager salva)
-    if (useCache && settings && settings.services && settings.services.length > 0) {
-      currentServices = settings.services;
-    }
+      let currentServices: Service[] = [];
+      let currentConfig: SiteConfigData | null = null;
 
-    // 2. Context do studio (Dados vindos da API/Backend)
-    if (studio) {
-      if (currentServices.length === 0) {
-        currentServices = (studio.services || []);
+      // Se forceRevalidate for true, ignoramos o cache de configurações locais e usamos o context/API
+      const useCache = !forceRevalidate;
+
+      // 1. Prioridade para studioSettings (onde o ServicesManager salva)
+      if (
+        useCache &&
+        settings &&
+        settings.services &&
+        settings.services.length > 0
+      ) {
+        currentServices = settings.services;
       }
-      currentConfig = studio.config as SiteConfigData;
-    } 
-    
-    // 3. Se ainda não encontrou, tenta o studio_data legado (Cache do Browser)
-    if (useCache && currentServices.length === 0 && cachedStudioStr) {
-      try {
-        const parsed = JSON.parse(cachedStudioStr);
-        currentServices = (parsed.services || []);
-        if (!currentConfig) currentConfig = parsed.config;
-      } catch (e) {
-        console.warn(">>> [SITE_WARN] Erro ao parsear studio_data do cache", e);
+
+      // 2. Context do studio (Dados vindos da API/Backend)
+      if (studio) {
+        if (currentServices.length === 0) {
+          currentServices = studio.services || [];
+        }
+        currentConfig = studio.config as SiteConfigData;
       }
-    }
 
-    // Normaliza todos os serviços para garantir que showOnHome seja boolean
-    const normalizedServices = currentServices.map((s: Service) => {
-      const isShowOnHome = s.showOnHome === true || 
-                          s.show_on_home === true || 
-                          s.showOnHome === "true" || 
-                          s.show_on_home === "true" || 
-                          s.showOnHome === 1 || 
-                          s.show_on_home === 1;
-      return {
-        ...s,
-        showOnHome: isShowOnHome
-      };
-    });
+      // 3. Se ainda não encontrou, tenta o studio_data legado (Cache do Browser)
+      if (useCache && currentServices.length === 0 && cachedStudioStr) {
+        try {
+          const parsed = JSON.parse(cachedStudioStr);
+          currentServices = parsed.services || [];
+          if (!currentConfig) currentConfig = parsed.config;
+        } catch (e) {
+          console.warn(
+            ">>> [SITE_WARN] Erro ao parsear studio_data do cache",
+            e,
+          );
+        }
+      }
 
-    // Filtra apenas os serviços marcados para home
-    const homeServices = normalizedServices.filter((s: Service) => s?.showOnHome === true);
-    
-    const layoutGlobal = currentConfig?.layoutGlobal || currentConfig?.layout_global;
-    const configServices = currentConfig?.services || layoutGlobal?.services;
-    const finalSettings = configServices || getServicesSettings();
+      // Normaliza todos os serviços para garantir que showOnHome seja boolean
+      const normalizedServices = currentServices.map((s: Service) => {
+        const isShowOnHome =
+          s.showOnHome === true ||
+          s.show_on_home === true ||
+          s.showOnHome === "true" ||
+          s.show_on_home === "true" ||
+          s.showOnHome === 1 ||
+          s.show_on_home === 1;
+        return {
+          ...s,
+          showOnHome: isShowOnHome,
+        };
+      });
 
-    console.log(">>> [SITE_SERVICES] Sincronizando Serviços:", {
-      forceRevalidate,
-      total_recebido: currentServices.length,
-      filtrados_home: homeServices.length,
-      slug_contexto: studio?.slug,
-      tem_settings_cache: !!settings,
-      nomes_na_home: homeServices.map(s => s.name)
-    });
+      // Filtra apenas os serviços marcados para home
+      const homeServices = normalizedServices.filter(
+        (s: Service) => s?.showOnHome === true,
+      );
 
-    console.log('>>> [SITE_DEBUG] Config recebida:', {
-      cardBgColor: finalSettings.cardBgColor,
-      cardIconColor: finalSettings.cardIconColor,
-      cardTitleColor: finalSettings.cardTitleColor,
-      cardDescriptionColor: finalSettings.cardDescriptionColor,
-      hasLayoutGlobal: !!layoutGlobal,
-      servicesFromLayout: !!layoutGlobal?.services
-    });
+      const layoutGlobal =
+        currentConfig?.layoutGlobal || currentConfig?.layout_global;
+      const configServices = currentConfig?.services || layoutGlobal?.services;
+      const finalSettings = configServices || getServicesSettings();
 
-    setServices(homeServices);
-    setSettings(finalSettings);
-  }, [studio]);
+      console.log(">>> [SITE_SERVICES] Sincronizando Serviços:", {
+        forceRevalidate,
+        total_recebido: currentServices.length,
+        filtrados_home: homeServices.length,
+        slug_contexto: studio?.slug,
+        tem_settings_cache: !!settings,
+        nomes_na_home: homeServices.map((s) => s.name),
+      });
+
+      console.log(">>> [SITE_DEBUG] Config recebida:", {
+        cardBgColor: finalSettings.cardBgColor,
+        cardIconColor: finalSettings.cardIconColor,
+        cardTitleColor: finalSettings.cardTitleColor,
+        cardDescriptionColor: finalSettings.cardDescriptionColor,
+        hasLayoutGlobal: !!layoutGlobal,
+        servicesFromLayout: !!layoutGlobal?.services,
+      });
+
+      setServices(homeServices);
+      setSettings(finalSettings);
+    },
+    [studio],
+  );
 
   useEffect(() => {
     setIsMounted(true);
     // Na primeira montagem no site oficial, forçamos a revalidação ignorando o cache local de settings
-    const isPreview = typeof window !== "undefined" && window.location.search.includes("preview=true");
+    const isPreview =
+      typeof window !== "undefined" &&
+      window.location.search.includes("preview=true");
     loadData(!isPreview);
 
     const handleMessage = (event: MessageEvent) => {
@@ -222,7 +239,9 @@ export function ServicesSection() {
   }
 
   // No editor (isPreview), permitimos renderizar mesmo sem serviços para o usuário poder configurar a seção
-  const isPreview = typeof window !== "undefined" && window.location.search.includes("preview=true");
+  const isPreview =
+    typeof window !== "undefined" &&
+    window.location.search.includes("preview=true");
 
   // Se não houver serviços e não estivermos no editor, a seção não deve aparecer
   if (!isPreview && services.length === 0) return null;
@@ -278,7 +297,9 @@ export function ServicesSection() {
 
             return (
               <Card
-                key={service?.id ? `${service.id}-${index}` : `service-${index}`}
+                key={
+                  service?.id ? `${service.id}-${index}` : `service-${index}`
+                }
                 className="border-border hover:border-accent transition-all duration-300 overflow-hidden"
                 style={{
                   backgroundColor: settings?.cardBgColor || "white",

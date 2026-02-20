@@ -29,12 +29,12 @@ export default function AgendamentoPage({
   useEffect(() => {
     if (studio?.config) {
       const config = studio.config as unknown as SiteConfigData;
-      
+
       if (!isPreview) {
         if (config.visibleSections) {
           setVisibleSections(config.visibleSections);
         }
-        
+
         if (config.pageVisibility) {
           if (config.pageVisibility.agendar === false) {
             setIsVisible(false);

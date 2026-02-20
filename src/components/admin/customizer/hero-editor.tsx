@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BackgroundEditor } from "../site_editor/components/BackgroundEditor";
 import { SectionSubtitleEditor } from "../site_editor/components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../site_editor/components/SectionTitleEditor";
@@ -16,7 +11,7 @@ export interface HeroEditorProps {
     title: string;
     titleFont: string;
     titleColor: string;
-    
+
     // Subtitle Fields
     subtitle: string;
     subtitleFont: string;
@@ -31,7 +26,7 @@ export interface HeroEditorProps {
     imageScale: number;
     imageX: number;
     imageY: number;
-    
+
     // Legacy/Unused
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: unknown;
@@ -42,11 +37,7 @@ export interface HeroEditorProps {
   onSave?: () => void;
 }
 
-export function HeroEditor({
-  settings,
-  onUpdate,
-}: HeroEditorProps) {
-  
+export function HeroEditor({ settings, onUpdate }: HeroEditorProps) {
   // Helper to ensure updates are propagated correctly
   const handleUpdate = (updates: Partial<HeroEditorProps["settings"]>) => {
     onUpdate(updates);

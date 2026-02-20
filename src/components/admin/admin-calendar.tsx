@@ -1,6 +1,14 @@
 "use client";
 
-import { addDays, endOfDay, format, isBefore, parseISO, startOfDay, subDays } from "date-fns";
+import {
+  addDays,
+  endOfDay,
+  format,
+  isBefore,
+  parseISO,
+  startOfDay,
+  subDays,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Calendar as CalendarIcon,
@@ -78,14 +86,18 @@ export function AdminCalendar({
           const settings = await businessService.getSettings(studio.id);
           if (settings) {
             // Tenta pegar o intervalo global ou o primeiro dia aberto
-            const interval = parseDuration(settings.interval || settings.slotInterval);
+            const interval = parseDuration(
+              settings.interval || settings.slotInterval,
+            );
             if (interval > 0) {
               setSlotInterval(interval);
               return;
             }
 
             if (settings.weekly) {
-              const firstOpenDay = settings.weekly.find(d => d.status === "OPEN");
+              const firstOpenDay = settings.weekly.find(
+                (d) => d.status === "OPEN",
+              );
               if (firstOpenDay) {
                 // Se chegamos aqui, o intervalo global não existia, então tentamos deduzir ou usar o padrão
                 // mas por enquanto apenas removemos a variável não utilizada
@@ -93,12 +105,15 @@ export function AdminCalendar({
             }
           }
         } catch (error) {
-          console.error("Erro ao carregar configurações no calendário admin:", error);
+          console.error(
+            "Erro ao carregar configurações no calendário admin:",
+            error,
+          );
         }
 
         // Fallback para o que temos no localStorage
         const weekSchedule = getWeekSchedule();
-        const firstOpenDay = weekSchedule.find(d => d.isOpen);
+        const firstOpenDay = weekSchedule.find((d) => d.isOpen);
         if (firstOpenDay) {
           setSlotInterval(firstOpenDay.interval);
         }
@@ -187,42 +202,42 @@ export function AdminCalendar({
         isoStart,
         isoEnd,
       );
-      const mappedBookings: Booking[] = appointments.map(
-        (app: Appointment) => {
-          // Converter serviceDurationSnapshot (HH:mm) para minutos (number)
-          const durationMinutes = parseDuration(app.serviceDurationSnapshot);
+      const mappedBookings: Booking[] = appointments.map((app: Appointment) => {
+        // Converter serviceDurationSnapshot (HH:mm) para minutos (number)
+        const durationMinutes = parseDuration(app.serviceDurationSnapshot);
 
-          const dateObj = parseISO(app.scheduledAt);
+        const dateObj = parseISO(app.scheduledAt);
 
-          // Mapear status da API para status legado do Front
-          const mapStatusFromApi = (status: string): BookingStatus => {
-            const s = status.toUpperCase();
-            if (s === "CONFIRMED") return "confirmado";
-            if (s === "COMPLETED") return "concluído";
-            if (s === "CANCELLED") return "cancelado";
-            return "pendente";
-          };
+        // Mapear status da API para status legado do Front
+        const mapStatusFromApi = (status: string): BookingStatus => {
+          const s = status.toUpperCase();
+          if (s === "CONFIRMED") return "confirmado";
+          if (s === "COMPLETED") return "concluído";
+          if (s === "CANCELLED") return "cancelado";
+          return "pendente";
+        };
 
-          return {
-            id: app.id,
-            serviceId: app.serviceId,
-            serviceName: app.serviceNameSnapshot || "Serviço não informado",
-            serviceDuration: durationMinutes,
-            servicePrice: app.servicePriceSnapshot ? parseFloat(app.servicePriceSnapshot) : 0,
-            date: format(dateObj, "yyyy-MM-dd"),
-            time: format(dateObj, "HH:mm"),
-            clientName: app.customerName || "Cliente não informado",
-            clientEmail: app.customerEmail || "",
-            clientPhone: app.customerPhone || "",
-            status: mapStatusFromApi(app.status),
-            createdAt: app.createdAt,
-            notificationsSent: {
-              email: false,
-              whatsapp: false,
-            },
-          };
-        },
-      );
+        return {
+          id: app.id,
+          serviceId: app.serviceId,
+          serviceName: app.serviceNameSnapshot || "Serviço não informado",
+          serviceDuration: durationMinutes,
+          servicePrice: app.servicePriceSnapshot
+            ? parseFloat(app.servicePriceSnapshot)
+            : 0,
+          date: format(dateObj, "yyyy-MM-dd"),
+          time: format(dateObj, "HH:mm"),
+          clientName: app.customerName || "Cliente não informado",
+          clientEmail: app.customerEmail || "",
+          clientPhone: app.customerPhone || "",
+          status: mapStatusFromApi(app.status),
+          createdAt: app.createdAt,
+          notificationsSent: {
+            email: false,
+            whatsapp: false,
+          },
+        };
+      });
       setBookings(mappedBookings);
     } catch (error) {
       console.error("Erro ao carregar agendamentos no calendário:", error);
@@ -323,12 +338,16 @@ export function AdminCalendar({
       ).toISOString();
 
       for (const service of selectedServices) {
-        const priceValue = typeof service.price === "string" ? parseFloat(service.price) : (service.price || 0);
-        
-        const durationMinutes = typeof service.duration === "string" 
-          ? parseInt(service.duration, 10) 
-          : (service.duration || 0);
-        
+        const priceValue =
+          typeof service.price === "string"
+            ? parseFloat(service.price)
+            : service.price || 0;
+
+        const durationMinutes =
+          typeof service.duration === "string"
+            ? parseInt(service.duration, 10)
+            : service.duration || 0;
+
         const hours = Math.floor(durationMinutes / 60);
         const mins = durationMinutes % 60;
         const durationHHmm = `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
@@ -378,7 +397,12 @@ export function AdminCalendar({
       }
 
       setIsAddDialogOpen(false);
-      setNewBooking({ clientName: "", clientPhone: "", serviceIds: [], serviceObjects: [] });
+      setNewBooking({
+        clientName: "",
+        clientPhone: "",
+        serviceIds: [],
+        serviceObjects: [],
+      });
 
       toast({
         title: "Sucesso",
@@ -408,7 +432,7 @@ export function AdminCalendar({
     // Mas para o admin, geralmente mostramos o dia todo ou o intervalo configurado.
     // Vamos usar a função utilitária para respeitar os horários de abertura/fechamento se possível,
     // ou gerar 24h se o admin preferir visão total.
-    
+
     const slots = [];
     const startHour = 0;
     const endHour = 23;
@@ -740,13 +764,18 @@ export function AdminCalendar({
                 {services.map((service, index) => {
                   const isSelected = newBooking.serviceIds.includes(service.id);
                   const isConflicting = false; // Desabilitado no admin
-                  
+
                   return (
-                    <div 
-                      key={service.id ? `${service.id}-${index}` : `service-add-${index}`} 
+                    <div
+                      key={
+                        service.id
+                          ? `${service.id}-${index}`
+                          : `service-add-${index}`
+                      }
                       className={cn(
                         "flex items-center space-x-2 p-1 rounded transition-colors",
-                        isConflicting && "opacity-40 grayscale-[0.8] bg-muted/30"
+                        isConflicting &&
+                          "opacity-40 grayscale-[0.8] bg-muted/30",
                       )}
                     >
                       <Checkbox
@@ -758,10 +787,14 @@ export function AdminCalendar({
                             ...prev,
                             serviceIds: checked
                               ? [...prev.serviceIds, service.id]
-                              : prev.serviceIds.filter((id) => id !== service.id),
+                              : prev.serviceIds.filter(
+                                  (id) => id !== service.id,
+                                ),
                             serviceObjects: checked
                               ? [...prev.serviceObjects, service]
-                              : prev.serviceObjects.filter((s) => s.id !== service.id),
+                              : prev.serviceObjects.filter(
+                                  (s) => s.id !== service.id,
+                                ),
                           }));
                         }}
                       />
@@ -769,7 +802,7 @@ export function AdminCalendar({
                         htmlFor={`service-${service.id}`}
                         className={cn(
                           "text-sm font-medium leading-none cursor-pointer flex-1",
-                          isConflicting && "cursor-not-allowed"
+                          isConflicting && "cursor-not-allowed",
                         )}
                       >
                         {service.name} - R$ {service.price}

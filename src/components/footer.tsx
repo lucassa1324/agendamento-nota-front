@@ -70,7 +70,7 @@ export function Footer({
 
     if (studio) {
       // Função auxiliar para validar se um dado é útil (não nulo, não vazio, não apenas espaços)
-      const isValid = (val: unknown): val is string => 
+      const isValid = (val: unknown): val is string =>
         val !== null && val !== undefined && String(val).trim() !== "";
 
       // LOG DE DIAGNÓSTICO DO ESTÚDIO
@@ -78,28 +78,47 @@ export function Footer({
         contact: studio.contact,
         email_root: studio.email,
         phone: studio.phone,
-        address: studio.address
+        address: studio.address,
       });
 
       const mergedProfile: SiteProfile = {
         ...baseProfile,
-        name: isValid(studio.siteName) ? studio.siteName : (isValid(studio.name) ? studio.name : baseProfile.name),
-        description: isValid(studio.description) ? studio.description : baseProfile.description,
+        name: isValid(studio.siteName)
+          ? studio.siteName
+          : isValid(studio.name)
+            ? studio.name
+            : baseProfile.name,
+        description: isValid(studio.description)
+          ? studio.description
+          : baseProfile.description,
         phone: isValid(studio.phone) ? studio.phone : baseProfile.phone,
-        email: isValid(studio.contact?.email) ? studio.contact.email : (isValid(studio.email) ? studio.email : "contato@estudio.com"),
+        email: isValid(studio.contact?.email)
+          ? studio.contact.email
+          : isValid(studio.email)
+            ? studio.email
+            : "contato@estudio.com",
         address: isValid(studio.address) ? studio.address : baseProfile.address,
-        instagram: isValid(studio.instagram) ? studio.instagram : baseProfile.instagram,
-        facebook: isValid(studio.facebook) ? studio.facebook : baseProfile.facebook,
-        whatsapp: isValid(studio.whatsapp) ? studio.whatsapp : baseProfile.whatsapp,
+        instagram: isValid(studio.instagram)
+          ? studio.instagram
+          : baseProfile.instagram,
+        facebook: isValid(studio.facebook)
+          ? studio.facebook
+          : baseProfile.facebook,
+        whatsapp: isValid(studio.whatsapp)
+          ? studio.whatsapp
+          : baseProfile.whatsapp,
         tiktok: isValid(studio.tiktok) ? studio.tiktok : baseProfile.tiktok,
-        linkedin: isValid(studio.linkedin) ? studio.linkedin : baseProfile.linkedin,
+        linkedin: isValid(studio.linkedin)
+          ? studio.linkedin
+          : baseProfile.linkedin,
         x: isValid(studio.x) ? studio.x : baseProfile.x,
         logoUrl: isValid(studio.logoUrl) ? studio.logoUrl : baseProfile.logoUrl,
         titleSuffix: studio.titleSuffix || baseProfile.titleSuffix || "",
-        
-        // Para booleanos, garantimos que se o dado vier do banco como true/false, usamos ele. 
+
+        // Para booleanos, garantimos que se o dado vier do banco como true/false, usamos ele.
         // Se vier nulo/undefined, usamos o que está no localStorage.
-        showInstagram: studio.showInstagram ?? baseProfile.showInstagram ?? true,
+        showInstagram:
+          studio.showInstagram ?? baseProfile.showInstagram ?? true,
         showFacebook: studio.showFacebook ?? baseProfile.showFacebook ?? true,
         showWhatsapp: studio.showWhatsapp ?? baseProfile.showWhatsapp ?? true,
         showTiktok: studio.showTiktok ?? baseProfile.showTiktok ?? false,
@@ -198,46 +217,76 @@ export function Footer({
 
   // TRAVAS DE RENDERIZAÇÃO
   if (!only && visibleSections.footer === false) return null;
-  
+
   // Para evitar erro de hidratação, no primeiro render (SSR e primeira batida do client)
   // usamos o defaultSiteProfile. Após o mount, usamos o profile real.
-  const activeProfileRaw = mounted ? (profile || getSiteProfile()) : defaultSiteProfile;
+  const activeProfileRaw = mounted
+    ? profile || getSiteProfile()
+    : defaultSiteProfile;
 
   // Garantimos que campos essenciais tenham sempre um fallback estático, conforme solicitado
-   // Função auxiliar para validar se uma string não está vazia
-    const isNotEmpty = (val: string | undefined | null): val is string => 
-      !!val && val.trim() !== "";
+  // Função auxiliar para validar se uma string não está vazia
+  const isNotEmpty = (val: string | undefined | null): val is string =>
+    !!val && val.trim() !== "";
 
-    const activeProfile = {
-       ...activeProfileRaw,
-       name: isNotEmpty(studio?.siteName) ? studio.siteName : (isNotEmpty(studio?.name) ? studio.name : (isNotEmpty(activeProfileRaw.name) ? activeProfileRaw.name : "Lucas studio")),
-       phone: isNotEmpty(studio?.phone) ? studio.phone : (isNotEmpty(activeProfileRaw.phone) ? activeProfileRaw.phone : "(11) 99999-9999"),
-       // Prioridade estrita: studio.contact.email > studio.email > fallback fixo
-        // Removemos activeProfileRaw.email da cadeia para evitar persistência de dados antigos de desenvolvimento
-        email: (studio?.contact?.email && studio.contact.email.trim() !== "") 
-          ? studio.contact.email 
-          : ((studio?.email && studio.email.trim() !== "") 
-            ? studio.email 
-            : "contato@estudio.com"),
-       address: isNotEmpty(studio?.address) ? studio.address : (isNotEmpty(activeProfileRaw.address) ? activeProfileRaw.address : "São Paulo, SP"),
-       instagram: isNotEmpty(studio?.instagram) ? studio.instagram : (isNotEmpty(activeProfileRaw.instagram) ? activeProfileRaw.instagram : "lucas_studio"),
-       facebook: isNotEmpty(studio?.facebook) ? studio.facebook : (isNotEmpty(activeProfileRaw.facebook) ? activeProfileRaw.facebook : "lucas_studio"),
-       whatsapp: isNotEmpty(studio?.whatsapp) ? studio.whatsapp : (isNotEmpty(activeProfileRaw.whatsapp) ? activeProfileRaw.whatsapp : "5511999999999"),
-       // Se não houver configuração explícita, mostramos as redes sociais por padrão
-       showInstagram: activeProfileRaw.showInstagram ?? studio?.showInstagram ?? true,
-       showFacebook: activeProfileRaw.showFacebook ?? studio?.showFacebook ?? true,
-       showWhatsapp: activeProfileRaw.showWhatsapp ?? studio?.showWhatsapp ?? true,
-     };
+  const activeProfile = {
+    ...activeProfileRaw,
+    name: isNotEmpty(studio?.siteName)
+      ? studio.siteName
+      : isNotEmpty(studio?.name)
+        ? studio.name
+        : isNotEmpty(activeProfileRaw.name)
+          ? activeProfileRaw.name
+          : "Lucas studio",
+    phone: isNotEmpty(studio?.phone)
+      ? studio.phone
+      : isNotEmpty(activeProfileRaw.phone)
+        ? activeProfileRaw.phone
+        : "(11) 99999-9999",
+    // Prioridade estrita: studio.contact.email > studio.email > fallback fixo
+    // Removemos activeProfileRaw.email da cadeia para evitar persistência de dados antigos de desenvolvimento
+    email:
+      studio?.contact?.email && studio.contact.email.trim() !== ""
+        ? studio.contact.email
+        : studio?.email && studio.email.trim() !== ""
+          ? studio.email
+          : "contato@estudio.com",
+    address: isNotEmpty(studio?.address)
+      ? studio.address
+      : isNotEmpty(activeProfileRaw.address)
+        ? activeProfileRaw.address
+        : "São Paulo, SP",
+    instagram: isNotEmpty(studio?.instagram)
+      ? studio.instagram
+      : isNotEmpty(activeProfileRaw.instagram)
+        ? activeProfileRaw.instagram
+        : "lucas_studio",
+    facebook: isNotEmpty(studio?.facebook)
+      ? studio.facebook
+      : isNotEmpty(activeProfileRaw.facebook)
+        ? activeProfileRaw.facebook
+        : "lucas_studio",
+    whatsapp: isNotEmpty(studio?.whatsapp)
+      ? studio.whatsapp
+      : isNotEmpty(activeProfileRaw.whatsapp)
+        ? activeProfileRaw.whatsapp
+        : "5511999999999",
+    // Se não houver configuração explícita, mostramos as redes sociais por padrão
+    showInstagram:
+      activeProfileRaw.showInstagram ?? studio?.showInstagram ?? true,
+    showFacebook: activeProfileRaw.showFacebook ?? studio?.showFacebook ?? true,
+    showWhatsapp: activeProfileRaw.showWhatsapp ?? studio?.showWhatsapp ?? true,
+  };
 
-     if (mounted) {
-       console.log(">>> [FOOTER] Email atual:", activeProfile.email);
-     }
+  if (mounted) {
+    console.log(">>> [FOOTER] Email atual:", activeProfile.email);
+  }
 
   const footerStyle = {
     backgroundColor: footerSettings.bgColor || "var(--background)",
     fontFamily: footerSettings.bodyFont || "var(--font-body)",
     minHeight: "100px", // Garantir altura mínima para teste
-    display: "block",   // Garantir display block para teste
+    display: "block", // Garantir display block para teste
   };
 
   const titleStyle = {
@@ -491,8 +540,8 @@ export function Footer({
           style={textStyle}
         >
           <p>
-            &copy; {new Date().getFullYear()} {activeProfile.name}. Todos os direitos
-            reservados.
+            &copy; {new Date().getFullYear()} {activeProfile.name}. Todos os
+            direitos reservados.
           </p>
         </div>
       </div>

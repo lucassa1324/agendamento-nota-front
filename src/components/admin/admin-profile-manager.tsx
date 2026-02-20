@@ -1,6 +1,14 @@
 "use client";
 
-import { AlertTriangle, Calendar, Check, KeyRound, Loader2, Mail, User } from "lucide-react";
+import {
+  AlertTriangle,
+  Calendar,
+  Check,
+  KeyRound,
+  Loader2,
+  Mail,
+  User,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -116,8 +124,12 @@ export function AdminProfileManager() {
     const date = new Date(dateString);
     const today = new Date();
     // Cria data para este mês com o mesmo dia
-    const nextInvoice = new Date(today.getFullYear(), today.getMonth(), date.getDate());
-    
+    const nextInvoice = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      date.getDate(),
+    );
+
     // Se a data deste mês já passou, avança para o próximo mês
     if (nextInvoice < today) {
       nextInvoice.setMonth(nextInvoice.getMonth() + 1);
@@ -201,22 +213,19 @@ export function AdminProfileManager() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="next-invoice">
-                    Data da Próxima Fatura
-                  </Label>
+                  <Label htmlFor="next-invoice">Data da Próxima Fatura</Label>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                     <Input
                       id="next-invoice"
                       className="pl-10 bg-muted"
-                      value={getNextInvoiceDate(studio.createdAt).toLocaleDateString(
-                        "pt-BR",
-                        {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric",
-                        },
-                      )}
+                      value={getNextInvoiceDate(
+                        studio.createdAt,
+                      ).toLocaleDateString("pt-BR", {
+                        day: "2-digit",
+                        month: "long",
+                        year: "numeric",
+                      })}
                       disabled
                     />
                   </div>
@@ -338,8 +347,8 @@ export function AdminProfileManager() {
                 Cancelar Assinatura
               </h4>
               <p className="text-xs text-red-700/80 max-w-md">
-                Ao cancelar, você perderá acesso aos recursos premium ao final do
-                ciclo de cobrança atual. Essa ação não pode ser desfeita.
+                Ao cancelar, você perderá acesso aos recursos premium ao final
+                do ciclo de cobrança atual. Essa ação não pode ser desfeita.
               </p>
             </div>
             <Button

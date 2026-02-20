@@ -2,12 +2,12 @@
 
 import { addDays, differenceInDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { 
-  CalendarClock, 
-  CheckCircle2, 
-  Loader2, 
-  RefreshCcw, 
-  ShieldCheck 
+import {
+  CalendarClock,
+  CheckCircle2,
+  Loader2,
+  RefreshCcw,
+  ShieldCheck,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -52,7 +52,8 @@ export function AccessReleaseModal({
   onClose,
   onSuccess,
 }: AccessReleaseModalProps) {
-  const [selectedOption, setSelectedOption] = useState<ReleaseOption>("manual_custom_days");
+  const [selectedOption, setSelectedOption] =
+    useState<ReleaseOption>("manual_custom_days");
   const [manualDays, setManualDays] = useState(30);
   const [trialDays, setTrialDays] = useState(14);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,10 +72,10 @@ export function AccessReleaseModal({
       }
 
       // Lógica de Pré-seleção Baseada no Estado Atual
-      if (company.accessType === 'manual') {
+      if (company.accessType === "manual") {
         setSelectedOption("manual_custom_days");
         setManualDays(remainingDays > 0 ? remainingDays : 30);
-      } else if (company.accessType === 'extended_trial') {
+      } else if (company.accessType === "extended_trial") {
         setSelectedOption("extend_trial_custom");
         setTrialDays(remainingDays > 0 ? remainingDays : 14);
       } else {
@@ -86,10 +87,10 @@ export function AccessReleaseModal({
   if (!company) return null;
 
   const today = new Date();
-  
+
   // Cálculos de datas dinâmicos baseados nos inputs
   const dateManualDays = addDays(today, manualDays || 0);
-  
+
   // No novo modelo, "Adiar Teste" define o novo vencimento a partir de HOJE + dias inputados
   const dateExtendTrialDays = addDays(today, trialDays || 0);
 
@@ -97,14 +98,14 @@ export function AccessReleaseModal({
     setIsSubmitting(true);
     try {
       let payload = {};
-      
+
       switch (selectedOption) {
         case "manual_custom_days":
           payload = {
             status: "active",
             accessType: "manual",
             actionType: "manual_custom_days",
-            trialDays: manualDays
+            trialDays: manualDays,
           };
           break;
         case "extend_trial_custom":
@@ -112,7 +113,7 @@ export function AccessReleaseModal({
             status: "trialing",
             accessType: "automatic",
             actionType: "extend_trial_custom",
-            trialDays: trialDays
+            trialDays: trialDays,
           };
           break;
         case "automatic":
@@ -131,7 +132,7 @@ export function AccessReleaseModal({
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify(payload),
-        }
+        },
       );
 
       // Tratamento específico para erro 402 (Pagamento Obrigatório / Bloqueio)
@@ -156,7 +157,10 @@ export function AccessReleaseModal({
       console.error("Erro na liberação de acesso:", error);
       toast({
         title: "Erro",
-        description: error instanceof Error ? error.message : "Não foi possível realizar a operação.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Não foi possível realizar a operação.",
         variant: "destructive",
       });
     } finally {
@@ -181,13 +185,24 @@ export function AccessReleaseModal({
             className="gap-4"
           >
             {/* Opção A: Manual Custom Dias */}
-            <div className={cn(
-              "flex flex-col space-y-3 rounded-md border p-4 hover:bg-zinc-50 transition-colors",
-              selectedOption === "manual_custom_days" ? "border-primary bg-zinc-50" : "border-muted"
-            )}>
+            <div
+              className={cn(
+                "flex flex-col space-y-3 rounded-md border p-4 hover:bg-zinc-50 transition-colors",
+                selectedOption === "manual_custom_days"
+                  ? "border-primary bg-zinc-50"
+                  : "border-muted",
+              )}
+            >
               <div className="flex items-start space-x-3">
-                <RadioGroupItem value="manual_custom_days" id="manual_custom_days" className="mt-1" />
-                <Label htmlFor="manual_custom_days" className="grid gap-1.5 cursor-pointer font-normal flex-1">
+                <RadioGroupItem
+                  value="manual_custom_days"
+                  id="manual_custom_days"
+                  className="mt-1"
+                />
+                <Label
+                  htmlFor="manual_custom_days"
+                  className="grid gap-1.5 cursor-pointer font-normal flex-1"
+                >
                   <span className="font-semibold flex items-center gap-2 text-foreground">
                     <CalendarClock className="w-4 h-4 text-orange-500" />
                     Liberar Acesso (Manual)
@@ -197,35 +212,54 @@ export function AccessReleaseModal({
                   </span>
                 </Label>
               </div>
-              
+
               {selectedOption === "manual_custom_days" && (
                 <div className="pl-7 pr-2">
-                  <Label htmlFor="manual_days_input" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  <Label
+                    htmlFor="manual_days_input"
+                    className="text-xs font-medium text-muted-foreground mb-1.5 block"
+                  >
                     Qtd. de Dias
                   </Label>
-                  <Input 
+                  <Input
                     id="manual_days_input"
-                    type="number" 
-                    min={1} 
-                    value={manualDays} 
-                    onChange={(e) => setManualDays(parseInt(e.target.value, 10) || 0)}
+                    type="number"
+                    min={1}
+                    value={manualDays}
+                    onChange={(e) =>
+                      setManualDays(parseInt(e.target.value, 10) || 0)
+                    }
                     className="h-8 w-24 text-sm bg-background text-foreground"
                   />
                   <span className="text-xs font-medium text-primary mt-2 block">
-                    Novo vencimento será em: {format(dateManualDays, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    Novo vencimento será em:{" "}
+                    {format(dateManualDays, "dd 'de' MMMM 'de' yyyy", {
+                      locale: ptBR,
+                    })}
                   </span>
                 </div>
               )}
             </div>
 
             {/* Opção B: Estender Trial Custom Dias */}
-            <div className={cn(
-              "flex flex-col space-y-3 rounded-md border p-4 hover:bg-zinc-50 transition-colors",
-              selectedOption === "extend_trial_custom" ? "border-primary bg-zinc-50" : "border-muted"
-            )}>
+            <div
+              className={cn(
+                "flex flex-col space-y-3 rounded-md border p-4 hover:bg-zinc-50 transition-colors",
+                selectedOption === "extend_trial_custom"
+                  ? "border-primary bg-zinc-50"
+                  : "border-muted",
+              )}
+            >
               <div className="flex items-start space-x-3">
-                <RadioGroupItem value="extend_trial_custom" id="extend_trial_custom" className="mt-1" />
-                <Label htmlFor="extend_trial_custom" className="grid gap-1.5 cursor-pointer font-normal flex-1">
+                <RadioGroupItem
+                  value="extend_trial_custom"
+                  id="extend_trial_custom"
+                  className="mt-1"
+                />
+                <Label
+                  htmlFor="extend_trial_custom"
+                  className="grid gap-1.5 cursor-pointer font-normal flex-1"
+                >
                   <span className="font-semibold flex items-center gap-2 text-foreground">
                     <RefreshCcw className="w-4 h-4 text-blue-500" />
                     Adiar Teste
@@ -238,31 +272,50 @@ export function AccessReleaseModal({
 
               {selectedOption === "extend_trial_custom" && (
                 <div className="pl-7 pr-2">
-                  <Label htmlFor="trial_days_input" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  <Label
+                    htmlFor="trial_days_input"
+                    className="text-xs font-medium text-muted-foreground mb-1.5 block"
+                  >
                     Qtd. de Dias
                   </Label>
-                  <Input 
+                  <Input
                     id="trial_days_input"
-                    type="number" 
-                    min={1} 
-                    value={trialDays} 
-                    onChange={(e) => setTrialDays(parseInt(e.target.value, 10) || 0)}
+                    type="number"
+                    min={1}
+                    value={trialDays}
+                    onChange={(e) =>
+                      setTrialDays(parseInt(e.target.value, 10) || 0)
+                    }
                     className="h-8 w-24 text-sm bg-background text-foreground"
                   />
                   <span className="text-xs font-medium text-primary mt-2 block">
-                    Novo vencimento será em: {format(dateExtendTrialDays, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                    Novo vencimento será em:{" "}
+                    {format(dateExtendTrialDays, "dd 'de' MMMM 'de' yyyy", {
+                      locale: ptBR,
+                    })}
                   </span>
                 </div>
               )}
             </div>
 
             {/* Opção C: Automático / Padrão */}
-            <div className={cn(
-              "flex items-start space-x-3 space-y-0 rounded-md border p-4 hover:bg-zinc-50 transition-colors",
-              selectedOption === "automatic" ? "border-primary bg-zinc-50" : "border-muted"
-            )}>
-              <RadioGroupItem value="automatic" id="automatic" className="mt-1" />
-              <Label htmlFor="automatic" className="grid gap-1.5 cursor-pointer font-normal">
+            <div
+              className={cn(
+                "flex items-start space-x-3 space-y-0 rounded-md border p-4 hover:bg-zinc-50 transition-colors",
+                selectedOption === "automatic"
+                  ? "border-primary bg-zinc-50"
+                  : "border-muted",
+              )}
+            >
+              <RadioGroupItem
+                value="automatic"
+                id="automatic"
+                className="mt-1"
+              />
+              <Label
+                htmlFor="automatic"
+                className="grid gap-1.5 cursor-pointer font-normal"
+              >
                 <span className="font-semibold flex items-center gap-2 text-foreground">
                   <CheckCircle2 className="w-4 h-4 text-green-500" />
                   Automático / Padrão

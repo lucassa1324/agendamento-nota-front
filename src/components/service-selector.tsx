@@ -40,78 +40,112 @@ export function ServiceSelector({
     // No flow do cliente, preferimos sempre os dados do studio vindos do context,
     // que são buscados da API com cache: 'no-store'.
     if (studio?.services && studio.services.length > 0) {
-      console.log(">>> [SERVICE_SELECTOR] Usando serviços dinâmicos do banco (API):", studio.services.length);
-      console.log(">>> [SERVICE_SELECTOR] Detalhes dos serviços carregados:", studio.services.map(s => {
-        const advRules = s.advancedRules || s.advanced_rules;
-        const conflicts = Array.isArray(advRules) ? advRules : advRules?.conflicts;
-        return {
-          id: s.id,
-          name: s.name,
-          conflitos_id: s.conflicting_service_ids || s.conflictingServiceIds,
-          conflitos_rules: conflicts,
-          grupo: s.conflict_group_id || s.conflictGroupId
-        };
-      }));
+      console.log(
+        ">>> [SERVICE_SELECTOR] Usando serviços dinâmicos do banco (API):",
+        studio.services.length,
+      );
+      console.log(
+        ">>> [SERVICE_SELECTOR] Detalhes dos serviços carregados:",
+        studio.services.map((s) => {
+          const advRules = s.advancedRules || s.advanced_rules;
+          const conflicts = Array.isArray(advRules)
+            ? advRules
+            : advRules?.conflicts;
+          return {
+            id: s.id,
+            name: s.name,
+            conflitos_id: s.conflicting_service_ids || s.conflictingServiceIds,
+            conflitos_rules: conflicts,
+            grupo: s.conflict_group_id || s.conflictGroupId,
+          };
+        }),
+      );
       setServices(studio.services);
     } else {
       // Fallback apenas se o studio ainda não carregou
       const settings = getSettingsFromStorage();
       if (settings?.services) {
-        console.log(">>> [SERVICE_SELECTOR] Usando fallback do localStorage:", settings.services.length);
+        console.log(
+          ">>> [SERVICE_SELECTOR] Usando fallback do localStorage:",
+          settings.services.length,
+        );
         setServices(settings.services);
       }
     }
   }, [studio]);
 
   const extractConflicts = (s: Service): string[] => {
-     let list: (string | number)[] = [];
-     
-     // 1. Array direto em advancedRules ou advanced_rules (conforme log do usuário)
-     if (Array.isArray(s.advancedRules)) {
-       list = [...list, ...s.advancedRules];
-     } else if (s.advancedRules && typeof s.advancedRules === 'object' && 'conflicts' in s.advancedRules && Array.isArray(s.advancedRules.conflicts)) {
-       list = [...list, ...s.advancedRules.conflicts];
-     }
-     
-     if (Array.isArray(s.advanced_rules)) {
-       list = [...list, ...s.advanced_rules];
-     } else if (s.advanced_rules && typeof s.advanced_rules === 'object' && 'conflicts' in s.advanced_rules && Array.isArray(s.advanced_rules.conflicts)) {
-       list = [...list, ...s.advanced_rules.conflicts];
-     }
- 
-     // 2. Campos diretos (conflicting_service_ids / conflictingServiceIds)
-     if (Array.isArray(s.conflicting_service_ids)) {
-       list = [...list, ...s.conflicting_service_ids];
-     }
-     if (Array.isArray(s.conflictingServiceIds)) {
-       list = [...list, ...s.conflictingServiceIds];
-     }
- 
-     // Normalização: remover duplicados, nulos e converter para string
-     const normalized = Array.from(new Set(list.filter(Boolean).map(id => id.toString())));
-     
-     if (normalized.length > 0) {
-       console.log(`>>> [CONFLICT_PROCESS] Lista de IDs bloqueados extraída para ${s.name}:`, normalized);
-     }
-     
-     return normalized;
-   };
+    let list: (string | number)[] = [];
+
+    // 1. Array direto em advancedRules ou advanced_rules (conforme log do usuário)
+    if (Array.isArray(s.advancedRules)) {
+      list = [...list, ...s.advancedRules];
+    } else if (
+      s.advancedRules &&
+      typeof s.advancedRules === "object" &&
+      "conflicts" in s.advancedRules &&
+      Array.isArray(s.advancedRules.conflicts)
+    ) {
+      list = [...list, ...s.advancedRules.conflicts];
+    }
+
+    if (Array.isArray(s.advanced_rules)) {
+      list = [...list, ...s.advanced_rules];
+    } else if (
+      s.advanced_rules &&
+      typeof s.advanced_rules === "object" &&
+      "conflicts" in s.advanced_rules &&
+      Array.isArray(s.advanced_rules.conflicts)
+    ) {
+      list = [...list, ...s.advanced_rules.conflicts];
+    }
+
+    // 2. Campos diretos (conflicting_service_ids / conflictingServiceIds)
+    if (Array.isArray(s.conflicting_service_ids)) {
+      list = [...list, ...s.conflicting_service_ids];
+    }
+    if (Array.isArray(s.conflictingServiceIds)) {
+      list = [...list, ...s.conflictingServiceIds];
+    }
+
+    // Normalização: remover duplicados, nulos e converter para string
+    const normalized = Array.from(
+      new Set(list.filter(Boolean).map((id) => id.toString())),
+    );
+
+    if (normalized.length > 0) {
+      console.log(
+        `>>> [CONFLICT_PROCESS] Lista de IDs bloqueados extraída para ${s.name}:`,
+        normalized,
+      );
+    }
+
+    return normalized;
+  };
 
   const checkConflict = (service: Service, currentSelected: Service[]) => {
     if (bypassConflicts) return null;
-    
+
     const serviceId = service.id.toString();
-    const serviceGroupId = (service.conflict_group_id || service.conflictGroupId)?.toString();
-    
+    const serviceGroupId = (
+      service.conflict_group_id || service.conflictGroupId
+    )?.toString();
+
     const serviceConflicts = extractConflicts(service);
-    
+
     for (const s of currentSelected) {
       const selectedId = s.id.toString();
-      const selectedGroupId = (s.conflict_group_id || s.conflictGroupId)?.toString();
+      const selectedGroupId = (
+        s.conflict_group_id || s.conflictGroupId
+      )?.toString();
       const selectedConflicts = extractConflicts(s);
 
       // 1. Conflito por Grupo
-      if (serviceGroupId && selectedGroupId && serviceGroupId === selectedGroupId) {
+      if (
+        serviceGroupId &&
+        selectedGroupId &&
+        serviceGroupId === selectedGroupId
+      ) {
         return `O serviço "${service.name}" conflita com "${s.name}" (mesmo grupo: ${serviceGroupId})`;
       }
 
@@ -129,10 +163,18 @@ export function ServiceSelector({
 
   const toggleService = (service: Service) => {
     const isSelected = selected.some((s) => s.id === service.id);
-    
-    console.log(`>>> [CONFLICT_DEBUG] Clique em: ${service.name} (ID: ${service.id})`);
-    console.log(`>>> [CONFLICT_DEBUG] Conflitos Extraídos:`, extractConflicts(service));
-    console.log(`>>> [CONFLICT_DEBUG] Já selecionados:`, selected.map((s: Service) => s.id));
+
+    console.log(
+      `>>> [CONFLICT_DEBUG] Clique em: ${service.name} (ID: ${service.id})`,
+    );
+    console.log(
+      `>>> [CONFLICT_DEBUG] Conflitos Extraídos:`,
+      extractConflicts(service),
+    );
+    console.log(
+      `>>> [CONFLICT_DEBUG] Já selecionados:`,
+      selected.map((s: Service) => s.id),
+    );
 
     if (isSelected) {
       setSelected(selected.filter((s) => s.id !== service.id));
@@ -155,7 +197,10 @@ export function ServiceSelector({
   }, [selected, onSelect]);
 
   const totalPrice = selected.reduce((acc, s) => acc + Number(s.price || 0), 0);
-  const totalDuration = selected.reduce((acc, s) => acc + Number(s.duration || 0), 0);
+  const totalDuration = selected.reduce(
+    (acc, s) => acc + Number(s.duration || 0),
+    0,
+  );
 
   return (
     <div className="space-y-6">
@@ -183,40 +228,58 @@ export function ServiceSelector({
       <div className="grid md:grid-cols-2 gap-4">
         {services.map((service, index) => {
           const isSelected = selected.some((s) => s.id === service.id);
-          
+
           // Reatividade em tempo real: Lógica de Comparação Bidirecional
-          const isConflicting = !isSelected && !bypassConflicts && selected.some(s => {
-            const conflictsOfSelected = extractConflicts(s); // IDs que o já selecionado bloqueia
-            const conflictsOfCurrent = extractConflicts(service); // IDs que o card atual bloqueia
-            
-            const serviceId = service.id.toString();
-            const selectedId = s.id.toString();
-            
-            // Bloqueio por ID direto ou por Grupo
-            const serviceGroupId = (service.conflict_group_id || service.conflictGroupId)?.toString();
-            const selectedGroupId = (s.conflict_group_id || s.conflictGroupId)?.toString();
+          const isConflicting =
+            !isSelected &&
+            !bypassConflicts &&
+            selected.some((s) => {
+              const conflictsOfSelected = extractConflicts(s); // IDs que o já selecionado bloqueia
+              const conflictsOfCurrent = extractConflicts(service); // IDs que o card atual bloqueia
 
-            return conflictsOfSelected.includes(serviceId) || 
-                   conflictsOfCurrent.includes(selectedId) ||
-                   (serviceGroupId && selectedGroupId && serviceGroupId === selectedGroupId);
-          });
+              const serviceId = service.id.toString();
+              const selectedId = s.id.toString();
 
-          console.log(`>>> [UI_CHECK] Card: ${service.name} | Conflito detectado: ${isConflicting}`);
+              // Bloqueio por ID direto ou por Grupo
+              const serviceGroupId = (
+                service.conflict_group_id || service.conflictGroupId
+              )?.toString();
+              const selectedGroupId = (
+                s.conflict_group_id || s.conflictGroupId
+              )?.toString();
+
+              return (
+                conflictsOfSelected.includes(serviceId) ||
+                conflictsOfCurrent.includes(selectedId) ||
+                (serviceGroupId &&
+                  selectedGroupId &&
+                  serviceGroupId === selectedGroupId)
+              );
+            });
+
+          console.log(
+            `>>> [UI_CHECK] Card: ${service.name} | Conflito detectado: ${isConflicting}`,
+          );
 
           return (
             <Card
-              key={service.id ? `${service.id}-${index}` : `service-select-${index}`}
+              key={
+                service.id
+                  ? `${service.id}-${index}`
+                  : `service-select-${index}`
+              }
               className={cn(
                 "border-border cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden bg-transparent shadow-none",
                 isSelected && "ring-1",
-                isConflicting && "opacity-40 grayscale cursor-not-allowed border-dashed pointer-events-none",
+                isConflicting &&
+                  "opacity-40 grayscale cursor-not-allowed border-dashed pointer-events-none",
               )}
               style={{
                 borderColor:
                   isSelected && settings?.accentColor
                     ? settings.accentColor
-                    : isConflicting 
-                      ? "var(--muted)" 
+                    : isConflicting
+                      ? "var(--muted)"
                       : undefined,
                 backgroundColor: settings?.cardBgColor || undefined,
               }}
@@ -294,7 +357,11 @@ export function ServiceSelector({
                     fontFamily: "var(--font-title)",
                   }}
                 >
-                  R$ {totalPrice.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  R${" "}
+                  {totalPrice.toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </span>
                 <span className="text-muted-foreground text-sm flex items-center gap-1">
                   <Clock className="w-3 h-3" /> {totalDuration} min
@@ -302,7 +369,7 @@ export function ServiceSelector({
               </div>
             </div>
             <Button
-              onClick={() => onConfirm ? onConfirm() : onSelect(selected)}
+              onClick={() => (onConfirm ? onConfirm() : onSelect(selected))}
               className="px-8 font-bold shadow-md transition-all hover:scale-105 active:scale-95"
               style={{
                 backgroundColor: settings?.accentColor || "var(--primary)",

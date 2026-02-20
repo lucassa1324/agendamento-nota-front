@@ -5,7 +5,12 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { type Booking, type BookingStatus, calculateBookingResources, type Service } from "@/lib/booking-data";
+import {
+  type Booking,
+  type BookingStatus,
+  calculateBookingResources,
+  type Service,
+} from "@/lib/booking-data";
 import type { InventoryItem } from "@/lib/inventory-service";
 
 interface BookingCardProps {
@@ -15,7 +20,7 @@ interface BookingCardProps {
   getStatusBadge: (status: BookingStatus) => string;
   handleStatusChange: (
     bookingId: string,
-    newStatus: BookingStatus
+    newStatus: BookingStatus,
   ) => Promise<void>;
   handleDelete: (bookingId: string) => Promise<void>;
   onReschedule: (booking: Booking) => void;
@@ -38,10 +43,7 @@ export function BookingCard({
     return calculateBookingResources(booking, services, inventory);
   }, [booking, services, inventory]);
 
-  const onStatusChange = async (
-    action: string,
-    status: BookingStatus
-  ) => {
+  const onStatusChange = async (action: string, status: BookingStatus) => {
     if (loadingAction) return;
     setLoadingAction(action);
     try {
@@ -133,21 +135,31 @@ export function BookingCard({
                 <div className="md:col-span-2 mt-2 pt-2 border-t border-border/50">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <Package className="w-3 h-3 text-muted-foreground" />
-                    <p className="text-xs font-semibold text-muted-foreground">Previsão de Consumo:</p>
+                    <p className="text-xs font-semibold text-muted-foreground">
+                      Previsão de Consumo:
+                    </p>
                   </div>
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
                     {aggregatedResources.map((res, i) => (
-                      <li key={`${booking.id}-res-${i}`} className="text-xs flex items-center gap-1.5 text-muted-foreground">
+                      <li
+                        key={`${booking.id}-res-${i}`}
+                        className="text-xs flex items-center gap-1.5 text-muted-foreground"
+                      >
                         <span className="w-1 h-1 rounded-full bg-muted-foreground/50" />
-                        <span className="truncate max-w-30" title={res.item.name}>{res.item.name}:</span>
+                        <span
+                          className="truncate max-w-30"
+                          title={res.item.name}
+                        >
+                          {res.item.name}:
+                        </span>
                         <span className="font-mono font-medium text-foreground">
                           {res.quantity} {res.item.unit}
                         </span>
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className={`ml-auto text-[9px] px-1 py-0 h-4 ${
-                            res.mode === "Compartilhado" 
-                              ? "border-blue-200 text-blue-700 bg-blue-50/50" 
+                            res.mode === "Compartilhado"
+                              ? "border-blue-200 text-blue-700 bg-blue-50/50"
                               : "border-gray-200 text-gray-600 bg-gray-50/50"
                           }`}
                         >
@@ -176,9 +188,7 @@ export function BookingCard({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() =>
-                  onStatusChange("concluir", "concluído")
-                }
+                onClick={() => onStatusChange("concluir", "concluído")}
                 disabled={!!loadingAction}
                 className="h-8 text-green-600 hover:text-green-700 hover:bg-green-50 font-medium disabled:opacity-50"
               >

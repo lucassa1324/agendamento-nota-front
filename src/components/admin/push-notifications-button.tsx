@@ -7,7 +7,13 @@ import { useToast } from "@/hooks/use-toast";
 
 export function PushNotificationsButton() {
   const { toast } = useToast();
-  const { isSupported, permission, isSubscribed, isRegistering, requestAndSubscribe } = usePushNotifications();
+  const {
+    isSupported,
+    permission,
+    isSubscribed,
+    isRegistering,
+    requestAndSubscribe,
+  } = usePushNotifications();
 
   if (!isSupported) return null;
   if (permission === "granted" && isSubscribed) return null;
@@ -15,17 +21,22 @@ export function PushNotificationsButton() {
   const handleClick = async () => {
     const result = await requestAndSubscribe();
     if (result.ok) {
-      toast({ title: "Notificações ativadas", description: "Você receberá notificações do navegador." });
+      toast({
+        title: "Notificações ativadas",
+        description: "Você receberá notificações do navegador.",
+      });
     } else if (result.error === "missing_vapid_key") {
       toast({
         title: "Chave VAPID ausente",
-        description: "Configure NEXT_PUBLIC_VAPID_PUBLIC_KEY nas variáveis de ambiente.",
+        description:
+          "Configure NEXT_PUBLIC_VAPID_PUBLIC_KEY nas variáveis de ambiente.",
         variant: "destructive",
       });
     } else if (result.error === "denied") {
       toast({
         title: "Permissão negada",
-        description: "Ative manualmente as notificações nas configurações do navegador.",
+        description:
+          "Ative manualmente as notificações nas configurações do navegador.",
         variant: "destructive",
       });
     } else {
@@ -38,7 +49,13 @@ export function PushNotificationsButton() {
   };
 
   return (
-    <Button onClick={handleClick} disabled={isRegistering} className="w-full justify-start" variant="outline" size="sm">
+    <Button
+      onClick={handleClick}
+      disabled={isRegistering}
+      className="w-full justify-start"
+      variant="outline"
+      size="sm"
+    >
       <Bell className="w-4 h-4 mr-2" />
       {isRegistering ? "Ativando..." : "Ativar Notificações"}
     </Button>

@@ -44,29 +44,41 @@ export function GalleryPreview() {
     setIsLoading(true);
     // Carrega configurações
     let currentConfig: SiteConfigData | null = null;
-    
+
     try {
       if (studio) {
         currentConfig = studio.config as SiteConfigData;
-        
+
         // Busca imagens da nova API
         try {
           // Buscamos todas as imagens e filtramos localmente para garantir robustez,
           // já que o filtro showInHome na API pode variar entre implementações.
           const allImages = await galleryService.getPublicGallery(studio.id);
-          console.log(">>> [GALLERY_SYNC] Total de imagens na galeria:", allImages?.length || 0);
-          
-          const homeImages = Array.isArray(allImages) 
-            ? allImages.filter(img => {
-                const item = img as GalleryItem & { show_in_home?: boolean; showOnHome?: boolean };
+          console.log(
+            ">>> [GALLERY_SYNC] Total de imagens na galeria:",
+            allImages?.length || 0,
+          );
+
+          const homeImages = Array.isArray(allImages)
+            ? allImages.filter((img) => {
+                const item = img as GalleryItem & {
+                  show_in_home?: boolean;
+                  showOnHome?: boolean;
+                };
                 return item.showInHome || item.show_in_home || item.showOnHome;
               })
             : [];
-            
-          console.log(">>> [GALLERY_SYNC] Imagens marcadas para Home:", homeImages.length);
+
+          console.log(
+            ">>> [GALLERY_SYNC] Imagens marcadas para Home:",
+            homeImages.length,
+          );
           setImages(homeImages.slice(0, 6));
         } catch (error) {
-          console.warn(">>> [SITE_WARN] Erro ao carregar galeria via API", error);
+          console.warn(
+            ">>> [SITE_WARN] Erro ao carregar galeria via API",
+            error,
+          );
           setImages([]);
         }
       } else {
@@ -75,28 +87,39 @@ export function GalleryPreview() {
           try {
             const parsed = JSON.parse(cachedStudioStr);
             currentConfig = parsed.config;
-            
+
             if (parsed.id) {
-               const allImages = await galleryService.getPublicGallery(parsed.id);
-               const homeImages = Array.isArray(allImages) 
-                 ? allImages.filter(img => {
-                     const item = img as GalleryItem & { show_in_home?: boolean; showOnHome?: boolean };
-                     return item.showInHome || item.show_in_home || item.showOnHome;
-                   })
-                 : [];
-               setImages(homeImages.slice(0, 6));
+              const allImages = await galleryService.getPublicGallery(
+                parsed.id,
+              );
+              const homeImages = Array.isArray(allImages)
+                ? allImages.filter((img) => {
+                    const item = img as GalleryItem & {
+                      show_in_home?: boolean;
+                      showOnHome?: boolean;
+                    };
+                    return (
+                      item.showInHome || item.show_in_home || item.showOnHome
+                    );
+                  })
+                : [];
+              setImages(homeImages.slice(0, 6));
             }
           } catch (e) {
-            console.warn(">>> [SITE_WARN] Erro ao parsear studio_data do cache", e);
+            console.warn(
+              ">>> [SITE_WARN] Erro ao parsear studio_data do cache",
+              e,
+            );
             setImages([]);
           }
         }
       }
 
-      const layoutGlobal = currentConfig?.layoutGlobal || currentConfig?.layout_global;
+      const layoutGlobal =
+        currentConfig?.layoutGlobal || currentConfig?.layout_global;
       const configGallery = currentConfig?.gallery || layoutGlobal?.gallery;
       setSettings((configGallery as GallerySettings) || getGallerySettings());
-      
+
       setPageVisibility(getPageVisibility());
     } finally {
       setIsLoading(false);
@@ -110,11 +133,18 @@ export function GalleryPreview() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_GALLERY_SETTINGS" || event.data.type === "REFRESH_GALLERY" || event.data.type === "DataReady") {
+      if (
+        event.data.type === "UPDATE_GALLERY_SETTINGS" ||
+        event.data.type === "REFRESH_GALLERY" ||
+        event.data.type === "DataReady"
+      ) {
         loadData();
       }
 
-      if (event.data.type === "UPDATE_GALLERY_SETTINGS" && event.data.settings) {
+      if (
+        event.data.type === "UPDATE_GALLERY_SETTINGS" &&
+        event.data.settings
+      ) {
         setSettings((prev) =>
           prev ? { ...prev, ...event.data.settings } : prev,
         );
@@ -130,14 +160,18 @@ export function GalleryPreview() {
     };
 
     window.addEventListener("message", handleMessage);
-    window.addEventListener("pageVisibilityUpdated", () => setPageVisibility(getPageVisibility()));
+    window.addEventListener("pageVisibilityUpdated", () =>
+      setPageVisibility(getPageVisibility()),
+    );
     window.addEventListener("galleryUpdated", loadData);
     window.addEventListener("gallerySettingsUpdated", loadData);
     window.addEventListener("DataReady", loadData);
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("pageVisibilityUpdated", () => setPageVisibility(getPageVisibility()));
+      window.removeEventListener("pageVisibilityUpdated", () =>
+        setPageVisibility(getPageVisibility()),
+      );
       window.removeEventListener("galleryUpdated", loadData);
       window.removeEventListener("gallerySettingsUpdated", loadData);
       window.removeEventListener("DataReady", loadData);
@@ -145,7 +179,7 @@ export function GalleryPreview() {
   }, [loadData]);
 
   if (!isMounted) return null;
-  
+
   // Se não houver configurações, retornamos o esqueleto enquanto aguardamos o StudioProvider
   if (!settings) {
     return (
@@ -161,8 +195,10 @@ export function GalleryPreview() {
   }
 
   if (pageVisibility.galeria === false) return null;
-  
-  const isPreview = typeof window !== "undefined" && window.location.search.includes("preview=true");
+
+  const isPreview =
+    typeof window !== "undefined" &&
+    window.location.search.includes("preview=true");
 
   // Se estiver carregando, mostra um estado de esqueleto para evitar saltos de layout
   if (isLoading) {
@@ -174,7 +210,10 @@ export function GalleryPreview() {
             <div className="h-4 w-96 bg-muted animate-pulse rounded-lg" />
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full mt-16">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="aspect-square bg-muted animate-pulse rounded-lg" />
+                <div
+                  key={i}
+                  className="aspect-square bg-muted animate-pulse rounded-lg"
+                />
               ))}
             </div>
           </div>
@@ -182,7 +221,7 @@ export function GalleryPreview() {
       </section>
     );
   }
-  
+
   // Só esconde a seção se NÃO estiver no preview do editor E (não estiver carregando E não tiver imagens)
   if (!isPreview && !isLoading && (!images || images.length === 0)) {
     return null;

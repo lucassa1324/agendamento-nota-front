@@ -503,52 +503,51 @@ export const SidebarContent = memo(
           <Button
             type="button"
             disabled={
-              isSaving || (
-              !hasUnsavedGlobalChanges &&
-              !hasHeroChanges &&
-              !hasAboutHeroChanges &&
-              !hasStoryChanges &&
-              !hasTeamChanges &&
-              !hasTestimonialsChanges &&
-              !hasFontChanges &&
-              !hasServicesChanges &&
-              !hasValuesChanges &&
-              !hasGalleryChanges &&
-              !hasCTAChanges &&
-              !hasHeaderChanges &&
-              !hasFooterChanges &&
-              !hasBookingServiceChanges &&
-              !hasBookingDateChanges &&
-              !hasBookingTimeChanges &&
-              !hasBookingFormChanges &&
-              !hasBookingConfirmationChanges
-              )
+              isSaving ||
+              (!hasUnsavedGlobalChanges &&
+                !hasHeroChanges &&
+                !hasAboutHeroChanges &&
+                !hasStoryChanges &&
+                !hasTeamChanges &&
+                !hasTestimonialsChanges &&
+                !hasFontChanges &&
+                !hasServicesChanges &&
+                !hasValuesChanges &&
+                !hasGalleryChanges &&
+                !hasCTAChanges &&
+                !hasHeaderChanges &&
+                !hasFooterChanges &&
+                !hasBookingServiceChanges &&
+                !hasBookingDateChanges &&
+                !hasBookingTimeChanges &&
+                !hasBookingFormChanges &&
+                !hasBookingConfirmationChanges)
             }
             onClick={onSaveGlobal}
             className={cn(
               "w-full font-bold py-6 rounded-xl transition-all duration-300",
               isSaving
                 ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : (hasUnsavedGlobalChanges ||
-                  hasHeroChanges ||
-                  hasAboutHeroChanges ||
-                  hasStoryChanges ||
-                  hasTeamChanges ||
-                  hasTestimonialsChanges ||
-                  hasFontChanges ||
-                  hasServicesChanges ||
-                  hasValuesChanges ||
-                  hasGalleryChanges ||
-                  hasCTAChanges ||
-                  hasHeaderChanges ||
-                  hasFooterChanges ||
-                  hasBookingServiceChanges ||
-                  hasBookingDateChanges ||
-                  hasBookingTimeChanges ||
-                  hasBookingFormChanges ||
-                  hasBookingConfirmationChanges
+                : hasUnsavedGlobalChanges ||
+                    hasHeroChanges ||
+                    hasAboutHeroChanges ||
+                    hasStoryChanges ||
+                    hasTeamChanges ||
+                    hasTestimonialsChanges ||
+                    hasFontChanges ||
+                    hasServicesChanges ||
+                    hasValuesChanges ||
+                    hasGalleryChanges ||
+                    hasCTAChanges ||
+                    hasHeaderChanges ||
+                    hasFooterChanges ||
+                    hasBookingServiceChanges ||
+                    hasBookingDateChanges ||
+                    hasBookingTimeChanges ||
+                    hasBookingFormChanges ||
+                    hasBookingConfirmationChanges
                   ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
-                  : "bg-muted text-muted-foreground cursor-not-allowed"),
+                  : "bg-muted text-muted-foreground cursor-not-allowed",
             )}
           >
             {isSaving ? (
@@ -556,8 +555,7 @@ export const SidebarContent = memo(
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span>Publicando...</span>
               </div>
-            ) : (
-              hasUnsavedGlobalChanges ||
+            ) : hasUnsavedGlobalChanges ||
               hasHeroChanges ||
               hasAboutHeroChanges ||
               hasStoryChanges ||
@@ -574,9 +572,10 @@ export const SidebarContent = memo(
               hasBookingDateChanges ||
               hasBookingTimeChanges ||
               hasBookingFormChanges ||
-              hasBookingConfirmationChanges
-                ? "Publicar Site"
-                : "Tudo Atualizado"
+              hasBookingConfirmationChanges ? (
+              "Publicar Site"
+            ) : (
+              "Tudo Atualizado"
             )}
           </Button>
         </div>

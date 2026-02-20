@@ -22,13 +22,13 @@ import { useStudio } from "@/context/studio-context";
 import { appointmentService } from "@/lib/api-appointments";
 import {
   type Booking,
-  type BookingStatus, 
+  type BookingStatus,
   type BookingStepSettings,
-  type DaySchedule, 
+  type DaySchedule,
   getAvailableTimeSlots,
   parseDuration,
   type Service,
-  type TimeSlot
+  type TimeSlot,
 } from "@/lib/booking-data";
 import { businessService } from "@/lib/business-service";
 import { cn } from "@/lib/utils";
@@ -51,25 +51,33 @@ export function TimeSlotSelector({
   settings,
 }: TimeSlotSelectorProps) {
   const { studio } = useStudio();
-  const [backendInterval, setBackendInterval] = useState<number | undefined>(undefined);
-  
+  const [backendInterval, setBackendInterval] = useState<number | undefined>(
+    undefined,
+  );
+
   // Tenta pegar o intervalo das configurações do step3 (dashboard)
-  const forcedInterval = settings?.interval || settings?.slotInterval || settings?.step3Times?.interval;
+  const forcedInterval =
+    settings?.interval ||
+    settings?.slotInterval ||
+    settings?.step3Times?.interval;
 
   // Prioridade: 1) Backend, 2) Settings do step, 3) Fallback 30
   const finalInterval = backendInterval || parseDuration(forcedInterval) || 30;
-  
+
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
 
   // Buscar agendamentos do backend e atualizar slots
   const fetchBookingsAndSlots = useCallback(async () => {
     if (!studio?.id) return;
-    
+
     setIsLoadingBookings(true);
     try {
-      console.log(">>> [TIME_SLOT_SELECTOR] Buscando dados do banco para:", date);
-      
+      console.log(
+        ">>> [TIME_SLOT_SELECTOR] Buscando dados do banco para:",
+        date,
+      );
+
       // Buscar configurações, agendamentos e bloqueios em paralelo
       const [settings, appointments, blocks] = await Promise.all([
         businessService.getSettings(studio.id),
@@ -80,7 +88,7 @@ export function TimeSlotSelector({
       console.log(">>> [TIME_SLOT_SELECTOR] Dados recebidos:", {
         hasSettings: !!settings,
         appointmentsCount: appointments?.length,
-        blocksCount: blocks?.length
+        blocksCount: blocks?.length,
       });
 
       // 1. Processar Horários de Funcionamento (Schedule)
@@ -88,7 +96,9 @@ export function TimeSlotSelector({
 
       // Se a agenda estiver fechada globalmente, não mostramos slots
       if (settings && settings.agendaAberta === false) {
-        console.log(">>> [TIME_SLOT_SELECTOR] Agenda está fechada globalmente (agendaAberta = false)");
+        console.log(
+          ">>> [TIME_SLOT_SELECTOR] Agenda está fechada globalmente (agendaAberta = false)",
+        );
         setTimeSlots([]);
         setIsLoadingBookings(false);
         return;
@@ -99,28 +109,34 @@ export function TimeSlotSelector({
         // Usamos o construtor Date com a string T00:00:00 para garantir fuso local.
         const localDate = new Date(`${date}T00:00:00`);
         const dayOfWeek = localDate.getDay();
-        const apiDay = settings.weekly.find(w => parseInt(w.dayOfWeek, 10) === dayOfWeek);
-        
+        const apiDay = settings.weekly.find(
+          (w) => parseInt(w.dayOfWeek, 10) === dayOfWeek,
+        );
+
         if (apiDay) {
           currentDaySchedule = {
             dayOfWeek,
-            dayName: "", 
+            dayName: "",
             isOpen: apiDay.status === "OPEN",
             openTime: apiDay.morningStart,
             lunchStart: apiDay.morningEnd,
             lunchEnd: apiDay.afternoonStart,
             closeTime: apiDay.afternoonEnd,
-            interval: parseDuration(settings.interval || settings.slotInterval) || 30
+            interval:
+              parseDuration(settings.interval || settings.slotInterval) || 30,
           };
 
-          console.log(">>> [TIME_SLOT_SELECTOR] Schedule processado para o dia:", {
-            dayOfWeek,
-            isOpen: currentDaySchedule.isOpen,
-            morning: `${currentDaySchedule.openTime} - ${currentDaySchedule.lunchStart}`,
-            afternoon: `${currentDaySchedule.lunchEnd} - ${currentDaySchedule.closeTime}`,
-            interval: currentDaySchedule.interval
-          });
-          
+          console.log(
+            ">>> [TIME_SLOT_SELECTOR] Schedule processado para o dia:",
+            {
+              dayOfWeek,
+              isOpen: currentDaySchedule.isOpen,
+              morning: `${currentDaySchedule.openTime} - ${currentDaySchedule.lunchStart}`,
+              afternoon: `${currentDaySchedule.lunchEnd} - ${currentDaySchedule.closeTime}`,
+              interval: currentDaySchedule.interval,
+            },
+          );
+
           if (currentDaySchedule.interval) {
             setBackendInterval(currentDaySchedule.interval);
           }
@@ -128,29 +144,33 @@ export function TimeSlotSelector({
       }
 
       // 2. Processar Agendamentos
-      const dayAppointments = appointments.filter(app => {
+      const dayAppointments = appointments.filter((app) => {
         // Garantir que estamos comparando a data no fuso local, já que o input 'date' (YYYY-MM-DD) é local
         // Se app.scheduledAt for "2024-01-01T03:00:00Z" e estivermos no GTM-3, vira "2024-01-01T00:00:00" local
         const dateObj = new Date(app.scheduledAt);
         const appDate = format(dateObj, "yyyy-MM-dd");
-        
-        console.log(`>>> [DEBUG_SLOTS] Verificando agendamento: ${app.customerName} - Original: ${app.scheduledAt} -> Local: ${appDate} (Filtro: ${date})`);
-        
-        return appDate === date && app.status !== 'CANCELLED';
+
+        console.log(
+          `>>> [DEBUG_SLOTS] Verificando agendamento: ${app.customerName} - Original: ${app.scheduledAt} -> Local: ${appDate} (Filtro: ${date})`,
+        );
+
+        return appDate === date && app.status !== "CANCELLED";
       });
 
-      const convertedBookings: Booking[] = dayAppointments.map(app => {
+      const convertedBookings: Booking[] = dayAppointments.map((app) => {
         let status: BookingStatus = "pending";
         const apiStatus = app.status.toLowerCase();
-        if (apiStatus === 'confirmed') status = 'confirmado';
-        else if (apiStatus === 'cancelled') status = 'cancelado';
-        else if (apiStatus === 'completed') status = 'concluído';
-        
+        if (apiStatus === "confirmed") status = "confirmado";
+        else if (apiStatus === "cancelled") status = "cancelado";
+        else if (apiStatus === "completed") status = "concluído";
+
         const dateObj = new Date(app.scheduledAt);
         const bookingTime = format(dateObj, "HH:mm");
         const duration = parseDuration(app.serviceDurationSnapshot) || 60;
 
-        console.log(`>>> [DEBUG_SLOTS] Agendamento convertido: ${app.customerName} @ ${bookingTime} (Duração: ${duration}min)`);
+        console.log(
+          `>>> [DEBUG_SLOTS] Agendamento convertido: ${app.customerName} @ ${bookingTime} (Duração: ${duration}min)`,
+        );
 
         return {
           id: app.id,
@@ -166,43 +186,49 @@ export function TimeSlotSelector({
           clientPhone: app.customerPhone,
           status,
           createdAt: app.createdAt,
-          notificationsSent: { email: false, whatsapp: false }
+          notificationsSent: { email: false, whatsapp: false },
         };
       });
 
-      console.log(">>> [DEBUG_SLOTS] Agendamentos finais para o dia:", convertedBookings);
+      console.log(
+        ">>> [DEBUG_SLOTS] Agendamentos finais para o dia:",
+        convertedBookings,
+      );
 
       // 3. Gerar Slots
-      const intervalToUse = backendInterval || currentDaySchedule?.interval || finalInterval;
+      const intervalToUse =
+        backendInterval || currentDaySchedule?.interval || finalInterval;
       const numericDuration = parseDuration(service.duration) || 60;
-      
+
       console.log(">>> [TIME_SLOT_SELECTOR] Dados para geração de slots:", {
         date,
         duration: numericDuration,
         interval: intervalToUse,
         bookingsCount: convertedBookings.length,
         blocksCount: blocks.length,
-        schedule: currentDaySchedule
+        schedule: currentDaySchedule,
       });
 
       const availableSlots = getAvailableTimeSlots(
-        date, 
-        numericDuration, 
-        intervalToUse, 
+        date,
+        numericDuration,
+        intervalToUse,
         convertedBookings,
         currentDaySchedule,
-        blocks
+        blocks,
       );
-      
+
       console.log(">>> [TIME_SLOT_SELECTOR] Slots gerados:", {
         count: availableSlots.length,
-        available: availableSlots.filter(s => s.available).length
+        available: availableSlots.filter((s) => s.available).length,
       });
 
       setTimeSlots(availableSlots);
     } catch (error) {
       console.error(">>> [TIME_SLOT_SELECTOR] Erro ao buscar dados:", error);
-      setTimeSlots(getAvailableTimeSlots(date, service.duration, finalInterval));
+      setTimeSlots(
+        getAvailableTimeSlots(date, service.duration, finalInterval),
+      );
     } finally {
       setIsLoadingBookings(false);
     }
@@ -363,7 +389,9 @@ export function TimeSlotSelector({
           {isLoadingBookings ? (
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              <p className="text-muted-foreground animate-pulse">Verificando horários disponíveis...</p>
+              <p className="text-muted-foreground animate-pulse">
+                Verificando horários disponíveis...
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

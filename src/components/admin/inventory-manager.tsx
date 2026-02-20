@@ -95,23 +95,30 @@ export function InventoryManager() {
   const user = session?.user as SessionUser | undefined;
   const companyId = studio?.id || user?.businessId || user?.business?.id;
 
-  const fetchInventory = useCallback(async (forceRefresh = false) => {
-    if (!companyId) return;
+  const fetchInventory = useCallback(
+    async (forceRefresh = false) => {
+      if (!companyId) return;
 
-    console.log(">>> [INVENTORY] Buscando itens para ID:", companyId, forceRefresh ? "(Forçando Refresh)" : "");
-    setIsLoadingItems(true);
-    try {
-      const data = await inventoryService.list(companyId, forceRefresh);
-      console.log(">>> [INVENTORY] Dados recebidos do Back-end:", data);
-      setInventory(data);
-    } catch (error) {
-      console.error("Erro ao buscar estoque:", error);
-      // Limpa a lista em caso de erro 500 ou outros erros de busca para evitar dados inconsistentes
-      setInventory([]);
-    } finally {
-      setIsLoadingItems(false);
-    }
-  }, [companyId]); // Removido toast da dependência para evitar disparos indesejados no init
+      console.log(
+        ">>> [INVENTORY] Buscando itens para ID:",
+        companyId,
+        forceRefresh ? "(Forçando Refresh)" : "",
+      );
+      setIsLoadingItems(true);
+      try {
+        const data = await inventoryService.list(companyId, forceRefresh);
+        console.log(">>> [INVENTORY] Dados recebidos do Back-end:", data);
+        setInventory(data);
+      } catch (error) {
+        console.error("Erro ao buscar estoque:", error);
+        // Limpa a lista em caso de erro 500 ou outros erros de busca para evitar dados inconsistentes
+        setInventory([]);
+      } finally {
+        setIsLoadingItems(false);
+      }
+    },
+    [companyId],
+  ); // Removido toast da dependência para evitar disparos indesejados no init
 
   useEffect(() => {
     if (companyId) {
@@ -122,7 +129,9 @@ export function InventoryManager() {
   // Sincronização de estoque via evento global (disparado por booking-data.ts)
   useEffect(() => {
     const handleInventoryUpdate = () => {
-      console.log(">>> [INVENTORY] Evento de atualização recebido. Recarregando...");
+      console.log(
+        ">>> [INVENTORY] Evento de atualização recebido. Recarregando...",
+      );
       fetchInventory(true);
     };
 
@@ -139,7 +148,10 @@ export function InventoryManager() {
         try {
           const logs = await inventoryService.getLogs(showHistory.id);
           // Ordenar logs por data decrescente (caso não venha ordenado)
-          const sortedLogs = logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          const sortedLogs = logs.sort(
+            (a, b) =>
+              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+          );
           setHistoryLogs(sortedLogs);
         } catch (error) {
           console.error("Erro ao buscar histórico:", error);
@@ -177,7 +189,8 @@ export function InventoryManager() {
   useEffect(() => {
     if (transactionItem) {
       setTransactionUnit("primary");
-      const itemPrice = transactionItem.item.price ?? transactionItem.item.unitPrice ?? 0;
+      const itemPrice =
+        transactionItem.item.price ?? transactionItem.item.unitPrice ?? 0;
       setTransactionPrice(itemPrice.toString());
     }
   }, [transactionItem]);
@@ -326,7 +339,7 @@ export function InventoryManager() {
       // Limpeza estrita: Remove campos undefined ou strings vazias (exceto nulls intencionais e booleanos)
       const payload = Object.fromEntries(
         Object.entries(rawPayload).filter(
-          ([_, v]) => v !== undefined && v !== ""
+          ([_, v]) => v !== undefined && v !== "",
         ),
       );
 
@@ -358,13 +371,14 @@ export function InventoryManager() {
   const handleTransaction = async () => {
     if (!transactionItem) return;
 
-    if (!companyId || companyId === 'N/A') {
-        toast({
-            title: "Erro de identificação",
-            description: "ID da empresa não identificado. Tente recarregar a página.",
-            variant: "destructive",
-        });
-        return;
+    if (!companyId || companyId === "N/A") {
+      toast({
+        title: "Erro de identificação",
+        description:
+          "ID da empresa não identificado. Tente recarregar a página.",
+        variant: "destructive",
+      });
+      return;
     }
 
     let qty = Number(transactionQuantity);
@@ -387,29 +401,28 @@ export function InventoryManager() {
     try {
       const isEntrada = transactionItem.type === "entrada";
       const newPrice =
-        isEntrada && transactionPrice
-          ? Number(transactionPrice)
-          : undefined;
+        isEntrada && transactionPrice ? Number(transactionPrice) : undefined;
 
       // Chama a nova rota de transação
       await inventoryService.createTransaction({
-          productId: itemToUpdate.id,
-          type: isEntrada ? "ENTRY" : "EXIT",
-          quantity: qty,
-          reason: `Movimentação manual (${
-            transactionUnit === "primary"
-              ? itemToUpdate.unit
-              : itemToUpdate.secondaryUnit || itemToUpdate.unit
-          })${isEntrada && newPrice ? ` - Preço atualizado` : ""}`,
-          companyId: companyId
+        productId: itemToUpdate.id,
+        type: isEntrada ? "ENTRY" : "EXIT",
+        quantity: qty,
+        reason: `Movimentação manual (${
+          transactionUnit === "primary"
+            ? itemToUpdate.unit
+            : itemToUpdate.secondaryUnit || itemToUpdate.unit
+        })${isEntrada && newPrice ? ` - Preço atualizado` : ""}`,
+        companyId: companyId,
       });
 
       // Se o preço mudou, fazemos um update no item também (operação separada por enquanto)
       if (isEntrada && newPrice) {
-        const priceValue = typeof newPrice === 'string'
-          ? parseFloat((newPrice as string).replace(',', '.'))
-          : newPrice;
-          
+        const priceValue =
+          typeof newPrice === "string"
+            ? parseFloat((newPrice as string).replace(",", "."))
+            : newPrice;
+
         await inventoryService.update(itemToUpdate.id, {
           unitPrice: Number(Number(priceValue || 0).toFixed(2)),
         });
@@ -446,8 +459,9 @@ export function InventoryManager() {
       const message =
         error instanceof Error
           ? error.message
-          : (error as { response?: { data?: { error?: string } } })?.response?.data
-              ?.error || "Não foi possível registrar a movimentação no servidor.";
+          : (error as { response?: { data?: { error?: string } } })?.response
+              ?.data?.error ||
+            "Não foi possível registrar a movimentação no servidor.";
       toast({
         title: "Erro na movimentação",
         description: message,
@@ -455,8 +469,9 @@ export function InventoryManager() {
       });
       setIsSaving(false); // Reset loading state on error
     } finally {
-      if (!isSuccess) { // Only reset if not success (success resets in timeout)
-         setIsSaving(false);
+      if (!isSuccess) {
+        // Only reset if not success (success resets in timeout)
+        setIsSaving(false);
       }
     }
   };
@@ -744,9 +759,7 @@ export function InventoryManager() {
                     <TableCell className="hidden xl:table-cell">
                       <span
                         className={
-                          Number(
-                            item?.quantity || item?.currentQuantity || 0,
-                          ) *
+                          Number(item?.quantity || item?.currentQuantity || 0) *
                             (item?.conversionFactor || 1) <=
                           Number(item?.minQuantity || 0)
                             ? "text-red-600 font-semibold"
@@ -754,22 +767,26 @@ export function InventoryManager() {
                         }
                       >
                         {(() => {
-                           const qty = Number(item?.quantity || item?.currentQuantity || 0);
-                           const factor = Number(item?.conversionFactor || 1);
-                           const formattedQty = qty.toLocaleString("pt-BR", {
-                             minimumFractionDigits: 0,
-                             maximumFractionDigits: 3,
-                           });
-                           
-                           if (factor > 1 && item?.secondaryUnit) {
-                             const totalSecondary = qty * factor;
-                             const formattedSecondary = Number.isInteger(totalSecondary)
-                               ? totalSecondary.toString()
-                               : totalSecondary.toFixed(2).replace('.', ',');
-                             return `${formattedQty} ${item.unit} (${formattedSecondary} ${item.secondaryUnit})`;
-                           }
-                           
-                           return formattedQty;
+                          const qty = Number(
+                            item?.quantity || item?.currentQuantity || 0,
+                          );
+                          const factor = Number(item?.conversionFactor || 1);
+                          const formattedQty = qty.toLocaleString("pt-BR", {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 3,
+                          });
+
+                          if (factor > 1 && item?.secondaryUnit) {
+                            const totalSecondary = qty * factor;
+                            const formattedSecondary = Number.isInteger(
+                              totalSecondary,
+                            )
+                              ? totalSecondary.toString()
+                              : totalSecondary.toFixed(2).replace(".", ",");
+                            return `${formattedQty} ${item.unit} (${formattedSecondary} ${item.secondaryUnit})`;
+                          }
+
+                          return formattedQty;
                         })()}
                       </span>
                     </TableCell>
@@ -954,21 +971,20 @@ export function InventoryManager() {
                 : "Saída de Estoque"}
             </DialogTitle>
             <DialogDescription>
-              {transactionItem?.item.name} (
-              {(() => {
+              {transactionItem?.item.name} ({(() => {
                 const item = transactionItem?.item;
                 if (!item) return "0";
                 const qty = Number(item.quantity || item.currentQuantity || 0);
                 const factor = Number(item.conversionFactor || 1);
-                
+
                 if (factor > 1 && item.secondaryUnit) {
                   const secondaryQty = qty * factor;
-                  const formattedSecondary = Number.isInteger(secondaryQty) 
-                    ? secondaryQty.toString() 
-                    : secondaryQty.toFixed(2).replace('.', ',');
+                  const formattedSecondary = Number.isInteger(secondaryQty)
+                    ? secondaryQty.toString()
+                    : secondaryQty.toFixed(2).replace(".", ",");
                   return `${formattedSecondary} ${item.secondaryUnit} / ${qty.toLocaleString("pt-BR")} ${item.unit}`;
                 }
-                
+
                 return `${qty.toLocaleString("pt-BR")} ${item.unit}`;
               })()} atuais)
             </DialogDescription>
@@ -1008,9 +1024,7 @@ export function InventoryManager() {
             {transactionItem?.item.secondaryUnit &&
               transactionItem?.item.conversionFactor && (
                 <div className="grid grid-cols-4 items-start gap-4">
-                  <Label className="text-right pt-2">
-                    Unidade
-                  </Label>
+                  <Label className="text-right pt-2">Unidade</Label>
                   <div className="col-span-3">
                     <RadioGroup
                       value={transactionUnit}
@@ -1021,13 +1035,19 @@ export function InventoryManager() {
                     >
                       <div className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-accent">
                         <RadioGroupItem value="primary" id="unit-primary" />
-                        <Label htmlFor="unit-primary" className="cursor-pointer flex-1">
+                        <Label
+                          htmlFor="unit-primary"
+                          className="cursor-pointer flex-1"
+                        >
                           {transactionItem.item.unit} (Principal)
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-accent">
                         <RadioGroupItem value="secondary" id="unit-secondary" />
-                        <Label htmlFor="unit-secondary" className="cursor-pointer flex-1">
+                        <Label
+                          htmlFor="unit-secondary"
+                          className="cursor-pointer flex-1"
+                        >
                           {transactionItem.item.secondaryUnit} (Secundária - 1{" "}
                           {transactionItem.item.unit} ={" "}
                           {transactionItem.item.conversionFactor}{" "}
@@ -1049,8 +1069,8 @@ export function InventoryManager() {
                 isSuccess
                   ? "bg-green-600 hover:bg-green-700"
                   : transactionItem?.type === "entrada"
-                  ? "bg-green-600 hover:bg-green-700"
-                  : "bg-red-600 hover:bg-red-700"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-red-600 hover:bg-red-700"
               }
               disabled={isSaving || isSuccess}
             >
@@ -1150,8 +1170,8 @@ export function InventoryManager() {
                       {editingItem.secondaryUnit
                         ? `(${editingItem.secondaryUnit})`
                         : editingItem.unit
-                        ? `(${editingItem.unit})`
-                        : ""}
+                          ? `(${editingItem.unit})`
+                          : ""}
                     </Label>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -1212,9 +1232,11 @@ export function InventoryManager() {
                     step="0.01"
                     value={
                       (editingItem.price ?? editingItem.unitPrice) == null ||
-                      Number.isNaN(Number(editingItem.price ?? editingItem.unitPrice))
+                      Number.isNaN(
+                        Number(editingItem.price ?? editingItem.unitPrice),
+                      )
                         ? "0"
-                        : editingItem.price ?? editingItem.unitPrice
+                        : (editingItem.price ?? editingItem.unitPrice)
                     }
                     onChange={(e) => {
                       const val =
@@ -1343,14 +1365,18 @@ export function InventoryManager() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5">
-                    <Label htmlFor="edit-is-shared">Item de uso compartilhado (EPI)</Label>
+                    <Label htmlFor="edit-is-shared">
+                      Item de uso compartilhado (EPI)
+                    </Label>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent>
                         <p>
-                          Se ativado, este item será cobrado apenas uma vez por atendimento, mesmo que o cliente realize múltiplos serviços que o utilizem.
+                          Se ativado, este item será cobrado apenas uma vez por
+                          atendimento, mesmo que o cliente realize múltiplos
+                          serviços que o utilizem.
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -1364,7 +1390,10 @@ export function InventoryManager() {
                       }
                       disabled={isSaving}
                     />
-                    <Label htmlFor="edit-is-shared" className="ml-2 cursor-pointer">
+                    <Label
+                      htmlFor="edit-is-shared"
+                      className="ml-2 cursor-pointer"
+                    >
                       {editingItem.isShared ? "Sim" : "Não"}
                     </Label>
                   </div>
@@ -1406,7 +1435,9 @@ export function InventoryManager() {
             {isLoadingHistory ? (
               <div className="flex flex-col items-center justify-center py-8">
                 <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm text-muted-foreground mt-2">Carregando histórico...</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Carregando histórico...
+                </p>
               </div>
             ) : !historyLogs || historyLogs.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">
@@ -1437,18 +1468,22 @@ export function InventoryManager() {
                             variant="outline"
                             className={cn(
                               "text-[10px] px-1 py-0 h-5",
-                              (log.type === "entrada" || log.type === "ENTRY")
+                              log.type === "entrada" || log.type === "ENTRY"
                                 ? "bg-green-50 text-green-700 border-green-200"
-                                : (log.type === "saida" || log.type === "EXIT" ||
+                                : log.type === "saida" ||
+                                    log.type === "EXIT" ||
                                     log.type === "servico" ||
-                                    log.type === "venda")
+                                    log.type === "venda"
                                   ? "bg-red-50 text-red-700 border-red-200"
                                   : "bg-blue-50 text-blue-700 border-blue-200",
                             )}
                           >
-                            {log.type === "ENTRY" ? "Entrada" : 
-                             log.type === "EXIT" ? "Saída" :
-                             log.type.charAt(0).toUpperCase() + log.type.slice(1)}
+                            {log.type === "ENTRY"
+                              ? "Entrada"
+                              : log.type === "EXIT"
+                                ? "Saída"
+                                : log.type.charAt(0).toUpperCase() +
+                                  log.type.slice(1)}
                           </Badge>
                         </TableCell>
                         <TableCell

@@ -43,31 +43,43 @@ export function TrialBanner() {
 
   // Verifica se o usuário é SUPER_ADMIN
   // O banner NÃO deve aparecer para Super Admin
-  const user = session?.user as { role?: string; business?: { slug?: string; subscriptionStatus?: string; trialEndsAt?: string; daysLeft?: number } } | undefined;
+  const user = session?.user as
+    | {
+        role?: string;
+        business?: {
+          slug?: string;
+          subscriptionStatus?: string;
+          trialEndsAt?: string;
+          daysLeft?: number;
+        };
+      }
+    | undefined;
   if (user?.role === "SUPER_ADMIN") return null;
 
   // Determina o status e data final usando a melhor fonte disponível (Sessão atualizada > Sessão cache > Contexto)
   const userBusiness = sessionData?.user?.business || user?.business;
-  
+
   // Verifica status na sessão do usuário (prioridade) ou no contexto do estúdio
   // Se o usuário estiver vendo seu próprio estúdio, usa os dados da sessão
   const isOwner = userBusiness?.slug === studio?.slug;
-  
-  const status = isOwner && userBusiness?.subscriptionStatus 
-    ? userBusiness.subscriptionStatus 
-    : studio?.subscriptionStatus;
+
+  const status =
+    isOwner && userBusiness?.subscriptionStatus
+      ? userBusiness.subscriptionStatus
+      : studio?.subscriptionStatus;
 
   // Aceita tanto "trial" quanto "trialing" para compatibilidade
   if (status !== "trial" && status !== "trialing") return null;
 
-  const trialEndsAt = isOwner && userBusiness?.trialEndsAt
-    ? userBusiness.trialEndsAt
-    : studio?.trialEndsAt;
+  const trialEndsAt =
+    isOwner && userBusiness?.trialEndsAt
+      ? userBusiness.trialEndsAt
+      : studio?.trialEndsAt;
 
   // Lógica de dias restantes: prioriza o campo `daysLeft` vindo do backend
   let displayDays = 0;
 
-  if (isOwner && typeof userBusiness?.daysLeft === 'number') {
+  if (isOwner && typeof userBusiness?.daysLeft === "number") {
     displayDays = userBusiness.daysLeft;
   } else if (trialEndsAt) {
     // Cálculo baseado EXCLUSIVAMENTE em trialEndsAt
@@ -82,10 +94,10 @@ export function TrialBanner() {
 
   // Lógica de Urgência (<= 3 dias)
   const isCritical = displayDays <= 3;
-  const containerClasses = isCritical 
-    ? "bg-red-50 border-red-500 text-red-700" 
+  const containerClasses = isCritical
+    ? "bg-red-50 border-red-500 text-red-700"
     : "bg-yellow-50 border-yellow-400 text-yellow-700";
-  
+
   const iconColor = isCritical ? "text-red-500" : "text-yellow-400";
   const buttonClasses = isCritical
     ? "text-red-700 underline hover:text-red-800"
@@ -117,31 +129,38 @@ export function TrialBanner() {
       }
     } catch (error) {
       console.error("Erro ao assinar:", error);
-      toast.error("Não foi possível gerar o link de pagamento. Tente novamente.");
+      toast.error(
+        "Não foi possível gerar o link de pagamento. Tente novamente.",
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className={`border-l-4 p-4 mb-6 mx-4 lg:mx-6 mt-4 rounded-r shadow-sm transition-colors ${containerClasses}`}>
+    <div
+      className={`border-l-4 p-4 mb-6 mx-4 lg:mx-6 mt-4 rounded-r shadow-sm transition-colors ${containerClasses}`}
+    >
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center">
           <div className="shrink-0">
-            <AlertTriangle className={`h-5 w-5 ${iconColor}`} aria-hidden="true" />
+            <AlertTriangle
+              className={`h-5 w-5 ${iconColor}`}
+              aria-hidden="true"
+            />
           </div>
           <div className="ml-3">
             <p className="text-sm font-medium flex items-center gap-2 flex-wrap">
               <span>
-                {displayDays === 0 
-                  ? "Seu período de teste acabou!" 
+                {displayDays === 0
+                  ? "Seu período de teste acabou!"
                   : `Seu período de teste acaba em ${displayDays} dias.`}
               </span>
             </p>
           </div>
         </div>
-        
-        <button 
+
+        <button
           type="button"
           onClick={handleSubscribe}
           disabled={isLoading}

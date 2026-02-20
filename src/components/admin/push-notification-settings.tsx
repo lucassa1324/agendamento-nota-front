@@ -1,9 +1,22 @@
 "use client";
 
-import { AlertCircle, Bell, BellOff, CheckCircle2, Loader2, Smartphone } from "lucide-react";
+import {
+  AlertCircle,
+  Bell,
+  BellOff,
+  CheckCircle2,
+  Loader2,
+  Smartphone,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
@@ -17,7 +30,13 @@ interface UserPreferences {
 }
 
 export function PushNotificationSettings() {
-  const { isSubscribed, permission, requestAndSubscribe, unsubscribeFromPush, isRegistering } = usePushNotifications();
+  const {
+    isSubscribed,
+    permission,
+    requestAndSubscribe,
+    unsubscribeFromPush,
+    isRegistering,
+  } = usePushNotifications();
   const { toast } = useToast();
   const [loadingPreferences, setLoadingPreferences] = useState(true);
   const [updating, setUpdating] = useState<Record<string, boolean>>({});
@@ -35,15 +54,15 @@ export function PushNotificationSettings() {
         if (response.ok) {
           const data = await response.json();
           if (data) {
-             setPreferences({
-                notifyNewAppointments: data.notifyNewAppointments ?? true,
-                notifyCancellations: data.notifyCancellations ?? true,
-                notifyInventoryAlerts: data.notifyInventoryAlerts ?? false,
-             });
+            setPreferences({
+              notifyNewAppointments: data.notifyNewAppointments ?? true,
+              notifyCancellations: data.notifyCancellations ?? true,
+              notifyInventoryAlerts: data.notifyInventoryAlerts ?? false,
+            });
           }
         } else if (response.status === 401) {
-            // Tratamento de 401: Redirecionar para login
-             window.location.href = "/login";
+          // Tratamento de 401: Redirecionar para login
+          window.location.href = "/login";
         }
       } catch (error) {
         console.error("Erro ao carregar preferências:", error);
@@ -56,19 +75,19 @@ export function PushNotificationSettings() {
 
   const handleToggle = async (key: keyof UserPreferences) => {
     if (updating[key]) return;
-    
+
     setUpdating((prev) => ({ ...prev, [key]: true }));
     const newValue = !preferences[key];
     const newPreferences = { ...preferences, [key]: newValue };
-    
+
     // Atualização otimista
     setPreferences(newPreferences);
 
     // Mapear para snake_case para o backend
     const payload = {
-        notify_new_appointments: newPreferences.notifyNewAppointments,
-        notify_cancellations: newPreferences.notifyCancellations,
-        notify_inventory_alerts: newPreferences.notifyInventoryAlerts
+      notify_new_appointments: newPreferences.notifyNewAppointments,
+      notify_cancellations: newPreferences.notifyCancellations,
+      notify_inventory_alerts: newPreferences.notifyInventoryAlerts,
     };
 
     try {
@@ -79,12 +98,12 @@ export function PushNotificationSettings() {
 
       if (!response.ok) {
         if (response.status === 401) {
-             window.location.href = "/login";
-             return;
+          window.location.href = "/login";
+          return;
         }
         throw new Error("Falha ao salvar preferências");
       }
-      
+
       toast({
         title: "Preferências atualizadas",
         description: "Suas configurações de notificação foram salvas.",
@@ -95,7 +114,8 @@ export function PushNotificationSettings() {
       toast({
         variant: "destructive",
         title: "Erro ao salvar",
-        description: "Não foi possível salvar suas alterações. Tente novamente.",
+        description:
+          "Não foi possível salvar suas alterações. Tente novamente.",
       });
     } finally {
       setUpdating((prev) => ({ ...prev, [key]: false }));
@@ -147,11 +167,11 @@ export function PushNotificationSettings() {
         title: "Enviando teste...",
         description: "Aguarde um momento.",
       });
-      
+
       const response = await customFetch("/api/notifications/test", {
         method: "POST",
       });
-      
+
       console.log("Resposta do teste:", response.status, response.statusText);
 
       if (response.ok) {
@@ -171,7 +191,8 @@ export function PushNotificationSettings() {
       toast({
         variant: "destructive",
         title: "Erro no teste",
-        description: "Não foi possível enviar a notificação de teste. Verifique o console.",
+        description:
+          "Não foi possível enviar a notificação de teste. Verifique o console.",
       });
     }
   };
@@ -209,25 +230,25 @@ export function PushNotificationSettings() {
                   <Bell className="h-6 w-6" />
                 </div>
               )}
-              
+
               <div>
                 <h4 className="font-medium">
                   {permission === "granted" && isSubscribed
                     ? "Dispositivo Autorizado"
                     : permission === "denied"
-                    ? "Notificações Bloqueadas"
-                    : permission === "granted"
-                    ? "Permissão Concedida (Inativo)"
-                    : "Notificações Pendentes"}
+                      ? "Notificações Bloqueadas"
+                      : permission === "granted"
+                        ? "Permissão Concedida (Inativo)"
+                        : "Notificações Pendentes"}
                 </h4>
                 <p className="text-sm text-muted-foreground">
                   {permission === "granted" && isSubscribed
                     ? "Este navegador está pronto para receber alertas."
                     : permission === "denied"
-                    ? "Para reativar, clique no ícone de cadeado na barra de endereço e permita as notificações."
-                    : permission === "granted"
-                    ? "A permissão foi concedida, mas as notificações ainda não foram ativadas."
-                    : "Ative para receber atualizações em tempo real."}
+                      ? "Para reativar, clique no ícone de cadeado na barra de endereço e permita as notificações."
+                      : permission === "granted"
+                        ? "A permissão foi concedida, mas as notificações ainda não foram ativadas."
+                        : "Ative para receber atualizações em tempo real."}
                 </p>
               </div>
             </div>
@@ -235,27 +256,44 @@ export function PushNotificationSettings() {
             <div className="flex gap-2">
               {permission === "granted" && isSubscribed ? (
                 <>
-                  <Button variant="outline" size="sm" onClick={handleTestNotification}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTestNotification}
+                  >
                     <Bell className="mr-2 h-4 w-4" />
                     Testar
                   </Button>
-                  <Button variant="destructive" size="sm" onClick={handleDeactivate} disabled={isRegistering}>
-                    {isRegistering ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BellOff className="mr-2 h-4 w-4" />}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleDeactivate}
+                    disabled={isRegistering}
+                  >
+                    {isRegistering ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <BellOff className="mr-2 h-4 w-4" />
+                    )}
                     Desativar
                   </Button>
                 </>
               ) : permission === "denied" ? (
-                 <Button variant="secondary" size="sm" disabled>
-                   Bloqueado pelo Navegador
-                 </Button>
+                <Button variant="secondary" size="sm" disabled>
+                  Bloqueado pelo Navegador
+                </Button>
               ) : permission === "granted" ? (
                 <Button onClick={handleActivate} disabled={isRegistering}>
-                  {isRegistering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isRegistering && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   Concluir Ativação
                 </Button>
               ) : (
                 <Button onClick={handleActivate} disabled={isRegistering}>
-                  {isRegistering && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isRegistering && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   Ativar Notificações
                 </Button>
               )}
@@ -289,11 +327,15 @@ export function PushNotificationSettings() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {updating.notifyNewAppointments && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  {updating.notifyNewAppointments && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
                   <Switch
                     id="new-appointments"
                     checked={preferences.notifyNewAppointments}
-                    onCheckedChange={() => handleToggle("notifyNewAppointments")}
+                    onCheckedChange={() =>
+                      handleToggle("notifyNewAppointments")
+                    }
                     disabled={updating.notifyNewAppointments}
                   />
                 </div>
@@ -309,7 +351,9 @@ export function PushNotificationSettings() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {updating.notifyCancellations && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  {updating.notifyCancellations && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
                   <Switch
                     id="cancellations"
                     checked={preferences.notifyCancellations}
@@ -329,11 +373,15 @@ export function PushNotificationSettings() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  {updating.notifyInventoryAlerts && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+                  {updating.notifyInventoryAlerts && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
                   <Switch
                     id="inventory-alerts"
                     checked={preferences.notifyInventoryAlerts}
-                    onCheckedChange={() => handleToggle("notifyInventoryAlerts")}
+                    onCheckedChange={() =>
+                      handleToggle("notifyInventoryAlerts")
+                    }
                     disabled={updating.notifyInventoryAlerts}
                   />
                 </div>

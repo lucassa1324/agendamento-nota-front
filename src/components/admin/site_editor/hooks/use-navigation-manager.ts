@@ -65,7 +65,7 @@ export function useNavigationManager(
         : activePageData?.path || "/";
 
     const baseUrl = path === "/" ? "/?preview=true" : `${path}?preview=true`;
-    
+
     // Adiciona o slug se disponível para garantir o contexto correto no iframe
     const urlWithSlug = slug ? `${baseUrl}&slug=${slug}` : baseUrl;
 

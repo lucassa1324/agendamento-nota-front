@@ -1,13 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import {
-  BarChart3,
-  LogOut,
-  Store,
-  User,
-  Users,
-} from "lucide-react";
+import { BarChart3, LogOut, Store, User, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -89,7 +83,7 @@ export function MasterSidebar({ adminUser, handleLogout }: MasterSidebarProps) {
           </div>
         </div>
         <div className="px-2">
-           <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+          <span className="bg-primary/10 text-primary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
             Master Access
           </span>
         </div>

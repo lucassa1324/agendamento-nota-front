@@ -8,7 +8,10 @@ type PermissionState = NotificationPermission;
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = typeof window !== "undefined" ? window.atob(base64) : Buffer.from(base64, "base64").toString("binary");
+  const rawData =
+    typeof window !== "undefined"
+      ? window.atob(base64)
+      : Buffer.from(base64, "base64").toString("binary");
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
@@ -17,23 +20,36 @@ function urlBase64ToUint8Array(base64String: string) {
 }
 
 export function usePushNotifications() {
-  const [permission, setPermission] = useState<PermissionState>(typeof Notification !== "undefined" ? Notification.permission : "default");
+  const [permission, setPermission] = useState<PermissionState>(
+    typeof Notification !== "undefined" ? Notification.permission : "default",
+  );
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [subscription, setSubscription] = useState<PushSubscription | null>(null);
+  const [subscription, setSubscription] = useState<PushSubscription | null>(
+    null,
+  );
   const [isRegistering, setIsRegistering] = useState(false);
-  const isSupported = useMemo(() => typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window, []);
+  const isSupported = useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      "serviceWorker" in navigator &&
+      "PushManager" in window,
+    [],
+  );
 
-  const getReadyRegistration = useCallback(async (): Promise<ServiceWorkerRegistration | null> => {
-    try {
-      if (!isSupported) return null;
-      const reg = await navigator.serviceWorker.getRegistration();
-      if (reg) return reg;
-      const registered = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      return registered;
-    } catch {
-      return null;
-    }
-  }, [isSupported]);
+  const getReadyRegistration =
+    useCallback(async (): Promise<ServiceWorkerRegistration | null> => {
+      try {
+        if (!isSupported) return null;
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) return reg;
+        const registered = await navigator.serviceWorker.register("/sw.js", {
+          scope: "/",
+        });
+        return registered;
+      } catch {
+        return null;
+      }
+    }, [isSupported]);
 
   const refreshSubscriptionState = useCallback(async () => {
     if (!isSupported) return;
@@ -46,7 +62,9 @@ export function usePushNotifications() {
   useEffect(() => {
     if (!isSupported) return;
     getReadyRegistration().then(() => refreshSubscriptionState());
-    setPermission(typeof Notification !== "undefined" ? Notification.permission : "default");
+    setPermission(
+      typeof Notification !== "undefined" ? Notification.permission : "default",
+    );
 
     // Listener para mudanças na permissão do navegador
     if (typeof navigator !== "undefined" && "permissions" in navigator) {
@@ -85,8 +103,8 @@ export function usePushNotifications() {
       let sub = await registration.pushManager.getSubscription();
       if (!sub) {
         sub = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidKey),
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey),
         });
       }
 
@@ -100,8 +118,8 @@ export function usePushNotifications() {
 
       if (!res.ok) {
         if (res.status === 401) {
-            window.location.href = "/login"; // Redirecionar para login
-            return { ok: false, error: "unauthorized" };
+          window.location.href = "/login"; // Redirecionar para login
+          return { ok: false, error: "unauthorized" };
         }
         setIsRegistering(false);
         return { ok: false, error: "backend_error" };
@@ -122,22 +140,22 @@ export function usePushNotifications() {
     try {
       const registration = await getReadyRegistration();
       if (!registration) {
-          setIsRegistering(false);
-          return { ok: false, error: "no_registration" };
+        setIsRegistering(false);
+        return { ok: false, error: "no_registration" };
       }
       const sub = await registration.pushManager.getSubscription();
       if (sub) {
         await sub.unsubscribe();
       }
-      
+
       setSubscription(null);
       setIsSubscribed(false);
       setIsRegistering(false);
       return { ok: true };
     } catch (err) {
-        console.error("Erro ao desativar notificações:", err);
-        setIsRegistering(false);
-        return { ok: false, error: "unknown" };
+      console.error("Erro ao desativar notificações:", err);
+      setIsRegistering(false);
+      return { ok: false, error: "unknown" };
     }
   }, [isSupported, getReadyRegistration]);
 

@@ -33,12 +33,12 @@ export default function SobrePage({
   useEffect(() => {
     if (studio?.config) {
       const config = studio.config as unknown as SiteConfigData;
-      
+
       if (!isPreview) {
         if (config.visibleSections) {
           setVisibleSections(config.visibleSections);
         }
-        
+
         if (config.pageVisibility) {
           // Reaproveita a lógica de checkVisibility do useEffect principal
           if (config.pageVisibility.sobre === false) {

@@ -139,7 +139,7 @@ export function SiteCustomizer() {
 
     try {
       console.log(`>>> [CUSTOMIZER] Atualizando status para: ${newStatus}`);
-      
+
       // Usa o endpoint de status do usuário (que controla o acesso do estúdio)
       // Buscamos o ID do usuário através do business ou usamos o business.id se for o mesmo
       const response = await customFetch(
@@ -149,14 +149,16 @@ export function SiteCustomizer() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ active: newStatus }),
           credentials: "include",
-        }
+        },
       );
 
       if (response.ok) {
-        setBusinesses(prev => 
-          prev.map(b => b.id === business.id ? { ...b, active: newStatus } : b)
+        setBusinesses((prev) =>
+          prev.map((b) =>
+            b.id === business.id ? { ...b, active: newStatus } : b,
+          ),
         );
-        
+
         toast({
           title: "Status Atualizado",
           description: `O acesso ao estúdio foi ${newStatus ? "ativado" : "desativado"} com sucesso.`,
@@ -169,7 +171,8 @@ export function SiteCustomizer() {
       console.error(">>> [CUSTOMIZER_ERROR] Falha ao alternar status:", err);
       toast({
         title: "Erro ao atualizar",
-        description: "Não foi possível alterar o status de acesso. Verifique sua conexão.",
+        description:
+          "Não foi possível alterar o status de acesso. Verifique sua conexão.",
         variant: "destructive",
       });
     } finally {
@@ -196,9 +199,9 @@ export function SiteCustomizer() {
         const businessData = Array.isArray(data) ? data[0] : data;
 
         if (businessData) {
-            setBusinesses([businessData]);
-  
-            if (businessData.id) {
+          setBusinesses([businessData]);
+
+          if (businessData.id) {
             console.log(
               ">>> [CUSTOMIZER] Buscando customização via serviço...",
             );
@@ -423,8 +426,8 @@ export function SiteCustomizer() {
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-3 bg-muted/30 px-3 py-1.5 rounded-lg border border-border/50">
             <div className="flex flex-col items-end mr-1">
-              <Label 
-                htmlFor="access-switch" 
+              <Label
+                htmlFor="access-switch"
                 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-1"
               >
                 Acesso ao Site
@@ -433,8 +436,8 @@ export function SiteCustomizer() {
                 {isUpdatingStatus ? (
                   <Activity className="w-3 h-3 animate-spin text-primary" />
                 ) : (
-                  <Badge 
-                    variant={businesses[0]?.active ? "default" : "destructive"} 
+                  <Badge
+                    variant={businesses[0]?.active ? "default" : "destructive"}
                     className="h-4 px-1.5 text-[9px] uppercase font-bold"
                   >
                     {businesses[0]?.active ? "Ativo" : "Suspenso"}

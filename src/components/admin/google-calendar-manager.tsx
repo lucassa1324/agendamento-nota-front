@@ -8,10 +8,10 @@ import {
   // ExternalLink,
   FileSpreadsheet,
   FileText,
-  Import,
+  // Import,
   // RefreshCw,
   // Save,
-  Upload,
+  // Upload,
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -154,9 +154,12 @@ export function GoogleCalendarManager() {
     URL.revokeObjectURL(url);
   };
 
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const _handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // TODO: Implement CSV import
+    console.log("Importing file:", file.name);
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -278,8 +281,6 @@ export function GoogleCalendarManager() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-
-
         {/* Coluna 2: Exportar e Importar */}
         <div className="space-y-6">
           <Card>
@@ -333,8 +334,6 @@ export function GoogleCalendarManager() {
               </div>
             </CardContent>
           </Card>
-
-
         </div>
       </div>
 
@@ -347,7 +346,6 @@ export function GoogleCalendarManager() {
               para backup ou integração externa.
             </p>
           </div>
-
         </CardContent>
       </Card>
     </div>

@@ -36,7 +36,7 @@ export default function Home({
   useEffect(() => {
     if (studio?.config) {
       const config = studio.config as unknown as SiteConfigData;
-      
+
       // Priorizamos os dados do banco, mas permitimos que o preview (message) sobrescreva
       if (!isPreview) {
         if (config.visibleSections) {

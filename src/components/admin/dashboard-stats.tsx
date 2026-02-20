@@ -16,7 +16,9 @@ import { businessService } from "@/lib/business-service";
 export function DashboardStats() {
   const { studio } = useStudio();
   const { data: session } = useSession();
-  const [sessionData, setSessionData] = useState<typeof authClient.$Infer.Session | null>(null);
+  const [sessionData, setSessionData] = useState<
+    typeof authClient.$Infer.Session | null
+  >(null);
   const [billingError, setBillingError] = useState(false);
   const [stats, setStats] = useState({
     totalBookings: 0,
@@ -30,19 +32,40 @@ export function DashboardStats() {
     try {
       setBillingError(false);
       const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+      const firstDay = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1,
+      ).toISOString();
+      const lastDay = new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+      ).toISOString();
       const [appointmentsResult, settingsResult] = await Promise.allSettled([
         appointmentService.listByCompanyAdmin(studio.id, firstDay, lastDay),
         businessService.getSettings(studio.id),
       ]);
-      const appointments = appointmentsResult.status === "fulfilled" ? appointmentsResult.value : [];
-      const settings = settingsResult.status === "fulfilled" ? settingsResult.value : null;
+      const appointments =
+        appointmentsResult.status === "fulfilled"
+          ? appointmentsResult.value
+          : [];
+      const settings =
+        settingsResult.status === "fulfilled" ? settingsResult.value : null;
       if (appointmentsResult.status === "rejected") {
-        console.error("Dashboard: Falha ao carregar agendamentos:", appointmentsResult.reason);
+        console.error(
+          "Dashboard: Falha ao carregar agendamentos:",
+          appointmentsResult.reason,
+        );
       }
       if (settingsResult.status === "rejected") {
-        console.warn("Dashboard: Falha ao carregar configurações (usando padrões):", settingsResult.reason);
+        console.warn(
+          "Dashboard: Falha ao carregar configurações (usando padrões):",
+          settingsResult.reason,
+        );
       }
       const todayStr = now.toISOString().split("T")[0];
       const currentMonth = now.getMonth();
@@ -64,7 +87,9 @@ export function DashboardStats() {
               );
             })
             .reduce((sum, app) => {
-              const price = app.servicePriceSnapshot ? parseFloat(app.servicePriceSnapshot) : 0;
+              const price = app.servicePriceSnapshot
+                ? parseFloat(app.servicePriceSnapshot)
+                : 0;
               return sum + price;
             }, 0)
         : 0;
@@ -75,9 +100,15 @@ export function DashboardStats() {
         agendaStatus: settings?.agendaAberta ?? true,
       });
     } catch (error: unknown) {
-      console.error("Erro crítico (inesperado) ao carregar estatísticas:", error);
+      console.error(
+        "Erro crítico (inesperado) ao carregar estatísticas:",
+        error,
+      );
       const isBillingError =
-        (typeof error === "object" && error !== null && "status" in error && (error as { status: unknown }).status === 402) ||
+        (typeof error === "object" &&
+          error !== null &&
+          "status" in error &&
+          (error as { status: unknown }).status === 402) ||
         (error instanceof Error && error.message.includes("BILLING_REQUIRED"));
       if (isBillingError) {
         setBillingError(true);
@@ -87,7 +118,10 @@ export function DashboardStats() {
       const settings = getSettingsFromStorage();
       setStats({
         totalBookings: bookings.length,
-        todayBookings: bookings.filter((b: { date: string }) => b.date === new Date().toISOString().split("T")[0]).length,
+        todayBookings: bookings.filter(
+          (b: { date: string }) =>
+            b.date === new Date().toISOString().split("T")[0],
+        ).length,
         monthRevenue: 0,
         agendaStatus: settings.agendaAberta,
       });
@@ -134,35 +168,47 @@ export function DashboardStats() {
     },
     {
       title: "Status da Agenda",
-      value: billingError ? "---" : (stats.agendaStatus ? "Aberta" : "Fechada"),
+      value: billingError ? "---" : stats.agendaStatus ? "Aberta" : "Fechada",
       icon: TrendingUp,
-      color: billingError ? "text-muted-foreground" : (stats.agendaStatus ? "text-green-500" : "text-red-500"),
+      color: billingError
+        ? "text-muted-foreground"
+        : stats.agendaStatus
+          ? "text-green-500"
+          : "text-red-500",
     },
   ];
 
   // Adiciona card de dias restantes se estiver em trial
-  if (studio?.subscriptionStatus === "trialing" || studio?.subscriptionStatus === "trial") {
+  if (
+    studio?.subscriptionStatus === "trialing" ||
+    studio?.subscriptionStatus === "trial"
+  ) {
     let daysLeft = 0;
-    
+
     // Lógica unificada com o Banner: Prioriza daysLeft da SESSÃO (mais atual), senão do studio, senão calcula via trialEndsAt
     // NUNCA usar createdAt + 14
-    
+
     // Tenta pegar da sessão atualizada (fetch) ou do hook (cache), igual ao TrialBanner
     const currentSession = sessionData || session;
     const userWithBusiness = currentSession?.user as
-      | { business?: { daysLeft?: number; slug?: string; trialEndsAt?: string } }
+      | {
+          business?: { daysLeft?: number; slug?: string; trialEndsAt?: string };
+        }
       | undefined;
     const userBusiness = userWithBusiness?.business;
     const isOwner = userBusiness?.slug === studio.slug;
-    
-    if (isOwner && typeof userBusiness?.daysLeft === 'number') {
+
+    if (isOwner && typeof userBusiness?.daysLeft === "number") {
       daysLeft = userBusiness.daysLeft;
-    } else if (typeof studio.daysLeft === 'number') {
+    } else if (typeof studio.daysLeft === "number") {
       daysLeft = studio.daysLeft;
     } else {
       // Fallback para trialEndsAt (Sessão ou Studio)
-      const trialEndsAt = (isOwner && userBusiness?.trialEndsAt) ? userBusiness.trialEndsAt : studio.trialEndsAt;
-      
+      const trialEndsAt =
+        isOwner && userBusiness?.trialEndsAt
+          ? userBusiness.trialEndsAt
+          : studio.trialEndsAt;
+
       if (trialEndsAt) {
         const endDate = new Date(trialEndsAt);
         const today = new Date();

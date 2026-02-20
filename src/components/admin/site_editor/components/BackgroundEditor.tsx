@@ -61,7 +61,7 @@ export function BackgroundEditor({
       };
 
       const compressedFile = await imageCompression(file, options);
-      
+
       // Converter para Base64
       const reader = new FileReader();
       const base64Promise = new Promise<string>((resolve, reject) => {
@@ -193,7 +193,8 @@ export function BackgroundEditor({
             >
               {isUploading ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" /> Processando...
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
+                  Processando...
                 </>
               ) : (
                 <>

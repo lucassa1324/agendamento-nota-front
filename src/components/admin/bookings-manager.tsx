@@ -31,8 +31,8 @@ import {
 import {
   type Booking,
   type BookingStatus,
+  // calculateBookingResources,
   getBookingsFromStorage,
-  calculateBookingResources,
 } from "@/lib/booking-data";
 import { type InventoryItem, inventoryService } from "@/lib/inventory-service";
 import { AdminBookingFlow } from "./admin-booking-flow";
@@ -48,8 +48,10 @@ const mapApiToBooking = (api: Appointment): Booking => {
   // Converter serviceDurationSnapshot (HH:mm) para minutos (number)
   let durationMinutes = 0;
   if (api.serviceDurationSnapshot?.includes(":")) {
-    const [hours, minutes] = api.serviceDurationSnapshot.split(":").map(n => parseInt(n, 10));
-    durationMinutes = (hours * 60) + (minutes || 0);
+    const [hours, minutes] = api.serviceDurationSnapshot
+      .split(":")
+      .map((n) => parseInt(n, 10));
+    durationMinutes = hours * 60 + (minutes || 0);
   } else if (api.serviceDurationSnapshot) {
     durationMinutes = parseInt(api.serviceDurationSnapshot, 10);
   }
@@ -73,7 +75,10 @@ const mapApiToBooking = (api: Appointment): Booking => {
   if (api.notes) {
     const match = api.notes.match(/IDs:\s*([\w\s,-]+)/);
     if (match?.[1]) {
-      const extractedIds = match[1].split(',').map(id => id.trim()).filter(Boolean);
+      const extractedIds = match[1]
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
       serviceIds = Array.from(new Set([...serviceIds, ...extractedIds]));
     }
   }
@@ -83,7 +88,9 @@ const mapApiToBooking = (api: Appointment): Booking => {
     serviceId: serviceIds.length > 1 ? serviceIds : serviceIds[0],
     serviceName: api.serviceNameSnapshot || "Serviço não informado",
     serviceDuration: durationMinutes,
-    servicePrice: api.servicePriceSnapshot ? parseFloat(api.servicePriceSnapshot) : 0,
+    servicePrice: api.servicePriceSnapshot
+      ? parseFloat(api.servicePriceSnapshot)
+      : 0,
     date: format(dateObj, "yyyy-MM-dd"),
     time: format(dateObj, "HH:mm"),
     clientName: api.customerName || "Cliente não informado",
@@ -115,11 +122,15 @@ export function BookingsManager() {
   const [isLoading, setIsLoading] = useState(false);
   const [startDate, setStartDate] = useState<string>(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+      .toISOString()
+      .split("T")[0];
   });
   const [endDate, setEndDate] = useState<string>(() => {
     const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      .toISOString()
+      .split("T")[0];
   });
   const [pendingReversion, setPendingReversion] = useState<{
     bookingId: string;
@@ -168,10 +179,10 @@ export function BookingsManager() {
     setIsLoading(true);
     // Também recarrega o estoque para garantir sincronia
     loadInventory();
-    
+
     try {
-      // Converter YYYY-MM-DD para ISO UTC para o backend se necessário, 
-      // ou enviar apenas a data se o backend aceitar. 
+      // Converter YYYY-MM-DD para ISO UTC para o backend se necessário,
+      // ou enviar apenas a data se o backend aceitar.
       // O requisito pede ISO: 2025-02-10T00:00:00Z
       const isoStart = startDate ? `${startDate}T00:00:00Z` : undefined;
       const isoEnd = endDate ? `${endDate}T23:59:59Z` : undefined;
@@ -279,7 +290,7 @@ export function BookingsManager() {
 
   const processStatusUpdate = async (
     bookingId: string,
-    newStatus: BookingStatus
+    newStatus: BookingStatus,
   ) => {
     try {
       const apiStatus = mapStatusToApi(newStatus);
@@ -303,7 +314,7 @@ export function BookingsManager() {
 
   const handleStatusChange = async (
     bookingId: string,
-    newStatus: BookingStatus
+    newStatus: BookingStatus,
   ) => {
     const booking = bookings.find((b) => b.id === bookingId);
     if (!booking) return;
@@ -328,10 +339,10 @@ export function BookingsManager() {
     setIsProcessing(true);
 
     const { bookingId, newStatus } = pendingReversion;
-    
+
     // O Backend lida com a lógica de estorno ao receber o status PENDING
     await processStatusUpdate(bookingId, newStatus);
-    
+
     setPendingReversion(null);
     setIsProcessing(false);
   };
@@ -449,7 +460,8 @@ export function BookingsManager() {
           <DialogHeader>
             <DialogTitle>Adiar Agendamento</DialogTitle>
             <DialogDescription>
-              Selecione uma nova data e horário para o agendamento de {bookingToReschedule?.clientName}.
+              Selecione uma nova data e horário para o agendamento de{" "}
+              {bookingToReschedule?.clientName}.
             </DialogDescription>
           </DialogHeader>
           {bookingToReschedule && (
@@ -492,8 +504,9 @@ export function BookingsManager() {
             <AlertDialogDescription asChild className="space-y-4">
               <div>
                 <p>
-                  Ao voltar este serviço para pendente, o saldo de insumos consumidos 
-                  será estornado automaticamente para o estoque com base no histórico de uso.
+                  Ao voltar este serviço para pendente, o saldo de insumos
+                  consumidos será estornado automaticamente para o estoque com
+                  base no histórico de uso.
                 </p>
               </div>
             </AlertDialogDescription>

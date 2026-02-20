@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     if (!description || !screenshot) {
       return NextResponse.json(
         { error: "Descrição e screenshot são obrigatórios." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     console.error("Erro ao processar feedback:", error);
     return NextResponse.json(
       { error: "Erro interno ao processar feedback." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

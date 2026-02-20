@@ -129,7 +129,8 @@ export function HeaderControls({
           size="icon"
           className={cn(
             "rounded-full w-7 h-7 lg:w-8 lg:h-8",
-            previewMode === "desktop" && "bg-background shadow-sm text-foreground",
+            previewMode === "desktop" &&
+              "bg-background shadow-sm text-foreground",
           )}
           onClick={() => {
             setPreviewMode("desktop");
@@ -145,7 +146,8 @@ export function HeaderControls({
           size="icon"
           className={cn(
             "rounded-full w-7 h-7 lg:w-8 lg:h-8",
-            previewMode === "mobile" && "bg-background shadow-sm text-foreground",
+            previewMode === "mobile" &&
+              "bg-background shadow-sm text-foreground",
           )}
           onClick={() => {
             setPreviewMode("mobile");

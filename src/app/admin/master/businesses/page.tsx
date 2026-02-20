@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  CheckCircle2,
-  ExternalLink,
-  Search,
-  ShieldCheck,
-} from "lucide-react";
+import { CheckCircle2, ExternalLink, Search, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AccessReleaseModal } from "@/components/admin/access-release-modal";
 import { Badge } from "@/components/ui/badge";
@@ -56,7 +51,8 @@ export default function MasterBusinessesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [subscriptionFilter, setSubscriptionFilter] = useState<string>("all");
   const [accessFilter, setAccessFilter] = useState<string>("all");
-  const [selectedCompany, setSelectedCompany] = useState<CompanyMasterData | null>(null);
+  const [selectedCompany, setSelectedCompany] =
+    useState<CompanyMasterData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
 
@@ -67,7 +63,7 @@ export default function MasterBusinessesPage() {
         `${API_BASE_URL}/api/admin/master/businesses`,
         {
           credentials: "include",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -154,7 +150,9 @@ export default function MasterBusinessesPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Gerenciar Empresas</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Gerenciar Empresas
+        </h1>
         <p className="text-muted-foreground">
           Controle de assinaturas e acesso das empresas cadastradas.
         </p>
@@ -246,7 +244,9 @@ export default function MasterBusinessesPage() {
                         )}
                       </TableCell>
                       <TableCell>{company.slug}</TableCell>
-                      <TableCell>{getStatusBadge(company.subscriptionStatus)}</TableCell>
+                      <TableCell>
+                        {getStatusBadge(company.subscriptionStatus)}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
                           {company.accessType || "Padrão"}
@@ -255,9 +255,9 @@ export default function MasterBusinessesPage() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {company.subscriptionStatus !== "active" ? (
-                            <Button 
-                              size="sm" 
-                              variant="default" 
+                            <Button
+                              size="sm"
+                              variant="default"
                               className="bg-indigo-600 hover:bg-indigo-700"
                               onClick={() => handleOpenModal(company)}
                             >
@@ -265,9 +265,9 @@ export default function MasterBusinessesPage() {
                               Liberar Acesso
                             </Button>
                           ) : (
-                            <Button 
-                              size="sm" 
-                              variant="ghost" 
+                            <Button
+                              size="sm"
+                              variant="ghost"
                               className="text-green-600 hover:text-green-700 hover:bg-green-50"
                               onClick={() => handleOpenModal(company)}
                             >
@@ -275,11 +275,11 @@ export default function MasterBusinessesPage() {
                               Ativo
                             </Button>
                           )}
-                          
+
                           <Button size="icon" variant="ghost" asChild>
-                            <a 
-                              href={`/admin/${company.slug}/dashboard/overview`} 
-                              target="_blank" 
+                            <a
+                              href={`/admin/${company.slug}/dashboard/overview`}
+                              target="_blank"
                               rel="noreferrer"
                             >
                               <ExternalLink className="w-4 h-4" />
@@ -296,7 +296,7 @@ export default function MasterBusinessesPage() {
         </CardContent>
       </Card>
 
-      <AccessReleaseModal 
+      <AccessReleaseModal
         company={selectedCompany}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
