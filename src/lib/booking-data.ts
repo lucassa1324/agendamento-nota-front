@@ -93,6 +93,7 @@ export type Booking = {
   clientPhone: string;
   status: BookingStatus;
   createdAt: string;
+  serviceDurationSnapshot?: string | number;
   notificationsSent: {
     email: boolean;
     whatsapp: boolean;
@@ -1263,10 +1264,26 @@ function isTimeSlotAvailable(
   // 5. Verificar conflitos com outros agendamentos
   for (const booking of bookings) {
     const bookingStart = timeToMinutes(booking.time);
-    const bookingDuration =
-      typeof booking.serviceDuration === "string"
-        ? parseInt(booking.serviceDuration, 10)
-        : booking.serviceDuration;
+
+    let bookingDuration: number;
+
+    if (booking.serviceDurationSnapshot) {
+      if (
+        typeof booking.serviceDurationSnapshot === "string" &&
+        booking.serviceDurationSnapshot.includes(":")
+      ) {
+        const [h, m] = booking.serviceDurationSnapshot.split(":").map(Number);
+        bookingDuration = h * 60 + m;
+      } else {
+        bookingDuration = parseInt(String(booking.serviceDurationSnapshot), 10);
+      }
+    } else {
+      bookingDuration =
+        typeof booking.serviceDuration === "string"
+          ? parseInt(booking.serviceDuration, 10)
+          : booking.serviceDuration;
+    }
+
     const bookingEnd = bookingStart + bookingDuration;
 
     // Se o slot começa antes do fim do agendamento E termina depois do início do agendamento

@@ -178,6 +178,7 @@ export function TimeSlotSelector({
           serviceName: app.serviceNameSnapshot,
           // Corrigido: Converter "HH:mm" para minutos totais, senão parseInt("01:00") vira 1 minuto
           serviceDuration: duration,
+          serviceDurationSnapshot: app.serviceDurationSnapshot,
           servicePrice: parseFloat(app.servicePriceSnapshot),
           date: format(dateObj, "yyyy-MM-dd"),
           time: bookingTime,

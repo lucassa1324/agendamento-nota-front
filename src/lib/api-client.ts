@@ -40,8 +40,11 @@ export async function customFetch(url: string, options: RequestInit = {}) {
 
   const headers = new Headers(options.headers || {});
 
+  const isFormData =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
+
   // Garantir Content-Type para requisições com body
-  if (options.body && !headers.has("Content-Type")) {
+  if (options.body && !headers.has("Content-Type") && !isFormData) {
     headers.set("Content-Type", "application/json");
   }
 

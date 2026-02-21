@@ -25,6 +25,12 @@ import { useToast } from "@/hooks/use-toast";
 import { authClient } from "@/lib/auth-client";
 import { SubscriptionCancellationModal } from "./subscription-cancellation-modal";
 
+interface UserWithBusiness {
+  business?: {
+    subscriptionId?: string;
+  };
+}
+
 export function AdminProfileManager() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -364,14 +370,9 @@ export function AdminProfileManager() {
       <SubscriptionCancellationModal
         isOpen={isCancellationModalOpen}
         onClose={() => setIsCancellationModalOpen(false)}
-        nextInvoiceDate={
-          studio?.createdAt
-            ? getNextInvoiceDate(studio.createdAt).toLocaleDateString("pt-BR", {
-                day: "2-digit",
-                month: "long",
-                year: "numeric",
-              })
-            : new Date().toLocaleDateString("pt-BR")
+        subscriptionId={
+          (session?.user as unknown as UserWithBusiness)?.business
+            ?.subscriptionId
         }
       />
     </div>

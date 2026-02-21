@@ -80,11 +80,13 @@ import {
   type TestimonialsSettings,
   type ValuesSettings,
 } from "@/lib/booking-data";
-import type { LayoutGlobalSettings, SiteConfigData } from "@/lib/site-config-types";
+import type {
+  LayoutGlobalSettings,
+  SiteConfigData,
+} from "@/lib/site-config-types";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
 
 export type { LayoutGlobalSettings, SiteConfigData };
-
 
 export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const { toast } = useToast();

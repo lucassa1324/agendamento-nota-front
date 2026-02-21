@@ -38,9 +38,13 @@ export function GalleryGrid() {
 
           setImages(allImages);
 
+          const servicesWithImages = allServices.filter((service) =>
+            allImages.some((img) => img.category === service.name),
+          );
+
           const dynamicCategories = [
             { id: "todos", label: "Todos" },
-            ...allServices.map((s) => ({ id: s.name, label: s.name })),
+            ...servicesWithImages.map((s) => ({ id: s.name, label: s.name })),
           ];
           setCategories(dynamicCategories);
           return;

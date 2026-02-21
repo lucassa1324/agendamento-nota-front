@@ -53,7 +53,17 @@ export async function GET(req: Request) {
         headers: { access_token: ASAAS_API_KEY },
       },
     );
-    const paymentsData = await paymentsRes.json();
+    const paymentsData = (await paymentsRes.json()) as {
+      data?: Array<{
+        id?: string;
+        value?: number;
+        dueDate?: string;
+        status?: string;
+        invoiceUrl?: string;
+        paymentDate?: string;
+        clientPaymentDate?: string;
+      }>;
+    };
 
     // Calculate fields
     let status = "Inativo";
@@ -67,16 +77,16 @@ export async function GET(req: Request) {
     }
 
     const lastPayment = paymentsData.data?.find(
-      (p: any) => p.status === "RECEIVED" || p.status === "CONFIRMED",
+      (p) => p.status === "RECEIVED" || p.status === "CONFIRMED",
     );
     const nextInvoice = paymentsData.data?.find(
-      (p: any) => p.status === "PENDING" || p.status === "OVERDUE",
+      (p) => p.status === "PENDING" || p.status === "OVERDUE",
     );
 
     return NextResponse.json({
       status,
       history:
-        paymentsData.data?.map((p: any) => ({
+        paymentsData.data?.map((p) => ({
           id: p.id,
           value: p.value,
           dueDate: p.dueDate,
@@ -88,8 +98,10 @@ export async function GET(req: Request) {
       nextInvoiceDate:
         nextInvoice?.dueDate || subscription?.nextDueDate || null,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching financial details:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const message =
+      error instanceof Error ? error.message : "Erro desconhecido";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

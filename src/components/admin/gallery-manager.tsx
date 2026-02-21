@@ -9,6 +9,7 @@ import {
   Search,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -37,6 +38,13 @@ import { getServices, type Service } from "@/lib/booking-data";
 import { type GalleryItem, galleryService } from "@/lib/gallery-service";
 import { cn } from "@/lib/utils";
 
+interface UploadItem {
+  file: File;
+  preview: string;
+  title: string;
+  category: string;
+}
+
 export function GalleryManager() {
   const { toast } = useToast();
   const { studio } = useStudio();
@@ -49,6 +57,7 @@ export function GalleryManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [selectedFiles, setSelectedFiles] = useState<UploadItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = useCallback(async () => {
@@ -161,9 +170,51 @@ export function GalleryManager() {
     return matchesSearch && matchesCategory;
   });
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelection = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (files && files.length > 0) {
+      const newFiles: UploadItem[] = Array.from(files).map((file) => ({
+        file,
+        preview: URL.createObjectURL(file),
+        title: file.name.split(".")[0],
+        category:
+          categoryInput || (services.length > 0 ? services[0].name : "Geral"),
+      }));
+      setSelectedFiles((prev) => [...prev, ...newFiles]);
+    }
+    // Limpar o input para permitir selecionar o mesmo arquivo novamente se necessário
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles((prev) => {
+      const newFiles = [...prev];
+      const removed = newFiles.splice(index, 1)[0];
+      if (removed) {
+        URL.revokeObjectURL(removed.preview);
+      }
+      return newFiles;
+    });
+  };
+
+  const updateFileTitle = (index: number, newTitle: string) => {
+    setSelectedFiles((prev) =>
+      prev.map((item, i) =>
+        i === index ? { ...item, title: newTitle } : item,
+      ),
+    );
+  };
+
+  const updateFileCategory = (index: number, newCategory: string) => {
+    setSelectedFiles((prev) =>
+      prev.map((item, i) =>
+        i === index ? { ...item, category: newCategory } : item,
+      ),
+    );
+  };
+
+  const handleConfirmUpload = async () => {
+    if (selectedFiles.length === 0) return;
 
     // Verificação de segurança: Só prossegue se houver estúdio carregado
     if (!studio?.id) {
@@ -178,31 +229,27 @@ export function GalleryManager() {
     setIsUploading(true);
 
     try {
-      for (const file of Array.from(files)) {
-        const reader = new FileReader();
-        const base64Promise = new Promise<string>((resolve) => {
-          reader.onload = (event) => resolve(event.target?.result as string);
-        });
-        reader.readAsDataURL(file);
-        const base64 = await base64Promise;
-
-        await galleryService.create({
-          imageUrl: base64,
-          title: file.name.split(".")[0],
-          category:
-            categoryInput || (services.length > 0 ? services[0].name : "Geral"),
+      for (const item of selectedFiles) {
+        await galleryService.upload({
+          file: item.file,
+          title: item.title,
+          category: item.category,
           showInHome: false,
         });
       }
 
       await loadData();
+      for (const item of selectedFiles) {
+        URL.revokeObjectURL(item.preview);
+      }
+      setSelectedFiles([]);
 
       // Notificar Home
       window.dispatchEvent(new Event("galleryUpdated"));
 
       toast({
         title: "Upload concluído",
-        description: `${files.length} imagem(ns) adicionada(s) com sucesso.`,
+        description: `${selectedFiles.length} imagem(ns) adicionada(s) com sucesso.`,
       });
     } catch (error: unknown) {
       const errorMessage =
@@ -217,7 +264,6 @@ export function GalleryManager() {
       });
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -251,8 +297,11 @@ export function GalleryManager() {
         showInHome: false,
       });
 
+      // Limpar apenas os campos de URL, sem afetar o estado de upload de arquivos
       setUrlInput("");
       setTitleInput("");
+      // Não resetamos categoryInput pois pode ser útil para a próxima inserção
+
       await loadData();
 
       // Notificar Home
@@ -369,39 +418,164 @@ export function GalleryManager() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              onKeyDown={(e) =>
-                e.key === "Enter" && fileInputRef.current?.click()
-              }
-              role="button"
-              tabIndex={0}
-              className="border-2 border-dashed border-muted-foreground/20 rounded-xl p-10 text-center hover:bg-muted/10 transition-colors cursor-pointer group"
-            >
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                className="hidden"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-              />
-              <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
-                <ImageIcon className="w-8 h-8 text-primary" />
+            {selectedFiles.length > 0 ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {selectedFiles.map((item, index) => (
+                    <div
+                      key={`${item.file.name}-${index}`}
+                      className="relative group border rounded-lg p-3 flex flex-col gap-2 bg-muted/20"
+                    >
+                      <div className="w-full aspect-square bg-muted rounded-md flex items-center justify-center overflow-hidden relative">
+                        {item.file.type.startsWith("image/") ? (
+                          <div className="relative w-full h-full">
+                            <Image
+                              src={item.preview}
+                              alt={item.file.name}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                              onLoad={() => {
+                                // Não precisamos revogar aqui pois gerenciamos no remove/cleanup
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                        )}
+                      </div>
+
+                      <div className="space-y-2 w-full">
+                        <Input
+                          value={item.title}
+                          onChange={(e) =>
+                            updateFileTitle(index, e.target.value)
+                          }
+                          placeholder="Título da imagem"
+                          className="h-8 text-xs bg-background/50"
+                        />
+                        <Select
+                          value={item.category}
+                          onValueChange={(val) =>
+                            updateFileCategory(index, val)
+                          }
+                        >
+                          <SelectTrigger className="h-8 text-xs bg-background/50 w-full">
+                            <SelectValue placeholder="Categoria" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {services.map((service, idx) => (
+                              <SelectItem
+                                key={
+                                  service.id
+                                    ? `${service.id}-${idx}`
+                                    : `file-cat-${index}-${idx}`
+                                }
+                                value={service.name}
+                                className="text-xs"
+                              >
+                                {service.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <button
+                        onClick={() => removeSelectedFile(index)}
+                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 shadow-md hover:bg-destructive/90 transition-colors z-10"
+                        type="button"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {/* Add more files button */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && fileInputRef.current?.click()
+                    }
+                    role="button"
+                    tabIndex={0}
+                    className="border-2 border-dashed border-muted-foreground/20 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/10 transition-colors h-full min-h-[200px]"
+                  >
+                    <Plus className="w-6 h-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground">
+                      Adicionar
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 justify-end pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedFiles([])}
+                    disabled={isUploading}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleConfirmUpload}
+                    disabled={isUploading}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
+                    {isUploading ? (
+                      "Enviando..."
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4 mr-2" />
+                        Confirmar Upload ({selectedFiles.length})
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Hidden input for adding more files */}
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleFileSelection}
+                />
               </div>
-              <p className="text-muted-foreground mb-4">
-                Arraste imagens aqui ou clique para selecionar
-              </p>
-              <Button
-                type="button"
-                variant="default"
-                className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6"
-                disabled={isUploading}
+            ) : (
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && fileInputRef.current?.click()
+                }
+                role="button"
+                tabIndex={0}
+                className="border-2 border-dashed border-muted-foreground/20 rounded-xl p-10 text-center hover:bg-muted/10 transition-colors cursor-pointer group"
               >
-                <Upload className="w-4 h-4 mr-2" />
-                {isUploading ? "Enviando..." : "Selecionar Imagens"}
-              </Button>
-            </div>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleFileSelection}
+                />
+                <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+                  <ImageIcon className="w-8 h-8 text-primary" />
+                </div>
+                <p className="text-muted-foreground mb-4">
+                  Arraste imagens aqui ou clique para selecionar
+                </p>
+                <Button
+                  type="button"
+                  variant="default"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-full px-6"
+                  disabled={isUploading}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Selecionar Imagens
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

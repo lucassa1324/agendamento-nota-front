@@ -21,6 +21,14 @@ export interface CreateGalleryDTO {
   order?: number | string;
 }
 
+export interface UploadGalleryDTO {
+  file: File;
+  title?: string;
+  category?: string;
+  showInHome?: boolean;
+  order?: number | string;
+}
+
 export interface UpdateGalleryDTO {
   imageUrl?: string;
   title?: string;
@@ -54,6 +62,35 @@ class GalleryService {
       );
       throw new Error(
         error.message || `Erro ${response.status} ao criar imagem na galeria`,
+      );
+    }
+
+    return response.json();
+  }
+
+  async upload(data: UploadGalleryDTO): Promise<GalleryItem> {
+    const formData = new FormData();
+    formData.append("file", data.file);
+
+    if (data.title) formData.append("title", data.title);
+    if (data.category) formData.append("category", data.category);
+    if (data.showInHome !== undefined) {
+      formData.append("showInHome", String(data.showInHome));
+    }
+    if (data.order !== undefined) {
+      formData.append("order", String(data.order));
+    }
+
+    const response = await customFetch(this.baseUrl, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(
+        error.message || `Erro ${response.status} ao enviar imagem na galeria`,
       );
     }
 
