@@ -15,14 +15,16 @@ const cleanUrl = (url?: string) => {
 };
 
 export const API_BASE_URL =
-  typeof window === "undefined"
-    ? process.env.API_PROXY_TARGET_URL || "http://localhost:3001"
-    : cleanUrl(process.env.NEXT_PUBLIC_API_URL) || "http://localhost:3001";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 // Configura a URL base do Better Auth
 // O Better-Auth EXIGE uma URL absoluta no baseURL para funcionar corretamente no client-side.
 // IMPORTANTE: Não adicionar "/api/auth" aqui, pois o cliente do Better Auth já adiciona automaticamente.
-export const AUTH_BASE_URL = API_BASE_URL;
+export const AUTH_BASE_URL = API_BASE_URL.startsWith("/")
+  ? typeof window !== "undefined"
+    ? `${window.location.origin}${API_BASE_URL}`
+    : `https://${process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || "localhost:3000"}${API_BASE_URL}`
+  : API_BASE_URL;
 
 console.log(">>> [AUTH_CLIENT] API_BASE_URL configurada como:", API_BASE_URL);
 console.log(">>> [AUTH_CLIENT] AUTH_BASE_URL configurada como:", AUTH_BASE_URL);
