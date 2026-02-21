@@ -99,7 +99,7 @@ export function usePreviewManager(
     const heightRatio = (availableHeight - 48) / targetHeight;
 
     // Use o menor ratio para garantir que caiba na tela
-    let scale = Math.min(widthRatio, heightRatio);
+    const scale = Math.min(widthRatio, heightRatio);
 
     // No modo mobile, permitimos que cresça um pouco mais (até 1.5x) para facilitar a leitura
     // No modo desktop, limitamos a 1x para não estourar

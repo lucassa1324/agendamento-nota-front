@@ -217,7 +217,8 @@ export function LoginForm() {
                 className="p-0 h-auto"
                 onClick={() =>
                   router.push(
-                    process.env.NEXT_PUBLIC_LANDING_PAGE_URL || "/admin/register",
+                    process.env.NEXT_PUBLIC_LANDING_PAGE_URL ||
+                      "/admin/register",
                   )
                 }
               >

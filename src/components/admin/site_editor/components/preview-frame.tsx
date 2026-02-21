@@ -53,10 +53,10 @@ export function PreviewFrame({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
-      
+
       const newX = e.clientX - dragStartRef.current.x;
       const newY = e.clientY - dragStartRef.current.y;
-      
+
       setPosition({ x: newX, y: newY });
     };
 
@@ -185,8 +185,8 @@ export function PreviewFrame({
                     size="icon"
                     className="w-12 h-12 rounded-full bg-white text-black shadow-lg cursor-grab active:cursor-grabbing hover:bg-gray-100 border-2 border-gray-200 flex items-center justify-center"
                     onMouseDown={(e) => {
-                        e.stopPropagation();
-                        handleDragStart(e);
+                      e.stopPropagation();
+                      handleDragStart(e);
                     }}
                     title="Arrastar visualização"
                   >
@@ -196,39 +196,41 @@ export function PreviewFrame({
               )}
 
               {/* Inner Content Wrapper for Clipping */}
-              <div className={cn(
-                "flex-1 w-full h-full overflow-hidden bg-white relative flex flex-col",
-                previewMode === "mobile" ? "rounded-[2.2rem]" : "rounded-lg"
-              )}>
-                  {/* Browser Header (Desktop Only) */}
-                  {previewMode === "desktop" && (
-                    <div className="h-10 bg-[#F1F3F4] border-b border-border flex items-center px-4 gap-4 shrink-0">
-                      <div className="flex gap-2">
-                        <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
-                        <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
-                        <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
-                      </div>
-                      <div className="flex-1 max-w-md bg-white h-6 rounded-md border border-border flex items-center px-3 gap-2 overflow-hidden">
-                        <div className="w-2 h-2 rounded-full bg-muted-foreground/20 shrink-0" />
-                        <span className="text-[10px] text-muted-foreground truncate">
-                          {typeof window !== "undefined"
-                            ? window.location.origin
-                            : ""}
-                          {activePageData?.path}
-                        </span>
-                      </div>
+              <div
+                className={cn(
+                  "flex-1 w-full h-full overflow-hidden bg-white relative flex flex-col",
+                  previewMode === "mobile" ? "rounded-[2.2rem]" : "rounded-lg",
+                )}
+              >
+                {/* Browser Header (Desktop Only) */}
+                {previewMode === "desktop" && (
+                  <div className="h-10 bg-[#F1F3F4] border-b border-border flex items-center px-4 gap-4 shrink-0">
+                    <div className="flex gap-2">
+                      <div className="w-3 h-3 rounded-full bg-[#FF5F56]" />
+                      <div className="w-3 h-3 rounded-full bg-[#FFBD2E]" />
+                      <div className="w-3 h-3 rounded-full bg-[#27C93F]" />
                     </div>
-                  )}
-
-                  <div className="flex-1 w-full overflow-hidden bg-white relative">
-                    <iframe
-                      ref={iframeRef}
-                      key={previewKey}
-                      src={previewUrl || undefined}
-                      className="absolute inset-0 w-full h-full border-none overflow-hidden"
-                      title="Preview"
-                    />
+                    <div className="flex-1 max-w-md bg-white h-6 rounded-md border border-border flex items-center px-3 gap-2 overflow-hidden">
+                      <div className="w-2 h-2 rounded-full bg-muted-foreground/20 shrink-0" />
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {typeof window !== "undefined"
+                          ? window.location.origin
+                          : ""}
+                        {activePageData?.path}
+                      </span>
+                    </div>
                   </div>
+                )}
+
+                <div className="flex-1 w-full overflow-hidden bg-white relative">
+                  <iframe
+                    ref={iframeRef}
+                    key={previewKey}
+                    src={previewUrl || undefined}
+                    className="absolute inset-0 w-full h-full border-none overflow-hidden"
+                    title="Preview"
+                  />
+                </div>
               </div>
 
               {/* Mobile Home Indicator */}

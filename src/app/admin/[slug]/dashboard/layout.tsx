@@ -1,7 +1,6 @@
 "use client";
 
 import { Menu } from "lucide-react";
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, Suspense, use, useEffect, useState } from "react";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
