@@ -498,7 +498,7 @@ export function GalleryManager() {
                     }
                     role="button"
                     tabIndex={0}
-                    className="border-2 border-dashed border-muted-foreground/20 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/10 transition-colors h-full min-h-[200px]"
+                    className="border-2 border-dashed border-muted-foreground/20 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/10 transition-colors h-full min-h-50"
                   >
                     <Plus className="w-6 h-6 text-muted-foreground mb-1" />
                     <span className="text-xs text-muted-foreground">

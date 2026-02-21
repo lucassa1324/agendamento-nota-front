@@ -205,20 +205,16 @@ function AdminLayoutContent({
 
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row">
-      {/* Botão Mobile para abrir Sidebar */}
-      <div className="lg:hidden p-4 border-b border-border flex items-center justify-between bg-card shrink-0">
-        <Link
-          href={`/admin/${slug}/dashboard/overview`}
-          className="font-serif font-bold text-primary"
-        >
-          Brow Studio
-        </Link>
-        <MobileNav
-          isPersonalizacao={isPersonalizacao}
-          adminUser={adminUser}
-          handleLogout={handleLogout}
-        />
-      </div>
+      {!isPersonalizacao && (
+        <div className="lg:hidden p-4 border-b border-border flex items-center justify-between bg-card shrink-0">
+          <div />
+          <MobileNav
+            isPersonalizacao={isPersonalizacao}
+            adminUser={adminUser}
+            handleLogout={handleLogout}
+          />
+        </div>
+      )}
 
       {/* Sidebar Desktop */}
       <div className="hidden lg:block">
@@ -230,22 +226,12 @@ function AdminLayoutContent({
         <main
           className={cn(
             "flex-1 flex flex-col",
-            isPersonalizacao ? "p-0" : "p-4 lg:p-6",
+            isPersonalizacao ? "p-0 h-dvh overflow-hidden" : "p-4 lg:p-6",
           )}
         >
-          {/* Botão Sanduíche para Personalização (Mobile) */}
-          {isPersonalizacao && (
-            <div className="absolute top-4 left-4 z-50 lg:hidden">
-              <MobileNav
-                isPersonalizacao={isPersonalizacao}
-                adminUser={adminUser}
-                handleLogout={handleLogout}
-              />
-            </div>
-          )}
           {!isPersonalizacao && <TrialBanner />}
           {children}
-          <FeedbackWidget />
+          {!isPersonalizacao && <FeedbackWidget />}
         </main>
       </div>
     </div>

@@ -215,7 +215,11 @@ export function LoginForm() {
               <Button
                 variant="link"
                 className="p-0 h-auto"
-                onClick={() => router.push("/admin/register")}
+                onClick={() =>
+                  router.push(
+                    process.env.NEXT_PUBLIC_LANDING_PAGE_URL || "/admin/register",
+                  )
+                }
               >
                 Cadastre-se
               </Button>

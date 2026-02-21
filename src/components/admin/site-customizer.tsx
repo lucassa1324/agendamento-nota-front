@@ -1,6 +1,13 @@
 "use client";
 
-import { Activity, PanelLeftClose, PanelLeftOpen, Save } from "lucide-react";
+import {
+  Activity,
+  ArrowLeft,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Save,
+} from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -244,6 +251,14 @@ export function SiteCustomizer() {
     mobileScale,
   } = usePreviewManager(containerRef);
 
+  // Forçar modo mobile quando estiver em dispositivo móvel
+  useEffect(() => {
+    if (isMobile) {
+      setPreviewMode("mobile");
+      setIsAutoZoom(true);
+    }
+  }, [isMobile, setPreviewMode, setIsAutoZoom]);
+
   const {
     activePage,
     activeSection,
@@ -380,30 +395,42 @@ export function SiteCustomizer() {
   }
 
   return (
-    <div className="flex flex-col h-screen w-full overflow-hidden bg-background">
+    <div className="flex flex-col h-screen w-full overflow-hidden overflow-x-hidden bg-background">
       {/* Top Header */}
-      <header className="h-14 border-b border-border bg-card flex items-center justify-between px-4 shrink-0 z-30 shadow-sm">
-        <div className="flex items-center gap-4">
+      <header className="h-12 sm:h-14 border-b border-border bg-card flex items-center justify-between flex-wrap sm:flex-nowrap px-2 sm:px-4 shrink-0 z-30 shadow-sm gap-2 gap-y-1">
+        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
+          <Link href={`/admin/${slug}/dashboard/overview`}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground shrink-0"
+              title="Voltar ao Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+            </Button>
+          </Link>
+
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onToggleSidebar(!isSidebarOpen)}
-            className="h-10 w-10 bg-[#1e293b] text-white hover:bg-[#334155] hover:text-white rounded-lg shadow-md transition-all active:scale-95"
+            className="h-8 w-8 sm:h-10 sm:w-10 bg-[#1e293b] text-white hover:bg-[#334155] hover:text-white rounded-lg shadow-md transition-all active:scale-95 shrink-0"
+            title="Alternar barra lateral"
           >
             {isSidebarOpen ? (
-              <PanelLeftClose className="w-5 h-5" />
+              <PanelLeftClose className="w-4 h-4 sm:w-5 sm:h-5" />
             ) : (
-              <PanelLeftOpen className="w-5 h-5" />
+              <PanelLeftOpen className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
           </Button>
 
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3 bg-muted/50 px-3 py-1.5 rounded-lg border">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          <div className="flex items-center gap-2 sm:gap-6 shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 bg-muted/50 px-2 sm:px-3 py-1.5 rounded-lg border max-w-30 sm:max-w-none overflow-hidden">
+              <span className="hidden sm:inline text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">
                 Estúdio:
               </span>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-primary truncate max-w-50">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-xs sm:text-sm font-semibold text-primary truncate">
                   {businesses[0]?.name || slug}
                 </span>
               </div>
@@ -419,16 +446,17 @@ export function SiteCustomizer() {
               reloadPreview={reloadPreview}
               desktopScale={desktopScale}
               mobileScale={mobileScale}
+              isMobile={isMobile}
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3 bg-muted/30 px-3 py-1.5 rounded-lg border border-border/50">
+        <div className="flex items-center gap-2 sm:gap-6 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 sm:gap-3 bg-muted/30 px-2 sm:px-3 py-1.5 rounded-lg border border-border/50">
             <div className="flex flex-col items-end mr-1">
               <Label
                 htmlFor="access-switch"
-                className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-1"
+                className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-1"
               >
                 Acesso ao Site
               </Label>
@@ -440,7 +468,7 @@ export function SiteCustomizer() {
                     variant={businesses[0]?.active ? "default" : "destructive"}
                     className="h-4 px-1.5 text-[9px] uppercase font-bold"
                   >
-                    {businesses[0]?.active ? "Ativo" : "Suspenso"}
+                    {businesses[0]?.active ? "Ativo" : "Off"}
                   </Badge>
                 )}
               </div>
@@ -450,7 +478,7 @@ export function SiteCustomizer() {
               checked={businesses[0]?.active ?? true}
               onCheckedChange={handleToggleStatus}
               disabled={isUpdatingStatus || !businesses[0]}
-              className="data-[state=checked]:bg-primary data-[state=unchecked]:bg-destructive"
+              className="scale-75 sm:scale-100 data-[state=checked]:bg-primary data-[state=unchecked]:bg-destructive origin-right"
             />
           </div>
         </div>
@@ -490,6 +518,7 @@ export function SiteCustomizer() {
           previewKey={previewKey}
           activePageData={activePageData}
           containerRef={containerRef}
+          isMobile={isMobile}
         />
       </div>
     </div>

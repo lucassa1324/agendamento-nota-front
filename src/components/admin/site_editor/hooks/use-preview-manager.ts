@@ -40,6 +40,7 @@ export function usePreviewManager(
   const [manualWidth, setManualWidth] = useState<number | null>(null);
   const [previewKey, setPreviewKey] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
 
   // Load from localStorage
   useEffect(() => {
@@ -67,11 +68,14 @@ export function usePreviewManager(
     else localStorage.removeItem("sc_manual_width");
   }, [previewMode, manualScale, isAutoZoom, manualWidth]);
 
-  // Observer for container width
+  // Observer for container width and height
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) setContainerWidth(entry.contentRect.width);
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+        setContainerHeight(entry.contentRect.height);
+      }
     });
     observer.observe(containerRef.current);
     return () => observer.disconnect();
@@ -80,12 +84,48 @@ export function usePreviewManager(
   const desktopWidth = manualWidth || 1280;
   const mobileWidth = manualWidth || 375;
   const currentWidth = previewMode === "mobile" ? mobileWidth : desktopWidth;
+  const currentHeight = previewMode === "mobile" ? 750 : 850;
+
+  const calculateAutoScale = (
+    targetWidth: number,
+    targetHeight: number,
+    availableWidth: number,
+    availableHeight: number,
+    isMobileMode: boolean,
+  ) => {
+    if (availableWidth === 0 || availableHeight === 0) return 1;
+
+    const widthRatio = (availableWidth - 48) / targetWidth;
+    const heightRatio = (availableHeight - 48) / targetHeight;
+
+    // Use o menor ratio para garantir que caiba na tela
+    let scale = Math.min(widthRatio, heightRatio);
+
+    // No modo mobile, permitimos que cresça um pouco mais (até 1.5x) para facilitar a leitura
+    // No modo desktop, limitamos a 1x para não estourar
+    const maxScale = isMobileMode ? 1.5 : 1;
+
+    return Math.max(0.5, Math.min(maxScale, scale));
+  };
 
   const desktopScale = isAutoZoom
-    ? Math.max(0.5, Math.min(1, (containerWidth - 48) / desktopWidth))
+    ? calculateAutoScale(
+        desktopWidth,
+        currentHeight,
+        containerWidth,
+        containerHeight,
+        false,
+      )
     : manualScale;
+
   const mobileScale = isAutoZoom
-    ? Math.max(0.5, Math.min(1, (containerWidth - 48) / mobileWidth))
+    ? calculateAutoScale(
+        mobileWidth,
+        currentHeight,
+        containerWidth,
+        containerHeight,
+        true,
+      )
     : manualScale;
 
   const reloadPreview = useCallback(() => {

@@ -25,6 +25,7 @@ interface HeaderControlsProps {
   isAutoZoom: boolean;
   setManualWidth: (width: number | null) => void;
   reloadPreview: () => void;
+  isMobile?: boolean;
 }
 
 export function HeaderControls({
@@ -37,6 +38,7 @@ export function HeaderControls({
   isAutoZoom,
   setManualWidth,
   reloadPreview,
+  isMobile = false,
 }: HeaderControlsProps) {
   const currentScale = previewMode === "mobile" ? mobileScale : desktopScale;
   const [zoomInputValue, setZoomInputValue] = useState(
@@ -61,24 +63,29 @@ export function HeaderControls({
 
   return (
     <div className="flex items-center bg-muted/50 rounded-full p-1 gap-1 ml-2 shrink-0">
-      <div className="flex items-center gap-0.5 mr-1 lg:mr-2">
+      <div
+        className={cn(
+          "flex items-center gap-0.5 mr-1 lg:mr-2",
+          !isMobile && "hidden md:flex",
+        )}
+      >
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
+          className="rounded-full w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8"
           onClick={() => {
             setManualScale(Math.max(0.1, currentScale - 0.1));
             setIsAutoZoom(false);
           }}
           title="Diminuir Zoom"
         >
-          <ZoomOut className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <ZoomOut className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
         </Button>
         <div className="relative flex items-center justify-center min-w-12">
           <input
             type="text"
-            className="w-full bg-transparent text-center text-[10px] lg:text-xs font-bold focus:outline-none focus:ring-1 focus:ring-ring rounded px-0.5 py-0.5"
+            className="w-full bg-transparent text-center text-[9px] sm:text-[10px] lg:text-xs font-bold focus:outline-none focus:ring-1 focus:ring-ring rounded px-0.5 py-0.5"
             value={zoomInputValue}
             onChange={(e) => setZoomInputValue(e.target.value)}
             onBlur={handleZoomCommit}
@@ -88,7 +95,7 @@ export function HeaderControls({
               }
             }}
           />
-          <span className="absolute right-0 text-[10px] lg:text-xs font-bold pointer-events-none opacity-50">
+          <span className="absolute right-0 text-[9px] sm:text-[10px] lg:text-xs font-bold pointer-events-none opacity-50">
             %
           </span>
         </div>
@@ -96,56 +103,58 @@ export function HeaderControls({
           type="button"
           variant="ghost"
           size="icon"
-          className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
+          className="rounded-full w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8"
           onClick={() => {
             setManualScale(Math.min(2, currentScale + 0.1));
             setIsAutoZoom(false);
           }}
           title="Aumentar Zoom"
         >
-          <ZoomIn className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <ZoomIn className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
         </Button>
         <Button
           type="button"
           variant={isAutoZoom ? "secondary" : "ghost"}
           size="icon"
           className={cn(
-            "rounded-full w-7 h-7 lg:w-8 lg:h-8",
+            "rounded-full w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8",
             isAutoZoom && "bg-background shadow-sm text-foreground",
           )}
           onClick={() => setIsAutoZoom(true)}
           title="Ajustar à Tela (Auto)"
         >
-          <Maximize className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <Maximize className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
         </Button>
       </div>
 
       <div className="w-px h-4 bg-border mx-1" />
 
       <div className="flex items-center gap-1 px-1">
-        <Button
-          type="button"
-          variant={previewMode === "desktop" ? "secondary" : "ghost"}
-          size="icon"
-          className={cn(
-            "rounded-full w-7 h-7 lg:w-8 lg:h-8",
-            previewMode === "desktop" &&
-              "bg-background shadow-sm text-foreground",
-          )}
-          onClick={() => {
-            setPreviewMode("desktop");
-            setManualWidth(null);
-          }}
-          title="Visualização Desktop"
-        >
-          <Monitor className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
-        </Button>
+        {!isMobile && (
+          <Button
+            type="button"
+            variant={previewMode === "desktop" ? "secondary" : "ghost"}
+            size="icon"
+            className={cn(
+              "rounded-full w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8",
+              previewMode === "desktop" &&
+                "bg-background shadow-sm text-foreground",
+            )}
+            onClick={() => {
+              setPreviewMode("desktop");
+              setManualWidth(null);
+            }}
+            title="Visualização Desktop"
+          >
+            <Monitor className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
+          </Button>
+        )}
         <Button
           type="button"
           variant={previewMode === "mobile" ? "secondary" : "ghost"}
           size="icon"
           className={cn(
-            "rounded-full w-7 h-7 lg:w-8 lg:h-8",
+            "rounded-full w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8",
             previewMode === "mobile" &&
               "bg-background shadow-sm text-foreground",
           )}
@@ -155,7 +164,7 @@ export function HeaderControls({
           }}
           title="Visualização Mobile"
         >
-          <Smartphone className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+          <Smartphone className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
         </Button>
       </div>
 
@@ -165,11 +174,11 @@ export function HeaderControls({
         type="button"
         variant="ghost"
         size="icon"
-        className="rounded-full w-7 h-7 lg:w-8 lg:h-8"
+        className="rounded-full w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8"
         onClick={reloadPreview}
         title="Recarregar Preview"
       >
-        <RotateCcw className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
+        <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
       </Button>
     </div>
   );

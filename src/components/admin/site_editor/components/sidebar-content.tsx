@@ -229,12 +229,12 @@ export const SidebarContent = memo(
     sections,
   }: SidebarContentProps) => {
     return (
-      <div className="flex flex-col h-full text-[clamp(0.75rem,1vw,0.875rem)]">
-        <div className="p-3 xl:p-6 pb-3 border-b border-border/50 shrink-0">
+      <div className="flex flex-col h-full text-[clamp(0.7rem,1vw,0.875rem)]">
+        <div className="p-2 sm:p-3 xl:p-6 pb-2 sm:pb-3 border-b border-border/50 shrink-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 text-primary font-bold">
-              <Settings2 className="w-4 h-4 xl:w-5 xl:h-5" />
-              <span className="text-[10px] xl:text-sm tracking-wide uppercase">
+              <Settings2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 xl:w-5 xl:h-5" />
+              <span className="text-[9px] sm:text-[10px] xl:text-sm tracking-wide uppercase">
                 Editor
               </span>
             </div>
@@ -242,38 +242,38 @@ export const SidebarContent = memo(
               variant="outline"
               size="sm"
               onClick={resetSettings}
-              className="h-7 xl:h-8 px-2 xl:px-3 gap-1 xl:gap-1.5 text-[9px] xl:text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors shrink-0"
+              className="h-6 sm:h-7 xl:h-8 px-2 sm:px-2.5 xl:px-3 gap-1 xl:gap-1.5 text-[8px] sm:text-[9px] xl:text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors shrink-0"
             >
-              <RotateCcw className="w-2.5 h-2.5 xl:w-3 xl:h-3" />
+              <RotateCcw className="w-2 sm:w-2.5 h-2 sm:h-2.5 xl:w-3 xl:h-3" />
               <span>Resetar</span>
             </Button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 xl:p-6 custom-scrollbar min-w-0">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-3 xl:p-6 custom-scrollbar min-w-0">
           {activeSection ? (
-            <div className="space-y-4 xl:space-y-6">
-              <div className="flex items-center gap-2 mb-3 xl:mb-4">
+            <div className="space-y-3 sm:space-y-4 xl:space-y-6">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 xl:mb-4">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={() => setActiveSection(null)}
-                  className="h-7 w-7 xl:h-8 xl:w-8 rounded-full p-0"
+                  className="h-6 w-6 sm:h-7 sm:w-7 xl:h-8 xl:w-8 rounded-full p-0"
                 >
-                  <ArrowLeft className="w-3.5 h-3.5 xl:w-4 xl:h-4" />
+                  <ArrowLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5 xl:w-4 xl:h-4" />
                 </Button>
                 <div>
-                  <h3 className="text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
+                  <h3 className="text-[11px] sm:text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
                     {activeSectionData?.name}
                   </h3>
-                  <p className="text-[9px] xl:text-[10px] text-muted-foreground">
+                  <p className="text-[8px] sm:text-[9px] xl:text-[10px] text-muted-foreground">
                     Editando seção
                   </p>
                 </div>
               </div>
 
-              <div className="space-y-3 xl:space-y-4 p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
+              <div className="space-y-2 sm:space-y-3 xl:space-y-4 p-2 sm:p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
                 {activeSection === "header" && (
                   <HeaderEditor
                     settings={headerSettings}

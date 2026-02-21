@@ -44,18 +44,18 @@ export function HeroEditor({ settings, onUpdate }: HeroEditorProps) {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <Tabs defaultValue="content" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 h-9 mb-4">
-          <TabsTrigger value="content" className="text-xs">
+        <TabsList className="grid w-full grid-cols-2 h-8 sm:h-9 mb-3 sm:mb-4">
+          <TabsTrigger value="content" className="text-[11px] sm:text-xs">
             Conteúdo
           </TabsTrigger>
-          <TabsTrigger value="style" className="text-xs">
+          <TabsTrigger value="style" className="text-[11px] sm:text-xs">
             Aparência
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="space-y-4 mt-0">
+        <TabsContent value="content" className="space-y-3 sm:space-y-4 mt-0">
           <SectionTitleEditor
             title={settings.title}
             font={settings.titleFont}
@@ -71,7 +71,7 @@ export function HeroEditor({ settings, onUpdate }: HeroEditorProps) {
           />
         </TabsContent>
 
-        <TabsContent value="style" className="space-y-4 mt-0">
+        <TabsContent value="style" className="space-y-3 sm:space-y-4 mt-0">
           <BackgroundEditor
             settings={{
               bgType: settings.bgType,
