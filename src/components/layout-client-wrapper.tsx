@@ -98,12 +98,14 @@ export function LayoutClientWrapper({
     isSectionVisible("header") &&
     !isAdminRoute &&
     !isLandingPage &&
+    pathname !== "/acesso-suspenso" &&
     pathname !== "/admin/master"; // Garantia extra para a rota master
 
   const showFooter =
     isSectionVisible("footer") &&
     !isAdminRoute &&
     !isLandingPage &&
+    pathname !== "/acesso-suspenso" &&
     pathname !== "/admin/master"; // Garantia extra para a rota master
 
   return (

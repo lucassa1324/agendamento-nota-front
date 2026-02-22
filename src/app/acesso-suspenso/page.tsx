@@ -1,10 +1,41 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { signOut } from "@/lib/auth-client";
+import { useEffect, useState } from "react";
 
 export default function SuspensePage() {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  useEffect(() => {
+    // Garante limpeza de dados sensíveis ao entrar na tela de bloqueio
+    // Isso evita que o Header (se visível) mostre dados de outro estúdio/sessão anterior
+    if (typeof window !== "undefined") {
+      // Limpeza preventiva de chaves específicas que podem causar confusão visual
+      localStorage.removeItem("siteProfile");
+      localStorage.removeItem("studioSettings");
+      localStorage.removeItem("services");
+    }
+  }, []);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+    } finally {
+      if (typeof window !== "undefined") {
+        // Limpeza agressiva para garantir que não reste nada da sessão anterior
+        localStorage.clear();
+        sessionStorage.clear();
+        // Redirecionamento forçado para garantir reload da aplicação
+        window.location.href = "/admin";
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center bg-background">
       <div className="mb-6 p-4 rounded-full bg-destructive/10 text-destructive">
@@ -27,11 +58,15 @@ export default function SuspensePage() {
         >
           Falar com Suporte
         </Button>
-        <Link href="/admin">
-          <Button variant="outline" size="lg" className="px-8">
-            Voltar ao Login
-          </Button>
-        </Link>
+        <Button
+          variant="outline"
+          size="lg"
+          className="px-8"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+        >
+          {isLoggingOut ? "Saindo..." : "Voltar ao Login"}
+        </Button>
       </div>
     </div>
   );
