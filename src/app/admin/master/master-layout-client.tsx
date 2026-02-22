@@ -1,10 +1,18 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
+import { Loader2, Menu } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { MasterSidebar } from "@/components/admin/master-sidebar";
 import { FeedbackWidget } from "@/components/feedback-widget";
+import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { signOut, useSession } from "@/lib/auth-client";
 
 export function MasterLayoutClient({
@@ -15,6 +23,7 @@ export function MasterLayoutClient({
   const { data: session, isPending } = useSession();
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   useEffect(() => {
     // Isola completamente o painel master de qualquer contexto de estúdio anterior
@@ -69,7 +78,7 @@ export function MasterLayoutClient({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-50 flex flex-col lg:flex-row z-9999 overflow-hidden">
+    <div className="fixed inset-0 bg-slate-50 flex flex-col lg:flex-row overflow-hidden">
       {/* Sidebar Desktop */}
       <div className="hidden lg:block h-full w-64 shrink-0 border-r bg-white shadow-sm">
         <MasterSidebar adminUser={adminUser} handleLogout={handleLogout} />
@@ -77,6 +86,29 @@ export function MasterLayoutClient({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-full relative">
+        {/* Mobile Header */}
+        <div className="lg:hidden flex items-center justify-between p-4 border-b bg-white relative z-50">
+          <span className="font-bold text-lg">Painel Master</span>
+          <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-64">
+              <SheetTitle className="sr-only">Menu de Navegação</SheetTitle>
+              <SheetDescription className="sr-only">
+                Menu de navegação lateral para acessar áreas administrativas
+              </SheetDescription>
+              <MasterSidebar
+                adminUser={adminUser}
+                handleLogout={handleLogout}
+                onNavigate={() => setIsMobileOpen(false)}
+              />
+            </SheetContent>
+          </Sheet>
+        </div>
+
         <main className="flex-1 p-4 lg:p-8 overflow-y-auto">
           {children}
           <FeedbackWidget />

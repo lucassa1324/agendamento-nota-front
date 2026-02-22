@@ -44,9 +44,10 @@ const MASTER_NAVIGATION: MasterNavGroup[] = [
 interface MasterSidebarProps {
   adminUser: { name: string; username: string } | null;
   handleLogout: () => void;
+  onNavigate?: () => void;
 }
 
-export function MasterSidebar({ adminUser, handleLogout }: MasterSidebarProps) {
+export function MasterSidebar({ adminUser, handleLogout, onNavigate }: MasterSidebarProps) {
   const pathname = usePathname();
 
   const isActive = (path: string) => {
@@ -102,6 +103,7 @@ export function MasterSidebar({ adminUser, handleLogout }: MasterSidebarProps) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={onNavigate}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                     isActive(item.href)
