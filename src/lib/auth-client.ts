@@ -15,7 +15,7 @@ const cleanUrl = (url?: string) => {
 };
 
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/\/$/, "");
 
 // Configura a URL base do Better Auth
 // O Better-Auth EXIGE uma URL absoluta no baseURL para funcionar corretamente no client-side.

@@ -1,4 +1,4 @@
-import { getSessionToken } from "./auth-client";
+import { getSessionToken, API_BASE_URL } from "./auth-client";
 
 /**
  * Utilitário global para fetch com interceptação de erros específicos
@@ -7,17 +7,29 @@ import { getSessionToken } from "./auth-client";
 export async function customFetch(url: string, options: RequestInit = {}) {
   const sessionToken = await getSessionToken();
 
+  // Construir URL completa se for relativa
+  let fullUrl = url;
+  if (!url.startsWith("http") && !url.startsWith("//")) {
+    // Se a URL já começar com API_BASE_URL (ex: /api-proxy/...), não adiciona de novo
+    if (API_BASE_URL && !url.startsWith(API_BASE_URL)) {
+      // Garantir que não duplique a barra
+      const baseUrl = API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+      const path = url.startsWith("/") ? url : `/${url}`;
+      fullUrl = `${baseUrl}${path}`;
+    }
+  }
+
   // Tentar extrair businessId da URL ou do corpo da requisição
   let businessId = "N/A";
 
   // 1. Verificar na URL
-  if (url.includes("/api/business/")) {
-    const parts = url.split("/api/business/");
+  if (fullUrl.includes("/api/business/")) {
+    const parts = fullUrl.split("/api/business/");
     if (parts[1]) {
       businessId = parts[1].split(/[/?#]/)[0];
     }
-  } else if (url.includes("companyId=")) {
-    const match = url.match(/companyId=([^&]+)/);
+  } else if (fullUrl.includes("companyId=")) {
+    const match = fullUrl.match(/companyId=([^&]+)/);
     if (match) businessId = match[1];
   }
 
@@ -36,7 +48,7 @@ export async function customFetch(url: string, options: RequestInit = {}) {
   }
 
   console.log(">>> [FRONT_API] Enviando ID:", businessId);
-  console.log(`>>> [FRONT_API] Enviando para: ${url}`);
+  console.log(`>>> [FRONT_API] Enviando para: ${fullUrl}`);
 
   const headers = new Headers(options.headers || {});
 
@@ -54,7 +66,7 @@ export async function customFetch(url: string, options: RequestInit = {}) {
 
   let response: Response;
   try {
-    response = await fetch(url, {
+    response = await fetch(fullUrl, {
       ...options,
       credentials: "include", // Equivale a withCredentials: true (força envio de cookies)
       headers,
