@@ -19,12 +19,27 @@ export const API_BASE_URL =
 
 // Configura a URL base do Better Auth
 // O Better-Auth EXIGE uma URL absoluta no baseURL para funcionar corretamente no client-side.
-// IMPORTANTE: Não adicionar "/api/auth" aqui, pois o cliente do Better Auth já adiciona automaticamente.
-export const AUTH_BASE_URL = API_BASE_URL.startsWith("/")
-  ? typeof window !== "undefined"
-    ? `${window.location.origin}${API_BASE_URL}`
-    : `https://${process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || "localhost:3000"}${API_BASE_URL}`
-  : API_BASE_URL;
+// IMPORTANTE: Garantir que termine com /api/auth se não estiver presente
+const getAuthUrl = (baseUrl: string) => {
+  const url = baseUrl.startsWith("/")
+    ? typeof window !== "undefined"
+      ? `${window.location.origin}${baseUrl}`
+      : `https://${process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || "localhost:3000"}${baseUrl}`
+    : baseUrl;
+
+  // Se a URL já tiver /api/auth, retorna ela mesma
+  if (url.endsWith("/api/auth")) {
+    return url;
+  }
+
+  // Caso contrário, adiciona /api/auth
+  // Nota: Se o backend estiver usando um prefixo diferente, ajuste aqui.
+  // O padrão do Better Auth é esperar a URL base onde ele está montado.
+  // Se o proxy redireciona /api-proxy -> backend/, então o better-auth deve ser /api-proxy/api/auth
+  return `${url.replace(/\/$/, "")}/api/auth`;
+};
+
+export const AUTH_BASE_URL = getAuthUrl(API_BASE_URL);
 
 console.log(">>> [AUTH_CLIENT] API_BASE_URL configurada como:", API_BASE_URL);
 console.log(">>> [AUTH_CLIENT] AUTH_BASE_URL configurada como:", AUTH_BASE_URL);
