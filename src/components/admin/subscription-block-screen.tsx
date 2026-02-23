@@ -32,9 +32,22 @@ export function SubscriptionBlockScreen({
 
     setIsLoading(true);
     try {
+      // 1. Obter IP
+      let clientIp = "127.0.0.1";
+      try {
+        const ipResponse = await fetch("https://api.ipify.org?format=json");
+        const ipData = await ipResponse.json();
+        clientIp = ipData.ip;
+      } catch (e) {
+        console.warn("Falha ao obter IP público:", e);
+      }
+
       const response = await fetch("/api/asaas/create-payment-link", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-client-ip": clientIp,
+        },
         body: JSON.stringify({
           customerEmail: session.user.email,
           customerName: session.user.name,

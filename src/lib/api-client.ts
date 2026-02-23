@@ -1,4 +1,4 @@
-import { getSessionToken, API_BASE_URL } from "./auth-client";
+import { API_BASE_URL, getSessionToken } from "./auth-client";
 
 /**
  * Utilitário global para fetch com interceptação de erros específicos
