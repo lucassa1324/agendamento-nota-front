@@ -157,12 +157,12 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
       {/* Sidebar Header - Logo do Cliente ou Placeholder */}
       {studio?.logoUrl && (
         <div className="p-4 border-b border-border flex justify-center items-center bg-white/50">
-          <div className="relative w-full h-16 flex items-center justify-center">
+          <div className="relative w-full max-w-45 h-15 flex items-center justify-center">
             <Image
               src={getFullImageUrl(studio.logoUrl)}
               alt="Logo do Studio"
               fill
-              className="object-contain"
+              className="object-contain rounded-none"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           </div>

@@ -19,7 +19,7 @@ export const API_BASE_URL =
 
 // Configura a URL base do Better Auth
 // O Better-Auth EXIGE uma URL absoluta no baseURL para funcionar corretamente no client-side.
-// IMPORTANTE: Garantir que termine com /api/auth se não estiver presente
+// IMPORTANTE: Garantir que termine com /api/auth para que o Better Auth monte as rotas corretamente
 const getAuthUrl = (baseUrl: string) => {
   const url = baseUrl.startsWith("/")
     ? typeof window !== "undefined"
@@ -27,15 +27,13 @@ const getAuthUrl = (baseUrl: string) => {
       : `https://${process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || "localhost:3000"}${baseUrl}`
     : baseUrl;
 
-  // Se a URL já tiver /api/auth, retorna ela mesma
+  // Garante que a URL termine com /api/auth
+  // Se a variável for "/api-proxy", vira "/api-proxy/api/auth"
+  // Se já tiver "/api/auth", mantém como está.
   if (url.endsWith("/api/auth")) {
     return url;
   }
-
-  // Caso contrário, adiciona /api/auth
-  // Nota: Se o backend estiver usando um prefixo diferente, ajuste aqui.
-  // O padrão do Better Auth é esperar a URL base onde ele está montado.
-  // Se o proxy redireciona /api-proxy -> backend/, então o better-auth deve ser /api-proxy/api/auth
+  
   return `${url.replace(/\/$/, "")}/api/auth`;
 };
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
-import { useEffect, useState } from "react";
 
 export default function SuspensePage() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
