@@ -27,16 +27,12 @@ const getAuthUrl = (baseUrl: string) => {
       : `https://${process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || "localhost:3000"}${baseUrl}`
     : baseUrl;
 
-  // Se a URL já tiver /api/auth, retorna ela mesma
+  // Remove /api/auth do final se existir, pois o createAuthClient já adiciona automaticamente
   if (url.endsWith("/api/auth")) {
-    return url;
+    return url.substring(0, url.length - "/api/auth".length);
   }
 
-  // Caso contrário, adiciona /api/auth
-  // Nota: Se o backend estiver usando um prefixo diferente, ajuste aqui.
-  // O padrão do Better Auth é esperar a URL base onde ele está montado.
-  // Se o proxy redireciona /api-proxy -> backend/, então o better-auth deve ser /api-proxy/api/auth
-  return `${url.replace(/\/$/, "")}/api/auth`;
+  return url.replace(/\/$/, "");
 };
 
 export const AUTH_BASE_URL = getAuthUrl(API_BASE_URL);
