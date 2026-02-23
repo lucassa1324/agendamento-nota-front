@@ -19,7 +19,7 @@ export const API_BASE_URL =
 
 // Configura a URL base do Better Auth
 // O Better-Auth EXIGE uma URL absoluta no baseURL para funcionar corretamente no client-side.
-// IMPORTANTE: Garantir que termine com /api/auth para que o Better Auth monte as rotas corretamente
+// IMPORTANTE: Garantir que termine com /api/auth se não estiver presente
 const getAuthUrl = (baseUrl: string) => {
   const url = baseUrl.startsWith("/")
     ? typeof window !== "undefined"
@@ -27,14 +27,12 @@ const getAuthUrl = (baseUrl: string) => {
       : `https://${process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || "localhost:3000"}${baseUrl}`
     : baseUrl;
 
-  // Garante que a URL termine com /api/auth
-  // Se a variável for "/api-proxy", vira "/api-proxy/api/auth"
-  // Se já tiver "/api/auth", mantém como está.
+  // Remove /api/auth do final se existir, pois o createAuthClient já adiciona automaticamente
   if (url.endsWith("/api/auth")) {
-    return url;
+    return url.substring(0, url.length - "/api/auth".length);
   }
-  
-  return `${url.replace(/\/$/, "")}/api/auth`;
+
+  return url.replace(/\/$/, "");
 };
 
 export const AUTH_BASE_URL = getAuthUrl(API_BASE_URL);
@@ -96,54 +94,30 @@ let lastFetchTime = 0;
 const CACHE_TTL = 30000; // 30 segundos
 
 export const getSessionToken = async (): Promise<string | null> => {
-  if (typeof window === "undefined") return null;
-
-  // 1. Tentar pegar de locais síncronos primeiro (LocalStorage/Cookies)
-  const getCookie = (name: string) => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(";").shift();
-    return null;
-  };
-
-  const syncToken =
-    localStorage.getItem("better-auth.session_token") ||
-    localStorage.getItem("better-auth.access_token") ||
-    getCookie("better-auth.session_token");
-
-  if (syncToken) return syncToken;
-
-  // 2. Verificar cache de memória válido
   const now = Date.now();
+
+  // Se tivermos um token válido e recente, retornamos ele
   if (lastToken && now - lastFetchTime < CACHE_TTL) {
     return lastToken;
   }
 
-  // 3. Se já houver uma requisição em curso, retornar a mesma promessa
-  if (sessionPromise) return sessionPromise;
+  // Se já houver uma requisição em andamento, retornamos a mesma promise
+  if (sessionPromise) {
+    return sessionPromise;
+  }
 
-  // 4. Iniciar nova busca de sessão
+  // Iniciamos uma nova requisição
   sessionPromise = (async () => {
     try {
-      // Ajuste: Adiciona /api/auth explicitamente pois removemos do AUTH_BASE_URL
-      const resp = await fetch(`${AUTH_BASE_URL}/api/auth/get-session`, {
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      });
-
-      if (resp.ok) {
-        const data = await resp.json();
-        const token = data?.session?.token || null;
-        lastToken = token;
+      const session = await authClient.getSession();
+      if (session?.data?.user) {
+        lastToken = "true"; // O Better Auth usa cookies, não temos um token JWT exposto aqui
         lastFetchTime = Date.now();
-        return token;
+        return lastToken;
       }
       return null;
-    } catch (e) {
-      console.error(
-        ">>> [AUTH_CLIENT] Erro ao buscar sessão via fetch direto:",
-        e,
-      );
+    } catch (error) {
+      console.error("Erro ao obter sessão:", error);
       return null;
     } finally {
       sessionPromise = null;
