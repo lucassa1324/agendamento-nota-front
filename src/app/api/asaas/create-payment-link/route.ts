@@ -5,6 +5,9 @@ export async function POST(req: Request) {
   try {
     const { customerEmail, customerName, customerCpfCnpj } = await req.json();
 
+    // Capturar IP do cliente do header x-client-ip
+    const clientIp = req.headers.get("x-client-ip") || "127.0.0.1";
+
     if (!ASAAS_API_KEY) {
       console.error("ASAAS_API_KEY não configurada");
       return NextResponse.json(
@@ -31,11 +34,13 @@ export async function POST(req: Request) {
         headers: {
           "Content-Type": "application/json",
           access_token: ASAAS_API_KEY,
+          "x-forwarded-for": clientIp,
         },
         body: JSON.stringify({
           name: customerName,
           email: customerEmail,
           cpfCnpj: customerCpfCnpj,
+          remoteIp: clientIp,
         }),
       });
 
@@ -66,6 +71,7 @@ export async function POST(req: Request) {
           headers: {
             "Content-Type": "application/json",
             access_token: ASAAS_API_KEY,
+            "x-forwarded-for": clientIp,
           },
           body: JSON.stringify({
             customer: customerId,
@@ -76,6 +82,7 @@ export async function POST(req: Request) {
               .split("T")[0], // Vence amanhã
             cycle: "MONTHLY",
             description: "Assinatura Plano Pro - Brow Studio",
+            remoteIp: clientIp,
           }),
         },
       );
