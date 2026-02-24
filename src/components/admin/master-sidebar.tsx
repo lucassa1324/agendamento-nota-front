@@ -47,7 +47,11 @@ interface MasterSidebarProps {
   onNavigate?: () => void;
 }
 
-export function MasterSidebar({ adminUser, handleLogout, onNavigate }: MasterSidebarProps) {
+export function MasterSidebar({
+  adminUser,
+  handleLogout,
+  onNavigate,
+}: MasterSidebarProps) {
   const pathname = usePathname();
 
   const isActive = (path: string) => {

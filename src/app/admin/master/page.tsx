@@ -392,6 +392,18 @@ export default function MasterDashboardPage() {
 
       if (response.status === 403) return handleForbidden();
 
+      if (response.status === 404) {
+        toast({
+          title: "Não foi possível resetar",
+          description:
+            "Este usuário usa Login Social e não possui senha para resetar.",
+          variant: "destructive",
+        });
+        setIsResetting(false);
+        setUserToReset(null);
+        return;
+      }
+
       if (!response.ok) {
         const result = await response.json();
         throw new Error(result.error || "Erro ao resetar senha");

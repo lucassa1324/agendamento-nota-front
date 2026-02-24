@@ -14,8 +14,9 @@ const cleanUrl = (url?: string) => {
   return cleaned;
 };
 
-export const API_BASE_URL =
-  (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001").replace(/\/$/, "");
+export const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api-proxy"
+).replace(/\/$/, "");
 
 // Configura a URL base do Better Auth
 // O Better-Auth EXIGE uma URL absoluta no baseURL para funcionar corretamente no client-side.
@@ -27,7 +28,8 @@ const getAuthUrl = (baseUrl: string) => {
       : `https://${process.env.NEXT_PUBLIC_VERCEL_URL || process.env.VERCEL_URL || "localhost:3000"}${baseUrl}`
     : baseUrl;
 
-  // Remove /api/auth do final se existir, pois o createAuthClient já adiciona automaticamente
+  // Removido /api/auth do final para que o Better-Auth gerencie o caminho corretamente
+  // e o login não dê 404/500 no proxy
   if (url.endsWith("/api/auth")) {
     return url.substring(0, url.length - "/api/auth".length);
   }
@@ -123,8 +125,7 @@ export const getSessionToken = async (): Promise<string | null> => {
   // 4. Iniciar nova busca de sessão
   sessionPromise = (async () => {
     try {
-      // Ajuste: Adiciona /api/auth explicitamente pois removemos do AUTH_BASE_URL
-      const resp = await fetch(`${AUTH_BASE_URL}/api/auth/get-session`, {
+      const resp = await fetch(`${AUTH_BASE_URL}/api/auth/session`, {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
