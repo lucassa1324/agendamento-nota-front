@@ -13,7 +13,9 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     // Se a URL já começar com API_BASE_URL (ex: /api-proxy/...), não adiciona de novo
     if (API_BASE_URL && !url.startsWith(API_BASE_URL)) {
       // Garantir que não duplique a barra
-      const baseUrl = API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
+      const baseUrl = API_BASE_URL.endsWith("/")
+        ? API_BASE_URL.slice(0, -1)
+        : API_BASE_URL;
       const path = url.startsWith("/") ? url : `/${url}`;
       fullUrl = `${baseUrl}${path}`;
     }

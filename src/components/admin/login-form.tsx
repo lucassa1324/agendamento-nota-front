@@ -1,6 +1,6 @@
 "use client";
 
-import { Lock, Mail } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -17,8 +17,11 @@ import { Label } from "@/components/ui/label";
 import { getSession, signIn } from "@/lib/auth-client";
 
 interface AuthUser {
+  id?: string;
+  email?: string;
   slug?: string;
   role?: string;
+  businessId?: string;
   business?: {
     slug?: string;
   };
@@ -27,6 +30,7 @@ interface AuthUser {
 export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -58,8 +62,8 @@ export function LoginForm() {
       }
 
       // 2º Lugar: Verificação de Administrador de Estúdio (Multi-tenant)
-      const businessSlug = user?.business?.slug || user?.slug;
-      if (user.role === "ADMIN" && businessSlug) {
+      const businessSlug = user?.slug || user?.business?.slug;
+      if (user.role?.toLowerCase() === "admin" && businessSlug) {
         console.log(
           `>>> [LOGIN_FLOW] ADMIN detectado. Redirecionando para /admin/${businessSlug}/dashboard/overview`,
         );
@@ -105,16 +109,39 @@ export function LoginForm() {
     setIsLoading(true);
 
     try {
+      const normalizedEmail = email.trim();
+      const normalizedPassword = password.trim();
+
+      if (!normalizedEmail || !normalizedPassword) {
+        setError("Email e senha são obrigatórios.");
+        setIsLoading(false);
+        return;
+      }
+
       console.log(">>> [LOGIN_FLOW] Iniciando login nativo com better-auth:", {
-        email,
+        email: normalizedEmail,
+      });
+
+      console.log(">>> [LOGIN_PAYLOAD] Enviando para Back-end (DETALHADO):", {
+        url: "/api/auth/sign-in/email",
+        method: "POST",
+        body: {
+          email: normalizedEmail,
+          password: normalizedPassword, // SENHA EXPOSTA PARA DEBUG - REMOVER EM PRODUÇÃO
+        },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
       });
 
       const result = await signIn.email({
-        email,
-        password,
+        email: normalizedEmail,
+        password: normalizedPassword,
       });
 
       console.log(">>> [LOGIN_FLOW] Resposta do signIn recebida:", result);
+      console.dir(result); // Debug profundo para ver campos ocultos
 
       const { data, error: authError } = result;
 
@@ -125,11 +152,15 @@ export function LoginForm() {
         return;
       }
 
-      if (data) {
-        console.log(">>> [LOGIN_FLOW] Login bem-sucedido via Better-Auth.");
+      const userData = data?.user as AuthUser;
 
-        const user = data.user as AuthUser;
-        if (!handleRoleRedirection(user)) {
+      if (userData?.id) {
+        console.log(
+          ">>> [LOGIN_FLOW] Login bem-sucedido. Payload recebido:",
+          userData,
+        );
+
+        if (!handleRoleRedirection(userData)) {
           console.warn(">>> [LOGIN_FLOW] Sem slug ou role vinculados.");
           setError(
             "Sua conta não possui as permissões necessárias ou um estúdio vinculado.",
@@ -138,8 +169,10 @@ export function LoginForm() {
           return;
         }
       } else {
-        console.warn(">>> [LOGIN_FLOW] Login retornou sem dados e sem erro.");
-        setError("Erro inesperado no login.");
+        console.warn(
+          ">>> [LOGIN_FLOW] Login retornou sem dados de usuário válidos.",
+        );
+        setError("Erro inesperado no login (Resposta do servidor incompleta).");
         setIsLoading(false);
       }
     } catch (err: unknown) {
@@ -184,14 +217,26 @@ export function LoginForm() {
               <Lock className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Digite sua senha"
-                className="pl-10"
+                className="pl-10 pr-10"
                 required
                 disabled={isLoading}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              >
+                {showPassword ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
             </div>
           </div>
 
