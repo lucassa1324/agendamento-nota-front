@@ -10,8 +10,8 @@ export default function NotFoundPage() {
         O estabelecimento que você está procurando não existe ou o endereço está
         incorreto.
       </p>
-      <Link href="/">
-        <Button size="lg">Voltar para o início</Button>
+      <Link href="/admin">
+        <Button size="lg">Ir para o Login</Button>
       </Link>
     </div>
   );

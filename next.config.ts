@@ -4,16 +4,18 @@ const nextConfig: NextConfig = {
   /* config options here */
   // reactCompiler: true,
   async rewrites() {
+    const targetUrl =
+      process.env.API_PROXY_TARGET_URL || "http://localhost:3001";
     return [
-      // 1. Rota específica para Autenticação (Better Auth)
+      // 1. Rota para Autenticação (Better Auth) - Mantém /api/auth no destino
       {
         source: "/api-proxy/api/auth/:path*",
-        destination: `${process.env.API_PROXY_TARGET_URL || "http://localhost:3001"}/api/auth/:path*`,
+        destination: `${targetUrl}/api/auth/:path*`,
       },
-      // 2. Rota geral para a API (Busca de Estúdio, Logo, Notificações)
+      // 2. Rota Geral da API (Busca de Estúdio, Logo, Mudança de Senha)
       {
         source: "/api-proxy/:path*",
-        destination: `${process.env.API_PROXY_TARGET_URL || "http://localhost:3001"}/:path*`,
+        destination: `${targetUrl}/:path*`,
       },
     ];
   },

@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
-import { authClient } from "@/lib/auth-client";
+import { changePassword, updateUser, useSession } from "@/lib/auth-client";
 import { SubscriptionCancellationModal } from "./subscription-cancellation-modal";
 
 interface UserWithBusiness {
@@ -34,7 +34,7 @@ interface UserWithBusiness {
 export function AdminProfileManager() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const { data: session } = authClient.useSession();
+  const { data: session } = useSession();
   const { studio } = useStudio();
   const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
 
@@ -64,7 +64,7 @@ export function AdminProfileManager() {
     setIsLoading(true);
 
     try {
-      const { error } = await authClient.updateUser({
+      const { error } = await updateUser({
         name: profile.name,
       });
 
@@ -101,13 +101,22 @@ export function AdminProfileManager() {
     setIsLoading(true);
 
     try {
-      const { error } = await authClient.changePassword({
+      const { error } = await changePassword({
         newPassword: passwords.new,
         currentPassword: passwords.current,
         revokeOtherSessions: true,
       });
 
-      if (error) throw error;
+      if (error) {
+        // Tratamento de erro amigável conforme solicitado
+        if (
+          error.code === "INVALID_PASSWORD" ||
+          error.message?.includes("incorrect")
+        ) {
+          throw new Error("A senha atual informada está incorreta.");
+        }
+        throw error;
+      }
 
       setPasswords({ current: "", new: "", confirm: "" });
       toast({
