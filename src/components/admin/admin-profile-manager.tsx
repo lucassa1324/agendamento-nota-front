@@ -4,11 +4,14 @@ import {
   AlertTriangle,
   Calendar,
   Check,
+  Eye,
+  EyeOff,
   KeyRound,
   Loader2,
   Mail,
   User,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,9 +25,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
-import { changePassword, updateUser, useSession, signOut } from "@/lib/auth-client";
+import { signOut, updateUser, useSession } from "@/lib/auth-client";
 import { SubscriptionCancellationModal } from "./subscription-cancellation-modal";
-import { useRouter } from "next/navigation";
 
 interface UserWithBusiness {
   business?: {
@@ -51,6 +53,10 @@ export function AdminProfileManager() {
     new: "",
     confirm: "",
   });
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     if (session?.user) {
@@ -104,19 +110,26 @@ export function AdminProfileManager() {
 
     try {
       // Substituindo changePassword do Better Auth por fetch manual para garantir o envio correto do body
-      console.log(">>> [CHANGE_PASSWORD] Iniciando troca de senha via FETCH MANUAL");
+      // TESTE: Bypass de proxy recomendado pelo Backend Dev
+      // Usando variável de ambiente pública para apontar para o backend correto (local ou prod)
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const targetUrl = `${baseUrl}/api/auth/change-password`;
+      
+      console.log(">>> [CHANGE_PASSWORD] Iniciando troca de senha via FETCH MANUAL (BYPASS PROXY)");
+      console.log(">>> [CHANGE_PASSWORD] Target URL:", targetUrl);
       console.log(">>> [CHANGE_PASSWORD] Payload:", {
         newPassword: passwords.new,
         currentPassword: passwords.current,
         revokeOtherSessions: true,
       });
 
-      const response = await fetch("/api-proxy/api/auth/change-password", {
+      const response = await fetch(targetUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
+        credentials: "include", // Enviar cookies de sessão mesmo em requisições cross-origin (bypass proxy)
         body: JSON.stringify({
           newPassword: passwords.new,
           currentPassword: passwords.current,
@@ -141,7 +154,7 @@ export function AdminProfileManager() {
       console.log(">>> [CHANGE_PASSWORD] Sucesso. Iniciando logout e redirect...");
       await signOut();
       localStorage.clear();
-      router.push("/login");
+      router.push("/admin");
 
     } catch (err: unknown) {
       const error = err as { message?: string; code?: string };
@@ -317,44 +330,101 @@ export function AdminProfileManager() {
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="current-password">Senha Atual</Label>
-              <Input
-                id="current-password"
-                type="password"
-                value={passwords.current}
-                onChange={(e) =>
-                  setPasswords({ ...passwords, current: e.target.value })
-                }
-                placeholder="••••••••"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="current-password"
+                  type={showCurrentPassword ? "text" : "password"}
+                  value={passwords.current}
+                  onChange={(e) =>
+                    setPasswords({ ...passwords, current: e.target.value })
+                  }
+                  placeholder="••••••••"
+                  required
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                >
+                  {showCurrentPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span className="sr-only">
+                    {showCurrentPassword ? "Ocultar senha" : "Mostrar senha"}
+                  </span>
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="new-password">Nova Senha</Label>
-              <Input
-                id="new-password"
-                type="password"
-                value={passwords.new}
-                onChange={(e) =>
-                  setPasswords({ ...passwords, new: e.target.value })
-                }
-                placeholder="••••••••"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="new-password"
+                  type={showNewPassword ? "text" : "password"}
+                  value={passwords.new}
+                  onChange={(e) =>
+                    setPasswords({ ...passwords, new: e.target.value })
+                  }
+                  placeholder="••••••••"
+                  required
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span className="sr-only">
+                    {showNewPassword ? "Ocultar senha" : "Mostrar senha"}
+                  </span>
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirmar Nova Senha</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                value={passwords.confirm}
-                onChange={(e) =>
-                  setPasswords({ ...passwords, confirm: e.target.value })
-                }
-                placeholder="••••••••"
-                required
-              />
+              <div className="relative">
+                <Input
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={passwords.confirm}
+                  onChange={(e) =>
+                    setPasswords({ ...passwords, confirm: e.target.value })
+                  }
+                  placeholder="••••••••"
+                  required
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <span className="sr-only">
+                    {showConfirmPassword ? "Ocultar senha" : "Mostrar senha"}
+                  </span>
+                </Button>
+              </div>
             </div>
 
             <Button
