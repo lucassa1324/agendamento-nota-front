@@ -127,7 +127,7 @@ export function LoginForm() {
         method: "POST",
         body: {
           email: normalizedEmail,
-          password: normalizedPassword, // SENHA EXPOSTA PARA DEBUG - REMOVER EM PRODUÇÃO
+          password: "***", // Ocultado por segurança
         },
         headers: {
           "Content-Type": "application/json",
