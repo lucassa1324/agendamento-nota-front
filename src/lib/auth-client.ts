@@ -62,6 +62,9 @@ export const authClient = createAuthClient({
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onRequest: async (context: any) => {
+      // PROTEÇÃO TOTAL CONTRA UNDEFINED - Solicitado pelo usuário
+      if (!context || !context.options) return;
+
       // DEBUG CRÍTICO: Verificar se o body já foi stringify
       const bodyIsString = typeof context?.options?.body === "string";
 
