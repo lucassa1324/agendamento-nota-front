@@ -22,8 +22,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
-import { changePassword, updateUser, useSession } from "@/lib/auth-client";
+import { changePassword, updateUser, useSession, signOut } from "@/lib/auth-client";
 import { SubscriptionCancellationModal } from "./subscription-cancellation-modal";
+import { useRouter } from "next/navigation";
 
 interface UserWithBusiness {
   business?: {
@@ -32,6 +33,7 @@ interface UserWithBusiness {
 }
 
 export function AdminProfileManager() {
+  const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { data: session } = useSession();
@@ -132,8 +134,15 @@ export function AdminProfileManager() {
       setPasswords({ current: "", new: "", confirm: "" });
       toast({
         title: "Sucesso!",
-        description: "Sua senha foi alterada com sucesso.",
+        description: "Sua senha foi alterada com sucesso. Redirecionando para login...",
       });
+
+      // Invalidar sessão e redirecionar para login
+      console.log(">>> [CHANGE_PASSWORD] Sucesso. Iniciando logout e redirect...");
+      await signOut();
+      localStorage.clear();
+      router.push("/login");
+
     } catch (err: unknown) {
       const error = err as { message?: string; code?: string };
       
