@@ -101,30 +101,56 @@ export function AdminProfileManager() {
     setIsLoading(true);
 
     try {
-      const { error } = await changePassword({
+      // Substituindo changePassword do Better Auth por fetch manual para garantir o envio correto do body
+      console.log(">>> [CHANGE_PASSWORD] Iniciando troca de senha via FETCH MANUAL");
+      console.log(">>> [CHANGE_PASSWORD] Payload:", {
         newPassword: passwords.new,
         currentPassword: passwords.current,
         revokeOtherSessions: true,
       });
 
-      if (error) {
-        // Tratamento de erro amigável conforme solicitado
-        if (
-          error.code === "INVALID_PASSWORD" ||
-          error.message?.includes("incorrect")
-        ) {
-          throw new Error("A senha atual informada está incorreta.");
-        }
-        throw error;
+      const response = await fetch("/api-proxy/api/auth/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          newPassword: passwords.new,
+          currentPassword: passwords.current,
+          revokeOtherSessions: true,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw data;
       }
 
+      // Se deu tudo certo
       setPasswords({ current: "", new: "", confirm: "" });
       toast({
         title: "Sucesso!",
         description: "Sua senha foi alterada com sucesso.",
       });
     } catch (err: unknown) {
-      const error = err as { message?: string };
+      const error = err as { message?: string; code?: string };
+      
+      // Tratamento de erro amigável conforme solicitado
+      if (
+        error.code === "INVALID_PASSWORD" ||
+        error.message?.includes("incorrect") ||
+        error.message?.includes("Senha atual e nova senha são obrigatórias")
+      ) {
+         toast({
+          title: "Erro",
+          description: error.message || "A senha atual informada está incorreta.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       toast({
         title: "Erro",
         description: error.message || "Não foi possível alterar a senha.",
