@@ -42,6 +42,11 @@ export function MasterLayoutClient({
 
       const user = session.user as { role?: string; email?: string };
 
+      if (!user) {
+        console.warn(">>> [MASTER_LAYOUT] Sessão existe mas usuário é undefined.");
+        return;
+      }
+
       // Validação rigorosa de Super Admin
       if (
         user.role !== "SUPER_ADMIN" &&

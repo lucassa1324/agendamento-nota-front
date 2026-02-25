@@ -58,23 +58,40 @@ export const authClient = createAuthClient({
     credentials: "include",
     headers: {
       Accept: "application/json",
-      // REMOVIDO: "Content-Type": "application/json" - Deixar o Better Auth gerenciar isso para garantir stringify correto
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onRequest: async (context: any) => {
+      console.log(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR START", {
+         hasContext: !!context,
+         hasOptions: !!context?.options,
+         url: context?.request?.url
+      });
+
       // PROTEÇÃO TOTAL CONTRA UNDEFINED - Solicitado pelo usuário
-      if (!context || !context.options) return;
+      if (!context || !context.options) {
+         console.warn(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR ABORTED: Missing context or options");
+         return;
+      }
 
       // DEBUG CRÍTICO: Verificar se o body já foi stringify
       const bodyIsString = typeof context?.options?.body === "string";
 
-      console.log(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR:", {
+      console.log(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR BODY CHECK:", {
         url: context?.request?.url,
         method: context?.request?.method,
-        headers: context?.options?.headers,
         bodyType: typeof context?.options?.body,
         bodyIsString,
+        bodyContentSnippet: bodyIsString 
+            ? context.options.body.substring(0, 50) 
+            : (context.options.body ? "Object" : "Empty/Null"),
+        hasJsonProp: !!(context?.options as { json?: unknown })?.json,
       });
+
+      // Se tiver propriedade 'json', o better-fetch vai serializar automaticamente depois deste interceptor
+      if ((context?.options as { json?: unknown })?.json) {
+         console.log(">>> [AUTH_CLIENT] Propriedade 'json' detectada. Better-fetch cuidará da serialização.");
+         return;
+      }
 
       // Se o body for um objeto e o método não for GET/HEAD, forçamos o stringify
       // Isso corrige o erro onde o browser envia [object Object]
@@ -85,24 +102,28 @@ export const authClient = createAuthClient({
         !["GET", "HEAD"].includes(context?.request?.method || "")
       ) {
         console.warn(">>> [AUTH_CLIENT] FORÇANDO JSON.stringify NO BODY!");
-        context.options.body = JSON.stringify(context.options.body);
-        
-        // Garante o header Content-Type
-        context.options.headers = {
-          ...context.options.headers,
-          "Content-Type": "application/json",
-        };
+        try {
+          context.options.body = JSON.stringify(context.options.body);
+          
+          // Garante o header Content-Type APENAS quando nós mesmos serializamos
+          context.options.headers = {
+            ...context.options.headers,
+            "Content-Type": "application/json",
+          };
+        } catch (e) {
+          console.error(">>> [AUTH_CLIENT] Erro ao fazer JSON.stringify do body:", e);
+        }
       }
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onResponse: async (context: any) => {
-      try {
-        const clonedResponse = context.response.clone();
-        const text = await clonedResponse.text();
-        console.log(">>> [AUTH_CLIENT] RAW BACKEND RESPONSE:", text);
-      } catch (e) {
-        console.error(">>> [AUTH_CLIENT] Erro ao ler resposta raw:", e);
-      }
+      // try {
+      //   const clonedResponse = context.response.clone();
+      //   const text = await clonedResponse.text();
+      //   console.log(">>> [AUTH_CLIENT] RAW BACKEND RESPONSE:", text);
+      // } catch (e) {
+      //   console.error(">>> [AUTH_CLIENT] Erro ao ler resposta raw:", e);
+      // }
       
       console.log(">>> [AUTH_CLIENT] RESPONSE INTERCEPTOR:", {
         status: context?.response?.status,
@@ -146,6 +167,7 @@ export const {
   revokeSession,
   changePassword,
   updateUser,
+  sendVerificationEmail,
 } = authClient;
 
 /**
@@ -182,12 +204,21 @@ export const getSessionToken = async (): Promise<string | null> => {
       });
 
       if (resp.ok) {
-        const data = await resp.json();
-        // Em Better Auth, a sessão é gerenciada via cookies, mas podemos verificar se existe sessão ativa
-        const token = data?.session?.token || (data?.user ? "authenticated" : null);
-        lastToken = token;
-        lastFetchTime = Date.now();
-        return lastToken;
+        try {
+          const text = await resp.text();
+          if (!text || text.trim() === "") {
+             return null;
+          }
+          const data = JSON.parse(text);
+          // Em Better Auth, a sessão é gerenciada via cookies, mas podemos verificar se existe sessão ativa
+          const token = data?.session?.token || (data?.user ? "authenticated" : null);
+          lastToken = token;
+          lastFetchTime = Date.now();
+          return lastToken;
+        } catch (jsonErr) {
+          console.warn("[AUTH_CLIENT] Erro ao parsear sessão:", jsonErr);
+          return null;
+        }
       }
       return null;
     } catch (error) {

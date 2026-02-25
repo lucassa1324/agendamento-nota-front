@@ -49,8 +49,8 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     }
   }
 
-  console.log(">>> [FRONT_API] Enviando ID:", businessId);
-  console.log(`>>> [FRONT_API] Enviando para: ${fullUrl}`);
+  // console.log(">>> [FRONT_API] Enviando ID:", businessId);
+  // console.log(`>>> [FRONT_API] Enviando para: ${fullUrl}`);
 
   const headers = new Headers(options.headers || {});
 
@@ -62,6 +62,8 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     headers.set("Content-Type", "application/json");
   }
 
+  // Com Better Auth e Proxy, o sessionToken (Bearer) pode ser desnecessário se usarmos cookies
+  // mas mantemos para compatibilidade se o backend esperar Authorization
   if (sessionToken && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${sessionToken}`);
   }

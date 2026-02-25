@@ -6,6 +6,7 @@ import { type ReactNode, Suspense, use, useEffect, useState } from "react";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { SubscriptionBlockScreen } from "@/components/admin/subscription-block-screen";
 import { TrialBanner } from "@/components/admin/trial-banner";
+import { VerificationBanner } from "@/components/admin/verification-banner";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -133,6 +134,12 @@ function AdminLayoutContent({
 
       const user = session.user as AuthUser;
 
+      // PROTEÇÃO CONTRA UNDEFINED: Garante que user existe antes de acessar propriedades
+      if (!user) {
+         console.warn(">>> [DASHBOARD_LAYOUT] Sessão existe mas usuário é undefined.");
+         return;
+      }
+
       // Se for um Super Admin tentando acessar um dashboard de estúdio, permitimos?
       // Pela regra de negócio, o Super Admin deve ir para /admin/master.
       if (user.role === "SUPER_ADMIN") {
@@ -228,6 +235,7 @@ function AdminLayoutContent({
             isPersonalizacao ? "p-0 h-dvh overflow-hidden" : "p-4 lg:p-6",
           )}
         >
+          <VerificationBanner />
           {!isPersonalizacao && <TrialBanner />}
           {children}
           {!isPersonalizacao && <FeedbackWidget />}

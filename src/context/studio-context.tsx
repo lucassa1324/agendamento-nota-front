@@ -399,11 +399,20 @@ export function StudioProvider({
                 );
 
                 if (profileRes.ok) {
-                  publicProfileData = await profileRes.json();
-                  console.log(
-                    ">>> [DEBUG_API] Perfil público carregado com sucesso:",
-                    publicProfileData,
-                  );
+                  try {
+                    const profileText = await profileRes.text();
+                    if (profileText && profileText.trim() !== "") {
+                      publicProfileData = JSON.parse(profileText);
+                      console.log(
+                        ">>> [DEBUG_API] Perfil público carregado com sucesso:",
+                        publicProfileData,
+                      );
+                    } else {
+                       console.warn(">>> [DEBUG_API] Perfil público retornou corpo vazio.");
+                    }
+                  } catch (jsonErr) {
+                     console.error(">>> [DEBUG_API] Erro ao parsear JSON do perfil público:", jsonErr);
+                  }
                 } else {
                   console.warn(
                     `>>> [DEBUG_API] Falha ao carregar perfil público: ${profileRes.status}`,
