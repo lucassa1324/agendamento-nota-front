@@ -35,12 +35,14 @@ interface AdminNavItem {
 
 interface AdminNavGroup {
   group: string;
+  id?: string;
   items: AdminNavItem[];
 }
 
 const ADMIN_NAVIGATION: AdminNavGroup[] = [
   {
     group: "Operacional",
+    id: "sidebar-operational",
     items: [
       {
         title: "Visão Geral",
@@ -63,6 +65,7 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
   },
   {
     group: "Administrativo",
+    id: "sidebar-administrative",
     items: [
       {
         title: "Gerenciamento",
@@ -101,6 +104,7 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
   },
   {
     group: "Configurações e Site",
+    id: "sidebar-settings",
     items: [
       {
         title: "Dados da Empresa",
@@ -189,6 +193,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
           href={getSiteUrl()}
           target="_blank"
           rel="noopener noreferrer"
+          id="sidebar-view-site"
           className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors group"
         >
           <ExternalLink className="w-4 h-4 group-hover:text-primary transition-colors" />
@@ -200,7 +205,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
       {/* Sidebar Navigation */}
       <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
         {ADMIN_NAVIGATION.map((group) => (
-          <div key={group.group} className="space-y-1">
+          <div key={group.group} id={group.id} className="space-y-1">
             <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">
               {group.group}
             </p>

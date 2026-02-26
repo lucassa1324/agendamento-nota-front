@@ -7,14 +7,13 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { SubscriptionBlockScreen } from "@/components/admin/subscription-block-screen";
 import { TrialBanner } from "@/components/admin/trial-banner";
 import { VerificationBanner } from "@/components/admin/verification-banner";
+import { WelcomeTour } from "@/components/admin/welcome-tour";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarProvider } from "@/context/sidebar-context";
 import { StudioProvider, useStudio } from "@/context/studio-context";
-import { customFetch } from "@/lib/api-client";
 import {
-  API_BASE_URL,
   getSession,
   signOut,
   useSession,
@@ -34,6 +33,7 @@ function MobileNav({
     <Sheet>
       <SheetTrigger asChild>
         <Button
+          id="mobile-menu-btn"
           variant="outline"
           size="icon"
           className={cn(
@@ -45,6 +45,7 @@ function MobileNav({
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-64 border-r-0">
+        <SheetTitle className="hidden">Menu de Navegação</SheetTitle>
         <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
       </SheetContent>
     </Sheet>
@@ -102,6 +103,8 @@ function AdminLayoutContent({
           );
 
           // Usando customFetch para o diagnóstico
+          // Comentado para evitar erros de console quando o backend está offline
+          /* 
           const diagRes = await customFetch(
             `${API_BASE_URL}/diagnostics/headers`,
             {
@@ -115,6 +118,7 @@ function AdminLayoutContent({
               diagData,
             );
           }
+          */
         } catch (e) {
           console.warn(">>> [ADMIN_WARN] Erro ao buscar diagnóstico:", e);
         }
@@ -235,6 +239,7 @@ function AdminLayoutContent({
             isPersonalizacao ? "p-0 h-dvh overflow-hidden" : "p-4 lg:p-6",
           )}
         >
+          <WelcomeTour />
           <VerificationBanner />
           {!isPersonalizacao && <TrialBanner />}
           {children}

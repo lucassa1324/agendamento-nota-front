@@ -153,6 +153,9 @@ export const authClient = createAuthClient({
       business: {
         type: "object",
       },
+      hasCompletedOnboarding: {
+        type: "boolean",
+      },
     },
   },
 });
