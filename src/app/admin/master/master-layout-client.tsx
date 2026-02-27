@@ -43,7 +43,9 @@ export function MasterLayoutClient({
       const user = session.user as { role?: string; email?: string };
 
       if (!user) {
-        console.warn(">>> [MASTER_LAYOUT] Sessão existe mas usuário é undefined.");
+        console.warn(
+          ">>> [MASTER_LAYOUT] Sessão existe mas usuário é undefined.",
+        );
         return;
       }
 

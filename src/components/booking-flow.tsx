@@ -57,6 +57,55 @@ interface StudioConfig {
   };
 }
 
+// Helper para sanitizar cores
+const sanitizeColor = (color: string | undefined): string | undefined => {
+  if (!color) return undefined;
+  const trimmed = color.trim();
+  if (
+    trimmed.startsWith("#") ||
+    trimmed.startsWith("rgb") ||
+    trimmed.startsWith("hsl")
+  ) {
+    return trimmed;
+  }
+  return `#${trimmed}`;
+};
+
+// Helper para normalizar configurações (usado tanto no load inicial quanto no preview)
+const normalizeStepSettings = (
+  stepData: Record<string, unknown> | undefined,
+): BookingStepSettings => {
+  if (!stepData) return {} as BookingStepSettings;
+
+  // 1. Resolver cor do CARD
+  // Prioridade para configurações específicas de card, com fallback para backgroundColor legado
+  const rawCardColor =
+    (stepData.cardBgColor as string) ||
+    (stepData.card_bg_color as string) ||
+    ((stepData.cardConfig as Record<string, unknown>)
+      ?.backgroundColor as string) ||
+    ((stepData.card_config as Record<string, unknown>)
+      ?.background_color as string) ||
+    (stepData.backgroundColor as string);
+
+  const finalCardColor = sanitizeColor(rawCardColor);
+
+  // 2. Resolver cor do FUNDO DA SEÇÃO
+  // NÃO usar rawCardColor como fallback para evitar que a cor do card pinte o fundo
+  const rawBgColor = stepData.bgColor as string;
+  const finalBgColor = sanitizeColor(rawBgColor);
+
+  if (finalCardColor) {
+    // console.log(">>> [COLOR_NORMALIZED] Cor do Card detectada:", finalCardColor);
+  }
+
+  return {
+    ...stepData,
+    cardBgColor: finalCardColor || "#FFFFFF",
+    bgColor: finalBgColor || "transparent",
+  } as BookingStepSettings;
+};
+
 export function BookingFlow() {
   const { studio } = useStudio();
   const searchParams = useSearchParams();
@@ -247,68 +296,26 @@ export function BookingFlow() {
 
       console.log(">>> [DEBUG_RAW] Estrutura completa bookingSteps:", steps);
 
-      // Função para sanitizar cores
-      const sanitizeColor = (color: string | undefined): string | undefined => {
-        if (!color) return undefined;
-        const trimmed = color.trim();
-        if (
-          trimmed.startsWith("#") ||
-          trimmed.startsWith("rgb") ||
-          trimmed.startsWith("hsl")
-        ) {
-          return trimmed;
-        }
-        return `#${trimmed}`;
-      };
-
-      const getStepSettings = (
-        stepData: Record<string, unknown> | undefined,
-      ): BookingStepSettings => {
-        if (!stepData) return {} as BookingStepSettings;
-
-        // Prioridade absoluta para backgroundColor conforme normalização do back-end
-        const rawColor =
-          (stepData.backgroundColor as string) ||
-          ((stepData.cardConfig as Record<string, unknown>)
-            ?.backgroundColor as string) ||
-          ((stepData.card_config as Record<string, unknown>)
-            ?.background_color as string) ||
-          (stepData.cardBgColor as string) ||
-          (stepData.card_bg_color as string);
-
-        const finalColor = sanitizeColor(rawColor);
-
-        if (finalColor) {
-          console.log(">>> [COLOR_APPLIED] Cor detectada:", finalColor);
-        }
-
-        return {
-          ...stepData,
-          cardBgColor: finalColor || "#FFFFFF",
-          bgColor: (stepData.bgColor as string) || finalColor || "transparent",
-        } as BookingStepSettings;
-      };
-
       // Mapeamento priorizando chaves no plural conforme normalização (step1Services, step2Dates, etc)
-      const serviceSettingsData = getStepSettings(
+      const serviceSettingsData = normalizeStepSettings(
         (steps.step1Services || steps.step1Service || steps.service) as
           | Record<string, unknown>
           | undefined,
       );
-      const dateSettingsData = getStepSettings(
+      const dateSettingsData = normalizeStepSettings(
         (steps.step2Dates || steps.step2Date || steps.date) as
           | Record<string, unknown>
           | undefined,
       );
-      const timeSettingsData = getStepSettings(
+      const timeSettingsData = normalizeStepSettings(
         (steps.step3Times || steps.step3Time || steps.time) as
           | Record<string, unknown>
           | undefined,
       );
-      const formSettingsData = getStepSettings(
+      const formSettingsData = normalizeStepSettings(
         (steps.step4Form || steps.form) as Record<string, unknown> | undefined,
       );
-      const confirmationSettingsData = getStepSettings(
+      const confirmationSettingsData = normalizeStepSettings(
         (steps.step5Confirmation ||
           steps.step4Confirmation ||
           steps.confirmation) as Record<string, unknown> | undefined,
@@ -349,19 +356,29 @@ export function BookingFlow() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "UPDATE_BOOKING_SERVICE_SETTINGS") {
-        setServiceSettings(event.data.settings);
+        setServiceSettings(
+          normalizeStepSettings(event.data.settings as Record<string, unknown>),
+        );
       }
       if (event.data?.type === "UPDATE_BOOKING_DATE_SETTINGS") {
-        setDateSettings(event.data.settings);
+        setDateSettings(
+          normalizeStepSettings(event.data.settings as Record<string, unknown>),
+        );
       }
       if (event.data?.type === "UPDATE_BOOKING_TIME_SETTINGS") {
-        setTimeSettings(event.data.settings);
+        setTimeSettings(
+          normalizeStepSettings(event.data.settings as Record<string, unknown>),
+        );
       }
       if (event.data?.type === "UPDATE_BOOKING_FORM_SETTINGS") {
-        setFormSettings(event.data.settings);
+        setFormSettings(
+          normalizeStepSettings(event.data.settings as Record<string, unknown>),
+        );
       }
       if (event.data?.type === "UPDATE_BOOKING_CONFIRMATION_SETTINGS") {
-        setConfirmationSettings(event.data.settings);
+        setConfirmationSettings(
+          normalizeStepSettings(event.data.settings as Record<string, unknown>),
+        );
       }
       if (
         event.data?.type === "SCROLL_TO_SECTION" ||
@@ -397,6 +414,11 @@ export function BookingFlow() {
       "bookingConfirmationSettingsUpdated",
       handleConfirmationUpdate,
     );
+
+    // Notify editor that we are ready to receive settings
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: "BOOKING_FLOW_READY" }, "*");
+    }
 
     return () => {
       window.removeEventListener("message", handleMessage);

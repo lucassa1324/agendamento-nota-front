@@ -1,5 +1,4 @@
-import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 
 export function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
@@ -34,7 +33,6 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Configura em quais caminhos o middleware deve rodar
 export const config = {
   matcher: [
     /*

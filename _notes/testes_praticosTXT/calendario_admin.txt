@@ -1,0 +1,95 @@
+================================================================================
+TESTES PRÁTICOS - CALENDÁRIO ADMIN (FLUXO DO USUÁRIO)
+================================================================================
+
+OBJETIVO: Garantir que o administrador consiga visualizar, bloquear e gerenciar 
+sua agenda de forma eficiente, prevenindo conflitos e garantindo a integridade dos horários.
+
+--------------------------------------------------------------------------------
+1. VISUALIZAÇÃO E NAVEGAÇÃO
+--------------------------------------------------------------------------------
+[ ] 1.1. Carregamento Inicial:
+       - Abrir a aba Calendário Admin.
+       - Verificar se carrega a data atual (Hoje).
+       - Verificar se os agendamentos existentes aparecem nos horários corretos.
+[ ] 1.2. Navegação entre Dias:
+       - Clicar na seta "Próximo Dia" (>). Verificar se a data muda corretamente.
+       - Clicar na seta "Dia Anterior" (<). Verificar se a data muda corretamente.
+       - Clicar no botão "Hoje". Verificar se volta para a data atual.
+[ ] 1.3. Visualização de Horários (Slots):
+       - Verificar se os slots de tempo estão sendo gerados conforme o intervalo configurado (ex: a cada 30min ou 1h).
+       - Verificar se o horário de início e fim do expediente estão sendo respeitados.
+
+--------------------------------------------------------------------------------
+2. CRIAÇÃO DE AGENDAMENTO (MANUAL)
+--------------------------------------------------------------------------------
+[ ] 2.1. Clique no Slot Vazio:
+       - Clicar em um horário vazio (ex: 10:00).
+       - Verificar se abre o Modal de "Novo Agendamento".
+       - Verificar se o horário selecionado (10:00) já vem preenchido.
+[ ] 2.2. Preenchimento do Formulário:
+       - Selecionar um Serviço da lista.
+       - Preencher Nome do Cliente.
+       - (Opcional) Preencher Telefone.
+       - Salvar.
+[ ] 2.3. Confirmação Visual:
+       - Verificar se o novo agendamento aparece no calendário na cor correta.
+       - Verificar se o slot de tempo ficou ocupado.
+
+--------------------------------------------------------------------------------
+3. TESTES DE BLOQUEIO E CONFLITOS
+--------------------------------------------------------------------------------
+[ ] 3.1. Agendamento em Horário Ocupado:
+       - Tentar clicar em um horário que já tem um agendamento.
+       - O sistema deve permitir (sobreposição/encaixe) ou bloquear? 
+         (Verificar regra de negócio atual: Admin geralmente tem poder de sobrepor).
+[ ] 3.2. Bloqueio de Horário (Indisponibilidade):
+       - (Se houver funcionalidade de "Bloquear Horário"):
+         - Criar um bloqueio (ex: Almoço).
+         - Tentar agendar nesse horário via link externo (simulação).
+         - Verificar se o horário aparece indisponível.
+
+--------------------------------------------------------------------------------
+4. MUDANÇA DE INTERVALO E CONFIGURAÇÕES
+--------------------------------------------------------------------------------
+[ ] 4.1. Alterar Intervalo de Tempo (Slot Interval):
+       - Ir em Configurações > Horários (ou na própria tela se houver opção).
+       - Mudar o intervalo (ex: de 30min para 15min ou 60min).
+       - Voltar ao Calendário e verificar se a grade de horários mudou.
+[ ] 4.2. Alterar Horário de Funcionamento:
+       - Mudar o horário de abertura/fechamento do dia.
+       - Verificar se o calendário reflete essas mudanças (slots começam/terminam nos novos horários).
+
+--------------------------------------------------------------------------------
+5. FLUXO DE EDIÇÃO E REMOÇÃO
+--------------------------------------------------------------------------------
+[ ] 5.1. Detalhes do Agendamento:
+       - Clicar em um agendamento existente no calendário.
+       - Verificar se abre um popover/modal com os detalhes (Cliente, Serviço, Preço).
+[ ] 5.2. Reagendamento (Drag & Drop ou Edição):
+       - (Se houver Drag & Drop): Arrastar um agendamento das 14:00 para as 16:00.
+       - (Se for via Edição): Abrir detalhes, clicar em Editar, mudar horário.
+       - Verificar se a mudança persistiu.
+[ ] 5.3. Cancelamento/Exclusão:
+       - Abrir um agendamento e clicar em Cancelar/Excluir.
+       - Verificar se ele some da grade do calendário.
+
+--------------------------------------------------------------------------------
+6. CENÁRIOS DE FLOW (FLUXO COMPLETO)
+--------------------------------------------------------------------------------
+[ ] 6.1. Fluxo "Cliente Agendou -> Admin Viu":
+       - Abrir uma aba anônima e agendar como cliente no site público.
+       - Voltar para o Calendário Admin (sem refresh, se usar realtime, ou dar F5).
+       - Verificar se o agendamento apareceu.
+[ ] 6.2. Fluxo "Admin Agendou -> Cliente Viu Bloqueado":
+       - Admin cria agendamento para 15:00.
+       - Abrir site público de agendamento.
+       - Verificar se o horário das 15:00 sumiu ou está bloqueado.
+
+--------------------------------------------------------------------------------
+7. MOBILE E RESPONSIVIDADE
+--------------------------------------------------------------------------------
+[ ] 7.1. Visualização Mobile:
+       - Acessar o calendário pelo celular (ou modo responsivo do devtools).
+       - Verificar se a visualização se adapta (ex: lista vertical ou calendário diário simplificado).
+       - Tentar criar um agendamento pelo mobile.

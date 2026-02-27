@@ -1,7 +1,7 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function EmailVerifiedPage() {
   return (
@@ -15,7 +15,8 @@ export default function EmailVerifiedPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-muted-foreground">
-            Sua conta foi verificada com sucesso. Agora você tem acesso total a todos os recursos.
+            Sua conta foi verificada com sucesso. Agora você tem acesso total a
+            todos os recursos.
           </p>
           <Button asChild className="w-full">
             <Link href="/admin">Voltar para o Dashboard</Link>

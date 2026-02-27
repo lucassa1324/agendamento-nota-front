@@ -62,15 +62,17 @@ export const authClient = createAuthClient({
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onRequest: async (context: any) => {
       console.log(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR START", {
-         hasContext: !!context,
-         hasOptions: !!context?.options,
-         url: context?.request?.url
+        hasContext: !!context,
+        hasOptions: !!context?.options,
+        url: context?.request?.url,
       });
 
       // PROTEÇÃO TOTAL CONTRA UNDEFINED - Solicitado pelo usuário
       if (!context || !context.options) {
-         console.warn(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR ABORTED: Missing context or options");
-         return;
+        console.warn(
+          ">>> [AUTH_CLIENT] REQUEST INTERCEPTOR ABORTED: Missing context or options",
+        );
+        return;
       }
 
       // DEBUG CRÍTICO: Verificar se o body já foi stringify
@@ -81,16 +83,20 @@ export const authClient = createAuthClient({
         method: context?.request?.method,
         bodyType: typeof context?.options?.body,
         bodyIsString,
-        bodyContentSnippet: bodyIsString 
-            ? context.options.body.substring(0, 50) 
-            : (context.options.body ? "Object" : "Empty/Null"),
+        bodyContentSnippet: bodyIsString
+          ? context.options.body.substring(0, 50)
+          : context.options.body
+            ? "Object"
+            : "Empty/Null",
         hasJsonProp: !!(context?.options as { json?: unknown })?.json,
       });
 
       // Se tiver propriedade 'json', o better-fetch vai serializar automaticamente depois deste interceptor
       if ((context?.options as { json?: unknown })?.json) {
-         console.log(">>> [AUTH_CLIENT] Propriedade 'json' detectada. Better-fetch cuidará da serialização.");
-         return;
+        console.log(
+          ">>> [AUTH_CLIENT] Propriedade 'json' detectada. Better-fetch cuidará da serialização.",
+        );
+        return;
       }
 
       // Se o body for um objeto e o método não for GET/HEAD, forçamos o stringify
@@ -104,14 +110,17 @@ export const authClient = createAuthClient({
         console.warn(">>> [AUTH_CLIENT] FORÇANDO JSON.stringify NO BODY!");
         try {
           context.options.body = JSON.stringify(context.options.body);
-          
+
           // Garante o header Content-Type APENAS quando nós mesmos serializamos
           context.options.headers = {
             ...context.options.headers,
             "Content-Type": "application/json",
           };
         } catch (e) {
-          console.error(">>> [AUTH_CLIENT] Erro ao fazer JSON.stringify do body:", e);
+          console.error(
+            ">>> [AUTH_CLIENT] Erro ao fazer JSON.stringify do body:",
+            e,
+          );
         }
       }
     },
@@ -124,7 +133,7 @@ export const authClient = createAuthClient({
       // } catch (e) {
       //   console.error(">>> [AUTH_CLIENT] Erro ao ler resposta raw:", e);
       // }
-      
+
       console.log(">>> [AUTH_CLIENT] RESPONSE INTERCEPTOR:", {
         status: context?.response?.status,
         url: context?.response?.url,
@@ -210,11 +219,12 @@ export const getSessionToken = async (): Promise<string | null> => {
         try {
           const text = await resp.text();
           if (!text || text.trim() === "") {
-             return null;
+            return null;
           }
           const data = JSON.parse(text);
           // Em Better Auth, a sessão é gerenciada via cookies, mas podemos verificar se existe sessão ativa
-          const token = data?.session?.token || (data?.user ? "authenticated" : null);
+          const token =
+            data?.session?.token || (data?.user ? "authenticated" : null);
           lastToken = token;
           lastFetchTime = Date.now();
           return lastToken;

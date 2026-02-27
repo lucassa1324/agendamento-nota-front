@@ -114,8 +114,10 @@ export function AdminProfileManager() {
       // Usando variável de ambiente pública para apontar para o backend correto (local ou prod)
       const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
       const targetUrl = `${baseUrl}/api/auth/change-password`;
-      
-      console.log(">>> [CHANGE_PASSWORD] Iniciando troca de senha via FETCH MANUAL (BYPASS PROXY)");
+
+      console.log(
+        ">>> [CHANGE_PASSWORD] Iniciando troca de senha via FETCH MANUAL (BYPASS PROXY)",
+      );
       console.log(">>> [CHANGE_PASSWORD] Target URL:", targetUrl);
       console.log(">>> [CHANGE_PASSWORD] Payload:", {
         newPassword: passwords.new,
@@ -147,27 +149,30 @@ export function AdminProfileManager() {
       setPasswords({ current: "", new: "", confirm: "" });
       toast({
         title: "Sucesso!",
-        description: "Sua senha foi alterada com sucesso. Redirecionando para login...",
+        description:
+          "Sua senha foi alterada com sucesso. Redirecionando para login...",
       });
 
       // Invalidar sessão e redirecionar para login
-      console.log(">>> [CHANGE_PASSWORD] Sucesso. Iniciando logout e redirect...");
+      console.log(
+        ">>> [CHANGE_PASSWORD] Sucesso. Iniciando logout e redirect...",
+      );
       await signOut();
       localStorage.clear();
       router.push("/admin");
-
     } catch (err: unknown) {
       const error = err as { message?: string; code?: string };
-      
+
       // Tratamento de erro amigável conforme solicitado
       if (
         error.code === "INVALID_PASSWORD" ||
         error.message?.includes("incorrect") ||
         error.message?.includes("Senha atual e nova senha são obrigatórias")
       ) {
-         toast({
+        toast({
           title: "Erro",
-          description: error.message || "A senha atual informada está incorreta.",
+          description:
+            error.message || "A senha atual informada está incorreta.",
           variant: "destructive",
         });
         return;

@@ -7,17 +7,17 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { SubscriptionBlockScreen } from "@/components/admin/subscription-block-screen";
 import { TrialBanner } from "@/components/admin/trial-banner";
 import { VerificationBanner } from "@/components/admin/verification-banner";
-import { WelcomeTour } from "@/components/admin/welcome-tour";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { SidebarProvider } from "@/context/sidebar-context";
 import { StudioProvider, useStudio } from "@/context/studio-context";
-import {
-  getSession,
-  signOut,
-  useSession,
-} from "@/lib/auth-client";
+import { getSession, signOut, useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 function MobileNav({
@@ -140,8 +140,10 @@ function AdminLayoutContent({
 
       // PROTEÇÃO CONTRA UNDEFINED: Garante que user existe antes de acessar propriedades
       if (!user) {
-         console.warn(">>> [DASHBOARD_LAYOUT] Sessão existe mas usuário é undefined.");
-         return;
+        console.warn(
+          ">>> [DASHBOARD_LAYOUT] Sessão existe mas usuário é undefined.",
+        );
+        return;
       }
 
       // Se for um Super Admin tentando acessar um dashboard de estúdio, permitimos?
@@ -239,7 +241,6 @@ function AdminLayoutContent({
             isPersonalizacao ? "p-0 h-dvh overflow-hidden" : "p-4 lg:p-6",
           )}
         >
-          <WelcomeTour />
           <VerificationBanner />
           {!isPersonalizacao && <TrialBanner />}
           {children}

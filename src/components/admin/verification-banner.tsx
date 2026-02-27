@@ -18,23 +18,25 @@ export function VerificationBanner() {
 
   const handleResendEmail = async () => {
     if (!session?.user?.email) return;
-    
+
     setLoading(true);
     try {
       await sendVerificationEmail({
         email: session.user.email,
         callbackURL: "/email-verified", // Página de sucesso após verificação (pode ser customizada)
       });
-      
+
       toast({
         title: "E-mail enviado!",
-        description: "Verifique sua caixa de entrada (e spam) para validar sua conta.",
+        description:
+          "Verifique sua caixa de entrada (e spam) para validar sua conta.",
       });
     } catch (error) {
       console.error("Erro ao enviar e-mail de verificação:", error);
       toast({
         title: "Erro ao enviar",
-        description: "Não foi possível enviar o e-mail. Tente novamente mais tarde.",
+        description:
+          "Não foi possível enviar o e-mail. Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {

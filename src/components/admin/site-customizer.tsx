@@ -137,6 +137,12 @@ export function SiteCustomizer() {
     isSaving,
   } = useSiteEditor(iframeRef);
 
+  // Use a ref to store the latest fetchCustomization function to break the dependency loop
+  const fetchCustomizationRef = useRef(fetchCustomization);
+  useEffect(() => {
+    fetchCustomizationRef.current = fetchCustomization;
+  }, [fetchCustomization]);
+
   const handleToggleStatus = async () => {
     const business = businesses[0];
     if (!business || !business.id) return;
@@ -145,8 +151,6 @@ export function SiteCustomizer() {
     setIsUpdatingStatus(true);
 
     try {
-      console.log(`>>> [CUSTOMIZER] Atualizando status para: ${newStatus}`);
-
       // Usa o endpoint de status do usuário (que controla o acesso do estúdio)
       // Buscamos o ID do usuário através do business ou usamos o business.id se for o mesmo
       const response = await customFetch(
@@ -192,7 +196,6 @@ export function SiteCustomizer() {
     setIsLoading(true);
     setError(null);
     try {
-      console.log(`>>> [CUSTOMIZER] Buscando dados para o slug: ${slug}`);
       // Ajustado de /api/studios para /api/business conforme confirmado pelo back-end
       const response = await customFetch(
         `${API_BASE_URL}/api/business/slug/${slug}`,
@@ -209,10 +212,7 @@ export function SiteCustomizer() {
           setBusinesses([businessData]);
 
           if (businessData.id) {
-            console.log(
-              ">>> [CUSTOMIZER] Buscando customização via serviço...",
-            );
-            await fetchCustomization(businessData.id);
+            await fetchCustomizationRef.current(businessData.id);
           }
         } else {
           setError("Dados do estúdio não encontrados.");
@@ -231,7 +231,7 @@ export function SiteCustomizer() {
     } finally {
       setIsLoading(false);
     }
-  }, [slug, fetchCustomization]);
+  }, [slug]);
 
   useEffect(() => {
     fetchBusinessData();

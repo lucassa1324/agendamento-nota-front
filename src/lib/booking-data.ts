@@ -898,6 +898,58 @@ export type ColorSettings = {
 
 export const services: Service[] = [];
 
+// Helper para sanitizar cores
+export const sanitizeColor = (
+  color: string | undefined,
+): string | undefined => {
+  if (!color) return undefined;
+  const trimmed = color.trim();
+  if (
+    trimmed.startsWith("#") ||
+    trimmed.startsWith("rgb") ||
+    trimmed.startsWith("hsl")
+  ) {
+    return trimmed;
+  }
+  return `#${trimmed}`;
+};
+
+// Helper para normalizar configurações (usado tanto no load inicial quanto no preview)
+export const normalizeStepSettings = (
+  stepData: Record<string, unknown> | undefined,
+): BookingStepSettings => {
+  if (!stepData) return {} as BookingStepSettings;
+
+  // 1. Resolver cor do CARD
+  // Prioridade para configurações específicas de card, com fallback para backgroundColor legado
+  const rawCardColor =
+    (stepData.cardBgColor as string) ||
+    (stepData.card_bg_color as string) ||
+    ((stepData.cardConfig as Record<string, unknown>)
+      ?.backgroundColor as string) ||
+    ((stepData.card_config as Record<string, unknown>)
+      ?.background_color as string) ||
+    (stepData.backgroundColor as string);
+
+  const finalCardColor = sanitizeColor(rawCardColor);
+
+  // 2. Resolver cor do FUNDO DA SEÇÃO
+  // NÃO usar rawCardColor como fallback para evitar que a cor do card pinte o fundo
+  const rawBgColor = stepData.bgColor as string;
+  const finalBgColor = sanitizeColor(rawBgColor);
+
+  // Garante que o fallback seja aplicado apenas se o valor for undefined/null
+  // permitindo cores claras válidas renderizarem imediatamente
+  const resolvedCardColor =
+    finalCardColor !== undefined ? finalCardColor : "#FFFFFF";
+
+  return {
+    ...stepData,
+    cardBgColor: resolvedCardColor,
+    bgColor: finalBgColor || "transparent",
+  } as BookingStepSettings;
+};
+
 export const defaultScheduleSettings: ScheduleSettings = {
   timeInterval: 30,
   businessHours: {

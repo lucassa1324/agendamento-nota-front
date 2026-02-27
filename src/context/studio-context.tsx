@@ -408,10 +408,15 @@ export function StudioProvider({
                         publicProfileData,
                       );
                     } else {
-                       console.warn(">>> [DEBUG_API] Perfil público retornou corpo vazio.");
+                      console.warn(
+                        ">>> [DEBUG_API] Perfil público retornou corpo vazio.",
+                      );
                     }
                   } catch (jsonErr) {
-                     console.error(">>> [DEBUG_API] Erro ao parsear JSON do perfil público:", jsonErr);
+                    console.error(
+                      ">>> [DEBUG_API] Erro ao parsear JSON do perfil público:",
+                      jsonErr,
+                    );
                   }
                 } else {
                   console.warn(

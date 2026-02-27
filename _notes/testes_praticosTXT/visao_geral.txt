@@ -1,0 +1,50 @@
+================================================================================
+TESTES PRÁTICOS - ABA VISÃO GERAL (DASHBOARD)
+================================================================================
+
+OBJETIVO: Garantir que os indicadores principais (KPIs) do negócio estejam 
+sendo calculados e exibidos corretamente, refletindo os dados do mês atual.
+
+--------------------------------------------------------------------------------
+1. VISUALIZAÇÃO DOS CARDS (INDICADORES)
+--------------------------------------------------------------------------------
+[ ] 1.1. Agendamentos Hoje:
+       - Criar um agendamento para a data de hoje.
+       - Verificar se o contador incrementa corretamente.
+       - Criar um agendamento para amanhã e verificar se NÃO incrementa este contador.
+[ ] 1.2. Total de Agendamentos (Mês Atual):
+       - Verificar se o número corresponde ao total de agendamentos dentro do mês corrente.
+       - Criar um agendamento para o mês seguinte e garantir que NÃO altera este valor.
+[ ] 1.3. Faturamento do Mês:
+       - Verificar a soma dos valores.
+       - IMPORTANTE: O faturamento só deve somar agendamentos com status "CONCLUÍDO".
+       - Mudar um agendamento de "Confirmado" para "Concluído" e ver se o valor sobe.
+       - Mudar um agendamento de "Concluído" para "Cancelado" e ver se o valor desce.
+[ ] 1.4. Status da Agenda:
+       - Verificar se mostra "Aberta" ou "Fechada".
+       - Ir em Configurações > Dados da Empresa (ou Gerenciamento) e alterar o status.
+       - Voltar para Visão Geral e confirmar se o texto mudou.
+
+--------------------------------------------------------------------------------
+2. CARD DE TRIAL (PERÍODO DE TESTE) - SE APLICÁVEL
+--------------------------------------------------------------------------------
+[ ] 2.1. Visibilidade:
+       - Verificar se este card aparece apenas para contas em período de teste (Trial).
+[ ] 2.2. Contagem Regressiva:
+       - Verificar se o número de dias restantes está coerente com a data de criação da conta.
+       - Se faltarem 3 dias ou menos, o texto deve ficar vermelho (alerta).
+
+--------------------------------------------------------------------------------
+3. CENÁRIOS DE ERRO E CARREGAMENTO
+--------------------------------------------------------------------------------
+[ ] 3.1. Estado de Carregamento:
+       - Ao entrar na tela, verificar se não há "flicks" ou dados incorretos piscando antes do carregamento final.
+[ ] 3.2. Falha de Pagamento (Billing Error):
+       - Se a conta estiver suspensa/atrasada, os valores devem mostrar "---" ou zero, e não devem quebrar a tela.
+
+--------------------------------------------------------------------------------
+4. INTEGRAÇÃO COM OUTRAS ABAS
+--------------------------------------------------------------------------------
+[ ] 4.1. Sincronia com Agendamentos:
+       - Adicionar/Remover agendamento na aba "Agendamentos".
+       - Voltar para "Visão Geral" e confirmar se os números atualizaram (pode exigir refresh dependendo da implementação).

@@ -1,0 +1,89 @@
+================================================================================
+TESTES PRÁTICOS - ABA AGENDAMENTOS
+================================================================================
+
+OBJETIVO: Garantir que o gerenciamento de agendamentos (listagem, filtros, 
+edição e mudança de status) funcione corretamente e esteja sincronizado com o estoque.
+
+--------------------------------------------------------------------------------
+1. VISUALIZAÇÃO E CARREGAMENTO INICIAL
+--------------------------------------------------------------------------------
+[ ] 1.1. Verificar se a lista carrega inicialmente com os agendamentos do mês atual.
+       - A data inicial deve ser o dia 1 do mês atual.
+       - A data final deve ser o último dia do mês atual.
+[ ] 1.2. Verificar o estado de "Carregando" (Loader/Spinner) enquanto busca os dados.
+[ ] 1.3. Verificar o "Empty State" (Mensagem de lista vazia) quando não houver agendamentos no período.
+[ ] 1.4. Validar se os dados do card estão corretos:
+       - Nome do cliente
+       - Nome do serviço
+       - Data e Hora formatados corretamente
+       - Preço e Duração
+       - Status atual (badge/cor correta)
+
+--------------------------------------------------------------------------------
+2. FILTROS E BUSCA
+--------------------------------------------------------------------------------
+[ ] 2.1. Filtro por Nome/Serviço:
+       - Digitar parte do nome do cliente e verificar se a lista filtra.
+       - Digitar parte do nome do serviço e verificar se a lista filtra.
+       - Testar com texto que não existe (deve mostrar lista vazia).
+[ ] 2.2. Filtro por Data (Range):
+       - Alterar "Data Inicial" e "Data Final" para um período específico.
+       - Verificar se agendamentos fora desse período somem da lista.
+[ ] 2.3. Filtro por Dia Específico:
+       - Selecionar um dia no input de data específica.
+       - Garantir que apenas agendamentos daquele dia exato apareçam.
+[ ] 2.4. Filtro por Horário:
+       - Digitar um horário (ex: "14:00") e verificar a filtragem.
+[ ] 2.5. Abas de Status:
+       - Clicar em "Pendente", "Confirmado", "Concluído", "Cancelado".
+       - Verificar se a contagem (badge numérico) ao lado de cada aba está correta.
+       - Verificar se a lista exibe apenas itens do status selecionado.
+
+--------------------------------------------------------------------------------
+3. MUDANÇA DE STATUS (FLUXO PRINCIPAL)
+--------------------------------------------------------------------------------
+[ ] 3.1. Pendente -> Confirmado:
+       - Clicar para confirmar um agendamento.
+       - Verificar se o status muda visualmente.
+       - Verificar se permanece na aba "Todos" e aparece na aba "Confirmado".
+[ ] 3.2. Confirmado -> Concluído (Baixa no Estoque):
+       - Concluir um agendamento que usa produtos do estoque.
+       - Verificar se o status muda para "Concluído".
+       - (Opcional) Verificar na aba "Estoque" se a quantidade foi reduzida.
+[ ] 3.3. Cancelamento:
+       - Cancelar um agendamento (de qualquer status).
+       - Verificar se muda para "Cancelado".
+[ ] 3.4. Reversão de Status (Concluído -> Outro):
+       - Tentar mudar de "Concluído" para "Pendente" ou "Confirmado".
+       - Verificar se abre o Modal/Alerta perguntando sobre devolução de itens ao estoque.
+       - Confirmar a ação e verificar se o status foi revertido.
+
+--------------------------------------------------------------------------------
+4. EDIÇÃO E REAGENDAMENTO
+--------------------------------------------------------------------------------
+[ ] 4.1. Editar Agendamento:
+       - Abrir modal de edição.
+       - Alterar dados (ex: observações, serviço).
+       - Salvar e verificar se a lista atualiza com os novos dados.
+[ ] 4.2. Reagendar:
+       - Clicar na ação de reagendar.
+       - Escolher nova data/horário.
+       - Confirmar e verificar se o card mudou de posição na lista (ordenação).
+
+--------------------------------------------------------------------------------
+5. PAGINAÇÃO
+--------------------------------------------------------------------------------
+[ ] 5.1. Verificar limite de itens por página (padrão: 5 itens).
+[ ] 5.2. Navegar para a próxima página e página anterior.
+[ ] 5.3. Verificar se a paginação reseta para a página 1 ao aplicar um filtro.
+
+--------------------------------------------------------------------------------
+6. CENÁRIOS DE ERRO (EDGE CASES)
+--------------------------------------------------------------------------------
+[ ] 6.1. Falha na API:
+       - Simular erro de rede (offline ou erro 500).
+       - Verificar se aparece o Toast de erro ("Erro ao carregar").
+       - Verificar se o sistema tenta carregar do LocalStorage como fallback (se aplicável).
+[ ] 6.2. Datas Inválidas:
+       - Tentar colocar Data Final menor que Data Inicial (se a UI permitir).

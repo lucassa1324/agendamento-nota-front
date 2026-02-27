@@ -1,0 +1,110 @@
+# Testes Práticos - Calendário do Usuário (Cliente Final)
+
+Este arquivo contém cenários de teste manuais para validar o fluxo de agendamento do lado do cliente, com foco nas regras de negócio do backend e experiência do usuário.
+
+## 1. Regras de Negócio Críticas (Validação Backend)
+Estas validações garantem que o frontend respeita as restrições impostas pela API.
+
+### 1.1 Validação de Duração Multi-Slot
+- [ ] **Seleção de Serviço Longo**:
+    - [ ] Configurar um serviço com duração de **90 min** (1h30).
+    - [ ] Configurar o intervalo de slots do calendário para **30 min**.
+    - [ ] **Cenário de Sucesso**: O slot das 10:00 deve estar disponível APENAS se 10:00, 10:30 e 11:00 estiverem livres.
+    - [ ] **Cenário de Bloqueio Parcial**: Se o slot das 10:30 estiver ocupado (por outro agendamento ou bloqueio), o slot das 10:00 deve aparecer como **indisponível** ou não ser clicável.
+    - [ ] **Visualização**: O usuário não deve conseguir selecionar um horário que "quebre" no meio de um bloqueio subsequente.
+
+### 1.2 Tratamento de Fusos Horários (Timezone)
+- [ ] **Envio de Data em UTC**:
+    - [ ] Realizar um agendamento e inspecionar o payload da requisição (Network Tab).
+    - [ ] O campo `scheduledAt` deve estar no formato ISO UTC (ex: `2023-10-27T13:00:00.000Z` para 10:00 em UTC-3).
+    - [ ] Verificar se não há envio de data local (ex: `2023-10-27T10:00:00`) sem o sufixo de fuso.
+- [ ] **Visualização Correta**:
+    - [ ] O horário exibido na confirmação deve ser o horário local do estúdio/usuário, não o horário UTC.
+
+### 1.3 Respeito aos Bloqueios de Agenda
+- [ ] **Bloqueios Totais (Dias)**:
+    - [ ] Criar um bloqueio de "Dia Inteiro" no admin para uma data específica.
+    - [ ] No calendário do usuário, essa data deve estar desabilitada (cinza/não clicável).
+- [ ] **Bloqueios Parciais (Horários)**:
+    - [ ] Criar um bloqueio das 14:00 às 16:00 no admin.
+    - [ ] No calendário do usuário, os slots 14:00, 14:30, 15:00 e 15:30 devem estar indisponíveis.
+    - [ ] Testar com serviço de duração longa: Um serviço de 60min não deve poder ser agendado às 13:30 (pois terminaria às 14:30, dentro do bloqueio).
+
+### 1.4 Snapshots de Serviço
+- [ ] **Integridade do Histórico**:
+    - [ ] Realizar um agendamento.
+    - [ ] Verificar no payload se os campos `serviceNameSnapshot`, `servicePriceSnapshot` e `serviceDurationSnapshot` estão sendo enviados.
+    - [ ] **Teste de Alteração**:
+        1. Agendar um serviço "Corte" por R$ 50,00.
+        2. No admin, alterar o preço do "Corte" para R$ 60,00.
+        3. O agendamento original deve manter o valor de R$ 50,00 (snapshot) e não ser afetado pela mudança.
+
+### 1.6 Validação de Horário Passado (Bug Fix)
+- [ ] **Tentativa de Agendamento no Passado**:
+    - [ ] Acessar o calendário no dia atual (Hoje).
+    - [ ] Verificar se horários anteriores ao momento atual (ex: agora são 14:00, slots das 08:00 a 13:30) estão indisponíveis/ocultos.
+    - [ ] O primeiro horário disponível deve ser >= Hora Atual (ou próximo slot futuro).
+
+### 1.5 Feedback de Erros do Backend
+- [ ] **Concorrência (Already Occupied)**:
+    - [ ] Abrir o calendário em duas abas/dispositivos diferentes para o mesmo horário.
+    - [ ] Finalizar o agendamento na Aba A.
+    - [ ] Tentar finalizar o MESMO horário na Aba B.
+    - [ ] **Resultado Esperado**: Deve aparecer uma mensagem de erro amigável: "Este horário acabou de ser ocupado, por favor escolha outro" (sem mostrar o erro 400 cru).
+- [ ] **Horário de Fechamento (Business Hours)**:
+    - [ ] Tentar forçar (via inspeção ou edição de HTML, se possível, ou configuração limite) um agendamento que termine após o expediente.
+    - [ ] **Resultado Esperado**: Mensagem: "O horário selecionado e a duração total dos serviços ultrapassam o horário de fechamento".
+
+---
+
+## 2. Fluxo de Agendamento (Passo a Passo)
+
+### 2.1 Seleção de Serviços
+- [ ] Listagem correta de serviços ativos.
+- [ ] Exibição correta de Preço e Duração.
+- [ ] Seleção única vs. Múltipla (se aplicável).
+
+### 2.2 Seleção de Data
+- [ ] Navegação entre meses.
+- [ ] Dias passados bloqueados.
+- [ ] Dias de folga (fechados na configuração semanal) bloqueados.
+
+### 2.3 Seleção de Horário
+- [ ] Geração de slots conforme intervalo configurado (15min, 30min, 60min).
+- [ ] Slots ocupados por outros agendamentos devem estar invisíveis ou desabilitados.
+
+### 2.4 Formulário de Dados
+- [ ] Validação de campos obrigatórios (Nome, Telefone).
+- [ ] Máscara de telefone (formato (XX) XXXXX-XXXX).
+- [ ] Preenchimento automático se o usuário já estiver logado (futuro).
+
+### 2.5 Confirmação e Sucesso
+- [ ] Exibição do resumo do agendamento antes de confirmar.
+- [ ] Tela de sucesso com detalhes do agendamento.
+- [ ] Opções de "Adicionar ao Google Agenda" ou "Novo Agendamento".
+
+---
+
+## 3. Testes de Mudança de Configuração (Tempo Real)
+
+### 3.1 Alteração de Intervalo
+- [ ] No Admin, mudar o intervalo de agendamento de 30min para 60min.
+- [ ] Recarregar o calendário do usuário.
+- [ ] Os slots devem mudar de (09:00, 09:30, 10:00) para (09:00, 10:00, 11:00).
+
+### 3.2 Alteração de Horário de Funcionamento
+- [ ] No Admin, mudar o horário de fechamento de 18:00 para 16:00.
+- [ ] Os slots das 16:00 em diante devem desaparecer do calendário do usuário.
+
+### 3.3 Alteração de Preço de Serviço
+- [ ] Mudar preço do serviço no Admin.
+- [ ] O novo agendamento deve refletir o novo preço.
+- [ ] Agendamentos antigos (histórico) NÃO devem mudar.
+
+---
+
+## 4. Cenários de Erro e Exceção
+
+- [ ] **Perda de Conexão**: Tentar agendar sem internet (simular offline). Deve mostrar erro de conexão.
+- [ ] **Erro de Servidor (500)**: Simular falha no backend. O frontend deve tratar graciosamente.
+- [ ] **Dados Inválidos**: Tentar enviar e-mail inválido ou telefone incompleto.
