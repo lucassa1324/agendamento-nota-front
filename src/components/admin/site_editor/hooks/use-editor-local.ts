@@ -137,10 +137,41 @@ export function useEditorLocal() {
     saveBookingConfirmationSettings(drafts.bookingConfirmationSettings);
   }, []);
 
+  const clearLocalDrafts = useCallback(() => {
+    const keys = [
+      "heroSettings",
+      "aboutHeroSettings",
+      "storySettings",
+      "teamSettings",
+      "testimonialsSettings",
+      "fontSettings",
+      "colorSettings",
+      "servicesSettings",
+      "valuesSettings",
+      "gallerySettings",
+      "ctaSettings",
+      "headerSettings",
+      "footerSettings",
+      "pageVisibility",
+      "visibleSections",
+      "bookingServiceSettings",
+      "bookingDateSettings",
+      "bookingTimeSettings",
+      "bookingFormSettings",
+      "bookingConfirmationSettings",
+    ];
+
+    for (const key of keys) {
+      localStorage.removeItem(getStorageKey(key));
+    }
+    console.log(">>> [useEditorLocal] Rascunhos locais limpos.");
+  }, []);
+
   return {
     hasLocalDraft,
     loadLocalDrafts,
     saveLocalDrafts,
+    clearLocalDrafts,
     saveHeroSettings,
     saveAboutHeroSettings,
     saveStorySettings,

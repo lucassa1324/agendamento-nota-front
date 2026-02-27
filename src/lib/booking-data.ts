@@ -132,11 +132,9 @@ export type WeekSchedule = DaySchedule[];
 export function getStorageKey(key: string): string {
   if (typeof window === "undefined") return key;
   const userId = localStorage.getItem("current_admin_id");
-  // Se não houver usuário logado (site público), tenta pegar o último usuário ativo ou usa modo compartilhado
-  // Para garantir que o site público funcione, talvez devêssemos usar um ID padrão ou o último usado.
-  // Por enquanto, se não houver ID, usa a chave sem prefixo (comportamento legado/compartilhado).
-  if (!userId) return key;
-  return `${userId}_${key}`;
+  const result = userId ? `${userId}_${key}` : key;
+  // console.log(`>>> [getStorageKey] key: ${key} -> result: ${result}`);
+  return result;
 }
 
 export type NotificationSettings = {
@@ -1815,7 +1813,12 @@ export function getSiteProfile(): SiteProfile {
 }
 
 export function saveSiteProfile(profile: SiteProfile): void {
-  localStorage.setItem(getStorageKey("siteProfile"), JSON.stringify(profile));
+  const storageKey = getStorageKey("siteProfile");
+  console.log(
+    `>>> [booking-data] Salvando siteProfile em ${storageKey}:`,
+    profile,
+  );
+  localStorage.setItem(storageKey, JSON.stringify(profile));
   // Dispatch custom event so components can update immediately
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("siteProfileUpdated"));
@@ -1824,12 +1827,23 @@ export function saveSiteProfile(profile: SiteProfile): void {
 
 export function getHeroSettings(): HeroSettings {
   if (typeof window === "undefined") return defaultHeroSettings;
-  const settings = localStorage.getItem(getStorageKey("heroSettings"));
+  const storageKey = getStorageKey("heroSettings");
+  const settings = localStorage.getItem(storageKey);
+  if (settings) {
+    console.log(
+      `>>> [booking-data] getHeroSettings: Carregando de ${storageKey}`,
+    );
+  }
   return settings ? JSON.parse(settings) : defaultHeroSettings;
 }
 
 export function saveHeroSettings(settings: HeroSettings): void {
-  localStorage.setItem(getStorageKey("heroSettings"), JSON.stringify(settings));
+  const storageKey = getStorageKey("heroSettings");
+  console.log(
+    `>>> [booking-data] Salvando heroSettings em ${storageKey}:`,
+    settings,
+  );
+  localStorage.setItem(storageKey, JSON.stringify(settings));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("heroSettingsUpdated"));
   }

@@ -37,6 +37,41 @@ export function ServiceSelector({
   }, [initialSelected]);
 
   useEffect(() => {
+    // Mock de serviços estáticos para teste de persistência de cores
+    const mockServices: Service[] = [
+      {
+        id: "1",
+        name: "Corte de Cabelo Feminino",
+        description: "Corte moderno com lavagem inclusa",
+        duration: 60,
+        price: 120,
+      },
+      {
+        id: "2",
+        name: "Manicure + Pedicure",
+        description: "Cutilagem e esmaltação completa",
+        duration: 90,
+        price: 85,
+      },
+      {
+        id: "3",
+        name: "Escova Modeladora",
+        description: "Lavagem, secagem e modelagem dos fios",
+        duration: 45,
+        price: 60,
+      },
+      {
+        id: "4",
+        name: "Hidratação Profunda",
+        description: "Tratamento para fios ressecados",
+        duration: 30,
+        price: 50,
+      },
+    ];
+    console.log(">>> [SERVICE_SELECTOR] Usando serviços estáticos (MOCK)");
+    setServices(mockServices);
+
+    /* 
     // No flow do cliente, preferimos sempre os dados do studio vindos do context,
     // que são buscados da API com cache: 'no-store'.
     if (studio?.services && studio.services.length > 0) {
@@ -72,6 +107,7 @@ export function ServiceSelector({
         setServices(settings.services);
       }
     }
+    */
   }, [studio]);
 
   const extractConflicts = (s: Service): string[] => {
@@ -201,6 +237,12 @@ export function ServiceSelector({
     (acc, s) => acc + Number(s.duration || 0),
     0,
   );
+
+  console.log(">>> [SERVICE_SELECTOR] Renderizando com settings:", {
+    title: settings?.title,
+    cardBgColor: settings?.cardBgColor,
+    accentColor: settings?.accentColor,
+  });
 
   return (
     <div className="space-y-6">

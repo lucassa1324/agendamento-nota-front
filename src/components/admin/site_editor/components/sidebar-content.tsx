@@ -128,7 +128,8 @@ interface SidebarContentProps {
   onSectionReset: (id: string) => void;
   pageVisibility: Record<string, boolean>;
   onPageVisibilityChange: (id: string, isVisible: boolean) => void;
-  onSaveGlobal: () => void;
+  onSaveLocal: () => void;
+  onSaveGlobal: (shouldReloadFromBank?: boolean) => void;
   hasUnsavedGlobalChanges: boolean;
   pages: PageItem[];
   sections: Record<string, SectionItem[]>;
@@ -223,11 +224,33 @@ export const SidebarContent = memo(
     onSectionReset,
     pageVisibility,
     onPageVisibilityChange,
+    onSaveLocal,
     onSaveGlobal,
     hasUnsavedGlobalChanges,
     pages,
     sections,
   }: SidebarContentProps) => {
+    const shouldSaveLocal =
+      hasUnsavedGlobalChanges ||
+      hasHeroChanges ||
+      hasAboutHeroChanges ||
+      hasStoryChanges ||
+      hasTeamChanges ||
+      hasTestimonialsChanges ||
+      hasFontChanges ||
+      hasColorChanges ||
+      hasServicesChanges ||
+      hasValuesChanges ||
+      hasGalleryChanges ||
+      hasCTAChanges ||
+      hasHeaderChanges ||
+      hasFooterChanges ||
+      hasBookingServiceChanges ||
+      hasBookingDateChanges ||
+      hasBookingTimeChanges ||
+      hasBookingFormChanges ||
+      hasBookingConfirmationChanges;
+
     return (
       <div className="flex flex-col h-full text-[clamp(0.7rem,1vw,0.875rem)]">
         <div className="p-2 sm:p-3 xl:p-6 pb-2 sm:pb-3 border-b border-border/50 shrink-0">
@@ -258,7 +281,15 @@ export const SidebarContent = memo(
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => setActiveSection(null)}
+                  onClick={() => {
+                    if (shouldSaveLocal) {
+                      console.log(
+                        "[SidebarContent] Voltando: Salvando apenas localmente (sem banco)",
+                      );
+                      onSaveLocal();
+                    }
+                    setActiveSection(null);
+                  }}
                   className="h-6 w-6 sm:h-7 sm:w-7 xl:h-8 xl:w-8 rounded-full p-0"
                 >
                   <ArrowLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5 xl:w-4 xl:h-4" />
@@ -523,7 +554,7 @@ export const SidebarContent = memo(
                 !hasBookingFormChanges &&
                 !hasBookingConfirmationChanges)
             }
-            onClick={onSaveGlobal}
+            onClick={() => onSaveGlobal()}
             className={cn(
               "w-full font-bold py-6 rounded-xl transition-all duration-300",
               isSaving

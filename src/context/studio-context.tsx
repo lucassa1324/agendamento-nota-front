@@ -79,6 +79,11 @@ export function StudioProvider({
       try {
         console.log(
           ">>> [STORAGE_SYNC] Sincronizando dados do Banco para LocalStorage...",
+          {
+            studioId: studio.id,
+            slug: studio.slug,
+            hasConfig: !!studio.config,
+          },
         );
 
         // --- LOGO LEAK FIX: Limpeza de cache ao trocar de estúdio ---
@@ -188,6 +193,10 @@ export function StudioProvider({
         }
 
         // Forçamos a sincronização sempre que houver um estúdio carregado
+        console.log(
+          ">>> [STORAGE_SYNC] Salvando perfil do site no storage:",
+          profile,
+        );
         saveSiteProfile(profile);
 
         if (studio.services && studio.services.length > 0) {
@@ -379,6 +388,10 @@ export function StudioProvider({
             console.log(
               ">>> [StudioProvider] Dados do studio carregados com sucesso:",
               data?.id,
+            );
+            console.log(
+              ">>> [StudioProvider] Configuração bruta do studio:",
+              data?.config,
             );
             // Log de depuração da resposta bruta da API do Studio
             console.log(">>> [DEBUG_API] Dados do Studio (Slug):", data);
@@ -714,6 +727,9 @@ export function StudioProvider({
                 );
             }
             try {
+              const hasLocalDraft = (key: string) =>
+                typeof window !== "undefined" &&
+                localStorage.getItem(getStorageKey(key)) !== null;
               const lg = (initialConfig.layoutGlobal ||
                 (initialConfig as Record<string, unknown>).layout_global) as
                 | Record<string, unknown>
@@ -728,24 +744,36 @@ export function StudioProvider({
                 (lg as Record<string, unknown>)?.fontes) as
                 | FontSettings
                 | undefined;
-              if (initialConfig.hero) saveHeroSettings(initialConfig.hero);
+              if (initialConfig.hero && !hasLocalDraft("heroSettings"))
+                saveHeroSettings(initialConfig.hero);
               if (initialConfig.header)
-                saveHeaderSettings(initialConfig.header);
+                !hasLocalDraft("headerSettings") &&
+                  saveHeaderSettings(initialConfig.header);
               if (initialConfig.footer)
-                saveFooterSettings(initialConfig.footer);
+                !hasLocalDraft("footerSettings") &&
+                  saveFooterSettings(initialConfig.footer);
               if (initialConfig.services)
-                saveServicesSettings(initialConfig.services);
+                !hasLocalDraft("servicesSettings") &&
+                  saveServicesSettings(initialConfig.services);
               if (initialConfig.values)
-                saveValuesSettings(initialConfig.values);
+                !hasLocalDraft("valuesSettings") &&
+                  saveValuesSettings(initialConfig.values);
               if (initialConfig.gallery)
-                saveGallerySettings(initialConfig.gallery);
-              if (initialConfig.cta) saveCTASettings(initialConfig.cta);
+                !hasLocalDraft("gallerySettings") &&
+                  saveGallerySettings(initialConfig.gallery);
+              if (initialConfig.cta)
+                !hasLocalDraft("ctaSettings") &&
+                  saveCTASettings(initialConfig.cta);
               if (initialConfig.pageVisibility)
-                savePageVisibility(initialConfig.pageVisibility);
+                !hasLocalDraft("pageVisibility") &&
+                  savePageVisibility(initialConfig.pageVisibility);
               if (initialConfig.visibleSections)
-                saveVisibleSections(initialConfig.visibleSections);
-              if (colors) saveColorSettings(colors);
-              if (fonts) saveFontSettings(fonts);
+                !hasLocalDraft("visibleSections") &&
+                  saveVisibleSections(initialConfig.visibleSections);
+              if (colors)
+                !hasLocalDraft("colorSettings") && saveColorSettings(colors);
+              if (fonts)
+                !hasLocalDraft("fontSettings") && saveFontSettings(fonts);
               if (typeof window !== "undefined") {
                 window.dispatchEvent(new Event("DataReady"));
               }
@@ -785,6 +813,9 @@ export function StudioProvider({
                   });
 
                   try {
+                    const hasLocalDraft = (key: string) =>
+                      typeof window !== "undefined" &&
+                      localStorage.getItem(getStorageKey(key)) !== null;
                     const lg = (mappedConfig.layoutGlobal ||
                       (mappedConfig as Record<string, unknown>)
                         .layout_global) as Record<string, unknown> | undefined;
@@ -803,24 +834,37 @@ export function StudioProvider({
                       (lg as Record<string, unknown>)?.fontes) as
                       | FontSettings
                       | undefined;
-                    if (mappedConfig.hero) saveHeroSettings(mappedConfig.hero);
+                    if (mappedConfig.hero && !hasLocalDraft("heroSettings"))
+                      saveHeroSettings(mappedConfig.hero);
                     if (mappedConfig.header)
-                      saveHeaderSettings(mappedConfig.header);
+                      !hasLocalDraft("headerSettings") &&
+                        saveHeaderSettings(mappedConfig.header);
                     if (mappedConfig.footer)
-                      saveFooterSettings(mappedConfig.footer);
+                      !hasLocalDraft("footerSettings") &&
+                        saveFooterSettings(mappedConfig.footer);
                     if (mappedConfig.services)
-                      saveServicesSettings(mappedConfig.services);
+                      !hasLocalDraft("servicesSettings") &&
+                        saveServicesSettings(mappedConfig.services);
                     if (mappedConfig.values)
-                      saveValuesSettings(mappedConfig.values);
+                      !hasLocalDraft("valuesSettings") &&
+                        saveValuesSettings(mappedConfig.values);
                     if (mappedConfig.gallery)
-                      saveGallerySettings(mappedConfig.gallery);
-                    if (mappedConfig.cta) saveCTASettings(mappedConfig.cta);
+                      !hasLocalDraft("gallerySettings") &&
+                        saveGallerySettings(mappedConfig.gallery);
+                    if (mappedConfig.cta)
+                      !hasLocalDraft("ctaSettings") &&
+                        saveCTASettings(mappedConfig.cta);
                     if (mappedConfig.pageVisibility)
-                      savePageVisibility(mappedConfig.pageVisibility);
+                      !hasLocalDraft("pageVisibility") &&
+                        savePageVisibility(mappedConfig.pageVisibility);
                     if (mappedConfig.visibleSections)
-                      saveVisibleSections(mappedConfig.visibleSections);
-                    if (colors) saveColorSettings(colors);
-                    if (fonts) saveFontSettings(fonts);
+                      !hasLocalDraft("visibleSections") &&
+                        saveVisibleSections(mappedConfig.visibleSections);
+                    if (colors)
+                      !hasLocalDraft("colorSettings") &&
+                        saveColorSettings(colors);
+                    if (fonts)
+                      !hasLocalDraft("fontSettings") && saveFontSettings(fonts);
                     if (typeof window !== "undefined") {
                       window.dispatchEvent(new Event("DataReady"));
                     }

@@ -109,6 +109,7 @@ export function SiteCustomizer() {
     handleApplyBookingTime,
     handleApplyBookingForm,
     handleApplyBookingConfirmation,
+    handleSaveLocal,
     handleSaveGlobal,
     resetSettings,
     handleSectionReset,
@@ -193,6 +194,24 @@ export function SiteCustomizer() {
 
   const fetchBusinessData = useCallback(async () => {
     if (!slug) return;
+    if (typeof window !== "undefined") {
+      const skipBank = sessionStorage.getItem("personalizacao_skip_bank");
+      const cachedBusiness = sessionStorage.getItem("personalizacao_business");
+      if (skipBank && cachedBusiness) {
+        try {
+          const businessData = JSON.parse(cachedBusiness) as Business;
+          setBusinesses([businessData]);
+        } catch (err) {
+          console.warn(">>> [CUSTOMIZER_CACHE] Cache inválido:", err);
+        }
+        sessionStorage.removeItem("personalizacao_skip_bank");
+        setIsLoading(false);
+        return;
+      }
+      if (skipBank) {
+        sessionStorage.removeItem("personalizacao_skip_bank");
+      }
+    }
     setIsLoading(true);
     setError(null);
     try {
@@ -210,6 +229,12 @@ export function SiteCustomizer() {
 
         if (businessData) {
           setBusinesses([businessData]);
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem(
+              "personalizacao_business",
+              JSON.stringify(businessData),
+            );
+          }
 
           if (businessData.id) {
             await fetchCustomizationRef.current(businessData.id);
@@ -359,12 +384,34 @@ export function SiteCustomizer() {
     onSectionReset: handleSectionReset,
     pageVisibility,
     onPageVisibilityChange: handlePageVisibilityChange,
+    onSaveLocal: handleSaveLocal,
     onSaveGlobal: handleSaveGlobal,
     isSaving,
     hasUnsavedGlobalChanges,
     pages,
     sections,
   };
+
+  const shouldSaveLocal =
+    hasUnsavedGlobalChanges ||
+    hasHeroChanges ||
+    hasAboutHeroChanges ||
+    hasStoryChanges ||
+    hasTeamChanges ||
+    hasTestimonialsChanges ||
+    hasFontChanges ||
+    hasColorChanges ||
+    hasServicesChanges ||
+    hasValuesChanges ||
+    hasGalleryChanges ||
+    hasCTAChanges ||
+    hasHeaderChanges ||
+    hasFooterChanges ||
+    hasBookingServiceChanges ||
+    hasBookingDateChanges ||
+    hasBookingTimeChanges ||
+    hasBookingFormChanges ||
+    hasBookingConfirmationChanges;
 
   if (isLoading || isConfigFetching) {
     return (
@@ -403,6 +450,20 @@ export function SiteCustomizer() {
             <Button
               variant="ghost"
               size="icon"
+              onClick={() => {
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem("personalizacao_skip_bank", "1");
+                  if (businesses[0]) {
+                    sessionStorage.setItem(
+                      "personalizacao_business",
+                      JSON.stringify(businesses[0]),
+                    );
+                  }
+                }
+                if (shouldSaveLocal) {
+                  handleSaveLocal();
+                }
+              }}
               className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground shrink-0"
               title="Voltar ao Dashboard"
             >

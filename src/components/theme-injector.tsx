@@ -8,6 +8,7 @@ import {
   type FontSettings,
   getColorSettings,
   getFontSettings,
+  getStorageKey,
 } from "@/lib/booking-data";
 import type {
   LayoutGlobalSettings,
@@ -49,12 +50,12 @@ export function ThemeInjector() {
       return;
     }
 
-    // 1. Carregamento Inicial com Prioridade de API
+    // 1. Carregamento Inicial: Prioridade para Rascunhos Locais no Editor
     const loadSettings = () => {
       if (isLoading) return;
 
       if (studio?.config) {
-        // Prioridade Absoluta: Dados da API/Banco
+        // Agora verificamos rascunhos locais ANTES dos dados da API para manter a edição fluida
         const config = studio.config as SiteConfigData;
 
         // Mapeamento flexível para suportar diferentes estruturas de config (camelCase ou snake_case)
@@ -62,31 +63,43 @@ export function ThemeInjector() {
           | LayoutGlobalSettings
           | undefined;
         if (layoutGlobal) {
-          console.log(
-            ">>> [LAYOUT_SYNC] Dados do Hero carregados do banco:",
-            layoutGlobal.hero,
-          );
           window.dispatchEvent(new Event("DataReady"));
         }
+
         const apiColors =
           config.colors || layoutGlobal?.siteColors || layoutGlobal?.cores_base;
         const apiFonts =
           config.typography || config.theme || layoutGlobal?.fontes;
 
-        if (apiColors && Object.keys(apiColors).length > 0) {
+        // Verificar se existem rascunhos no localStorage
+        const hasLocalColors =
+          typeof window !== "undefined" &&
+          localStorage.getItem(getStorageKey("colorSettings")) !== null;
+        const hasLocalFonts =
+          typeof window !== "undefined" &&
+          localStorage.getItem(getStorageKey("fontSettings")) !== null;
+
+        if (hasLocalColors) {
+          console.log(
+            "[THEME_AUTO_APPLY] Usando RASCUNHO LOCAL de cores (Prioridade Editor)",
+          );
+          setColors(getColorSettings());
+        } else if (apiColors && Object.keys(apiColors).length > 0) {
           console.log(
             `[THEME_AUTO_APPLY] Cores do banco aplicadas no carregamento inicial: ${apiColors.primary || "#N/A"}`,
             apiColors,
           );
           setColors(apiColors);
         } else {
-          console.warn(
-            "[THEME_AUTO_APPLY] Config presente, mas apiColors vazio. Aplicando fallback padrão no carregamento.",
-          );
           setColors(getColorSettings());
         }
 
-        if (apiFonts && Object.keys(apiFonts).length > 0) {
+        if (hasLocalFonts) {
+          console.log(
+            "[THEME_AUTO_APPLY] Usando RASCUNHO LOCAL de fontes (Prioridade Editor)",
+          );
+          setFonts(getFontSettings());
+        } else if (apiFonts && Object.keys(apiFonts).length > 0) {
           setFonts(apiFonts);
         } else {
           setFonts(getFontSettings());

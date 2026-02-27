@@ -1,0 +1,1077 @@
+Observamos que você está enfrentando um problema de "flash" ou reversão das cores dos cards de serviço ao navegar no editor. O problema parece ser que, após editar e voltar para a visualização geral, as configurações voltam para as cores do banco. Isso sugere que os estados ativos (heroSettings, servicesSettings, etc.) estão sendo sobrescritos em algum momento após a edição.
+
+Analisando os arquivos fornecidos, identifiquei que a lógica de carregamento de dados (loadExternalConfig) está sendo chamada em momentos indesejados, e ela pode estar redefinindo os estados ativos com base nos dados do servidor, mesmo quando existem rascunhos locais. Além disso, o handleSaveGlobal no use-editor-api.ts faz uma nova chamada ao servidor após salvar e recarrega a configuração, o que também pode causar esse comportamento.
+
+Vamos propor uma solução robusta: garantir que os estados ativos (como servicesSettings) NUNCA sejam alterados por loadExternalConfig se já existir um rascunho local. No código atual, loadExternalConfig já faz essa verificação (usa hasLocalDraft para decidir se usa o draft ou o dado do servidor), mas pode haver um problema de sincronização: talvez hasLocalDraft esteja retornando false em algum momento porque o rascunho foi removido acidentalmente, ou porque a chave do localStorage mudou. Outra possibilidade é que, após o salvamento, o loadExternalConfig seja chamado com dados do servidor e, por algum motivo, o hasLocalDraft retorne false para a seção editada, fazendo com que o dado do servidor substitua o rascunho.
+
+Vamos reforçar a lógica:
+
+Modificar loadExternalConfig para que nunca atualize os estados ativos se existir um rascunho local.** Isso já está implementado, mas podemos garantir que, além de verificar hasLocalDraft, também verifiquemos se o valor atual do estado ativo difere do padrão ou do servidor, mas isso é complexo. Uma abordagem mais simples é: loadExternalConfig só atualiza os estados lastSaved* e os estados ativos são atualizados exclusivamente pelos handleUpdate* e handleApply*. O carregamento inicial deve ser feito de forma separada, como sugeri anteriormente.
+
+Eliminar a chamada a loadExternalConfig dentro de handleSaveGlobal. Isso evita que, após salvar, os dados do servidor recarregados sobrescrevam os rascunhos.
+
+Garantir que o useEffect inicial carregue os rascunhos e os dados do servidor apenas uma vez, e que os rascunhos tenham precedência.
+
+Vou propor alterações específicas nos arquivos, focando no use-site-editor.ts e use-editor-api.ts. Como você já tentou algumas abordagens e ainda não funcionou, precisamos ser mais radicais: separar completamente o fluxo de "dados salvos" (lastSaved) de "dados de edição" (settings). Isso já está em parte implementado, mas a função loadExternalConfig ainda mexe nos settings quando não há draft, o que pode causar problemas se a ordem de execução for inesperada.
+
+Proposta de solução (passo a passo)
+1. Em use-editor-api.ts, remover o bloco que recarrega a configuração após salvar.
+Conforme sugeri anteriormente, remova o trecho que faz getCustomization e loadExternalConfig novamente. Isso evita que, após salvar, uma nova configuração seja carregada e possivelmente sobrescreva os settings ativos.
+
+2. Em use-site-editor.ts, modificar loadExternalConfig para NÃO alterar os estados ativos (settings) em nenhuma circunstância.
+Em vez disso, ela deve apenas atualizar os estados lastSaved*. Os settings ativos serão gerenciados pelo useEffect inicial e pelas ações do usuário (handlers). Se não houver rascunho, o useEffect inicial já carregará os dados do servidor para os settings, e depois loadExternalConfig só atualizará lastSaved* para referência futura.
+
+Portanto, vamos reescrever loadExternalConfig para ser uma função que:
+
+Extrai os dados do servidor.
+
+Atualiza os lastSaved*.
+
+Dispara um evento ou algo para sinalizar que os dados do servidor foram atualizados (opcional).
+
+3. Ajustar o useEffect inicial para carregar os rascunhos e, na ausência deles, os dados do servidor, salvando no localStorage.
+Já temos um useEffect que faz isso, mas precisamos garantir que ele seja executado apenas uma vez e que use os dados do servidor disponíveis em studio?.config.
+
+4. Adicionar um novo useEffect que reaja a mudanças em lastSaved* e, para seções sem rascunho, atualize os settings ativos com os novos valores do servidor (caso o servidor tenha sido atualizado por outra aba/usuário). Isso é útil para manter a consistência.
+5. Garantir que o envio de mensagens para o iframe seja feito sempre que os settings ativos mudarem (já existem vários useEffect para isso).
+Implementação
+Vou fornecer o código revisado para os pontos críticos.
+
+Arquivo use-editor-api.ts (trecho do handleSaveGlobal)
+Remova o bloco try-catch que recarrega os dados:
+
+typescript
+// Dentro de handleSaveGlobal, após o await siteCustomizerService.saveCustomization...
+// Remova todo este bloco:
+
+// try {
+//   const fresh = await siteCustomizerService.getCustomization(companyId);
+//   if (fresh) {
+//     loadExternalConfig(fresh as unknown as Record<string, unknown>);
+//     const layoutGlobal = fresh.layoutGlobal || fresh.layout_global;
+//     const freshColors =
+//       fresh.colors ||
+//       layoutGlobal?.siteColors ||
+//       layoutGlobal?.cores_base;
+//     const freshFonts =
+//       fresh.theme || fresh.typography || layoutGlobal?.fontes;
+//
+//     if (iframeRef.current?.contentWindow) {
+//       if (freshColors) {
+//         iframeRef.current.contentWindow.postMessage(
+//           { type: "UPDATE_COLORS", settings: freshColors },
+//           "*",
+//         );
+//       }
+//       if (freshFonts) {
+//         iframeRef.current.contentWindow.postMessage(
+//           { type: "UPDATE_TYPOGRAPHY", settings: freshFonts },
+//           "*",
+//         );
+//       }
+//     }
+//   }
+// } catch (reloadErr) {
+//   console.warn(
+//     ">>> [ADMIN_WARN] Falha ao recarregar dados do banco após salvar:",
+//     reloadErr,
+//   );
+// }
+Arquivo use-site-editor.ts - Reescrever loadExternalConfig
+Substitua a implementação atual por:
+
+typescript
+const loadExternalConfig = useCallback(
+  (config: Record<string, unknown>) => {
+    if (!config) return;
+
+    const layoutGlobal = (config.layoutGlobal || config.layout_global) as
+      | Record<string, unknown>
+      | undefined;
+
+    const data = {
+      hero: (layoutGlobal?.hero || config.hero) as HeroSettings | undefined,
+      aboutHero: (layoutGlobal?.aboutHero || config.aboutHero) as
+        | HeroSettings
+        | undefined,
+      story: (layoutGlobal?.story || config.story) as
+        | StorySettings
+        | undefined,
+      team: (layoutGlobal?.team || config.team) as TeamSettings | undefined,
+      testimonials: (layoutGlobal?.testimonials || config.testimonials) as
+        | TestimonialsSettings
+        | undefined,
+      services: (layoutGlobal?.services || config.services) as
+        | ServicesSettings
+        | undefined,
+      values: (layoutGlobal?.values || config.values) as
+        | ValuesSettings
+        | undefined,
+      gallery: (layoutGlobal?.gallery || config.gallery) as
+        | GallerySettings
+        | undefined,
+      cta: (layoutGlobal?.cta || config.cta) as CTASettings | undefined,
+      header: (layoutGlobal?.header || config.header) as
+        | HeaderSettings
+        | undefined,
+      footer: (layoutGlobal?.footer || config.footer) as
+        | FooterSettings
+        | undefined,
+      colors: (layoutGlobal?.siteColors ||
+        layoutGlobal?.cores_base ||
+        config.colors) as ColorSettings | undefined,
+      theme: (layoutGlobal?.fontes || config.theme || config.typography) as
+        | FontSettings
+        | undefined,
+      visibleSections: (layoutGlobal?.visibleSections ||
+        config.visibleSections) as Record<string, boolean> | undefined,
+      pageVisibility: (layoutGlobal?.pageVisibility ||
+        config.pageVisibility) as Record<string, boolean> | undefined,
+      bookingSteps: config.bookingSteps as
+        | {
+            service?: Record<string, unknown>;
+            date?: Record<string, unknown>;
+            time?: Record<string, unknown>;
+            form?: Record<string, unknown>;
+            confirmation?: Record<string, unknown>;
+          }
+        | undefined,
+    };
+
+    // Atualiza apenas os lastSaved
+    if (data.hero) setLastSavedHero(data.hero);
+    if (data.aboutHero) setLastSavedAboutHero(data.aboutHero);
+    if (data.story) setLastSavedStory(data.story);
+    if (data.team) setLastSavedTeam(data.team);
+    if (data.testimonials) setLastSavedTestimonials(data.testimonials);
+    if (data.theme) setLastSavedFont(data.theme);
+    if (data.colors) setLastSavedColor(data.colors);
+    if (data.services) setLastSavedServices(data.services);
+    if (data.values) setLastSavedValues(data.values);
+    if (data.gallery) setLastSavedGallery(data.gallery);
+    if (data.cta) setLastSavedCTA(data.cta);
+    if (data.header) setLastSavedHeader(data.header);
+    if (data.footer) setLastSavedFooter(data.footer);
+    if (data.pageVisibility) setLastSavedPageVisibility(data.pageVisibility);
+    if (data.visibleSections) setLastSavedVisibleSections(data.visibleSections);
+
+    if (data.bookingSteps) {
+      const steps = data.bookingSteps;
+      if (steps.service) setLastSavedBookingService(steps.service);
+      if (steps.date) setLastSavedBookingDate(steps.date);
+      if (steps.time) setLastSavedBookingTime(steps.time);
+      if (steps.form) setLastSavedBookingForm(steps.form);
+      if (steps.confirmation) setLastSavedBookingConfirmation(steps.confirmation);
+    }
+
+    // Dispara evento para que outros efeitos possam reagir, se necessário
+    window.dispatchEvent(new Event("DataReady"));
+  },
+  [
+    setLastSavedHero,
+    setLastSavedAboutHero,
+    setLastSavedStory,
+    setLastSavedTeam,
+    setLastSavedTestimonials,
+    setLastSavedFont,
+    setLastSavedColor,
+    setLastSavedServices,
+    setLastSavedValues,
+    setLastSavedGallery,
+    setLastSavedCTA,
+    setLastSavedHeader,
+    setLastSavedFooter,
+    setLastSavedPageVisibility,
+    setLastSavedVisibleSections,
+    setLastSavedBookingService,
+    setLastSavedBookingDate,
+    setLastSavedBookingTime,
+    setLastSavedBookingForm,
+    setLastSavedBookingConfirmation,
+  ]
+);
+Arquivo use-site-editor.ts - Ajustar o useEffect inicial
+Precisamos de um useEffect que carregue os rascunhos e, na falta deles, os dados do servidor, e também carregue os lastSaved a partir do servidor. Já temos um useEffect que faz isso, mas ele também chama loadExternalConfig depois de aplicar os rascunhos. Isso está correto, mas precisamos garantir que a ordem seja: primeiro aplica rascunhos, depois carrega lastSaved.
+
+Vamos reescrever o useEffect inicial de forma mais organizada:
+
+typescript
+useEffect(() => {
+  // Carrega rascunhos
+  const drafts = loadLocalDrafts();
+
+  // Função auxiliar para aplicar valor, priorizando rascunho
+  const applyWithDraft = <T>(
+    draftValue: T | undefined,
+    serverValue: T | undefined,
+    setter: (value: T) => void,
+    lastAppliedSetter: (value: T) => void,
+    saveToLocal: (value: T) => void
+  ) => {
+    if (draftValue !== undefined) {
+      setter(draftValue);
+      lastAppliedSetter(draftValue);
+      // Não salva novamente, pois já está no localStorage
+    } else if (serverValue !== undefined) {
+      setter(serverValue);
+      lastAppliedSetter(serverValue);
+      saveToLocal(serverValue); // persiste como fallback
+    }
+  };
+
+  // Extrai dados do servidor
+  const cfg = studio?.config as Record<string, unknown> | undefined;
+  const layoutGlobal = (cfg?.layoutGlobal || cfg?.layout_global) as
+    | Record<string, unknown>
+    | undefined;
+
+  const server = {
+    hero: (layoutGlobal?.hero || cfg?.hero) as HeroSettings | undefined,
+    aboutHero: (layoutGlobal?.aboutHero || cfg?.aboutHero) as HeroSettings | undefined,
+    story: (layoutGlobal?.story || cfg?.story) as StorySettings | undefined,
+    team: (layoutGlobal?.team || cfg?.team) as TeamSettings | undefined,
+    testimonials: (layoutGlobal?.testimonials || cfg?.testimonials) as
+      | TestimonialsSettings
+      | undefined,
+    theme: (layoutGlobal?.fontes || cfg?.theme || cfg?.typography) as
+      | FontSettings
+      | undefined,
+    colors: (layoutGlobal?.siteColors || layoutGlobal?.cores_base || cfg?.colors) as
+      | ColorSettings
+      | undefined,
+    services: (layoutGlobal?.services || cfg?.services) as ServicesSettings | undefined,
+    values: (layoutGlobal?.values || cfg?.values) as ValuesSettings | undefined,
+    gallery: (layoutGlobal?.gallery || cfg?.gallery) as GallerySettings | undefined,
+    cta: (layoutGlobal?.cta || cfg?.cta) as CTASettings | undefined,
+    header: (layoutGlobal?.header || cfg?.header) as HeaderSettings | undefined,
+    footer: (layoutGlobal?.footer || cfg?.footer) as FooterSettings | undefined,
+    pageVisibility: (layoutGlobal?.pageVisibility || cfg?.pageVisibility) as
+      | Record<string, boolean>
+      | undefined,
+    visibleSections: (layoutGlobal?.visibleSections || cfg?.visibleSections) as
+      | Record<string, boolean>
+      | undefined,
+    bookingSteps: cfg?.bookingSteps as
+      | {
+          service?: Record<string, unknown>;
+          date?: Record<string, unknown>;
+          time?: Record<string, unknown>;
+          form?: Record<string, unknown>;
+          confirmation?: Record<string, unknown>;
+        }
+      | undefined,
+  };
+
+  // Aplica os valores
+  applyWithDraft(
+    drafts.heroSettings,
+    server.hero,
+    setHeroSettings,
+    setLastAppliedHero,
+    saveHeroSettings
+  );
+  applyWithDraft(
+    drafts.aboutHeroSettings,
+    server.aboutHero,
+    setAboutHeroSettings,
+    setLastAppliedAboutHero,
+    saveAboutHeroSettings
+  );
+  applyWithDraft(
+    drafts.storySettings,
+    server.story,
+    setStorySettings,
+    setLastAppliedStory,
+    saveStorySettings
+  );
+  applyWithDraft(
+    drafts.teamSettings,
+    server.team,
+    setTeamSettings,
+    setLastAppliedTeam,
+    saveTeamSettings
+  );
+  applyWithDraft(
+    drafts.testimonialsSettings,
+    server.testimonials,
+    setTestimonialsSettings,
+    setLastAppliedTestimonials,
+    saveTestimonialsSettings
+  );
+  applyWithDraft(
+    drafts.fontSettings,
+    server.theme,
+    setFontSettings,
+    setLastAppliedFont,
+    saveFontSettings
+  );
+  applyWithDraft(
+    drafts.colorSettings,
+    server.colors,
+    setColorSettings,
+    setLastAppliedColor,
+    saveColorSettings
+  );
+  applyWithDraft(
+    drafts.servicesSettings,
+    server.services,
+    setServicesSettings,
+    setLastAppliedServices,
+    saveServicesSettings
+  );
+  applyWithDraft(
+    drafts.valuesSettings,
+    server.values,
+    setValuesSettings,
+    setLastAppliedValues,
+    saveValuesSettings
+  );
+  applyWithDraft(
+    drafts.gallerySettings,
+    server.gallery,
+    setGallerySettings,
+    setLastAppliedGallery,
+    saveGallerySettings
+  );
+  applyWithDraft(
+    drafts.ctaSettings,
+    server.cta,
+    setCTASettings,
+    setLastAppliedCTA,
+    saveCTASettings
+  );
+  applyWithDraft(
+    drafts.headerSettings,
+    server.header,
+    setHeaderSettings,
+    setLastAppliedHeader,
+    saveHeaderSettings
+  );
+  applyWithDraft(
+    drafts.footerSettings,
+    server.footer,
+    setFooterSettings,
+    setLastAppliedFooter,
+    saveFooterSettings
+  );
+
+  // Booking steps
+  applyWithDraft(
+    drafts.bookingServiceSettings,
+    server.bookingSteps?.service,
+    setBookingServiceSettings,
+    setLastAppliedBookingService,
+    saveBookingServiceSettings
+  );
+  applyWithDraft(
+    drafts.bookingDateSettings,
+    server.bookingSteps?.date,
+    setBookingDateSettings,
+    setLastAppliedBookingDate,
+    saveBookingDateSettings
+  );
+  applyWithDraft(
+    drafts.bookingTimeSettings,
+    server.bookingSteps?.time,
+    setBookingTimeSettings,
+    setLastAppliedBookingTime,
+    saveBookingTimeSettings
+  );
+  applyWithDraft(
+    drafts.bookingFormSettings,
+    server.bookingSteps?.form,
+    setBookingFormSettings,
+    setLastAppliedBookingForm,
+    saveBookingFormSettings
+  );
+  applyWithDraft(
+    drafts.bookingConfirmationSettings,
+    server.bookingSteps?.confirmation,
+    setBookingConfirmationSettings,
+    setLastAppliedBookingConfirmation,
+    saveBookingConfirmationSettings
+  );
+
+  // Page visibility (não tem lastApplied)
+  if (drafts.pageVisibility !== undefined) {
+    setPageVisibility(drafts.pageVisibility);
+  } else if (server.pageVisibility) {
+    setPageVisibility(server.pageVisibility);
+    savePageVisibility(server.pageVisibility);
+  }
+
+  if (drafts.visibleSections !== undefined) {
+    setVisibleSections(drafts.visibleSections);
+  } else if (server.visibleSections) {
+    setVisibleSections(server.visibleSections);
+    saveVisibleSections(server.visibleSections);
+  }
+
+  // Agora carrega os lastSaved a partir do servidor (sem mexer nos settings ativos)
+  if (cfg) {
+    loadExternalConfig(cfg);
+  }
+}, [
+  // dependências: todas os setters e funções de save, além de studio, loadExternalConfig, loadLocalDrafts
+  // ... (lista enorme, mas deve ser igual à que já existe)
+]);
+4. Adicionar efeito para sincronizar seções sem rascunho com atualizações do servidor
+Isso garantirá que, se o servidor for atualizado (por exemplo, em outra aba), as seções que não têm rascunho local sejam atualizadas.
+
+typescript
+useEffect(() => {
+  // Atualiza settings ativos para seções sem rascunho quando lastSaved mudar
+  const updateIfNoDraft = <T>(
+    draftKey: string,
+    serverValue: T | undefined,
+    setter: (value: T) => void,
+    lastAppliedSetter: (value: T) => void,
+    saveToLocal: (value: T) => void
+  ) => {
+    if (!hasLocalDraft(draftKey) && serverValue !== undefined) {
+      setter(serverValue);
+      lastAppliedSetter(serverValue);
+      saveToLocal(serverValue);
+    }
+  };
+
+  updateIfNoDraft(
+    "heroSettings",
+    lastSavedHero,
+    setHeroSettings,
+    setLastAppliedHero,
+    saveHeroSettings
+  );
+  updateIfNoDraft(
+    "aboutHeroSettings",
+    lastSavedAboutHero,
+    setAboutHeroSettings,
+    setLastAppliedAboutHero,
+    saveAboutHeroSettings
+  );
+  updateIfNoDraft(
+    "storySettings",
+    lastSavedStory,
+    setStorySettings,
+    setLastAppliedStory,
+    saveStorySettings
+  );
+  updateIfNoDraft(
+    "teamSettings",
+    lastSavedTeam,
+    setTeamSettings,
+    setLastAppliedTeam,
+    saveTeamSettings
+  );
+  updateIfNoDraft(
+    "testimonialsSettings",
+    lastSavedTestimonials,
+    setTestimonialsSettings,
+    setLastAppliedTestimonials,
+    saveTestimonialsSettings
+  );
+  updateIfNoDraft(
+    "fontSettings",
+    lastSavedFont,
+    setFontSettings,
+    setLastAppliedFont,
+    saveFontSettings
+  );
+  updateIfNoDraft(
+    "colorSettings",
+    lastSavedColor,
+    setColorSettings,
+    setLastAppliedColor,
+    saveColorSettings
+  );
+  updateIfNoDraft(
+    "servicesSettings",
+    lastSavedServices,
+    setServicesSettings,
+    setLastAppliedServices,
+    saveServicesSettings
+  );
+  updateIfNoDraft(
+    "valuesSettings",
+    lastSavedValues,
+    setValuesSettings,
+    setLastAppliedValues,
+    saveValuesSettings
+  );
+  updateIfNoDraft(
+    "gallerySettings",
+    lastSavedGallery,
+    setGallerySettings,
+    setLastAppliedGallery,
+    saveGallerySettings
+  );
+  updateIfNoDraft(
+    "ctaSettings",
+    lastSavedCTA,
+    setCTASettings,
+    setLastAppliedCTA,
+    saveCTASettings
+  );
+  updateIfNoDraft(
+    "headerSettings",
+    lastSavedHeader,
+    setHeaderSettings,
+    setLastAppliedHeader,
+    saveHeaderSettings
+  );
+  updateIfNoDraft(
+    "footerSettings",
+    lastSavedFooter,
+    setFooterSettings,
+    setLastAppliedFooter,
+    saveFooterSettings
+  );
+  updateIfNoDraft(
+    "bookingServiceSettings",
+    lastSavedBookingService,
+    setBookingServiceSettings,
+    setLastAppliedBookingService,
+    saveBookingServiceSettings
+  );
+  updateIfNoDraft(
+    "bookingDateSettings",
+    lastSavedBookingDate,
+    setBookingDateSettings,
+    setLastAppliedBookingDate,
+    saveBookingDateSettings
+  );
+  updateIfNoDraft(
+    "bookingTimeSettings",
+    lastSavedBookingTime,
+    setBookingTimeSettings,
+    setLastAppliedBookingTime,
+    saveBookingTimeSettings
+  );
+  updateIfNoDraft(
+    "bookingFormSettings",
+    lastSavedBookingForm,
+    setBookingFormSettings,
+    setLastAppliedBookingForm,
+    saveBookingFormSettings
+  );
+  updateIfNoDraft(
+    "bookingConfirmationSettings",
+    lastSavedBookingConfirmation,
+    setBookingConfirmationSettings,
+    setLastAppliedBookingConfirmation,
+    saveBookingConfirmationSettings
+  );
+
+  // Page visibility e visibleSections não têm lastApplied, mas podemos tratar de forma similar
+  if (!hasLocalDraft("pageVisibility") && lastSavedPageVisibility) {
+    setPageVisibility(lastSavedPageVisibility);
+    savePageVisibility(lastSavedPageVisibility);
+  }
+  if (!hasLocalDraft("visibleSections") && lastSavedVisibleSections) {
+    setVisibleSections(lastSavedVisibleSections);
+    saveVisibleSections(lastSavedVisibleSections);
+  }
+}, [
+  hasLocalDraft,
+  lastSavedHero,
+  lastSavedAboutHero,
+  lastSavedStory,
+  lastSavedTeam,
+  lastSavedTestimonials,
+  lastSavedFont,
+  lastSavedColor,
+  lastSavedServices,
+  lastSavedValues,
+  lastSavedGallery,
+  lastSavedCTA,
+  lastSavedHeader,
+  lastSavedFooter,
+  lastSavedBookingService,
+  lastSavedBookingDate,
+  lastSavedBookingTime,
+  lastSavedBookingForm,
+  lastSavedBookingConfirmation,
+  lastSavedPageVisibility,
+  lastSavedVisibleSections,
+  setHeroSettings,
+  setAboutHeroSettings,
+  setStorySettings,
+  setTeamSettings,
+  setTestimonialsSettings,
+  setFontSettings,
+  setColorSettings,
+  setServicesSettings,
+  setValuesSettings,
+  setGallerySettings,
+  setCTASettings,
+  setHeaderSettings,
+  setFooterSettings,
+  setBookingServiceSettings,
+  setBookingDateSettings,
+  setBookingTimeSettings,
+  setBookingFormSettings,
+  setBookingConfirmationSettings,
+  setPageVisibility,
+  setVisibleSections,
+  setLastAppliedHero,
+  setLastAppliedAboutHero,
+  setLastAppliedStory,
+  setLastAppliedTeam,
+  setLastAppliedTestimonials,
+  setLastAppliedFont,
+  setLastAppliedColor,
+  setLastAppliedServices,
+  setLastAppliedValues,
+  setLastAppliedGallery,
+  setLastAppliedCTA,
+  setLastAppliedHeader,
+  setLastAppliedFooter,
+  setLastAppliedBookingService,
+  setLastAppliedBookingDate,
+  setLastAppliedBookingTime,
+  setLastAppliedBookingForm,
+  setLastAppliedBookingConfirmation,
+  saveHeroSettings,
+  saveAboutHeroSettings,
+  saveStorySettings,
+  saveTeamSettings,
+  saveTestimonialsSettings,
+  saveFontSettings,
+  saveColorSettings,
+  saveServicesSettings,
+  saveValuesSettings,
+  saveGallerySettings,
+  saveCTASettings,
+  saveHeaderSettings,
+  saveFooterSettings,
+  saveBookingServiceSettings,
+  saveBookingDateSettings,
+  saveBookingTimeSettings,
+  saveBookingFormSettings,
+  saveBookingConfirmationSettings,
+  savePageVisibility,
+  saveVisibleSections,
+]);
+5. Garantir que o timeout de postMessage use os valores atuais
+No final de loadExternalConfig, há um setTimeout que envia mensagens para o iframe. Esse timeout usa resolvedX que são calculados com base em hasLocalDraft e drafts. Como loadExternalConfig não altera os settings ativos, resolvedX ainda refletirá a mesclagem correta (draft + server). Portanto, podemos mantê-lo, mas talvez seja melhor mover essa lógica para um efeito separado que reaja a mudanças nos settings ativos, mas isso já existe (vários useEffect para cada seção). Podemos remover o timeout e confiar nesses efeitos. No entanto, o timeout pode ser útil para garantir que tudo seja enviado após o carregamento inicial. Vamos mantê-lo por enquanto, mas ajustar para usar os valores atuais dos settings (que já são os mesmos que resolvedX). Na verdade, resolvedX é calculado da mesma forma que os settings ativos foram definidos no useEffect inicial, então é equivalente.
+
+O problema pode ser que, quando loadExternalConfig é chamada após uma ação do usuário (ex.: após salvar), o timeout envia mensagens com os valores do servidor (que podem ser diferentes dos settings atuais se houver rascunho). Como já removemos a chamada a loadExternalConfig após salvar, isso não deve mais acontecer. Mas ainda pode haver outras chamadas a loadExternalConfig (por exemplo, quando o studio.config é atualizado). Nesse caso, o timeout pode enviar mensagens com os valores do servidor, sobrescrevendo visualmente o iframe. Para evitar isso, podemos condicionar o envio das mensagens no timeout a uma verificação: só enviar se não houver rascunho para aquela seção. Mas isso complica.
+
+Uma solução mais simples: remover o timeout de loadExternalConfig e confiar nos useEffect individuais que enviam as atualizações quando os settings mudam. Como os settings ativos já estão corretos (com rascunhos aplicados), esses efeitos garantirão que o iframe receba as configurações corretas. O timeout é redundante e pode causar problemas se enviar dados antigos.
+
+Portanto, remova o setTimeout dentro de loadExternalConfig. Ele está no final da função atual. Simplesmente delete esse bloco.
+
+Resumo das alterações
+Em use-editor-api.ts, remova o bloco que recarrega a configuração após salvar.
+
+Em use-site-editor.ts, reescreva loadExternalConfig para atualizar apenas lastSaved*.
+
+Reescreva o useEffect inicial para aplicar rascunhos e, na falta deles, dados do servidor.
+
+Adicione um novo useEffect para sincronizar seções sem rascunho com atualizações do servidor.
+
+Remova o setTimeout dentro de loadExternalConfig.
+
+Essas alterações devem garantir que os rascunhos locais nunca sejam sobrescritos pelos dados do servidor, e que o iframe sempre reflita os valores corretos.
+
+Aplique essas mudanças e teste novamente. Se o problema persistir, pode ser necessário investigar outros pontos, como o comportamento do studio.context ou se há atualizações de configuração vindo de algum outro lugar (ex.: WebSocket, polling). Mas acredito que essas alterações resolverão o problema.
+
+As alterações propostas visam garantir que os rascunhos locais nunca sejam sobrescritos pelos dados do servidor. Siga os passos abaixo para implementar a solução definitiva:
+
+1. Remova a recarga desnecessária no handleSaveGlobal (arquivo use-editor-api.ts)
+Localize o bloco try que faz getCustomization e chama loadExternalConfig novamente e remova-o completamente. Isso impede que, após salvar, os dados do banco recarregados sobrescrevam os rascunhos.
+
+2. Reescreva loadExternalConfig para atualizar apenas os estados lastSaved* (arquivo use-site-editor.ts)
+Substitua a implementação atual por uma versão que não modifica os estados ativos (heroSettings, servicesSettings, etc.). Ela deve apenas atualizar as referências do que está salvo no banco.
+
+typescript
+const loadExternalConfig = useCallback(
+  (config: Record<string, unknown>) => {
+    if (!config) return;
+
+    const layoutGlobal = (config.layoutGlobal || config.layout_global) as
+      | Record<string, unknown>
+      | undefined;
+
+    const data = {
+      hero: (layoutGlobal?.hero || config.hero) as HeroSettings | undefined,
+      aboutHero: (layoutGlobal?.aboutHero || config.aboutHero) as HeroSettings | undefined,
+      story: (layoutGlobal?.story || config.story) as StorySettings | undefined,
+      team: (layoutGlobal?.team || config.team) as TeamSettings | undefined,
+      testimonials: (layoutGlobal?.testimonials || config.testimonials) as
+        | TestimonialsSettings
+        | undefined,
+      services: (layoutGlobal?.services || config.services) as ServicesSettings | undefined,
+      values: (layoutGlobal?.values || config.values) as ValuesSettings | undefined,
+      gallery: (layoutGlobal?.gallery || config.gallery) as GallerySettings | undefined,
+      cta: (layoutGlobal?.cta || config.cta) as CTASettings | undefined,
+      header: (layoutGlobal?.header || config.header) as HeaderSettings | undefined,
+      footer: (layoutGlobal?.footer || config.footer) as FooterSettings | undefined,
+      colors: (layoutGlobal?.siteColors ||
+        layoutGlobal?.cores_base ||
+        config.colors) as ColorSettings | undefined,
+      theme: (layoutGlobal?.fontes || config.theme || config.typography) as
+        | FontSettings
+        | undefined,
+      visibleSections: (layoutGlobal?.visibleSections ||
+        config.visibleSections) as Record<string, boolean> | undefined,
+      pageVisibility: (layoutGlobal?.pageVisibility ||
+        config.pageVisibility) as Record<string, boolean> | undefined,
+      bookingSteps: config.bookingSteps as
+        | {
+            service?: Record<string, unknown>;
+            date?: Record<string, unknown>;
+            time?: Record<string, unknown>;
+            form?: Record<string, unknown>;
+            confirmation?: Record<string, unknown>;
+          }
+        | undefined,
+    };
+
+    // Atualiza apenas lastSaved
+    if (data.hero) setLastSavedHero(data.hero);
+    if (data.aboutHero) setLastSavedAboutHero(data.aboutHero);
+    if (data.story) setLastSavedStory(data.story);
+    if (data.team) setLastSavedTeam(data.team);
+    if (data.testimonials) setLastSavedTestimonials(data.testimonials);
+    if (data.theme) setLastSavedFont(data.theme);
+    if (data.colors) setLastSavedColor(data.colors);
+    if (data.services) setLastSavedServices(data.services);
+    if (data.values) setLastSavedValues(data.values);
+    if (data.gallery) setLastSavedGallery(data.gallery);
+    if (data.cta) setLastSavedCTA(data.cta);
+    if (data.header) setLastSavedHeader(data.header);
+    if (data.footer) setLastSavedFooter(data.footer);
+    if (data.pageVisibility) setLastSavedPageVisibility(data.pageVisibility);
+    if (data.visibleSections) setLastSavedVisibleSections(data.visibleSections);
+
+    if (data.bookingSteps) {
+      const steps = data.bookingSteps;
+      if (steps.service) setLastSavedBookingService(steps.service);
+      if (steps.date) setLastSavedBookingDate(steps.date);
+      if (steps.time) setLastSavedBookingTime(steps.time);
+      if (steps.form) setLastSavedBookingForm(steps.form);
+      if (steps.confirmation) setLastSavedBookingConfirmation(steps.confirmation);
+    }
+
+    // Dispara evento de dados prontos (opcional)
+    window.dispatchEvent(new Event("DataReady"));
+  },
+  [
+    setLastSavedHero,
+    setLastSavedAboutHero,
+    setLastSavedStory,
+    setLastSavedTeam,
+    setLastSavedTestimonials,
+    setLastSavedFont,
+    setLastSavedColor,
+    setLastSavedServices,
+    setLastSavedValues,
+    setLastSavedGallery,
+    setLastSavedCTA,
+    setLastSavedHeader,
+    setLastSavedFooter,
+    setLastSavedPageVisibility,
+    setLastSavedVisibleSections,
+    setLastSavedBookingService,
+    setLastSavedBookingDate,
+    setLastSavedBookingTime,
+    setLastSavedBookingForm,
+    setLastSavedBookingConfirmation,
+  ]
+);
+3. Reestruture o useEffect inicial para aplicar rascunhos primeiro
+Substitua o useEffect que carrega os dados iniciais por este:
+
+typescript
+useEffect(() => {
+  const drafts = loadLocalDrafts();
+
+  const applyWithDraft = <T>(
+    draftValue: T | undefined,
+    serverValue: T | undefined,
+    setter: (value: T) => void,
+    lastAppliedSetter: (value: T) => void,
+    saveToLocal: (value: T) => void
+  ) => {
+    if (draftValue !== undefined) {
+      setter(draftValue);
+      lastAppliedSetter(draftValue);
+    } else if (serverValue !== undefined) {
+      setter(serverValue);
+      lastAppliedSetter(serverValue);
+      saveToLocal(serverValue);
+    }
+  };
+
+  const cfg = studio?.config as Record<string, unknown> | undefined;
+  const layoutGlobal = (cfg?.layoutGlobal || cfg?.layout_global) as
+    | Record<string, unknown>
+    | undefined;
+
+  const server = {
+    hero: (layoutGlobal?.hero || cfg?.hero) as HeroSettings | undefined,
+    aboutHero: (layoutGlobal?.aboutHero || cfg?.aboutHero) as HeroSettings | undefined,
+    story: (layoutGlobal?.story || cfg?.story) as StorySettings | undefined,
+    team: (layoutGlobal?.team || cfg?.team) as TeamSettings | undefined,
+    testimonials: (layoutGlobal?.testimonials || cfg?.testimonials) as
+      | TestimonialsSettings
+      | undefined,
+    theme: (layoutGlobal?.fontes || cfg?.theme || cfg?.typography) as
+      | FontSettings
+      | undefined,
+    colors: (layoutGlobal?.siteColors || layoutGlobal?.cores_base || cfg?.colors) as
+      | ColorSettings
+      | undefined,
+    services: (layoutGlobal?.services || cfg?.services) as ServicesSettings | undefined,
+    values: (layoutGlobal?.values || cfg?.values) as ValuesSettings | undefined,
+    gallery: (layoutGlobal?.gallery || cfg?.gallery) as GallerySettings | undefined,
+    cta: (layoutGlobal?.cta || cfg?.cta) as CTASettings | undefined,
+    header: (layoutGlobal?.header || cfg?.header) as HeaderSettings | undefined,
+    footer: (layoutGlobal?.footer || cfg?.footer) as FooterSettings | undefined,
+    pageVisibility: (layoutGlobal?.pageVisibility || cfg?.pageVisibility) as
+      | Record<string, boolean>
+      | undefined,
+    visibleSections: (layoutGlobal?.visibleSections || cfg?.visibleSections) as
+      | Record<string, boolean>
+      | undefined,
+    bookingSteps: cfg?.bookingSteps as
+      | {
+          service?: Record<string, unknown>;
+          date?: Record<string, unknown>;
+          time?: Record<string, unknown>;
+          form?: Record<string, unknown>;
+          confirmation?: Record<string, unknown>;
+        }
+      | undefined,
+  };
+
+  applyWithDraft(drafts.heroSettings, server.hero, setHeroSettings, setLastAppliedHero, saveHeroSettings);
+  applyWithDraft(drafts.aboutHeroSettings, server.aboutHero, setAboutHeroSettings, setLastAppliedAboutHero, saveAboutHeroSettings);
+  applyWithDraft(drafts.storySettings, server.story, setStorySettings, setLastAppliedStory, saveStorySettings);
+  applyWithDraft(drafts.teamSettings, server.team, setTeamSettings, setLastAppliedTeam, saveTeamSettings);
+  applyWithDraft(drafts.testimonialsSettings, server.testimonials, setTestimonialsSettings, setLastAppliedTestimonials, saveTestimonialsSettings);
+  applyWithDraft(drafts.fontSettings, server.theme, setFontSettings, setLastAppliedFont, saveFontSettings);
+  applyWithDraft(drafts.colorSettings, server.colors, setColorSettings, setLastAppliedColor, saveColorSettings);
+  applyWithDraft(drafts.servicesSettings, server.services, setServicesSettings, setLastAppliedServices, saveServicesSettings);
+  applyWithDraft(drafts.valuesSettings, server.values, setValuesSettings, setLastAppliedValues, saveValuesSettings);
+  applyWithDraft(drafts.gallerySettings, server.gallery, setGallerySettings, setLastAppliedGallery, saveGallerySettings);
+  applyWithDraft(drafts.ctaSettings, server.cta, setCTASettings, setLastAppliedCTA, saveCTASettings);
+  applyWithDraft(drafts.headerSettings, server.header, setHeaderSettings, setLastAppliedHeader, saveHeaderSettings);
+  applyWithDraft(drafts.footerSettings, server.footer, setFooterSettings, setLastAppliedFooter, saveFooterSettings);
+
+  applyWithDraft(drafts.bookingServiceSettings, server.bookingSteps?.service, setBookingServiceSettings, setLastAppliedBookingService, saveBookingServiceSettings);
+  applyWithDraft(drafts.bookingDateSettings, server.bookingSteps?.date, setBookingDateSettings, setLastAppliedBookingDate, saveBookingDateSettings);
+  applyWithDraft(drafts.bookingTimeSettings, server.bookingSteps?.time, setBookingTimeSettings, setLastAppliedBookingTime, saveBookingTimeSettings);
+  applyWithDraft(drafts.bookingFormSettings, server.bookingSteps?.form, setBookingFormSettings, setLastAppliedBookingForm, saveBookingFormSettings);
+  applyWithDraft(drafts.bookingConfirmationSettings, server.bookingSteps?.confirmation, setBookingConfirmationSettings, setLastAppliedBookingConfirmation, saveBookingConfirmationSettings);
+
+  if (drafts.pageVisibility !== undefined) {
+    setPageVisibility(drafts.pageVisibility);
+  } else if (server.pageVisibility) {
+    setPageVisibility(server.pageVisibility);
+    savePageVisibility(server.pageVisibility);
+  }
+
+  if (drafts.visibleSections !== undefined) {
+    setVisibleSections(drafts.visibleSections);
+  } else if (server.visibleSections) {
+    setVisibleSections(server.visibleSections);
+    saveVisibleSections(server.visibleSections);
+  }
+
+  if (cfg) {
+    loadExternalConfig(cfg);
+  }
+}, [
+  studio,
+  loadExternalConfig,
+  loadLocalDrafts,
+  saveHeroSettings,
+  saveAboutHeroSettings,
+  saveStorySettings,
+  saveTeamSettings,
+  saveTestimonialsSettings,
+  saveFontSettings,
+  saveColorSettings,
+  saveServicesSettings,
+  saveValuesSettings,
+  saveGallerySettings,
+  saveCTASettings,
+  saveHeaderSettings,
+  saveFooterSettings,
+  savePageVisibility,
+  saveVisibleSections,
+  saveBookingServiceSettings,
+  saveBookingDateSettings,
+  saveBookingTimeSettings,
+  saveBookingFormSettings,
+  saveBookingConfirmationSettings,
+  setHeroSettings,
+  setAboutHeroSettings,
+  setStorySettings,
+  setTeamSettings,
+  setTestimonialsSettings,
+  setFontSettings,
+  setColorSettings,
+  setServicesSettings,
+  setValuesSettings,
+  setGallerySettings,
+  setCTASettings,
+  setHeaderSettings,
+  setFooterSettings,
+  setBookingServiceSettings,
+  setBookingDateSettings,
+  setBookingTimeSettings,
+  setBookingFormSettings,
+  setBookingConfirmationSettings,
+  setPageVisibility,
+  setVisibleSections,
+  setLastAppliedHero,
+  setLastAppliedAboutHero,
+  setLastAppliedStory,
+  setLastAppliedTeam,
+  setLastAppliedTestimonials,
+  setLastAppliedFont,
+  setLastAppliedColor,
+  setLastAppliedServices,
+  setLastAppliedValues,
+  setLastAppliedGallery,
+  setLastAppliedCTA,
+  setLastAppliedHeader,
+  setLastAppliedFooter,
+  setLastAppliedBookingService,
+  setLastAppliedBookingDate,
+  setLastAppliedBookingTime,
+  setLastAppliedBookingForm,
+  setLastAppliedBookingConfirmation,
+]);
+4. Adicione um efeito para sincronizar seções sem rascunho com atualizações do servidor
+typescript
+useEffect(() => {
+  const updateIfNoDraft = <T>(
+    draftKey: string,
+    serverValue: T | undefined,
+    setter: (value: T) => void,
+    lastAppliedSetter: (value: T) => void,
+    saveToLocal: (value: T) => void
+  ) => {
+    if (!hasLocalDraft(draftKey) && serverValue !== undefined) {
+      setter(serverValue);
+      lastAppliedSetter(serverValue);
+      saveToLocal(serverValue);
+    }
+  };
+
+  updateIfNoDraft("heroSettings", lastSavedHero, setHeroSettings, setLastAppliedHero, saveHeroSettings);
+  updateIfNoDraft("aboutHeroSettings", lastSavedAboutHero, setAboutHeroSettings, setLastAppliedAboutHero, saveAboutHeroSettings);
+  updateIfNoDraft("storySettings", lastSavedStory, setStorySettings, setLastAppliedStory, saveStorySettings);
+  updateIfNoDraft("teamSettings", lastSavedTeam, setTeamSettings, setLastAppliedTeam, saveTeamSettings);
+  updateIfNoDraft("testimonialsSettings", lastSavedTestimonials, setTestimonialsSettings, setLastAppliedTestimonials, saveTestimonialsSettings);
+  updateIfNoDraft("fontSettings", lastSavedFont, setFontSettings, setLastAppliedFont, saveFontSettings);
+  updateIfNoDraft("colorSettings", lastSavedColor, setColorSettings, setLastAppliedColor, saveColorSettings);
+  updateIfNoDraft("servicesSettings", lastSavedServices, setServicesSettings, setLastAppliedServices, saveServicesSettings);
+  updateIfNoDraft("valuesSettings", lastSavedValues, setValuesSettings, setLastAppliedValues, saveValuesSettings);
+  updateIfNoDraft("gallerySettings", lastSavedGallery, setGallerySettings, setLastAppliedGallery, saveGallerySettings);
+  updateIfNoDraft("ctaSettings", lastSavedCTA, setCTASettings, setLastAppliedCTA, saveCTASettings);
+  updateIfNoDraft("headerSettings", lastSavedHeader, setHeaderSettings, setLastAppliedHeader, saveHeaderSettings);
+  updateIfNoDraft("footerSettings", lastSavedFooter, setFooterSettings, setLastAppliedFooter, saveFooterSettings);
+  updateIfNoDraft("bookingServiceSettings", lastSavedBookingService, setBookingServiceSettings, setLastAppliedBookingService, saveBookingServiceSettings);
+  updateIfNoDraft("bookingDateSettings", lastSavedBookingDate, setBookingDateSettings, setLastAppliedBookingDate, saveBookingDateSettings);
+  updateIfNoDraft("bookingTimeSettings", lastSavedBookingTime, setBookingTimeSettings, setLastAppliedBookingTime, saveBookingTimeSettings);
+  updateIfNoDraft("bookingFormSettings", lastSavedBookingForm, setBookingFormSettings, setLastAppliedBookingForm, saveBookingFormSettings);
+  updateIfNoDraft("bookingConfirmationSettings", lastSavedBookingConfirmation, setBookingConfirmationSettings, setLastAppliedBookingConfirmation, saveBookingConfirmationSettings);
+
+  if (!hasLocalDraft("pageVisibility") && lastSavedPageVisibility) {
+    setPageVisibility(lastSavedPageVisibility);
+    savePageVisibility(lastSavedPageVisibility);
+  }
+  if (!hasLocalDraft("visibleSections") && lastSavedVisibleSections) {
+    setVisibleSections(lastSavedVisibleSections);
+    saveVisibleSections(lastSavedVisibleSections);
+  }
+}, [
+  hasLocalDraft,
+  lastSavedHero,
+  lastSavedAboutHero,
+  lastSavedStory,
+  lastSavedTeam,
+  lastSavedTestimonials,
+  lastSavedFont,
+  lastSavedColor,
+  lastSavedServices,
+  lastSavedValues,
+  lastSavedGallery,
+  lastSavedCTA,
+  lastSavedHeader,
+  lastSavedFooter,
+  lastSavedBookingService,
+  lastSavedBookingDate,
+  lastSavedBookingTime,
+  lastSavedBookingForm,
+  lastSavedBookingConfirmation,
+  lastSavedPageVisibility,
+  lastSavedVisibleSections,
+  setHeroSettings,
+  setAboutHeroSettings,
+  setStorySettings,
+  setTeamSettings,
+  setTestimonialsSettings,
+  setFontSettings,
+  setColorSettings,
+  setServicesSettings,
+  setValuesSettings,
+  setGallerySettings,
+  setCTASettings,
+  setHeaderSettings,
+  setFooterSettings,
+  setBookingServiceSettings,
+  setBookingDateSettings,
+  setBookingTimeSettings,
+  setBookingFormSettings,
+  setBookingConfirmationSettings,
+  setPageVisibility,
+  setVisibleSections,
+  setLastAppliedHero,
+  setLastAppliedAboutHero,
+  setLastAppliedStory,
+  setLastAppliedTeam,
+  setLastAppliedTestimonials,
+  setLastAppliedFont,
+  setLastAppliedColor,
+  setLastAppliedServices,
+  setLastAppliedValues,
+  setLastAppliedGallery,
+  setLastAppliedCTA,
+  setLastAppliedHeader,
+  setLastAppliedFooter,
+  setLastAppliedBookingService,
+  setLastAppliedBookingDate,
+  setLastAppliedBookingTime,
+  setLastAppliedBookingForm,
+  setLastAppliedBookingConfirmation,
+  saveHeroSettings,
+  saveAboutHeroSettings,
+  saveStorySettings,
+  saveTeamSettings,
+  saveTestimonialsSettings,
+  saveFontSettings,
+  saveColorSettings,
+  saveServicesSettings,
+  saveValuesSettings,
+  saveGallerySettings,
+  saveCTASettings,
+  saveHeaderSettings,
+  saveFooterSettings,
+  saveBookingServiceSettings,
+  saveBookingDateSettings,
+  saveBookingTimeSettings,
+  saveBookingFormSettings,
+  saveBookingConfirmationSettings,
+  savePageVisibility,
+  saveVisibleSections,
+]);
+5. Remova o setTimeout dentro de loadExternalConfig
+No final da função loadExternalConfig, há um setTimeout que envia mensagens para o iframe. Remova-o completamente, pois os useEffect individuais já cuidam disso.
+
+Após aplicar todas essas alterações, os rascunhos locais terão precedência absoluta sobre os dados do servidor, e o problema de reversão das cores deve ser eliminado. Teste cuidadosamente cada funcionalidade para garantir que tudo continue funcionando conforme esperado.

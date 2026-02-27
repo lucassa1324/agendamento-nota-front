@@ -23,6 +23,7 @@ import {
   getBookingFormSettings,
   getBookingServiceSettings,
   getBookingTimeSettings,
+  getStorageKey,
   parseDuration,
   type Service,
   saveBlockedPeriods,
@@ -283,42 +284,65 @@ export function BookingFlow() {
 
   // Load initial settings
   useEffect(() => {
-    console.log(">>> [BOOKING_DEBUG] Studio data recebido:", {
-      hasStudio: !!studio,
-      hasConfig: !!studio?.config,
-      hasBookingSteps: !!studio?.config?.bookingSteps,
-      bookingSteps: studio?.config?.bookingSteps,
-    });
+    const hasLocal = (key: string) => {
+      if (typeof window === "undefined") return false;
+      return localStorage.getItem(getStorageKey(key)) !== null;
+    };
 
-    // Se tivermos dados do studio via context (multi-tenant), usamos eles
+    console.log(">>> [BOOKING_DEBUG] Verificando rascunhos locais vs Studio data");
+
+    // 1. Carregar rascunhos do localStorage se existirem (Prioridade máxima para o editor)
+    if (hasLocal("bookingServiceSettings")) {
+      console.log(">>> [BOOKING_DEBUG] Usando rascunho local para Serviços");
+      setServiceSettings(getBookingServiceSettings());
+    }
+    if (hasLocal("bookingDateSettings")) {
+      console.log(">>> [BOOKING_DEBUG] Usando rascunho local para Data");
+      setDateSettings(getBookingDateSettings());
+    }
+    if (hasLocal("bookingTimeSettings")) {
+      console.log(">>> [BOOKING_DEBUG] Usando rascunho local para Horário");
+      setTimeSettings(getBookingTimeSettings());
+    }
+    if (hasLocal("bookingFormSettings")) {
+      console.log(">>> [BOOKING_DEBUG] Usando rascunho local para Formulário");
+      setFormSettings(getBookingFormSettings());
+    }
+    if (hasLocal("bookingConfirmationSettings")) {
+      console.log(
+        ">>> [BOOKING_DEBUG] Usando rascunho local para Confirmação",
+      );
+      setConfirmationSettings(getBookingConfirmationSettings());
+    }
+
+    // 2. Se tivermos dados do studio via context (multi-tenant), usamos eles para o que NÃO tiver rascunho local
     if (studio?.config?.bookingSteps) {
       const steps = studio.config.bookingSteps as Record<string, unknown>;
 
-      console.log(">>> [DEBUG_RAW] Estrutura completa bookingSteps:", steps);
+      if (!hasLocal("bookingServiceSettings")) {
+        setServiceSettings(
+          normalizeStepSettings(
+            (steps.step1Services || steps.step1Service || steps.service) as
+              | Record<string, unknown>
+              | undefined,
+          ),
+        );
+      }
 
-      // Mapeamento priorizando chaves no plural conforme normalização (step1Services, step2Dates, etc)
-      const serviceSettingsData = normalizeStepSettings(
-        (steps.step1Services || steps.step1Service || steps.service) as
-          | Record<string, unknown>
-          | undefined,
-      );
-      const dateSettingsData = normalizeStepSettings(
-        (steps.step2Dates || steps.step2Date || steps.date) as
-          | Record<string, unknown>
-          | undefined,
-      );
+      if (!hasLocal("bookingDateSettings")) {
+        setDateSettings(
+          normalizeStepSettings(
+            (steps.step2Dates || steps.step2Date || steps.date) as
+              | Record<string, unknown>
+              | undefined,
+          ),
+        );
+      }
+
       const timeSettingsData = normalizeStepSettings(
         (steps.step3Times || steps.step3Time || steps.time) as
           | Record<string, unknown>
           | undefined,
-      );
-      const formSettingsData = normalizeStepSettings(
-        (steps.step4Form || steps.form) as Record<string, unknown> | undefined,
-      );
-      const confirmationSettingsData = normalizeStepSettings(
-        (steps.step5Confirmation ||
-          steps.step4Confirmation ||
-          steps.confirmation) as Record<string, unknown> | undefined,
       );
 
       // Adicionar o intervalo global ao timeSettings se disponível no config do studio
@@ -327,22 +351,39 @@ export function BookingFlow() {
           studio.config.interval || studio.config.slotInterval;
       }
 
-      console.log(">>> [BOOKING_DEBUG] Aplicando cores do Studio (Mapeado):", {
-        serviceCardBg: serviceSettingsData.cardBgColor,
-        dateCardBg: dateSettingsData.cardBgColor,
-        timeCardBg: timeSettingsData.cardBgColor,
-        formCardBg: serviceSettingsData.cardBgColor, // Fallback pro form se necessário
-        confirmationCardBg: confirmationSettingsData.cardBgColor,
-      });
+      if (!hasLocal("bookingTimeSettings")) {
+        setTimeSettings(timeSettingsData);
+      }
 
-      setServiceSettings(serviceSettingsData);
-      setDateSettings(dateSettingsData);
-      setTimeSettings(timeSettingsData);
-      setFormSettings(formSettingsData);
-      setConfirmationSettings(confirmationSettingsData);
-    } else {
+      if (!hasLocal("bookingFormSettings")) {
+        setFormSettings(
+          normalizeStepSettings(
+            (steps.step4Form || steps.form) as
+              | Record<string, unknown>
+              | undefined,
+          ),
+        );
+      }
+
+      if (!hasLocal("bookingConfirmationSettings")) {
+        setConfirmationSettings(
+          normalizeStepSettings(
+            (steps.step5Confirmation ||
+              steps.step4Confirmation ||
+              steps.confirmation) as Record<string, unknown> | undefined,
+          ),
+        );
+      }
+    } else if (
+      !hasLocal("bookingServiceSettings") &&
+      !hasLocal("bookingDateSettings") &&
+      !hasLocal("bookingTimeSettings") &&
+      !hasLocal("bookingFormSettings") &&
+      !hasLocal("bookingConfirmationSettings")
+    ) {
+      // Fallback total se não houver NADA
       console.log(
-        ">>> [BOOKING_DEBUG] Studio sem config, usando padrões/storage",
+        ">>> [BOOKING_DEBUG] Sem rascunhos e sem config studio, usando padrões",
       );
       setServiceSettings(getBookingServiceSettings());
       setDateSettings(getBookingDateSettings());
