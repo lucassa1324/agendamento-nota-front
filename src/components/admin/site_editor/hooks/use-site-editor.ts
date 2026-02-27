@@ -3,12 +3,10 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useState,
 } from "react";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import type {
-  BookingStepSettings,
   ColorSettings,
   CTASettings,
   FontSettings,
@@ -41,314 +39,322 @@ import {
   defaultTeamSettings,
   defaultTestimonialsSettings,
   defaultValuesSettings,
-  getAboutHeroSettings,
-  getBookingConfirmationSettings,
-  getBookingDateSettings,
-  getBookingFormSettings,
-  getBookingServiceSettings,
-  getBookingTimeSettings,
-  getColorSettings,
-  getCTASettings,
-  getFontSettings,
-  getFooterSettings,
-  getGallerySettings,
-  getHeaderSettings,
-  getHeroSettings,
-  getPageVisibility,
-  getServicesSettings,
-  getStorageKey,
-  getStorySettings,
-  getTeamSettings,
-  getTestimonialsSettings,
-  getValuesSettings,
-  getVisibleSections,
   normalizeStepSettings,
-  saveAboutHeroSettings,
-  saveBookingConfirmationSettings,
-  saveBookingDateSettings,
-  saveBookingFormSettings,
-  saveBookingServiceSettings,
-  saveBookingTimeSettings,
-  saveColorSettings,
-  saveCTASettings,
-  saveFontSettings,
-  saveFooterSettings,
-  saveGallerySettings,
-  saveHeaderSettings,
-  saveHeroSettings,
-  savePageVisibility,
-  saveServicesSettings,
-  saveStorySettings,
-  saveTeamSettings,
-  saveTestimonialsSettings,
-  saveValuesSettings,
-  saveVisibleSections,
 } from "@/lib/booking-data";
 import type {
   LayoutGlobalSettings,
   SiteConfigData,
 } from "@/lib/site-config-types";
-import { siteCustomizerService } from "@/lib/site-customizer-service";
+import { useEditorApi } from "./use-editor-api";
+import { useEditorLocal } from "./use-editor-local";
+import { useEditorState } from "./use-editor-state";
 
 export type { LayoutGlobalSettings, SiteConfigData };
 
 export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const { toast } = useToast();
   const { studio } = useStudio();
+  const local = useEditorLocal();
+  const state = useEditorState();
+  const {
+    hasLocalDraft,
+    loadLocalDrafts,
+    saveLocalDrafts,
+    saveHeroSettings,
+    saveAboutHeroSettings,
+    saveStorySettings,
+    saveTeamSettings,
+    saveTestimonialsSettings,
+    saveFontSettings,
+    saveColorSettings,
+    saveServicesSettings,
+    saveValuesSettings,
+    saveGallerySettings,
+    saveCTASettings,
+    saveHeaderSettings,
+    saveFooterSettings,
+    savePageVisibility,
+    saveVisibleSections,
+    saveBookingServiceSettings,
+    saveBookingDateSettings,
+    saveBookingTimeSettings,
+    saveBookingFormSettings,
+    saveBookingConfirmationSettings,
+  } = local;
 
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [isFetching, setIsFetching] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
+  const {
+    heroSettings,
+    setHeroSettings,
+    aboutHeroSettings,
+    setAboutHeroSettings,
+    storySettings,
+    setStorySettings,
+    teamSettings,
+    setTeamSettings,
+    testimonialsSettings,
+    setTestimonialsSettings,
+    fontSettings,
+    setFontSettings,
+    colorSettings,
+    setColorSettings,
+    servicesSettings,
+    setServicesSettings,
+    valuesSettings,
+    setValuesSettings,
+    gallerySettings,
+    setGallerySettings,
+    ctaSettings,
+    setCTASettings,
+    headerSettings,
+    setHeaderSettings,
+    footerSettings,
+    setFooterSettings,
+    bookingServiceSettings,
+    setBookingServiceSettings,
+    bookingDateSettings,
+    setBookingDateSettings,
+    bookingTimeSettings,
+    setBookingTimeSettings,
+    bookingFormSettings,
+    setBookingFormSettings,
+    bookingConfirmationSettings,
+    setBookingConfirmationSettings,
+    pageVisibility,
+    setPageVisibility,
+    visibleSections,
+    setVisibleSections,
+    lastAppliedHero,
+    setLastAppliedHero,
+    lastAppliedAboutHero,
+    setLastAppliedAboutHero,
+    lastAppliedStory,
+    setLastAppliedStory,
+    lastAppliedTeam,
+    setLastAppliedTeam,
+    lastAppliedTestimonials,
+    setLastAppliedTestimonials,
+    lastAppliedFont,
+    setLastAppliedFont,
+    lastAppliedColor,
+    setLastAppliedColor,
+    lastAppliedServices,
+    setLastAppliedServices,
+    lastAppliedValues,
+    setLastAppliedValues,
+    lastAppliedGallery,
+    setLastAppliedGallery,
+    lastAppliedCTA,
+    setLastAppliedCTA,
+    lastAppliedHeader,
+    setLastAppliedHeader,
+    lastAppliedFooter,
+    setLastAppliedFooter,
+    lastAppliedBookingService,
+    setLastAppliedBookingService,
+    lastAppliedBookingDate,
+    setLastAppliedBookingDate,
+    lastAppliedBookingTime,
+    setLastAppliedBookingTime,
+    lastAppliedBookingForm,
+    setLastAppliedBookingForm,
+    lastAppliedBookingConfirmation,
+    setLastAppliedBookingConfirmation,
+    lastSavedHero,
+    setLastSavedHero,
+    lastSavedAboutHero,
+    setLastSavedAboutHero,
+    lastSavedStory,
+    setLastSavedStory,
+    lastSavedTeam,
+    setLastSavedTeam,
+    lastSavedTestimonials,
+    setLastSavedTestimonials,
+    lastSavedFont,
+    setLastSavedFont,
+    lastSavedColor,
+    setLastSavedColor,
+    lastSavedServices,
+    setLastSavedServices,
+    lastSavedValues,
+    setLastSavedValues,
+    lastSavedGallery,
+    setLastSavedGallery,
+    lastSavedCTA,
+    setLastSavedCTA,
+    lastSavedHeader,
+    setLastSavedHeader,
+    lastSavedFooter,
+    setLastSavedFooter,
+    lastSavedBookingService,
+    setLastSavedBookingService,
+    lastSavedBookingDate,
+    setLastSavedBookingDate,
+    lastSavedBookingTime,
+    setLastSavedBookingTime,
+    lastSavedBookingForm,
+    setLastSavedBookingForm,
+    lastSavedBookingConfirmation,
+    setLastSavedBookingConfirmation,
+    lastSavedPageVisibility,
+    setLastSavedPageVisibility,
+    lastSavedVisibleSections,
+    setLastSavedVisibleSections,
+    handleUpdateHero,
+    handleUpdateAboutHero,
+    handleUpdateStory,
+    handleUpdateTeam,
+    handleUpdateTestimonials,
+    handleUpdateFont,
+    handleUpdateColors,
+    handleUpdateServices,
+    handleUpdateValues,
+    handleUpdateGallery,
+    handleUpdateCTA,
+    handleUpdateHeader,
+    handleUpdateFooter,
+    handleUpdateBookingService,
+    handleUpdateBookingDate,
+    handleUpdateBookingTime,
+    handleUpdateBookingForm,
+    handleUpdateBookingConfirmation,
+    handlePageVisibilityChange,
+    handleSectionVisibilityToggle,
+  } = state;
 
-  // Estados de customização (inicializados do storage)
-  const [heroSettings, setHeroSettings] =
-    useState<HeroSettings>(defaultHeroSettings);
-  const [aboutHeroSettings, setAboutHeroSettings] = useState<HeroSettings>(
-    defaultAboutHeroSettings,
-  );
-  const [storySettings, setStorySettings] =
-    useState<StorySettings>(defaultStorySettings);
-  const [teamSettings, setTeamSettings] =
-    useState<TeamSettings>(defaultTeamSettings);
-  const [testimonialsSettings, setTestimonialsSettings] =
-    useState<TestimonialsSettings>(defaultTestimonialsSettings);
-  const [fontSettings, setFontSettings] =
-    useState<FontSettings>(defaultFontSettings);
-  const [colorSettings, setColorSettings] =
-    useState<ColorSettings>(defaultColorSettings);
-  const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(
-    defaultServicesSettings,
-  );
-  const [valuesSettings, setValuesSettings] = useState<ValuesSettings>(
-    defaultValuesSettings,
-  );
-  const [gallerySettings, setGallerySettings] = useState<GallerySettings>(
-    defaultGallerySettings,
-  );
-  const [ctaSettings, setCTASettings] =
-    useState<CTASettings>(defaultCTASettings);
-  const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(
-    defaultHeaderSettings,
-  );
-  const [footerSettings, setFooterSettings] = useState<FooterSettings>(
-    defaultFooterSettings,
-  );
-
-  // Estados de agendamento por passos
-  const [bookingServiceSettings, setBookingServiceSettings] =
-    useState<BookingStepSettings>(defaultBookingServiceSettings);
-  const [bookingDateSettings, setBookingDateSettings] =
-    useState<BookingStepSettings>(defaultBookingDateSettings);
-  const [bookingTimeSettings, setBookingTimeSettings] =
-    useState<BookingStepSettings>(defaultBookingTimeSettings);
-  const [bookingFormSettings, setBookingFormSettings] =
-    useState<BookingStepSettings>(defaultBookingFormSettings);
-  const [bookingConfirmationSettings, setBookingConfirmationSettings] =
-    useState<BookingStepSettings>(defaultBookingConfirmationSettings);
-
-  // Estados de visibilidade
-  const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
-    {},
-  );
-  const [visibleSections, setVisibleSections] = useState<
-    Record<string, boolean>
-  >({});
-
-  // Estados para controle de botões (Aplicar vs Salvar)
-  const [lastAppliedHero, setLastAppliedHero] =
-    useState<HeroSettings>(defaultHeroSettings);
-  const [lastAppliedAboutHero, setLastAppliedAboutHero] =
-    useState<HeroSettings>(defaultAboutHeroSettings);
-  const [lastAppliedStory, setLastAppliedStory] =
-    useState<StorySettings>(defaultStorySettings);
-  const [lastAppliedTeam, setLastAppliedTeam] =
-    useState<TeamSettings>(defaultTeamSettings);
-  const [lastAppliedTestimonials, setLastAppliedTestimonials] =
-    useState<TestimonialsSettings>(defaultTestimonialsSettings);
-  const [lastAppliedFont, setLastAppliedFont] =
-    useState<FontSettings>(defaultFontSettings);
-  const [lastAppliedColor, setLastAppliedColor] =
-    useState<ColorSettings>(defaultColorSettings);
-  const [lastAppliedServices, setLastAppliedServices] =
-    useState<ServicesSettings>(defaultServicesSettings);
-  const [lastAppliedValues, setLastAppliedValues] = useState<ValuesSettings>(
-    defaultValuesSettings,
-  );
-  const [lastAppliedGallery, setLastAppliedGallery] = useState<GallerySettings>(
-    defaultGallerySettings,
-  );
-  const [lastAppliedCTA, setLastAppliedCTA] =
-    useState<CTASettings>(defaultCTASettings);
-  const [lastAppliedHeader, setLastAppliedHeader] = useState<HeaderSettings>(
-    defaultHeaderSettings,
-  );
-  const [lastAppliedFooter, setLastAppliedFooter] = useState<FooterSettings>(
-    defaultFooterSettings,
-  );
-
-  const [lastAppliedBookingService, setLastAppliedBookingService] =
-    useState<BookingStepSettings>(defaultBookingServiceSettings);
-  const [lastAppliedBookingDate, setLastAppliedBookingDate] =
-    useState<BookingStepSettings>(defaultBookingDateSettings);
-  const [lastAppliedBookingTime, setLastAppliedBookingTime] =
-    useState<BookingStepSettings>(defaultBookingTimeSettings);
-  const [lastAppliedBookingForm, setLastAppliedBookingForm] =
-    useState<BookingStepSettings>(defaultBookingFormSettings);
-  const [lastAppliedBookingConfirmation, setLastAppliedBookingConfirmation] =
-    useState<BookingStepSettings>(defaultBookingConfirmationSettings);
-
-  const [lastSavedHero, setLastSavedHero] =
-    useState<HeroSettings>(defaultHeroSettings);
-  const [lastSavedAboutHero, setLastSavedAboutHero] = useState<HeroSettings>(
-    defaultAboutHeroSettings,
-  );
-  const [lastSavedStory, setLastSavedStory] =
-    useState<StorySettings>(defaultStorySettings);
-  const [lastSavedTeam, setLastSavedTeam] =
-    useState<TeamSettings>(defaultTeamSettings);
-  const [lastSavedTestimonials, setLastSavedTestimonials] =
-    useState<TestimonialsSettings>(defaultTestimonialsSettings);
-  const [lastSavedFont, setLastSavedFont] =
-    useState<FontSettings>(defaultFontSettings);
-  const [lastSavedColor, setLastSavedColor] =
-    useState<ColorSettings>(defaultColorSettings);
-  const [lastSavedServices, setLastSavedServices] = useState<ServicesSettings>(
-    defaultServicesSettings,
-  );
-  const [lastSavedValues, setLastSavedValues] = useState<ValuesSettings>(
-    defaultValuesSettings,
-  );
-  const [lastSavedGallery, setLastSavedGallery] = useState<GallerySettings>(
-    defaultGallerySettings,
-  );
-  const [lastSavedCTA, setLastSavedCTA] =
-    useState<CTASettings>(defaultCTASettings);
-  const [lastSavedHeader, setLastSavedHeader] = useState<HeaderSettings>(
-    defaultHeaderSettings,
-  );
-  const [lastSavedFooter, setLastSavedFooter] = useState<FooterSettings>(
-    defaultFooterSettings,
-  );
-
-  const [lastSavedBookingService, setLastSavedBookingService] =
-    useState<BookingStepSettings>(defaultBookingServiceSettings);
-  const [lastSavedBookingDate, setLastSavedBookingDate] =
-    useState<BookingStepSettings>(defaultBookingDateSettings);
-  const [lastSavedBookingTime, setLastSavedBookingTime] =
-    useState<BookingStepSettings>(defaultBookingTimeSettings);
-  const [lastSavedBookingForm, setLastSavedBookingForm] =
-    useState<BookingStepSettings>(defaultBookingFormSettings);
-  const [lastSavedBookingConfirmation, setLastSavedBookingConfirmation] =
-    useState<BookingStepSettings>(defaultBookingConfirmationSettings);
-
-  const [lastSavedPageVisibility, setLastSavedPageVisibility] = useState<
-    Record<string, boolean>
-  >({});
-  const [lastSavedVisibleSections, setLastSavedVisibleSections] = useState<
-    Record<string, boolean>
-  >({});
-
-  // Carregamento inicial
   useEffect(() => {
-    const loadedHero = getHeroSettings();
-    const loadedAboutHero = getAboutHeroSettings();
-    const loadedStory = getStorySettings();
-    const loadedTeam = getTeamSettings();
-    const loadedTestimonials = getTestimonialsSettings();
-    const loadedFont = getFontSettings();
-    const loadedColor = getColorSettings();
-    const loadedServices = getServicesSettings();
-    const loadedValues = getValuesSettings();
-    const loadedGallery = getGallerySettings();
-    const loadedCTA = getCTASettings();
-    const loadedHeader = getHeaderSettings();
-    const loadedFooter = getFooterSettings();
-    const loadedPageVisibility = getPageVisibility();
-    const loadedVisibleSections = getVisibleSections();
+    const drafts = loadLocalDrafts();
 
-    const loadedBookingService = getBookingServiceSettings();
-    const loadedBookingDate = getBookingDateSettings();
-    const loadedBookingTime = getBookingTimeSettings();
-    const loadedBookingForm = getBookingFormSettings();
-    const loadedBookingConfirmation = getBookingConfirmationSettings();
+    setHeroSettings(drafts.heroSettings);
+    setAboutHeroSettings(drafts.aboutHeroSettings);
+    setStorySettings(drafts.storySettings);
+    setTeamSettings(drafts.teamSettings);
+    setTestimonialsSettings(drafts.testimonialsSettings);
+    setFontSettings(drafts.fontSettings);
+    setColorSettings(drafts.colorSettings);
+    setServicesSettings(drafts.servicesSettings);
+    setValuesSettings(drafts.valuesSettings);
+    setGallerySettings(drafts.gallerySettings);
+    setCTASettings(drafts.ctaSettings);
+    setHeaderSettings(drafts.headerSettings);
+    setFooterSettings(drafts.footerSettings);
+    setPageVisibility(drafts.pageVisibility);
+    setVisibleSections(drafts.visibleSections);
 
-    setHeroSettings(loadedHero);
-    setAboutHeroSettings(loadedAboutHero);
-    setStorySettings(loadedStory);
-    setTeamSettings(loadedTeam);
-    setTestimonialsSettings(loadedTestimonials);
-    setFontSettings(loadedFont);
-    setColorSettings(loadedColor);
-    setServicesSettings(loadedServices);
-    setValuesSettings(loadedValues);
-    setGallerySettings(loadedGallery);
-    setCTASettings(loadedCTA);
-    setHeaderSettings(loadedHeader);
-    setFooterSettings(loadedFooter);
-    setPageVisibility(loadedPageVisibility);
-    setVisibleSections(loadedVisibleSections);
+    setBookingServiceSettings(drafts.bookingServiceSettings);
+    setBookingDateSettings(drafts.bookingDateSettings);
+    setBookingTimeSettings(drafts.bookingTimeSettings);
+    setBookingFormSettings(drafts.bookingFormSettings);
+    setBookingConfirmationSettings(drafts.bookingConfirmationSettings);
 
-    setBookingServiceSettings(loadedBookingService);
-    setBookingDateSettings(loadedBookingDate);
-    setBookingTimeSettings(loadedBookingTime);
-    setBookingFormSettings(loadedBookingForm);
-    setBookingConfirmationSettings(loadedBookingConfirmation);
+    setLastAppliedHero(drafts.heroSettings);
+    setLastAppliedAboutHero(drafts.aboutHeroSettings);
+    setLastAppliedStory(drafts.storySettings);
+    setLastAppliedTeam(drafts.teamSettings);
+    setLastAppliedTestimonials(drafts.testimonialsSettings);
+    setLastAppliedFont(drafts.fontSettings);
+    setLastAppliedColor(drafts.colorSettings);
+    setLastAppliedServices(drafts.servicesSettings);
+    setLastAppliedValues(drafts.valuesSettings);
+    setLastAppliedGallery(drafts.gallerySettings);
+    setLastAppliedCTA(drafts.ctaSettings);
+    setLastAppliedHeader(drafts.headerSettings);
+    setLastAppliedFooter(drafts.footerSettings);
 
-    setLastAppliedHero(loadedHero);
-    setLastAppliedAboutHero(loadedAboutHero);
-    setLastAppliedStory(loadedStory);
-    setLastAppliedTeam(loadedTeam);
-    setLastAppliedTestimonials(loadedTestimonials);
-    setLastAppliedFont(loadedFont);
-    setLastAppliedColor(loadedColor);
-    setLastAppliedServices(loadedServices);
-    setLastAppliedValues(loadedValues);
-    setLastAppliedGallery(loadedGallery);
-    setLastAppliedCTA(loadedCTA);
-    setLastAppliedHeader(loadedHeader);
-    setLastAppliedFooter(loadedFooter);
+    setLastAppliedBookingService(drafts.bookingServiceSettings);
+    setLastAppliedBookingDate(drafts.bookingDateSettings);
+    setLastAppliedBookingTime(drafts.bookingTimeSettings);
+    setLastAppliedBookingForm(drafts.bookingFormSettings);
+    setLastAppliedBookingConfirmation(drafts.bookingConfirmationSettings);
 
-    setLastAppliedBookingService(loadedBookingService);
-    setLastAppliedBookingDate(loadedBookingDate);
-    setLastAppliedBookingTime(loadedBookingTime);
-    setLastAppliedBookingForm(loadedBookingForm);
-    setLastAppliedBookingConfirmation(loadedBookingConfirmation);
+    setLastSavedHero(drafts.heroSettings);
+    setLastSavedAboutHero(drafts.aboutHeroSettings);
+    setLastSavedStory(drafts.storySettings);
+    setLastSavedTeam(drafts.teamSettings);
+    setLastSavedTestimonials(drafts.testimonialsSettings);
+    setLastSavedFont(drafts.fontSettings);
+    setLastSavedColor(drafts.colorSettings);
+    setLastSavedServices(drafts.servicesSettings);
+    setLastSavedValues(drafts.valuesSettings);
+    setLastSavedGallery(drafts.gallerySettings);
+    setLastSavedCTA(drafts.ctaSettings);
+    setLastSavedHeader(drafts.headerSettings);
+    setLastSavedFooter(drafts.footerSettings);
 
-    setLastSavedHero(loadedHero);
-    setLastSavedAboutHero(loadedAboutHero);
-    setLastSavedStory(loadedStory);
-    setLastSavedTeam(loadedTeam);
-    setLastSavedTestimonials(loadedTestimonials);
-    setLastSavedFont(loadedFont);
-    setLastSavedColor(loadedColor);
-    setLastSavedServices(loadedServices);
-    setLastSavedValues(loadedValues);
-    setLastSavedGallery(loadedGallery);
-    setLastSavedCTA(loadedCTA);
-    setLastSavedHeader(loadedHeader);
-    setLastSavedFooter(loadedFooter);
+    setLastSavedBookingService(drafts.bookingServiceSettings);
+    setLastSavedBookingDate(drafts.bookingDateSettings);
+    setLastSavedBookingTime(drafts.bookingTimeSettings);
+    setLastSavedBookingForm(drafts.bookingFormSettings);
+    setLastSavedBookingConfirmation(drafts.bookingConfirmationSettings);
 
-    setLastSavedBookingService(loadedBookingService);
-    setLastSavedBookingDate(loadedBookingDate);
-    setLastSavedBookingTime(loadedBookingTime);
-    setLastSavedBookingForm(loadedBookingForm);
-    setLastSavedBookingConfirmation(loadedBookingConfirmation);
-
-    setLastSavedPageVisibility(loadedPageVisibility);
-    setLastSavedVisibleSections(loadedVisibleSections);
-  }, []);
-
-  // (movido para baixo de loadExternalConfig para evitar uso antes da declaração)
+    setLastSavedPageVisibility(drafts.pageVisibility);
+    setLastSavedVisibleSections(drafts.visibleSections);
+  }, [
+    loadLocalDrafts,
+    setAboutHeroSettings,
+    setBookingConfirmationSettings,
+    setBookingDateSettings,
+    setBookingFormSettings,
+    setBookingServiceSettings,
+    setBookingTimeSettings,
+    setCTASettings,
+    setColorSettings,
+    setFooterSettings,
+    setGallerySettings,
+    setHeaderSettings,
+    setHeroSettings,
+    setLastAppliedAboutHero,
+    setLastAppliedBookingConfirmation,
+    setLastAppliedBookingDate,
+    setLastAppliedBookingForm,
+    setLastAppliedBookingService,
+    setLastAppliedBookingTime,
+    setLastAppliedCTA,
+    setLastAppliedColor,
+    setLastAppliedFont,
+    setLastAppliedFooter,
+    setLastAppliedGallery,
+    setLastAppliedHeader,
+    setLastAppliedHero,
+    setLastAppliedServices,
+    setLastAppliedStory,
+    setLastAppliedTeam,
+    setLastAppliedTestimonials,
+    setLastAppliedValues,
+    setLastSavedAboutHero,
+    setLastSavedBookingConfirmation,
+    setLastSavedBookingDate,
+    setLastSavedBookingForm,
+    setLastSavedBookingService,
+    setLastSavedBookingTime,
+    setLastSavedCTA,
+    setLastSavedColor,
+    setLastSavedFont,
+    setLastSavedFooter,
+    setLastSavedGallery,
+    setLastSavedHeader,
+    setLastSavedHero,
+    setLastSavedPageVisibility,
+    setLastSavedServices,
+    setLastSavedStory,
+    setLastSavedTeam,
+    setLastSavedTestimonials,
+    setLastSavedValues,
+    setLastSavedVisibleSections,
+    setPageVisibility,
+    setServicesSettings,
+    setStorySettings,
+    setTeamSettings,
+    setTestimonialsSettings,
+    setValuesSettings,
+    setVisibleSections,
+    setFontSettings,
+  ]);
 
   const loadExternalConfig = useCallback(
     (config: Record<string, unknown>) => {
       if (!config) return;
-      const hasLocalDraft = (key: string) =>
-        typeof window !== "undefined" &&
-        localStorage.getItem(getStorageKey(key)) !== null;
+      const drafts = loadLocalDrafts();
 
-      // Mapeamento flexível para suportar layoutGlobal/layout_global do banco
       const layoutGlobal = (config.layoutGlobal || config.layout_global) as
         | Record<string, unknown>
         | undefined;
@@ -395,7 +401,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       } as SiteConfigData;
 
       const useLocalHero = hasLocalDraft("heroSettings");
-      const resolvedHero = useLocalHero ? getHeroSettings() : data.hero;
+      const resolvedHero = useLocalHero ? drafts.heroSettings : data.hero;
       if (resolvedHero) {
         setHeroSettings(resolvedHero);
       }
@@ -409,7 +415,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
       const useLocalAboutHero = hasLocalDraft("aboutHeroSettings");
       const resolvedAboutHero = useLocalAboutHero
-        ? getAboutHeroSettings()
+        ? drafts.aboutHeroSettings
         : data.aboutHero;
       if (resolvedAboutHero) {
         setAboutHeroSettings(resolvedAboutHero);
@@ -423,7 +429,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       }
 
       const useLocalStory = hasLocalDraft("storySettings");
-      const resolvedStory = useLocalStory ? getStorySettings() : data.story;
+      const resolvedStory = useLocalStory ? drafts.storySettings : data.story;
       if (resolvedStory) {
         setStorySettings(resolvedStory);
       }
@@ -436,7 +442,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       }
 
       const useLocalTeam = hasLocalDraft("teamSettings");
-      const resolvedTeam = useLocalTeam ? getTeamSettings() : data.team;
+      const resolvedTeam = useLocalTeam ? drafts.teamSettings : data.team;
       if (resolvedTeam) {
         setTeamSettings(resolvedTeam);
       }
@@ -450,7 +456,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
       const useLocalTestimonials = hasLocalDraft("testimonialsSettings");
       const resolvedTestimonials = useLocalTestimonials
-        ? getTestimonialsSettings()
+        ? drafts.testimonialsSettings
         : data.testimonials;
       if (resolvedTestimonials) {
         setTestimonialsSettings(resolvedTestimonials);
@@ -464,7 +470,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       }
 
       const useLocalFont = hasLocalDraft("fontSettings");
-      const resolvedFont = useLocalFont ? getFontSettings() : data.theme;
+      const resolvedFont = useLocalFont ? drafts.fontSettings : data.theme;
       if (resolvedFont) {
         setFontSettings(resolvedFont);
       }
@@ -477,7 +483,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       }
 
       const useLocalColors = hasLocalDraft("colorSettings");
-      const resolvedColors = useLocalColors ? getColorSettings() : data.colors;
+      const resolvedColors = useLocalColors ? drafts.colorSettings : data.colors;
       if (resolvedColors) {
         setColorSettings(resolvedColors);
       }
@@ -491,7 +497,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
       const useLocalServices = hasLocalDraft("servicesSettings");
       const resolvedServices = useLocalServices
-        ? getServicesSettings()
+        ? drafts.servicesSettings
         : data.services;
       if (resolvedServices) {
         setServicesSettings(resolvedServices);
@@ -505,7 +511,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       }
 
       const useLocalValues = hasLocalDraft("valuesSettings");
-      const resolvedValues = useLocalValues ? getValuesSettings() : data.values;
+      const resolvedValues = useLocalValues ? drafts.valuesSettings : data.values;
       if (resolvedValues) {
         setValuesSettings(resolvedValues);
       }
@@ -519,7 +525,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
       const useLocalGallery = hasLocalDraft("gallerySettings");
       const resolvedGallery = useLocalGallery
-        ? getGallerySettings()
+        ? drafts.gallerySettings
         : data.gallery;
       if (resolvedGallery) {
         setGallerySettings(resolvedGallery);
@@ -533,7 +539,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       }
 
       const useLocalCTA = hasLocalDraft("ctaSettings");
-      const resolvedCTA = useLocalCTA ? getCTASettings() : data.cta;
+      const resolvedCTA = useLocalCTA ? drafts.ctaSettings : data.cta;
       if (resolvedCTA) {
         setCTASettings(resolvedCTA);
       }
@@ -546,7 +552,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       }
 
       const useLocalHeader = hasLocalDraft("headerSettings");
-      const resolvedHeader = useLocalHeader ? getHeaderSettings() : data.header;
+      const resolvedHeader = useLocalHeader ? drafts.headerSettings : data.header;
       if (resolvedHeader) {
         setHeaderSettings(resolvedHeader);
       }
@@ -559,23 +565,23 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       }
 
       const useLocalFooter = hasLocalDraft("footerSettings");
-      const resolvedFooter = useLocalFooter ? getFooterSettings() : data.footer;
+      const resolvedFooter = useLocalFooter ? drafts.footerSettings : data.footer;
       const resolvedBookingService = hasLocalDraft("bookingServiceSettings")
-        ? getBookingServiceSettings()
+        ? drafts.bookingServiceSettings
         : data.bookingSteps?.service;
       const resolvedBookingDate = hasLocalDraft("bookingDateSettings")
-        ? getBookingDateSettings()
+        ? drafts.bookingDateSettings
         : data.bookingSteps?.date;
       const resolvedBookingTime = hasLocalDraft("bookingTimeSettings")
-        ? getBookingTimeSettings()
+        ? drafts.bookingTimeSettings
         : data.bookingSteps?.time;
       const resolvedBookingForm = hasLocalDraft("bookingFormSettings")
-        ? getBookingFormSettings()
+        ? drafts.bookingFormSettings
         : data.bookingSteps?.form;
       const resolvedBookingConfirmation = hasLocalDraft(
         "bookingConfirmationSettings",
       )
-        ? getBookingConfirmationSettings()
+        ? drafts.bookingConfirmationSettings
         : data.bookingSteps?.confirmation;
       if (resolvedFooter) {
         setFooterSettings(resolvedFooter);
@@ -636,17 +642,14 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         if (steps.confirmation) {
           setLastSavedBookingConfirmation(steps.confirmation);
         }
-        if (
-          !hasLocalDraft("bookingConfirmationSettings") &&
-          steps.confirmation
-        ) {
+        if (!hasLocalDraft("bookingConfirmationSettings") && steps.confirmation) {
           setLastAppliedBookingConfirmation(steps.confirmation);
         }
       }
 
       const useLocalPageVisibility = hasLocalDraft("pageVisibility");
       const resolvedPageVisibility = useLocalPageVisibility
-        ? getPageVisibility()
+        ? drafts.pageVisibility
         : data.pageVisibility;
       if (resolvedPageVisibility) {
         setPageVisibility(resolvedPageVisibility);
@@ -660,7 +663,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
       const useLocalVisibleSections = hasLocalDraft("visibleSections");
       const resolvedVisibleSections = useLocalVisibleSections
-        ? getVisibleSections()
+        ? drafts.visibleSections
         : data.visibleSections;
       if (resolvedVisibleSections) {
         setVisibleSections(resolvedVisibleSections);
@@ -674,7 +677,6 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("DataReady"));
       }
-      // Sincroniza com o iframe se necessário
       const timer = setTimeout(() => {
         if (iframeRef.current?.contentWindow) {
           const win = iframeRef.current.contentWindow;
@@ -721,10 +723,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             );
           if (resolvedServices)
             win.postMessage(
-              {
-                type: "UPDATE_SERVICES_SETTINGS",
-                settings: resolvedServices,
-              },
+              { type: "UPDATE_SERVICES_SETTINGS", settings: resolvedServices },
               "*",
             );
           if (resolvedValues)
@@ -817,169 +816,86 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
 
       return () => clearTimeout(timer);
     },
-    [iframeRef],
+    [
+      iframeRef,
+      loadLocalDrafts,
+      hasLocalDraft,
+      saveHeroSettings,
+      saveAboutHeroSettings,
+      saveStorySettings,
+      saveTeamSettings,
+      saveTestimonialsSettings,
+      saveFontSettings,
+      saveColorSettings,
+      saveServicesSettings,
+      saveValuesSettings,
+      saveGallerySettings,
+      saveCTASettings,
+      saveHeaderSettings,
+      saveFooterSettings,
+      savePageVisibility,
+      saveVisibleSections,
+      setAboutHeroSettings,
+      setBookingConfirmationSettings,
+      setBookingDateSettings,
+      setBookingFormSettings,
+      setBookingServiceSettings,
+      setBookingTimeSettings,
+      setCTASettings,
+      setColorSettings,
+      setFooterSettings,
+      setGallerySettings,
+      setHeaderSettings,
+      setHeroSettings,
+      setLastAppliedAboutHero,
+      setLastAppliedBookingConfirmation,
+      setLastAppliedBookingDate,
+      setLastAppliedBookingForm,
+      setLastAppliedBookingService,
+      setLastAppliedBookingTime,
+      setLastAppliedCTA,
+      setLastAppliedColor,
+      setLastAppliedFont,
+      setLastAppliedFooter,
+      setLastAppliedGallery,
+      setLastAppliedHeader,
+      setLastAppliedHero,
+      setLastAppliedServices,
+      setLastAppliedStory,
+      setLastAppliedTeam,
+      setLastAppliedTestimonials,
+      setLastAppliedValues,
+      setLastSavedAboutHero,
+      setLastSavedBookingConfirmation,
+      setLastSavedBookingDate,
+      setLastSavedBookingForm,
+      setLastSavedBookingService,
+      setLastSavedBookingTime,
+      setLastSavedCTA,
+      setLastSavedColor,
+      setLastSavedFont,
+      setLastSavedFooter,
+      setLastSavedGallery,
+      setLastSavedHeader,
+      setLastSavedHero,
+      setLastSavedPageVisibility,
+      setLastSavedServices,
+      setLastSavedStory,
+      setLastSavedTeam,
+      setLastSavedTestimonials,
+      setLastSavedValues,
+      setLastSavedVisibleSections,
+      setPageVisibility,
+      setServicesSettings,
+      setStorySettings,
+      setTeamSettings,
+      setTestimonialsSettings,
+      setValuesSettings,
+      setVisibleSections,
+      setFontSettings,
+    ],
   );
 
-  const getChangedSettings = useCallback(() => {
-    const changes: Partial<SiteConfigData> = {};
-
-    if (JSON.stringify(heroSettings) !== JSON.stringify(lastSavedHero)) {
-      changes.hero = heroSettings;
-    }
-    if (
-      JSON.stringify(aboutHeroSettings) !== JSON.stringify(lastSavedAboutHero)
-    ) {
-      changes.aboutHero = aboutHeroSettings;
-    }
-    if (JSON.stringify(storySettings) !== JSON.stringify(lastSavedStory)) {
-      changes.story = storySettings;
-    }
-    if (JSON.stringify(teamSettings) !== JSON.stringify(lastSavedTeam)) {
-      changes.team = teamSettings;
-    }
-    if (
-      JSON.stringify(testimonialsSettings) !==
-      JSON.stringify(lastSavedTestimonials)
-    ) {
-      changes.testimonials = testimonialsSettings;
-    }
-    if (JSON.stringify(fontSettings) !== JSON.stringify(lastSavedFont)) {
-      changes.theme = fontSettings;
-    }
-    if (JSON.stringify(colorSettings) !== JSON.stringify(lastSavedColor)) {
-      changes.colors = colorSettings;
-    }
-    if (
-      JSON.stringify(servicesSettings) !== JSON.stringify(lastSavedServices)
-    ) {
-      changes.services = servicesSettings;
-    }
-    if (JSON.stringify(valuesSettings) !== JSON.stringify(lastSavedValues)) {
-      changes.values = valuesSettings;
-    }
-    if (JSON.stringify(gallerySettings) !== JSON.stringify(lastSavedGallery)) {
-      changes.gallery = gallerySettings;
-    }
-    if (JSON.stringify(ctaSettings) !== JSON.stringify(lastSavedCTA)) {
-      changes.cta = ctaSettings;
-    }
-    if (JSON.stringify(headerSettings) !== JSON.stringify(lastSavedHeader)) {
-      changes.header = headerSettings;
-    }
-    if (JSON.stringify(footerSettings) !== JSON.stringify(lastSavedFooter)) {
-      changes.footer = footerSettings;
-    }
-
-    if (
-      JSON.stringify(pageVisibility) !== JSON.stringify(lastSavedPageVisibility)
-    ) {
-      changes.pageVisibility = pageVisibility;
-    }
-    if (
-      JSON.stringify(visibleSections) !==
-      JSON.stringify(lastSavedVisibleSections)
-    ) {
-      changes.visibleSections = visibleSections;
-    }
-
-    // Booking Steps
-    const bookingChanges: SiteConfigData["bookingSteps"] = {};
-    if (
-      JSON.stringify(bookingServiceSettings) !==
-      JSON.stringify(lastSavedBookingService)
-    ) {
-      bookingChanges.service = bookingServiceSettings;
-    }
-    if (
-      JSON.stringify(bookingDateSettings) !==
-      JSON.stringify(lastSavedBookingDate)
-    ) {
-      bookingChanges.date = bookingDateSettings;
-    }
-    if (
-      JSON.stringify(bookingTimeSettings) !==
-      JSON.stringify(lastSavedBookingTime)
-    ) {
-      bookingChanges.time = bookingTimeSettings;
-    }
-    if (
-      JSON.stringify(bookingFormSettings) !==
-      JSON.stringify(lastSavedBookingForm)
-    ) {
-      bookingChanges.form = bookingFormSettings;
-    }
-    if (
-      JSON.stringify(bookingConfirmationSettings) !==
-      JSON.stringify(lastSavedBookingConfirmation)
-    ) {
-      bookingChanges.confirmation = bookingConfirmationSettings;
-    }
-
-    if (Object.keys(bookingChanges).length > 0) {
-      changes.bookingSteps = bookingChanges;
-    }
-
-    return changes;
-  }, [
-    heroSettings,
-    lastSavedHero,
-    aboutHeroSettings,
-    lastSavedAboutHero,
-    storySettings,
-    lastSavedStory,
-    teamSettings,
-    lastSavedTeam,
-    testimonialsSettings,
-    lastSavedTestimonials,
-    fontSettings,
-    lastSavedFont,
-    colorSettings,
-    lastSavedColor,
-    servicesSettings,
-    lastSavedServices,
-    valuesSettings,
-    lastSavedValues,
-    gallerySettings,
-    lastSavedGallery,
-    ctaSettings,
-    lastSavedCTA,
-    headerSettings,
-    lastSavedHeader,
-    footerSettings,
-    lastSavedFooter,
-    pageVisibility,
-    lastSavedPageVisibility,
-    visibleSections,
-    lastSavedVisibleSections,
-    bookingServiceSettings,
-    lastSavedBookingService,
-    bookingDateSettings,
-    lastSavedBookingDate,
-    bookingTimeSettings,
-    lastSavedBookingTime,
-    bookingFormSettings,
-    lastSavedBookingForm,
-    bookingConfirmationSettings,
-    lastSavedBookingConfirmation,
-  ]);
-
-  // Handlers de atualização
-  const handleUpdateHero = useCallback((updates: Partial<HeroSettings>) => {
-    setHeroSettings((prev: HeroSettings) => ({ ...prev, ...updates }));
-  }, []);
-
-  const handleUpdateAboutHero = useCallback(
-    (updates: Partial<HeroSettings>) => {
-      setAboutHeroSettings((prev: HeroSettings) => ({ ...prev, ...updates }));
-    },
-    [],
-  );
-
-  const handleUpdateStory = useCallback((updates: Partial<StorySettings>) => {
-    setStorySettings((prev: StorySettings) => ({ ...prev, ...updates }));
-  }, []);
-
-  // Hidratação inicial do Customizer a partir do StudioProvider (aplicação automática)
   useEffect(() => {
     const cfg = studio?.config as Record<string, unknown> | undefined;
     if (!cfg) return;
@@ -1012,132 +928,6 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     }
   }, [studio, loadExternalConfig, iframeRef]);
 
-  const handleUpdateTeam = useCallback((updates: Partial<TeamSettings>) => {
-    setTeamSettings((prev: TeamSettings) => ({ ...prev, ...updates }));
-  }, []);
-
-  const handleUpdateTestimonials = useCallback(
-    (updates: Partial<TestimonialsSettings>) => {
-      setTestimonialsSettings((prev: TestimonialsSettings) => ({
-        ...prev,
-        ...updates,
-      }));
-    },
-    [],
-  );
-
-  const handleUpdateFont = useCallback((updates: Partial<FontSettings>) => {
-    setFontSettings((prev: FontSettings) => ({ ...prev, ...updates }));
-  }, []);
-
-  const handleUpdateColors = useCallback((updates: Partial<ColorSettings>) => {
-    setColorSettings((prev: ColorSettings) => ({ ...prev, ...updates }));
-  }, []);
-
-  const handleUpdateServices = useCallback(
-    (updates: Partial<ServicesSettings>) => {
-      setServicesSettings((prev: ServicesSettings) => ({
-        ...prev,
-        ...updates,
-      }));
-    },
-    [],
-  );
-
-  const handleUpdateValues = useCallback((updates: Partial<ValuesSettings>) => {
-    setValuesSettings((prev: ValuesSettings) => ({ ...prev, ...updates }));
-  }, []);
-
-  const handleUpdateGallery = useCallback(
-    (updates: Partial<GallerySettings>) => {
-      setGallerySettings((prev: GallerySettings) => ({ ...prev, ...updates }));
-    },
-    [],
-  );
-
-  const handleUpdateCTA = useCallback((updates: Partial<CTASettings>) => {
-    setCTASettings((prev: CTASettings) => ({ ...prev, ...updates }));
-  }, []);
-
-  const handleUpdateHeader = useCallback((updates: Partial<HeaderSettings>) => {
-    setHeaderSettings((prev: HeaderSettings) => ({ ...prev, ...updates }));
-  }, []);
-
-  const handleUpdateFooter = useCallback((updates: Partial<FooterSettings>) => {
-    setFooterSettings((prev: FooterSettings) => ({ ...prev, ...updates }));
-  }, []);
-
-  const handleUpdateBookingService = useCallback(
-    (updates: Partial<BookingStepSettings>) => {
-      setBookingServiceSettings((prev: BookingStepSettings) => ({
-        ...prev,
-        ...updates,
-      }));
-    },
-    [],
-  );
-
-  const handleUpdateBookingDate = useCallback(
-    (updates: Partial<BookingStepSettings>) => {
-      setBookingDateSettings((prev: BookingStepSettings) => ({
-        ...prev,
-        ...updates,
-      }));
-    },
-    [],
-  );
-
-  const handleUpdateBookingTime = useCallback(
-    (updates: Partial<BookingStepSettings>) => {
-      setBookingTimeSettings((prev: BookingStepSettings) => ({
-        ...prev,
-        ...updates,
-      }));
-    },
-    [],
-  );
-
-  const handleUpdateBookingForm = useCallback(
-    (updates: Partial<BookingStepSettings>) => {
-      setBookingFormSettings((prev: BookingStepSettings) => ({
-        ...prev,
-        ...updates,
-      }));
-    },
-    [],
-  );
-
-  const handleUpdateBookingConfirmation = useCallback(
-    (updates: Partial<BookingStepSettings>) => {
-      setBookingConfirmationSettings((prev: BookingStepSettings) => ({
-        ...prev,
-        ...updates,
-      }));
-    },
-    [],
-  );
-
-  const handlePageVisibilityChange = useCallback(
-    (pageId: string, isVisible: boolean) => {
-      setPageVisibility((prev: Record<string, boolean>) => ({
-        ...prev,
-        [pageId]: isVisible,
-      }));
-    },
-    [],
-  );
-
-  const handleSectionVisibilityToggle = useCallback((sectionId: string) => {
-    setVisibleSections((prev: Record<string, boolean>) => {
-      const isCurrentlyVisible = prev[sectionId] !== false;
-      return {
-        ...prev,
-        [sectionId]: !isCurrentlyVisible,
-      };
-    });
-  }, []);
-
-  // Notificamos o iframe sobre a mudança de visibilidade das páginas
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
@@ -1150,7 +940,6 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     }
   }, [pageVisibility, iframeRef]);
 
-  // Notificamos o iframe sobre a mudança de visibilidade das seções
   useEffect(() => {
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
@@ -1163,9 +952,6 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     }
   }, [visibleSections, iframeRef]);
 
-  // Sincronização com o iframe - Deep Merge e PostMessage
-
-  // 1. Prepare merged settings (Local overrides Bank)
   const previewHeroSettings = useMemo(
     () => ({ ...lastSavedHero, ...heroSettings }),
     [lastSavedHero, heroSettings],
@@ -1260,7 +1046,6 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     [lastSavedBookingConfirmation, bookingConfirmationSettings],
   );
 
-  // 2. Send updates when merged settings change
   useEffect(() => {
     iframeRef.current?.contentWindow?.postMessage(
       { type: "UPDATE_HERO_SETTINGS", settings: previewHeroSettings },
@@ -1408,14 +1193,12 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     );
   }, [previewBookingConfirmationSettings, iframeRef]);
 
-  // 3. Resend all settings when BookingFlow is ready (iframe loaded)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "BOOKING_FLOW_READY") {
         console.log(">>> [EDITOR] BookingFlow ready, resending settings...");
         if (iframeRef.current?.contentWindow) {
           const win = iframeRef.current.contentWindow;
-          // Send all critical settings for booking flow
           win.postMessage(
             {
               type: "UPDATE_BOOKING_SERVICE_SETTINGS",
@@ -1452,7 +1235,6 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             "*",
           );
 
-          // Also send global styles that might affect the flow
           win.postMessage(
             { type: "UPDATE_COLORS", settings: previewColorSettings },
             "*",
@@ -1478,7 +1260,6 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     iframeRef,
   ]);
 
-  // Aplicar mudanças (atualizar estados applied e notificar iframe)
   const handleApplyHero = useCallback(() => {
     setLastAppliedHero({ ...heroSettings });
     if (iframeRef.current?.contentWindow) {
@@ -1492,7 +1273,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças do banner foram aplicadas ao rascunho.",
     });
-  }, [heroSettings, toast, iframeRef]);
+  }, [heroSettings, iframeRef, saveHeroSettings, setLastAppliedHero, toast]);
 
   const handleApplyAboutHero = useCallback(() => {
     setLastAppliedAboutHero({ ...aboutHeroSettings });
@@ -1511,7 +1292,13 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       description:
         "As mudanças do banner sobre nós foram aplicadas ao rascunho.",
     });
-  }, [aboutHeroSettings, toast, iframeRef]);
+  }, [
+    aboutHeroSettings,
+    iframeRef,
+    saveAboutHeroSettings,
+    setLastAppliedAboutHero,
+    toast,
+  ]);
 
   const handleApplyStory = useCallback(() => {
     setLastAppliedStory({ ...storySettings });
@@ -1526,7 +1313,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças da história foram aplicadas ao rascunho.",
     });
-  }, [storySettings, toast, iframeRef]);
+  }, [storySettings, iframeRef, saveStorySettings, setLastAppliedStory, toast]);
 
   const handleApplyTeam = useCallback(() => {
     setLastAppliedTeam({ ...teamSettings });
@@ -1541,7 +1328,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças da equipe foram aplicadas ao rascunho.",
     });
-  }, [teamSettings, toast, iframeRef]);
+  }, [teamSettings, iframeRef, saveTeamSettings, setLastAppliedTeam, toast]);
 
   const handleApplyTestimonials = useCallback(() => {
     setLastAppliedTestimonials({ ...testimonialsSettings });
@@ -1559,7 +1346,13 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças dos depoimentos foram aplicadas ao rascunho.",
     });
-  }, [testimonialsSettings, toast, iframeRef]);
+  }, [
+    testimonialsSettings,
+    iframeRef,
+    saveTestimonialsSettings,
+    setLastAppliedTestimonials,
+    toast,
+  ]);
 
   const handleApplyTypography = useCallback(() => {
     setLastAppliedFont({ ...fontSettings });
@@ -1574,7 +1367,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças de tipografia foram aplicadas ao rascunho.",
     });
-  }, [fontSettings, toast, iframeRef]);
+  }, [fontSettings, iframeRef, saveFontSettings, setLastAppliedFont, toast]);
 
   const handleApplyColors = useCallback(() => {
     setLastAppliedColor({ ...colorSettings });
@@ -1589,7 +1382,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças de cores foram aplicadas ao rascunho.",
     });
-  }, [colorSettings, toast, iframeRef]);
+  }, [colorSettings, iframeRef, saveColorSettings, setLastAppliedColor, toast]);
 
   const handleApplyServices = useCallback(() => {
     setLastAppliedServices({ ...servicesSettings });
@@ -1604,7 +1397,13 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças de serviços foram aplicadas ao rascunho.",
     });
-  }, [servicesSettings, toast, iframeRef]);
+  }, [
+    servicesSettings,
+    iframeRef,
+    saveServicesSettings,
+    setLastAppliedServices,
+    toast,
+  ]);
 
   const handleApplyValues = useCallback(() => {
     setLastAppliedValues({ ...valuesSettings });
@@ -1619,7 +1418,13 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças de valores foram aplicadas ao rascunho.",
     });
-  }, [valuesSettings, toast, iframeRef]);
+  }, [
+    valuesSettings,
+    iframeRef,
+    saveValuesSettings,
+    setLastAppliedValues,
+    toast,
+  ]);
 
   const handleApplyGallery = useCallback(() => {
     setLastAppliedGallery({ ...gallerySettings });
@@ -1634,7 +1439,13 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças da galeria foram aplicadas ao rascunho.",
     });
-  }, [gallerySettings, toast, iframeRef]);
+  }, [
+    gallerySettings,
+    iframeRef,
+    saveGallerySettings,
+    setLastAppliedGallery,
+    toast,
+  ]);
 
   const handleApplyCTA = useCallback(() => {
     setLastAppliedCTA({ ...ctaSettings });
@@ -1649,7 +1460,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças da chamada foram aplicadas ao rascunho.",
     });
-  }, [ctaSettings, toast, iframeRef]);
+  }, [ctaSettings, iframeRef, saveCTASettings, setLastAppliedCTA, toast]);
 
   const handleApplyHeader = useCallback(() => {
     setLastAppliedHeader({ ...headerSettings });
@@ -1659,13 +1470,18 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         "*",
       );
     }
-    // Forçar persistência temporária no localStorage para o preview ler em caso de refresh
     saveHeaderSettings(headerSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças do cabeçalho foram aplicadas ao rascunho.",
     });
-  }, [headerSettings, toast, iframeRef]);
+  }, [
+    headerSettings,
+    iframeRef,
+    saveHeaderSettings,
+    setLastAppliedHeader,
+    toast,
+  ]);
 
   const handleApplyFooter = useCallback(() => {
     setLastAppliedFooter({ ...footerSettings });
@@ -1675,13 +1491,18 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         "*",
       );
     }
-    // Forçar persistência temporária no localStorage para o preview ler em caso de refresh
     saveFooterSettings(footerSettings);
     toast({
       title: "Preview atualizado!",
       description: "As mudanças do rodapé foram aplicadas ao rascunho.",
     });
-  }, [footerSettings, toast, iframeRef]);
+  }, [
+    footerSettings,
+    iframeRef,
+    saveFooterSettings,
+    setLastAppliedFooter,
+    toast,
+  ]);
 
   const handleApplyBookingService = useCallback(() => {
     setLastAppliedBookingService({ ...bookingServiceSettings });
@@ -1699,7 +1520,13 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças do passo 1 (serviços) foram aplicadas.",
     });
-  }, [bookingServiceSettings, toast, iframeRef]);
+  }, [
+    bookingServiceSettings,
+    iframeRef,
+    saveBookingServiceSettings,
+    setLastAppliedBookingService,
+    toast,
+  ]);
 
   const handleApplyBookingDate = useCallback(() => {
     setLastAppliedBookingDate({ ...bookingDateSettings });
@@ -1717,7 +1544,13 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças do passo 2 (data) foram aplicadas.",
     });
-  }, [bookingDateSettings, toast, iframeRef]);
+  }, [
+    bookingDateSettings,
+    iframeRef,
+    saveBookingDateSettings,
+    setLastAppliedBookingDate,
+    toast,
+  ]);
 
   const handleApplyBookingTime = useCallback(() => {
     setLastAppliedBookingTime({ ...bookingTimeSettings });
@@ -1735,7 +1568,13 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças do passo 3 (horário) foram aplicadas.",
     });
-  }, [bookingTimeSettings, toast, iframeRef]);
+  }, [
+    bookingTimeSettings,
+    iframeRef,
+    saveBookingTimeSettings,
+    setLastAppliedBookingTime,
+    toast,
+  ]);
 
   const handleApplyBookingForm = useCallback(() => {
     setLastAppliedBookingForm({ ...bookingFormSettings });
@@ -1753,7 +1592,13 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças do passo 4 (dados) foram aplicadas.",
     });
-  }, [bookingFormSettings, toast, iframeRef]);
+  }, [
+    bookingFormSettings,
+    iframeRef,
+    saveBookingFormSettings,
+    setLastAppliedBookingForm,
+    toast,
+  ]);
 
   const handleApplyBookingConfirmation = useCallback(() => {
     setLastAppliedBookingConfirmation({ ...bookingConfirmationSettings });
@@ -1771,353 +1616,12 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       title: "Preview atualizado!",
       description: "As mudanças da confirmação foram aplicadas.",
     });
-  }, [bookingConfirmationSettings, toast, iframeRef]);
-
-  const handleSaveGlobal = useCallback(async () => {
-    // 1. Persistência Local (Backup/Offline)
-    saveHeroSettings(heroSettings);
-    saveAboutHeroSettings(aboutHeroSettings);
-    saveStorySettings(storySettings);
-    saveTeamSettings(teamSettings);
-    saveTestimonialsSettings(testimonialsSettings);
-    saveFontSettings(fontSettings);
-    saveColorSettings(colorSettings);
-    saveServicesSettings(servicesSettings);
-    saveValuesSettings(valuesSettings);
-    saveGallerySettings(gallerySettings);
-    saveCTASettings(ctaSettings);
-    saveHeaderSettings(headerSettings);
-    saveFooterSettings(footerSettings);
-    savePageVisibility(pageVisibility);
-    saveVisibleSections(visibleSections);
-
-    saveBookingServiceSettings(bookingServiceSettings);
-    saveBookingDateSettings(bookingDateSettings);
-    saveBookingTimeSettings(bookingTimeSettings);
-    saveBookingFormSettings(bookingFormSettings);
-    saveBookingConfirmationSettings(bookingConfirmationSettings);
-
-    // 2. Persistência no Backend (se companyId estiver definido)
-    if (companyId) {
-      setIsSaving(true);
-      try {
-        const changes = getChangedSettings();
-
-        // Alinhamento com o Back-end: Converter 'colors' para 'layoutGlobal' com 'siteColors'
-        const payload: Record<string, unknown> = { ...changes };
-
-        // Mapeamento de seções para layoutGlobal para persistência centralizada
-        const sectionsToGlobal = [
-          "hero",
-          "aboutHero",
-          "story",
-          "team",
-          "testimonials",
-          "services",
-          "values",
-          "gallery",
-          "cta",
-          "header",
-          "footer",
-        ];
-
-        for (const section of sectionsToGlobal) {
-          if (changes[section]) {
-            payload.layoutGlobal = {
-              ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-              [section]: changes[section],
-            };
-            // Mantemos no root para compatibilidade imediata se necessário
-            // payload[section] = changes[section];
-          }
-        }
-
-        if (changes.colors) {
-          const colors = changes.colors as Record<string, string | undefined>;
-          payload.layoutGlobal = {
-            ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-            siteColors: {
-              primary: colors.primary,
-              secondary: colors.secondary,
-              accent: colors.accent || colors.primary,
-              background: colors.background,
-              text: colors.text,
-              buttonText: colors.buttonText || "#ffffff",
-            },
-          };
-          // Removemos a chave antiga para evitar duplicidade ou confusão no back-end
-          delete payload.colors;
-        }
-
-        if (changes.theme) {
-          payload.typography = changes.theme;
-          payload.layoutGlobal = {
-            ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-            fontes: changes.theme,
-          };
-          delete payload.theme;
-        }
-
-        if (changes.visibleSections) {
-          payload.layoutGlobal = {
-            ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-            visibleSections: changes.visibleSections,
-          };
-          delete payload.visibleSections;
-        }
-
-        if (changes.pageVisibility) {
-          payload.layoutGlobal = {
-            ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-            pageVisibility: changes.pageVisibility,
-          };
-          delete payload.pageVisibility;
-        }
-
-        // Normalização do appointmentFlow (bookingSteps) conforme back-end
-        const bookingChanges: Record<string, unknown> = {};
-        if (changes.bookingSteps) {
-          interface StepConfig {
-            bgType?: string;
-            bgColor?: string;
-            backgroundColor?: string;
-            cardBgColor?: string;
-            cardConfig?: {
-              backgroundColor?: string;
-            };
-            [key: string]: unknown;
-          }
-          const steps = changes.bookingSteps as Record<string, StepConfig>;
-
-          if (steps.service) {
-            bookingChanges.step1Services = {
-              ...steps.service,
-              bgType: steps.service.bgType,
-              bgColor: steps.service.bgColor,
-              cardConfig: {
-                backgroundColor:
-                  steps.service.cardConfig?.backgroundColor ||
-                  steps.service.cardBgColor ||
-                  steps.service.backgroundColor ||
-                  "#FFFFFF",
-              },
-            };
-          }
-          if (steps.date) {
-            bookingChanges.step2Dates = {
-              ...steps.date,
-              bgType: steps.date.bgType,
-              bgColor: steps.date.bgColor,
-              cardConfig: {
-                backgroundColor:
-                  steps.date.cardConfig?.backgroundColor ||
-                  steps.date.cardBgColor ||
-                  steps.date.backgroundColor ||
-                  "#FFFFFF",
-              },
-            };
-          }
-          if (steps.time) {
-            bookingChanges.step3Times = {
-              ...steps.time,
-              bgType: steps.time.bgType,
-              bgColor: steps.time.bgColor,
-              cardConfig: {
-                backgroundColor:
-                  steps.time.cardConfig?.backgroundColor ||
-                  steps.time.cardBgColor ||
-                  steps.time.backgroundColor ||
-                  "#FFFFFF",
-              },
-            };
-          }
-          if (steps.form) {
-            bookingChanges.step4Form = {
-              ...steps.form,
-              bgType: steps.form.bgType,
-              bgColor: steps.form.bgColor,
-              cardConfig: {
-                backgroundColor:
-                  steps.form.cardConfig?.backgroundColor ||
-                  steps.form.cardBgColor ||
-                  steps.form.backgroundColor ||
-                  "#FFFFFF",
-              },
-            };
-          }
-          if (steps.confirmation) {
-            bookingChanges.step5Confirmation = {
-              ...steps.confirmation,
-              bgType: steps.confirmation.bgType,
-              bgColor: steps.confirmation.bgColor,
-              cardConfig: {
-                backgroundColor:
-                  steps.confirmation.cardConfig?.backgroundColor ||
-                  steps.confirmation.cardBgColor ||
-                  steps.confirmation.backgroundColor ||
-                  "#FFFFFF",
-              },
-            };
-          }
-
-          delete payload.bookingSteps;
-        }
-
-        if (Object.keys(bookingChanges).length > 0) {
-          payload.appointmentFlow = {
-            ...((payload.appointmentFlow as Record<string, unknown>) || {}),
-            ...bookingChanges,
-          };
-          // Também atualizar layoutGlobal.bookingSteps para redundância
-          const currentLayoutGlobal =
-            (payload.layoutGlobal as Record<string, unknown>) || {};
-          payload.layoutGlobal = {
-            ...currentLayoutGlobal,
-            bookingSteps: {
-              ...((currentLayoutGlobal.bookingSteps as Record<
-                string,
-                unknown
-              >) || {}),
-              ...bookingChanges,
-            },
-          };
-        }
-
-        console.log("ENVIANDO PARA O BANCO:", payload);
-        await siteCustomizerService.saveCustomization(companyId, payload);
-
-        // Pós-salvamento: recarrega do banco (sem cache) e aplica imediatamente
-        try {
-          const fresh = await siteCustomizerService.getCustomization(companyId);
-          if (fresh) {
-            loadExternalConfig(fresh as unknown as Record<string, unknown>);
-
-            // Sincronização explícita com o preview para cores e fontes (que são as mais sensíveis)
-            const layoutGlobal = fresh.layoutGlobal || fresh.layout_global;
-            const freshColors =
-              fresh.colors ||
-              layoutGlobal?.siteColors ||
-              layoutGlobal?.cores_base;
-            const freshFonts =
-              fresh.theme || fresh.typography || layoutGlobal?.fontes;
-
-            if (iframeRef.current?.contentWindow) {
-              if (freshColors) {
-                iframeRef.current.contentWindow.postMessage(
-                  { type: "UPDATE_COLORS", settings: freshColors },
-                  "*",
-                );
-              }
-              if (freshFonts) {
-                iframeRef.current.contentWindow.postMessage(
-                  { type: "UPDATE_TYPOGRAPHY", settings: freshFonts },
-                  "*",
-                );
-              }
-            }
-          }
-        } catch (reloadErr) {
-          console.warn(
-            ">>> [ADMIN_WARN] Falha ao recarregar dados do banco após salvar:",
-            reloadErr,
-          );
-        }
-
-        toast({
-          title: "Salvo com sucesso!",
-          description: "As alterações foram publicadas no seu site.",
-        });
-      } catch (err) {
-        console.warn(">>> [ADMIN_WARN] Erro ao salvar no backend:", err);
-        toast({
-          title: "Erro ao salvar",
-          description:
-            "As alterações foram salvas localmente, mas houve um erro ao sincronizar com o servidor.",
-          variant: "destructive",
-        });
-        // Não retornamos aqui, deixamos atualizar os estados "lastSaved" para que o botão fique desabilitado,
-        // pois já salvamos localmente. Ou deveríamos manter habilitado?
-        // Assumindo que o local storage é a fonte de verdade imediata para o editor.
-      } finally {
-        setIsSaving(false);
-      }
-    } else {
-      toast({
-        title: "Site salvo localmente!",
-        description: "As alterações foram salvas no navegador.",
-      });
-    }
-
-    // 3. Atualiza estados "LastSaved" para refletir o que está "commitado"
-    setLastSavedHero(heroSettings);
-    setLastSavedAboutHero(aboutHeroSettings);
-    setLastSavedStory(storySettings);
-    setLastSavedTeam(teamSettings);
-    setLastSavedTestimonials(testimonialsSettings);
-    setLastSavedFont(fontSettings);
-    setLastSavedColor(colorSettings);
-    setLastSavedServices(servicesSettings);
-    setLastSavedValues(valuesSettings);
-    setLastSavedGallery(gallerySettings);
-    setLastSavedCTA(ctaSettings);
-    setLastSavedHeader(headerSettings);
-    setLastSavedFooter(footerSettings);
-    setLastSavedPageVisibility(pageVisibility);
-    setLastSavedVisibleSections(visibleSections);
-
-    setLastSavedBookingService(bookingServiceSettings);
-    setLastSavedBookingDate(bookingDateSettings);
-    setLastSavedBookingTime(bookingTimeSettings);
-    setLastSavedBookingForm(bookingFormSettings);
-    setLastSavedBookingConfirmation(bookingConfirmationSettings);
-
-    setLastAppliedHero(heroSettings);
-    setLastAppliedAboutHero(aboutHeroSettings);
-    setLastAppliedStory(storySettings);
-    setLastAppliedTeam(teamSettings);
-    setLastAppliedTestimonials(testimonialsSettings);
-    setLastAppliedFont(fontSettings);
-    setLastAppliedColor(colorSettings);
-    setLastAppliedServices(servicesSettings);
-    setLastAppliedValues(valuesSettings);
-    setLastAppliedGallery(gallerySettings);
-    setLastAppliedCTA(ctaSettings);
-    setLastAppliedHeader(headerSettings);
-    setLastAppliedFooter(footerSettings);
-
-    setLastAppliedBookingService(bookingServiceSettings);
-    setLastAppliedBookingDate(bookingDateSettings);
-    setLastAppliedBookingTime(bookingTimeSettings);
-    setLastAppliedBookingForm(bookingFormSettings);
-    setLastAppliedBookingConfirmation(bookingConfirmationSettings);
-
-    window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
   }, [
-    companyId,
-    getChangedSettings,
-    heroSettings,
-    aboutHeroSettings,
-    storySettings,
-    teamSettings,
-    testimonialsSettings,
-    fontSettings,
-    colorSettings,
-    servicesSettings,
-    valuesSettings,
-    gallerySettings,
-    ctaSettings,
-    headerSettings,
-    footerSettings,
-    pageVisibility,
-    visibleSections,
-    bookingServiceSettings,
-    bookingDateSettings,
-    bookingTimeSettings,
-    bookingFormSettings,
     bookingConfirmationSettings,
+    iframeRef,
+    saveBookingConfirmationSettings,
+    setLastAppliedBookingConfirmation,
     toast,
-    iframeRef.current?.contentWindow,
-    loadExternalConfig,
   ]);
 
   const resetSettings = useCallback(() => {
@@ -2140,7 +1644,21 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       setHeaderSettings(defaultHeaderSettings);
       setFooterSettings(defaultFooterSettings);
     }
-  }, []);
+  }, [
+    setAboutHeroSettings,
+    setCTASettings,
+    setColorSettings,
+    setFooterSettings,
+    setGallerySettings,
+    setHeaderSettings,
+    setHeroSettings,
+    setServicesSettings,
+    setStorySettings,
+    setTeamSettings,
+    setTestimonialsSettings,
+    setValuesSettings,
+    setFontSettings,
+  ]);
 
   const handleSectionReset = useCallback(
     (sectionId: string) => {
@@ -2325,7 +1843,9 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
             break;
           case "booking-confirmation":
             setBookingConfirmationSettings(defaultBookingConfirmationSettings);
-            saveBookingConfirmationSettings(defaultBookingConfirmationSettings);
+            saveBookingConfirmationSettings(
+              defaultBookingConfirmationSettings,
+            );
             win.postMessage(
               {
                 type: "UPDATE_BOOKING_CONFIRMATION_SETTINGS",
@@ -2344,29 +1864,158 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         }
       }
     },
-    [toast, iframeRef],
+    [
+      iframeRef,
+      saveAboutHeroSettings,
+      saveBookingConfirmationSettings,
+      saveBookingDateSettings,
+      saveBookingFormSettings,
+      saveBookingServiceSettings,
+      saveBookingTimeSettings,
+      saveCTASettings,
+      saveColorSettings,
+      saveFooterSettings,
+      saveGallerySettings,
+      saveHeaderSettings,
+      saveHeroSettings,
+      saveServicesSettings,
+      saveStorySettings,
+      saveTeamSettings,
+      saveTestimonialsSettings,
+      saveValuesSettings,
+      saveFontSettings,
+      setAboutHeroSettings,
+      setBookingConfirmationSettings,
+      setBookingDateSettings,
+      setBookingFormSettings,
+      setBookingServiceSettings,
+      setBookingTimeSettings,
+      setCTASettings,
+      setColorSettings,
+      setFooterSettings,
+      setGallerySettings,
+      setHeaderSettings,
+      setHeroSettings,
+      setServicesSettings,
+      setStorySettings,
+      setTeamSettings,
+      setTestimonialsSettings,
+      setValuesSettings,
+      setFontSettings,
+      toast,
+    ],
   );
 
-  const fetchCustomization = useCallback(
-    async (id: string) => {
-      setCompanyId(id);
-      setIsFetching(true);
-      setFetchError(null);
-      try {
-        const data = await siteCustomizerService.getCustomization(id);
-        // Cast to unknown first to avoid partial match issues if types slightly differ
-        loadExternalConfig(data as unknown as Record<string, unknown>);
-      } catch (err) {
-        console.warn(">>> [ADMIN_WARN] Falha ao buscar customização:", err);
-        setFetchError("Falha ao carregar configurações do site.");
-      } finally {
-        setIsFetching(false);
-      }
+  const api = useEditorApi({
+    iframeRef,
+    loadExternalConfig,
+    settings: {
+      heroSettings,
+      aboutHeroSettings,
+      storySettings,
+      teamSettings,
+      testimonialsSettings,
+      fontSettings,
+      colorSettings,
+      servicesSettings,
+      valuesSettings,
+      gallerySettings,
+      ctaSettings,
+      headerSettings,
+      footerSettings,
+      bookingServiceSettings,
+      bookingDateSettings,
+      bookingTimeSettings,
+      bookingFormSettings,
+      bookingConfirmationSettings,
+      pageVisibility,
+      visibleSections,
     },
-    [loadExternalConfig],
-  );
+    lastSaved: {
+      lastSavedHero,
+      lastSavedAboutHero,
+      lastSavedStory,
+      lastSavedTeam,
+      lastSavedTestimonials,
+      lastSavedFont,
+      lastSavedColor,
+      lastSavedServices,
+      lastSavedValues,
+      lastSavedGallery,
+      lastSavedCTA,
+      lastSavedHeader,
+      lastSavedFooter,
+      lastSavedBookingService,
+      lastSavedBookingDate,
+      lastSavedBookingTime,
+      lastSavedBookingForm,
+      lastSavedBookingConfirmation,
+      lastSavedPageVisibility,
+      lastSavedVisibleSections,
+    },
+    lastApplied: {
+      lastAppliedHero,
+      lastAppliedAboutHero,
+      lastAppliedStory,
+      lastAppliedTeam,
+      lastAppliedTestimonials,
+      lastAppliedFont,
+      lastAppliedColor,
+      lastAppliedServices,
+      lastAppliedValues,
+      lastAppliedGallery,
+      lastAppliedCTA,
+      lastAppliedHeader,
+      lastAppliedFooter,
+      lastAppliedBookingService,
+      lastAppliedBookingDate,
+      lastAppliedBookingTime,
+      lastAppliedBookingForm,
+      lastAppliedBookingConfirmation,
+    },
+    setters: {
+      setLastSavedHero,
+      setLastSavedAboutHero,
+      setLastSavedStory,
+      setLastSavedTeam,
+      setLastSavedTestimonials,
+      setLastSavedFont,
+      setLastSavedColor,
+      setLastSavedServices,
+      setLastSavedValues,
+      setLastSavedGallery,
+      setLastSavedCTA,
+      setLastSavedHeader,
+      setLastSavedFooter,
+      setLastSavedBookingService,
+      setLastSavedBookingDate,
+      setLastSavedBookingTime,
+      setLastSavedBookingForm,
+      setLastSavedBookingConfirmation,
+      setLastSavedPageVisibility,
+      setLastSavedVisibleSections,
+      setLastAppliedHero,
+      setLastAppliedAboutHero,
+      setLastAppliedStory,
+      setLastAppliedTeam,
+      setLastAppliedTestimonials,
+      setLastAppliedFont,
+      setLastAppliedColor,
+      setLastAppliedServices,
+      setLastAppliedValues,
+      setLastAppliedGallery,
+      setLastAppliedCTA,
+      setLastAppliedHeader,
+      setLastAppliedFooter,
+      setLastAppliedBookingService,
+      setLastAppliedBookingDate,
+      setLastAppliedBookingTime,
+      setLastAppliedBookingForm,
+      setLastAppliedBookingConfirmation,
+    },
+    saveLocalDrafts,
+  });
 
-  // Booleans para habilitar/desabilitar botões
   const hasHeroChanges =
     JSON.stringify(heroSettings) !== JSON.stringify(lastAppliedHero);
   const hasAboutHeroChanges =
@@ -2410,125 +2059,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     JSON.stringify(bookingConfirmationSettings) !==
     JSON.stringify(lastAppliedBookingConfirmation);
 
-  const hasUnsavedGlobalChanges = useMemo(() => {
-    const heroChanged =
-      JSON.stringify(lastAppliedHero) !== JSON.stringify(lastSavedHero);
-    const aboutHeroChanged =
-      JSON.stringify(lastAppliedAboutHero) !==
-      JSON.stringify(lastSavedAboutHero);
-    const storyChanged =
-      JSON.stringify(lastAppliedStory) !== JSON.stringify(lastSavedStory);
-    const teamChanged =
-      JSON.stringify(lastAppliedTeam) !== JSON.stringify(lastSavedTeam);
-    const testimonialsChanged =
-      JSON.stringify(lastAppliedTestimonials) !==
-      JSON.stringify(lastSavedTestimonials);
-    const fontChanged =
-      JSON.stringify(lastAppliedFont) !== JSON.stringify(lastSavedFont);
-    const colorChanged =
-      JSON.stringify(lastAppliedColor) !== JSON.stringify(lastSavedColor);
-    const servicesChanged =
-      JSON.stringify(lastAppliedServices) !== JSON.stringify(lastSavedServices);
-    const valuesChanged =
-      JSON.stringify(lastAppliedValues) !== JSON.stringify(lastSavedValues);
-    const galleryChanged =
-      JSON.stringify(lastAppliedGallery) !== JSON.stringify(lastSavedGallery);
-    const ctaChanged =
-      JSON.stringify(lastAppliedCTA) !== JSON.stringify(lastSavedCTA);
-    const headerChanged =
-      JSON.stringify(lastAppliedHeader) !== JSON.stringify(lastSavedHeader);
-    const footerChanged =
-      JSON.stringify(lastAppliedFooter) !== JSON.stringify(lastSavedFooter);
-
-    const bookingServiceChanged =
-      JSON.stringify(lastAppliedBookingService) !==
-      JSON.stringify(lastSavedBookingService);
-    const bookingDateChanged =
-      JSON.stringify(lastAppliedBookingDate) !==
-      JSON.stringify(lastSavedBookingDate);
-    const bookingTimeChanged =
-      JSON.stringify(lastAppliedBookingTime) !==
-      JSON.stringify(lastSavedBookingTime);
-    const bookingFormChanged =
-      JSON.stringify(lastAppliedBookingForm) !==
-      JSON.stringify(lastSavedBookingForm);
-    const bookingConfirmationChanged =
-      JSON.stringify(lastAppliedBookingConfirmation) !==
-      JSON.stringify(lastSavedBookingConfirmation);
-
-    const pageVisibilityChanged =
-      JSON.stringify(pageVisibility) !==
-      JSON.stringify(lastSavedPageVisibility);
-    const visibleSectionsChanged =
-      JSON.stringify(visibleSections) !==
-      JSON.stringify(lastSavedVisibleSections);
-
-    const changes = [
-      heroChanged,
-      aboutHeroChanged,
-      storyChanged,
-      teamChanged,
-      testimonialsChanged,
-      fontChanged,
-      colorChanged,
-      servicesChanged,
-      valuesChanged,
-      galleryChanged,
-      ctaChanged,
-      headerChanged,
-      footerChanged,
-      bookingServiceChanged,
-      bookingDateChanged,
-      bookingTimeChanged,
-      bookingFormChanged,
-      bookingConfirmationChanged,
-      pageVisibilityChanged,
-      visibleSectionsChanged,
-    ];
-
-    return changes.some(Boolean);
-  }, [
-    lastAppliedHero,
-    lastSavedHero,
-    lastAppliedAboutHero,
-    lastSavedAboutHero,
-    lastAppliedStory,
-    lastSavedStory,
-    lastAppliedTeam,
-    lastSavedTeam,
-    lastAppliedTestimonials,
-    lastSavedTestimonials,
-    lastAppliedFont,
-    lastSavedFont,
-    lastAppliedColor,
-    lastSavedColor,
-    lastAppliedServices,
-    lastSavedServices,
-    lastAppliedValues,
-    lastSavedValues,
-    lastAppliedGallery,
-    lastSavedGallery,
-    lastAppliedCTA,
-    lastSavedCTA,
-    lastAppliedHeader,
-    lastSavedHeader,
-    lastAppliedFooter,
-    lastSavedFooter,
-    lastAppliedBookingService,
-    lastSavedBookingService,
-    lastAppliedBookingDate,
-    lastSavedBookingDate,
-    lastAppliedBookingTime,
-    lastSavedBookingTime,
-    lastAppliedBookingForm,
-    lastSavedBookingForm,
-    lastAppliedBookingConfirmation,
-    lastSavedBookingConfirmation,
-    pageVisibility,
-    lastSavedPageVisibility,
-    visibleSections,
-    lastSavedVisibleSections,
-  ]);
+  const hasUnsavedGlobalChanges = useMemo(
+    () => api.hasUnsavedGlobalChanges(),
+    [api.hasUnsavedGlobalChanges],
+  );
 
   return {
     heroSettings,
@@ -2589,7 +2123,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     handleApplyBookingTime,
     handleApplyBookingForm,
     handleApplyBookingConfirmation,
-    handleSaveGlobal,
+    handleSaveGlobal: api.handleSaveGlobal,
     resetSettings,
     handleSectionReset,
     hasHeroChanges,
@@ -2612,10 +2146,10 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     hasBookingConfirmationChanges,
     hasUnsavedGlobalChanges,
     loadExternalConfig,
-    getChangedSettings,
-    fetchCustomization,
-    isFetching,
-    fetchError,
-    isSaving,
+    getChangedSettings: api.getChangedSettings,
+    fetchCustomization: api.fetchCustomization,
+    isFetching: api.isFetching,
+    fetchError: api.fetchError,
+    isSaving: api.isSaving,
   };
 }
