@@ -789,7 +789,13 @@ export function BookingFlow() {
                 {renderStepHeader(formSettings)}
                 <div className="max-w-2xl mx-auto">
                   <BookingForm
-                    service={totalService}
+                    services={
+                      selectedServices.length > 0
+                        ? selectedServices
+                        : totalService
+                          ? [totalService]
+                          : []
+                    }
                     date={effectiveDate}
                     time={effectiveTime}
                     onConfirm={handleBookingConfirm}

@@ -2194,10 +2194,15 @@ export function calculateBookingResources(
   services: Service[],
   inventory: InventoryItem[],
 ): { item: InventoryItem; quantity: number; mode: string }[] {
-  // 1. Identificar todos os IDs de serviço (pode ser string ou array)
-  const serviceIds = Array.isArray(booking.serviceId)
-    ? booking.serviceId
-    : [booking.serviceId];
+  // 1. Identificar todos os IDs de serviço (pode ser string, string separada por vírgula ou array)
+  let serviceIds: string[] = [];
+  if (Array.isArray(booking.serviceId)) {
+    serviceIds = booking.serviceId;
+  } else if (typeof booking.serviceId === "string") {
+    serviceIds = booking.serviceId.split(",").map((id) => id.trim());
+  } else {
+    serviceIds = [booking.serviceId];
+  }
 
   // 2. Mapear serviços na ordem em que aparecem
   const servicesInOrder = serviceIds

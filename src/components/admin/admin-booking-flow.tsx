@@ -442,7 +442,13 @@ export function AdminBookingFlow({
         selectedTime && (
           <div className="max-w-2xl mx-auto">
             <AdminBookingForm
-              service={totalService}
+              services={
+                selectedServices.length > 0
+                  ? selectedServices
+                  : totalService
+                    ? [totalService]
+                    : []
+              }
               date={selectedDate}
               time={selectedTime}
               onConfirm={handleBookingConfirm}

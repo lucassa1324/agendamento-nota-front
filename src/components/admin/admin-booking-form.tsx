@@ -19,7 +19,7 @@ import {
 } from "@/lib/booking-data";
 
 type AdminBookingFormProps = {
-  service: Service;
+  services: Service[]; // Alterado de service para services
   date: string;
   time: string;
   onConfirm: (booking: Booking) => void;
@@ -29,7 +29,7 @@ type AdminBookingFormProps = {
 };
 
 export function AdminBookingForm({
-  service,
+  services, // Alterado de service para services
   date,
   time,
   onConfirm,
@@ -39,14 +39,20 @@ export function AdminBookingForm({
 }: AdminBookingFormProps) {
   const { studio } = useStudio();
   const [isLoading, setIsLoading] = useState(false);
+
+  const totalPrice = services.reduce(
+    (acc, s) => acc + (typeof s.price === "string" ? parseFloat(s.price) : s.price),
+    0,
+  );
+
   const [formData, setFormData] = useState({
     name: initialBooking?.clientName || "",
     email: initialBooking?.clientEmail || "",
     phone: initialBooking?.clientPhone || "",
-    // Garante que o preço seja tratado como número para evitar zeros à esquerda (ex: "0450.00")
+    // Garante que o preço seja tratado como número para evitar zeros à esquerda
     price: initialBooking?.servicePrice
       ? Number(initialBooking.servicePrice)
-      : Number(service.price || 0),
+      : Number(totalPrice),
   });
 
   const formattedDate = new Date(`${date}T00:00:00`).toLocaleDateString(
@@ -59,6 +65,12 @@ export function AdminBookingForm({
     },
   );
 
+  const formatDuration = (totalMinutes: number) => {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!studio?.id) return;
@@ -66,66 +78,60 @@ export function AdminBookingForm({
     setIsLoading(true);
 
     try {
-      // 1. Preparar o agendamento para o novo Back-end (Elysia)
       const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
 
-      // Converter duração para HH:mm
-      const durationMinutes = parseDuration(service.duration);
-      const hours = Math.floor(durationMinutes / 60);
-      const mins = durationMinutes % 60;
-      const durationHHmm = `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+      // Cálculo de snapshots individuais e agregados
+      const items = services.map((s) => ({
+        serviceId: s.id,
+        serviceNameSnapshot: s.name,
+        servicePriceSnapshot: (typeof s.price === "string" ? parseFloat(s.price) : s.price).toFixed(2),
+        serviceDurationSnapshot: formatDuration(parseDuration(s.duration)),
+      }));
 
-      // Log para validar o Service ID e outros dados antes de enviar
-      console.log("🔍 Validando dados para o Back-end:");
-      console.log("Service ID:", service.id);
-      console.log("Studio ID:", studio.id);
+      const totalDurationMinutes = services.reduce(
+        (acc, s) => acc + parseDuration(s.duration),
+        0,
+      );
+
+      const durationHHmm = formatDuration(totalDurationMinutes);
+      const serviceNames = services.map((s) => s.name).join(", ");
+      const serviceIds = services.map((s) => s.id).join(",");
 
       const appointmentData = {
         companyId: studio.id,
-        serviceId: service.id, // String de IDs separados por vírgula (ex: "id1,id2")
+        serviceId: serviceIds, // String de IDs separados por vírgula
         customerId: null,
         scheduledAt,
         customerName: formData.name,
         customerEmail: formData.email,
         customerPhone: formData.phone,
-        serviceNameSnapshot: service.name, // Nomes reais separados por vírgula
-        servicePriceSnapshot: Number(formData.price || 0).toFixed(2), // String decimal: "460.00"
-        serviceDurationSnapshot: durationHHmm, // HH:mm: "03:20"
+        serviceNameSnapshot: serviceNames, // Nomes reais separados por vírgula
+        servicePriceSnapshot: Number(formData.price || 0).toFixed(2), // Preço editado pelo admin
+        serviceDurationSnapshot: durationHHmm, // Soma das durações
         notes: "Agendado via Admin",
+        items, // Nova tabela appointment_items
       };
 
-      console.log(
-        "📤 Enviando agendamento via AppointmentService:",
-        appointmentData,
-      );
+      const result = await appointmentService.create(appointmentData);
 
-      const createdAppointment =
-        await appointmentService.create(appointmentData);
-
-      // 2. Preparar objeto Legado para compatibilidade com o front antigo
       const booking: Booking = {
-        id: createdAppointment.id, // Usar ID retornado pelo banco
-        serviceId: service.id,
-        serviceName: service.name,
-        serviceDuration: service.duration,
-        servicePrice: formData.price,
+        id: result.id,
+        serviceId: serviceIds,
+        serviceName: serviceNames,
+        serviceDuration: totalDurationMinutes.toString(),
+        servicePrice: Number(formData.price),
         date,
         time,
         clientName: formData.name,
         clientEmail: formData.email,
         clientPhone: formData.phone,
-        status: "confirmado",
+        status: "pendente",
         createdAt: new Date().toISOString(),
-        notificationsSent: {
-          email: false,
-          whatsapp: false,
-        },
+        notificationsSent: { email: false, whatsapp: false },
       };
 
       saveBookingToStorage(booking);
-
       await sendBookingNotifications(booking);
-
       onConfirm(booking);
     } catch (error: unknown) {
       const err = error as Error;
@@ -166,7 +172,7 @@ export function AdminBookingForm({
                 fontFamily: settings?.titleFont || "var(--font-title)",
               }}
             >
-              {service.name}
+              {services.map((s) => s.name).join(", ")}
             </div>
             <div className="text-muted-foreground capitalize">
               {formattedDate}
@@ -180,7 +186,7 @@ export function AdminBookingForm({
               {time}
             </div>
             <div className="text-xs text-muted-foreground">
-              Duração: {service.duration} minutos
+              Duração: {services.reduce((acc, s) => acc + parseDuration(s.duration), 0)} minutos
             </div>
             <div
               className="font-semibold"

@@ -8,6 +8,13 @@ export type AppointmentStatus =
   | "CANCELLED"
   | "POSTPONED";
 
+export interface CreateAppointmentItemDTO {
+  serviceId: string;
+  serviceNameSnapshot: string;
+  servicePriceSnapshot: string;
+  serviceDurationSnapshot: string;
+}
+
 export interface CreateAppointmentDTO {
   companyId: string;
   serviceId: string;
@@ -21,6 +28,17 @@ export interface CreateAppointmentDTO {
   customerId: string | null;
   notes?: string;
   studioId?: string; // Mantido para compatibilidade se necessário
+  items?: CreateAppointmentItemDTO[]; // Nova tabela appointment_items
+}
+
+export interface AppointmentItem {
+  id: string;
+  appointmentId: string;
+  serviceId: string;
+  serviceNameSnapshot: string;
+  servicePriceSnapshot: string;
+  serviceDurationSnapshot: string;
+  createdAt: string;
 }
 
 export interface Appointment {
@@ -39,6 +57,7 @@ export interface Appointment {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+  items?: AppointmentItem[];
 }
 
 export interface ApiError {

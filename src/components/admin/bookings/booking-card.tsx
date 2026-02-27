@@ -78,8 +78,11 @@ export function BookingCard({
                   {booking.status}
                 </Badge>
                 <h3 className="text-xl font-bold text-foreground">
-                  {booking.serviceName} - {booking.clientName}
+                  {booking.clientName}
                 </h3>
+                <div className="text-sm font-medium text-primary/80 mb-1">
+                  {booking.serviceName}
+                </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Calendar className="w-4 h-4" />
                   <span className="capitalize">
@@ -100,29 +103,58 @@ export function BookingCard({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm text-muted-foreground bg-secondary/20 p-4 rounded-lg">
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground/70">
-                  Serviço: {booking.serviceName}
-                </span>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground/70">
-                  Cliente: {booking.clientName}
-                </span>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground/70">
-                  Telefone: {booking.clientPhone}
-                </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm text-muted-foreground bg-secondary/10 p-4 rounded-lg border border-border/50">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground/60 w-16">
+                    Serviços:
+                  </span>
+                  <span className="text-xs font-semibold text-foreground truncate">
+                    {booking.serviceName}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground/60 w-16">
+                    Cliente:
+                  </span>
+                  <span className="text-xs font-medium text-foreground">
+                    {booking.clientName}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground/60 w-16">
+                    Telefone:
+                  </span>
+                  <span className="text-xs font-medium text-foreground">
+                    {booking.clientPhone}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase font-bold text-muted-foreground/70">
-                  Email: {booking.clientEmail || "Não informado"}
-                </span>
-                <span className="text-[10px] uppercase font-bold text-muted-foreground/70">
-                  Valor: R${" "}
-                  {(typeof booking.servicePrice === "string"
-                    ? parseFloat(booking.servicePrice)
-                    : booking.servicePrice || 0
-                  ).toFixed(2)}
-                </span>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground/60 w-16">
+                    Email:
+                  </span>
+                  <span className="text-xs font-medium text-foreground truncate">
+                    {booking.clientEmail || "Não informado"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground/60 w-16">
+                    Valor Total:
+                  </span>
+                  <span className="text-xs font-bold text-primary">
+                    R$ {Number(booking.servicePrice || 0).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground/60 w-16">
+                    Duração:
+                  </span>
+                  <span className="text-xs font-medium text-foreground">
+                    {booking.serviceDuration} min
+                  </span>
+                </div>
               </div>
               <div className="md:col-span-2 mt-2 pt-2 border-t border-border/50">
                 <p className="text-xs italic">[status: {booking.status}]</p>

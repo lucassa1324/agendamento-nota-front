@@ -70,22 +70,20 @@ const mapApiToBooking = (api: Appointment): Booking => {
     return map[status] || "pendente";
   };
 
-  // Extrair IDs de serviços adicionais das notas (Multi-Serviço)
-  let serviceIds: string[] = [api.serviceId];
-  if (api.notes) {
-    const match = api.notes.match(/IDs:\s*([\w\s,-]+)/);
-    if (match?.[1]) {
-      const extractedIds = match[1]
-        .split(",")
-        .map((id) => id.trim())
-        .filter(Boolean);
-      serviceIds = Array.from(new Set([...serviceIds, ...extractedIds]));
-    }
+  // Extrair IDs de serviços (Prioriza appointment_items se disponível)
+  let serviceIds: string[] = [];
+  if (api.items && api.items.length > 0) {
+    serviceIds = api.items.map((item) => item.serviceId);
+  } else {
+    // Fallback: Tenta separar serviceId por vírgula ou usa o ID único
+    serviceIds = api.serviceId
+      ? api.serviceId.split(",").map((id) => id.trim())
+      : [];
   }
 
   return {
     id: api.id,
-    serviceId: serviceIds.length > 1 ? serviceIds : serviceIds[0],
+    serviceId: serviceIds.length > 1 ? serviceIds : serviceIds[0] || api.serviceId,
     serviceName: api.serviceNameSnapshot || "Serviço não informado",
     serviceDuration: durationMinutes,
     servicePrice: api.servicePriceSnapshot
@@ -500,13 +498,15 @@ export function BookingsManager() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reverter Atendimento?</AlertDialogTitle>
+            <AlertDialogTitle>Reverter Status para Pendente?</AlertDialogTitle>
             <AlertDialogDescription asChild className="space-y-4">
               <div>
                 <p>
-                  Ao voltar este serviço para pendente, o saldo de insumos
-                  consumidos será estornado automaticamente para o estoque com
-                  base no histórico de uso.
+                  Deseja estornar os produtos deste agendamento para o estoque?
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Ao confirmar, o backend realizará o estorno automático dos
+                  insumos vinculados a todos os itens deste agendamento.
                 </p>
               </div>
             </AlertDialogDescription>
@@ -516,11 +516,11 @@ export function BookingsManager() {
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleConfirmReversion}
               disabled={isProcessing}
             >
-              {isProcessing ? "Processando..." : "Confirmar Reversão"}
+              {isProcessing ? "Confirmar Estorno" : "Confirmar Estorno"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

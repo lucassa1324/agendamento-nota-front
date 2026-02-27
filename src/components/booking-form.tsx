@@ -19,7 +19,7 @@ import {
 } from "@/lib/booking-data";
 
 type BookingFormProps = {
-  service: Service;
+  services: Service[]; // Alterado de service: Service para services: Service[]
   date: string;
   time: string;
   onConfirm: (booking: Booking) => void;
@@ -29,7 +29,7 @@ type BookingFormProps = {
 };
 
 export function BookingForm({
-  service,
+  services, // Alterado de service para services
   date,
   time,
   onConfirm,
@@ -56,6 +56,12 @@ export function BookingForm({
     },
   );
 
+  const formatDuration = (totalMinutes: number) => {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!studio?.id) return;
@@ -63,55 +69,54 @@ export function BookingForm({
     setIsLoading(true);
 
     try {
-      // 1. Preparar a data em ISO UTC
-      // Combinamos a data (YYYY-MM-DD) com o horário (HH:mm)
-      // Usamos a data local para criar o objeto e convertemos para ISO
-      const localDateTime = new Date(`${date}T${time}:00`);
-      const scheduledAt = localDateTime.toISOString();
+      const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
 
-      // 2. Converter duração (minutos) para HH:mm
-      const durationMinutes = parseDuration(service.duration);
+      // Cálculo de snapshots individuais e agregados
+      const items = services.map((s) => ({
+        serviceId: s.id,
+        serviceNameSnapshot: s.name,
+        servicePriceSnapshot: (typeof s.price === "string" ? parseFloat(s.price) : s.price).toFixed(2),
+        serviceDurationSnapshot: formatDuration(parseDuration(s.duration)),
+      }));
 
-      const hours = Math.floor(durationMinutes / 60);
-      const mins = durationMinutes % 60;
-      const durationHHmm = `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+      const totalDurationMinutes = services.reduce(
+        (acc, s) => acc + parseDuration(s.duration),
+        0,
+      );
+      const totalPrice = services.reduce(
+        (acc, s) => acc + (typeof s.price === "string" ? parseFloat(s.price) : s.price),
+        0,
+      );
 
-      // 3. Formatar preço como decimal string (ex: "150.00")
-      const priceValue =
-        typeof service.price === "string"
-          ? parseFloat(service.price)
-          : service.price;
-      const priceSnapshot = priceValue.toFixed(2);
+      const durationHHmm = formatDuration(totalDurationMinutes);
+      const priceSnapshot = totalPrice.toFixed(2);
+      const serviceNames = services.map((s) => s.name).join(", ");
+      const serviceIds = services.map((s) => s.id).join(",");
 
-      // 4. Montar o payload seguindo o contrato exato do backend
-      // O backend agora aceita múltiplos IDs separados por vírgula em serviceId
-      // Ele usará o primeiro ID para a FK e o restante para processamento interno
       const appointmentData = {
         companyId: studio.id,
-        serviceId: service.id, // String de IDs separados por vírgula (ex: "id1,id2")
+        serviceId: serviceIds, // String de IDs separados por vírgula
         scheduledAt,
         customerName: formData.name,
         customerEmail: formData.email,
         customerPhone: formData.phone,
-        serviceNameSnapshot: service.name, // Nomes reais dos serviços separados por vírgula
-        servicePriceSnapshot: priceSnapshot, // Soma dos preços (decimal string: "460.00")
-        serviceDurationSnapshot: durationHHmm, // Soma das durações (HH:mm: "03:20")
+        serviceNameSnapshot: serviceNames, // Nomes concatenados
+        servicePriceSnapshot: priceSnapshot, // Soma dos preços
+        serviceDurationSnapshot: durationHHmm, // Soma das durações
         customerId: null,
         notes: "",
         studioId: studio.id,
+        items, // Nova tabela appointment_items
       };
-
-      console.log(">>> [FINAL_PAYLOAD]", appointmentData);
 
       const result = await appointmentService.create(appointmentData);
 
-      // 2. Manter compatibilidade com o objeto Booking legado
       const booking: Booking = {
         id: result.id,
-        serviceId: service.id,
-        serviceName: service.name,
-        serviceDuration: durationMinutes,
-        servicePrice: priceValue,
+        serviceId: serviceIds,
+        serviceName: serviceNames,
+        serviceDuration: totalDurationMinutes,
+        servicePrice: totalPrice,
         date,
         time,
         clientName: formData.name,
@@ -125,11 +130,8 @@ export function BookingForm({
         },
       };
 
-      // Opcional: Ainda salvar no storage para redundância/cache
       saveBookingToStorage(booking);
-
       await sendBookingNotifications(booking);
-
       onConfirm(booking);
     } catch (error) {
       const apiError = error as ApiError;
@@ -139,7 +141,6 @@ export function BookingForm({
         apiError.message ||
         "Ocorreu um erro inesperado ao salvar seu agendamento.";
 
-      // Tratamento específico para erro de horário comercial excedido
       if (
         apiError.status === 400 &&
         apiError.message?.includes(
@@ -162,6 +163,16 @@ export function BookingForm({
       setIsLoading(false);
     }
   };
+
+  const totalDurationMinutes = services.reduce(
+    (acc, s) => acc + parseDuration(s.duration),
+    0,
+  );
+  const totalPrice = services.reduce(
+    (acc, s) => acc + (typeof s.price === "string" ? parseFloat(s.price) : s.price),
+    0,
+  );
+  const durationHHmm = formatDuration(totalDurationMinutes);
 
   return (
     <div>
@@ -187,7 +198,7 @@ export function BookingForm({
                 fontFamily: settings?.titleFont || "var(--font-title)",
               }}
             >
-              {service.name}
+              {services.map((s) => s.name).join(", ")}
             </div>
             <div className="text-muted-foreground capitalize">
               {formattedDate}
@@ -201,21 +212,13 @@ export function BookingForm({
               {time}
             </div>
             <div className="text-xs text-muted-foreground">
-              Duração Total:{" "}
-              {Math.floor(parseDuration(service.duration) / 60) > 0
-                ? `${Math.floor(parseDuration(service.duration) / 60)}h `
-                : ""}
-              {parseDuration(service.duration) % 60}min
+              Duração Total: {durationHHmm}
             </div>
             <div
               className="font-semibold"
               style={{ color: settings?.accentColor || "var(--primary)" }}
             >
-              R${" "}
-              {(typeof service.price === "string"
-                ? parseFloat(service.price)
-                : service.price
-              ).toFixed(2)}
+              R$ {totalPrice.toFixed(2)}
             </div>
           </div>
         </Card>
