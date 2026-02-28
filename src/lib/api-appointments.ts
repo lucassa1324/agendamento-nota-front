@@ -74,16 +74,16 @@ class AppointmentService {
 
   private async handleResponse(response: Response) {
     if (!response.ok) {
-      let errorData: any = {};
+      let errorData: { code?: string; message?: string } = {};
       const contentType = response.headers.get("content-type");
       
       try {
-        if (contentType && contentType.includes("application/json")) {
+        if (contentType?.includes("application/json")) {
           errorData = await response.json();
         } else {
           errorData = { message: await response.text() };
         }
-      } catch (e) {
+      } catch {
         errorData = { message: "Erro ao processar resposta do servidor" };
       }
 
@@ -107,7 +107,7 @@ class AppointmentService {
     }
     
     const contentType = response.headers.get("content-type");
-    if (contentType && contentType.includes("application/json")) {
+    if (contentType?.includes("application/json")) {
       return response.json();
     }
     return response.text();
@@ -128,8 +128,8 @@ class AppointmentService {
         signal: controller.signal,
       });
       return await this.handleResponse(response);
-    } catch (error: any) {
-      if (error.name === "AbortError") {
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'name' in error && error.name === "AbortError") {
         throw {
           status: 408,
           code: "TIMEOUT",
@@ -190,7 +190,7 @@ class AppointmentService {
       credentials: "include",
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData: { code?: string; message?: string } = await response.json().catch(() => ({}));
       throw {
         status: response.status,
         code: errorData.code || "UNKNOWN_ERROR",
