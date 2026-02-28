@@ -448,7 +448,8 @@ export function AdminCalendar({
 
   const occupiedSlots = useMemo(() => {
     if (!_service?.duration) return 0;
-    return Math.ceil(_service.duration / slotInterval);
+    const duration = parseDuration(_service.duration);
+    return Math.ceil(duration / slotInterval);
   }, [_service, slotInterval]);
 
   const isTimeInPast = (time: string) => {
@@ -487,7 +488,7 @@ export function AdminCalendar({
 
     const startTimeInMinutes = startH * 60 + startM;
     const currTimeInMinutes = currH * 60 + currM;
-    const duration = _service.duration || 30;
+    const duration = parseDuration(_service.duration) || 30;
 
     return (
       currTimeInMinutes >= startTimeInMinutes &&

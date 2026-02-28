@@ -109,6 +109,8 @@ export function BookingForm({
         items, // Nova tabela appointment_items
       };
 
+      console.log(">>> [SITE_DEBUG] Enviando agendamento:", appointmentData);
+
       const result = await appointmentService.create(appointmentData);
 
       const booking: Booking = {
@@ -131,7 +133,12 @@ export function BookingForm({
       };
 
       saveBookingToStorage(booking);
-      await sendBookingNotifications(booking);
+      
+      // Enviar notificações de forma assíncrona sem travar a UI
+      sendBookingNotifications(booking).catch(err => 
+        console.error(">>> [SITE_ERROR] Falha ao enviar notificações:", err)
+      );
+
       onConfirm(booking);
     } catch (error) {
       const apiError = error as ApiError;

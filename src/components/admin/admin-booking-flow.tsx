@@ -184,7 +184,7 @@ export function AdminBookingFlow({
   const totalService = useMemo(() => {
     if (selectedServices.length === 0) return null;
     return {
-      id: selectedServices.map((s) => s.id).join(","),
+      id: selectedServices.map((s) => s.id).join(", "), // Adicionado espaço após vírgula para consistência UUID
       name: selectedServices.map((s) => s.name).join(", "),
       price: selectedServices.reduce((acc, s) => acc + s.price, 0),
       duration: selectedServices.reduce(

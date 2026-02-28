@@ -74,7 +74,18 @@ class AppointmentService {
 
   private async handleResponse(response: Response) {
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData: any = {};
+      const contentType = response.headers.get("content-type");
+      
+      try {
+        if (contentType && contentType.includes("application/json")) {
+          errorData = await response.json();
+        } else {
+          errorData = { message: await response.text() };
+        }
+      } catch (e) {
+        errorData = { message: "Erro ao processar resposta do servidor" };
+      }
 
       // Se for 401, podemos dar uma mensagem mais específica
       if (response.status === 401) {
@@ -94,7 +105,12 @@ class AppointmentService {
         raw: errorData,
       };
     }
-    return response.json();
+    
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      return response.json();
+    }
+    return response.text();
   }
 
   async create(data: CreateAppointmentDTO): Promise<Appointment> {
@@ -102,11 +118,28 @@ class AppointmentService {
       companyId: data.companyId,
     });
 
-    const response = await customFetch(`${this.baseUrl}`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-    return this.handleResponse(response);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 segundos de timeout
+
+    try {
+      const response = await customFetch(`${this.baseUrl}`, {
+        method: "POST",
+        body: JSON.stringify(data),
+        signal: controller.signal,
+      });
+      return await this.handleResponse(response);
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        throw {
+          status: 408,
+          code: "TIMEOUT",
+          message: "O servidor demorou muito para responder. Tente novamente.",
+        };
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   async listByCompany(companyId: string): Promise<Appointment[]> {

@@ -764,7 +764,7 @@ export function BookingFlow() {
               {renderStepHeader(timeSettings)}
               <div className="max-w-4xl mx-auto">
                 <TimeSlotSelector
-                  service={totalService}
+                  services={selectedServices}
                   date={effectiveDate}
                   onTimeSelect={handleTimeSelect}
                   onBack={() => setCurrentStep("date")}

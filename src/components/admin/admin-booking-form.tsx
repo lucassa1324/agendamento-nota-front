@@ -118,7 +118,7 @@ export function AdminBookingForm({
         id: result.id,
         serviceId: serviceIds,
         serviceName: serviceNames,
-        serviceDuration: totalDurationMinutes.toString(),
+        serviceDuration: totalDurationMinutes,
         servicePrice: Number(formData.price),
         date,
         time,

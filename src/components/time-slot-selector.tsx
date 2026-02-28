@@ -34,7 +34,7 @@ import { businessService } from "@/lib/business-service";
 import { cn } from "@/lib/utils";
 
 type TimeSlotSelectorProps = {
-  service: Service;
+  services: Service[]; // Alterado de service para services
   date: string;
   onTimeSelect: (time: string) => void;
   onBack: () => void;
@@ -43,7 +43,7 @@ type TimeSlotSelectorProps = {
 };
 
 export function TimeSlotSelector({
-  service,
+  services, // Alterado de service para services
   date,
   onTimeSelect,
   onBack,
@@ -53,6 +53,11 @@ export function TimeSlotSelector({
   const { studio } = useStudio();
   const [backendInterval, setBackendInterval] = useState<number | undefined>(
     undefined,
+  );
+
+  const totalDuration = services.reduce(
+    (acc, s) => acc + parseDuration(s.duration),
+    0,
   );
 
   // Tenta pegar o intervalo das configurações do step3 (dashboard)
@@ -199,7 +204,7 @@ export function TimeSlotSelector({
       // 3. Gerar Slots
       const intervalToUse =
         backendInterval || currentDaySchedule?.interval || finalInterval;
-      const numericDuration = parseDuration(service.duration) || 60;
+      const numericDuration = totalDuration || 60;
 
       console.log(">>> [TIME_SLOT_SELECTOR] Dados para geração de slots:", {
         date,
@@ -228,12 +233,12 @@ export function TimeSlotSelector({
     } catch (error) {
       console.error(">>> [TIME_SLOT_SELECTOR] Erro ao buscar dados:", error);
       setTimeSlots(
-        getAvailableTimeSlots(date, service.duration, finalInterval),
+        getAvailableTimeSlots(date, totalDuration, finalInterval),
       );
     } finally {
       setIsLoadingBookings(false);
     }
-  }, [studio?.id, date, service.duration, finalInterval, backendInterval]);
+  }, [studio?.id, date, totalDuration, finalInterval, backendInterval]);
 
   // Atualizar horários quando o evento de sincronização ocorrer ou quando as dependências mudarem
   useEffect(() => {
@@ -326,7 +331,9 @@ export function TimeSlotSelector({
                 fontFamily: settings?.titleFont || "var(--font-title)",
               }}
             >
-              {service.name}
+              {services.length > 1
+                ? `${services[0].name} + ${services.length - 1}`
+                : services[0]?.name}
             </h3>
             <div
               className="text-base font-medium capitalize"
@@ -343,7 +350,7 @@ export function TimeSlotSelector({
             </div>
             <div className="text-sm text-muted-foreground flex items-center gap-2">
               <span className="flex items-center gap-1">
-                Duração: {service.duration} minutos
+                Duração: {totalDuration} minutos
               </span>
             </div>
           </div>

@@ -37,63 +37,12 @@ export function ServiceSelector({
   }, [initialSelected]);
 
   useEffect(() => {
-    // Mock de serviços estáticos para teste de persistência de cores
-    const mockServices: Service[] = [
-      {
-        id: "1",
-        name: "Corte de Cabelo Feminino",
-        description: "Corte moderno com lavagem inclusa",
-        duration: 60,
-        price: 120,
-      },
-      {
-        id: "2",
-        name: "Manicure + Pedicure",
-        description: "Cutilagem e esmaltação completa",
-        duration: 90,
-        price: 85,
-      },
-      {
-        id: "3",
-        name: "Escova Modeladora",
-        description: "Lavagem, secagem e modelagem dos fios",
-        duration: 45,
-        price: 60,
-      },
-      {
-        id: "4",
-        name: "Hidratação Profunda",
-        description: "Tratamento para fios ressecados",
-        duration: 30,
-        price: 50,
-      },
-    ];
-    console.log(">>> [SERVICE_SELECTOR] Usando serviços estáticos (MOCK)");
-    setServices(mockServices);
-
-    /* 
     // No flow do cliente, preferimos sempre os dados do studio vindos do context,
     // que são buscados da API com cache: 'no-store'.
     if (studio?.services && studio.services.length > 0) {
       console.log(
         ">>> [SERVICE_SELECTOR] Usando serviços dinâmicos do banco (API):",
         studio.services.length,
-      );
-      console.log(
-        ">>> [SERVICE_SELECTOR] Detalhes dos serviços carregados:",
-        studio.services.map((s) => {
-          const advRules = s.advancedRules || s.advanced_rules;
-          const conflicts = Array.isArray(advRules)
-            ? advRules
-            : advRules?.conflicts;
-          return {
-            id: s.id,
-            name: s.name,
-            conflitos_id: s.conflicting_service_ids || s.conflictingServiceIds,
-            conflitos_rules: conflicts,
-            grupo: s.conflict_group_id || s.conflictGroupId,
-          };
-        }),
       );
       setServices(studio.services);
     } else {
@@ -107,7 +56,6 @@ export function ServiceSelector({
         setServices(settings.services);
       }
     }
-    */
   }, [studio]);
 
   const extractConflicts = (s: Service): string[] => {
