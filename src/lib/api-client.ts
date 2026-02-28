@@ -68,6 +68,13 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     headers.set("Authorization", `Bearer ${sessionToken}`);
   }
 
+  // DEBUG para identificar o erro de fetch
+  console.log(`>>> [FRONT_API] Chamando fetch para: ${fullUrl}`, {
+    method: options.method || "GET",
+    hasToken: !!sessionToken,
+    headers: Object.fromEntries(headers.entries()),
+  });
+
   let response: Response;
   try {
     response = await fetch(fullUrl, {
@@ -80,8 +87,9 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     const errorMessage =
       error instanceof Error ? error.message : "Erro desconhecido";
     console.error(
-      ">>> [FRONT_API] Erro de rede ou CORS detectado:",
+      `>>> [FRONT_API] FALHA CRÍTICA NO FETCH para ${fullUrl}:`,
       errorMessage,
+      error,
     );
 
     // Se falhar o fetch e não for erro de conexão local, tentamos verificar se a sessão expirou ou se é bloqueio CORS

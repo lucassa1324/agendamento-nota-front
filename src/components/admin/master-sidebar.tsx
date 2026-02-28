@@ -37,6 +37,11 @@ const MASTER_NAVIGATION: MasterNavGroup[] = [
         href: "/admin/master/relatorios",
         icon: BarChart3,
       },
+      {
+        title: "Possíveis Clientes",
+        href: "/admin/master/leads",
+        icon: Users,
+      },
     ],
   },
 ];

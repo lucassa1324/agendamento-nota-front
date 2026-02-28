@@ -71,8 +71,8 @@ export function BackgroundEditor({
       reader.readAsDataURL(compressedFile);
       const base64 = await base64Promise;
 
-      // Atualizar estado
-      onUpdate({ bgImage: base64 });
+      // Atualizar estado e mudar para tipo imagem automaticamente
+      onUpdate({ bgImage: base64, bgType: "image" });
     } catch (error) {
       console.error("Erro ao processar imagem:", error);
       alert("Erro ao processar imagem. Tente novamente.");
@@ -172,7 +172,9 @@ export function BackgroundEditor({
             <div className="flex gap-2">
               <Input
                 value={settings.bgImage}
-                onChange={(e) => onUpdate({ bgImage: e.target.value })}
+                onChange={(e) =>
+                  onUpdate({ bgImage: e.target.value, bgType: "image" })
+                }
                 className="h-8 text-xs flex-1"
                 placeholder="https://..."
               />

@@ -5,10 +5,10 @@ export default function CalendarioPage() {
     <div className="mx-auto max-w-7xl space-y-6">
       <div>
         <h2 className="font-sans text-3xl font-bold mb-2 text-primary">
-          Calendário Admin
+          Novo Agendamento
         </h2>
         <p className="text-muted-foreground">
-          Visão detalhada e agendamentos manuais
+          Crie um agendamento manualmente na agenda
         </p>
       </div>
       <AdminBookingFlow />

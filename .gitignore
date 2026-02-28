@@ -36,6 +36,13 @@ yarn-error.log*
 # vercel
 .vercel
 
+# tests and notes
+_notes/
+testes_praticosTXT/
+src/_notes/
+**/_notes/**
+**/testes_praticosTXT/**
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

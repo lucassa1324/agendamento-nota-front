@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, getFullImageUrl } from "@/lib/utils";
 
 interface SectionBackgroundProps {
   settings: {
@@ -28,6 +28,15 @@ export function SectionBackground({
 }: SectionBackgroundProps) {
   const [imageError, setImageError] = useState(false);
   const bgImage = settings.bgImage || defaultImage;
+
+  // Reset error when image or type changes (standard React pattern for adjusting state based on props)
+  const [prevKey, setPrevKey] = useState(`${bgImage}-${settings.bgType}`);
+  const currentKey = `${bgImage}-${settings.bgType}`;
+  if (currentKey !== prevKey) {
+    setPrevKey(currentKey);
+    setImageError(false);
+  }
+
   const showImage =
     (settings.bgType === "image" || (!settings.bgType && defaultImage)) &&
     !imageError;
@@ -60,7 +69,7 @@ export function SectionBackground({
       {showImage && bgImage && (
         <div className="absolute inset-0 z-0">
           <Image
-            src={bgImage}
+            src={getFullImageUrl(bgImage)}
             alt="Background"
             fill
             className="object-cover"
@@ -74,7 +83,7 @@ export function SectionBackground({
             priority={!!defaultImage}
             onError={() => {
               console.warn(
-                `[IMAGE_LOAD_ERROR] Falha ao carregar imagem: ${bgImage}. Revertendo para cor de fundo.`,
+                `[IMAGE_LOAD_ERROR] Falha ao carregar imagem: ${getFullImageUrl(bgImage)}. Revertendo para cor de fundo.`,
               );
               setImageError(true);
             }}
