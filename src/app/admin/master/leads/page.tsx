@@ -342,27 +342,28 @@ export default function LeadsPage() {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-          const mappedData: ImportLead[] = (results.data as Record<string, string>[]).map((row, idx) => {
-            // Tenta mapear pelos nomes de colunas do Google Maps ou nomes amigáveis
-            const name = row.qBF1Pd || row['Nome do estabelecimento'] || row.Nome || row.Estabelecimento || row.name || "";
-            const category = row.W4Efsd || row.categoria || row.Categoria || row.category || "";
-            const address = row['W4Efsd 3'] || row.endereço || row.Endereço || row.address || "";
-            const phone = row.telefone || row.Telefone || row.phone || "";
-            const notes = row.ah5Ghc || row.Observações || row.notes || "";
-            const instagram = row.Instagram || row.instagram || row.Website || row.website || row.site || row.Site || row.Link || row.link || "";
+          const mappedData: ImportLead[] = (results.data as Record<string, string>[])
+            .map((row, idx) => {
+              // Tenta mapear pelos nomes de colunas do Google Maps ou nomes amigáveis
+              const name = row.qBF1Pd || row['Nome do estabelecimento'] || row.Nome || row.Estabelecimento || row.name || "";
+              const category = row.W4Efsd || row.categoria || row.Categoria || row.category || "";
+              const address = row['W4Efsd 3'] || row.endereço || row.Endereço || row.address || "";
+              const phone = row.telefone || row.Telefone || row.phone || "";
+              const instagram = row.Instagram || row.instagram || row.Website || row.website || row.site || row.Site || row.Link || row.link || "";
 
-            return {
-              id: `temp-${idx}`,
-              name: name,
-              phone: phone,
-              establishmentName: name,
-              category: category || INITIAL_CATEGORIES[0],
-              address: address,
-              instagramLink: instagram,
-              notes: notes,
-              status: "NOT_CONTACTED" as Prospect["status"],
-            };
-          });
+              return {
+                id: `temp-${idx}`,
+                name: name.trim(),
+                phone: phone,
+                establishmentName: name.trim(),
+                category: category || INITIAL_CATEGORIES[0],
+                address: address,
+                instagramLink: instagram,
+                notes: "",
+                status: "NOT_CONTACTED" as Prospect["status"],
+              };
+            })
+            .filter(lead => lead.name.length > 0); // Remove estabelecimentos sem nome
 
           // Extrair novas categorias e adicionar à lista
           const newCategories = Array.from(new Set(mappedData.map(l => l.category))).filter(cat => cat && !categories.includes(cat));
@@ -395,27 +396,28 @@ export default function LeadsPage() {
           const ws = wb.Sheets[wsname];
           const data = XLSX.utils.sheet_to_json(ws) as Record<string, string | number | boolean | null>[];
 
-          const mappedData: ImportLead[] = data.map((row, idx) => {
-            // Tenta mapear pelos nomes de colunas do Google Maps ou nomes amigáveis
-            const name = String(row.qBF1Pd || row['Nome do estabelecimento'] || row.Nome || row.Estabelecimento || row.name || "");
-            const category = String(row.W4Efsd || row.categoria || row.Categoria || row.category || "");
-            const address = String(row['W4Efsd 3'] || row.endereço || row.Endereço || row.address || "");
-            const phone = String(row.telefone || row.Telefone || row.phone || "");
-            const notes = String(row.ah5Ghc || row.Observações || row.notes || "");
-            const instagram = String(row.Instagram || row.instagram || row.Website || row.website || row.site || row.Site || row.Link || row.link || "");
+          const mappedData: ImportLead[] = data
+            .map((row, idx) => {
+              // Tenta mapear pelos nomes de colunas do Google Maps ou nomes amigáveis
+              const name = String(row.qBF1Pd || row['Nome do estabelecimento'] || row.Nome || row.Estabelecimento || row.name || "");
+              const category = String(row.W4Efsd || row.categoria || row.Categoria || row.category || "");
+              const address = String(row['W4Efsd 3'] || row.endereço || row.Endereço || row.address || "");
+              const phone = String(row.telefone || row.Telefone || row.phone || "");
+              const instagram = String(row.Instagram || row.instagram || row.Website || row.website || row.site || row.Site || row.Link || row.link || "");
 
-            return {
-              id: `temp-${idx}`,
-              name: name,
-              phone: phone,
-              establishmentName: name,
-              category: category || INITIAL_CATEGORIES[0],
-              address: address,
-              instagramLink: instagram,
-              notes: notes && notes !== "null" && notes !== "undefined" ? notes : "",
-              status: "NOT_CONTACTED" as Prospect["status"],
-            };
-          });
+              return {
+                id: `temp-${idx}`,
+                name: name.trim(),
+                phone: phone,
+                establishmentName: name.trim(),
+                category: category || INITIAL_CATEGORIES[0],
+                address: address,
+                instagramLink: instagram,
+                notes: "",
+                status: "NOT_CONTACTED" as Prospect["status"],
+              };
+            })
+            .filter(lead => lead.name.length > 0 && lead.name !== "null" && lead.name !== "undefined"); // Remove estabelecimentos sem nome ou junk
 
           // Extrair novas categorias e adicionar à lista
           const newCategories = Array.from(new Set(mappedData.map(l => l.category))).filter(cat => cat && !categories.includes(cat));
@@ -691,17 +693,17 @@ export default function LeadsPage() {
             
             <div className="flex-1 overflow-y-auto px-6" style={{ maxHeight: 'calc(90vh - 200px)' }}>
               <ScrollArea className="h-full w-full border rounded-md">
-                <div className="min-w-[1200px]">
+                <div className="min-w-300">
                   <Table>
                     <TableHeader className="sticky top-0 bg-background z-10">
                       <TableRow>
-                        <TableHead className="w-[200px]">Nome/Estabelecimento</TableHead>
-                        <TableHead className="w-[180px]">Categoria</TableHead>
-                        <TableHead className="w-[150px]">Telefone</TableHead>
-                        <TableHead className="w-[250px]">Endereço</TableHead>
-                        <TableHead className="w-[200px]">Instagram</TableHead>
-                        <TableHead className="w-[300px]">Observações</TableHead>
-                        <TableHead className="w-[70px] text-center">Ações</TableHead>
+                        <TableHead className="w-50">Nome/Estabelecimento</TableHead>
+                        <TableHead className="w-45">Categoria</TableHead>
+                        <TableHead className="w-37.5">Telefone</TableHead>
+                        <TableHead className="w-62.5">Endereço</TableHead>
+                        <TableHead className="w-50">Instagram</TableHead>
+                        <TableHead className="w-75">Observações</TableHead>
+                        <TableHead className="w-17.5 text-center">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
