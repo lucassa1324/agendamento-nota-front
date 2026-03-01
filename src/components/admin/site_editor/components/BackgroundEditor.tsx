@@ -85,13 +85,13 @@ export function BackgroundEditor({
   return (
     <fieldset
       className="space-y-6 pt-2 border-none p-0 m-0"
-      onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
+      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
     >
       <div>
         <RadioGroup
           value={settings.bgType}
-          onValueChange={(v) => onUpdate({ bgType: v as "color" | "image" })}
+          onValueChange={(v: string) => onUpdate({ bgType: v as "color" | "image" })}
           className="grid grid-cols-2 gap-2 bg-muted/50 p-1 rounded-md"
         >
           <div className="flex items-center justify-center">
@@ -153,13 +153,13 @@ export function BackgroundEditor({
               type="color"
               value={settings.bgColor || "#ffffff"}
               className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-              onChange={(e) => onUpdate({ bgColor: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ bgColor: e.target.value })}
             />
             <Input
               value={settings.bgColor || ""}
               placeholder="Padrão do Site"
               className="h-8 text-[10px] flex-1 uppercase"
-              onChange={(e) => onUpdate({ bgColor: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ bgColor: e.target.value })}
             />
           </div>
         </fieldset>
@@ -172,7 +172,7 @@ export function BackgroundEditor({
             <div className="flex gap-2">
               <Input
                 value={settings.bgImage}
-                onChange={(e) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                   onUpdate({ bgImage: e.target.value, bgType: "image" })
                 }
                 className="h-8 text-xs flex-1"
@@ -220,7 +220,7 @@ export function BackgroundEditor({
               min={0}
               max={100}
               step={1}
-              onValueChange={([v]) => onUpdate({ imageOpacity: v / 100 })}
+              onValueChange={([v]: number[]) => onUpdate({ imageOpacity: v / 100 })}
               className="py-2"
             />
           </fieldset>
@@ -244,7 +244,7 @@ export function BackgroundEditor({
                 min={1}
                 max={3}
                 step={0.01}
-                onValueChange={([v]) => onUpdate({ imageScale: v })}
+                onValueChange={([v]: number[]) => onUpdate({ imageScale: v })}
               />
             </div>
 
@@ -263,7 +263,7 @@ export function BackgroundEditor({
                   min={0}
                   max={100}
                   step={1}
-                  onValueChange={([v]) => onUpdate({ imageX: v })}
+                  onValueChange={([v]: number[]) => onUpdate({ imageX: v })}
                 />
               </div>
               <div className="space-y-4">
@@ -280,7 +280,7 @@ export function BackgroundEditor({
                   min={0}
                   max={100}
                   step={1}
-                  onValueChange={([v]) => onUpdate({ imageY: v })}
+                  onValueChange={([v]: number[]) => onUpdate({ imageY: v })}
                 />
               </div>
             </div>
@@ -289,7 +289,7 @@ export function BackgroundEditor({
               variant="ghost"
               size="sm"
               className="w-full text-[10px] uppercase h-8 text-muted-foreground hover:text-primary gap-1.5"
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent) => {
                 e.stopPropagation();
                 onUpdate({
                   imageScale: 1,

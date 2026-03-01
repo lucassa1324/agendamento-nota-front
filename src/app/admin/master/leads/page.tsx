@@ -561,7 +561,7 @@ export default function LeadsPage() {
                     id="name"
                     placeholder="Ex: Maria Silva"
                     value={newProspect.name}
-                    onChange={(e) => setNewProspect({ ...newProspect, name: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProspect({ ...newProspect, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -570,7 +570,7 @@ export default function LeadsPage() {
                     id="phone"
                     placeholder="Ex: 11999999999"
                     value={newProspect.phone}
-                    onChange={(e) => setNewProspect({ ...newProspect, phone: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProspect({ ...newProspect, phone: e.target.value })}
                   />
                 </div>
               </div>
@@ -580,7 +580,7 @@ export default function LeadsPage() {
                   id="business"
                   placeholder="Ex: Studio Bela Face"
                   value={newProspect.establishmentName}
-                  onChange={(e) => setNewProspect({ ...newProspect, establishmentName: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProspect({ ...newProspect, establishmentName: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
@@ -592,7 +592,7 @@ export default function LeadsPage() {
                     className="pl-9"
                     placeholder="instagram.com/usuario"
                     value={newProspect.instagramLink}
-                    onChange={(e) => setNewProspect({ ...newProspect, instagramLink: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProspect({ ...newProspect, instagramLink: e.target.value })}
                   />
                 </div>
               </div>
@@ -604,7 +604,7 @@ export default function LeadsPage() {
                       <Input
                         placeholder="Nova categoria"
                         value={newCategory}
-                        onChange={(e) => setNewCategory(e.target.value)}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewCategory(e.target.value)}
                         autoFocus
                       />
                       <Button size="icon" variant="outline" onClick={handleAddCategory}>
@@ -618,7 +618,7 @@ export default function LeadsPage() {
                     <div className="flex gap-2">
                       <Select
                         value={newProspect.category}
-                        onValueChange={(v) => setNewProspect({ ...newProspect, category: v })}
+                        onValueChange={(v: string) => setNewProspect({ ...newProspect, category: v })}
                       >
                         <SelectTrigger className="flex-1">
                           <SelectValue placeholder="Selecione" />
@@ -646,7 +646,7 @@ export default function LeadsPage() {
                   <Label>Status Inicial</Label>
                   <Select
                     value={newProspect.status}
-                    onValueChange={(v) => setNewProspect({ ...newProspect, status: v as Prospect["status"] })}
+                    onValueChange={(v: string) => setNewProspect({ ...newProspect, status: v as Prospect["status"] })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione" />
@@ -665,7 +665,7 @@ export default function LeadsPage() {
                   id="notes"
                   placeholder="Notas sobre o primeiro contato..."
                   value={newProspect.notes}
-                  onChange={(e) => setNewProspect({ ...newProspect, notes: e.target.value })}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNewProspect({ ...newProspect, notes: e.target.value })}
                   className="h-20"
                 />
               </div>
@@ -713,7 +713,7 @@ export default function LeadsPage() {
                             <Input 
                               className="h-8"
                               value={lead.name} 
-                              onChange={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 const newLeads = [...importingLeads];
                                 newLeads[idx].name = e.target.value;
                                 newLeads[idx].establishmentName = e.target.value;
@@ -724,7 +724,7 @@ export default function LeadsPage() {
                           <TableCell className="p-2">
                             <Select
                               value={lead.category}
-                              onValueChange={(v) => {
+                              onValueChange={(v: string) => {
                                 const newLeads = [...importingLeads];
                                 newLeads[idx].category = v;
                                 setImportingLeads(newLeads);
@@ -744,7 +744,7 @@ export default function LeadsPage() {
                             <Input 
                               className="h-8"
                               value={lead.phone} 
-                              onChange={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 const newLeads = [...importingLeads];
                                 newLeads[idx].phone = e.target.value;
                                 setImportingLeads(newLeads);
@@ -755,7 +755,7 @@ export default function LeadsPage() {
                             <Input 
                               className="h-8"
                               value={lead.address} 
-                              onChange={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 const newLeads = [...importingLeads];
                                 newLeads[idx].address = e.target.value;
                                 const currentNotes = lead.notes || "";
@@ -773,7 +773,7 @@ export default function LeadsPage() {
                               className="h-8"
                               placeholder="instagram.com/..."
                               value={lead.instagramLink} 
-                              onChange={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 const newLeads = [...importingLeads];
                                 newLeads[idx].instagramLink = e.target.value;
                                 setImportingLeads(newLeads);
@@ -784,7 +784,7 @@ export default function LeadsPage() {
                             <Input 
                               className="h-8"
                               value={lead.notes} 
-                              onChange={(e) => {
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 const newLeads = [...importingLeads];
                                 newLeads[idx].notes = e.target.value;
                                 setImportingLeads(newLeads);
@@ -841,7 +841,7 @@ export default function LeadsPage() {
                     <Input
                       id="edit-name"
                       value={editingProspect.name}
-                      onChange={(e) => setEditingProspect({ ...editingProspect, name: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingProspect({ ...editingProspect, name: e.target.value })}
                     />
                   </div>
                   <div className="space-y-2">
@@ -849,7 +849,7 @@ export default function LeadsPage() {
                     <Input
                       id="edit-phone"
                       value={editingProspect.phone}
-                      onChange={(e) => setEditingProspect({ ...editingProspect, phone: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingProspect({ ...editingProspect, phone: e.target.value })}
                     />
                   </div>
                 </div>
@@ -858,7 +858,7 @@ export default function LeadsPage() {
                   <Input
                     id="edit-business"
                     value={editingProspect.establishmentName}
-                    onChange={(e) => setEditingProspect({ ...editingProspect, establishmentName: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingProspect({ ...editingProspect, establishmentName: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -869,7 +869,7 @@ export default function LeadsPage() {
                       id="edit-instagram"
                       className="pl-9"
                       value={editingProspect.instagramLink || ""}
-                      onChange={(e) => setEditingProspect({ ...editingProspect, instagramLink: e.target.value })}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingProspect({ ...editingProspect, instagramLink: e.target.value })}
                     />
                   </div>
                 </div>
@@ -878,7 +878,7 @@ export default function LeadsPage() {
                     <Label>Categoria</Label>
                     <Select
                       value={editingProspect.category}
-                      onValueChange={(v) => setEditingProspect({ ...editingProspect, category: v })}
+                      onValueChange={(v: string) => setEditingProspect({ ...editingProspect, category: v })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
@@ -896,7 +896,7 @@ export default function LeadsPage() {
                     <Label>Status</Label>
                     <Select
                       value={editingProspect.status}
-                      onValueChange={(v) => setEditingProspect({ ...editingProspect, status: v as Prospect["status"] })}
+                      onValueChange={(v: string) => setEditingProspect({ ...editingProspect, status: v as Prospect["status"] })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Selecione" />
@@ -916,7 +916,7 @@ export default function LeadsPage() {
                   <Textarea
                     id="edit-notes"
                     value={editingProspect.notes || ""}
-                    onChange={(e) => setEditingProspect({ ...editingProspect, notes: e.target.value })}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditingProspect({ ...editingProspect, notes: e.target.value })}
                     className="h-20"
                   />
                 </div>
@@ -949,7 +949,7 @@ export default function LeadsPage() {
                   placeholder="Buscar por nome, estúdio..."
                   className="pl-8"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 />
               </div>
             </div>
@@ -961,7 +961,7 @@ export default function LeadsPage() {
               </div>
               
               <div className="w-48">
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <Select value={filterStatus} onValueChange={(v: string) => setFilterStatus(v)}>
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
@@ -977,7 +977,7 @@ export default function LeadsPage() {
               </div>
 
               <div className="w-64">
-                <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <Select value={filterCategory} onValueChange={(v: string) => setFilterCategory(v)}>
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Categoria" />
                   </SelectTrigger>
