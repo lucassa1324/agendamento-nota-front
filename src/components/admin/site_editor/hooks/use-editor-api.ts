@@ -135,6 +135,7 @@ type UseEditorApiParams = {
   lastApplied: EditorAppliedState;
   setters: EditorStateSetters;
   saveLocalDrafts: (drafts: EditorLocalDrafts) => void;
+  clearLocalDrafts: () => void;
 };
 
 export function useEditorApi({
@@ -145,6 +146,7 @@ export function useEditorApi({
   lastApplied,
   setters,
   saveLocalDrafts,
+  clearLocalDrafts,
 }: UseEditorApiParams) {
   const { toast } = useToast();
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -155,70 +157,62 @@ export function useEditorApi({
   const getChangedSettings = useCallback(() => {
     const changes: Partial<SiteConfigData> = {};
 
-    if (
-      JSON.stringify(settings.heroSettings) !==
-      JSON.stringify(lastSaved.lastSavedHero)
-    ) {
+    // Helper para comparação profunda simplificada para logs
+    const hasChanged = (current: unknown, saved: unknown) => {
+      return JSON.stringify(current) !== JSON.stringify(saved);
+    };
+
+    if (hasChanged(settings.heroSettings, lastSaved.lastSavedHero)) {
+      console.log(">>> [useEditorApi] Hero mudou:", {
+        currentAppearance: settings.heroSettings.appearance,
+        savedAppearance: lastSaved.lastSavedHero.appearance,
+      });
       changes.hero = settings.heroSettings;
     }
-    if (
-      JSON.stringify(settings.aboutHeroSettings) !==
-      JSON.stringify(lastSaved.lastSavedAboutHero)
-    ) {
+    if (hasChanged(settings.aboutHeroSettings, lastSaved.lastSavedAboutHero)) {
       changes.aboutHero = settings.aboutHeroSettings;
     }
-    if (
-      JSON.stringify(settings.storySettings) !==
-      JSON.stringify(lastSaved.lastSavedStory)
-    ) {
+    if (hasChanged(settings.storySettings, lastSaved.lastSavedStory)) {
       changes.story = settings.storySettings;
     }
-    if (
-      JSON.stringify(settings.teamSettings) !==
-      JSON.stringify(lastSaved.lastSavedTeam)
-    ) {
+    if (hasChanged(settings.teamSettings, lastSaved.lastSavedTeam)) {
       changes.team = settings.teamSettings;
     }
-    if (
-      JSON.stringify(settings.testimonialsSettings) !==
-      JSON.stringify(lastSaved.lastSavedTestimonials)
-    ) {
+    if (hasChanged(settings.testimonialsSettings, lastSaved.lastSavedTestimonials)) {
       changes.testimonials = settings.testimonialsSettings;
     }
-    if (
-      JSON.stringify(settings.fontSettings) !==
-      JSON.stringify(lastSaved.lastSavedFont)
-    ) {
+    if (hasChanged(settings.fontSettings, lastSaved.lastSavedFont)) {
       changes.theme = settings.fontSettings;
     }
-    if (
-      JSON.stringify(settings.colorSettings) !==
-      JSON.stringify(lastSaved.lastSavedColor)
-    ) {
+    if (hasChanged(settings.colorSettings, lastSaved.lastSavedColor)) {
       changes.colors = settings.colorSettings;
     }
-    if (
-      JSON.stringify(settings.servicesSettings) !==
-      JSON.stringify(lastSaved.lastSavedServices)
-    ) {
+    if (hasChanged(settings.servicesSettings, lastSaved.lastSavedServices)) {
+      console.log(">>> [useEditorApi] Services mudou:", {
+        currentAppearance: settings.servicesSettings.appearance,
+        savedAppearance: lastSaved.lastSavedServices.appearance,
+      });
       changes.services = settings.servicesSettings;
     }
-    if (
-      JSON.stringify(settings.valuesSettings) !==
-      JSON.stringify(lastSaved.lastSavedValues)
-    ) {
+    if (hasChanged(settings.valuesSettings, lastSaved.lastSavedValues)) {
+      console.log(">>> [useEditorApi] Values mudou:", {
+        currentAppearance: settings.valuesSettings.appearance,
+        savedAppearance: lastSaved.lastSavedValues.appearance,
+      });
       changes.values = settings.valuesSettings;
     }
-    if (
-      JSON.stringify(settings.gallerySettings) !==
-      JSON.stringify(lastSaved.lastSavedGallery)
-    ) {
+    if (hasChanged(settings.gallerySettings, lastSaved.lastSavedGallery)) {
+      console.log(">>> [useEditorApi] Gallery mudou:", {
+        currentAppearance: settings.gallerySettings.appearance,
+        savedAppearance: lastSaved.lastSavedGallery.appearance,
+      });
       changes.gallery = settings.gallerySettings;
     }
-    if (
-      JSON.stringify(settings.ctaSettings) !==
-      JSON.stringify(lastSaved.lastSavedCTA)
-    ) {
+    if (hasChanged(settings.ctaSettings, lastSaved.lastSavedCTA)) {
+      console.log(">>> [useEditorApi] CTA mudou:", {
+        currentAppearance: settings.ctaSettings.appearance,
+        savedAppearance: lastSaved.lastSavedCTA.appearance,
+      });
       changes.cta = settings.ctaSettings;
     }
     if (
@@ -313,13 +307,70 @@ export function useEditorApi({
 
   const handleSaveGlobal = useCallback(
     async (shouldReloadFromBank = true) => {
+      console.log(">>> [useEditorApi] Iniciando salvamento global...");
       handleSaveLocal();
 
       if (companyId) {
         setIsSaving(true);
         try {
           const changes = getChangedSettings();
-          const payload: Record<string, unknown> = { ...changes };
+          console.log(">>> [useEditorApi] Alterações detectadas:", changes);
+
+          // Auditoria de imagens em alterações críticas (Hero, Story, etc.)
+          if (changes.hero?.bgType === "image" && changes.hero.bgImage) {
+            console.log(`>>> [PUBLISH_SUCCESS] Hero image: ${changes.hero.bgImage}`);
+          }
+          if (changes.aboutHero?.bgType === "image" && changes.aboutHero.bgImage) {
+            console.log(`>>> [PUBLISH_SUCCESS] About Hero image: ${changes.aboutHero.bgImage}`);
+          }
+          if (changes.story?.image) {
+            console.log(`>>> [PUBLISH_SUCCESS] Story content image: ${changes.story.image}`);
+          }
+          if (changes.story?.bgType === "image" && changes.story.bgImage) {
+            console.log(`>>> [PUBLISH_SUCCESS] Story background: ${changes.story.bgImage}`);
+          }
+
+          // Auditoria de imagens nos passos de agendamento (Booking Steps)
+          if (changes.bookingSteps) {
+            const steps = changes.bookingSteps;
+            if (steps.service?.bgType === "image" && steps.service.bgImage) {
+              console.log(`>>> [PUBLISH_SUCCESS] Booking Service image: ${steps.service.bgImage}`);
+            }
+            if (steps.date?.bgType === "image" && steps.date.bgImage) {
+              console.log(`>>> [PUBLISH_SUCCESS] Booking Date image: ${steps.date.bgImage}`);
+            }
+            if (steps.time?.bgType === "image" && steps.time.bgImage) {
+              console.log(`>>> [PUBLISH_SUCCESS] Booking Time image: ${steps.time.bgImage}`);
+            }
+            if (steps.form?.bgType === "image" && steps.form.bgImage) {
+              console.log(`>>> [PUBLISH_SUCCESS] Booking Form image: ${steps.form.bgImage}`);
+            }
+            if (steps.confirmation?.bgType === "image" && steps.confirmation.bgImage) {
+               console.log(`>>> [PUBLISH_SUCCESS] Booking Confirmation image: ${steps.confirmation.bgImage}`);
+             }
+           }
+ 
+           // Validação de presença de URLs de imagem antes de publicar
+           const missingImages: string[] = [];
+           if (changes.hero?.bgType === "image" && !changes.hero.bgImage) missingImages.push("Banner Principal");
+           if (changes.aboutHero?.bgType === "image" && !changes.aboutHero.bgImage) missingImages.push("Banner Sobre");
+           if (changes.story?.bgType === "image" && !changes.story.bgImage) missingImages.push("História (Fundo)");
+           if (changes.gallery?.bgType === "image" && !changes.gallery.bgImage) missingImages.push("Galeria (Fundo)");
+ 
+           if (changes.bookingSteps) {
+             const steps = changes.bookingSteps;
+             if (steps.service?.bgType === "image" && !steps.service.bgImage) missingImages.push("Agendamento - Passo 1");
+             if (steps.date?.bgType === "image" && !steps.date.bgImage) missingImages.push("Agendamento - Passo 2");
+             if (steps.time?.bgType === "image" && !steps.time.bgImage) missingImages.push("Agendamento - Passo 3");
+             if (steps.form?.bgType === "image" && !steps.form.bgImage) missingImages.push("Agendamento - Passo 4");
+             if (steps.confirmation?.bgType === "image" && !steps.confirmation.bgImage) missingImages.push("Agendamento - Passo 5");
+           }
+ 
+           if (missingImages.length > 0) {
+             console.warn(">>> [useEditorApi] Atenção: As seguintes seções estão em modo imagem mas não possuem URL definida:", missingImages);
+           }
+ 
+           const payload: Record<string, unknown> = { ...changes };
 
           const sectionsToGlobal = [
             "hero",
@@ -335,12 +386,74 @@ export function useEditorApi({
             "footer",
           ];
 
+          // Mapeamento de seções para a estrutura técnica esperada pelo banco de dados
+          const sectionToDatabasePath: Record<string, string> = {
+            hero: "home.hero",
+            services: "home.servicesSection",
+            values: "home.valuesSection",
+            gallery: "home.gallerySection",
+            cta: "home.ctaSection",
+          };
+
           for (const section of sectionsToGlobal) {
-            if (changes[section]) {
+            if (changes[section as keyof typeof changes]) {
+              const sectionData = changes[section as keyof typeof changes] as Record<string, unknown>;
+              
+              // 1. Manter a estrutura atual no layoutGlobal (para retrocompatibilidade/outros usos)
               payload.layoutGlobal = {
                 ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-                [section]: changes[section],
+                [section]: sectionData,
               };
+
+              // 2. Mapear para a nova estrutura solicitada (home.heroBanner.appearance)
+              const dbPath = sectionToDatabasePath[section];
+              if (dbPath && sectionData?.appearance) {
+                const [root, sub] = dbPath.split('.');
+                
+                // Inicializa a estrutura de objeto aninhado se necessário
+                if (!payload[root]) payload[root] = {};
+                const rootObj = payload[root] as Record<string, unknown>;
+                
+                if (!rootObj[sub]) rootObj[sub] = {};
+                const subObj = rootObj[sub] as Record<string, unknown>;
+
+                // Define o appearance e content na nova estrutura para todas as seções mapeadas
+                const appearance = sectionData.appearance as
+                  | Record<string, unknown>
+                  | undefined;
+
+                const overlayOpacity =
+                  typeof sectionData.overlayOpacity === "number"
+                    ? sectionData.overlayOpacity
+                    : 0.5;
+
+                const backgroundImageUrl =
+                  typeof appearance?.backgroundImageUrl === "string"
+                    ? appearance.backgroundImageUrl
+                    : "";
+
+                subObj.appearance = {
+                  ...appearance,
+                  backgroundImageUrl,
+                  showBackgroundImage: Boolean(backgroundImageUrl),
+                  overlayOpacity,
+                };
+
+                subObj.content = {
+                  title:
+                    typeof sectionData.title === "string"
+                      ? sectionData.title
+                      : "",
+                  subtitle:
+                    typeof sectionData.subtitle === "string"
+                      ? sectionData.subtitle
+                      : "",
+                };
+
+                console.log(
+                  `>>> [useEditorApi] Mapeando ${section} para ${dbPath}.appearance e ${dbPath}.content`
+                );
+              }
             }
           }
 
@@ -492,13 +605,19 @@ export function useEditorApi({
             };
           }
 
+          console.log(">>> [useEditorApi] Payload final para PATCH:", payload);
+
           await siteCustomizerService.saveCustomization(companyId, payload);
+          console.log(">>> [useEditorApi] Publicação concluída. Limpando rascunhos locais...");
+          clearLocalDrafts();
 
           if (shouldReloadFromBank) {
+            console.log(">>> [useEditorApi] Recarregando dados do banco...");
             try {
               const fresh =
                 await siteCustomizerService.getCustomization(companyId);
               if (fresh) {
+                console.log(">>> [useEditorApi] Dados atualizados recebidos:", fresh);
                 loadExternalConfig(fresh as unknown as Record<string, unknown>);
                 const layoutGlobal = fresh.layoutGlobal || fresh.layout_global;
                 const freshColors =
@@ -540,7 +659,7 @@ export function useEditorApi({
             description: "As alterações foram publicadas no seu site.",
           });
         } catch (err) {
-          console.warn(">>> [ADMIN_WARN] Erro ao salvar no backend:", err);
+          console.error(">>> [useEditorApi] Erro fatal ao salvar no backend:", err);
           toast({
             title: "Erro ao salvar",
             description:
@@ -551,6 +670,7 @@ export function useEditorApi({
           setIsSaving(false);
         }
       } else {
+        console.warn(">>> [useEditorApi] companyId não encontrado, salvando apenas localmente.");
         toast({
           title: "Site salvo localmente!",
           description: "As alterações foram salvas no navegador.",
@@ -606,6 +726,7 @@ export function useEditorApi({
       window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     },
     [
+      clearLocalDrafts,
       companyId,
       getChangedSettings,
       iframeRef,
@@ -624,10 +745,15 @@ export function useEditorApi({
       setFetchError(null);
       try {
         const data = await siteCustomizerService.getCustomization(id);
-        loadExternalConfig(data as unknown as Record<string, unknown>);
+        if (data) {
+          loadExternalConfig(data as unknown as Record<string, unknown>);
+          return data;
+        }
+        return null;
       } catch (err) {
         console.warn(">>> [ADMIN_WARN] Falha ao buscar customização:", err);
         setFetchError("Falha ao carregar configurações do site.");
+        return null;
       } finally {
         setIsFetching(false);
       }

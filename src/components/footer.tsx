@@ -64,66 +64,90 @@ export function Footer({
     }
   }, [externalFooterSettings]);
 
+  const studioId = studio?.id;
+  const studioName = studio?.name;
+  const studioSiteName = studio?.siteName;
+  const studioDescription = studio?.description;
+  const studioPhone = studio?.phone;
+  const studioEmail = studio?.email;
+  const studioAddress = studio?.address;
+  const studioContact = studio?.contact;
+  const studioFooterConfig = studio?.config?.footer;
+  const studioInstagram = studio?.instagram;
+  const studioFacebook = studio?.facebook;
+  const studioWhatsapp = studio?.whatsapp;
+  const studioTiktok = studio?.tiktok;
+  const studioLinkedin = studio?.linkedin;
+  const studioX = studio?.x;
+  const studioLogoUrl = studio?.logoUrl;
+  const studioTitleSuffix = studio?.titleSuffix;
+  const studioShowInstagram = studio?.showInstagram;
+  const studioShowFacebook = studio?.showFacebook;
+  const studioShowWhatsapp = studio?.showWhatsapp;
+  const studioShowTiktok = studio?.showTiktok;
+  const studioShowLinkedin = studio?.showLinkedin;
+  const studioShowX = studio?.showX;
+
   useEffect(() => {
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     const baseProfile = getSiteProfile();
 
-    if (studio) {
+    if (studioId) {
       // Função auxiliar para validar se um dado é útil (não nulo, não vazio, não apenas espaços)
       const isValid = (val: unknown): val is string =>
         val !== null && val !== undefined && String(val).trim() !== "";
 
       // LOG DE DIAGNÓSTICO DO ESTÚDIO
       console.log(">>> [FOOTER] Objeto Studio Recebido:", {
-        contact: studio.contact,
-        email_root: studio.email,
-        phone: studio.phone,
-        address: studio.address,
+        contact: studioContact,
+        email_root: studioEmail,
+        phone: studioPhone,
+        address: studioAddress,
       });
 
       const mergedProfile: SiteProfile = {
         ...baseProfile,
-        name: isValid(studio.siteName)
-          ? studio.siteName
-          : isValid(studio.name)
-            ? studio.name
+        name: isValid(studioSiteName)
+          ? studioSiteName
+          : isValid(studioName)
+            ? studioName
             : baseProfile.name,
-        description: isValid(studio.description)
-          ? studio.description
+        description: isValid(studioDescription)
+          ? studioDescription
           : baseProfile.description,
-        phone: isValid(studio.phone) ? studio.phone : baseProfile.phone,
-        email: isValid(studio.contact?.email)
-          ? studio.contact.email
-          : isValid(studio.email)
-            ? studio.email
+        phone: isValid(studioPhone) ? studioPhone : baseProfile.phone,
+        email: isValid(studioContact?.email)
+          ? studioContact.email
+          : isValid(studioEmail)
+            ? studioEmail
             : "contato@estudio.com",
-        address: isValid(studio.address) ? studio.address : baseProfile.address,
-        instagram: isValid(studio.instagram)
-          ? studio.instagram
+        address: isValid(studioAddress) ? studioAddress : baseProfile.address,
+        instagram: isValid(studioInstagram)
+          ? studioInstagram
           : baseProfile.instagram,
-        facebook: isValid(studio.facebook)
-          ? studio.facebook
+        facebook: isValid(studioFacebook)
+          ? studioFacebook
           : baseProfile.facebook,
-        whatsapp: isValid(studio.whatsapp)
-          ? studio.whatsapp
+        whatsapp: isValid(studioWhatsapp)
+          ? studioWhatsapp
           : baseProfile.whatsapp,
-        tiktok: isValid(studio.tiktok) ? studio.tiktok : baseProfile.tiktok,
-        linkedin: isValid(studio.linkedin)
-          ? studio.linkedin
+        tiktok: isValid(studioTiktok) ? studioTiktok : baseProfile.tiktok,
+        linkedin: isValid(studioLinkedin)
+          ? studioLinkedin
           : baseProfile.linkedin,
-        x: isValid(studio.x) ? studio.x : baseProfile.x,
-        logoUrl: isValid(studio.logoUrl) ? studio.logoUrl : baseProfile.logoUrl,
-        titleSuffix: studio.titleSuffix || baseProfile.titleSuffix || "",
+        x: isValid(studioX) ? studioX : baseProfile.x,
+        logoUrl: isValid(studioLogoUrl) ? studioLogoUrl : baseProfile.logoUrl,
+        titleSuffix: studioTitleSuffix || baseProfile.titleSuffix || "",
 
         // Para booleanos, garantimos que se o dado vier do banco como true/false, usamos ele.
         // Se vier nulo/undefined, usamos o que está no localStorage.
         showInstagram:
-          studio.showInstagram ?? baseProfile.showInstagram ?? true,
-        showFacebook: studio.showFacebook ?? baseProfile.showFacebook ?? true,
-        showWhatsapp: studio.showWhatsapp ?? baseProfile.showWhatsapp ?? true,
-        showTiktok: studio.showTiktok ?? baseProfile.showTiktok ?? false,
-        showLinkedin: studio.showLinkedin ?? baseProfile.showLinkedin ?? false,
-        showX: studio.showX ?? baseProfile.showX ?? false,
+          studioShowInstagram ?? baseProfile.showInstagram ?? true,
+        showFacebook: studioShowFacebook ?? baseProfile.showFacebook ?? true,
+        showWhatsapp: studioShowWhatsapp ?? baseProfile.showWhatsapp ?? true,
+        showTiktok: studioShowTiktok ?? baseProfile.showTiktok ?? false,
+        showLinkedin: studioShowLinkedin ?? baseProfile.showLinkedin ?? false,
+        showX: studioShowX ?? baseProfile.showX ?? false,
       };
       setProfile(mergedProfile);
     } else {
@@ -136,8 +160,8 @@ export function Footer({
     setVisibleSections({ ...currentVisible, footer: true });
 
     if (!externalFooterSettings) {
-      if (studio?.config?.footer) {
-        setFooterSettings(studio.config.footer as FooterSettings);
+      if (studioFooterConfig) {
+        setFooterSettings(studioFooterConfig as FooterSettings);
       } else {
         setFooterSettings(getFooterSettings());
       }
@@ -210,7 +234,7 @@ export function Footer({
       window.removeEventListener("footerSettingsUpdated", handleFooterUpdate);
       window.removeEventListener("message", handleMessage);
     };
-  }, [pathname, externalFooterSettings, studio]);
+  }, [studioId, studioName, studioSiteName, studioDescription, studioPhone, studioEmail, studioAddress, studioContact, studioFooterConfig, studioInstagram, studioFacebook, studioWhatsapp, studioTiktok, studioLinkedin, studioX, studioLogoUrl, studioTitleSuffix, studioShowInstagram, studioShowFacebook, studioShowWhatsapp, studioShowTiktok, studioShowLinkedin, studioShowX, pathname, externalFooterSettings]);
 
   // Se estivermos isolando algo que não seja o footer, escondemos o footer
   if (only && only !== "footer") return null;

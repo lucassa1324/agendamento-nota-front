@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import type {
+  AppearanceSettings,
   BookingStepSettings,
   ColorSettings,
   CTASettings,
@@ -36,6 +37,29 @@ import {
 } from "@/lib/booking-data";
 
 export function useEditorState() {
+  // Helper para sincronizar bgImage com appearance.backgroundImageUrl
+  const syncBackground = useCallback(
+    <T extends { bgImage?: string; appearance?: AppearanceSettings }>(
+      prev: T,
+      updates: Partial<T>,
+    ): T => {
+    const newState = { ...prev, ...updates };
+    
+    // Se bgImage mudou, sincroniza appearance.backgroundImageUrl
+    if (updates.bgImage !== undefined) {
+      newState.appearance = {
+        ...(newState.appearance || {}),
+        backgroundImageUrl: updates.bgImage
+      };
+    } 
+    // Se appearance.backgroundImageUrl mudou, sincroniza bgImage
+    else if (updates.appearance?.backgroundImageUrl !== undefined) {
+      newState.bgImage = updates.appearance.backgroundImageUrl;
+    }
+    
+    return newState;
+  }, []);
+
   const [heroSettings, setHeroSettings] =
     useState<HeroSettings>(defaultHeroSettings);
   const [aboutHeroSettings, setAboutHeroSettings] = useState<HeroSettings>(
@@ -181,32 +205,34 @@ export function useEditorState() {
   >({});
 
   const handleUpdateHero = useCallback((updates: Partial<HeroSettings>) => {
-    setHeroSettings((prev: HeroSettings) => ({ ...prev, ...updates }));
-  }, []);
+    console.log(">>> [useEditorState] handleUpdateHero chamado com:", updates);
+    setHeroSettings((prev: HeroSettings) => {
+      const newState = syncBackground(prev, updates);
+      console.log(">>> [useEditorState] Estado HERO atualizado. bgImage:", newState.bgImage, " appearance.backgroundImageUrl:", newState.appearance?.backgroundImageUrl);
+      return newState;
+    });
+  }, [syncBackground]);
 
   const handleUpdateAboutHero = useCallback(
     (updates: Partial<HeroSettings>) => {
-      setAboutHeroSettings((prev: HeroSettings) => ({ ...prev, ...updates }));
+      setAboutHeroSettings((prev: HeroSettings) => syncBackground(prev, updates));
     },
-    [],
+    [syncBackground],
   );
 
   const handleUpdateStory = useCallback((updates: Partial<StorySettings>) => {
-    setStorySettings((prev: StorySettings) => ({ ...prev, ...updates }));
-  }, []);
+    setStorySettings((prev: StorySettings) => syncBackground(prev, updates));
+  }, [syncBackground]);
 
   const handleUpdateTeam = useCallback((updates: Partial<TeamSettings>) => {
-    setTeamSettings((prev: TeamSettings) => ({ ...prev, ...updates }));
-  }, []);
+    setTeamSettings((prev: TeamSettings) => syncBackground(prev, updates));
+  }, [syncBackground]);
 
   const handleUpdateTestimonials = useCallback(
     (updates: Partial<TestimonialsSettings>) => {
-      setTestimonialsSettings((prev: TestimonialsSettings) => ({
-        ...prev,
-        ...updates,
-      }));
+      setTestimonialsSettings((prev: TestimonialsSettings) => syncBackground(prev, updates));
     },
-    [],
+    [syncBackground],
   );
 
   const handleUpdateFont = useCallback((updates: Partial<FontSettings>) => {
@@ -219,28 +245,25 @@ export function useEditorState() {
 
   const handleUpdateServices = useCallback(
     (updates: Partial<ServicesSettings>) => {
-      setServicesSettings((prev: ServicesSettings) => ({
-        ...prev,
-        ...updates,
-      }));
+      setServicesSettings((prev: ServicesSettings) => syncBackground(prev, updates));
     },
-    [],
+    [syncBackground],
   );
 
   const handleUpdateValues = useCallback((updates: Partial<ValuesSettings>) => {
-    setValuesSettings((prev: ValuesSettings) => ({ ...prev, ...updates }));
-  }, []);
+    setValuesSettings((prev: ValuesSettings) => syncBackground(prev, updates));
+  }, [syncBackground]);
 
   const handleUpdateGallery = useCallback(
     (updates: Partial<GallerySettings>) => {
-      setGallerySettings((prev: GallerySettings) => ({ ...prev, ...updates }));
+      setGallerySettings((prev: GallerySettings) => syncBackground(prev, updates));
     },
-    [],
+    [syncBackground],
   );
 
   const handleUpdateCTA = useCallback((updates: Partial<CTASettings>) => {
-    setCTASettings((prev: CTASettings) => ({ ...prev, ...updates }));
-  }, []);
+    setCTASettings((prev: CTASettings) => syncBackground(prev, updates));
+  }, [syncBackground]);
 
   const handleUpdateHeader = useCallback((updates: Partial<HeaderSettings>) => {
     setHeaderSettings((prev: HeaderSettings) => ({ ...prev, ...updates }));
@@ -252,52 +275,37 @@ export function useEditorState() {
 
   const handleUpdateBookingService = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingServiceSettings((prev: BookingStepSettings) => ({
-        ...prev,
-        ...updates,
-      }));
+      setBookingServiceSettings((prev: BookingStepSettings) => syncBackground(prev, updates));
     },
-    [],
+    [syncBackground],
   );
 
   const handleUpdateBookingDate = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingDateSettings((prev: BookingStepSettings) => ({
-        ...prev,
-        ...updates,
-      }));
+      setBookingDateSettings((prev: BookingStepSettings) => syncBackground(prev, updates));
     },
-    [],
+    [syncBackground],
   );
 
   const handleUpdateBookingTime = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingTimeSettings((prev: BookingStepSettings) => ({
-        ...prev,
-        ...updates,
-      }));
+      setBookingTimeSettings((prev: BookingStepSettings) => syncBackground(prev, updates));
     },
-    [],
+    [syncBackground],
   );
 
   const handleUpdateBookingForm = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingFormSettings((prev: BookingStepSettings) => ({
-        ...prev,
-        ...updates,
-      }));
+      setBookingFormSettings((prev: BookingStepSettings) => syncBackground(prev, updates));
     },
-    [],
+    [syncBackground],
   );
 
   const handleUpdateBookingConfirmation = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingConfirmationSettings((prev: BookingStepSettings) => ({
-        ...prev,
-        ...updates,
-      }));
+      setBookingConfirmationSettings((prev: BookingStepSettings) => syncBackground(prev, updates));
     },
-    [],
+    [syncBackground],
   );
 
   const handlePageVisibilityChange = useCallback(

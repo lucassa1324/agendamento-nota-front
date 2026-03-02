@@ -1,14 +1,14 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { API_BASE_URL } from "./auth-client";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 /**
- * Converte um caminho de imagem (relativo ou absoluto) em uma URL completa válida.
- * Útil para exibir imagens que vêm do backend.
+ * Converte um caminho de imagem em uma URL completa válida.
+ * Atualmente prioriza URLs absolutas (Blackblaze B2) ou assets locais do frontend.
+ * O backend não serve mais arquivos da pasta /public.
  */
 export function getFullImageUrl(path: string | undefined | null) {
   if (!path) return "";
@@ -22,17 +22,39 @@ export function getFullImageUrl(path: string | undefined | null) {
     return path;
   }
 
-  const baseUrl = API_BASE_URL.endsWith("/")
-    ? API_BASE_URL.slice(0, -1)
-    : API_BASE_URL;
+  // Se começa com /, assume-se que é um asset local do FRONTEND (pasta public/ do Next.js)
+  if (path.startsWith("/")) {
+    return path;
+  }
 
-  // Garante que o path comece com /
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  // Caminhos relativos sem / não são mais suportados pelo backend (/public desativado)
+  console.warn(
+    `[getFullImageUrl] Caminho relativo detectado: "${path}". O backend não serve mais arquivos locais. Use o upload para o B2.`,
+  );
 
-  // Se o path não começa com /public, nós adicionamos (exigência do backend)
-  const finalPath = cleanPath.startsWith("/public")
-    ? cleanPath
-    : `/public${cleanPath}`;
+  return path;
+}
 
-  return `${baseUrl}${finalPath}`;
+/**
+ * Renderiza texto de forma segura, tratando objetos vindos do backend
+ * que deveriam ser strings.
+ */
+export function renderSafeText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  
+  if (typeof value === "object") {
+    // Se for o formato { text, color, font, size }
+    if ("text" in value) return String((value as { text?: string }).text || "");
+    
+    // Fallback: se for um objeto mas não tiver .text, tenta stringify ou retorna vazio
+    try {
+      console.warn("[renderSafeText] Objeto inesperado recebido como texto:", value);
+      return "";
+    } catch (_e) {
+      return "";
+    }
+  }
+  
+  return String(value);
 }

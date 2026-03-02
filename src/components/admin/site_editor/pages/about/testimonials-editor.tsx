@@ -10,6 +10,7 @@ import {
   Trash2,
   Type,
 } from "lucide-react";
+import Image from "next/image";
 import {
   Accordion,
   AccordionContent,
@@ -27,10 +28,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useStudio } from "@/context/studio-context";
 import type { Testimonial, TestimonialsSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { ImageUploader } from "../../components/ImageUploader";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -47,6 +50,7 @@ export function TestimonialsEditor({
   onSave: externalOnSave,
   hasChanges,
 }: TestimonialsEditorProps) {
+  const { studio } = useStudio();
   const handleSave = () => {
     if (externalOnSave) externalOnSave();
   };
@@ -57,6 +61,7 @@ export function TestimonialsEditor({
       name: "Nome da Cliente",
       text: "Depoimento da cliente aqui...",
       rating: 5,
+      image: "",
     };
     onUpdate({ testimonials: [...settings.testimonials, newItem] });
   };
@@ -168,9 +173,20 @@ export function TestimonialsEditor({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <BackgroundEditor
-              settings={settings}
+              settings={{
+                bgType: settings.bgType,
+                bgColor: settings.bgColor,
+                bgImage: settings.bgImage,
+                imageOpacity: settings.imageOpacity,
+                overlayOpacity: settings.overlayOpacity,
+                imageScale: settings.imageScale,
+                imageX: settings.imageX,
+                imageY: settings.imageY,
+                appearance: settings.appearance,
+              }}
               onUpdate={(updates) => onUpdate({ ...updates })}
-              sectionId="testimonials"
+              section="testimonials"
+              businessId={studio?.id || ""}
             />
           </AccordionContent>
         </AccordionItem>
@@ -457,7 +473,7 @@ export function TestimonialsEditor({
                         Nome da Cliente
                       </Label>
                       <Input
-                        value={testimonial.name}
+                        value={testimonial.name || ""}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                           updateItem(testimonial.id, { name: e.target.value })
                         }
@@ -492,10 +508,49 @@ export function TestimonialsEditor({
 
                   <div className="space-y-1.5">
                     <Label className="text-[10px] uppercase text-muted-foreground">
+                      Foto da Cliente (Opcional)
+                    </Label>
+                    <div className="flex gap-2 items-center">
+                      <ImageUploader
+                        businessId={studio?.id || ""}
+                        section="testimonial"
+                        onUploadSuccess={(url) =>
+                          updateItem(testimonial.id, { image: url })
+                        }
+                        className="w-full h-10"
+                      />
+                    </div>
+                    {testimonial.image && (
+                      <div className="mt-2 relative group aspect-square w-16 rounded-full overflow-hidden border">
+                        <Image
+                          src={testimonial.image}
+                          alt={testimonial.name}
+                          className="object-cover"
+                          fill
+                          unoptimized
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-white"
+                            onClick={() =>
+                              updateItem(testimonial.id, { image: "" })
+                            }
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] uppercase text-muted-foreground">
                       Depoimento
                     </Label>
                     <Textarea
-                      value={testimonial.text}
+                      value={testimonial.text || ""}
                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                         updateItem(testimonial.id, { text: e.target.value })
                       }

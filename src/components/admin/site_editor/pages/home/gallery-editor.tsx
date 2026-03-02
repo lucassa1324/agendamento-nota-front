@@ -23,10 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useStudio } from "@/context/studio-context";
 import type { GallerySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { SectionBackgroundEditor } from "../../components/SectionBackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -43,6 +45,7 @@ export function GalleryEditor({
   onSave,
   hasChanges,
 }: GalleryEditorProps) {
+  const { studio } = useStudio();
   if (!settings) return null;
 
   return (
@@ -133,7 +136,7 @@ export function GalleryEditor({
                 Texto do Botão
               </legend>
               <Input
-                value={settings.buttonText}
+                value={settings.buttonText || ""}
                 onChange={(e) => onUpdate({ buttonText: e.target.value })}
                 className="h-8 text-xs"
               />
@@ -311,10 +314,31 @@ export function GalleryEditor({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <BackgroundEditor
-              settings={settings}
+              settings={{
+                bgType: settings.bgType,
+                bgColor: settings.bgColor,
+                bgImage: settings.bgImage,
+                imageOpacity: settings.imageOpacity,
+                overlayOpacity: settings.overlayOpacity,
+                imageScale: settings.imageScale,
+                imageX: settings.imageX,
+                imageY: settings.imageY,
+                appearance: settings.appearance,
+              }}
               onUpdate={(updates) => onUpdate(updates)}
-              sectionId="gallery"
+              section="gallery"
+              businessId={studio?.id || ""}
             />
+
+            <div className="mt-6 pt-6 border-t border-border/50">
+              <SectionBackgroundEditor
+                section="gallery"
+                businessId={studio?.id || ""}
+                appearance={settings.appearance}
+                onChange={(appearance) => onUpdate({ appearance })}
+                title="Fundo Personalizado (B2)"
+              />
+            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>

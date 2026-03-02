@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, Suspense, use, useEffect, useState } from "react";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { BackendTrigger } from "@/components/admin/BackendTrigger";
 import { SubscriptionBlockScreen } from "@/components/admin/subscription-block-screen";
 import { TrialBanner } from "@/components/admin/trial-banner";
 import { VerificationBanner } from "@/components/admin/verification-banner";
@@ -58,9 +59,11 @@ interface AuthUser {
   slug?: string;
   role?: string;
   business?: {
+    id?: string;
     slug?: string;
     subscriptionStatus?: string;
   };
+  businessId?: string;
 }
 
 function AdminLayoutContent({
@@ -241,6 +244,7 @@ function AdminLayoutContent({
             isPersonalizacao ? "p-0 h-dvh overflow-hidden" : "p-4 lg:p-6",
           )}
         >
+          <BackendTrigger />
           <VerificationBanner />
           {!isPersonalizacao && <TrialBanner />}
           {children}
@@ -259,6 +263,9 @@ export default function AdminLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(paramsPromise);
+  const { data: session } = useSession();
+  const user = session?.user as AuthUser | undefined;
+  const businessId = user?.business?.id || user?.businessId;
 
   // Mover o check de autenticação para o topo se possível, ou garantir que hooks sejam estáveis
   return (
@@ -269,7 +276,7 @@ export default function AdminLayout({
         </div>
       }
     >
-      <StudioProvider initialSlug={slug}>
+      <StudioProvider initialSlug={slug} initialId={businessId}>
         <SidebarProvider>
           <AdminLayoutContent slug={slug}>{children}</AdminLayoutContent>
         </SidebarProvider>

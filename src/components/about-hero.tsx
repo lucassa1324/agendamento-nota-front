@@ -7,6 +7,7 @@ import { useStudio } from "@/context/studio-context";
 import { getAboutHeroSettings, type HeroSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 
 export function AboutHero() {
   const { studio } = useStudio();
@@ -15,10 +16,12 @@ export function AboutHero() {
     null,
   );
 
+  const aboutHeroConfig = studio?.config?.aboutHero;
+
   useEffect(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    if (studio?.config?.aboutHero) {
-      setSettings(studio.config.aboutHero as HeroSettings);
+    if (aboutHeroConfig) {
+      setSettings(aboutHeroConfig as HeroSettings);
     } else {
       setSettings(getAboutHeroSettings());
     }
@@ -49,7 +52,7 @@ export function AboutHero() {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("aboutHeroSettingsUpdated", handleUpdate);
     };
-  }, [studio]);
+  }, [aboutHeroConfig]);
 
   if (!settings) return null;
 
@@ -60,29 +63,31 @@ export function AboutHero() {
   };
 
   return (
-    <section
-      id="about-hero"
-      className={cn(
-        "relative py-20 md:py-32 overflow-hidden transition-all duration-700",
-        (highlightedElement === "about-hero-bg" ||
-          highlightedElement === "about-hero") &&
-          "ring-8 ring-inset ring-primary/30",
-      )}
-    >
-      <SectionBackground
-        settings={{
-          bgType: settings.bgType as "color" | "image",
-          bgColor: settings.bgColor,
-          bgImage: settings.bgImage,
-          imageOpacity: settings.imageOpacity,
-          overlayOpacity: settings.overlayOpacity,
-          imageScale: settings.imageScale,
-          imageX: settings.imageX,
-          imageY: settings.imageY,
-        }}
-        defaultImage="/beauty-salon-professional-workspace.jpg"
-        gradientClassName="bg-linear-to-b from-background/50 via-background/80 to-background"
-      />
+    <SessionWrapper appearance={settings?.appearance}>
+      <section
+        id="about-hero"
+        className={cn(
+          "relative py-20 md:py-32 overflow-hidden transition-all duration-700",
+          (highlightedElement === "about-hero-bg" ||
+            highlightedElement === "about-hero") &&
+            "ring-8 ring-inset ring-primary/30",
+        )}
+      >
+        <SectionBackground
+          settings={{
+            bgType: settings.bgType as "color" | "image",
+            bgColor: settings.bgColor,
+            bgImage: settings.bgImage,
+            imageOpacity: settings.imageOpacity,
+            overlayOpacity: settings.overlayOpacity,
+            imageScale: settings.imageScale,
+            imageX: settings.imageX,
+            imageY: settings.imageY,
+            appearance: settings.appearance,
+          }}
+          defaultImage="/beauty-salon-professional-workspace.jpg"
+          gradientClassName="bg-linear-to-b from-background/50 via-background/80 to-background"
+        />
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-3xl mx-auto text-center">
@@ -177,5 +182,6 @@ export function AboutHero() {
         </div>
       </div>
     </section>
+    </SessionWrapper>
   );
 }

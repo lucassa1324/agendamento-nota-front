@@ -1,7 +1,14 @@
-import { type RefObject, useCallback, useEffect, useMemo } from "react";
+import {
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import type {
+  AppearanceSettings,
   BookingStepSettings,
   ColorSettings,
   CTASettings,
@@ -35,6 +42,8 @@ import {
   defaultTeamSettings,
   defaultTestimonialsSettings,
   defaultValuesSettings,
+  getDraftTimestamp,
+  getStorageKey,
   normalizeStepSettings,
 } from "@/lib/booking-data";
 import type {
@@ -52,10 +61,12 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const { studio } = useStudio();
   const local = useEditorLocal();
   const state = useEditorState();
+  const recoveryDecisionRef = useRef<boolean | null>(null);
   const {
     hasLocalDraft,
     loadLocalDrafts,
     saveLocalDrafts,
+    clearLocalDrafts,
     saveHeroSettings,
     saveAboutHeroSettings,
     saveStorySettings,
@@ -281,8 +292,9 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   );
 
   const loadExternalConfig = useCallback(
-    (config: Record<string, unknown>) => {
+    (config: SiteConfigData) => {
       if (!config) return;
+      const baseConfig = ((config as SiteConfigData & { siteCustomization?: SiteConfigData }).siteCustomization || config) as SiteConfigData;
       console.log(
         "[useSiteEditor] loadExternalConfig iniciada com config:",
         config,
@@ -290,369 +302,368 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       const drafts = loadLocalDrafts();
       console.log("[useSiteEditor] Rascunhos locais carregados:", drafts);
 
-      const layoutGlobal = (config.layoutGlobal || config.layout_global) as
+      const layoutGlobal = (baseConfig.layoutGlobal || baseConfig.layout_global) as
         | Record<string, unknown>
         | undefined;
+      const home = baseConfig.home as
+        | Record<string, Record<string, unknown>>
+        | undefined;
+
+      // Helper para normalizar o background das seções
+      const normalizeBg = <T extends { bgImage?: string; bgType?: string; appearance?: AppearanceSettings }>(
+        settings: T | undefined,
+        sectionName?: string
+      ): T | undefined => {
+        if (!settings) return settings;
+        
+        // Se temos uma imagem na aparência mas não no bgImage, normalizamos
+        if (!settings.bgImage && settings.appearance?.backgroundImageUrl) {
+          console.log(`[useSiteEditor] Normalizando background ${sectionName || ''}: Usando appearance.backgroundImageUrl (${settings.appearance.backgroundImageUrl}) para bgImage`);
+          return {
+            ...settings,
+            bgImage: settings.appearance.backgroundImageUrl,
+            // Se não tiver tipo definido, assume imagem já que temos uma
+            bgType: settings.bgType || "image"
+          };
+        }
+        return settings;
+      };
+      const sanitizeHeroText = (value?: HeroSettings) =>
+        value
+          ? {
+              ...value,
+              title: typeof value.title === "string" ? value.title : "",
+              subtitle:
+                typeof value.subtitle === "string" ? value.subtitle : "",
+            }
+          : value;
+      const normalizeHeroMedia = (value?: HeroSettings) => {
+        if (!value?.appearance?.backgroundImageUrl) return value;
+        const shouldUseOverlay =
+          value.appearance.overlay?.opacity !== undefined &&
+          value.appearance.overlay?.opacity !== null;
+        return {
+          ...value,
+          overlayOpacity: shouldUseOverlay
+            ? value.appearance.overlay?.opacity ?? value.overlayOpacity
+            : 0,
+          imageOpacity:
+            value.imageOpacity === defaultHeroSettings.imageOpacity
+              ? 1
+              : value.imageOpacity,
+        };
+      };
+
+      const rootHeroBanner = (baseConfig as Record<string, unknown>)
+        ?.heroBanner as HeroSettings | undefined;
+      const heroSource = (home?.heroBanner ||
+        rootHeroBanner ||
+        home?.hero ||
+        layoutGlobal?.hero ||
+        baseConfig.hero) as HeroSettings | undefined;
 
       const data = {
-        ...config,
-        hero: (layoutGlobal?.hero || config.hero) as HeroSettings | undefined,
-        aboutHero: (layoutGlobal?.aboutHero || config.aboutHero) as
+        ...baseConfig,
+        hero: normalizeBg(heroSource, "hero"),
+        aboutHero: normalizeBg((layoutGlobal?.aboutHero || baseConfig.aboutHero) as
           | HeroSettings
-          | undefined,
-        story: (layoutGlobal?.story || config.story) as
+          | undefined, "aboutHero"),
+        story: normalizeBg((layoutGlobal?.story || baseConfig.story) as
           | StorySettings
-          | undefined,
-        team: (layoutGlobal?.team || config.team) as TeamSettings | undefined,
-        testimonials: (layoutGlobal?.testimonials || config.testimonials) as
+          | undefined, "story"),
+        team: normalizeBg((layoutGlobal?.team || baseConfig.team) as
+          | TeamSettings
+          | undefined, "team"),
+        testimonials: normalizeBg((layoutGlobal?.testimonials || baseConfig.testimonials) as
           | TestimonialsSettings
-          | undefined,
-        services: (layoutGlobal?.services || config.services) as
-          | ServicesSettings
-          | undefined,
-        values: (layoutGlobal?.values || config.values) as
-          | ValuesSettings
-          | undefined,
-        gallery: (layoutGlobal?.gallery || config.gallery) as
-          | GallerySettings
-          | undefined,
-        cta: (layoutGlobal?.cta || config.cta) as CTASettings | undefined,
-        header: (layoutGlobal?.header || config.header) as
+          | undefined, "testimonials"),
+        services: normalizeBg((home?.servicesSection ||
+          home?.services ||
+          layoutGlobal?.services ||
+          baseConfig.services) as ServicesSettings | undefined, "services"),
+        values: normalizeBg((home?.valuesSection ||
+          home?.values ||
+          layoutGlobal?.values ||
+          baseConfig.values) as ValuesSettings | undefined, "values"),
+        gallery: normalizeBg((home?.gallerySection ||
+          home?.gallery ||
+          layoutGlobal?.gallery ||
+          baseConfig.gallery) as GallerySettings | undefined, "gallery"),
+        cta: normalizeBg((home?.ctaSection ||
+          home?.cta ||
+          layoutGlobal?.cta ||
+          baseConfig.cta) as CTASettings | undefined, "cta"),
+        header: (layoutGlobal?.header || baseConfig.header) as
           | HeaderSettings
           | undefined,
-        footer: (layoutGlobal?.footer || config.footer) as
+        footer: (layoutGlobal?.footer || baseConfig.footer) as
           | FooterSettings
           | undefined,
         colors: (layoutGlobal?.siteColors ||
           layoutGlobal?.cores_base ||
-          config.colors) as ColorSettings | undefined,
-        theme: (layoutGlobal?.fontes || config.theme || config.typography) as
+          baseConfig.colors) as ColorSettings | undefined,
+        theme: (layoutGlobal?.fontes || baseConfig.theme || baseConfig.typography) as
           | FontSettings
           | undefined,
         visibleSections: (layoutGlobal?.visibleSections ||
-          config.visibleSections) as Record<string, boolean> | undefined,
+          baseConfig.visibleSections) as Record<string, boolean> | undefined,
         pageVisibility: (layoutGlobal?.pageVisibility ||
-          config.pageVisibility) as Record<string, boolean> | undefined,
-        bookingSteps: config.bookingSteps as
-          | {
-              service?: Record<string, unknown>;
-              date?: Record<string, unknown>;
-              time?: Record<string, unknown>;
-              form?: Record<string, unknown>;
-              confirmation?: Record<string, unknown>;
-            }
-          | undefined,
+          baseConfig.pageVisibility) as Record<string, boolean> | undefined,
+        bookingSteps: baseConfig.bookingSteps ? {
+          service: normalizeBg(baseConfig.bookingSteps.service, "bookingSteps.service"),
+          date: normalizeBg(baseConfig.bookingSteps.date, "bookingSteps.date"),
+          time: normalizeBg(baseConfig.bookingSteps.time, "bookingSteps.time"),
+          form: normalizeBg(baseConfig.bookingSteps.form, "bookingSteps.form"),
+          confirmation: normalizeBg(baseConfig.bookingSteps.confirmation, "bookingSteps.confirmation"),
+        } : undefined,
       } as SiteConfigData;
+      const sanitizedHero = normalizeHeroMedia(sanitizeHeroText(data.hero));
 
-      const useLocalHero = hasLocalDraft("heroSettings");
-      if (data.hero) {
+      // Determinar se rascunhos locais são mais recentes que os dados do banco
+      const bankUpdatedAt = baseConfig.updatedAt
+        ? new Date(baseConfig.updatedAt).getTime()
+        : config.updatedAt
+          ? new Date(config.updatedAt).getTime()
+          : 0;
+      const draftTimestampStr = getDraftTimestamp();
+      const draftTimestamp = draftTimestampStr ? new Date(draftTimestampStr).getTime() : 0;
+
+      let shouldRecoverDrafts = false;
+      if (draftTimestamp > bankUpdatedAt) {
+        if (typeof window !== "undefined") {
+          const recoveryStorageKey = studio?.id
+            ? `draft_recovery_decision_${studio.id}`
+            : "draft_recovery_decision";
+          const storedDecision = sessionStorage.getItem(recoveryStorageKey);
+          if (recoveryDecisionRef.current === null && storedDecision) {
+            try {
+              const parsed = JSON.parse(storedDecision) as {
+                draftTimestamp?: number;
+                decision?: boolean;
+              };
+              if (parsed?.draftTimestamp === draftTimestamp) {
+                recoveryDecisionRef.current = parsed.decision ?? null;
+              } else {
+                sessionStorage.removeItem(recoveryStorageKey);
+              }
+            } catch {
+              sessionStorage.removeItem(recoveryStorageKey);
+            }
+          }
+        }
+
+        if (recoveryDecisionRef.current === null) {
+          console.log(
+            `>>> [useSiteEditor] Rascunho local (${new Date(draftTimestamp).toISOString()}) é mais recente que o banco (${new Date(bankUpdatedAt).toISOString()})`,
+          );
+          recoveryDecisionRef.current = window.confirm(
+            "Você tem alterações não salvas (rascunhos) que são mais recentes que a versão publicada. Deseja recuperar essas alterações?",
+          );
+          if (typeof window !== "undefined") {
+            const recoveryStorageKey = studio?.id
+              ? `draft_recovery_decision_${studio.id}`
+              : "draft_recovery_decision";
+            sessionStorage.setItem(
+              recoveryStorageKey,
+              JSON.stringify({
+                draftTimestamp,
+                decision: recoveryDecisionRef.current,
+              }),
+            );
+          }
+        }
+        shouldRecoverDrafts = recoveryDecisionRef.current;
+      }
+
+      let heroDraft = normalizeHeroMedia(
+        sanitizeHeroText(drafts.heroSettings as HeroSettings | undefined),
+      );
+      if (
+        shouldRecoverDrafts &&
+        heroDraft &&
+        sanitizedHero?.appearance?.backgroundImageUrl &&
+        !heroDraft.appearance?.backgroundImageUrl
+      ) {
+        const mergedHeroDraft = {
+          ...heroDraft,
+          appearance: {
+            ...heroDraft.appearance,
+            ...sanitizedHero.appearance,
+            backgroundImageUrl: sanitizedHero.appearance.backgroundImageUrl,
+          },
+          bgImage: sanitizedHero.appearance.backgroundImageUrl,
+          bgType: heroDraft.bgType || "image",
+        } as HeroSettings;
+        saveHeroSettings(mergedHeroDraft);
+        heroDraft = mergedHeroDraft;
+      }
+
+      const useLocalHero = shouldRecoverDrafts && hasLocalDraft("heroSettings");
+      if (sanitizedHero) {
         console.log(
-          `[useSiteEditor] Atualizando lastSavedHero com dados da API: ${JSON.stringify(
-            data.hero,
-          )}`,
+          `[useSiteEditor] Atualizando lastSavedHero com dados da API:`,
+          sanitizedHero,
         );
-        setLastSavedHero(data.hero);
+        setLastSavedHero(sanitizedHero);
       }
       if (useLocalHero) {
+        const normalizedHeroDraft = normalizeBg(heroDraft, "hero (draft)");
         console.log(
-          `[useSiteEditor] Hero: Usando rascunho local: ${JSON.stringify(
-            drafts.heroSettings,
-          )}`,
+          `[useSiteEditor] Hero: Usando rascunho local (normalizado):`,
+          normalizedHeroDraft,
         );
-        setHeroSettings(drafts.heroSettings);
-        setLastAppliedHero(drafts.heroSettings);
-      } else if (data.hero) {
+        setHeroSettings(normalizedHeroDraft as HeroSettings);
+        setLastAppliedHero(normalizedHeroDraft as HeroSettings);
+      } else if (sanitizedHero) {
         console.log(
-          `[useSiteEditor] Hero: Usando dados da API: ${JSON.stringify(
-            data.hero,
-          )}`,
+          `[useSiteEditor] Hero: Usando dados da API:`,
+          sanitizedHero,
         );
-        setHeroSettings(data.hero);
-        setLastAppliedHero(data.hero);
-        saveHeroSettings(data.hero);
+        setHeroSettings(sanitizedHero);
+        setLastAppliedHero(sanitizedHero);
+        saveHeroSettings(sanitizedHero);
       }
 
-      const useLocalAboutHero = hasLocalDraft("aboutHeroSettings");
+      const useLocalAboutHero = shouldRecoverDrafts && hasLocalDraft("aboutHeroSettings");
       if (data.aboutHero) {
-        console.log(
-          `[useSiteEditor] Atualizando lastSavedAboutHero com dados da API: ${JSON.stringify(
-            data.aboutHero,
-          )}`,
-        );
         setLastSavedAboutHero(data.aboutHero);
       }
       if (useLocalAboutHero) {
-        console.log(
-          `[useSiteEditor] About Hero: Usando rascunho local: ${JSON.stringify(
-            drafts.aboutHeroSettings,
-          )}`,
-        );
-        setAboutHeroSettings(drafts.aboutHeroSettings);
-        setLastAppliedAboutHero(drafts.aboutHeroSettings);
+        const normalizedDraft = normalizeBg(drafts.aboutHeroSettings, "aboutHero (draft)");
+        setAboutHeroSettings(normalizedDraft as HeroSettings);
+        setLastAppliedAboutHero(normalizedDraft as HeroSettings);
       } else if (data.aboutHero) {
-        console.log(
-          `[useSiteEditor] About Hero: Usando dados da API: ${JSON.stringify(
-            data.aboutHero,
-          )}`,
-        );
         setAboutHeroSettings(data.aboutHero);
         setLastAppliedAboutHero(data.aboutHero);
         saveAboutHeroSettings(data.aboutHero);
       }
 
-      const useLocalStory = hasLocalDraft("storySettings");
+      const useLocalStory = shouldRecoverDrafts && hasLocalDraft("storySettings");
       if (data.story) {
-        console.log(
-          `[useSiteEditor] Atualizando lastSavedStory com dados da API: ${JSON.stringify(
-            data.story,
-          )}`,
-        );
         setLastSavedStory(data.story);
       }
       if (useLocalStory) {
-        console.log(
-          `[useSiteEditor] Story: Usando rascunho local: ${JSON.stringify(
-            drafts.storySettings,
-          )}`,
-        );
-        setStorySettings(drafts.storySettings);
-        setLastAppliedStory(drafts.storySettings);
+        const normalizedDraft = normalizeBg(drafts.storySettings, "story (draft)");
+        setStorySettings(normalizedDraft as StorySettings);
+        setLastAppliedStory(normalizedDraft as StorySettings);
       } else if (data.story) {
-        console.log(
-          `[useSiteEditor] Story: Usando dados da API: ${JSON.stringify(
-            data.story,
-          )}`,
-        );
         setStorySettings(data.story);
         setLastAppliedStory(data.story);
         saveStorySettings(data.story);
       }
 
-      const useLocalTeam = hasLocalDraft("teamSettings");
+      const useLocalTeam = shouldRecoverDrafts && hasLocalDraft("teamSettings");
       if (data.team) {
-        console.log(
-          `[useSiteEditor] Atualizando lastSavedTeam com dados da API: ${JSON.stringify(
-            data.team,
-          )}`,
-        );
         setLastSavedTeam(data.team);
       }
       if (useLocalTeam) {
-        console.log(
-          `[useSiteEditor] Team: Usando rascunho local: ${JSON.stringify(
-            drafts.teamSettings,
-          )}`,
-        );
-        setTeamSettings(drafts.teamSettings);
-        setLastAppliedTeam(drafts.teamSettings);
+        const normalizedDraft = normalizeBg(drafts.teamSettings, "team (draft)");
+        setTeamSettings(normalizedDraft as TeamSettings);
+        setLastAppliedTeam(normalizedDraft as TeamSettings);
       } else if (data.team) {
-        console.log(
-          `[useSiteEditor] Team: Usando dados da API: ${JSON.stringify(
-            data.team,
-          )}`,
-        );
         setTeamSettings(data.team);
         setLastAppliedTeam(data.team);
         saveTeamSettings(data.team);
       }
 
-      const useLocalTestimonials = hasLocalDraft("testimonialsSettings");
+      const useLocalTestimonials = shouldRecoverDrafts && hasLocalDraft("testimonialsSettings");
       if (data.testimonials) {
-        console.log(
-          `[useSiteEditor] Atualizando lastSavedTestimonials com dados da API: ${JSON.stringify(
-            data.testimonials,
-          )}`,
-        );
         setLastSavedTestimonials(data.testimonials);
       }
       if (useLocalTestimonials) {
-        console.log(
-          `[useSiteEditor] Testimonials: Usando rascunho local: ${JSON.stringify(
-            drafts.testimonialsSettings,
-          )}`,
-        );
-        setTestimonialsSettings(drafts.testimonialsSettings);
-        setLastAppliedTestimonials(drafts.testimonialsSettings);
+        const normalizedDraft = normalizeBg(drafts.testimonialsSettings, "testimonials (draft)");
+        setTestimonialsSettings(normalizedDraft as TestimonialsSettings);
+        setLastAppliedTestimonials(normalizedDraft as TestimonialsSettings);
       } else if (data.testimonials) {
-        console.log(
-          `[useSiteEditor] Testimonials: Usando dados da API: ${JSON.stringify(
-            data.testimonials,
-          )}`,
-        );
         setTestimonialsSettings(data.testimonials);
         setLastAppliedTestimonials(data.testimonials);
         saveTestimonialsSettings(data.testimonials);
       }
 
-      const useLocalFont = hasLocalDraft("fontSettings");
+      const useLocalFont = shouldRecoverDrafts && hasLocalDraft("fontSettings");
       if (data.theme) {
-        console.log(
-          `[useSiteEditor] Atualizando lastSavedFont com dados da API: ${JSON.stringify(
-            data.theme,
-          )}`,
-        );
         setLastSavedFont(data.theme);
       }
       if (useLocalFont) {
-        console.log(
-          `[useSiteEditor] Font: Usando rascunho local: ${JSON.stringify(
-            drafts.fontSettings,
-          )}`,
-        );
         setFontSettings(drafts.fontSettings);
         setLastAppliedFont(drafts.fontSettings);
       } else if (data.theme) {
-        console.log(
-          `[useSiteEditor] Font: Usando dados da API: ${JSON.stringify(
-            data.theme,
-          )}`,
-        );
         setFontSettings(data.theme);
         setLastAppliedFont(data.theme);
         saveFontSettings(data.theme);
       }
 
-      const useLocalColors = hasLocalDraft("colorSettings");
+      const useLocalColors = shouldRecoverDrafts && hasLocalDraft("colorSettings");
       if (data.colors) {
-        console.log(
-          `[useSiteEditor] Atualizando lastSavedColor com dados da API: ${JSON.stringify(
-            data.colors,
-          )}`,
-        );
         setLastSavedColor(data.colors);
       }
       if (useLocalColors) {
-        console.log(
-          `[useSiteEditor] Colors: Usando rascunho local: ${JSON.stringify(
-            drafts.colorSettings,
-          )}`,
-        );
         setColorSettings(drafts.colorSettings);
         setLastAppliedColor(drafts.colorSettings);
       } else if (data.colors) {
-        console.log(
-          `[useSiteEditor] Colors: Usando dados da API: ${JSON.stringify(
-            data.colors,
-          )}`,
-        );
         setColorSettings(data.colors);
         setLastAppliedColor(data.colors);
         saveColorSettings(data.colors);
       }
 
-      const useLocalServices = hasLocalDraft("servicesSettings");
+      const useLocalServices = shouldRecoverDrafts && hasLocalDraft("servicesSettings");
       if (data.services) {
-        console.log(
-          `[useSiteEditor] Atualizando lastSavedServices com dados da API: ${JSON.stringify(
-            data.services,
-          )}`,
-        );
         setLastSavedServices(data.services);
       }
       if (useLocalServices) {
-        console.log(
-          `[useSiteEditor] Services: Usando rascunho local: ${JSON.stringify(
-            drafts.servicesSettings,
-          )}`,
-        );
-        setServicesSettings(drafts.servicesSettings);
-        setLastAppliedServices(drafts.servicesSettings);
+        const normalizedDraft = normalizeBg(drafts.servicesSettings, "services (draft)");
+        setServicesSettings(normalizedDraft as ServicesSettings);
+        setLastAppliedServices(normalizedDraft as ServicesSettings);
       } else if (data.services) {
-        console.log(
-          `[useSiteEditor] Services: Usando dados da API: ${JSON.stringify(
-            data.services,
-          )}`,
-        );
         setServicesSettings(data.services);
         setLastAppliedServices(data.services);
         saveServicesSettings(data.services);
       }
 
-      const useLocalValues = hasLocalDraft("valuesSettings");
+      const useLocalValues = shouldRecoverDrafts && hasLocalDraft("valuesSettings");
       if (data.values) {
-        console.log(
-          `[useSiteEditor] Atualizando lastSavedValues com dados da API: ${JSON.stringify(
-            data.values,
-          )}`,
-        );
         setLastSavedValues(data.values);
       }
       if (useLocalValues) {
-        console.log(
-          `[useSiteEditor] Values: Usando rascunho local: ${JSON.stringify(
-            drafts.valuesSettings,
-          )}`,
-        );
-        setValuesSettings(drafts.valuesSettings);
-        setLastAppliedValues(drafts.valuesSettings);
+        const normalizedDraft = normalizeBg(drafts.valuesSettings, "values (draft)");
+        setValuesSettings(normalizedDraft as ValuesSettings);
+        setLastAppliedValues(normalizedDraft as ValuesSettings);
       } else if (data.values) {
-        console.log(
-          `[useSiteEditor] Values: Usando dados da API: ${JSON.stringify(
-            data.values,
-          )}`,
-        );
         setValuesSettings(data.values);
         setLastAppliedValues(data.values);
         saveValuesSettings(data.values);
       }
 
-      const useLocalGallery = hasLocalDraft("gallerySettings");
+      const useLocalGallery = shouldRecoverDrafts && hasLocalDraft("gallerySettings");
       if (data.gallery) {
-        console.log(
-          `[useSiteEditor] Atualizando lastSavedGallery com dados da API: ${JSON.stringify(
-            data.gallery,
-          )}`,
-        );
         setLastSavedGallery(data.gallery);
       }
       if (useLocalGallery) {
-        console.log(
-          `[useSiteEditor] Gallery: Usando rascunho local: ${JSON.stringify(
-            drafts.gallerySettings,
-          )}`,
-        );
-        setGallerySettings(drafts.gallerySettings);
-        setLastAppliedGallery(drafts.gallerySettings);
+        const normalizedDraft = normalizeBg(drafts.gallerySettings, "gallery (draft)");
+        setGallerySettings(normalizedDraft as GallerySettings);
+        setLastAppliedGallery(normalizedDraft as GallerySettings);
       } else if (data.gallery) {
-        console.log(
-          `[useSiteEditor] Gallery: Usando dados da API: ${JSON.stringify(
-            data.gallery,
-          )}`,
-        );
         setGallerySettings(data.gallery);
         setLastAppliedGallery(data.gallery);
         saveGallerySettings(data.gallery);
       }
 
-      const useLocalCTA = hasLocalDraft("ctaSettings");
+      const useLocalCTA = shouldRecoverDrafts && hasLocalDraft("ctaSettings");
       if (data.cta) {
-        console.log(
-          `[useSiteEditor] Atualizando lastSavedCTA com dados da API: ${JSON.stringify(
-            data.cta,
-          )}`,
-        );
         setLastSavedCTA(data.cta);
       }
       if (useLocalCTA) {
-        console.log(
-          `[useSiteEditor] CTA: Usando rascunho local: ${JSON.stringify(
-            drafts.ctaSettings,
-          )}`,
-        );
-        setCTASettings(drafts.ctaSettings);
-        setLastAppliedCTA(drafts.ctaSettings);
+        const normalizedDraft = normalizeBg(drafts.ctaSettings, "cta (draft)");
+        setCTASettings(normalizedDraft as CTASettings);
+        setLastAppliedCTA(normalizedDraft as CTASettings);
       } else if (data.cta) {
-        console.log(
-          `[useSiteEditor] CTA: Usando dados da API: ${JSON.stringify(
-            data.cta,
-          )}`,
-        );
         setCTASettings(data.cta);
         setLastAppliedCTA(data.cta);
         saveCTASettings(data.cta);
       }
 
-      const useLocalHeader = hasLocalDraft("headerSettings");
+
+      const useLocalHeader = shouldRecoverDrafts && hasLocalDraft("headerSettings");
       if (data.header) {
         console.log(
           `[useSiteEditor] Atualizando lastSavedHeader com dados da API: ${JSON.stringify(
@@ -680,7 +691,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         saveHeaderSettings(data.header);
       }
 
-      const useLocalFooter = hasLocalDraft("footerSettings");
+      const useLocalFooter = shouldRecoverDrafts && hasLocalDraft("footerSettings");
       if (data.footer) {
         console.log(
           `[useSiteEditor] Atualizando lastSavedFooter com dados da API: ${JSON.stringify(
@@ -720,7 +731,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
           );
           setLastSavedBookingService(steps.service);
         }
-        if (hasLocalDraft("bookingServiceSettings")) {
+        if (shouldRecoverDrafts && hasLocalDraft("bookingServiceSettings")) {
           console.log(
             `[useSiteEditor] Booking Service: Usando rascunho local: ${JSON.stringify(
               drafts.bookingServiceSettings,
@@ -748,7 +759,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
           );
           setLastSavedBookingDate(steps.date);
         }
-        if (hasLocalDraft("bookingDateSettings")) {
+        if (shouldRecoverDrafts && hasLocalDraft("bookingDateSettings")) {
           console.log(
             `[useSiteEditor] Booking Date: Usando rascunho local: ${JSON.stringify(
               drafts.bookingDateSettings,
@@ -776,7 +787,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
           );
           setLastSavedBookingTime(steps.time);
         }
-        if (hasLocalDraft("bookingTimeSettings")) {
+        if (shouldRecoverDrafts && hasLocalDraft("bookingTimeSettings")) {
           console.log(
             `[useSiteEditor] Booking Time: Usando rascunho local: ${JSON.stringify(
               drafts.bookingTimeSettings,
@@ -804,7 +815,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
           );
           setLastSavedBookingForm(steps.form);
         }
-        if (hasLocalDraft("bookingFormSettings")) {
+        if (shouldRecoverDrafts && hasLocalDraft("bookingFormSettings")) {
           console.log(
             `[useSiteEditor] Booking Form: Usando rascunho local: ${JSON.stringify(
               drafts.bookingFormSettings,
@@ -832,7 +843,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
           );
           setLastSavedBookingConfirmation(steps.confirmation);
         }
-        if (hasLocalDraft("bookingConfirmationSettings")) {
+        if (shouldRecoverDrafts && hasLocalDraft("bookingConfirmationSettings")) {
           console.log(
             `[useSiteEditor] Booking Confirmation: Usando rascunho local: ${JSON.stringify(
               drafts.bookingConfirmationSettings,
@@ -852,7 +863,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         }
       }
 
-      const useLocalPageVisibility = hasLocalDraft("pageVisibility");
+      const useLocalPageVisibility = shouldRecoverDrafts && hasLocalDraft("pageVisibility");
       if (data.pageVisibility) {
         console.log(
           `[useSiteEditor] Atualizando lastSavedPageVisibility com dados da API: ${JSON.stringify(
@@ -878,7 +889,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         savePageVisibility(data.pageVisibility);
       }
 
-      const useLocalVisibleSections = hasLocalDraft("visibleSections");
+      const useLocalVisibleSections = shouldRecoverDrafts && hasLocalDraft("visibleSections");
       if (data.visibleSections) {
         console.log(
           `[useSiteEditor] Atualizando lastSavedVisibleSections com dados da API: ${JSON.stringify(
@@ -902,6 +913,48 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
         );
         setVisibleSections(data.visibleSections);
         saveVisibleSections(data.visibleSections);
+      }
+
+      if (!shouldRecoverDrafts) {
+        saveLocalDrafts({
+          heroSettings: sanitizedHero || defaultHeroSettings,
+          aboutHeroSettings: data.aboutHero || defaultAboutHeroSettings,
+          storySettings: data.story || defaultStorySettings,
+          teamSettings: data.team || defaultTeamSettings,
+          testimonialsSettings: data.testimonials || defaultTestimonialsSettings,
+          fontSettings: data.theme || defaultFontSettings,
+          colorSettings: data.colors || defaultColorSettings,
+          servicesSettings: data.services || defaultServicesSettings,
+          valuesSettings: data.values || defaultValuesSettings,
+          gallerySettings: data.gallery || defaultGallerySettings,
+          ctaSettings: data.cta || defaultCTASettings,
+          headerSettings: data.header || defaultHeaderSettings,
+          footerSettings: data.footer || defaultFooterSettings,
+          bookingServiceSettings:
+            data.bookingSteps?.service || defaultBookingServiceSettings,
+          bookingDateSettings:
+            data.bookingSteps?.date || defaultBookingDateSettings,
+          bookingTimeSettings:
+            data.bookingSteps?.time || defaultBookingTimeSettings,
+          bookingFormSettings:
+            data.bookingSteps?.form || defaultBookingFormSettings,
+          bookingConfirmationSettings:
+            data.bookingSteps?.confirmation ||
+            defaultBookingConfirmationSettings,
+          pageVisibility: data.pageVisibility || drafts.pageVisibility,
+          visibleSections: data.visibleSections || drafts.visibleSections,
+        });
+        if (typeof window !== "undefined") {
+          const draftKey = getStorageKey("last_draft_update");
+          if (bankUpdatedAt) {
+            localStorage.setItem(
+              draftKey,
+              new Date(bankUpdatedAt).toISOString(),
+            );
+          } else {
+            localStorage.removeItem(draftKey);
+          }
+        }
       }
 
       if (typeof window !== "undefined") {
@@ -989,6 +1042,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       setLastSavedVisibleSections,
       setVisibleSections,
       saveVisibleSections,
+      saveLocalDrafts,
+      studio?.id,
     ],
   );
 
@@ -1132,6 +1187,12 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     () => ({ ...lastSavedHero, ...heroSettings }),
     [lastSavedHero, heroSettings],
   );
+  useEffect(() => {
+    console.log(
+      "[PROXIED_URL]",
+      heroSettings.appearance?.backgroundImageUrl,
+    );
+  }, [heroSettings.appearance?.backgroundImageUrl]);
   const previewAboutHeroSettings = useMemo(
     () => ({ ...lastSavedAboutHero, ...aboutHeroSettings }),
     [lastSavedAboutHero, aboutHeroSettings],
@@ -2188,6 +2249,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
       setLastAppliedBookingConfirmation,
     },
     saveLocalDrafts,
+    clearLocalDrafts,
   });
 
   const hasHeroChanges =

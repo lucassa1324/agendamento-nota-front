@@ -41,8 +41,9 @@ import {
   type Service,
   type ServicesSettings,
 } from "@/lib/booking-data";
-import { cn } from "@/lib/utils";
+import { cn, renderSafeText } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -86,6 +87,10 @@ export function ServicesSection() {
     null,
   );
 
+  const studioId = studio?.id;
+  const studioSlug = studio?.slug;
+  const studioConfig = studio?.config;
+
   const loadData = useCallback(
     (forceRevalidate = false) => {
       // Tenta pegar do cache primeiro para ser instantâneo
@@ -109,11 +114,11 @@ export function ServicesSection() {
       }
 
       // 2. Context do studio (Dados vindos da API/Backend)
-      if (studio) {
+      if (studioId) {
         if (currentServices.length === 0) {
-          currentServices = studio.services || [];
+          currentServices = studio?.services || [];
         }
-        currentConfig = studio.config as SiteConfigData;
+        currentConfig = studioConfig as SiteConfigData;
       }
 
       // 3. Se ainda não encontrou, tenta o studio_data legado (Cache do Browser)
@@ -159,7 +164,7 @@ export function ServicesSection() {
         forceRevalidate,
         total_recebido: currentServices.length,
         filtrados_home: homeServices.length,
-        slug_contexto: studio?.slug,
+        slug_contexto: studioSlug,
         tem_settings_cache: !!settings,
         nomes_na_home: homeServices.map((s) => s.name),
       });
@@ -176,7 +181,7 @@ export function ServicesSection() {
       setServices(homeServices);
       setSettings(finalSettings);
     },
-    [studio],
+    [studioId, studioSlug, studio?.services, studioConfig],
   );
 
   useEffect(() => {
@@ -248,14 +253,15 @@ export function ServicesSection() {
   if (!settings) return null;
 
   return (
-    <section
-      id="services"
-      className={cn(
-        "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
-        highlightedElement === "services" &&
-          "ring-8 ring-inset ring-primary/30 bg-primary/5",
-      )}
-    >
+    <SessionWrapper appearance={settings?.appearance}>
+      <section
+        id="services"
+        className={cn(
+          "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
+          highlightedElement === "services" &&
+            "ring-8 ring-inset ring-primary/30 bg-primary/5",
+        )}
+      >
       <SectionBackground settings={settings} />
 
       <div className="container relative z-10 mx-auto px-4">
@@ -267,7 +273,7 @@ export function ServicesSection() {
               fontFamily: settings.titleFont || "var(--font-title)",
             }}
           >
-            {settings.title}
+            {renderSafeText(settings.title)}
           </h2>
           <p
             className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
@@ -276,7 +282,7 @@ export function ServicesSection() {
               fontFamily: settings.subtitleFont || "var(--font-subtitle)",
             }}
           >
-            {settings.subtitle}
+            {renderSafeText(settings.subtitle)}
           </p>
         </div>
 
@@ -288,7 +294,7 @@ export function ServicesSection() {
             if (service?.icon && iconMap[service.icon]) {
               Icon = iconMap[service.icon];
             } else {
-              const name = service?.name?.toLowerCase() || "";
+              const name = renderSafeText(service?.name).toLowerCase() || "";
               if (name.includes("design")) Icon = Scissors;
               else if (name.includes("color") || name.includes("henna"))
                 Icon = Palette;
@@ -332,7 +338,7 @@ export function ServicesSection() {
                         settings?.cardTitleFont || "var(--font-subtitle)",
                     }}
                   >
-                    {service?.name}
+                    {renderSafeText(service?.name)}
                   </h3>
                   <p
                     className="text-sm mb-4 leading-relaxed opacity-80"
@@ -343,7 +349,7 @@ export function ServicesSection() {
                         settings?.cardDescriptionFont || "var(--font-text)",
                     }}
                   >
-                    {service?.description}
+                    {renderSafeText(service?.description)}
                   </p>
                   <div className="flex items-center justify-between mt-auto">
                     <span
@@ -352,10 +358,10 @@ export function ServicesSection() {
                         color: settings?.cardPriceColor || "var(--primary)",
                       }}
                     >
-                      R$ {service?.price}
+                      R$ {renderSafeText(service?.price)}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {service?.duration} min
+                      {renderSafeText(service?.duration)} min
                     </span>
                   </div>
                 </CardContent>
@@ -365,5 +371,6 @@ export function ServicesSection() {
         </div>
       </div>
     </section>
+    </SessionWrapper>
   );
 }

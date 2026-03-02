@@ -10,6 +10,7 @@ import {
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function TestimonialsSection() {
@@ -20,10 +21,13 @@ export function TestimonialsSection() {
     null,
   );
 
+  const studioId = studio?.id;
+  const studioConfig = studio?.config;
+
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    if (studio) {
-      const config = studio?.config as SiteConfigData | undefined;
+    if (studioId) {
+      const config = studioConfig as SiteConfigData | undefined;
       const layoutGlobal = config?.layoutGlobal || config?.layout_global;
       const testimonialsSettings =
         (config?.testimonials as TestimonialsSettings) ||
@@ -31,7 +35,7 @@ export function TestimonialsSection() {
         getTestimonialsSettings();
 
       // Se o studio tiver depoimentos específicos, usamos eles
-      if (studio.testimonials && studio.testimonials.length > 0) {
+      if (studio?.testimonials && studio.testimonials.length > 0) {
         setSettings({
           ...testimonialsSettings,
           testimonials: studio.testimonials,
@@ -43,7 +47,7 @@ export function TestimonialsSection() {
     }
 
     setSettings(getTestimonialsSettings());
-  }, [studio]);
+  }, [studioId, studioConfig, studio?.testimonials]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -82,17 +86,18 @@ export function TestimonialsSection() {
   if (!isMounted) return null;
 
   return (
-    <section
-      id="testimonials"
-      className={cn(
-        "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
-        highlightedElement === "testimonials" &&
-          "ring-8 ring-inset ring-primary/30 bg-primary/5",
-      )}
-    >
-      <SectionBackground settings={settings} />
+    <SessionWrapper appearance={settings?.appearance}>
+      <section
+        id="testimonials"
+        className={cn(
+          "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
+          highlightedElement === "testimonials" &&
+            "ring-8 ring-inset ring-primary/30 bg-primary/5",
+        )}
+      >
+        <SectionBackground settings={settings} />
 
-      <div className="container relative z-10 mx-auto px-4">
+        <div className="container relative z-10 mx-auto px-4">
         <div className="text-center mb-16">
           <h2
             className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
@@ -157,5 +162,6 @@ export function TestimonialsSection() {
         </div>
       </div>
     </section>
+    </SessionWrapper>
   );
 }

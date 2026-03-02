@@ -14,6 +14,13 @@ interface SectionBackgroundProps {
     imageScale?: number;
     imageX?: number;
     imageY?: number;
+    appearance?: {
+      backgroundImageUrl?: string;
+      overlay?: {
+        color: string;
+        opacity: number;
+      };
+    };
   };
   className?: string;
   gradientClassName?: string;
@@ -27,18 +34,23 @@ export function SectionBackground({
   defaultImage,
 }: SectionBackgroundProps) {
   const [imageError, setImageError] = useState(false);
-  const bgImage = settings.bgImage || defaultImage;
 
-  // Reset error when image or type changes (standard React pattern for adjusting state based on props)
-  const [prevKey, setPrevKey] = useState(`${bgImage}-${settings.bgType}`);
-  const currentKey = `${bgImage}-${settings.bgType}`;
+  const bgImage = settings.appearance?.backgroundImageUrl || settings.bgImage || defaultImage;
+
+  // Se houver uma imagem de fundo na aparência, mas o tipo não estiver definido como "color",
+  // assumimos que deve mostrar a imagem.
+  const effectiveBgType = settings.bgType || (settings.appearance?.backgroundImageUrl ? "image" : undefined);
+
+  // Reset error when image or type changes
+  const [prevKey, setPrevKey] = useState(`${bgImage}-${effectiveBgType}`);
+  const currentKey = `${bgImage}-${effectiveBgType}`;
   if (currentKey !== prevKey) {
     setPrevKey(currentKey);
     setImageError(false);
   }
 
   const showImage =
-    (settings.bgType === "image" || (!settings.bgType && defaultImage)) &&
+    (effectiveBgType === "image" || (!effectiveBgType && defaultImage)) &&
     !imageError;
 
   return (
@@ -49,7 +61,7 @@ export function SectionBackground({
       )}
       style={{
         backgroundColor:
-          settings.bgType === "color"
+          effectiveBgType === "color"
             ? settings.bgColor || "var(--background)"
             : "var(--background)",
       }}
@@ -59,7 +71,7 @@ export function SectionBackground({
         className="absolute inset-0 z-0 transition-colors duration-500"
         style={{
           backgroundColor:
-            settings.bgType === "color"
+            effectiveBgType === "color"
               ? settings.bgColor || "var(--background)"
               : "transparent",
         }}
@@ -76,7 +88,7 @@ export function SectionBackground({
             style={{
               opacity:
                 settings.imageOpacity ??
-                (settings.bgType === "image" ? 1 : 0.2),
+                (effectiveBgType === "image" ? 1 : 0.2),
               transform: `scale(${settings.imageScale ?? 1})`,
               objectPosition: `${settings.imageX ?? 50}% ${settings.imageY ?? 50}%`,
             }}

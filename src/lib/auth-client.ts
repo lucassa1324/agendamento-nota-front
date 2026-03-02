@@ -29,9 +29,7 @@ const getAbsoluteUrl = (path: string) => {
 };
 
 export const API_BASE_URL = getAbsoluteUrl(
-  (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api-proxy"
-  ).replace(/\/$/, ""),
+  (process.env.NEXT_PUBLIC_API_URL || "/api-proxy").replace(/\/$/, ""),
 );
 
 // Agora forçamos o prefixo /api/auth para alinhar com o proxy e o back-end.

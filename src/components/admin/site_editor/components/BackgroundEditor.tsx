@@ -1,51 +1,88 @@
 "use client";
 
 import imageCompression from "browser-image-compression";
-import { Loader2, RotateCcw, Upload } from "lucide-react";
+import { Loader2, RotateCcw, Upload, X } from "lucide-react";
+import NextImage from "next/image";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
+import { siteCustomizerService } from "@/lib/site-customizer-service";
 import { cn } from "@/lib/utils";
 
-interface BackgroundSettings {
-  bgType: "color" | "image";
-  bgColor: string;
-  bgImage: string;
-  imageOpacity: number;
-  overlayOpacity: number;
-  imageScale: number;
-  imageX: number;
-  imageY: number;
-}
-
-interface BackgroundEditorProps {
-  settings: BackgroundSettings;
-  onUpdate: (updates: Partial<BackgroundSettings>) => void;
+ 
+ interface BackgroundSettings {
+   bgType: "color" | "image";
+   bgColor: string;
+   bgImage: string;
+   imageOpacity: number;
+   overlayOpacity: number;
+   imageScale: number;
+   imageX: number;
+   imageY: number;
+   appearance?: {
+     backgroundImageUrl?: string;
+     overlay?: {
+       color: string;
+       opacity: number;
+     };
+   };
+ }
+ 
+ interface BackgroundEditorProps {
+   settings: BackgroundSettings;
+   onUpdate: (updates: Partial<BackgroundSettings>) => void;
   sectionId?: string;
+  section?: string;
+  businessId?: string;
 }
 
 export function BackgroundEditor({
   settings,
   onUpdate,
   sectionId = "section",
+  section = "general",
+  businessId = "",
 }: BackgroundEditorProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Normalização local: se bgImage estiver vazio mas appearance tiver a URL, usamos ela.
+  // Isso resolve o problema da imagem sumir no editor se os campos estiverem dessincronizados.
+  const currentBgImage = settings.appearance?.backgroundImageUrl || settings.bgImage || "";
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log(">>> [BackgroundEditor] EVENTO: Usuário clicou em 'Abrir' no seletor de arquivos.");
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log(">>> [BackgroundEditor] Nenhum arquivo selecionado.");
+      return;
+    }
+
+    if (!businessId) {
+      console.error(">>> [BackgroundEditor] ERRO: businessId está vazio! O upload pode falhar.");
+      alert("Atenção: ID da empresa não encontrado. Tente recarregar a página.");
+      return;
+    }
+
+    console.log(">>> [BackgroundEditor] Arquivo selecionado:", {
+      nome: file.name,
+      tamanho: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+      tipo: file.type,
+      ultimaModificacao: new Date(file.lastModified).toLocaleString(),
+    });
 
     // Validações básicas
     if (!file.type.startsWith("image/")) {
+      console.error(">>> [BackgroundEditor] Erro: O arquivo selecionado não é uma imagem.", file.type);
       alert("Por favor, selecione um arquivo de imagem.");
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
+      console.error(">>> [BackgroundEditor] Erro: Imagem muito grande (> 10MB).", file.size);
       alert("A imagem deve ter no máximo 10MB.");
       return;
     }
@@ -53,6 +90,11 @@ export function BackgroundEditor({
     setIsUploading(true);
 
     try {
+      // 0. Guardar URL da imagem antiga para deleção posterior (usando valor normalizado)
+      const oldImageUrl = currentBgImage;
+      const isInternalStorage = oldImageUrl?.includes("/api/storage/");
+
+      console.log(">>> [BackgroundEditor] Iniciando compressão da imagem...");
       // Compressão
       const options = {
         maxSizeMB: 1,
@@ -61,24 +103,72 @@ export function BackgroundEditor({
       };
 
       const compressedFile = await imageCompression(file, options);
-
-      // Converter para Base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onload = (event) => resolve(event.target?.result as string);
-        reader.onerror = (error) => reject(error);
+      console.log(">>> [BackgroundEditor] Compressão concluída com sucesso:", {
+        tamanhoOriginal: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
+        tamanhoComprimido: `${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`,
       });
-      reader.readAsDataURL(compressedFile);
-      const base64 = await base64Promise;
 
-      // Atualizar estado e mudar para tipo imagem automaticamente
-      onUpdate({ bgImage: base64, bgType: "image" });
+      // Upload para o servidor (Passo 1 do fluxo obrigatório)
+      console.log(
+        `>>> [BackgroundEditor] Chamando siteCustomizerService.uploadBackgroundImage (section: ${section}, businessId: ${businessId})...`,
+      );
+      const imageUrl = await siteCustomizerService.uploadBackgroundImage(
+        compressedFile,
+        section,
+        businessId,
+      );
+
+      console.log(
+        ">>> [BackgroundEditor] Resultado do Service:",
+        imageUrl,
+      );
+
+      if (!imageUrl) {
+        console.error(">>> [BackgroundEditor] ERRO: URL da imagem retornada está vazia!");
+        // Não dar alert aqui se o service já logou o erro, mas vamos manter por segurança para o usuário
+        alert("O servidor não retornou o endereço da imagem. Verifique o console do navegador para mais detalhes.");
+        return;
+      }
+
+      // Atualizar estado com a URL retornada (Passo 2 do fluxo obrigatório)
+      console.log(">>> [BackgroundEditor] Atualizando estado local via onUpdate com URL:", imageUrl);
+      onUpdate({ 
+        bgImage: imageUrl, 
+        bgType: "image",
+        appearance: {
+          ...settings.appearance,
+          backgroundImageUrl: imageUrl
+        }
+      });
+      
+      // 3. Limpeza: Deletar a imagem antiga do storage se ela for nossa
+      if (oldImageUrl && isInternalStorage) {
+        console.log(">>> [BackgroundEditor] Iniciando limpeza da imagem antiga no storage...");
+        // Não usamos await aqui para não bloquear a interface do usuário, 
+        // a limpeza acontece em background no backend
+        siteCustomizerService.deleteBackgroundImage(oldImageUrl, businessId)
+          .then(success => {
+            if (success) {
+              console.log(">>> [BackgroundEditor] Limpeza concluída com sucesso.");
+            } else {
+              console.warn(">>> [BackgroundEditor] Falha na limpeza da imagem antiga.");
+            }
+          })
+          .catch(err => {
+            console.error(">>> [BackgroundEditor] Erro ao tentar limpar imagem antiga:", err);
+          });
+      }
+      
+      console.log(">>> [BackgroundEditor] Processo de upload finalizado com sucesso.");
     } catch (error) {
-      console.error("Erro ao processar imagem:", error);
-      alert("Erro ao processar imagem. Tente novamente.");
+      console.error(">>> [BackgroundEditor] ERRO CRÍTICO no processo de upload:", error);
+      alert("Erro ao processar imagem. Verifique o console para mais detalhes.");
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (fileInputRef.current) {
+        console.log(">>> [BackgroundEditor] Limpando o input de arquivo.");
+        fileInputRef.current.value = "";
+      }
     }
   };
 
@@ -90,7 +180,7 @@ export function BackgroundEditor({
     >
       <div>
         <RadioGroup
-          value={settings.bgType}
+          value={settings.bgType || "color"}
           onValueChange={(v: string) => onUpdate({ bgType: v as "color" | "image" })}
           className="grid grid-cols-2 gap-2 bg-muted/50 p-1 rounded-md"
         >
@@ -166,19 +256,77 @@ export function BackgroundEditor({
       ) : (
         <div className="space-y-6">
           <fieldset className="space-y-1.5 border-none p-0 m-0">
-            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
               URL da Imagem
+              {currentBgImage && (
+                <span className="text-[9px] lowercase font-mono opacity-70">
+                  ({currentBgImage.split("/").pop()?.split("?")[0]})
+                </span>
+              )}
             </legend>
             <div className="flex gap-2">
               <Input
-                value={settings.bgImage}
+                value={currentBgImage || ""}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  onUpdate({ bgImage: e.target.value, bgType: "image" })
+                  onUpdate({ 
+                    bgImage: e.target.value, 
+                    bgType: "image",
+                    appearance: {
+                      ...settings.appearance,
+                      backgroundImageUrl: e.target.value
+                    }
+                  })
                 }
                 className="h-8 text-xs flex-1"
                 placeholder="https://..."
               />
+              {currentBgImage && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    const oldUrl = currentBgImage;
+                    onUpdate({ 
+                      bgImage: "", 
+                      bgType: "color",
+                      appearance: {
+                        ...settings.appearance,
+                        backgroundImageUrl: ""
+                      }
+                    });
+                    
+                    // Limpar do storage se for nossa
+                    if (oldUrl?.includes("/api/storage/")) {
+                      siteCustomizerService.deleteBackgroundImage(oldUrl, businessId);
+                    }
+                  }}
+                  title="Remover Imagem"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
             </div>
+
+            {/* Preview local da imagem para diagnóstico */}
+            {currentBgImage && (
+              <div className="mt-2 relative aspect-video w-full rounded-md overflow-hidden border border-border/50 bg-muted/20">
+                <NextImage 
+                  src={currentBgImage} 
+                  alt="Preview" 
+                  fill
+                  unoptimized
+                  className="object-cover"
+                  onError={() => {
+                    console.error(">>> [BackgroundEditor] Erro ao carregar preview da imagem:", currentBgImage);
+                  }}
+                />
+                <div className="absolute bottom-1 right-1 bg-black/60 text-[8px] text-white px-1 rounded">
+                  Preview do Editor
+                </div>
+              </div>
+            )}
+
             <input
               type="file"
               ref={fileInputRef}
@@ -190,7 +338,10 @@ export function BackgroundEditor({
             <Button
               variant="outline"
               className="w-full h-10 border-dashed text-xs gap-2"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                console.log(">>> [BackgroundEditor] Botão de upload clicado. Abrindo seletor de arquivos...");
+                fileInputRef.current?.click();
+              }}
               disabled={isUploading}
             >
               {isUploading ? (

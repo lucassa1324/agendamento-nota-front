@@ -10,8 +10,9 @@ import {
   getCTASettings,
   getPageVisibility,
 } from "@/lib/booking-data";
-import { cn } from "@/lib/utils";
+import { cn, renderSafeText } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 
 export function CTASection() {
   const { studio } = useStudio();
@@ -35,12 +36,14 @@ export function CTASection() {
     null,
   );
 
+  const studioConfig = studio?.config;
+
   useEffect(() => {
     setIsMounted(true);
     setPageVisibility(getPageVisibility());
 
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    const config = studio?.config as Record<string, unknown>;
+    const config = studioConfig as Record<string, unknown>;
     const layoutGlobal = (config?.layoutGlobal ||
       config?.layout_global) as Record<string, unknown>;
 
@@ -92,19 +95,20 @@ export function CTASection() {
       );
       window.removeEventListener("ctaSettingsUpdated", handleSettingsUpdate);
     };
-  }, [studio]);
+  }, [studioConfig]);
 
   if (!isMounted || !settings) return null;
   if (pageVisibility.agendar === false) return null;
 
   return (
-    <section
-      id="cta"
-      className={cn(
-        "py-20 md:py-32 relative overflow-hidden transition-all duration-500",
-        highlightedElement === "cta" && "ring-4 ring-primary ring-inset z-50",
-      )}
-    >
+    <SessionWrapper appearance={settings?.appearance}>
+      <section
+        id="cta"
+        className={cn(
+          "py-20 md:py-32 relative overflow-hidden transition-all duration-500",
+          highlightedElement === "cta" && "ring-4 ring-primary ring-inset z-50",
+        )}
+      >
       <SectionBackground settings={settings} />
 
       <div className="container mx-auto px-4 relative z-10">
@@ -120,7 +124,7 @@ export function CTASection() {
               color: settings.titleColor || "var(--foreground)",
             }}
           >
-            {settings.title}
+            {renderSafeText(settings.title)}
           </h2>
           <p
             className="text-lg mb-8 text-pretty leading-relaxed max-w-2xl mx-auto"
@@ -129,7 +133,7 @@ export function CTASection() {
               color: settings.subtitleColor || "var(--foreground)",
             }}
           >
-            {settings.subtitle}
+            {renderSafeText(settings.subtitle)}
           </p>
           <Button
             asChild
@@ -141,10 +145,11 @@ export function CTASection() {
               color: settings.buttonTextColor || "#ffffff",
             }}
           >
-            <Link href="/agendamento">{settings.buttonText}</Link>
+            <Link href="/agendamento">{renderSafeText(settings.buttonText)}</Link>
           </Button>
         </div>
       </div>
     </section>
+    </SessionWrapper>
   );
 }

@@ -7,6 +7,7 @@ import { SectionBackground } from "@/components/admin/site_editor/components/Sec
 import { useStudio } from "@/context/studio-context";
 import { getStorySettings, type StorySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function StorySection() {
@@ -16,9 +17,11 @@ export function StorySection() {
     null,
   );
 
+  const studioConfig = studio?.config;
+
   useEffect(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    const config = studio?.config as SiteConfigData | undefined;
+    const config = studioConfig as SiteConfigData | undefined;
     const layoutGlobal = config?.layoutGlobal || config?.layout_global;
     const dbStory = config?.story || layoutGlobal?.story;
 
@@ -50,7 +53,7 @@ export function StorySection() {
       setSettings(getStorySettings());
     };
     const handleDataReady = () => {
-      const cfg = studio?.config as SiteConfigData | undefined;
+      const cfg = studioConfig as SiteConfigData | undefined;
       const lg = cfg?.layoutGlobal || cfg?.layout_global;
       const storyFromDb = cfg?.story || lg?.story;
       if (storyFromDb) {
@@ -67,21 +70,22 @@ export function StorySection() {
       window.removeEventListener("storySettingsUpdated", handleUpdate);
       window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [studio]);
+  }, [studioConfig]);
 
   if (!settings) return null;
 
   return (
-    <section
-      id="story"
-      className={cn(
-        "relative py-20 md:py-32 overflow-hidden transition-all duration-500",
-        highlightedElement === "story" &&
-          "ring-8 ring-inset ring-primary/30 bg-primary/5",
-      )}
-    >
-      <SectionBackground settings={settings} />
-      <div className="container mx-auto px-4 relative z-10">
+    <SessionWrapper appearance={settings?.appearance}>
+      <section
+        id="story"
+        className={cn(
+          "relative py-20 md:py-32 overflow-hidden transition-all duration-500",
+          highlightedElement === "story" &&
+            "ring-8 ring-inset ring-primary/30 bg-primary/5",
+        )}
+      >
+        <SectionBackground settings={settings} />
+        <div className="container mx-auto px-4 relative z-10">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="relative h-100 w-full overflow-hidden rounded-2xl shadow-xl">
             <Image
@@ -119,5 +123,6 @@ export function StorySection() {
         </div>
       </div>
     </section>
+    </SessionWrapper>
   );
 }

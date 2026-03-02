@@ -17,10 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useStudio } from "@/context/studio-context";
 import type { ServicesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { SectionBackgroundEditor } from "../../components/SectionBackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -37,6 +39,7 @@ export function ServicesEditor({
   onSave: externalOnSave,
   hasChanges,
 }: ServicesEditorProps) {
+  const { studio } = useStudio();
   const handleSave = () => {
     if (externalOnSave) externalOnSave();
   };
@@ -478,10 +481,31 @@ export function ServicesEditor({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <BackgroundEditor
-              settings={settings}
+              settings={{
+                bgType: settings.bgType,
+                bgColor: settings.bgColor,
+                bgImage: settings.bgImage,
+                imageOpacity: settings.imageOpacity,
+                overlayOpacity: settings.overlayOpacity,
+                imageScale: settings.imageScale,
+                imageX: settings.imageX,
+                imageY: settings.imageY,
+                appearance: settings.appearance,
+              }}
               onUpdate={(updates) => onUpdate(updates)}
-              sectionId="services"
+              section="services"
+              businessId={studio?.id || ""}
             />
+
+            <div className="mt-6 pt-6 border-t border-border/50">
+              <SectionBackgroundEditor
+                section="services"
+                businessId={studio?.id || ""}
+                appearance={settings.appearance}
+                onChange={(appearance) => onUpdate({ appearance })}
+                title="Fundo Personalizado (B2)"
+              />
+            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>

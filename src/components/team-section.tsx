@@ -7,6 +7,7 @@ import { useStudio } from "@/context/studio-context";
 import { getTeamSettings, type TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function TeamSection() {
@@ -17,9 +18,11 @@ export function TeamSection() {
     null,
   );
 
+  const studioConfig = studio?.config;
+
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    const config = studio?.config as SiteConfigData | undefined;
+    const config = studioConfig as SiteConfigData | undefined;
     const layoutGlobal = config?.layoutGlobal || config?.layout_global;
     const dbTeam = config?.team || layoutGlobal?.team;
 
@@ -28,7 +31,7 @@ export function TeamSection() {
     } else {
       setSettings(getTeamSettings());
     }
-  }, [studio]);
+  }, [studioConfig]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -67,17 +70,18 @@ export function TeamSection() {
   if (!isMounted) return null;
 
   return (
-    <section
-      id="team"
-      className={cn(
-        "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
-        highlightedElement === "team" &&
-          "ring-8 ring-inset ring-primary/30 bg-primary/5",
-      )}
-    >
-      <SectionBackground settings={settings} />
+    <SessionWrapper appearance={settings?.appearance}>
+      <section
+        id="team"
+        className={cn(
+          "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
+          highlightedElement === "team" &&
+            "ring-8 ring-inset ring-primary/30 bg-primary/5",
+        )}
+      >
+        <SectionBackground settings={settings} />
 
-      <div className="container relative z-10 mx-auto px-4">
+        <div className="container relative z-10 mx-auto px-4">
         <div className="text-center mb-16">
           <h2
             className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
@@ -152,5 +156,6 @@ export function TeamSection() {
         </div>
       </div>
     </section>
+    </SessionWrapper>
   );
 }

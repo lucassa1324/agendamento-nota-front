@@ -15,6 +15,7 @@ export interface GalleryItem {
 
 export interface CreateGalleryDTO {
   imageUrl: string;
+  businessId: string;
   title?: string;
   category?: string;
   showInHome?: boolean;
@@ -23,6 +24,7 @@ export interface CreateGalleryDTO {
 
 export interface UploadGalleryDTO {
   file: File;
+  businessId: string;
   title?: string;
   category?: string;
   showInHome?: boolean;
@@ -71,6 +73,7 @@ class GalleryService {
   async upload(data: UploadGalleryDTO): Promise<GalleryItem> {
     const formData = new FormData();
     formData.append("file", data.file);
+    formData.append("businessId", data.businessId);
 
     if (data.title) formData.append("title", data.title);
     if (data.category) formData.append("category", data.category);
@@ -144,6 +147,13 @@ class GalleryService {
     const url = `${this.baseUrl}/public/${businessId}${queryString ? `?${queryString}` : ""}`;
 
     const response = await customFetch(url);
+
+    if (response.status === 404) {
+      console.log(
+        ">>> [GalleryService] Galeria não encontrada ou vazia (404). Retornando []",
+      );
+      return [];
+    }
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));

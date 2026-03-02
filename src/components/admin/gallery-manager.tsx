@@ -1,28 +1,12 @@
 /** biome-ignore-all lint/a11y/useSemanticElements: Elementos de layout complexos para gerenciamento de mídia e arraste */
 "use client";
 
-import {
-  Home,
-  ImageIcon,
-  Link as LinkIcon,
-  Plus,
-  Search,
-  Trash2,
-  Upload,
-  X,
-} from "lucide-react";
+import { Home, ImageIcon, Plus, Search, Trash2, Upload, X } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -50,9 +34,6 @@ export function GalleryManager() {
   const { studio } = useStudio();
   const [images, setImages] = useState<GalleryItem[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [urlInput, setUrlInput] = useState("");
-  const [titleInput, setTitleInput] = useState("");
-  const [categoryInput, setCategoryInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -60,18 +41,20 @@ export function GalleryManager() {
   const [selectedFiles, setSelectedFiles] = useState<UploadItem[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const studioId = studio?.id;
+
   const loadData = useCallback(async () => {
-    if (!studio?.id) return;
+    if (!studioId) return;
 
     setIsLoading(true);
     try {
       console.log(
         ">>> [GalleryManager] Carregando dados para studio:",
-        studio.id,
+        studioId,
       );
 
       // 1. Carregar imagens da galeria
-      const remoteImages = await galleryService.getPublicGallery(studio.id);
+      const remoteImages = await galleryService.getPublicGallery(studioId);
       setImages(remoteImages);
 
       // 2. Tentar obter serviços de múltiplas fontes
@@ -104,7 +87,7 @@ export function GalleryManager() {
         );
         try {
           const servicesTimestamp = Date.now();
-          const servicesUrl = `${API_BASE_URL}/api/services/company/${studio.id}?t=${servicesTimestamp}`;
+          const servicesUrl = `${API_BASE_URL}/api/services/company/${studioId}?t=${servicesTimestamp}`;
           const response = await customFetch(servicesUrl);
           if (response.ok) {
             const apiServices = await response.json();
@@ -125,10 +108,6 @@ export function GalleryManager() {
       }
 
       setServices(loadedServices);
-
-      if (loadedServices.length > 0 && !categoryInput) {
-        setCategoryInput(loadedServices[0].name);
-      }
     } catch (error) {
       console.error("Erro ao carregar galeria:", error);
       toast({
@@ -139,7 +118,7 @@ export function GalleryManager() {
     } finally {
       setIsLoading(false);
     }
-  }, [studio?.id, studio?.services, categoryInput, toast]);
+  }, [studioId, studio?.services, toast]);
 
   useEffect(() => {
     loadData();
@@ -177,8 +156,7 @@ export function GalleryManager() {
         file,
         preview: URL.createObjectURL(file),
         title: file.name.split(".")[0],
-        category:
-          categoryInput || (services.length > 0 ? services[0].name : "Geral"),
+        category: services.length > 0 ? services[0].name : "Geral",
       }));
       setSelectedFiles((prev) => [...prev, ...newFiles]);
     }
@@ -232,6 +210,7 @@ export function GalleryManager() {
       for (const item of selectedFiles) {
         await galleryService.upload({
           file: item.file,
+          businessId: studio.id,
           title: item.title,
           category: item.category,
           showInHome: false,
@@ -259,66 +238,6 @@ export function GalleryManager() {
       console.error(">>> [GalleryManager] Erro no upload:", error);
       toast({
         title: "Erro no upload",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleAddByUrl = async () => {
-    const trimmedUrl = urlInput.trim();
-    if (!trimmedUrl) {
-      toast({
-        title: "Erro",
-        description: "Por favor, insira uma URL válida.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!studio?.id) {
-      toast({
-        title: "Erro de Autenticação",
-        description: "Estúdio não identificado. Tente recarregar a página.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      await galleryService.create({
-        imageUrl: trimmedUrl,
-        title: titleInput || "Sem título",
-        category:
-          categoryInput || (services.length > 0 ? services[0].name : "Geral"),
-        showInHome: false,
-      });
-
-      // Limpar apenas os campos de URL, sem afetar o estado de upload de arquivos
-      setUrlInput("");
-      setTitleInput("");
-      // Não resetamos categoryInput pois pode ser útil para a próxima inserção
-
-      await loadData();
-
-      // Notificar Home
-      window.dispatchEvent(new Event("galleryUpdated"));
-
-      toast({
-        title: "Sucesso",
-        description: "Imagem adicionada à galeria.",
-      });
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error
-          ? error.message
-          : "Não foi possível adicionar a imagem.";
-      console.error(">>> [GalleryManager] Erro ao adicionar via URL:", error);
-      toast({
-        title: "Erro",
         description: errorMessage,
         variant: "destructive",
       });
@@ -576,104 +495,6 @@ export function GalleryManager() {
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* URL Card */}
-        <Card className="border-none shadow-sm bg-card/50 backdrop-blur-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-medium flex items-center gap-2">
-              <LinkIcon className="w-5 h-5" />
-              Adicionar Imagem via URL
-            </CardTitle>
-            <CardDescription>
-              Cole o link da imagem do Pinterest ou qualquer outra URL de imagem
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex gap-3 mb-2">
-              <div className="text-blue-500 shrink-0">
-                <ImageIcon className="w-5 h-5" />
-              </div>
-              <div className="text-xs text-blue-700 dark:text-blue-400">
-                <p className="font-semibold mb-1">
-                  Dica para links do Pinterest:
-                </p>
-                <p>
-                  Clique com o botão direito na imagem e selecione{" "}
-                  <strong>"Copiar endereço da imagem"</strong>. O link deve
-                  terminar em .jpg, .png ou .webp.
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="url">URL da Imagem</Label>
-                <Input
-                  id="url"
-                  placeholder="https://i.pinimg.com/..."
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  className="bg-background/50"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="title">Título da Imagem</Label>
-                <Input
-                  id="title"
-                  placeholder="Ex: Design de Sobrancelhas"
-                  value={titleInput}
-                  onChange={(e) => setTitleInput(e.target.value)}
-                  className="bg-background/50"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Categoria</Label>
-              <Select value={categoryInput} onValueChange={setCategoryInput}>
-                <SelectTrigger className="bg-background/50">
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {services.map((service, index) => (
-                    <SelectItem
-                      key={
-                        service.id
-                          ? `${service.id}-${index}`
-                          : `category-${index}`
-                      }
-                      value={service.name}
-                    >
-                      {service.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {services.length === 0 && (
-                <p className="text-xs text-destructive mt-1">
-                  Nenhum serviço cadastrado. Cadastre um serviço para
-                  categorizar suas fotos.
-                </p>
-              )}
-            </div>
-            {services.length > 0 && (
-              <div className="pt-2">
-                <p className="text-xs text-muted-foreground mb-2">
-                  As imagens serão categorizadas como:{" "}
-                  <span className="font-semibold text-primary">
-                    {categoryInput || services[0]?.name}
-                  </span>
-                </p>
-              </div>
-            )}
-            <Button
-              type="button"
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-              onClick={handleAddByUrl}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar à Galeria
-            </Button>
           </CardContent>
         </Card>
 

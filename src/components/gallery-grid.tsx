@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ImageModal } from "@/components/image-modal";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
@@ -20,6 +20,7 @@ export function GalleryGrid() {
   const [selectedImage, setSelectedImage] = useState<GalleryItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const [isLoading, setIsLoading] = useState(false);
+  const loadingRef = useRef(false);
 
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -29,10 +30,13 @@ export function GalleryGrid() {
 
   useEffect(() => {
     const loadData = async () => {
+      if (loadingRef.current) return; // Evita chamadas paralelas
+
+      loadingRef.current = true;
       setIsLoading(true);
       try {
         // Se tivermos dados do studio via context (multi-tenant), usamos eles
-        if (studio) {
+        if (studio?.id) {
           const allImages = await galleryService.getPublicGallery(studio.id);
           const allServices = studio.services || [];
 
@@ -69,6 +73,7 @@ export function GalleryGrid() {
       } catch (error) {
         console.error("Erro ao carregar galeria:", error);
       } finally {
+        loadingRef.current = false;
         setIsLoading(false);
       }
     };
@@ -83,7 +88,7 @@ export function GalleryGrid() {
       window.removeEventListener("studioSettingsUpdated", loadData);
       window.removeEventListener("servicesUpdated", loadData);
     };
-  }, [studio]);
+  }, [studio?.id, studio?.services]); // Dependência apenas do ID e serviços, não do objeto completo
 
   const filteredImages =
     selectedCategory === "todos"

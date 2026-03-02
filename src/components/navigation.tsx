@@ -53,14 +53,19 @@ export function Navigation({
     }
   }, [externalHeaderSettings]);
 
+  const studioId = studio?.id;
+  const studioName = studio?.name;
+  const studioLogoUrl = studio?.logoUrl;
+  const studioHeaderConfig = studio?.config?.header;
+
   useEffect(() => {
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     const baseProfile = getSiteProfile();
-    if (studio) {
+    if (studioId) {
       setProfile({
         ...baseProfile,
-        name: studio.name || baseProfile.name,
-        logoUrl: studio.logoUrl || baseProfile.logoUrl,
+        name: studioName || baseProfile.name,
+        logoUrl: studioLogoUrl || baseProfile.logoUrl,
       });
     } else {
       setProfile(baseProfile);
@@ -70,8 +75,8 @@ export function Navigation({
     setVisibleSections(getVisibleSections());
 
     if (!externalHeaderSettings) {
-      if (studio?.config?.header) {
-        setHeaderSettings(studio.config.header as HeaderSettings);
+      if (studioHeaderConfig) {
+        setHeaderSettings(studioHeaderConfig as HeaderSettings);
       } else {
         setHeaderSettings(getHeaderSettings());
       }
@@ -101,17 +106,8 @@ export function Navigation({
       }
     };
 
-    window.addEventListener("message", handleMessage);
-
-    // Se estivermos no admin propriamente dito, não precisamos dos outros listeners
-    if (pathname?.startsWith("/admin")) {
-      return () => {
-        window.removeEventListener("message", handleMessage);
-      };
-    }
-
-    const handleProfileUpdate = () => {
-      setProfile(getSiteProfile());
+    const handleHeaderUpdate = () => {
+      setHeaderSettings(getHeaderSettings());
     };
 
     const handleVisibilityUpdate = () => {
@@ -122,17 +118,25 @@ export function Navigation({
       setVisibleSections(getVisibleSections());
     };
 
-    const handleHeaderUpdate = () => {
-      setHeaderSettings(getHeaderSettings());
+    const handleDataReady = () => {
+      if (!externalHeaderSettings) {
+        if (studioHeaderConfig) {
+          setHeaderSettings(studioHeaderConfig as HeaderSettings);
+        } else {
+          setHeaderSettings(getHeaderSettings());
+        }
+      }
     };
 
-    window.addEventListener("siteProfileUpdated", handleProfileUpdate);
+    window.addEventListener("message", handleMessage);
+    window.addEventListener("headerSettingsUpdated", handleHeaderUpdate);
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
     window.addEventListener("visibleSectionsUpdated", handleSectionsUpdate);
-    window.addEventListener("headerSettingsUpdated", handleHeaderUpdate);
+    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
-      window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
+      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("headerSettingsUpdated", handleHeaderUpdate);
       window.removeEventListener(
         "pageVisibilityUpdated",
         handleVisibilityUpdate,
@@ -141,10 +145,15 @@ export function Navigation({
         "visibleSectionsUpdated",
         handleSectionsUpdate,
       );
-      window.removeEventListener("headerSettingsUpdated", handleHeaderUpdate);
-      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [pathname, externalHeaderSettings, studio]);
+  }, [
+    studioId,
+    studioName,
+    studioLogoUrl,
+    studioHeaderConfig,
+    externalHeaderSettings,
+  ]);
 
   // Se estivermos isolando algo que não seja o header, escondemos o navigation
   if (only && only !== "header") return null;

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Carousel,
@@ -18,8 +18,9 @@ import {
   getPageVisibility,
 } from "@/lib/booking-data";
 import { type GalleryItem, galleryService } from "@/lib/gallery-service";
-import { cn } from "@/lib/utils";
+import { cn, renderSafeText } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function GalleryPreview() {
@@ -27,6 +28,10 @@ export function GalleryPreview() {
   const [isMounted, setIsMounted] = useState(false);
   const [images, setImages] = useState<GalleryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const loadingRef = useRef(false);
+  const lastFetchRef = useRef(0);
+  const imagesRef = useRef<GalleryItem[]>([]);
+
   const [settings, setSettings] = useState<GallerySettings | null>(null);
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
     {
@@ -40,13 +45,21 @@ export function GalleryPreview() {
     null,
   );
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (force = false) => {
+    const now = Date.now();
+    // Evita chamadas simultâneas ou muito próximas (menos de 1s entre elas)
+    // a menos que seja forçado (ex: clique manual ou salvamento)
+    if (loadingRef.current) return;
+    if (!force && now - lastFetchRef.current < 1000 && imagesRef.current.length > 0) return;
+
+    loadingRef.current = true;
+    lastFetchRef.current = now;
     setIsLoading(true);
     // Carrega configurações
     let currentConfig: SiteConfigData | null = null;
 
     try {
-      if (studio) {
+      if (studio?.id) {
         currentConfig = studio.config as SiteConfigData;
 
         // Busca imagens da nova API
@@ -73,13 +86,16 @@ export function GalleryPreview() {
             ">>> [GALLERY_SYNC] Imagens marcadas para Home:",
             homeImages.length,
           );
-          setImages(homeImages.slice(0, 6));
+          const finalImages = homeImages.slice(0, 6);
+          setImages(finalImages);
+          imagesRef.current = finalImages;
         } catch (error) {
           console.warn(
             ">>> [SITE_WARN] Erro ao carregar galeria via API",
             error,
           );
           setImages([]);
+          imagesRef.current = [];
         }
       } else {
         const cachedStudioStr = localStorage.getItem("studio_data");
@@ -103,14 +119,17 @@ export function GalleryPreview() {
                     );
                   })
                 : [];
-              setImages(homeImages.slice(0, 6));
+              const finalImages = homeImages.slice(0, 6);
+              setImages(finalImages);
+              imagesRef.current = finalImages;
             }
           } catch (e) {
-            console.warn(
-              ">>> [SITE_WARN] Erro ao parsear studio_data do cache",
+            console.error(
+              ">>> [GALLERY_ERROR] Erro ao parsear studio_data do cache",
               e,
             );
             setImages([]);
+            imagesRef.current = [];
           }
         }
       }
@@ -121,10 +140,14 @@ export function GalleryPreview() {
       setSettings((configGallery as GallerySettings) || getGallerySettings());
 
       setPageVisibility(getPageVisibility());
+    } catch (error) {
+      console.error(">>> [GALLERY_ERROR] Erro geral ao carregar dados:", error);
     } finally {
+      loadingRef.current = false;
       setIsLoading(false);
     }
-  }, [studio]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studio?.id, studio?.config])
 
   useEffect(() => {
     setIsMounted(true);
@@ -134,12 +157,12 @@ export function GalleryPreview() {
       if (!event.data || typeof event.data !== "object") return;
 
       if (
-        event.data.type === "UPDATE_GALLERY_SETTINGS" ||
-        event.data.type === "REFRESH_GALLERY" ||
-        event.data.type === "DataReady"
-      ) {
-        loadData();
-      }
+      event.data.type === "UPDATE_GALLERY_SETTINGS" ||
+      event.data.type === "REFRESH_GALLERY" ||
+      event.data.type === "DataReady"
+    ) {
+      loadData(true);
+    }
 
       if (
         event.data.type === "UPDATE_GALLERY_SETTINGS" &&
@@ -159,22 +182,21 @@ export function GalleryPreview() {
       }
     };
 
+    const refreshGallery = () => loadData(true);
+    const updateVisibility = () => setPageVisibility(getPageVisibility());
+
     window.addEventListener("message", handleMessage);
-    window.addEventListener("pageVisibilityUpdated", () =>
-      setPageVisibility(getPageVisibility()),
-    );
-    window.addEventListener("galleryUpdated", loadData);
-    window.addEventListener("gallerySettingsUpdated", loadData);
-    window.addEventListener("DataReady", loadData);
+    window.addEventListener("pageVisibilityUpdated", updateVisibility);
+    window.addEventListener("galleryUpdated", refreshGallery);
+    window.addEventListener("gallerySettingsUpdated", refreshGallery);
+    window.addEventListener("DataReady", refreshGallery);
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("pageVisibilityUpdated", () =>
-        setPageVisibility(getPageVisibility()),
-      );
-      window.removeEventListener("galleryUpdated", loadData);
-      window.removeEventListener("gallerySettingsUpdated", loadData);
-      window.removeEventListener("DataReady", loadData);
+      window.removeEventListener("pageVisibilityUpdated", updateVisibility);
+      window.removeEventListener("galleryUpdated", refreshGallery);
+      window.removeEventListener("gallerySettingsUpdated", refreshGallery);
+      window.removeEventListener("DataReady", refreshGallery);
     };
   }, [loadData]);
 
@@ -228,14 +250,15 @@ export function GalleryPreview() {
   }
 
   return (
-    <section
-      id="gallery-preview"
-      className={cn(
-        "py-20 md:py-32 relative overflow-hidden transition-all duration-500",
-        highlightedElement === "gallery-preview" &&
-          "ring-4 ring-primary ring-inset z-50",
-      )}
-    >
+    <SessionWrapper appearance={settings?.appearance}>
+      <section
+        id="gallery-preview"
+        className={cn(
+          "py-20 md:py-32 relative overflow-hidden transition-all duration-500",
+          highlightedElement === "gallery-preview" &&
+            "ring-4 ring-primary ring-inset z-50",
+        )}
+      >
       <SectionBackground settings={settings} />
 
       <div className="container mx-auto px-4 relative z-10">
@@ -247,7 +270,7 @@ export function GalleryPreview() {
               color: settings?.titleColor || "var(--foreground)",
             }}
           >
-            {settings?.title}
+            {renderSafeText(settings?.title)}
           </h2>
           <p
             className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
@@ -256,7 +279,7 @@ export function GalleryPreview() {
               color: settings?.subtitleColor || "var(--foreground)",
             }}
           >
-            {settings?.subtitle}
+            {renderSafeText(settings?.subtitle)}
           </p>
         </div>
 
@@ -270,7 +293,7 @@ export function GalleryPreview() {
                 >
                   <Image
                     src={image?.imageUrl || ""}
-                    alt={image?.title || ""}
+                    alt={renderSafeText(image?.title) || ""}
                     fill
                     className="w-full h-full object-cover"
                   />
@@ -295,7 +318,7 @@ export function GalleryPreview() {
                       <div className="aspect-square rounded-lg overflow-hidden relative group">
                         <Image
                           src={image?.imageUrl || ""}
-                          alt={image?.title || ""}
+                          alt={renderSafeText(image?.title) || ""}
                           fill
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
@@ -332,11 +355,12 @@ export function GalleryPreview() {
             }}
           >
             <Link href="/galeria">
-              {settings.buttonText || "Ver Galeria Completa"}
+              {renderSafeText(settings.buttonText) || "Ver Galeria Completa"}
             </Link>
           </Button>
         </div>
       </div>
     </section>
+    </SessionWrapper>
   );
 }

@@ -53,6 +53,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useStudio } from "@/context/studio-context";
 import type { ValueItem, ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
@@ -105,6 +106,7 @@ export function ValuesEditor({
   onSave: externalOnSave,
   hasChanges,
 }: ValuesEditorProps) {
+  const { studio } = useStudio();
   const handleSave = () => {
     if (externalOnSave) externalOnSave();
   };
@@ -304,7 +306,7 @@ export function ValuesEditor({
                       Fonte
                     </legend>
                     <Select
-                      value={settings.cardTitleFont}
+                      value={settings.cardTitleFont || ""}
                       onValueChange={(v: string) =>
                         onUpdate({ cardTitleFont: v })
                       }
@@ -377,7 +379,7 @@ export function ValuesEditor({
                       Fonte
                     </legend>
                     <Select
-                      value={settings.cardDescriptionFont}
+                      value={settings.cardDescriptionFont || ""}
                       onValueChange={(v: string) =>
                         onUpdate({ cardDescriptionFont: v })
                       }
@@ -447,9 +449,20 @@ export function ValuesEditor({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <BackgroundEditor
-              settings={settings}
+              settings={{
+                bgType: settings.bgType,
+                bgColor: settings.bgColor,
+                bgImage: settings.bgImage,
+                imageOpacity: settings.imageOpacity,
+                overlayOpacity: settings.overlayOpacity,
+                imageScale: settings.imageScale,
+                imageX: settings.imageX,
+                imageY: settings.imageY,
+                appearance: settings.appearance,
+              }}
               onUpdate={(updates) => onUpdate({ ...updates })}
-              sectionId="values"
+              section="values"
+              businessId={studio?.id || ""}
             />
           </AccordionContent>
         </AccordionItem>
@@ -493,7 +506,7 @@ export function ValuesEditor({
                         Ícone
                       </Label>
                       <Select
-                        value={item.icon}
+                        value={item.icon || ""}
                         onValueChange={(v: string) =>
                           updateItem(item.id, { icon: v })
                         }
@@ -521,7 +534,7 @@ export function ValuesEditor({
                         Título
                       </Label>
                       <Input
-                        value={item.title}
+                        value={item.title || ""}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                           updateItem(item.id, { title: e.target.value })
                         }
@@ -535,7 +548,7 @@ export function ValuesEditor({
                       Descrição
                     </Label>
                     <Textarea
-                      value={item.description}
+                      value={item.description || ""}
                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                         updateItem(item.id, { description: e.target.value })
                       }

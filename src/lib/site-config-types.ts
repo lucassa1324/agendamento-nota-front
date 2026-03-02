@@ -60,4 +60,5 @@ export interface SiteConfigData {
     form?: BookingStepSettings;
     confirmation?: BookingStepSettings;
   };
+  updatedAt?: string;
 }

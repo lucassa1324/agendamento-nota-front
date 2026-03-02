@@ -36,8 +36,9 @@ import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import { getValuesSettings, type ValuesSettings } from "@/lib/booking-data";
-import { cn } from "@/lib/utils";
+import { cn, renderSafeText } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -80,17 +81,20 @@ export function ValuesSection() {
     null,
   );
 
+  const studioId = studio?.id;
+  const studioConfig = studio?.config;
+
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    if (studio) {
-      const config = studio?.config as SiteConfigData | undefined;
+    if (studioId) {
+      const config = studioConfig as SiteConfigData | undefined;
       const layoutGlobal = config?.layoutGlobal || config?.layout_global;
       const configValues = config?.values || layoutGlobal?.values;
       setSettings(configValues || getValuesSettings());
     } else {
       setSettings(getValuesSettings());
     }
-  }, [studio]);
+  }, [studioId, studioConfig]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -129,14 +133,15 @@ export function ValuesSection() {
   if (!isMounted) return null;
 
   return (
-    <section
-      id="values"
-      className={cn(
-        "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
-        highlightedElement === "values" &&
-          "ring-8 ring-inset ring-primary/30 bg-primary/5",
-      )}
-    >
+    <SessionWrapper appearance={settings?.appearance}>
+      <section
+        id="values"
+        className={cn(
+          "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
+          highlightedElement === "values" &&
+            "ring-8 ring-inset ring-primary/30 bg-primary/5",
+        )}
+      >
       <SectionBackground settings={settings} />
 
       <div className="container relative z-10 mx-auto px-4">
@@ -148,7 +153,7 @@ export function ValuesSection() {
               fontFamily: settings?.titleFont || "var(--font-title)",
             }}
           >
-            {settings?.title}
+            {renderSafeText(settings?.title)}
           </h2>
           <p
             className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
@@ -157,7 +162,7 @@ export function ValuesSection() {
               fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
             }}
           >
-            {settings?.subtitle}
+            {renderSafeText(settings?.subtitle)}
           </p>
         </div>
 
@@ -197,7 +202,7 @@ export function ValuesSection() {
                         settings?.cardTitleFont || "var(--font-title)",
                     }}
                   >
-                    {value?.title}
+                    {renderSafeText(value?.title)}
                   </h3>
                   <p
                     className="text-sm leading-relaxed transition-all duration-300"
@@ -208,7 +213,7 @@ export function ValuesSection() {
                         settings?.cardDescriptionFont || "var(--font-body)",
                     }}
                   >
-                    {value?.description}
+                    {renderSafeText(value?.description)}
                   </p>
                 </CardContent>
               </Card>
@@ -217,5 +222,6 @@ export function ValuesSection() {
         </div>
       </div>
     </section>
+    </SessionWrapper>
   );
 }

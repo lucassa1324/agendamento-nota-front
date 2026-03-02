@@ -133,8 +133,19 @@ export function getStorageKey(key: string): string {
   if (typeof window === "undefined") return key;
   const userId = localStorage.getItem("current_admin_id");
   const result = userId ? `${userId}_${key}` : key;
-  // console.log(`>>> [getStorageKey] key: ${key} -> result: ${result}`);
   return result;
+}
+
+export function updateDraftTimestamp(): void {
+  if (typeof window === "undefined") return;
+  const timestamp = new Date().toISOString();
+  localStorage.setItem(getStorageKey("last_draft_update"), timestamp);
+  console.log(`>>> [booking-data] Draft timestamp atualizado: ${timestamp}`);
+}
+
+export function getDraftTimestamp(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(getStorageKey("last_draft_update"));
 }
 
 export type NotificationSettings = {
@@ -224,6 +235,14 @@ export const defaultFooterSettings: FooterSettings = {
   bodyFont: "Inter",
 };
 
+export type AppearanceSettings = {
+  backgroundImageUrl?: string;
+  overlay?: {
+    color: string;
+    opacity: number;
+  };
+};
+
 export type HeroSettings = {
   badge: string;
   showBadge: boolean;
@@ -253,6 +272,7 @@ export type HeroSettings = {
   subtitleColor: string;
   primaryButtonFont: string;
   secondaryButtonFont: string;
+  appearance?: AppearanceSettings;
 };
 
 export type StorySettings = {
@@ -271,6 +291,7 @@ export type StorySettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  appearance?: AppearanceSettings;
 };
 
 export type ValueItem = {
@@ -295,6 +316,7 @@ export type ValuesSettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  appearance?: AppearanceSettings;
   // Card specific styles
   cardBgColor: string;
   cardTitleColor: string;
@@ -320,6 +342,7 @@ export type ServicesSettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  appearance?: AppearanceSettings;
   // Card specific styles
   cardBgColor: string;
   cardTitleColor: string;
@@ -452,6 +475,7 @@ export type GallerySettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  appearance?: AppearanceSettings;
 };
 
 export const defaultGallerySettings: GallerySettings = {
@@ -496,6 +520,7 @@ export type CTASettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  appearance?: AppearanceSettings;
 };
 
 export type BookingStepSettings = {
@@ -520,6 +545,7 @@ export type BookingStepSettings = {
   step3Times?: {
     interval?: string | number;
   };
+  appearance?: AppearanceSettings;
 };
 
 export const defaultBookingServiceSettings: BookingStepSettings = {
@@ -539,6 +565,9 @@ export const defaultBookingServiceSettings: BookingStepSettings = {
   imageY: 50,
   accentColor: "",
   cardBgColor: "",
+  appearance: {
+    backgroundImageUrl: "",
+  },
 };
 
 export const defaultBookingDateSettings: BookingStepSettings = {
@@ -558,6 +587,9 @@ export const defaultBookingDateSettings: BookingStepSettings = {
   imageY: 50,
   accentColor: "",
   cardBgColor: "",
+  appearance: {
+    backgroundImageUrl: "",
+  },
 };
 
 export const defaultBookingTimeSettings: BookingStepSettings = {
@@ -577,6 +609,9 @@ export const defaultBookingTimeSettings: BookingStepSettings = {
   imageY: 50,
   accentColor: "",
   cardBgColor: "",
+  appearance: {
+    backgroundImageUrl: "",
+  },
 };
 
 export const defaultBookingFormSettings: BookingStepSettings = {
@@ -596,6 +631,9 @@ export const defaultBookingFormSettings: BookingStepSettings = {
   imageY: 50,
   accentColor: "",
   cardBgColor: "",
+  appearance: {
+    backgroundImageUrl: "",
+  },
 };
 
 export const defaultBookingConfirmationSettings: BookingStepSettings = {
@@ -615,6 +653,9 @@ export const defaultBookingConfirmationSettings: BookingStepSettings = {
   imageY: 50,
   accentColor: "",
   cardBgColor: "",
+  appearance: {
+    backgroundImageUrl: "",
+  },
 };
 
 export function getBookingServiceSettings(): BookingStepSettings {
@@ -632,6 +673,7 @@ export function saveBookingServiceSettings(
     getStorageKey("bookingServiceSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingServiceSettingsUpdated"));
   }
@@ -648,6 +690,7 @@ export function saveBookingDateSettings(settings: BookingStepSettings): void {
     getStorageKey("bookingDateSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingDateSettingsUpdated"));
   }
@@ -664,6 +707,7 @@ export function saveBookingTimeSettings(settings: BookingStepSettings): void {
     getStorageKey("bookingTimeSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingTimeSettingsUpdated"));
   }
@@ -680,6 +724,7 @@ export function saveBookingFormSettings(settings: BookingStepSettings): void {
     getStorageKey("bookingFormSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingFormSettingsUpdated"));
   }
@@ -700,6 +745,7 @@ export function saveBookingConfirmationSettings(
     getStorageKey("bookingConfirmationSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingConfirmationSettingsUpdated"));
   }
@@ -735,6 +781,7 @@ export type TeamSettings = {
   cardTitleFont: string;
   cardRoleFont: string;
   cardDescriptionFont: string;
+  appearance?: AppearanceSettings;
   members: TeamMember[];
 };
 
@@ -743,6 +790,7 @@ export type Testimonial = {
   name: string;
   text: string;
   rating: number;
+  image?: string;
 };
 
 export type TestimonialsSettings = {
@@ -766,6 +814,7 @@ export type TestimonialsSettings = {
   cardTextColor: string;
   cardNameFont: string;
   cardTextFont: string;
+  appearance?: AppearanceSettings;
   testimonials: Testimonial[];
 };
 
@@ -933,18 +982,25 @@ export const normalizeStepSettings = (
 
   // 2. Resolver cor do FUNDO DA SEÇÃO
   // NÃO usar rawCardColor como fallback para evitar que a cor do card pinte o fundo
-  const rawBgColor = stepData.bgColor as string;
+  const rawBgColor =
+    (stepData.bgColor as string) || (stepData.bg_color as string);
   const finalBgColor = sanitizeColor(rawBgColor);
 
-  // Garante que o fallback seja aplicado apenas se o valor for undefined/null
-  // permitindo cores claras válidas renderizarem imediatamente
-  const resolvedCardColor =
-    finalCardColor !== undefined ? finalCardColor : "#FFFFFF";
+  // 3. Resolver Appearance (Source of Truth do banco)
+  const appearance = (stepData.appearance as Record<string, unknown>) || {
+    backgroundImageUrl: (stepData.bgImage as string) || "",
+  };
 
   return {
     ...stepData,
-    cardBgColor: resolvedCardColor,
+    cardBgColor: finalCardColor || "#FFFFFF",
     bgColor: finalBgColor || "transparent",
+    appearance: {
+      backgroundImageUrl:
+        (appearance.backgroundImageUrl as string) ||
+        (stepData.bgImage as string) ||
+        "",
+    },
   } as BookingStepSettings;
 };
 
@@ -1844,6 +1900,7 @@ export function saveHeroSettings(settings: HeroSettings): void {
     settings,
   );
   localStorage.setItem(storageKey, JSON.stringify(settings));
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("heroSettingsUpdated"));
   }
@@ -1870,6 +1927,7 @@ export function saveAboutHeroSettings(settings: HeroSettings): void {
     getStorageKey("aboutHeroSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("aboutHeroSettingsUpdated"));
   }
@@ -1886,6 +1944,7 @@ export function saveStorySettings(settings: StorySettings): void {
     getStorageKey("storySettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("storySettingsUpdated"));
   }
@@ -1902,6 +1961,7 @@ export function saveValuesSettings(settings: ValuesSettings): void {
     getStorageKey("valuesSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("valuesSettingsUpdated"));
   }
@@ -1918,6 +1978,7 @@ export function saveServicesSettings(settings: ServicesSettings): void {
     getStorageKey("servicesSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("servicesSettingsUpdated"));
   }
@@ -1931,6 +1992,7 @@ export function getFontSettings(): FontSettings {
 
 export function saveFontSettings(settings: FontSettings): void {
   localStorage.setItem(getStorageKey("fontSettings"), JSON.stringify(settings));
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("fontSettingsUpdated"));
   }
@@ -1947,6 +2009,7 @@ export function saveGallerySettings(settings: GallerySettings): void {
     getStorageKey("gallerySettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("gallerySettingsUpdated"));
   }
@@ -1960,6 +2023,7 @@ export function getCTASettings(): CTASettings {
 
 export function saveCTASettings(settings: CTASettings): void {
   localStorage.setItem(getStorageKey("ctaSettings"), JSON.stringify(settings));
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("ctaSettingsUpdated"));
   }
@@ -1973,6 +2037,7 @@ export function getTeamSettings(): TeamSettings {
 
 export function saveTeamSettings(settings: TeamSettings): void {
   localStorage.setItem(getStorageKey("teamSettings"), JSON.stringify(settings));
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("teamSettingsUpdated"));
   }
@@ -1989,6 +2054,7 @@ export function saveTestimonialsSettings(settings: TestimonialsSettings): void {
     getStorageKey("testimonialsSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("testimonialsSettingsUpdated"));
   }
@@ -2005,6 +2071,7 @@ export function saveHeaderSettings(settings: HeaderSettings): void {
     getStorageKey("headerSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("headerSettingsUpdated"));
   }
@@ -2021,6 +2088,7 @@ export function saveFooterSettings(settings: FooterSettings): void {
     getStorageKey("footerSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("footerSettingsUpdated"));
   }
@@ -2051,6 +2119,7 @@ export function savePageVisibility(visibility: Record<string, boolean>): void {
     getStorageKey("pageVisibility"),
     JSON.stringify(visibility),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("pageVisibilityUpdated"));
   }
@@ -2095,6 +2164,7 @@ export function saveVisibleSections(sections: Record<string, boolean>): void {
     getStorageKey("visibleSections"),
     JSON.stringify(sections),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("visibleSectionsUpdated"));
   }

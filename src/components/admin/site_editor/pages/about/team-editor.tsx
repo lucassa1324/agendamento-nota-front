@@ -9,6 +9,7 @@ import {
   Type,
   UserPlus,
 } from "lucide-react";
+import Image from "next/image";
 import {
   Accordion,
   AccordionContent,
@@ -26,10 +27,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useStudio } from "@/context/studio-context";
 import type { TeamMember, TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { ImageUploader } from "../../components/ImageUploader";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -46,6 +49,7 @@ export function TeamEditor({
   onSave: externalOnSave,
   hasChanges,
 }: TeamEditorProps) {
+  const { studio } = useStudio();
   const handleSave = () => {
     if (externalOnSave) externalOnSave();
   };
@@ -166,9 +170,20 @@ export function TeamEditor({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <BackgroundEditor
-              settings={settings}
+              settings={{
+                bgType: settings.bgType,
+                bgColor: settings.bgColor,
+                bgImage: settings.bgImage,
+                imageOpacity: settings.imageOpacity,
+                overlayOpacity: settings.overlayOpacity,
+                imageScale: settings.imageScale,
+                imageX: settings.imageX,
+                imageY: settings.imageY,
+                appearance: settings.appearance,
+              }}
               onUpdate={(updates) => onUpdate({ ...updates })}
-              sectionId="team"
+              section="team"
+              businessId={studio?.id || ""}
             />
           </AccordionContent>
         </AccordionItem>
@@ -485,7 +500,7 @@ export function TeamEditor({
                       Nome
                     </Label>
                     <Input
-                      value={member.name}
+                      value={member.name || ""}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                         updateItem(member.id, { name: e.target.value })
                       }
@@ -498,7 +513,7 @@ export function TeamEditor({
                       Cargo / Função
                     </Label>
                     <Input
-                      value={member.role}
+                      value={member.role || ""}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                         updateItem(member.id, { role: e.target.value })
                       }
@@ -508,15 +523,39 @@ export function TeamEditor({
 
                   <div className="space-y-1.5">
                     <Label className="text-[10px] uppercase text-muted-foreground">
-                      URL da Imagem
+                      Foto do Membro
                     </Label>
-                    <Input
-                      value={member.image}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        updateItem(member.id, { image: e.target.value })
-                      }
-                      className="h-8 text-[10px]"
-                    />
+                    <div className="flex gap-2 items-center">
+                      <ImageUploader
+                        businessId={studio?.id || ""}
+                        section="team-member"
+                        onUploadSuccess={(url) =>
+                          updateItem(member.id, { image: url })
+                        }
+                        className="w-full h-10"
+                      />
+                    </div>
+                    {member.image && (
+                      <div className="mt-2 relative group aspect-square w-20 rounded-md overflow-hidden border">
+                        <Image
+                          src={member.image}
+                          alt={member.name}
+                          className="object-cover"
+                          fill
+                          unoptimized
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-white"
+                            onClick={() => updateItem(member.id, { image: "" })}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -524,7 +563,7 @@ export function TeamEditor({
                       Descrição
                     </Label>
                     <Textarea
-                      value={member.description}
+                      value={member.description || ""}
                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                         updateItem(member.id, { description: e.target.value })
                       }

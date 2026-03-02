@@ -7,6 +7,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { customFetch } from "@/lib/api-client";
@@ -50,6 +51,7 @@ interface StudioContextType {
   isLoading: boolean;
   error: string | null;
   slug: string | null;
+  businessId: string | null;
   updateStudioInfo: (updates: Partial<Business>) => void;
 }
 
@@ -58,14 +60,17 @@ const StudioContext = createContext<StudioContextType | undefined>(undefined);
 export function StudioProvider({
   children,
   initialSlug,
+  initialId,
 }: {
   children: ReactNode;
   initialSlug?: string;
+  initialId?: string;
 }) {
   const [studio, setStudio] = useState<Business | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(initialSlug || null);
+  const [businessId, setBusinessId] = useState<string | null>(initialId || null);
   // const router = useRouter();
   const pathname = usePathname();
 
@@ -261,11 +266,15 @@ export function StudioProvider({
     if (initialSlug) {
       setSlug(initialSlug);
     }
-  }, [initialSlug]);
+    if (initialId) {
+      setBusinessId(initialId);
+    }
+  }, [initialSlug, initialId]);
 
   useEffect(() => {
     async function fetchStudio() {
       let currentSlug = slug;
+      let currentId = businessId;
 
       // EXCEÇÃO PARA ROTA MASTER: Se estivermos no painel master, não buscamos slug
       if (
@@ -279,69 +288,77 @@ export function StudioProvider({
         return;
       }
 
-      // Se não temos um slug inicial, tenta extrair do host ou query params
-      if (!currentSlug && typeof window !== "undefined") {
+      // Se não temos um ID ou slug inicial, tenta extrair
+      if (!currentId && !currentSlug && typeof window !== "undefined") {
         const urlParams = new URLSearchParams(window.location.search);
         const slugParam = urlParams.get("slug");
+        const idParam = urlParams.get("businessId") || urlParams.get("id");
 
-        if (slugParam) {
+        if (idParam) {
+          currentId = idParam;
+          setBusinessId(currentId);
+        } else if (slugParam) {
           currentSlug = slugParam;
           console.log(
             `>>> [StudioProvider] SLUG extraído dos QUERY PARAMS: ${currentSlug}`,
           );
           setSlug(currentSlug);
         } else {
-          const host = window.location.host;
-          console.log(
-            `>>> [StudioProvider] Analisando HOST para extração de SLUG: ${host}`,
-          );
+            const host = window.location.host;
+            console.log(
+              `>>> [StudioProvider] Analisando HOST para extração de SLUG: ${host}`,
+            );
 
-          // Caso especial para desenvolvimento: subdomínio em localhost (ex: lucas-studio.localhost:3000)
-          if (host.includes(".localhost")) {
-            const parts = host.split(".");
-            if (parts.length > 1 && parts[0] !== "www") {
-              currentSlug = parts[0];
-              console.log(
-                `>>> [StudioProvider] SLUG extraído do subdomínio LOCALHOST: ${currentSlug}`,
-              );
-              setSlug(currentSlug);
+            // Caso especial para desenvolvimento: subdomínio em localhost (ex: lucas-studio.localhost:3000)
+            if (host.includes(".localhost")) {
+              const parts = host.split(".");
+              if (parts.length > 1 && parts[0] !== "www") {
+                currentSlug = parts[0];
+                console.log(
+                  `>>> [StudioProvider] SLUG extraído do subdomínio LOCALHOST: ${currentSlug}`,
+                );
+                setSlug(currentSlug);
+              }
+            }
+            // Caso para produção: subdomínio do BASE_DOMAIN
+            else if (
+              BASE_DOMAIN &&
+              host.endsWith(BASE_DOMAIN) &&
+              host !== BASE_DOMAIN &&
+              host !== `www.${BASE_DOMAIN}`
+            ) {
+              const possibleSlug = host
+                .replace(`.${BASE_DOMAIN}`, "")
+                .replace("www.", "");
+              if (possibleSlug) {
+                currentSlug = possibleSlug;
+                console.log(
+                  `>>> [StudioProvider] SLUG extraído do subdomínio PRODUÇÃO: ${currentSlug}`,
+                );
+                setSlug(currentSlug);
+              }
             }
           }
-          // Caso para produção: subdomínio do BASE_DOMAIN
-          else if (
-            BASE_DOMAIN &&
-            host.endsWith(BASE_DOMAIN) &&
-            host !== BASE_DOMAIN &&
-            host !== `www.${BASE_DOMAIN}`
-          ) {
-            const possibleSlug = host
-              .replace(`.${BASE_DOMAIN}`, "")
-              .replace("www.", "");
-            if (possibleSlug) {
-              currentSlug = possibleSlug;
-              console.log(
-                `>>> [StudioProvider] SLUG extraído do subdomínio PRODUÇÃO: ${currentSlug}`,
-              );
-              setSlug(currentSlug);
-            }
-          }
-        }
       }
 
-      if (!currentSlug) {
+      if (!currentId && !currentSlug) {
         setIsLoading(false);
         return;
       }
 
-      // Normalização do slug para evitar erros de case-sensitivity e garantir consistência
-      const finalSlug = currentSlug.toLowerCase();
-
       try {
         const timestamp = Date.now();
-        const fetchUrl = `${API_BASE_URL}/api/business/slug/${finalSlug}?t=${timestamp}`;
-        console.log(
-          `>>> [CACHE_CHECK] StudioProvider buscando studio via: ${fetchUrl}`,
-        );
+        let fetchUrl: string;
+        
+        if (currentId) {
+          fetchUrl = `${API_BASE_URL}/api/business/${currentId}?t=${timestamp}`;
+          console.log(`>>> [CACHE_CHECK] StudioProvider buscando studio via ID: ${fetchUrl}`);
+        } else {
+          // Normalização do slug para evitar erros de case-sensitivity e garantir consistência
+          const finalSlug = (currentSlug || "").toLowerCase();
+          fetchUrl = `${API_BASE_URL}/api/business/slug/${finalSlug}?t=${timestamp}`;
+          console.log(`>>> [CACHE_CHECK] StudioProvider buscando studio via SLUG: ${fetchUrl}`);
+        }
 
         let response: Response;
         try {
@@ -957,7 +974,7 @@ export function StudioProvider({
     }
 
     fetchStudio();
-  }, [slug]);
+  }, [slug, businessId]);
 
   useEffect(() => {
     // REMOVIDO: Redirecionamento automático para /404 ou home
@@ -983,18 +1000,29 @@ export function StudioProvider({
     }
   }, [studio]);
 
+  const value = useMemo(
+    () => ({
+      studio,
+      isLoading,
+      error,
+      slug,
+      businessId,
+      updateStudioInfo,
+    }),
+    [
+      studio,
+      isLoading,
+      error,
+      slug,
+      businessId,
+      updateStudioInfo
+    ],
+  );
+
   // Tratamento visual para erro 404 (Studio não encontrado)
   if (!isLoading && error === "Studio não encontrado") {
     return (
-      <StudioContext.Provider
-        value={{
-          studio: null,
-          isLoading: false,
-          error,
-          slug,
-          updateStudioInfo,
-        }}
-      >
+      <StudioContext.Provider value={value}>
         <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
           <h1 className="text-6xl font-bold mb-4">404</h1>
           <h2 className="text-2xl font-semibold mb-6">Studio não encontrado</h2>
@@ -1017,9 +1045,7 @@ export function StudioProvider({
   }
 
   return (
-    <StudioContext.Provider
-      value={{ studio, isLoading, error, slug, updateStudioInfo }}
-    >
+    <StudioContext.Provider value={value}>
       {children}
     </StudioContext.Provider>
   );

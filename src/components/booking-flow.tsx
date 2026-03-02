@@ -93,17 +93,25 @@ const normalizeStepSettings = (
 
   // 2. Resolver cor do FUNDO DA SEÇÃO
   // NÃO usar rawCardColor como fallback para evitar que a cor do card pinte o fundo
-  const rawBgColor = stepData.bgColor as string;
+  const rawBgColor =
+    (stepData.bgColor as string) || (stepData.bg_color as string);
   const finalBgColor = sanitizeColor(rawBgColor);
 
-  if (finalCardColor) {
-    // console.log(">>> [COLOR_NORMALIZED] Cor do Card detectada:", finalCardColor);
-  }
+  // 3. Resolver Appearance (Source of Truth do banco)
+  const appearance = (stepData.appearance as Record<string, unknown>) || {
+    backgroundImageUrl: (stepData.bgImage as string) || "",
+  };
 
   return {
     ...stepData,
     cardBgColor: finalCardColor || "#FFFFFF",
     bgColor: finalBgColor || "transparent",
+    appearance: {
+      backgroundImageUrl:
+        (appearance.backgroundImageUrl as string) ||
+        (stepData.bgImage as string) ||
+        "",
+    },
   } as BookingStepSettings;
 };
 

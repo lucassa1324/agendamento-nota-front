@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { useSidebar } from "@/context/sidebar-context";
+import { useStudio } from "@/context/studio-context";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@/lib/api-client";
@@ -50,6 +51,7 @@ export function SiteCustomizer() {
   const [error, setError] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
+  const { businessId: studioId } = useStudio();
   const {
     heroSettings,
     aboutHeroSettings,
@@ -193,7 +195,7 @@ export function SiteCustomizer() {
   };
 
   const fetchBusinessData = useCallback(async () => {
-    if (!slug) return;
+    if (!slug && !studioId) return;
     if (typeof window !== "undefined") {
       const skipBank = sessionStorage.getItem("personalizacao_skip_bank");
       const cachedBusiness = sessionStorage.getItem("personalizacao_business");
@@ -215,13 +217,18 @@ export function SiteCustomizer() {
     setIsLoading(true);
     setError(null);
     try {
-      // Ajustado de /api/studios para /api/business conforme confirmado pelo back-end
-      const response = await customFetch(
-        `${API_BASE_URL}/api/business/slug/${slug}`,
-        {
-          credentials: "include",
-        },
-      );
+      // Ajustado para priorizar busca por ID (/api/business/:id) conforme solicitado
+      let fetchUrl = `${API_BASE_URL}/api/business/slug/${slug}`;
+      if (studioId) {
+        fetchUrl = `${API_BASE_URL}/api/business/${studioId}`;
+        console.log(`>>> [CUSTOMIZER_FETCH] Buscando estúdio via ID: ${studioId}`);
+      } else {
+        console.log(`>>> [CUSTOMIZER_FETCH] Buscando estúdio via SLUG: ${slug}`);
+      }
+
+      const response = await customFetch(fetchUrl, {
+        credentials: "include",
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -256,7 +263,7 @@ export function SiteCustomizer() {
     } finally {
       setIsLoading(false);
     }
-  }, [slug]);
+  }, [slug, studioId]);
 
   useEffect(() => {
     fetchBusinessData();

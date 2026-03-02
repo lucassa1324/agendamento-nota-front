@@ -18,6 +18,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 
 const iconMap: Record<string, LucideIcon> = {
   Sparkles,
@@ -40,7 +41,7 @@ import {
   type HeroSettings,
   type SiteProfile,
 } from "@/lib/booking-data";
-import { cn } from "@/lib/utils";
+import { cn, renderSafeText } from "@/lib/utils";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function HeroSection() {
@@ -61,20 +62,21 @@ export function HeroSection() {
 
   const [isMounted, setIsMounted] = useState(false);
 
+  const config = studio?.config as SiteConfigData | undefined;
+
   useEffect(() => {
     setIsMounted(true);
     setProfile(getSiteProfile());
 
     // Carregar configurações iniciais
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    const config = studio?.config as SiteConfigData | undefined;
     const layoutGlobal = config?.layoutGlobal || config?.layout_global;
     const dbHero = config?.hero || layoutGlobal?.hero;
 
     if (dbHero) {
       console.log(
         ">>> [HERO_SYNC] Aplicando dados do banco no carregamento inicial:",
-        dbHero.title,
+        renderSafeText(dbHero.title),
       );
       setCustomStyles(dbHero);
     } else {
@@ -88,7 +90,7 @@ export function HeroSection() {
       if (event.data.type === "UPDATE_HERO_SETTINGS") {
         console.log(
           ">>> [HERO_SYNC] Atualização recebida via MessageEvent:",
-          event.data.settings.title,
+          renderSafeText(event.data.settings.title),
         );
         setCustomStyles((prev) => ({
           ...prev,
@@ -114,13 +116,13 @@ export function HeroSection() {
     };
 
     const handleDataReady = () => {
-      const cfg = studio?.config as SiteConfigData | undefined;
+      const cfg = config;
       const lg = cfg?.layoutGlobal || cfg?.layout_global;
       const heroFromDb = cfg?.hero || lg?.hero;
       if (heroFromDb) {
         console.log(
           ">>> [HERO_SYNC] Aplicando dados do banco via evento DataReady:",
-          heroFromDb.title,
+          renderSafeText(heroFromDb.title),
         );
         setCustomStyles(heroFromDb);
       }
@@ -146,7 +148,23 @@ export function HeroSection() {
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
       window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [studio]);
+  }, [config]);
+
+  useEffect(() => {
+    console.log("[HERO_STYLE]", {
+      url: customStyles.appearance?.backgroundImageUrl,
+      overlay: customStyles.appearance?.overlay,
+    });
+  }, [customStyles.appearance?.backgroundImageUrl, customStyles.appearance?.overlay]);
+
+  const heroBackgroundUrl = customStyles.appearance?.backgroundImageUrl;
+  const effectiveOverlayOpacity =
+    customStyles.appearance?.overlay?.opacity ??
+    (heroBackgroundUrl ? 0 : customStyles.overlayOpacity);
+  const effectiveImageOpacity =
+    heroBackgroundUrl && !customStyles.appearance?.overlay
+      ? 1
+      : customStyles.imageOpacity;
 
   const getHighlightClass = (id: string) => {
     return highlightedElement === id
@@ -176,26 +194,37 @@ export function HeroSection() {
   }
 
   return (
-    <section
-      id="hero"
-      className={cn(
-        "relative min-h-[90vh] flex items-center justify-center overflow-hidden transition-all duration-700",
-        (highlightedElement === "hero-bg" || highlightedElement === "hero") &&
-          "ring-8 ring-inset ring-primary/30",
-      )}
-    >
+    <SessionWrapper appearance={customStyles.appearance}>
+      <section
+        id="hero"
+        className={cn(
+          "relative min-h-[90vh] flex items-center justify-center overflow-hidden transition-all duration-700",
+          (highlightedElement === "hero-bg" || highlightedElement === "hero") &&
+            "ring-8 ring-inset ring-primary/30",
+        )}
+        style={
+          heroBackgroundUrl
+            ? {
+                backgroundImage: `url(${heroBackgroundUrl})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }
+            : undefined
+        }
+      >
       <SectionBackground
         settings={{
           bgType: customStyles.bgType as "color" | "image",
           bgColor: customStyles.bgColor,
           bgImage: customStyles.bgImage,
-          imageOpacity: customStyles.imageOpacity,
-          overlayOpacity: customStyles.overlayOpacity,
+          imageOpacity: effectiveImageOpacity,
+          overlayOpacity: effectiveOverlayOpacity,
           imageScale: customStyles.imageScale,
           imageX: customStyles.imageX,
           imageY: customStyles.imageY,
+          appearance: customStyles.appearance,
         }}
-        defaultImage="/elegant-eyebrow-studio-interior-with-soft-lighting.jpg"
+        defaultImage="https://images.unsplash.com/photo-1560750588-73207b1ef5b8?q=80&w=2070&auto=format&fit=crop"
         gradientClassName="bg-linear-to-b from-background/50 via-background/80 to-background"
       />
 
@@ -239,7 +268,7 @@ export function HeroSection() {
                     "var(--foreground)",
                 }}
               >
-                {customStyles.badge ||
+                {renderSafeText(customStyles.badge) ||
                   "Especialistas em Design de Sobrancelhas"}
               </span>
             </div>
@@ -255,7 +284,7 @@ export function HeroSection() {
               color: customStyles.titleColor || "var(--foreground)",
             }}
           >
-            {customStyles.title || "Realce Sua Beleza Natural"}
+            {renderSafeText(customStyles.title) || "Realce Sua Beleza Natural"}
           </h1>
 
           <p
@@ -269,7 +298,7 @@ export function HeroSection() {
               color: customStyles.subtitleColor || "var(--foreground)",
             }}
           >
-            {customStyles.subtitle || description}
+            {renderSafeText(customStyles.subtitle) || description}
           </p>
 
           <div
@@ -295,7 +324,7 @@ export function HeroSection() {
                 }}
               >
                 <Link href="/agendamento">
-                  {customStyles.primaryButton || "Agendar Horário"}
+                  {renderSafeText(customStyles.primaryButton) || "Agendar Horário"}
                 </Link>
               </Button>
             )}
@@ -320,7 +349,7 @@ export function HeroSection() {
                 }}
               >
                 <Link href="/galeria">
-                  {customStyles.secondaryButton || "Ver Trabalhos"}
+                  {renderSafeText(customStyles.secondaryButton) || "Ver Trabalhos"}
                 </Link>
               </Button>
             )}
@@ -328,5 +357,6 @@ export function HeroSection() {
         </div>
       </div>
     </section>
+    </SessionWrapper>
   );
 }

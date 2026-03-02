@@ -159,6 +159,7 @@ export function useEditorLocal() {
       "bookingTimeSettings",
       "bookingFormSettings",
       "bookingConfirmationSettings",
+      "last_draft_update",
     ];
 
     for (const key of keys) {

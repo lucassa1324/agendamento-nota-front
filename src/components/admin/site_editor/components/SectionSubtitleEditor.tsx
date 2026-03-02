@@ -45,7 +45,7 @@ export function SectionSubtitleEditor({
           {label}
         </legend>
         <Textarea
-          value={subtitle}
+          value={subtitle || ""}
           onChange={(e) => onUpdate({ subtitle: e.target.value })}
           className="min-h-20 text-xs resize-none"
         />

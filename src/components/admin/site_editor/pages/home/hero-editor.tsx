@@ -36,6 +36,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useStudio } from "@/context/studio-context";
+import type { AppearanceSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
@@ -86,6 +88,7 @@ interface HeroEditorProps {
     subtitleColor: string;
     primaryButtonFont: string;
     secondaryButtonFont: string;
+    appearance?: AppearanceSettings;
   };
   onUpdate: (updates: Partial<HeroEditorProps["settings"]>) => void;
   onHighlight?: (sectionId: string) => void;
@@ -100,6 +103,7 @@ export function HeroEditor({
   hasChanges,
   onSave,
 }: HeroEditorProps) {
+  const { studio } = useStudio();
   const handleAccordionChange = (values: string | string[]) => {
     if (onHighlight) {
       const highlightMap: Record<string, string> = {
@@ -192,7 +196,7 @@ export function HeroEditor({
                       </legend>
                       <Input
                         id="hero-badge"
-                        value={settings.badge}
+                        value={settings.badge || ""}
                         className="h-8 text-sm"
                         placeholder="Texto da tag..."
                         onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -379,24 +383,26 @@ export function HeroEditor({
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pb-4 border-t border-border/50 pt-4">
-                <SectionTitleEditor
-                  title={settings.title}
-                  font={settings.titleFont}
-                  color={settings.titleColor}
-                  onUpdate={(updates) =>
-                    onUpdate({
-                      ...(updates.title !== undefined && {
-                        title: updates.title,
-                      }),
-                      ...(updates.font !== undefined && {
-                        titleFont: updates.font,
-                      }),
-                      ...(updates.color !== undefined && {
-                        titleColor: updates.color,
-                      }),
-                    })
-                  }
-                />
+                <div onPointerDown={(e) => e.stopPropagation()}>
+                  <SectionTitleEditor
+                    title={settings.title}
+                    font={settings.titleFont}
+                    color={settings.titleColor}
+                    onUpdate={(updates) =>
+                      onUpdate({
+                        ...(updates.title !== undefined && {
+                          title: updates.title,
+                        }),
+                        ...(updates.font !== undefined && {
+                          titleFont: updates.font,
+                        }),
+                        ...(updates.color !== undefined && {
+                          titleColor: updates.color,
+                        }),
+                      })
+                    }
+                  />
+                </div>
               </AccordionContent>
             </AccordionItem>
 
@@ -414,24 +420,26 @@ export function HeroEditor({
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pb-4 border-t border-border/50 pt-4">
-                <SectionSubtitleEditor
-                  subtitle={settings.subtitle}
-                  font={settings.subtitleFont}
-                  color={settings.subtitleColor}
-                  onUpdate={(updates) =>
-                    onUpdate({
-                      ...(updates.subtitle !== undefined && {
-                        subtitle: updates.subtitle,
-                      }),
-                      ...(updates.font !== undefined && {
-                        subtitleFont: updates.font,
-                      }),
-                      ...(updates.color !== undefined && {
-                        subtitleColor: updates.color,
-                      }),
-                    })
-                  }
-                />
+                <div onPointerDown={(e) => e.stopPropagation()}>
+                  <SectionSubtitleEditor
+                    subtitle={settings.subtitle}
+                    font={settings.subtitleFont}
+                    color={settings.subtitleColor}
+                    onUpdate={(updates) =>
+                      onUpdate({
+                        ...(updates.subtitle !== undefined && {
+                          subtitle: updates.subtitle,
+                        }),
+                        ...(updates.font !== undefined && {
+                          subtitleFont: updates.font,
+                        }),
+                        ...(updates.color !== undefined && {
+                          subtitleColor: updates.color,
+                        }),
+                      })
+                    }
+                  />
+                </div>
               </AccordionContent>
             </AccordionItem>
 
@@ -461,7 +469,7 @@ export function HeroEditor({
                       Botão Principal
                     </legend>
                     <Input
-                      value={settings.primaryButton}
+                      value={settings.primaryButton || ""}
                       className="h-8 text-xs"
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         onUpdate({ primaryButton: e.target.value })
@@ -611,7 +619,7 @@ export function HeroEditor({
                       Botão Secundário
                     </legend>
                     <Input
-                      value={settings.secondaryButton}
+                      value={settings.secondaryButton || ""}
                       className="h-8 text-xs"
                       onChange={(e: ChangeEvent<HTMLInputElement>) =>
                         onUpdate({ secondaryButton: e.target.value })
@@ -777,10 +785,34 @@ export function HeroEditor({
               </AccordionTrigger>
               <AccordionContent className="pb-4 border-t border-border/50">
                 <BackgroundEditor
-                  settings={settings}
+                  settings={{
+                    bgType: settings.bgType,
+                    bgColor: settings.bgColor,
+                    bgImage: settings.bgImage,
+                    imageOpacity: settings.imageOpacity,
+                    overlayOpacity: settings.overlayOpacity,
+                    imageScale: settings.imageScale,
+                    imageX: settings.imageX,
+                    imageY: settings.imageY,
+                    appearance: settings.appearance,
+                  }}
                   onUpdate={(updates) => onUpdate({ ...updates })}
-                  sectionId="hero"
+                  section="hero"
+                  businessId={studio?.id || ""}
                 />
+
+                {/* Removendo SectionBackgroundEditor duplicado para evitar confusão */}
+                {/* 
+                <div className="mt-6 pt-6 border-t border-border/50">
+                  <SectionBackgroundEditor
+                    section="hero"
+                    businessId={studio?.id || ""}
+                    appearance={settings.appearance}
+                    onChange={(appearance) => onUpdate({ appearance })}
+                    title="Fundo Personalizado (B2)"
+                  />
+                </div>
+                */}
               </AccordionContent>
             </AccordionItem>
           </Accordion>

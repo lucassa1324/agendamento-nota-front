@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useStudio } from "@/context/studio-context";
 import type { BookingStepSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
@@ -35,6 +36,7 @@ export function BookingStepEditor({
   onSave,
   title,
 }: BookingStepEditorProps) {
+  const { studio } = useStudio();
   const handleSave = () => {
     if (onSave) onSave();
   };
@@ -103,7 +105,7 @@ export function BookingStepEditor({
               <AccordionContent className="pt-0 pb-4 space-y-4">
                 <div className="space-y-1.5">
                   <Input
-                    value={settings.title}
+                    value={settings.title || ""}
                     className="h-8 text-sm"
                     placeholder="Ex: Escolha o Serviço"
                     onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -130,7 +132,7 @@ export function BookingStepEditor({
               <AccordionContent className="pt-0 pb-4 space-y-4">
                 <div className="space-y-1.5">
                   <Input
-                    value={settings.subtitle}
+                    value={settings.subtitle || ""}
                     className="h-8 text-sm"
                     placeholder="Ex: Selecione o procedimento desejado"
                     onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -233,7 +235,22 @@ export function BookingStepEditor({
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-0 pb-4 space-y-4 border-t border-border/50 mt-2">
-                <BackgroundEditor settings={settings} onUpdate={onUpdate} />
+                <BackgroundEditor
+                  settings={{
+                    bgType: settings.bgType,
+                    bgColor: settings.bgColor,
+                    bgImage: settings.bgImage,
+                    imageOpacity: settings.imageOpacity,
+                    overlayOpacity: settings.overlayOpacity,
+                    imageScale: settings.imageScale,
+                    imageX: settings.imageX,
+                    imageY: settings.imageY,
+                    appearance: settings.appearance,
+                  }}
+                  onUpdate={onUpdate}
+                  section="booking-steps"
+                  businessId={studio?.id || ""}
+                />
               </AccordionContent>
             </AccordionItem>
 

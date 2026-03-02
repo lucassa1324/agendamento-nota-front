@@ -21,9 +21,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useStudio } from "@/context/studio-context";
 import type { CTASettings } from "@/lib/booking-data";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { SectionBackgroundEditor } from "../../components/SectionBackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -40,6 +42,7 @@ export function CTAEditor({
   onSave,
   hasChanges,
 }: CTAEditorProps) {
+  const { studio } = useStudio();
   if (!settings) return null;
 
   return (
@@ -130,7 +133,7 @@ export function CTAEditor({
                 Texto do Botão
               </legend>
               <Input
-                value={settings.buttonText}
+                value={settings.buttonText || ""}
                 onChange={(e) => onUpdate({ buttonText: e.target.value })}
                 className="h-8 text-xs"
               />
@@ -270,7 +273,10 @@ export function CTAEditor({
                 imageScale: settings.imageScale,
                 imageX: settings.imageX,
                 imageY: settings.imageY,
+                appearance: settings.appearance,
               }}
+              section="cta"
+              businessId={studio?.id || ""}
               onUpdate={(updates) =>
                 onUpdate({
                   ...(updates.bgType !== undefined && {
@@ -297,9 +303,22 @@ export function CTAEditor({
                   ...(updates.imageY !== undefined && {
                     imageY: updates.imageY,
                   }),
+                  ...(updates.appearance !== undefined && {
+                    appearance: updates.appearance,
+                  }),
                 })
               }
             />
+
+            <div className="mt-6 pt-6 border-t border-border/50">
+              <SectionBackgroundEditor
+                section="cta"
+                businessId={studio?.id || ""}
+                appearance={settings.appearance}
+                onChange={(appearance) => onUpdate({ appearance })}
+                title="Fundo Personalizado (B2)"
+              />
+            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
