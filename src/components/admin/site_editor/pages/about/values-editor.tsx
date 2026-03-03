@@ -56,7 +56,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useStudio } from "@/context/studio-context";
 import type { ValueItem, ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
@@ -96,6 +96,7 @@ const icons = [
 interface ValuesEditorProps {
   settings: ValuesSettings;
   onUpdate: (updates: Partial<ValuesSettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSave?: () => void;
   hasChanges?: boolean;
 }
@@ -103,6 +104,7 @@ interface ValuesEditorProps {
 export function ValuesEditor({
   settings,
   onUpdate,
+  onUpdateBackground,
   onSave: externalOnSave,
   hasChanges,
 }: ValuesEditorProps) {
@@ -460,7 +462,13 @@ export function ValuesEditor({
                 imageY: settings.imageY,
                 appearance: settings.appearance,
               }}
-              onUpdate={(updates) => onUpdate({ ...updates })}
+              onUpdate={(updates) => {
+                if (onUpdateBackground) {
+                  onUpdateBackground(updates, "values");
+                } else {
+                  onUpdate({ ...updates });
+                }
+              }}
               section="values"
               businessId={studio?.id || ""}
             />

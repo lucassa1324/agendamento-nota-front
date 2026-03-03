@@ -13,25 +13,25 @@ import { siteCustomizerService } from "@/lib/site-customizer-service";
 import { cn } from "@/lib/utils";
 
  
- interface BackgroundSettings {
-   bgType: "color" | "image";
-   bgColor: string;
-   bgImage: string;
-   imageOpacity: number;
-   overlayOpacity: number;
-   imageScale: number;
-   imageX: number;
-   imageY: number;
-   appearance?: {
-     backgroundImageUrl?: string;
-     overlay?: {
-       color: string;
-       opacity: number;
-     };
-   };
- }
- 
- interface BackgroundEditorProps {
+export interface BackgroundSettings {
+  bgType: "color" | "image";
+  bgColor: string;
+  bgImage: string;
+  imageOpacity: number;
+  overlayOpacity: number;
+  imageScale: number;
+  imageX: number;
+  imageY: number;
+  appearance?: {
+    backgroundImageUrl?: string;
+    overlay?: {
+      color: string;
+      opacity: number;
+    };
+  };
+}
+
+export interface BackgroundEditorProps {
    settings: BackgroundSettings;
    onUpdate: (updates: Partial<BackgroundSettings>) => void;
   sectionId?: string;
@@ -52,6 +52,14 @@ export function BackgroundEditor({
   // Normalização local: se bgImage estiver vazio mas appearance tiver a URL, usamos ela.
   // Isso resolve o problema da imagem sumir no editor se os campos estiverem dessincronizados.
   const currentBgImage = settings.appearance?.backgroundImageUrl || settings.bgImage || "";
+
+  if (section === "services") {
+    console.log(`[BackgroundEditor] Debug para 'services':`, {
+      bgImage: settings.bgImage,
+      appearanceUrl: settings.appearance?.backgroundImageUrl,
+      currentBgImage
+    });
+  }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     console.log(">>> [BackgroundEditor] EVENTO: Usuário clicou em 'Abrir' no seletor de arquivos.");

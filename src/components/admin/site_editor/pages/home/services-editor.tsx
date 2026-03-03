@@ -20,15 +20,15 @@ import {
 import { useStudio } from "@/context/studio-context";
 import type { ServicesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
-import { SectionBackgroundEditor } from "../../components/SectionBackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
 interface ServicesEditorProps {
   settings: ServicesSettings;
   onUpdate: (updates: Partial<ServicesSettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSave?: () => void;
   hasChanges?: boolean;
 }
@@ -36,6 +36,7 @@ interface ServicesEditorProps {
 export function ServicesEditor({
   settings,
   onUpdate,
+  onUpdateBackground,
   onSave: externalOnSave,
   hasChanges,
 }: ServicesEditorProps) {
@@ -492,20 +493,16 @@ export function ServicesEditor({
                 imageY: settings.imageY,
                 appearance: settings.appearance,
               }}
-              onUpdate={(updates) => onUpdate(updates)}
+              onUpdate={(updates) => {
+                if (onUpdateBackground) {
+                  onUpdateBackground(updates, "services");
+                } else {
+                  onUpdate(updates);
+                }
+              }}
               section="services"
               businessId={studio?.id || ""}
             />
-
-            <div className="mt-6 pt-6 border-t border-border/50">
-              <SectionBackgroundEditor
-                section="services"
-                businessId={studio?.id || ""}
-                appearance={settings.appearance}
-                onChange={(appearance) => onUpdate({ appearance })}
-                title="Fundo Personalizado (B2)"
-              />
-            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>

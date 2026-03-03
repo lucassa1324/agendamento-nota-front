@@ -79,6 +79,7 @@ export type EditorLocalDrafts = {
   bookingConfirmationSettings: BookingStepSettings;
   pageVisibility: Record<string, boolean>;
   visibleSections: Record<string, boolean>;
+  [key: string]: unknown;
 };
 
 export function useEditorLocal() {

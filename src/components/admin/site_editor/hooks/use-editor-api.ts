@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useState } from "react";
+import { type RefObject, useCallback, useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type {
   BookingStepSettings,
@@ -761,7 +761,7 @@ export function useEditorApi({
     [loadExternalConfig],
   );
 
-  const hasUnsavedGlobalChanges = useCallback(() => {
+  const hasUnsavedGlobalChanges = useMemo(() => {
     const heroChanged =
       JSON.stringify(lastApplied.lastAppliedHero) !==
       JSON.stringify(lastSaved.lastSavedHero);

@@ -35,26 +35,33 @@ import {
   defaultTestimonialsSettings,
   defaultValuesSettings,
 } from "@/lib/booking-data";
+import type { BackgroundSettings } from "../components/BackgroundEditor";
 
 export function useEditorState() {
   // Helper para sincronizar bgImage com appearance.backgroundImageUrl
   const syncBackground = useCallback(
-    <T extends { bgImage?: string; appearance?: AppearanceSettings }>(
+    <T extends { bgImage?: string; bgType?: string; appearance?: AppearanceSettings }>(
       prev: T,
       updates: Partial<T>,
     ): T => {
     const newState = { ...prev, ...updates };
     
-    // Se bgImage mudou, sincroniza appearance.backgroundImageUrl
+    // Se bgImage mudou, sincroniza appearance.backgroundImageUrl e garante bgType
     if (updates.bgImage !== undefined) {
       newState.appearance = {
         ...(newState.appearance || {}),
         backgroundImageUrl: updates.bgImage
       };
+      if (updates.bgImage && newState.bgType !== "image") {
+        newState.bgType = "image";
+      }
     } 
-    // Se appearance.backgroundImageUrl mudou, sincroniza bgImage
+    // Se appearance.backgroundImageUrl mudou, sincroniza bgImage e garante bgType
     else if (updates.appearance?.backgroundImageUrl !== undefined) {
       newState.bgImage = updates.appearance.backgroundImageUrl;
+      if (updates.appearance.backgroundImageUrl && newState.bgType !== "image") {
+        newState.bgType = "image";
+      }
     }
     
     return newState;
@@ -204,6 +211,8 @@ export function useEditorState() {
     Record<string, boolean>
   >({});
 
+  const [activeSectionId, setActiveSectionId] = useState<string>("hero");
+
   const handleUpdateHero = useCallback((updates: Partial<HeroSettings>) => {
     console.log(">>> [useEditorState] handleUpdateHero chamado com:", updates);
     setHeroSettings((prev: HeroSettings) => {
@@ -327,6 +336,55 @@ export function useEditorState() {
       };
     });
   }, []);
+
+  const handleUpdateBackground = useCallback(
+    (updates: Partial<BackgroundSettings>, sectionId?: string) => {
+      const targetSectionId = sectionId || activeSectionId;
+      console.log(`>>> [useEditorState] handleUpdateBackground para seção: ${targetSectionId}`, updates);
+      
+      const updateFnMap: Record<string, (u: { appearance?: AppearanceSettings }) => void> = {
+        hero: handleUpdateHero as (u: { appearance?: AppearanceSettings }) => void,
+        "about-hero": handleUpdateAboutHero as (u: { appearance?: AppearanceSettings }) => void,
+        story: handleUpdateStory as (u: { appearance?: AppearanceSettings }) => void,
+        team: handleUpdateTeam as (u: { appearance?: AppearanceSettings }) => void,
+        testimonials: handleUpdateTestimonials as (u: { appearance?: AppearanceSettings }) => void,
+        services: handleUpdateServices as (u: { appearance?: AppearanceSettings }) => void,
+        values: handleUpdateValues as (u: { appearance?: AppearanceSettings }) => void,
+        "gallery-preview": handleUpdateGallery as (u: { appearance?: AppearanceSettings }) => void,
+        "gallery-grid": handleUpdateGallery as (u: { appearance?: AppearanceSettings }) => void,
+        cta: handleUpdateCTA as (u: { appearance?: AppearanceSettings }) => void,
+        "booking-service": handleUpdateBookingService as (u: { appearance?: AppearanceSettings }) => void,
+        "booking-date": handleUpdateBookingDate as (u: { appearance?: AppearanceSettings }) => void,
+        "booking-time": handleUpdateBookingTime as (u: { appearance?: AppearanceSettings }) => void,
+        "booking-form": handleUpdateBookingForm as (u: { appearance?: AppearanceSettings }) => void,
+        "booking-confirmation": handleUpdateBookingConfirmation as (u: { appearance?: AppearanceSettings }) => void,
+      };
+
+      const updateFn = updateFnMap[targetSectionId];
+      if (updateFn) {
+        updateFn({ appearance: updates as AppearanceSettings });
+      } else {
+        console.warn(`>>> [useEditorState] Nenhuma função de atualização encontrada para a seção: ${targetSectionId}`);
+      }
+    },
+    [
+      activeSectionId,
+      handleUpdateHero,
+      handleUpdateAboutHero,
+      handleUpdateStory,
+      handleUpdateTeam,
+      handleUpdateTestimonials,
+      handleUpdateServices,
+      handleUpdateValues,
+      handleUpdateGallery,
+      handleUpdateCTA,
+      handleUpdateBookingService,
+      handleUpdateBookingDate,
+      handleUpdateBookingTime,
+      handleUpdateBookingForm,
+      handleUpdateBookingConfirmation,
+    ],
+  );
 
   return {
     heroSettings,
@@ -465,5 +523,8 @@ export function useEditorState() {
     handleUpdateBookingConfirmation,
     handlePageVisibilityChange,
     handleSectionVisibilityToggle,
+    handleUpdateBackground,
+    activeSectionId,
+    setActiveSectionId,
   };
 }

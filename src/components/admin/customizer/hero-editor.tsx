@@ -2,7 +2,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStudio } from "@/context/studio-context";
-import { BackgroundEditor } from "../site_editor/components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../site_editor/components/BackgroundEditor";
 import { SectionSubtitleEditor } from "../site_editor/components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../site_editor/components/SectionTitleEditor";
 
@@ -41,12 +41,13 @@ export interface HeroEditorProps {
     [key: string]: unknown;
   };
   onUpdate: (updates: Partial<HeroEditorProps["settings"]>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onHighlight?: (sectionId: string) => void;
   hasChanges?: boolean;
   onSave?: () => void;
 }
 
-export function HeroEditor({ settings, onUpdate }: HeroEditorProps) {
+export function HeroEditor({ settings, onUpdate, onUpdateBackground }: HeroEditorProps) {
   const { studio } = useStudio();
   // Helper to ensure updates are propagated correctly
   const handleUpdate = (updates: Partial<HeroEditorProps["settings"]>) => {
@@ -100,7 +101,13 @@ export function HeroEditor({ settings, onUpdate }: HeroEditorProps) {
             }}
             section="hero"
             businessId={studio?.id || ""}
-            onUpdate={(updates) => handleUpdate({ ...updates })}
+            onUpdate={(updates) => {
+              if (onUpdateBackground) {
+                onUpdateBackground(updates);
+              } else {
+                handleUpdate(updates);
+              }
+            }}
           />
          </TabsContent>
       </Tabs>

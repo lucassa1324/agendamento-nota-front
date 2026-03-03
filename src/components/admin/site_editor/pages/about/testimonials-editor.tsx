@@ -31,7 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useStudio } from "@/context/studio-context";
 import type { Testimonial, TestimonialsSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { ImageUploader } from "../../components/ImageUploader";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
@@ -40,6 +40,7 @@ import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 interface TestimonialsEditorProps {
   settings: TestimonialsSettings;
   onUpdate: (updates: Partial<TestimonialsSettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSave?: () => void;
   hasChanges?: boolean;
 }
@@ -47,6 +48,7 @@ interface TestimonialsEditorProps {
 export function TestimonialsEditor({
   settings,
   onUpdate,
+  onUpdateBackground,
   onSave: externalOnSave,
   hasChanges,
 }: TestimonialsEditorProps) {
@@ -184,7 +186,13 @@ export function TestimonialsEditor({
                 imageY: settings.imageY,
                 appearance: settings.appearance,
               }}
-              onUpdate={(updates) => onUpdate({ ...updates })}
+              onUpdate={(updates) => {
+                if (onUpdateBackground) {
+                  onUpdateBackground(updates, "testimonials");
+                } else {
+                  onUpdate({ ...updates });
+                }
+              }}
               section="testimonials"
               businessId={studio?.id || ""}
             />

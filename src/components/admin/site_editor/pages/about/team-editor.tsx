@@ -30,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useStudio } from "@/context/studio-context";
 import type { TeamMember, TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { ImageUploader } from "../../components/ImageUploader";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
@@ -39,6 +39,7 @@ import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 interface TeamEditorProps {
   settings: TeamSettings;
   onUpdate: (updates: Partial<TeamSettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSave?: () => void;
   hasChanges?: boolean;
 }
@@ -46,6 +47,7 @@ interface TeamEditorProps {
 export function TeamEditor({
   settings,
   onUpdate,
+  onUpdateBackground,
   onSave: externalOnSave,
   hasChanges,
 }: TeamEditorProps) {
@@ -181,7 +183,13 @@ export function TeamEditor({
                 imageY: settings.imageY,
                 appearance: settings.appearance,
               }}
-              onUpdate={(updates) => onUpdate({ ...updates })}
+              onUpdate={(updates) => {
+                if (onUpdateBackground) {
+                  onUpdateBackground(updates, "team");
+                } else {
+                  onUpdate({ ...updates });
+                }
+              }}
               section="team"
               businessId={studio?.id || ""}
             />

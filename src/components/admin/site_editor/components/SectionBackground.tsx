@@ -37,9 +37,10 @@ export function SectionBackground({
 
   const bgImage = settings.appearance?.backgroundImageUrl || settings.bgImage || defaultImage;
 
-  // Se houver uma imagem de fundo na aparência, mas o tipo não estiver definido como "color",
-  // assumimos que deve mostrar a imagem.
-  const effectiveBgType = settings.bgType || (settings.appearance?.backgroundImageUrl ? "image" : undefined);
+  // Se houver uma imagem de fundo, forçamos o tipo para "image" para garantir prioridade visual.
+  // Caso contrário, usamos o tipo definido ou o padrão baseado no defaultImage.
+  const hasValidImage = !!(settings.appearance?.backgroundImageUrl || settings.bgImage);
+  const effectiveBgType = hasValidImage ? "image" : (settings.bgType || (defaultImage ? "image" : "color"));
 
   // Reset error when image or type changes
   const [prevKey, setPrevKey] = useState(`${bgImage}-${effectiveBgType}`);
@@ -63,7 +64,7 @@ export function SectionBackground({
         backgroundColor:
           effectiveBgType === "color"
             ? settings.bgColor || "var(--background)"
-            : "var(--background)",
+            : "transparent",
       }}
     >
       {/* Background Color Layer */}

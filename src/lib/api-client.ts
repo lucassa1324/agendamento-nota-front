@@ -10,8 +10,11 @@ export async function customFetch(url: string, options: RequestInit = {}) {
   // Construir URL completa se for relativa
   let fullUrl = url;
   if (!url.startsWith("http") && !url.startsWith("//")) {
-    // Se a URL já começar com API_BASE_URL (ex: /api-proxy/...), não adiciona de novo
-    if (API_BASE_URL && !url.startsWith(API_BASE_URL)) {
+    // Se a URL já começar com o prefixo do proxy (ex: /api-proxy/...), não adiciona API_BASE_URL novamente
+    const proxyPrefix = "/api-proxy";
+    const relativeProxyPrefix = "api-proxy";
+    
+    if (API_BASE_URL && !url.startsWith(API_BASE_URL) && !url.startsWith(proxyPrefix) && !url.startsWith(relativeProxyPrefix)) {
       // Garantir que não duplique a barra
       const baseUrl = API_BASE_URL.endsWith("/")
         ? API_BASE_URL.slice(0, -1)

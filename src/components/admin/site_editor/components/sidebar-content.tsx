@@ -38,11 +38,13 @@ import { GalleryEditor } from "../pages/home/gallery-editor";
 import { ServicesEditor } from "../pages/home/services-editor";
 import { ValuesEditor } from "../pages/home/values-editor";
 import { SidebarNav } from "../sidebar-nav";
+import type { BackgroundSettings } from "./BackgroundEditor";
 import type { PageItem, SectionItem } from "./editor-constants";
 
 interface SidebarContentProps {
   activeSection: string | null;
   activeSectionData: SectionItem | null;
+  activePageData?: PageItem | null;
   setActiveSection: (id: string | null) => void;
   resetSettings: () => void;
   fontSettings: FontSettings;
@@ -81,6 +83,7 @@ interface SidebarContentProps {
   onUpdateBookingTime: (updates: Partial<BookingStepSettings>) => void;
   onUpdateBookingForm: (updates: Partial<BookingStepSettings>) => void;
   onUpdateBookingConfirmation: (updates: Partial<BookingStepSettings>) => void;
+  onUpdateBackground: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSaveFont: () => void;
   onSaveColors: () => void;
   onSaveHero: () => void;
@@ -139,6 +142,7 @@ export const SidebarContent = memo(
   ({
     activeSection,
     activeSectionData,
+    activePageData,
     setActiveSection,
     resetSettings,
     fontSettings,
@@ -177,6 +181,7 @@ export const SidebarContent = memo(
     onUpdateBookingTime,
     onUpdateBookingForm,
     onUpdateBookingConfirmation,
+    onUpdateBackground,
     onSaveFont,
     onSaveColors,
     onSaveHero,
@@ -296,10 +301,16 @@ export const SidebarContent = memo(
                 </Button>
                 <div>
                   <h3 className="text-[11px] sm:text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
-                    {activeSectionData?.name}
+                    {activeSectionData?.name || "Seção"}
                   </h3>
-                  <p className="text-[8px] sm:text-[9px] xl:text-[10px] text-muted-foreground">
-                    Editando seção
+                  <p className="text-[8px] sm:text-[9px] xl:text-[10px] text-muted-foreground flex items-center gap-1">
+                    {activePageData?.label && (
+                      <>
+                        <span className="truncate max-w-15 sm:max-w-none">{activePageData.label}</span>
+                        <span className="opacity-50">/</span>
+                      </>
+                    )}
+                    <span>Editando</span>
                   </p>
                 </div>
               </div>
@@ -343,6 +354,7 @@ export const SidebarContent = memo(
                   <HeroEditor
                     settings={heroSettings}
                     onUpdate={onUpdateHero}
+                    onUpdateBackground={onUpdateBackground}
                     onHighlight={onHighlight}
                     hasChanges={hasHeroChanges}
                     onSave={onSaveHero}
@@ -352,6 +364,7 @@ export const SidebarContent = memo(
                   <HeroEditor
                     settings={aboutHeroSettings}
                     onUpdate={onUpdateAboutHero}
+                    onUpdateBackground={(updates) => onUpdateBackground(updates, "about-hero")}
                     onHighlight={onHighlight}
                     hasChanges={hasAboutHeroChanges}
                     onSave={onSaveAboutHero}
@@ -361,6 +374,7 @@ export const SidebarContent = memo(
                   <HistoryEditor
                     settings={storySettings}
                     onUpdate={onUpdateStory}
+                    onUpdateBackground={onUpdateBackground}
                     hasChanges={hasStoryChanges}
                     onSave={onSaveStory}
                   />
@@ -369,6 +383,7 @@ export const SidebarContent = memo(
                   <ServicesEditor
                     settings={servicesSettings}
                     onUpdate={onUpdateServices}
+                    onUpdateBackground={onUpdateBackground}
                     hasChanges={hasServicesChanges}
                     onSave={onSaveServices}
                   />
@@ -378,6 +393,7 @@ export const SidebarContent = memo(
                     <AboutValuesEditor
                       settings={valuesSettings}
                       onUpdate={onUpdateValues}
+                      onUpdateBackground={onUpdateBackground}
                       onSave={onSaveValues}
                       hasChanges={hasValuesChanges}
                     />
@@ -385,6 +401,7 @@ export const SidebarContent = memo(
                     <ValuesEditor
                       settings={valuesSettings}
                       onUpdate={onUpdateValues}
+                      onUpdateBackground={onUpdateBackground}
                       onSave={onSaveValues}
                       hasChanges={hasValuesChanges}
                     />
@@ -394,8 +411,9 @@ export const SidebarContent = memo(
                   <TeamEditor
                     settings={teamSettings}
                     onUpdate={onUpdateTeam}
-                    onSave={onSaveTeam}
+                    onUpdateBackground={onUpdateBackground}
                     hasChanges={hasTeamChanges}
+                    onSave={onSaveTeam}
                   />
                 )}
 
@@ -403,6 +421,7 @@ export const SidebarContent = memo(
                   <TestimonialsEditor
                     settings={testimonialsSettings}
                     onUpdate={onUpdateTestimonials}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveTestimonials}
                     hasChanges={hasTestimonialsChanges}
                   />
@@ -413,6 +432,7 @@ export const SidebarContent = memo(
                   <GalleryEditor
                     settings={gallerySettings}
                     onUpdate={onUpdateGallery}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveGallery}
                     hasChanges={hasGalleryChanges}
                   />
@@ -422,8 +442,9 @@ export const SidebarContent = memo(
                   <CTAEditor
                     settings={ctaSettings}
                     onUpdate={onUpdateCTA}
-                    onSave={onSaveCTA}
+                    onUpdateBackground={onUpdateBackground}
                     hasChanges={hasCTAChanges}
+                    onSave={onSaveCTA}
                   />
                 )}
 
@@ -432,6 +453,7 @@ export const SidebarContent = memo(
                     title="Passo 1: Serviços"
                     settings={bookingServiceSettings}
                     onUpdate={onUpdateBookingService}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveBookingService}
                     hasChanges={hasBookingServiceChanges}
                     onHighlight={onHighlight}
@@ -443,6 +465,7 @@ export const SidebarContent = memo(
                     title="Passo 2: Data"
                     settings={bookingDateSettings}
                     onUpdate={onUpdateBookingDate}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveBookingDate}
                     hasChanges={hasBookingDateChanges}
                     onHighlight={onHighlight}
@@ -454,6 +477,7 @@ export const SidebarContent = memo(
                     title="Passo 3: Horário"
                     settings={bookingTimeSettings}
                     onUpdate={onUpdateBookingTime}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveBookingTime}
                     hasChanges={hasBookingTimeChanges}
                     onHighlight={onHighlight}
@@ -465,6 +489,7 @@ export const SidebarContent = memo(
                     title="Passo 4: Dados do Cliente"
                     settings={bookingFormSettings}
                     onUpdate={onUpdateBookingForm}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveBookingForm}
                     hasChanges={hasBookingFormChanges}
                     onHighlight={onHighlight}
@@ -476,6 +501,7 @@ export const SidebarContent = memo(
                     title="Passo 5: Confirmação"
                     settings={bookingConfirmationSettings}
                     onUpdate={onUpdateBookingConfirmation}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveBookingConfirmation}
                     hasChanges={hasBookingConfirmationChanges}
                     onHighlight={onHighlight}

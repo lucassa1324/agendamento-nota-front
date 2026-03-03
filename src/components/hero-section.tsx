@@ -203,11 +203,12 @@ export function HeroSection() {
             "ring-8 ring-inset ring-primary/30",
         )}
         style={
-          heroBackgroundUrl
+          heroBackgroundUrl || customStyles.bgType === "image"
             ? {
-                backgroundImage: `url(${heroBackgroundUrl})`,
+                backgroundImage: heroBackgroundUrl ? `url(${heroBackgroundUrl})` : undefined,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
+                backgroundColor: "transparent", // Força transparente se for modo imagem
               }
             : undefined
         }

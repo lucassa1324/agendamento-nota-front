@@ -26,7 +26,7 @@ import {
 import { useStudio } from "@/context/studio-context";
 import type { GallerySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { SectionBackgroundEditor } from "../../components/SectionBackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
@@ -35,6 +35,7 @@ import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 interface GalleryEditorProps {
   settings: GallerySettings;
   onUpdate: (updates: Partial<GallerySettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSave?: () => void;
   hasChanges?: boolean;
 }
@@ -42,6 +43,7 @@ interface GalleryEditorProps {
 export function GalleryEditor({
   settings,
   onUpdate,
+  onUpdateBackground,
   onSave,
   hasChanges,
 }: GalleryEditorProps) {
@@ -325,7 +327,13 @@ export function GalleryEditor({
                 imageY: settings.imageY,
                 appearance: settings.appearance,
               }}
-              onUpdate={(updates) => onUpdate(updates)}
+              onUpdate={(updates) => {
+                if (onUpdateBackground) {
+                  onUpdateBackground(updates, "gallery");
+                } else {
+                  onUpdate(updates);
+                }
+              }}
               section="gallery"
               businessId={studio?.id || ""}
             />

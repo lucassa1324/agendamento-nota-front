@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useStudio } from "@/context/studio-context";
 import type { CTASettings } from "@/lib/booking-data";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { SectionBackgroundEditor } from "../../components/SectionBackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
@@ -32,6 +32,7 @@ import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 interface CTAEditorProps {
   settings: CTASettings;
   onUpdate: (updates: Partial<CTASettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSave?: () => void;
   hasChanges?: boolean;
 }
@@ -39,6 +40,7 @@ interface CTAEditorProps {
 export function CTAEditor({
   settings,
   onUpdate,
+  onUpdateBackground,
   onSave,
   hasChanges,
 }: CTAEditorProps) {
@@ -275,39 +277,15 @@ export function CTAEditor({
                 imageY: settings.imageY,
                 appearance: settings.appearance,
               }}
+              onUpdate={(updates) => {
+                if (onUpdateBackground) {
+                  onUpdateBackground(updates, "cta");
+                } else {
+                  onUpdate(updates);
+                }
+              }}
               section="cta"
               businessId={studio?.id || ""}
-              onUpdate={(updates) =>
-                onUpdate({
-                  ...(updates.bgType !== undefined && {
-                    bgType: updates.bgType,
-                  }),
-                  ...(updates.bgColor !== undefined && {
-                    bgColor: updates.bgColor,
-                  }),
-                  ...(updates.bgImage !== undefined && {
-                    bgImage: updates.bgImage,
-                  }),
-                  ...(updates.imageOpacity !== undefined && {
-                    imageOpacity: updates.imageOpacity,
-                  }),
-                  ...(updates.overlayOpacity !== undefined && {
-                    overlayOpacity: updates.overlayOpacity,
-                  }),
-                  ...(updates.imageScale !== undefined && {
-                    imageScale: updates.imageScale,
-                  }),
-                  ...(updates.imageX !== undefined && {
-                    imageX: updates.imageX,
-                  }),
-                  ...(updates.imageY !== undefined && {
-                    imageY: updates.imageY,
-                  }),
-                  ...(updates.appearance !== undefined && {
-                    appearance: updates.appearance,
-                  }),
-                })
-              }
             />
 
             <div className="mt-6 pt-6 border-t border-border/50">

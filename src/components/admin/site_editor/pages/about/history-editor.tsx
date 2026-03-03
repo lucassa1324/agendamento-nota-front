@@ -2,7 +2,7 @@
 
 import { ImageIcon, Image as ImageIcon2, RotateCcw, Type } from "lucide-react";
 import { useEffect, useState } from "react";
-import { BackgroundEditor } from "@/components/admin/site_editor/components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "@/components/admin/site_editor/components/BackgroundEditor";
 import { ImageUploader } from "@/components/admin/site_editor/components/ImageUploader";
 import { SectionBackgroundEditor } from "@/components/admin/site_editor/components/SectionBackgroundEditor";
 import {
@@ -34,6 +34,7 @@ import { EDITOR_FONTS } from "../../components/editor-constants";
 interface HistoryEditorProps {
   settings?: StorySettings;
   onUpdate?: (updates: Partial<StorySettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSave?: () => void;
   hasChanges?: boolean;
 }
@@ -41,6 +42,7 @@ interface HistoryEditorProps {
 export function HistoryEditor({
   settings: propsSettings,
   onUpdate: propsOnUpdate,
+  onUpdateBackground,
   onSave: externalOnSave,
   hasChanges: externalHasChanges,
 }: HistoryEditorProps) {
@@ -344,7 +346,13 @@ export function HistoryEditor({
                 imageY: settings.imageY,
                 appearance: settings.appearance,
               }}
-              onUpdate={onUpdate}
+              onUpdate={(updates) => {
+                if (onUpdateBackground) {
+                  onUpdateBackground(updates, "story");
+                } else {
+                  onUpdate(updates);
+                }
+              }}
               section="story"
               businessId={studio?.id || ""}
             />

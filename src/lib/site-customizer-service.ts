@@ -34,7 +34,25 @@ const DEFAULT_SITE_CONFIG: SiteConfigData = {
 };
 
 class SiteCustomizerService {
-  private baseUrl = `${API_BASE_URL}/api/settings/customization`;
+  private buildUrl(path: string) {
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+    if (typeof window !== "undefined" && API_BASE_URL.startsWith("http")) {
+      try {
+        const apiOrigin = new URL(API_BASE_URL).origin;
+        if (apiOrigin !== window.location.origin) {
+          return `/api-proxy${normalizedPath}`;
+        }
+      } catch {
+        return `/api-proxy${normalizedPath}`;
+      }
+    }
+
+    const base = API_BASE_URL.endsWith("/")
+      ? API_BASE_URL.slice(0, -1)
+      : API_BASE_URL;
+    return `${base}${normalizedPath}`;
+  }
 
   private async handleResponse<T>(response: Response): Promise<T | null> {
     if (response.status === 401) {
@@ -58,7 +76,7 @@ class SiteCustomizerService {
 
     try {
       const response = await customFetch(
-        `${this.baseUrl}/${companyId}?t=${timestamp}`,
+        `${this.buildUrl("/api/settings/customization")}/${companyId}?t=${timestamp}`,
         {
           method: "GET",
           headers: {
@@ -97,11 +115,14 @@ class SiteCustomizerService {
        `[CUSTOMIZER] Salvando configurações em: /api/settings/customization/${companyId}`,
      );
      console.log("Payload Final:", JSON.stringify(data, null, 2));
-     const response = await customFetch(`${this.baseUrl}/${companyId}`, {
+     const response = await customFetch(
+       `${this.buildUrl("/api/settings/customization")}/${companyId}`,
+       {
        method: "PATCH", // Use PATCH for partial updates
        body: JSON.stringify(data),
        credentials: "include",
-     });
+      },
+     );
  
      await this.handleResponse<void>(response);
      if (response.ok) {
@@ -124,7 +145,7 @@ class SiteCustomizerService {
     formData.append("businessId", businessId);
 
     const response = await customFetch(
-      `${API_BASE_URL}/api/settings/background-image`,
+      this.buildUrl("/api/settings/background-image"),
       {
         method: "POST",
         body: formData,
@@ -160,7 +181,7 @@ class SiteCustomizerService {
 
     try {
       const response = await customFetch(
-        `${API_BASE_URL}/api/settings/background-image`,
+        this.buildUrl("/api/settings/background-image"),
         {
           method: "DELETE",
           body: JSON.stringify({

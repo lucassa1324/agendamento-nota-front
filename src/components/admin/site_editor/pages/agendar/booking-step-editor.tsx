@@ -15,13 +15,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStudio } from "@/context/studio-context";
 import type { BookingStepSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
 interface BookingStepEditorProps {
   settings: BookingStepSettings;
   onUpdate: (updates: Partial<BookingStepSettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onHighlight?: (sectionId: string) => void;
   hasChanges?: boolean;
   onSave?: () => void;
@@ -31,6 +32,7 @@ interface BookingStepEditorProps {
 export function BookingStepEditor({
   settings,
   onUpdate,
+  onUpdateBackground,
   onHighlight,
   hasChanges,
   onSave,
@@ -247,8 +249,14 @@ export function BookingStepEditor({
                     imageY: settings.imageY,
                     appearance: settings.appearance,
                   }}
-                  onUpdate={onUpdate}
-                  section="booking-steps"
+                  onUpdate={(updates) => {
+                    if (onUpdateBackground) {
+                      onUpdateBackground(updates, activeSection || "booking-service");
+                    } else {
+                      onUpdate(updates);
+                    }
+                  }}
+                  section={activeSection || "booking-service"}
                   businessId={studio?.id || ""}
                 />
               </AccordionContent>

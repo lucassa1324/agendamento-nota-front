@@ -91,6 +91,7 @@ export function SiteCustomizer() {
     handleUpdateBookingTime,
     handleUpdateBookingForm,
     handleUpdateBookingConfirmation,
+    handleUpdateBackground,
     handlePageVisibilityChange,
     handleSectionVisibilityToggle,
     handleApplyHero,
@@ -138,6 +139,7 @@ export function SiteCustomizer() {
     fetchCustomization,
     isFetching: isConfigFetching,
     isSaving,
+    setActiveSectionId,
   } = useSiteEditor(iframeRef);
 
   // Use a ref to store the latest fetchCustomization function to break the dependency loop
@@ -304,6 +306,15 @@ export function SiteCustomizer() {
     previewUrl,
   } = useNavigationManager(iframeRef, slug);
 
+  // Sincroniza a seção ativa do useNavigationManager com o useEditorState
+  useEffect(() => {
+    if (activeSection) {
+      setActiveSectionId(activeSection);
+    } else {
+      setActiveSectionId("hero"); // Default para Hero se nada selecionado
+    }
+  }, [activeSection, setActiveSectionId]);
+
   const sidebarProps = {
     activeSection,
     activeSectionData: activeSectionData || null,
@@ -345,6 +356,7 @@ export function SiteCustomizer() {
     onUpdateBookingTime: handleUpdateBookingTime,
     onUpdateBookingForm: handleUpdateBookingForm,
     onUpdateBookingConfirmation: handleUpdateBookingConfirmation,
+    onUpdateBackground: handleUpdateBackground,
     onSaveFont: handleApplyTypography,
     onSaveColors: handleApplyColors,
     onSaveHero: handleApplyHero,
@@ -383,6 +395,7 @@ export function SiteCustomizer() {
     hasBookingConfirmationChanges,
     onHighlight: handleHighlight,
     activePage,
+    activePageData: activePageData || null,
     expandedPages,
     visibleSections,
     onPageToggle: togglePageExpansion,
