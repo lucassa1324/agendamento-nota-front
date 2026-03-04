@@ -26,7 +26,7 @@ export function SessionWrapper({
 }: SessionWrapperProps) {
   // Se não houver configurações de aparência (background ou overlay), 
   // renderizamos os filhos diretamente sem o wrapper extra.
-  const hasBackground = !!appearance?.backgroundImageUrl;
+  const hasBackground = !!appearance?.backgroundImageUrl && appearance.backgroundImageUrl.trim() !== "";
   const hasOverlay = !!(appearance?.overlay && appearance.overlay.opacity > 0);
 
   if (!hasBackground && !hasOverlay) {
@@ -34,14 +34,12 @@ export function SessionWrapper({
   }
 
   const sectionStyle: CSSProperties = {
-    backgroundImage: hasBackground
-      ? `url(${appearance.backgroundImageUrl})`
-      : "none",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
     position: "relative",
-  };
+    // Se a URL estiver vazia ou for desativada, force 'none' 
+    backgroundImage: appearance?.backgroundImageUrl ? `url(${appearance.backgroundImageUrl})` : "none",
+    backgroundColor: "transparent",
+  }; 
+
 
   const overlayStyle: CSSProperties = {
     backgroundColor: appearance?.overlay?.color || "transparent",

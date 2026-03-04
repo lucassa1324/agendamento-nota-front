@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useStudio } from "@/context/studio-context";
 import type { CTASettings } from "@/lib/booking-data";
+import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { SectionBackgroundEditor } from "../../components/SectionBackgroundEditor";
@@ -301,18 +302,20 @@ export function CTAEditor({
         </AccordionItem>
       </Accordion>
 
-      {/* Botão de Aplicar (Sincronizar com o Preview) */}
-      <div className="pt-4 border-t border-border/50">
+      <div className="pt-2">
         <Button
-          onClick={onSave}
+          type="button"
           disabled={!hasChanges}
-          className="w-full bg-primary/10 hover:bg-primary/20 text-primary border-none h-10 font-medium"
+          onClick={onSave}
+          className={cn(
+            "w-full h-11 text-sm font-bold transition-all duration-300",
+            hasChanges
+              ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+              : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
+          )}
         >
-          {hasChanges ? "Aplicar Alterações" : "Sem Alterações"}
+          {hasChanges ? "Salvar Alterações" : "Nenhuma alteração"}
         </Button>
-        <p className="text-[10px] text-center text-muted-foreground mt-2">
-          As alterações serão refletidas no preview lateral
-        </p>
       </div>
     </div>
   );

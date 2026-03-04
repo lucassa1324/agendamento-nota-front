@@ -237,7 +237,7 @@ export function TypographyEditor({
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
           }`}
         >
-          {hasChanges ? "Aplicar Fontes" : "Nenhuma alteração"}
+          {hasChanges ? "Salvar Alterações" : "Nenhuma alteração"}
         </Button>
       </div>
     </div>

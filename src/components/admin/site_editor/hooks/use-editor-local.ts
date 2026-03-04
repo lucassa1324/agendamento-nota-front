@@ -169,11 +169,17 @@ export function useEditorLocal() {
     console.log(">>> [useEditorLocal] Rascunhos locais limpos.");
   }, []);
 
+  const forceClearSectionDraft = useCallback((key: string) => {
+    localStorage.removeItem(getStorageKey(key));
+    console.log(">>> [LOCAL_STORAGE] Limpeza forçada executada para:", key);
+  }, []);
+
   return {
     hasLocalDraft,
     loadLocalDrafts,
     saveLocalDrafts,
     clearLocalDrafts,
+    forceClearSectionDraft,
     saveHeroSettings,
     saveAboutHeroSettings,
     saveStorySettings,

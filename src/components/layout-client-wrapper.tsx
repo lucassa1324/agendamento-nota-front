@@ -65,7 +65,7 @@ export function LayoutClientWrapper({
         setFooterSettings(event.data.settings);
       }
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
-        setVisibleSections(event.data.sections);
+        setVisibleSections(event.data.settings || {});
       }
       if (event.data?.type === "SET_ISOLATED_SECTION") {
         requestAnimationFrame(() => {
@@ -90,6 +90,7 @@ export function LayoutClientWrapper({
 
   const isSectionVisible = (id: string) => {
     if (isolatedSection) return isolatedSection === id || isGlobalEdit;
+    if (!visibleSections) return true;
     return visibleSections[id] !== false;
   };
 

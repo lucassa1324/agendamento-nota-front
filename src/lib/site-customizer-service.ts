@@ -125,10 +125,21 @@ class SiteCustomizerService {
      );
  
      await this.handleResponse<void>(response);
-     if (response.ok) {
-       console.log(">>> [FRONT_SAVE_SUCCESS] Banco atualizado.");
-     }
-   }
+    if (response.ok) {
+      console.log(">>> [FRONT_SAVE_SUCCESS] Banco atualizado.");
+
+      // Dispara um sinal de que o site mudou permanentemente
+      if (typeof window !== "undefined") {
+        console.log(
+          ">>> [PUBLISH_EVENT] Disparando evento 'site-published-success' e limpando cache físico.",
+        );
+        window.dispatchEvent(new Event("site-published-success"));
+        // Limpa o cache físico para garantir
+        localStorage.removeItem("studio_data");
+        localStorage.removeItem("studio_last_slug");
+      }
+    }
+  }
  
    async uploadBackgroundImage(
     file: File | Blob,

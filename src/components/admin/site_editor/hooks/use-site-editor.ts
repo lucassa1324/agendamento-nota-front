@@ -87,6 +87,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     state,
     local,
     toast,
+    businessId: studio?.id || "",
   });
 
   const settings = {

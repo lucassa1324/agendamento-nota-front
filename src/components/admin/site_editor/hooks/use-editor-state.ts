@@ -46,22 +46,34 @@ export function useEditorState() {
     ): T => {
     const newState = { ...prev, ...updates };
     
-    // Se bgImage mudou, sincroniza appearance.backgroundImageUrl e garante bgType
-    if (updates.bgImage !== undefined) {
+    // Se bgType mudou para "color", limpa a imagem de forma absoluta
+    if (updates.bgType === "color") { 
+      newState.bgImage = ""; 
+      if (newState.appearance) { 
+        newState.appearance.backgroundImageUrl = ""; 
+      } 
+    }
+    // Se bgImage foi definida, garante bgType como image
+    else if (updates.bgImage) {
+      newState.bgType = "image";
       newState.appearance = {
         ...(newState.appearance || {}),
         backgroundImageUrl: updates.bgImage
       };
-      if (updates.bgImage && newState.bgType !== "image") {
-        newState.bgType = "image";
-      }
-    } 
-    // Se appearance.backgroundImageUrl mudou, sincroniza bgImage e garante bgType
-    else if (updates.appearance?.backgroundImageUrl !== undefined) {
+    }
+    // Se appearance.backgroundImageUrl foi definida, sincroniza bgImage e garante bgType
+    else if (updates.appearance?.backgroundImageUrl) {
       newState.bgImage = updates.appearance.backgroundImageUrl;
-      if (updates.appearance.backgroundImageUrl && newState.bgType !== "image") {
-        newState.bgType = "image";
-      }
+      newState.bgType = "image";
+    }
+    // Se bgImage ou backgroundImageUrl foram limpos explicitamente, volta para color
+    else if (updates.bgImage === "" || updates.appearance?.backgroundImageUrl === "") {
+      newState.bgType = "color";
+      newState.bgImage = "";
+      newState.appearance = {
+        ...(newState.appearance || {}),
+        backgroundImageUrl: ""
+      };
     }
     
     return newState;
@@ -342,27 +354,27 @@ export function useEditorState() {
       const targetSectionId = sectionId || activeSectionId;
       console.log(`>>> [useEditorState] handleUpdateBackground para seção: ${targetSectionId}`, updates);
       
-      const updateFnMap: Record<string, (u: { appearance?: AppearanceSettings }) => void> = {
-        hero: handleUpdateHero as (u: { appearance?: AppearanceSettings }) => void,
-        "about-hero": handleUpdateAboutHero as (u: { appearance?: AppearanceSettings }) => void,
-        story: handleUpdateStory as (u: { appearance?: AppearanceSettings }) => void,
-        team: handleUpdateTeam as (u: { appearance?: AppearanceSettings }) => void,
-        testimonials: handleUpdateTestimonials as (u: { appearance?: AppearanceSettings }) => void,
-        services: handleUpdateServices as (u: { appearance?: AppearanceSettings }) => void,
-        values: handleUpdateValues as (u: { appearance?: AppearanceSettings }) => void,
-        "gallery-preview": handleUpdateGallery as (u: { appearance?: AppearanceSettings }) => void,
-        "gallery-grid": handleUpdateGallery as (u: { appearance?: AppearanceSettings }) => void,
-        cta: handleUpdateCTA as (u: { appearance?: AppearanceSettings }) => void,
-        "booking-service": handleUpdateBookingService as (u: { appearance?: AppearanceSettings }) => void,
-        "booking-date": handleUpdateBookingDate as (u: { appearance?: AppearanceSettings }) => void,
-        "booking-time": handleUpdateBookingTime as (u: { appearance?: AppearanceSettings }) => void,
-        "booking-form": handleUpdateBookingForm as (u: { appearance?: AppearanceSettings }) => void,
-        "booking-confirmation": handleUpdateBookingConfirmation as (u: { appearance?: AppearanceSettings }) => void,
+      const updateFnMap: Record<string, (u: Partial<BackgroundSettings>) => void> = {
+        hero: handleUpdateHero as (u: Partial<BackgroundSettings>) => void,
+        "about-hero": handleUpdateAboutHero as (u: Partial<BackgroundSettings>) => void,
+        story: handleUpdateStory as (u: Partial<BackgroundSettings>) => void,
+        team: handleUpdateTeam as (u: Partial<BackgroundSettings>) => void,
+        testimonials: handleUpdateTestimonials as (u: Partial<BackgroundSettings>) => void,
+        services: handleUpdateServices as (u: Partial<BackgroundSettings>) => void,
+        values: handleUpdateValues as (u: Partial<BackgroundSettings>) => void,
+        "gallery-preview": handleUpdateGallery as (u: Partial<BackgroundSettings>) => void,
+        "gallery-grid": handleUpdateGallery as (u: Partial<BackgroundSettings>) => void,
+        cta: handleUpdateCTA as (u: Partial<BackgroundSettings>) => void,
+        "booking-service": handleUpdateBookingService as (u: Partial<BackgroundSettings>) => void,
+        "booking-date": handleUpdateBookingDate as (u: Partial<BackgroundSettings>) => void,
+        "booking-time": handleUpdateBookingTime as (u: Partial<BackgroundSettings>) => void,
+        "booking-form": handleUpdateBookingForm as (u: Partial<BackgroundSettings>) => void,
+        "booking-confirmation": handleUpdateBookingConfirmation as (u: Partial<BackgroundSettings>) => void,
       };
 
       const updateFn = updateFnMap[targetSectionId];
       if (updateFn) {
-        updateFn({ appearance: updates as AppearanceSettings });
+        updateFn(updates);
       } else {
         console.warn(`>>> [useEditorState] Nenhuma função de atualização encontrada para a seção: ${targetSectionId}`);
       }

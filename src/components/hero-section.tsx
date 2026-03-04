@@ -65,6 +65,7 @@ export function HeroSection() {
   const config = studio?.config as SiteConfigData | undefined;
 
   useEffect(() => {
+    const isPreview = window.location.search.includes("preview=true");
     setIsMounted(true);
     setProfile(getSiteProfile());
 
@@ -73,12 +74,20 @@ export function HeroSection() {
     const layoutGlobal = config?.layoutGlobal || config?.layout_global;
     const dbHero = config?.hero || layoutGlobal?.hero;
 
-    if (dbHero) {
+    const normalizeHero = (hero: HeroSettings): HeroSettings => {
+      const hasImage = !!(hero.appearance?.backgroundImageUrl || hero.bgImage);
+      return {
+        ...hero,
+        bgType: hasImage ? (hero.bgType || "image") : "color"
+      };
+    };
+
+    if (!isPreview && dbHero) {
       console.log(
         ">>> [HERO_SYNC] Aplicando dados do banco no carregamento inicial:",
         renderSafeText(dbHero.title),
       );
-      setCustomStyles(dbHero);
+      setCustomStyles(normalizeHero(dbHero));
     } else {
       setCustomStyles(getHeroSettings());
     }
@@ -92,10 +101,13 @@ export function HeroSection() {
           ">>> [HERO_SYNC] Atualização recebida via MessageEvent:",
           renderSafeText(event.data.settings.title),
         );
-        setCustomStyles((prev) => ({
-          ...prev,
-          ...event.data.settings,
-        }));
+        setCustomStyles((prev) => {
+          const updated = {
+            ...prev,
+            ...event.data.settings,
+          };
+          return normalizeHero(updated);
+        });
       }
 
       if (event.data.type === "HIGHLIGHT_SECTION") {
@@ -116,6 +128,12 @@ export function HeroSection() {
     };
 
     const handleDataReady = () => {
+      // Se estivermos em modo preview, não aceite dados vindos de 'DataReady' ou 'fetch' direto do banco.
+      // Apenas aceite dados vindos via 'window.addEventListener("message", ...)'
+      if (isPreview) {
+        console.log("[HERO_SYNC] Modo Preview detectado. Bloqueando sobreposição pelo banco.");
+        return;
+      }
       const cfg = config;
       const lg = cfg?.layoutGlobal || cfg?.layout_global;
       const heroFromDb = cfg?.hero || lg?.hero;
@@ -124,7 +142,7 @@ export function HeroSection() {
           ">>> [HERO_SYNC] Aplicando dados do banco via evento DataReady:",
           renderSafeText(heroFromDb.title),
         );
-        setCustomStyles(heroFromDb);
+        setCustomStyles(normalizeHero(heroFromDb));
       }
     };
 
@@ -151,13 +169,14 @@ export function HeroSection() {
   }, [config]);
 
   useEffect(() => {
-    console.log("[HERO_STYLE]", {
-      url: customStyles.appearance?.backgroundImageUrl,
-      overlay: customStyles.appearance?.overlay,
+    console.log('[BG_CHECK]', { 
+      type: customStyles.bgType, 
+      hasImage: !!(customStyles.appearance?.backgroundImageUrl || customStyles.bgImage),
+      bgColor: customStyles.bgColor
     });
-  }, [customStyles.appearance?.backgroundImageUrl, customStyles.appearance?.overlay]);
+  }, [customStyles.bgType, customStyles.appearance?.backgroundImageUrl, customStyles.bgImage, customStyles.bgColor]);
 
-  const heroBackgroundUrl = customStyles.appearance?.backgroundImageUrl;
+  const heroBackgroundUrl = customStyles.bgImage || customStyles.appearance?.backgroundImageUrl;
   const effectiveOverlayOpacity =
     customStyles.appearance?.overlay?.opacity ??
     (heroBackgroundUrl ? 0 : customStyles.overlayOpacity);
@@ -175,6 +194,14 @@ export function HeroSection() {
   const description =
     profile?.description ||
     "Transforme seu olhar com técnicas profissionais de design de sobrancelhas. Atendimento personalizado para destacar sua beleza única.";
+
+  const hasImage = !!heroBackgroundUrl && heroBackgroundUrl.trim() !== "";
+
+  useEffect(() => {
+    if (isMounted) {
+      console.log('[SINC_SUCESSO] Lógica de fundo blindada');
+    }
+  }, [isMounted]);
 
   if (!isMounted) {
     return (
@@ -202,22 +229,13 @@ export function HeroSection() {
           (highlightedElement === "hero-bg" || highlightedElement === "hero") &&
             "ring-8 ring-inset ring-primary/30",
         )}
-        style={
-          heroBackgroundUrl || customStyles.bgType === "image"
-            ? {
-                backgroundImage: heroBackgroundUrl ? `url(${heroBackgroundUrl})` : undefined,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                backgroundColor: "transparent", // Força transparente se for modo imagem
-              }
-            : undefined
-        }
       >
       <SectionBackground
         settings={{
-          bgType: customStyles.bgType as "color" | "image",
-          bgColor: customStyles.bgColor,
-          bgImage: customStyles.bgImage,
+          // Aqui forçamos o tipo correto: se não tem URL ou se o tipo explicitamente for cor, o tipo TEM que ser 'color'
+          bgType: (customStyles.bgType === "color" || !hasImage ? "color" : "image") as "color" | "image",
+          bgColor: customStyles.bgColor || "transparent",
+          bgImage: heroBackgroundUrl || "",
           imageOpacity: effectiveImageOpacity,
           overlayOpacity: effectiveOverlayOpacity,
           imageScale: customStyles.imageScale,
@@ -225,7 +243,8 @@ export function HeroSection() {
           imageY: customStyles.imageY,
           appearance: customStyles.appearance,
         }}
-        defaultImage="https://images.unsplash.com/photo-1560750588-73207b1ef5b8?q=80&w=2070&auto=format&fit=crop"
+        // Deixe o defaultImage vazio para ele não inventar imagem sozinho
+        defaultImage="" 
         gradientClassName="bg-linear-to-b from-background/50 via-background/80 to-background"
       />
 

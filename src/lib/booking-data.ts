@@ -1135,7 +1135,7 @@ export const defaultHeroSettings: HeroSettings = {
     "Especialistas em design de sobrancelhas, dedicados a realçar sua beleza natural.",
   primaryButton: "Agendar Horário",
   secondaryButton: "Ver Trabalhos",
-  bgType: "image",
+  bgType: "color",
   bgColor: "#ffffff",
   bgImage: "",
   imageOpacity: 0.2,

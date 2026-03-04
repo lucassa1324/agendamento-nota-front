@@ -41,14 +41,11 @@ export function ServicesEditor({
   hasChanges,
 }: ServicesEditorProps) {
   const { studio } = useStudio();
-  const handleSave = () => {
-    if (externalOnSave) externalOnSave();
-  };
 
   if (!settings) return null;
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
       <Accordion
         type="multiple"
         defaultValue={["title"]}
@@ -511,7 +508,7 @@ export function ServicesEditor({
         <Button
           type="button"
           disabled={!hasChanges}
-          onClick={handleSave}
+          onClick={externalOnSave}
           className={cn(
             "w-full h-11 text-sm font-bold transition-all duration-300",
             hasChanges
@@ -519,7 +516,7 @@ export function ServicesEditor({
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? "Aplicar Alterações" : "Nenhuma alteração"}
+          {hasChanges ? "Salvar Alterações" : "Nenhuma alteração"}
         </Button>
       </div>
     </div>

@@ -78,7 +78,7 @@ function AdminLayoutContent({
   const slug = propSlug;
 
   const { data: session, isPending: isLoadingSession } = useSession();
-  const { isLoading: isLoadingStudio } = useStudio();
+  const { isLoading: isLoadingStudio, error: studioError } = useStudio();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [adminUser, setAdminUser] = useState<{
@@ -186,6 +186,27 @@ function AdminLayoutContent({
 
   const isPersonalizacao = pathname?.includes("/personalizacao");
   const isMaster = pathname?.startsWith("/admin/master");
+
+  // Tratamento de erro de carregamento do estúdio
+  if (studioError && !isMaster) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">
+        <h2 className="text-2xl font-bold text-destructive mb-2">Erro ao carregar estúdio</h2>
+        <p className="text-muted-foreground mb-6">
+          {studioError === "Studio não encontrado" 
+            ? "O estúdio especificado na URL não foi encontrado." 
+            : `Houve um problema ao carregar os dados: ${studioError}`}
+        </p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   // Enquanto estiver carregando ou validando, mostra o loading
   // Também aguarda o carregamento do estúdio (exceto para rota master)

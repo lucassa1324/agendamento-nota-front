@@ -12,7 +12,6 @@ import { Slider } from "@/components/ui/slider";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
 import { cn } from "@/lib/utils";
 
- 
 export interface BackgroundSettings {
   bgType: "color" | "image";
   bgColor: string;
@@ -98,10 +97,6 @@ export function BackgroundEditor({
     setIsUploading(true);
 
     try {
-      // 0. Guardar URL da imagem antiga para deleção posterior (usando valor normalizado)
-      const oldImageUrl = currentBgImage;
-      const isInternalStorage = oldImageUrl?.includes("/api/storage/");
-
       console.log(">>> [BackgroundEditor] Iniciando compressão da imagem...");
       // Compressão
       const options = {
@@ -148,24 +143,6 @@ export function BackgroundEditor({
           backgroundImageUrl: imageUrl
         }
       });
-      
-      // 3. Limpeza: Deletar a imagem antiga do storage se ela for nossa
-      if (oldImageUrl && isInternalStorage) {
-        console.log(">>> [BackgroundEditor] Iniciando limpeza da imagem antiga no storage...");
-        // Não usamos await aqui para não bloquear a interface do usuário, 
-        // a limpeza acontece em background no backend
-        siteCustomizerService.deleteBackgroundImage(oldImageUrl, businessId)
-          .then(success => {
-            if (success) {
-              console.log(">>> [BackgroundEditor] Limpeza concluída com sucesso.");
-            } else {
-              console.warn(">>> [BackgroundEditor] Falha na limpeza da imagem antiga.");
-            }
-          })
-          .catch(err => {
-            console.error(">>> [BackgroundEditor] Erro ao tentar limpar imagem antiga:", err);
-          });
-      }
       
       console.log(">>> [BackgroundEditor] Processo de upload finalizado com sucesso.");
     } catch (error) {
@@ -275,16 +252,17 @@ export function BackgroundEditor({
             <div className="flex gap-2">
               <Input
                 value={currentBgImage || ""}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const val = e.target.value;
                   onUpdate({ 
-                    bgImage: e.target.value, 
-                    bgType: "image",
+                    bgImage: val, 
+                    bgType: val ? "image" : "color",
                     appearance: {
                       ...settings.appearance,
-                      backgroundImageUrl: e.target.value
+                      backgroundImageUrl: val
                     }
-                  })
-                }
+                  });
+                }}
                 className="h-8 text-xs flex-1"
                 placeholder="https://..."
               />
@@ -294,20 +272,7 @@ export function BackgroundEditor({
                   size="icon"
                   className="h-8 w-8 text-destructive hover:bg-destructive/10"
                   onClick={() => {
-                    const oldUrl = currentBgImage;
-                    onUpdate({ 
-                      bgImage: "", 
-                      bgType: "color",
-                      appearance: {
-                        ...settings.appearance,
-                        backgroundImageUrl: ""
-                      }
-                    });
-                    
-                    // Limpar do storage se for nossa
-                    if (oldUrl?.includes("/api/storage/")) {
-                      siteCustomizerService.deleteBackgroundImage(oldUrl, businessId);
-                    }
+                    onUpdate({ bgImage: "", bgType: "color", appearance: { ...settings.appearance, backgroundImageUrl: "" } });
                   }}
                   title="Remover Imagem"
                 >

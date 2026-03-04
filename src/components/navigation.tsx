@@ -92,10 +92,10 @@ export function Navigation({
 
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
-        setPageVisibility(event.data.visibility);
+        setPageVisibility(event.data.settings || {});
       }
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
-        setVisibleSections(event.data.sections);
+        setVisibleSections(event.data.settings || {});
       }
       if (event.data?.type === "UPDATE_HEADER_SETTINGS") {
         console.log(

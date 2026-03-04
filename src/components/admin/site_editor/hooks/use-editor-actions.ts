@@ -1,8 +1,8 @@
 import { useCallback } from "react";
 import type { 
-  AppearanceSettings, 
   BookingStepSettings,
 } from "@/lib/booking-data";
+import { siteCustomizerService } from "@/lib/site-customizer-service";
 import type { BackgroundSettings } from "../components/BackgroundEditor";
 import type { useEditorLocal } from "./use-editor-local";
 import type { useEditorState } from "./use-editor-state";
@@ -11,10 +11,18 @@ interface UseEditorActionsProps {
   state: ReturnType<typeof useEditorState>;
   local: ReturnType<typeof useEditorLocal>;
   toast: (options: { title?: string; description?: string; variant?: "default" | "destructive" }) => void;
+  businessId: string;
 }
 
-export function useEditorActions({ state, local, toast }: UseEditorActionsProps) {
+export function useEditorActions({ state, local, toast, businessId }: UseEditorActionsProps) {
   const {
+    activeSectionId,
+    handleUpdateBackground: handleUpdateBackgroundState,
+    handleUpdateBookingService: handleUpdateBookingServiceState,
+    handleUpdateBookingDate: handleUpdateBookingDateState,
+    handleUpdateBookingTime: handleUpdateBookingTimeState,
+    handleUpdateBookingForm: handleUpdateBookingFormState,
+    handleUpdateBookingConfirmation: handleUpdateBookingConfirmationState,
     heroSettings,
     aboutHeroSettings,
     storySettings,
@@ -67,14 +75,19 @@ export function useEditorActions({ state, local, toast }: UseEditorActionsProps)
     setLastAppliedBookingTime,
     setLastAppliedBookingForm,
     setLastAppliedBookingConfirmation,
-    handleUpdateBookingService: handleUpdateBookingServiceState,
-    handleUpdateBookingDate: handleUpdateBookingDateState,
-    handleUpdateBookingTime: handleUpdateBookingTimeState,
-    handleUpdateBookingForm: handleUpdateBookingFormState,
-    handleUpdateBookingConfirmation: handleUpdateBookingConfirmationState,
-    handleUpdateBackground: handleUpdateBackgroundState,
-    activeSectionId,
   } = state;
+
+  const deleteOrphanImage = useCallback(
+    async (url?: string) => {
+      if (!url || !url.includes("/api/storage/")) return;
+      try {
+        await siteCustomizerService.deleteBackgroundImage(url, businessId);
+      } catch (error) {
+        console.error("Erro ao deletar imagem órfã:", error);
+      }
+    },
+    [businessId]
+  );
 
   const {
     saveHeroSettings,
@@ -192,35 +205,163 @@ export function useEditorActions({ state, local, toast }: UseEditorActionsProps)
   }, [clearLocalDrafts]);
 
   const handleUpdateBackground = useCallback(
-    (updates: Partial<BackgroundSettings>, sectionId?: string) => {
+    async (updates: Partial<BackgroundSettings>, sectionId?: string) => {
       const targetSectionId = sectionId || activeSectionId;
+
+      // 1. Identificar configurações atuais da seção para detecção de mudanças
+      const settingsMap: Record<string, BackgroundSettings> = {
+        hero: heroSettings,
+        "about-hero": aboutHeroSettings,
+        story: storySettings,
+        team: teamSettings,
+        testimonials: testimonialsSettings,
+        services: servicesSettings,
+        values: valuesSettings,
+        "gallery-preview": gallerySettings,
+        "gallery-grid": gallerySettings,
+        cta: ctaSettings,
+        "booking-service": bookingServiceSettings as BackgroundSettings,
+        "booking-date": bookingDateSettings as BackgroundSettings,
+        "booking-time": bookingTimeSettings as BackgroundSettings,
+        "booking-form": bookingFormSettings as BackgroundSettings,
+        "booking-confirmation": bookingConfirmationSettings as BackgroundSettings,
+      };
+
+      const currentSettings = settingsMap[targetSectionId];
+      const currentImageUrl =
+        currentSettings?.appearance?.backgroundImageUrl ||
+        currentSettings?.bgImage;
+      const currentBgType = currentSettings?.bgType;
+
+      // Scenario 1: Troca de Imagem (quando uma nova URL é fornecida e difere da atual)
+      if (updates.bgImage && updates.bgImage !== currentImageUrl) {
+        // Nota: O BackgroundEditor já faz essa limpeza no upload. 
+        // Aqui garantimos que qualquer outra forma de troca também limpe a imagem órfã.
+        if (currentImageUrl?.includes("/api/storage/")) {
+          deleteOrphanImage(currentImageUrl);
+        }
+      }
+
+      // Scenario 2: Mudança para Cor Sólida (bgType image -> color)
+      if (
+        updates.bgType === "color" &&
+        currentBgType === "image" &&
+        currentImageUrl
+      ) {
+        await deleteOrphanImage(currentImageUrl);
+
+        // Limpar explicitamente a URL nas atualizações para o estado e drafts
+        updates.bgImage = "";
+        updates.appearance = {
+          ...(currentSettings?.appearance || {}),
+          backgroundImageUrl: "",
+        };
+
+        // Persistência imediata no banco para evitar inconsistência (link quebrado)
+        try {
+          const sectionKeyMap: Record<string, string> = {
+            hero: "hero",
+            "about-hero": "aboutHero",
+            story: "story",
+            team: "team",
+            testimonials: "testimonials",
+            services: "services",
+            values: "values",
+            "gallery-preview": "gallery",
+            "gallery-grid": "gallery",
+            cta: "cta",
+          };
+
+          const sectionKey = sectionKeyMap[targetSectionId];
+          if (sectionKey) {
+            await siteCustomizerService.saveCustomization(businessId, {
+              [sectionKey]: {
+                ...currentSettings,
+                bgType: "color",
+                bgImage: "",
+                appearance: {
+                  ...(currentSettings.appearance || {}),
+                  backgroundImageUrl: "",
+                },
+              },
+            });
+            console.log(
+              `>>> [useEditorActions] Mudança para cor sólida persistida no banco (${targetSectionId}).`
+            );
+          }
+        } catch (error) {
+          console.error(
+            `[useEditorActions] Erro ao persistir mudança para cor sólida (${targetSectionId}):`,
+            error
+          );
+        }
+      }
+
       handleUpdateBackgroundState(updates, targetSectionId);
 
-      const saveFnMap: Record<string, (u: { appearance?: AppearanceSettings }) => void> = {
-        hero: (s) => saveHeroSettings({ ...heroSettings, ...s }),
-        "about-hero": (s) => saveAboutHeroSettings({ ...aboutHeroSettings, ...s }),
-        story: (s) => saveStorySettings({ ...storySettings, ...s }),
-        team: (s) => saveTeamSettings({ ...teamSettings, ...s }),
-        testimonials: (s) => saveTestimonialsSettings({ ...testimonialsSettings, ...s }),
-        services: (s) => saveServicesSettings({ ...servicesSettings, ...s }),
-        values: (s) => saveValuesSettings({ ...valuesSettings, ...s }),
-        "gallery-preview": (s) => saveGallerySettings({ ...gallerySettings, ...s }),
-        "gallery-grid": (s) => saveGallerySettings({ ...gallerySettings, ...s }),
-        cta: (s) => saveCTASettings({ ...ctaSettings, ...s }),
-        "booking-service": (s) => saveBookingServiceSettings({ ...bookingServiceSettings, ...s }),
-        "booking-date": (s) => saveBookingDateSettings({ ...bookingDateSettings, ...s }),
-        "booking-time": (s) => saveBookingTimeSettings({ ...bookingTimeSettings, ...s }),
-        "booking-form": (s) => saveBookingFormSettings({ ...bookingFormSettings, ...s }),
-        "booking-confirmation": (s) => saveBookingConfirmationSettings({ ...bookingConfirmationSettings, ...s }),
+      const saveFnMap: Record<
+        string,
+        (u: Partial<BackgroundSettings>) => void
+      > = {
+        hero: (u) => saveHeroSettings({ ...heroSettings, ...u }),
+        "about-hero": (u) =>
+          saveAboutHeroSettings({ ...aboutHeroSettings, ...u }),
+        story: (u) => saveStorySettings({ ...storySettings, ...u }),
+        team: (u) => saveTeamSettings({ ...teamSettings, ...u }),
+        testimonials: (u) =>
+          saveTestimonialsSettings({ ...testimonialsSettings, ...u }),
+        services: (u) => saveServicesSettings({ ...servicesSettings, ...u }),
+        values: (u) => saveValuesSettings({ ...valuesSettings, ...u }),
+        "gallery-preview": (u) =>
+          saveGallerySettings({ ...gallerySettings, ...u }),
+        "gallery-grid": (u) => saveGallerySettings({ ...gallerySettings, ...u }),
+        cta: (u) => saveCTASettings({ ...ctaSettings, ...u }),
+        "booking-service": (u) =>
+          saveBookingServiceSettings({ ...bookingServiceSettings, ...u }),
+        "booking-date": (u) =>
+          saveBookingDateSettings({ ...bookingDateSettings, ...u }),
+        "booking-time": (u) =>
+          saveBookingTimeSettings({ ...bookingTimeSettings, ...u }),
+        "booking-form": (u) =>
+          saveBookingFormSettings({ ...bookingFormSettings, ...u }),
+        "booking-confirmation": (u) =>
+          saveBookingConfirmationSettings({
+            ...bookingConfirmationSettings,
+            ...u,
+          }),
+      };
+
+      const currentSettingsMap: Record<string, BackgroundSettings | undefined> = {
+        hero: heroSettings,
+        "about-hero": aboutHeroSettings,
+        story: storySettings,
+        team: teamSettings,
+        testimonials: testimonialsSettings,
+        services: servicesSettings,
+        values: valuesSettings,
+        "gallery-preview": gallerySettings,
+        "gallery-grid": gallerySettings,
+        cta: ctaSettings,
+        "booking-service": bookingServiceSettings,
+        "booking-date": bookingDateSettings,
+        "booking-time": bookingTimeSettings,
+        "booking-form": bookingFormSettings,
+        "booking-confirmation": bookingConfirmationSettings,
       };
 
       const saveFn = saveFnMap[targetSectionId];
       if (saveFn) {
-        // Normaliza para o tipo AppearanceSettings esperado pelas funções de salvamento
-        const appearanceUpdates = updates.appearance || (updates.bgImage ? { backgroundImageUrl: updates.bgImage } : undefined);
-        if (appearanceUpdates) {
-          saveFn({ appearance: appearanceUpdates as AppearanceSettings });
+        const currentSettings = currentSettingsMap[targetSectionId];
+        const merged =
+          currentSettings ? { ...currentSettings, ...updates } : updates;
+        if (merged.bgType === "color") {
+          merged.bgImage = "";
+          merged.appearance = {
+            ...(merged.appearance || {}),
+            backgroundImageUrl: "",
+          };
         }
+        saveFn(merged);
       }
     },
     [
@@ -254,7 +395,9 @@ export function useEditorActions({ state, local, toast }: UseEditorActionsProps)
       saveBookingFormSettings,
       bookingConfirmationSettings,
       saveBookingConfirmationSettings,
-    ],
+      businessId,
+      deleteOrphanImage,
+    ]
   );
 
   const handleUpdateBookingService = useCallback(

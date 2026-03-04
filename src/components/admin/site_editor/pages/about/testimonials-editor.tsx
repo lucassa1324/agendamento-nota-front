@@ -596,7 +596,7 @@ export function TestimonialsEditor({
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? "Aplicar Alterações" : "Nenhuma alteração"}
+          {hasChanges ? "Salvar Alterações" : "Nenhuma alteração"}
         </Button>
       </div>
     </div>

@@ -316,6 +316,15 @@ export function useEditorApi({
           const changes = getChangedSettings();
           console.log(">>> [useEditorApi] Alterações detectadas:", changes);
 
+          // LOG DE PUBLICAÇÃO: Verificar se dados do Hero estão corretos
+          if (changes.hero) {
+            console.log("Dados enviados para publicação (Hero):", {
+              bgType: (changes.hero as any).bgType,
+              bgImage: (changes.hero as any).bgImage,
+              appearanceImageUrl: (changes.hero as any).appearance?.backgroundImageUrl
+            });
+          }
+
           // Auditoria de imagens em alterações críticas (Hero, Story, etc.)
           if (changes.hero?.bgType === "image" && changes.hero.bgImage) {
             console.log(`>>> [PUBLISH_SUCCESS] Hero image: ${changes.hero.bgImage}`);
@@ -397,8 +406,27 @@ export function useEditorApi({
 
           for (const section of sectionsToGlobal) {
             if (changes[section as keyof typeof changes]) {
-              const sectionData = changes[section as keyof typeof changes] as Record<string, unknown>;
-              
+              let sectionData = changes[
+                section as keyof typeof changes
+              ] as Record<string, unknown>;
+
+              // GARANTIR LIMPEZA DE IMAGEM SE FOR COR:
+              // Se o tipo for cor, forçamos a URL da imagem a ser vazia para o banco refletir a mudança
+              if (sectionData.bgType === "color") {
+                console.log(
+                  `>>> [PUBLISH_CLEANUP] Forçando limpeza de imagem para a seção ${section} (bgType === "color")`,
+                );
+                sectionData = {
+                  ...sectionData,
+                  bgImage: "",
+                  appearance: {
+                    ...((sectionData.appearance as Record<string, unknown>) ||
+                      {}),
+                    backgroundImageUrl: "",
+                  },
+                };
+              }
+
               // 1. Manter a estrutura atual no layoutGlobal (para retrocompatibilidade/outros usos)
               payload.layoutGlobal = {
                 ...((payload.layoutGlobal as Record<string, unknown>) || {}),
@@ -503,6 +531,8 @@ export function useEditorApi({
             interface StepConfig {
               bgType?: string;
               bgColor?: string;
+              bgImage?: string;
+              appearance?: Record<string, unknown>;
               backgroundColor?: string;
               cardBgColor?: string;
               cardConfig?: {
@@ -512,72 +542,92 @@ export function useEditorApi({
             }
             const steps = changes.bookingSteps as Record<string, StepConfig>;
 
+            // Helper para limpar imagem em passos de agendamento se for cor
+            const sanitizeStep = (step: StepConfig) => {
+              if (step.bgType === "color") {
+                return {
+                  ...step,
+                  bgImage: "",
+                  appearance: {
+                    ...(step.appearance || {}),
+                    backgroundImageUrl: "",
+                  },
+                };
+              }
+              return step;
+            };
+
             if (steps.service) {
+              const cleanStep = sanitizeStep(steps.service);
               bookingChanges.step1Services = {
-                ...steps.service,
-                bgType: steps.service.bgType,
-                bgColor: steps.service.bgColor,
+                ...cleanStep,
+                bgType: cleanStep.bgType,
+                bgColor: cleanStep.bgColor,
                 cardConfig: {
                   backgroundColor:
-                    steps.service.cardConfig?.backgroundColor ||
-                    steps.service.cardBgColor ||
-                    steps.service.backgroundColor ||
+                    cleanStep.cardConfig?.backgroundColor ||
+                    cleanStep.cardBgColor ||
+                    cleanStep.backgroundColor ||
                     "#FFFFFF",
                 },
               };
             }
             if (steps.date) {
+              const cleanStep = sanitizeStep(steps.date);
               bookingChanges.step2Dates = {
-                ...steps.date,
-                bgType: steps.date.bgType,
-                bgColor: steps.date.bgColor,
+                ...cleanStep,
+                bgType: cleanStep.bgType,
+                bgColor: cleanStep.bgColor,
                 cardConfig: {
                   backgroundColor:
-                    steps.date.cardConfig?.backgroundColor ||
-                    steps.date.cardBgColor ||
-                    steps.date.backgroundColor ||
+                    cleanStep.cardConfig?.backgroundColor ||
+                    cleanStep.cardBgColor ||
+                    cleanStep.backgroundColor ||
                     "#FFFFFF",
                 },
               };
             }
             if (steps.time) {
+              const cleanStep = sanitizeStep(steps.time);
               bookingChanges.step3Times = {
-                ...steps.time,
-                bgType: steps.time.bgType,
-                bgColor: steps.time.bgColor,
+                ...cleanStep,
+                bgType: cleanStep.bgType,
+                bgColor: cleanStep.bgColor,
                 cardConfig: {
                   backgroundColor:
-                    steps.time.cardConfig?.backgroundColor ||
-                    steps.time.cardBgColor ||
-                    steps.time.backgroundColor ||
+                    cleanStep.cardConfig?.backgroundColor ||
+                    cleanStep.cardBgColor ||
+                    cleanStep.backgroundColor ||
                     "#FFFFFF",
                 },
               };
             }
             if (steps.form) {
+              const cleanStep = sanitizeStep(steps.form);
               bookingChanges.step4Form = {
-                ...steps.form,
-                bgType: steps.form.bgType,
-                bgColor: steps.form.bgColor,
+                ...cleanStep,
+                bgType: cleanStep.bgType,
+                bgColor: cleanStep.bgColor,
                 cardConfig: {
                   backgroundColor:
-                    steps.form.cardConfig?.backgroundColor ||
-                    steps.form.cardBgColor ||
-                    steps.form.backgroundColor ||
+                    cleanStep.cardConfig?.backgroundColor ||
+                    cleanStep.cardBgColor ||
+                    cleanStep.backgroundColor ||
                     "#FFFFFF",
                 },
               };
             }
             if (steps.confirmation) {
+              const cleanStep = sanitizeStep(steps.confirmation);
               bookingChanges.step5Confirmation = {
-                ...steps.confirmation,
-                bgType: steps.confirmation.bgType,
-                bgColor: steps.confirmation.bgColor,
+                ...cleanStep,
+                bgType: cleanStep.bgType,
+                bgColor: cleanStep.bgColor,
                 cardConfig: {
                   backgroundColor:
-                    steps.confirmation.cardConfig?.backgroundColor ||
-                    steps.confirmation.cardBgColor ||
-                    steps.confirmation.backgroundColor ||
+                    cleanStep.cardConfig?.backgroundColor ||
+                    cleanStep.cardBgColor ||
+                    cleanStep.backgroundColor ||
                     "#FFFFFF",
                 },
               };
@@ -608,8 +658,8 @@ export function useEditorApi({
           console.log(">>> [useEditorApi] Payload final para PATCH:", payload);
 
           await siteCustomizerService.saveCustomization(companyId, payload);
-          console.log(">>> [useEditorApi] Publicação concluída. Limpando rascunhos locais...");
-          clearLocalDrafts();
+          console.log(">>> [useEditorApi] Publicação concluída. Mantendo rascunhos locais até confirmação da recarga...");
+          // clearLocalDrafts(); // Não limpar imediatamente para evitar tela rosa se o banco demorar a propagar
 
           if (shouldReloadFromBank) {
             console.log(">>> [useEditorApi] Recarregando dados do banco...");
@@ -618,6 +668,13 @@ export function useEditorApi({
                 await siteCustomizerService.getCustomization(companyId);
               if (fresh) {
                 console.log(">>> [useEditorApi] Dados atualizados recebidos:", fresh);
+                
+                // ATUALIZAR CACHE LOCAL (Sincronizar DB -> LocalStorage)
+                if (typeof window !== "undefined") {
+                  console.log(">>> [CACHE_SYNC] Atualizando LocalStorage com dados frescos do banco...");
+                  localStorage.setItem("studio_data", JSON.stringify(fresh));
+                }
+
                 loadExternalConfig(fresh as unknown as Record<string, unknown>);
                 const layoutGlobal = fresh.layoutGlobal || fresh.layout_global;
                 const freshColors =
@@ -726,7 +783,6 @@ export function useEditorApi({
       window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     },
     [
-      clearLocalDrafts,
       companyId,
       getChangedSettings,
       iframeRef,

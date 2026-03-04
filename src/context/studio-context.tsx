@@ -71,8 +71,31 @@ export function StudioProvider({
   const [error, setError] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(initialSlug || null);
   const [businessId, setBusinessId] = useState<string | null>(initialId || null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const refreshData = useCallback(() => {
+    console.log(">>> [STUDIO_CONTEXT] Forçando atualização de dados...");
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const handleGlobalUpdate = () => {
+        console.log(
+          ">>> [CACHE] Sinal de publicação recebido. Forçando atualização do contexto...",
+        );
+        refreshData();
+      };
+      window.addEventListener("site-published-success", handleGlobalUpdate);
+      return () =>
+        window.removeEventListener("site-published-success", handleGlobalUpdate);
+    }
+  }, [refreshData]);
   // const router = useRouter();
   const pathname = usePathname();
+  const isPreview =
+    typeof window !== "undefined" &&
+    window.location.search.includes("preview=true");
 
   const updateStudioInfo = useCallback((updates: Partial<Business>) => {
     setStudio((prev) => (prev ? { ...prev, ...updates } : null));
@@ -80,6 +103,7 @@ export function StudioProvider({
 
   // --- NOVO: Sincronização de Fonte Única da Verdade (DB -> LocalStorage) ---
   useEffect(() => {
+    if (isPreview) return;
     if (studio) {
       try {
         console.log(
@@ -237,7 +261,7 @@ export function StudioProvider({
         );
       }
     }
-  }, [studio]);
+  }, [isPreview, studio]);
 
   // --- NOVO: Sincronização do Título da Página (Aba do Navegador) ---
   useEffect(() => {
@@ -272,7 +296,22 @@ export function StudioProvider({
   }, [initialSlug, initialId]);
 
   useEffect(() => {
+    if (isPreview) {
+      if (typeof window !== "undefined") {
+        const cachedStudio = localStorage.getItem("studio_data");
+        if (cachedStudio) {
+          try {
+            setStudio(JSON.parse(cachedStudio));
+          } catch (_) {
+            setStudio(null);
+          }
+        }
+      }
+      setIsLoading(false);
+      return;
+    }
     async function fetchStudio() {
+      console.log(`>>> [StudioProvider] Buscando dados (trigger: ${refreshTrigger})...`);
       let currentSlug = slug;
       let currentId = businessId;
 
@@ -304,38 +343,54 @@ export function StudioProvider({
           );
           setSlug(currentSlug);
         } else {
-            const host = window.location.host;
-            console.log(
-              `>>> [StudioProvider] Analisando HOST para extração de SLUG: ${host}`,
-            );
-
-            // Caso especial para desenvolvimento: subdomínio em localhost (ex: lucas-studio.localhost:3000)
-            if (host.includes(".localhost")) {
-              const parts = host.split(".");
-              if (parts.length > 1 && parts[0] !== "www") {
-                currentSlug = parts[0];
+            // Tenta extrair da PATH (/admin/[slug]/...)
+            const pathname = window.location.pathname;
+            if (pathname.startsWith("/admin/")) {
+              const segments = pathname.split("/").filter(Boolean);
+              // O padrão é /admin/[slug]/...
+              if (segments.length >= 2 && segments[0] === "admin" && segments[1] !== "master") {
+                currentSlug = segments[1];
                 console.log(
-                  `>>> [StudioProvider] SLUG extraído do subdomínio LOCALHOST: ${currentSlug}`,
+                  `>>> [StudioProvider] SLUG extraído do PATH (/admin/[slug]): ${currentSlug}`,
                 );
                 setSlug(currentSlug);
               }
             }
-            // Caso para produção: subdomínio do BASE_DOMAIN
-            else if (
-              BASE_DOMAIN &&
-              host.endsWith(BASE_DOMAIN) &&
-              host !== BASE_DOMAIN &&
-              host !== `www.${BASE_DOMAIN}`
-            ) {
-              const possibleSlug = host
-                .replace(`.${BASE_DOMAIN}`, "")
-                .replace("www.", "");
-              if (possibleSlug) {
-                currentSlug = possibleSlug;
-                console.log(
-                  `>>> [StudioProvider] SLUG extraído do subdomínio PRODUÇÃO: ${currentSlug}`,
-                );
-                setSlug(currentSlug);
+            
+            if (!currentSlug) {
+              const host = window.location.host;
+              console.log(
+                `>>> [StudioProvider] Analisando HOST para extração de SLUG: ${host}`,
+              );
+
+              // Caso especial para desenvolvimento: subdomínio em localhost (ex: lucas-studio.localhost:3000)
+              if (host.includes(".localhost")) {
+                const parts = host.split(".");
+                if (parts.length > 1 && parts[0] !== "www") {
+                  currentSlug = parts[0];
+                  console.log(
+                    `>>> [StudioProvider] SLUG extraído do subdomínio LOCALHOST: ${currentSlug}`,
+                  );
+                  setSlug(currentSlug);
+                }
+              }
+              // Caso para produção: subdomínio do BASE_DOMAIN
+              else if (
+                BASE_DOMAIN &&
+                host.endsWith(BASE_DOMAIN) &&
+                host !== BASE_DOMAIN &&
+                host !== `www.${BASE_DOMAIN}`
+              ) {
+                const possibleSlug = host
+                  .replace(`.${BASE_DOMAIN}`, "")
+                  .replace("www.", "");
+                if (possibleSlug) {
+                  currentSlug = possibleSlug;
+                  console.log(
+                    `>>> [StudioProvider] SLUG extraído do subdomínio PRODUÇÃO: ${currentSlug}`,
+                  );
+                  setSlug(currentSlug);
+                }
               }
             }
           }
@@ -974,7 +1029,7 @@ export function StudioProvider({
     }
 
     fetchStudio();
-  }, [slug, businessId]);
+  }, [slug, businessId, isPreview, refreshTrigger]);
 
   useEffect(() => {
     // REMOVIDO: Redirecionamento automático para /404 ou home
@@ -1020,7 +1075,8 @@ export function StudioProvider({
   );
 
   // Tratamento visual para erro 404 (Studio não encontrado)
-  if (!isLoading && error === "Studio não encontrado") {
+  // Mas evitamos mostrar esse 404 para rotas de admin, permitindo que o admin-layout tome decisões
+  if (!isLoading && error === "Studio não encontrado" && !pathname?.startsWith("/admin")) {
     return (
       <StudioContext.Provider value={value}>
         <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">

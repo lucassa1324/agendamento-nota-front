@@ -67,10 +67,10 @@ export default function AgendamentoPage({
 
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
-        checkVisibility(event.data.visibility);
+        checkVisibility(event.data.settings || {});
       }
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
-        setVisibleSections(event.data.sections);
+        setVisibleSections(event.data.settings || {});
       }
       if (event.data?.type === "SET_ISOLATED_SECTION") {
         setIsolatedSection(event.data.sectionId);

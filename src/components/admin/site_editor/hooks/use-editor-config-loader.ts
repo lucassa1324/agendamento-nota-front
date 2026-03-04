@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { 
   type AppearanceSettings, 
   type ColorSettings, 
@@ -48,17 +48,16 @@ const normalizeBg = <T extends { bgImage?: string; bgType?: string; appearance?:
 ): T | undefined => {
   if (!settings) return settings;
   
-  const hasUrl = settings.appearance?.backgroundImageUrl || settings.bgImage;
+  const urlFromBank = settings.appearance?.backgroundImageUrl;
+  const urlFromDraft = settings.bgImage;
   
-  if (hasUrl) {
-     return {
-       ...settings,
-       bgImage: settings.appearance?.backgroundImageUrl || settings.bgImage,
-       bgType: "image"
-     };
-  }
-  
-  return settings;
+  return {
+    ...settings,
+    // Mantém a imagem do rascunho se houver, senão usa a do banco
+    bgImage: urlFromDraft !== undefined ? urlFromDraft : (urlFromBank || ""),
+    // O bgType deve ser respeitado. Só assume 'image' se houver URL E o tipo não estiver definido
+    bgType: settings.bgType || ((urlFromDraft || urlFromBank) ? "image" : "color")
+  };
 };
 
 const sanitizeHeroText = (value?: HeroSettings) =>
@@ -71,20 +70,37 @@ const sanitizeHeroText = (value?: HeroSettings) =>
       }
     : value;
 
-const normalizeHeroMedia = (value?: HeroSettings) => {
-  if (!value?.appearance?.backgroundImageUrl) return value;
+const normalizeHeroSettings = (value?: HeroSettings) => {
+  if (!value) return value;
+  
+  // Normalização básica de BG
+  const base = normalizeBg(value) || value;
+  
+  // Se não tem imagem vinda do banco, força para "color" apenas para o Hero
+  const hasUrl = base.appearance?.backgroundImageUrl || base.bgImage;
+  const withForcedType = !hasUrl ? { ...base, bgType: "color" as const } : base;
+
+  console.log('[BG_CHECK] Normalizando HeroSettings:', { 
+    type: withForcedType.bgType, 
+    hasImage: !!hasUrl,
+    bgColor: withForcedType.bgColor
+  });
+
+  if (!withForcedType.appearance?.backgroundImageUrl) return withForcedType;
+  
   const shouldUseOverlay =
-    value.appearance.overlay?.opacity !== undefined &&
-    value.appearance.overlay?.opacity !== null;
+    withForcedType.appearance.overlay?.opacity !== undefined &&
+    withForcedType.appearance.overlay?.opacity !== null;
+    
   return {
-    ...value,
+    ...withForcedType,
     overlayOpacity: shouldUseOverlay
-      ? value.appearance.overlay?.opacity ?? value.overlayOpacity
+      ? withForcedType.appearance.overlay?.opacity ?? withForcedType.overlayOpacity
       : 0,
     imageOpacity:
-      value.imageOpacity === defaultHeroSettings.imageOpacity
+      withForcedType.imageOpacity === defaultHeroSettings.imageOpacity
         ? 1
-        : value.imageOpacity,
+        : withForcedType.imageOpacity,
   };
 };
 
@@ -96,7 +112,7 @@ const normalizeServices = (value?: ServicesSettings) => {
     title: typeof base.title === "string" ? base.title : "",
     subtitle: typeof base.subtitle === "string" ? base.subtitle : "",
     bgImage: base.appearance?.backgroundImageUrl || base.bgImage || "",
-    bgType: (base.appearance?.backgroundImageUrl || base.bgImage) ? "image" : (base.bgType || "color")
+    bgType: base.bgType || "color"
   };
 };
 
@@ -105,6 +121,8 @@ export function useEditorConfigLoader({
   state, 
   checkShouldRecoverDraft 
 }: UseEditorConfigLoaderProps) {
+  const hasLoadedFromBank = useRef(false);
+
   const {
     loadLocalDrafts,
     hasLocalDraft,
@@ -159,7 +177,10 @@ export function useEditorConfigLoader({
 
   const loadExternalConfig = useCallback(
     (config: SiteConfigData) => {
-      if (!config) return;
+      console.log("Navegação detectada: bloqueando recarregamento do banco para preservar o rascunho local");
+      if (!config || hasLoadedFromBank.current) return;
+      hasLoadedFromBank.current = true;
+      
       const baseConfig = ((config as SiteConfigData & { siteCustomization?: SiteConfigData }).siteCustomization || config) as SiteConfigData;
       
       const drafts = loadLocalDrafts();
@@ -171,15 +192,15 @@ export function useEditorConfigLoader({
 
       const data = {
         ...baseConfig,
-        hero: normalizeBg(heroSource),
-        aboutHero: normalizeBg((layoutGlobal?.aboutHero || baseConfig.aboutHero) as HeroSettings | undefined),
-        story: normalizeBg((layoutGlobal?.story || baseConfig.story) as StorySettings | undefined),
-        team: normalizeBg((layoutGlobal?.team || baseConfig.team) as TeamSettings | undefined),
-        testimonials: normalizeBg((layoutGlobal?.testimonials || baseConfig.testimonials) as TestimonialsSettings | undefined),
-        services: normalizeServices((home?.servicesSection || home?.services || layoutGlobal?.services || baseConfig.services) as ServicesSettings | undefined),
-        values: normalizeBg((home?.valuesSection || home?.values || layoutGlobal?.values || baseConfig.values) as ValuesSettings | undefined),
-        gallery: normalizeBg((home?.gallerySection || home?.gallery || layoutGlobal?.gallery || baseConfig.gallery) as GallerySettings | undefined),
-        cta: normalizeBg((home?.ctaSection || home?.cta || layoutGlobal?.cta || baseConfig.cta) as CTASettings | undefined),
+        hero: normalizeBg(heroSource ? { ...heroSource, ...drafts.heroSettings } : drafts.heroSettings),
+        aboutHero: normalizeBg((layoutGlobal?.aboutHero || baseConfig.aboutHero) ? { ...((layoutGlobal?.aboutHero || baseConfig.aboutHero) as HeroSettings), ...drafts.aboutHeroSettings } : drafts.aboutHeroSettings),
+        story: normalizeBg((layoutGlobal?.story || baseConfig.story) ? { ...((layoutGlobal?.story || baseConfig.story) as StorySettings), ...drafts.storySettings } : drafts.storySettings),
+        team: normalizeBg((layoutGlobal?.team || baseConfig.team) ? { ...((layoutGlobal?.team || baseConfig.team) as TeamSettings), ...drafts.teamSettings } : drafts.teamSettings),
+        testimonials: normalizeBg((layoutGlobal?.testimonials || baseConfig.testimonials) ? { ...((layoutGlobal?.testimonials || baseConfig.testimonials) as TestimonialsSettings), ...drafts.testimonialsSettings } : drafts.testimonialsSettings),
+        services: normalizeServices((home?.servicesSection || home?.services || layoutGlobal?.services || baseConfig.services) ? { ...((home?.servicesSection || home?.services || layoutGlobal?.services || baseConfig.services) as ServicesSettings), ...drafts.servicesSettings } : drafts.servicesSettings),
+        values: normalizeBg((home?.valuesSection || home?.values || layoutGlobal?.values || baseConfig.values) ? { ...((home?.valuesSection || home?.values || layoutGlobal?.values || baseConfig.values) as ValuesSettings), ...drafts.valuesSettings } : drafts.valuesSettings),
+        gallery: normalizeBg((home?.gallerySection || home?.gallery || layoutGlobal?.gallery || baseConfig.gallery) ? { ...((home?.gallerySection || home?.gallery || layoutGlobal?.gallery || baseConfig.gallery) as GallerySettings), ...drafts.gallerySettings } : drafts.gallerySettings),
+        cta: normalizeBg((home?.ctaSection || home?.cta || layoutGlobal?.cta || baseConfig.cta) ? { ...((home?.ctaSection || home?.cta || layoutGlobal?.cta || baseConfig.cta) as CTASettings), ...drafts.ctaSettings } : drafts.ctaSettings),
         header: (layoutGlobal?.header || baseConfig.header) as HeaderSettings | undefined,
         footer: (layoutGlobal?.footer || baseConfig.footer) as FooterSettings | undefined,
         colors: (layoutGlobal?.siteColors || layoutGlobal?.cores_base || baseConfig.colors) as ColorSettings | undefined,
@@ -187,15 +208,15 @@ export function useEditorConfigLoader({
         visibleSections: (layoutGlobal?.visibleSections || baseConfig.visibleSections) as Record<string, boolean> | undefined,
         pageVisibility: (layoutGlobal?.pageVisibility || baseConfig.pageVisibility) as Record<string, boolean> | undefined,
         bookingSteps: baseConfig.bookingSteps ? {
-          service: normalizeBg(baseConfig.bookingSteps.service),
-          date: normalizeBg(baseConfig.bookingSteps.date),
-          time: normalizeBg(baseConfig.bookingSteps.time),
-          form: normalizeBg(baseConfig.bookingSteps.form),
-          confirmation: normalizeBg(baseConfig.bookingSteps.confirmation),
+          service: normalizeBg(baseConfig.bookingSteps.service ? { ...baseConfig.bookingSteps.service, ...drafts.bookingServiceSettings } : drafts.bookingServiceSettings),
+          date: normalizeBg(baseConfig.bookingSteps.date ? { ...baseConfig.bookingSteps.date, ...drafts.bookingDateSettings } : drafts.bookingDateSettings),
+          time: normalizeBg(baseConfig.bookingSteps.time ? { ...baseConfig.bookingSteps.time, ...drafts.bookingTimeSettings } : drafts.bookingTimeSettings),
+          form: normalizeBg(baseConfig.bookingSteps.form ? { ...baseConfig.bookingSteps.form, ...drafts.bookingFormSettings } : drafts.bookingFormSettings),
+          confirmation: normalizeBg(baseConfig.bookingSteps.confirmation ? { ...baseConfig.bookingSteps.confirmation, ...drafts.bookingConfirmationSettings } : drafts.bookingConfirmationSettings),
         } : undefined,
       } as SiteConfigData;
 
-      const sanitizedHero = normalizeHeroMedia(sanitizeHeroText(data.hero));
+      const sanitizedHero = normalizeHeroSettings(sanitizeHeroText(data.hero));
       const bankUpdatedAt = baseConfig.updatedAt
         ? new Date(baseConfig.updatedAt).getTime()
         : config.updatedAt
@@ -204,14 +225,15 @@ export function useEditorConfigLoader({
 
       const { shouldRecoverDrafts } = checkShouldRecoverDraft(bankUpdatedAt);
 
-      let heroDraft = normalizeHeroMedia(
+      let heroDraft = normalizeHeroSettings(
         sanitizeHeroText(drafts.heroSettings as HeroSettings | undefined),
       );
       if (
         shouldRecoverDrafts &&
         heroDraft &&
         sanitizedHero?.appearance?.backgroundImageUrl &&
-        !heroDraft.appearance?.backgroundImageUrl
+        !heroDraft.appearance?.backgroundImageUrl &&
+        !heroDraft.bgImage
       ) {
         const mergedHeroDraft = {
           ...heroDraft,

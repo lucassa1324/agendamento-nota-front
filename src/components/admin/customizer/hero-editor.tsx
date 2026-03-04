@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStudio } from "@/context/studio-context";
 import { BackgroundEditor, type BackgroundSettings } from "../site_editor/components/BackgroundEditor";
@@ -47,7 +48,13 @@ export interface HeroEditorProps {
   onSave?: () => void;
 }
 
-export function HeroEditor({ settings, onUpdate, onUpdateBackground }: HeroEditorProps) {
+export function HeroEditor({
+  settings,
+  onUpdate,
+  onUpdateBackground,
+  hasChanges,
+  onSave,
+}: HeroEditorProps) {
   const { studio } = useStudio();
   // Helper to ensure updates are propagated correctly
   const handleUpdate = (updates: Partial<HeroEditorProps["settings"]>) => {
@@ -111,6 +118,21 @@ export function HeroEditor({ settings, onUpdate, onUpdateBackground }: HeroEdito
           />
          </TabsContent>
       </Tabs>
+
+      <div className="pt-2">
+        <Button
+          type="button"
+          disabled={!hasChanges}
+          onClick={onSave}
+          className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
+            hasChanges
+              ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+              : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+          }`}
+        >
+          {hasChanges ? "Salvar Alterações" : "Nenhuma alteração"}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -339,7 +339,7 @@ export function HeaderEditor({
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
           }`}
         >
-          {hasChanges ? "Aplicar Cabeçalho" : "Nenhuma alteração"}
+          {hasChanges ? "Salvar Alterações" : "Nenhuma alteração"}
         </Button>
       </div>
     </div>

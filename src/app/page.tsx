@@ -28,11 +28,29 @@ export default function Home({
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
     {},
   );
+  const [publishVersion, setPublishVersion] = useState(0);
   const [isolatedSection, setIsolatedSection] = useState<string | null>(
     initialOnly || null,
   );
 
   // Sincronização com os dados vindos do StudioContext (Banco de Dados)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const handlePublishSuccess = () => {
+        console.log(
+          ">>> [HOME] Sinal de publicação recebido. Incrementando versão para forçar remontagem.",
+        );
+        setPublishVersion((prev) => prev + 1);
+      };
+      window.addEventListener("site-published-success", handlePublishSuccess);
+      return () =>
+        window.removeEventListener(
+          "site-published-success",
+          handlePublishSuccess,
+        );
+    }
+  }, []);
+
   useEffect(() => {
     if (studio?.config) {
       const config = studio.config as unknown as SiteConfigData;
@@ -89,9 +107,9 @@ export default function Home({
 
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
-        setVisibleSections(event.data.sections);
+        setVisibleSections(event.data.settings || {});
       } else if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
-        setPageVisibility(event.data.visibility);
+        setPageVisibility(event.data.settings || {});
       } else if (event.data?.type === "UPDATE_HEADER_SETTINGS") {
         // Notifica o sistema de eventos global para o Header no LayoutClientWrapper
         window.dispatchEvent(
@@ -162,7 +180,7 @@ export default function Home({
   }
 
   return (
-    <main>
+    <main key={publishVersion}>
       {isVisible("hero") && <HeroSection />}
       {isVisible("services") && <ServicesSection />}
       {isVisible("values") && <ValuesSection />}

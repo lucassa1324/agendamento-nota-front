@@ -54,25 +54,141 @@ export function useEditorSync({
     lastSavedBookingConfirmation,
   } = state;
 
-  const previewHeroSettings = useMemo(() => ({ ...lastSavedHero, ...heroSettings }), [lastSavedHero, heroSettings]);
-  const previewAboutHeroSettings = useMemo(() => ({ ...lastSavedAboutHero, ...aboutHeroSettings }), [lastSavedAboutHero, aboutHeroSettings]);
-  const previewStorySettings = useMemo(() => ({ ...lastSavedStory, ...storySettings }), [lastSavedStory, storySettings]);
-  const previewTeamSettings = useMemo(() => ({ ...lastSavedTeam, ...teamSettings }), [lastSavedTeam, teamSettings]);
-  const previewTestimonialsSettings = useMemo(() => ({ ...lastSavedTestimonials, ...testimonialsSettings }), [lastSavedTestimonials, testimonialsSettings]);
-  const previewServicesSettings = useMemo(() => ({ ...lastSavedServices, ...servicesSettings }), [lastSavedServices, servicesSettings]);
-  const previewValuesSettings = useMemo(() => ({ ...lastSavedValues, ...valuesSettings }), [lastSavedValues, valuesSettings]);
-  const previewFontSettings = useMemo(() => ({ ...lastSavedFont, ...fontSettings }), [lastSavedFont, fontSettings]);
-  const previewColorSettings = useMemo(() => ({ ...lastSavedColor, ...colorSettings }), [lastSavedColor, colorSettings]);
-  const previewGallerySettings = useMemo(() => ({ ...lastSavedGallery, ...gallerySettings }), [lastSavedGallery, gallerySettings]);
-  const previewCTASettings = useMemo(() => ({ ...lastSavedCTA, ...ctaSettings }), [lastSavedCTA, ctaSettings]);
-  const previewHeaderSettings = useMemo(() => ({ ...lastSavedHeader, ...headerSettings }), [lastSavedHeader, headerSettings]);
-  const previewFooterSettings = useMemo(() => ({ ...lastSavedFooter, ...footerSettings }), [lastSavedFooter, footerSettings]);
+  const previewHeroSettings = useMemo(() => {
+    const merged = { ...lastSavedHero, ...heroSettings };
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (heroSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedHero, heroSettings]);
 
-  const previewBookingServiceSettings = useMemo(() => normalizeStepSettings({ ...lastSavedBookingService, ...bookingServiceSettings }), [lastSavedBookingService, bookingServiceSettings]);
-  const previewBookingDateSettings = useMemo(() => normalizeStepSettings({ ...lastSavedBookingDate, ...bookingDateSettings }), [lastSavedBookingDate, bookingDateSettings]);
-  const previewBookingTimeSettings = useMemo(() => normalizeStepSettings({ ...lastSavedBookingTime, ...bookingTimeSettings }), [lastSavedBookingTime, bookingTimeSettings]);
-  const previewBookingFormSettings = useMemo(() => normalizeStepSettings({ ...lastSavedBookingForm, ...bookingFormSettings }), [lastSavedBookingForm, bookingFormSettings]);
-  const previewBookingConfirmationSettings = useMemo(() => normalizeStepSettings({ ...lastSavedBookingConfirmation, ...bookingConfirmationSettings }), [lastSavedBookingConfirmation, bookingConfirmationSettings]);
+  const previewAboutHeroSettings = useMemo(() => {
+    const merged = { ...lastSavedAboutHero, ...aboutHeroSettings };
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (aboutHeroSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedAboutHero, aboutHeroSettings]);
+
+  const previewStorySettings = useMemo(() => {
+    const merged = { ...lastSavedStory, ...storySettings };
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (storySettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedStory, storySettings]);
+
+  const previewTeamSettings = useMemo(() => {
+    const merged = { ...lastSavedTeam, ...teamSettings };
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (teamSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedTeam, teamSettings]);
+
+  const previewTestimonialsSettings = useMemo(() => {
+    const merged = { ...lastSavedTestimonials, ...testimonialsSettings };
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (testimonialsSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedTestimonials, testimonialsSettings]);
+
+  const previewServicesSettings = useMemo(() => {
+    const merged = { ...lastSavedServices, ...servicesSettings };
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (servicesSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedServices, servicesSettings]);
+
+  const previewValuesSettings = useMemo(() => {
+    const merged = { ...lastSavedValues, ...valuesSettings };
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (valuesSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedValues, valuesSettings]);
+
+  const previewCTASettings = useMemo(() => {
+    const merged = { ...lastSavedCTA, ...ctaSettings };
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (ctaSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedCTA, ctaSettings]);
+
+  const previewBookingServiceSettings = useMemo(() => {
+    const merged = normalizeStepSettings({ ...lastSavedBookingService, ...bookingServiceSettings });
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (bookingServiceSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedBookingService, bookingServiceSettings]);
+
+  const previewBookingDateSettings = useMemo(() => {
+    const merged = normalizeStepSettings({ ...lastSavedBookingDate, ...bookingDateSettings });
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (bookingDateSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedBookingDate, bookingDateSettings]);
+
+  const previewBookingTimeSettings = useMemo(() => {
+    const merged = normalizeStepSettings({ ...lastSavedBookingTime, ...bookingTimeSettings });
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (bookingTimeSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedBookingTime, bookingTimeSettings]);
+
+  const previewBookingFormSettings = useMemo(() => {
+    const merged = normalizeStepSettings({ ...lastSavedBookingForm, ...bookingFormSettings });
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (bookingFormSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedBookingForm, bookingFormSettings]);
+
+  const previewBookingConfirmationSettings = useMemo(() => {
+    const merged = normalizeStepSettings({ ...lastSavedBookingConfirmation, ...bookingConfirmationSettings });
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (bookingConfirmationSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance) merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedBookingConfirmation, bookingConfirmationSettings]);
+
+  const previewFontSettings = useMemo(() => ({ ...lastSavedFont, ...fontSettings }), [lastSavedFont, fontSettings]);
+   const previewColorSettings = useMemo(() => ({ ...lastSavedColor, ...colorSettings }), [lastSavedColor, colorSettings]);
+   const previewGallerySettings = useMemo(() => ({ ...lastSavedGallery, ...gallerySettings }), [lastSavedGallery, gallerySettings]);
+   const previewHeaderSettings = useMemo(() => ({ ...lastSavedHeader, ...headerSettings }), [lastSavedHeader, headerSettings]);
+   const previewFooterSettings = useMemo(() => ({ ...lastSavedFooter, ...footerSettings }), [lastSavedFooter, footerSettings]);
 
   const syncToIframe = useCallback((type: string, settings: Record<string, unknown> | null | undefined) => {
     iframeRef.current?.contentWindow?.postMessage({ type, settings }, "*");

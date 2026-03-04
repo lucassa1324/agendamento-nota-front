@@ -39,9 +39,6 @@ export function BookingStepEditor({
   title,
 }: BookingStepEditorProps) {
   const { studio } = useStudio();
-  const handleSave = () => {
-    if (onSave) onSave();
-  };
 
   const handleAccordionChange = (values: string | string[]) => {
     if (onHighlight) {
@@ -362,7 +359,7 @@ export function BookingStepEditor({
         <Button
           type="button"
           disabled={!hasChanges}
-          onClick={handleSave}
+          onClick={onSave}
           className={cn(
             "w-full h-11 text-sm font-bold transition-all duration-300",
             hasChanges
@@ -370,7 +367,7 @@ export function BookingStepEditor({
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? "Salvar Alterações" : "Tudo Atualizado"}
+          {hasChanges ? "Salvar Alterações" : "Nenhuma alteração"}
         </Button>
       </div>
     </div>

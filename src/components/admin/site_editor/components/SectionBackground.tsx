@@ -35,61 +35,49 @@ export function SectionBackground({
 }: SectionBackgroundProps) {
   const [imageError, setImageError] = useState(false);
 
-  const bgImage = settings.appearance?.backgroundImageUrl || settings.bgImage || defaultImage;
-
-  // Se houver uma imagem de fundo, forçamos o tipo para "image" para garantir prioridade visual.
-  // Caso contrário, usamos o tipo definido ou o padrão baseado no defaultImage.
-  const hasValidImage = !!(settings.appearance?.backgroundImageUrl || settings.bgImage);
-  const effectiveBgType = hasValidImage ? "image" : (settings.bgType || (defaultImage ? "image" : "color"));
-
-  // Reset error when image or type changes
-  const [prevKey, setPrevKey] = useState(`${bgImage}-${effectiveBgType}`);
-  const currentKey = `${bgImage}-${effectiveBgType}`;
-  if (currentKey !== prevKey) {
-    setPrevKey(currentKey);
-    setImageError(false);
-  }
-
-  const showImage =
-    (effectiveBgType === "image" || (!effectiveBgType && defaultImage)) &&
-    !imageError;
+  // Se o tipo for 'color', a URL da imagem DEVE ser anulada, ignorando o banco. 
+  const bgImage = settings.bgType === "image" 
+    ? (settings.appearance?.backgroundImageUrl || settings.bgImage || defaultImage) 
+    : null; 
+  const hasValidImage = settings.bgType === "image" && !!bgImage; 
+  
+  // Só mostramos imagem se o TIPO selecionado for 'image' E existir uma URL e não houver erro
+  const shouldShowImage = hasValidImage && !imageError;
 
   return (
     <div
+      key={`${settings.bgType}-${bgImage}`}
       className={cn(
         "absolute inset-0 overflow-hidden pointer-events-none min-h-100",
         className,
       )}
-      style={{
-        backgroundColor:
-          effectiveBgType === "color"
-            ? settings.bgColor || "var(--background)"
-            : "transparent",
-      }}
     >
-      {/* Background Color Layer */}
+      {/* CAMADA DE COR: Sempre visível se o tipo for 'color' OU se não tiver imagem para mostrar */}
       <div
         className="absolute inset-0 z-0 transition-colors duration-500"
         style={{
-          backgroundColor:
-            effectiveBgType === "color"
-              ? settings.bgColor || "var(--background)"
-              : "transparent",
+          backgroundColor: settings.bgColor || "transparent",
+          backgroundImage: settings.bgType === "color" ? "none" : undefined,
+          display:
+            settings.bgType === "color" || !shouldShowImage ? "block" : "none",
         }}
       />
 
-      {/* Background Image Layer */}
-      {showImage && bgImage && (
-        <div className="absolute inset-0 z-0">
+      {/* CAMADA DE IMAGEM: Só renderiza se o tipo for 'image' */}
+      {shouldShowImage && bgImage && (
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            backgroundImage: "none", // Força limpeza de qualquer BG herdado via CSS
+          }}
+        >
           <Image
             src={getFullImageUrl(bgImage)}
             alt="Background"
             fill
             className="object-cover"
             style={{
-              opacity:
-                settings.imageOpacity ??
-                (effectiveBgType === "image" ? 1 : 0.2),
+              opacity: settings.imageOpacity ?? 1,
               transform: `scale(${settings.imageScale ?? 1})`,
               objectPosition: `${settings.imageX ?? 50}% ${settings.imageY ?? 50}%`,
             }}

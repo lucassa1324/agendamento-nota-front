@@ -317,21 +317,22 @@ export const SidebarContent = memo(
 
               <div className="space-y-2 sm:space-y-3 xl:space-y-4 p-2 sm:p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
                 {activeSection === "header" && (
-                  <HeaderEditor
-                    settings={headerSettings}
-                    onUpdate={onUpdateHeader}
-                    hasChanges={hasHeaderChanges}
-                    onSave={onSaveHeader}
-                  />
-                )}
-                {activeSection === "footer" && (
-                  <FooterEditor
-                    settings={footerSettings}
-                    onUpdate={onUpdateFooter}
-                    hasChanges={hasFooterChanges}
-                    onSave={onSaveFooter}
-                  />
-                )}
+          <HeaderEditor
+            settings={headerSettings}
+            onUpdate={onUpdateHeader}
+            hasChanges={hasHeaderChanges}
+            onSave={onSaveHeader}
+          />
+        )}
+
+        {activeSection === "footer" && (
+          <FooterEditor
+            settings={footerSettings}
+            onUpdate={onUpdateFooter}
+            hasChanges={hasFooterChanges}
+            onSave={onSaveFooter}
+          />
+        )}
                 {activeSection === "typography" && (
                   <TypographyEditor
                     settings={fontSettings}
@@ -342,13 +343,13 @@ export const SidebarContent = memo(
                   />
                 )}
                 {activeSection === "colors" && (
-                  <ColorEditor
-                    settings={colorSettings}
-                    onUpdate={onUpdateColors}
-                    hasChanges={hasColorChanges}
-                    onSave={onSaveColors}
-                  />
-                )}
+                    <ColorEditor
+                      settings={colorSettings}
+                      onUpdate={onUpdateColors}
+                      hasChanges={hasColorChanges}
+                      onSave={onSaveColors}
+                    />
+                  )}
 
                 {activeSection === "hero" && (
                   <HeroEditor
