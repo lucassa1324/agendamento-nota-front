@@ -22,6 +22,7 @@ export interface BackgroundSettings {
   imageX: number;
   imageY: number;
   appearance?: {
+    backgroundColor?: string;
     backgroundImageUrl?: string;
     overlay?: {
       color: string;
@@ -31,8 +32,8 @@ export interface BackgroundSettings {
 }
 
 export interface BackgroundEditorProps {
-   settings: BackgroundSettings;
-   onUpdate: (updates: Partial<BackgroundSettings>) => void;
+  settings: BackgroundSettings;
+  onUpdate: (updates: Partial<BackgroundSettings>) => void;
   sectionId?: string;
   section?: string;
   businessId?: string;
@@ -50,18 +51,21 @@ export function BackgroundEditor({
 
   // Normalização local: se bgImage estiver vazio mas appearance tiver a URL, usamos ela.
   // Isso resolve o problema da imagem sumir no editor se os campos estiverem dessincronizados.
-  const currentBgImage = settings.appearance?.backgroundImageUrl || settings.bgImage || "";
+  const currentBgImage =
+    settings.appearance?.backgroundImageUrl || settings.bgImage || "";
 
   if (section === "services") {
     console.log(`[BackgroundEditor] Debug para 'services':`, {
       bgImage: settings.bgImage,
       appearanceUrl: settings.appearance?.backgroundImageUrl,
-      currentBgImage
+      currentBgImage,
     });
   }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log(">>> [BackgroundEditor] EVENTO: Usuário clicou em 'Abrir' no seletor de arquivos.");
+    console.log(
+      ">>> [BackgroundEditor] EVENTO: Usuário clicou em 'Abrir' no seletor de arquivos.",
+    );
     const file = e.target.files?.[0];
     if (!file) {
       console.log(">>> [BackgroundEditor] Nenhum arquivo selecionado.");
@@ -69,8 +73,12 @@ export function BackgroundEditor({
     }
 
     if (!businessId) {
-      console.error(">>> [BackgroundEditor] ERRO: businessId está vazio! O upload pode falhar.");
-      alert("Atenção: ID da empresa não encontrado. Tente recarregar a página.");
+      console.error(
+        ">>> [BackgroundEditor] ERRO: businessId está vazio! O upload pode falhar.",
+      );
+      alert(
+        "Atenção: ID da empresa não encontrado. Tente recarregar a página.",
+      );
       return;
     }
 
@@ -83,13 +91,19 @@ export function BackgroundEditor({
 
     // Validações básicas
     if (!file.type.startsWith("image/")) {
-      console.error(">>> [BackgroundEditor] Erro: O arquivo selecionado não é uma imagem.", file.type);
+      console.error(
+        ">>> [BackgroundEditor] Erro: O arquivo selecionado não é uma imagem.",
+        file.type,
+      );
       alert("Por favor, selecione um arquivo de imagem.");
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      console.error(">>> [BackgroundEditor] Erro: Imagem muito grande (> 10MB).", file.size);
+      console.error(
+        ">>> [BackgroundEditor] Erro: Imagem muito grande (> 10MB).",
+        file.size,
+      );
       alert("A imagem deve ter no máximo 10MB.");
       return;
     }
@@ -121,33 +135,43 @@ export function BackgroundEditor({
         businessId,
       );
 
-      console.log(
-        ">>> [BackgroundEditor] Resultado do Service:",
-        imageUrl,
-      );
+      console.log(">>> [BackgroundEditor] Resultado do Service:", imageUrl);
 
       if (!imageUrl) {
-        console.error(">>> [BackgroundEditor] ERRO: URL da imagem retornada está vazia!");
+        console.error(
+          ">>> [BackgroundEditor] ERRO: URL da imagem retornada está vazia!",
+        );
         // Não dar alert aqui se o service já logou o erro, mas vamos manter por segurança para o usuário
-        alert("O servidor não retornou o endereço da imagem. Verifique o console do navegador para mais detalhes.");
+        alert(
+          "O servidor não retornou o endereço da imagem. Verifique o console do navegador para mais detalhes.",
+        );
         return;
       }
 
       // Atualizar estado com a URL retornada (Passo 2 do fluxo obrigatório)
-      console.log(">>> [BackgroundEditor] Atualizando estado local via onUpdate com URL:", imageUrl);
-      onUpdate({ 
-        bgImage: imageUrl, 
-        bgType: "image",
+      console.log(
+        ">>> [BackgroundEditor] Atualizando estado local via onUpdate com URL:",
+        imageUrl,
+      );
+      onUpdate({
+        bgImage: imageUrl,
         appearance: {
           ...settings.appearance,
-          backgroundImageUrl: imageUrl
-        }
+          backgroundImageUrl: imageUrl,
+        },
       });
-      
-      console.log(">>> [BackgroundEditor] Processo de upload finalizado com sucesso.");
+
+      console.log(
+        ">>> [BackgroundEditor] Processo de upload finalizado com sucesso.",
+      );
     } catch (error) {
-      console.error(">>> [BackgroundEditor] ERRO CRÍTICO no processo de upload:", error);
-      alert("Erro ao processar imagem. Verifique o console para mais detalhes.");
+      console.error(
+        ">>> [BackgroundEditor] ERRO CRÍTICO no processo de upload:",
+        error,
+      );
+      alert(
+        "Erro ao processar imagem. Verifique o console para mais detalhes.",
+      );
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) {
@@ -166,7 +190,9 @@ export function BackgroundEditor({
       <div>
         <RadioGroup
           value={settings.bgType || "color"}
-          onValueChange={(v: string) => onUpdate({ bgType: v as "color" | "image" })}
+          onValueChange={(v: string) =>
+            onUpdate({ bgType: v as "color" | "image" })
+          }
           className="grid grid-cols-2 gap-2 bg-muted/50 p-1 rounded-md"
         >
           <div className="flex items-center justify-center">
@@ -217,7 +243,15 @@ export function BackgroundEditor({
                 variant="ghost"
                 size="icon"
                 className="h-4 w-4 hover:text-primary"
-                onClick={() => onUpdate({ bgColor: "" })}
+                onClick={() =>
+                  onUpdate({
+                    bgColor: "",
+                    appearance: {
+                      ...settings.appearance,
+                      backgroundColor: "",
+                    },
+                  })
+                }
               >
                 <RotateCcw className="w-3 h-3" />
               </Button>
@@ -228,13 +262,31 @@ export function BackgroundEditor({
               type="color"
               value={settings.bgColor || "#ffffff"}
               className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ bgColor: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value = e.target.value;
+                onUpdate({
+                  bgColor: value,
+                  appearance: {
+                    ...settings.appearance,
+                    backgroundColor: value,
+                  },
+                });
+              }}
             />
             <Input
               value={settings.bgColor || ""}
               placeholder="Padrão do Site"
               className="h-8 text-[10px] flex-1 uppercase"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ bgColor: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value = e.target.value;
+                onUpdate({
+                  bgColor: value,
+                  appearance: {
+                    ...settings.appearance,
+                    backgroundColor: value,
+                  },
+                });
+              }}
             />
           </div>
         </fieldset>
@@ -254,13 +306,12 @@ export function BackgroundEditor({
                 value={currentBgImage || ""}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   const val = e.target.value;
-                  onUpdate({ 
-                    bgImage: val, 
-                    bgType: val ? "image" : "color",
+                  onUpdate({
+                    bgImage: val,
                     appearance: {
                       ...settings.appearance,
-                      backgroundImageUrl: val
-                    }
+                      backgroundImageUrl: val,
+                    },
                   });
                 }}
                 className="h-8 text-xs flex-1"
@@ -272,7 +323,13 @@ export function BackgroundEditor({
                   size="icon"
                   className="h-8 w-8 text-destructive hover:bg-destructive/10"
                   onClick={() => {
-                    onUpdate({ bgImage: "", bgType: "color", appearance: { ...settings.appearance, backgroundImageUrl: "" } });
+                    onUpdate({
+                      bgImage: "",
+                      appearance: {
+                        ...settings.appearance,
+                        backgroundImageUrl: "",
+                      },
+                    });
                   }}
                   title="Remover Imagem"
                 >
@@ -284,14 +341,17 @@ export function BackgroundEditor({
             {/* Preview local da imagem para diagnóstico */}
             {currentBgImage && (
               <div className="mt-2 relative aspect-video w-full rounded-md overflow-hidden border border-border/50 bg-muted/20">
-                <NextImage 
-                  src={currentBgImage} 
-                  alt="Preview" 
+                <NextImage
+                  src={currentBgImage}
+                  alt="Preview"
                   fill
                   unoptimized
                   className="object-cover"
                   onError={() => {
-                    console.error(">>> [BackgroundEditor] Erro ao carregar preview da imagem:", currentBgImage);
+                    console.error(
+                      ">>> [BackgroundEditor] Erro ao carregar preview da imagem:",
+                      currentBgImage,
+                    );
                   }}
                 />
                 <div className="absolute bottom-1 right-1 bg-black/60 text-[8px] text-white px-1 rounded">
@@ -312,7 +372,9 @@ export function BackgroundEditor({
               variant="outline"
               className="w-full h-10 border-dashed text-xs gap-2"
               onClick={() => {
-                console.log(">>> [BackgroundEditor] Botão de upload clicado. Abrindo seletor de arquivos...");
+                console.log(
+                  ">>> [BackgroundEditor] Botão de upload clicado. Abrindo seletor de arquivos...",
+                );
                 fileInputRef.current?.click();
               }}
               disabled={isUploading}
@@ -344,7 +406,9 @@ export function BackgroundEditor({
               min={0}
               max={100}
               step={1}
-              onValueChange={([v]: number[]) => onUpdate({ imageOpacity: v / 100 })}
+              onValueChange={([v]: number[]) =>
+                onUpdate({ imageOpacity: v / 100 })
+              }
               className="py-2"
             />
           </fieldset>

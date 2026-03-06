@@ -26,7 +26,7 @@ export function ColorEditor({
   settings,
   onUpdate,
   hasChanges,
-  onSave,
+  onSave: externalOnSave,
 }: ColorEditorProps) {
   const colorOptions = [
     {
@@ -157,7 +157,7 @@ export function ColorEditor({
         <Button
           type="button"
           disabled={!hasChanges}
-          onClick={onSave}
+          onClick={externalOnSave}
           className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
             hasChanges
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"

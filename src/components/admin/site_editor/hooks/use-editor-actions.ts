@@ -1,7 +1,5 @@
 import { useCallback } from "react";
-import type { 
-  BookingStepSettings,
-} from "@/lib/booking-data";
+import type { BookingStepSettings } from "@/lib/booking-data";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
 import type { BackgroundSettings } from "../components/BackgroundEditor";
 import type { useEditorLocal } from "./use-editor-local";
@@ -10,11 +8,20 @@ import type { useEditorState } from "./use-editor-state";
 interface UseEditorActionsProps {
   state: ReturnType<typeof useEditorState>;
   local: ReturnType<typeof useEditorLocal>;
-  toast: (options: { title?: string; description?: string; variant?: "default" | "destructive" }) => void;
+  toast: (options: {
+    title?: string;
+    description?: string;
+    variant?: "default" | "destructive";
+  }) => void;
   businessId: string;
 }
 
-export function useEditorActions({ state, local, toast, businessId }: UseEditorActionsProps) {
+export function useEditorActions({
+  state,
+  local,
+  toast,
+  businessId,
+}: UseEditorActionsProps) {
   const {
     activeSectionId,
     handleUpdateBackground: handleUpdateBackgroundState,
@@ -86,7 +93,7 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
         console.error("Erro ao deletar imagem órfã:", error);
       }
     },
-    [businessId]
+    [businessId],
   );
 
   const {
@@ -109,54 +116,84 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
 
   const handleApplyHero = useCallback(() => {
     setLastAppliedHero(heroSettings);
-    toast({ title: "Sucesso", description: "Configurações do Hero aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações do Hero aplicadas.",
+    });
   }, [heroSettings, setLastAppliedHero, toast]);
 
   const handleApplyAboutHero = useCallback(() => {
     setLastAppliedAboutHero(aboutHeroSettings);
-    toast({ title: "Sucesso", description: "Configurações do Sobre aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações do Sobre aplicadas.",
+    });
   }, [aboutHeroSettings, setLastAppliedAboutHero, toast]);
 
   const handleApplyStory = useCallback(() => {
     setLastAppliedStory(storySettings);
-    toast({ title: "Sucesso", description: "Configurações da História aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações da História aplicadas.",
+    });
   }, [storySettings, setLastAppliedStory, toast]);
 
   const handleApplyTeam = useCallback(() => {
     setLastAppliedTeam(teamSettings);
-    toast({ title: "Sucesso", description: "Configurações da Equipe aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações da Equipe aplicadas.",
+    });
   }, [teamSettings, setLastAppliedTeam, toast]);
 
   const handleApplyTestimonials = useCallback(() => {
     setLastAppliedTestimonials(testimonialsSettings);
-    toast({ title: "Sucesso", description: "Configurações de Depoimentos aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações de Depoimentos aplicadas.",
+    });
   }, [testimonialsSettings, setLastAppliedTestimonials, toast]);
 
   const handleApplyFont = useCallback(() => {
     setLastAppliedFont(fontSettings);
-    toast({ title: "Sucesso", description: "Configurações de Fontes aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações de Fontes aplicadas.",
+    });
   }, [fontSettings, setLastAppliedFont, toast]);
 
   const handleApplyTypography = handleApplyFont;
 
   const handleApplyColors = useCallback(() => {
     setLastAppliedColor(colorSettings);
-    toast({ title: "Sucesso", description: "Configurações de Cores aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações de Cores aplicadas.",
+    });
   }, [colorSettings, setLastAppliedColor, toast]);
 
   const handleApplyServices = useCallback(() => {
     setLastAppliedServices(servicesSettings);
-    toast({ title: "Sucesso", description: "Configurações de Serviços aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações de Serviços aplicadas.",
+    });
   }, [servicesSettings, setLastAppliedServices, toast]);
 
   const handleApplyValues = useCallback(() => {
     setLastAppliedValues(valuesSettings);
-    toast({ title: "Sucesso", description: "Configurações de Valores aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações de Valores aplicadas.",
+    });
   }, [valuesSettings, setLastAppliedValues, toast]);
 
   const handleApplyGallery = useCallback(() => {
     setLastAppliedGallery(gallerySettings);
-    toast({ title: "Sucesso", description: "Configurações da Galeria aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações da Galeria aplicadas.",
+    });
   }, [gallerySettings, setLastAppliedGallery, toast]);
 
   const handleApplyCTA = useCallback(() => {
@@ -166,37 +203,58 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
 
   const handleApplyHeader = useCallback(() => {
     setLastAppliedHeader(headerSettings);
-    toast({ title: "Sucesso", description: "Configurações do Cabeçalho aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações do Cabeçalho aplicadas.",
+    });
   }, [headerSettings, setLastAppliedHeader, toast]);
 
   const handleApplyFooter = useCallback(() => {
     setLastAppliedFooter(footerSettings);
-    toast({ title: "Sucesso", description: "Configurações do Rodapé aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações do Rodapé aplicadas.",
+    });
   }, [footerSettings, setLastAppliedFooter, toast]);
 
   const handleApplyBookingService = useCallback(() => {
     setLastAppliedBookingService(bookingServiceSettings);
-    toast({ title: "Sucesso", description: "Configurações do Passo 1 aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações do Passo 1 aplicadas.",
+    });
   }, [bookingServiceSettings, setLastAppliedBookingService, toast]);
 
   const handleApplyBookingDate = useCallback(() => {
     setLastAppliedBookingDate(bookingDateSettings);
-    toast({ title: "Sucesso", description: "Configurações do Passo 2 aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações do Passo 2 aplicadas.",
+    });
   }, [bookingDateSettings, setLastAppliedBookingDate, toast]);
 
   const handleApplyBookingTime = useCallback(() => {
     setLastAppliedBookingTime(bookingTimeSettings);
-    toast({ title: "Sucesso", description: "Configurações do Passo 3 aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações do Passo 3 aplicadas.",
+    });
   }, [bookingTimeSettings, setLastAppliedBookingTime, toast]);
 
   const handleApplyBookingForm = useCallback(() => {
     setLastAppliedBookingForm(bookingFormSettings);
-    toast({ title: "Sucesso", description: "Configurações do Passo 4 aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações do Passo 4 aplicadas.",
+    });
   }, [bookingFormSettings, setLastAppliedBookingForm, toast]);
 
   const handleApplyBookingConfirmation = useCallback(() => {
     setLastAppliedBookingConfirmation(bookingConfirmationSettings);
-    toast({ title: "Sucesso", description: "Configurações de Confirmação aplicadas." });
+    toast({
+      title: "Sucesso",
+      description: "Configurações de Confirmação aplicadas.",
+    });
   }, [bookingConfirmationSettings, setLastAppliedBookingConfirmation, toast]);
 
   const resetSettings = useCallback(() => {
@@ -224,7 +282,8 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
         "booking-date": bookingDateSettings as BackgroundSettings,
         "booking-time": bookingTimeSettings as BackgroundSettings,
         "booking-form": bookingFormSettings as BackgroundSettings,
-        "booking-confirmation": bookingConfirmationSettings as BackgroundSettings,
+        "booking-confirmation":
+          bookingConfirmationSettings as BackgroundSettings,
       };
 
       const currentSettings = settingsMap[targetSectionId];
@@ -232,10 +291,33 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
         currentSettings?.appearance?.backgroundImageUrl ||
         currentSettings?.bgImage;
       const currentBgType = currentSettings?.bgType;
+      const normalizedUpdates = { ...updates };
+
+      if (
+        normalizedUpdates.bgColor !== undefined &&
+        !normalizedUpdates.appearance?.backgroundColor
+      ) {
+        normalizedUpdates.appearance = {
+          ...(currentSettings?.appearance || {}),
+          ...(normalizedUpdates.appearance || {}),
+          backgroundColor: normalizedUpdates.bgColor,
+        };
+      }
+
+      if (
+        normalizedUpdates.appearance?.backgroundColor !== undefined &&
+        normalizedUpdates.bgColor === undefined
+      ) {
+        normalizedUpdates.bgColor =
+          normalizedUpdates.appearance.backgroundColor;
+      }
 
       // Scenario 1: Troca de Imagem (quando uma nova URL é fornecida e difere da atual)
-      if (updates.bgImage && updates.bgImage !== currentImageUrl) {
-        // Nota: O BackgroundEditor já faz essa limpeza no upload. 
+      if (
+        normalizedUpdates.bgImage &&
+        normalizedUpdates.bgImage !== currentImageUrl
+      ) {
+        // Nota: O BackgroundEditor já faz essa limpeza no upload.
         // Aqui garantimos que qualquer outra forma de troca também limpe a imagem órfã.
         if (currentImageUrl?.includes("/api/storage/")) {
           deleteOrphanImage(currentImageUrl);
@@ -244,60 +326,40 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
 
       // Scenario 2: Mudança para Cor Sólida (bgType image -> color)
       if (
-        updates.bgType === "color" &&
+        normalizedUpdates.bgType === "color" &&
         currentBgType === "image" &&
         currentImageUrl
       ) {
         await deleteOrphanImage(currentImageUrl);
 
-        // Limpar explicitamente a URL nas atualizações para o estado e drafts
-        updates.bgImage = "";
-        updates.appearance = {
+        normalizedUpdates.bgImage = "";
+        normalizedUpdates.appearance = {
           ...(currentSettings?.appearance || {}),
+          ...(normalizedUpdates.appearance || {}),
           backgroundImageUrl: "",
         };
-
-        // Persistência imediata no banco para evitar inconsistência (link quebrado)
-        try {
-          const sectionKeyMap: Record<string, string> = {
-            hero: "hero",
-            "about-hero": "aboutHero",
-            story: "story",
-            team: "team",
-            testimonials: "testimonials",
-            services: "services",
-            values: "values",
-            "gallery-preview": "gallery",
-            "gallery-grid": "gallery",
-            cta: "cta",
-          };
-
-          const sectionKey = sectionKeyMap[targetSectionId];
-          if (sectionKey) {
-            await siteCustomizerService.saveCustomization(businessId, {
-              [sectionKey]: {
-                ...currentSettings,
-                bgType: "color",
-                bgImage: "",
-                appearance: {
-                  ...(currentSettings.appearance || {}),
-                  backgroundImageUrl: "",
-                },
-              },
-            });
-            console.log(
-              `>>> [useEditorActions] Mudança para cor sólida persistida no banco (${targetSectionId}).`
-            );
-          }
-        } catch (error) {
-          console.error(
-            `[useEditorActions] Erro ao persistir mudança para cor sólida (${targetSectionId}):`,
-            error
-          );
-        }
       }
 
-      handleUpdateBackgroundState(updates, targetSectionId);
+      handleUpdateBackgroundState(normalizedUpdates, targetSectionId);
+
+      const currentSettingsMap: Record<string, BackgroundSettings | undefined> =
+        {
+          hero: heroSettings,
+          "about-hero": aboutHeroSettings,
+          story: storySettings,
+          team: teamSettings,
+          testimonials: testimonialsSettings,
+          services: servicesSettings,
+          values: valuesSettings,
+          "gallery-preview": gallerySettings,
+          "gallery-grid": gallerySettings,
+          cta: ctaSettings,
+          "booking-service": bookingServiceSettings,
+          "booking-date": bookingDateSettings,
+          "booking-time": bookingTimeSettings,
+          "booking-form": bookingFormSettings,
+          "booking-confirmation": bookingConfirmationSettings,
+        };
 
       const saveFnMap: Record<
         string,
@@ -314,7 +376,8 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
         values: (u) => saveValuesSettings({ ...valuesSettings, ...u }),
         "gallery-preview": (u) =>
           saveGallerySettings({ ...gallerySettings, ...u }),
-        "gallery-grid": (u) => saveGallerySettings({ ...gallerySettings, ...u }),
+        "gallery-grid": (u) =>
+          saveGallerySettings({ ...gallerySettings, ...u }),
         cta: (u) => saveCTASettings({ ...ctaSettings, ...u }),
         "booking-service": (u) =>
           saveBookingServiceSettings({ ...bookingServiceSettings, ...u }),
@@ -331,29 +394,14 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
           }),
       };
 
-      const currentSettingsMap: Record<string, BackgroundSettings | undefined> = {
-        hero: heroSettings,
-        "about-hero": aboutHeroSettings,
-        story: storySettings,
-        team: teamSettings,
-        testimonials: testimonialsSettings,
-        services: servicesSettings,
-        values: valuesSettings,
-        "gallery-preview": gallerySettings,
-        "gallery-grid": gallerySettings,
-        cta: ctaSettings,
-        "booking-service": bookingServiceSettings,
-        "booking-date": bookingDateSettings,
-        "booking-time": bookingTimeSettings,
-        "booking-form": bookingFormSettings,
-        "booking-confirmation": bookingConfirmationSettings,
-      };
-
       const saveFn = saveFnMap[targetSectionId];
       if (saveFn) {
         const currentSettings = currentSettingsMap[targetSectionId];
-        const merged =
-          currentSettings ? { ...currentSettings, ...updates } : updates;
+        const merged = currentSettings
+          ? { ...currentSettings, ...normalizedUpdates }
+          : normalizedUpdates;
+
+        // Garante limpeza de bgImage se for cor
         if (merged.bgType === "color") {
           merged.bgImage = "";
           merged.appearance = {
@@ -361,43 +409,49 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
             backgroundImageUrl: "",
           };
         }
+
         saveFn(merged);
+
+        // Dispara evento para o auto-save e sincronização de preview
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("local_draft_changed"));
+        }
       }
     },
     [
       activeSectionId,
-      handleUpdateBackgroundState,
       heroSettings,
-      saveHeroSettings,
       aboutHeroSettings,
-      saveAboutHeroSettings,
       storySettings,
-      saveStorySettings,
       teamSettings,
-      saveTeamSettings,
       testimonialsSettings,
-      saveTestimonialsSettings,
       servicesSettings,
-      saveServicesSettings,
       valuesSettings,
-      saveValuesSettings,
       gallerySettings,
-      saveGallerySettings,
       ctaSettings,
-      saveCTASettings,
       bookingServiceSettings,
-      saveBookingServiceSettings,
       bookingDateSettings,
-      saveBookingDateSettings,
       bookingTimeSettings,
-      saveBookingTimeSettings,
       bookingFormSettings,
-      saveBookingFormSettings,
       bookingConfirmationSettings,
+      handleUpdateBackgroundState,
+      saveHeroSettings,
+      saveAboutHeroSettings,
+      saveStorySettings,
+      saveTeamSettings,
+      saveTestimonialsSettings,
+      saveServicesSettings,
+      saveValuesSettings,
+      saveGallerySettings,
+      saveCTASettings,
+      saveBookingServiceSettings,
+      saveBookingDateSettings,
+      saveBookingTimeSettings,
+      saveBookingFormSettings,
       saveBookingConfirmationSettings,
       businessId,
       deleteOrphanImage,
-    ]
+    ],
   );
 
   const handleUpdateBookingService = useCallback(
@@ -405,7 +459,11 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
       handleUpdateBookingServiceState(updates);
       saveBookingServiceSettings({ ...bookingServiceSettings, ...updates });
     },
-    [handleUpdateBookingServiceState, saveBookingServiceSettings, bookingServiceSettings],
+    [
+      handleUpdateBookingServiceState,
+      saveBookingServiceSettings,
+      bookingServiceSettings,
+    ],
   );
 
   const handleUpdateBookingDate = useCallback(
@@ -413,7 +471,11 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
       handleUpdateBookingDateState(updates);
       saveBookingDateSettings({ ...bookingDateSettings, ...updates });
     },
-    [handleUpdateBookingDateState, saveBookingDateSettings, bookingDateSettings],
+    [
+      handleUpdateBookingDateState,
+      saveBookingDateSettings,
+      bookingDateSettings,
+    ],
   );
 
   const handleUpdateBookingTime = useCallback(
@@ -421,7 +483,11 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
       handleUpdateBookingTimeState(updates);
       saveBookingTimeSettings({ ...bookingTimeSettings, ...updates });
     },
-    [handleUpdateBookingTimeState, saveBookingTimeSettings, bookingTimeSettings],
+    [
+      handleUpdateBookingTimeState,
+      saveBookingTimeSettings,
+      bookingTimeSettings,
+    ],
   );
 
   const handleUpdateBookingForm = useCallback(
@@ -429,7 +495,11 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
       handleUpdateBookingFormState(updates);
       saveBookingFormSettings({ ...bookingFormSettings, ...updates });
     },
-    [handleUpdateBookingFormState, saveBookingFormSettings, bookingFormSettings],
+    [
+      handleUpdateBookingFormState,
+      saveBookingFormSettings,
+      bookingFormSettings,
+    ],
   );
 
   const handleUpdateBookingConfirmation = useCallback(
@@ -440,7 +510,11 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
         ...updates,
       });
     },
-    [handleUpdateBookingConfirmationState, saveBookingConfirmationSettings, bookingConfirmationSettings],
+    [
+      handleUpdateBookingConfirmationState,
+      saveBookingConfirmationSettings,
+      bookingConfirmationSettings,
+    ],
   );
 
   const handleSectionReset = useCallback(
@@ -451,7 +525,8 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
         "about-hero": () => setAboutHeroSettings(state.lastSavedAboutHero),
         story: () => setStorySettings(state.lastSavedStory),
         team: () => setTeamSettings(state.lastSavedTeam),
-        testimonials: () => setTestimonialsSettings(state.lastSavedTestimonials),
+        testimonials: () =>
+          setTestimonialsSettings(state.lastSavedTestimonials),
         services: () => setServicesSettings(state.lastSavedServices),
         values: () => setValuesSettings(state.lastSavedValues),
         "gallery-preview": () => setGallerySettings(state.lastSavedGallery),
@@ -459,17 +534,25 @@ export function useEditorActions({ state, local, toast, businessId }: UseEditorA
         cta: () => setCTASettings(state.lastSavedCTA),
         header: () => setHeaderSettings(state.lastSavedHeader),
         footer: () => setFooterSettings(state.lastSavedFooter),
-        "booking-service": () => setBookingServiceSettings(state.lastSavedBookingService),
-        "booking-date": () => setBookingDateSettings(state.lastSavedBookingDate),
-        "booking-time": () => setBookingTimeSettings(state.lastSavedBookingTime),
-        "booking-form": () => setBookingFormSettings(state.lastSavedBookingForm),
-        "booking-confirmation": () => setBookingConfirmationSettings(state.lastSavedBookingConfirmation),
+        "booking-service": () =>
+          setBookingServiceSettings(state.lastSavedBookingService),
+        "booking-date": () =>
+          setBookingDateSettings(state.lastSavedBookingDate),
+        "booking-time": () =>
+          setBookingTimeSettings(state.lastSavedBookingTime),
+        "booking-form": () =>
+          setBookingFormSettings(state.lastSavedBookingForm),
+        "booking-confirmation": () =>
+          setBookingConfirmationSettings(state.lastSavedBookingConfirmation),
       };
 
       const resetFn = resetMap[targetSectionId];
       if (resetFn) {
         resetFn();
-        toast({ title: "Resetado", description: `Seção ${targetSectionId} voltou ao estado salvo.` });
+        toast({
+          title: "Resetado",
+          description: `Seção ${targetSectionId} voltou ao estado salvo.`,
+        });
       }
     },
     [

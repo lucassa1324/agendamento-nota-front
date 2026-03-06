@@ -64,7 +64,7 @@ export function BackendTrigger() {
 
         // 3. Publicar Customização no Backend
         console.log(">>> [BackendTrigger] Publicando customização...");
-        await siteCustomizerService.saveCustomization(businessId, {
+        await siteCustomizerService.saveDraftCustomization(businessId, {
           hero: newHeroSettings,
         });
 

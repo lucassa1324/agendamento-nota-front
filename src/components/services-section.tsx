@@ -158,13 +158,19 @@ export function ServicesSection() {
       const layoutGlobal =
         currentConfig?.layoutGlobal || currentConfig?.layout_global;
       const configServices = currentConfig?.services || layoutGlobal?.services;
-      const finalSettings = configServices || getServicesSettings();
+      const isPreviewMode =
+        typeof window !== "undefined" &&
+        window.location.search.includes("preview=true");
+      const finalSettings = isPreviewMode
+        ? getServicesSettings()
+        : configServices || getServicesSettings();
 
       console.log(">>> [SITE_SERVICES] Sincronizando Serviços:", {
         forceRevalidate,
         total_recebido: currentServices.length,
         filtrados_home: homeServices.length,
         slug_contexto: studioSlug,
+        isPreviewMode,
         tem_settings_cache: !!settings,
         nomes_na_home: homeServices.map((s) => s.name),
       });
@@ -197,7 +203,9 @@ export function ServicesSection() {
 
       if (event.data.type === "UPDATE_SERVICES_SETTINGS") {
         setSettings((prev) =>
-          prev ? { ...prev, ...event.data.settings } : prev,
+          prev
+            ? { ...prev, ...event.data.settings }
+            : (event.data.settings as ServicesSettings),
         );
       }
 
@@ -211,19 +219,23 @@ export function ServicesSection() {
     };
 
     const onSettingsUpdate = () => loadData();
+    const handleDataReady = () => {
+      if (isPreview) return;
+      loadData(true);
+    };
 
     window.addEventListener("message", handleMessage);
     window.addEventListener("studioSettingsUpdated", onSettingsUpdate);
     window.addEventListener("servicesSettingsUpdated", onSettingsUpdate);
     window.addEventListener("servicesUpdated", onSettingsUpdate);
-    window.addEventListener("DataReady", onSettingsUpdate);
+    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("studioSettingsUpdated", onSettingsUpdate);
       window.removeEventListener("servicesSettingsUpdated", onSettingsUpdate);
       window.removeEventListener("servicesUpdated", onSettingsUpdate);
-      window.removeEventListener("DataReady", onSettingsUpdate);
+      window.removeEventListener("DataReady", handleDataReady);
     };
   }, [loadData]);
 
@@ -252,6 +264,17 @@ export function ServicesSection() {
   if (!isPreview && services.length === 0) return null;
   if (!settings) return null;
 
+  const backgroundUrl =
+    settings.bgImage || settings.appearance?.backgroundImageUrl;
+  const hasImage = !!backgroundUrl && backgroundUrl.trim() !== "";
+  const effectiveOverlayOpacity =
+    settings.appearance?.overlay?.opacity ??
+    (backgroundUrl ? 0 : settings.overlayOpacity);
+  const effectiveImageOpacity =
+    backgroundUrl && !settings.appearance?.overlay ? 1 : settings.imageOpacity;
+  const effectiveBackgroundColor =
+    settings.appearance?.backgroundColor || settings.bgColor || "#ffffff";
+
   return (
     <SessionWrapper appearance={settings?.appearance}>
       <section
@@ -262,7 +285,23 @@ export function ServicesSection() {
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >
-      <SectionBackground settings={settings} />
+      <SectionBackground
+        settings={{
+          ...settings,
+          bgType: (settings.bgType === "color" || !hasImage
+            ? "color"
+            : "image") as "color" | "image",
+          bgColor: effectiveBackgroundColor,
+          bgImage: backgroundUrl || "",
+          imageOpacity: effectiveImageOpacity,
+          overlayOpacity: effectiveOverlayOpacity,
+          appearance: {
+            ...settings.appearance,
+            backgroundColor: effectiveBackgroundColor,
+          },
+        }}
+        defaultImage=""
+      />
 
       <div className="container relative z-10 mx-auto px-4">
         <div className="text-center mb-16">

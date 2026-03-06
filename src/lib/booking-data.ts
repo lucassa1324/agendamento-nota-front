@@ -141,6 +141,11 @@ export function updateDraftTimestamp(): void {
   const timestamp = new Date().toISOString();
   localStorage.setItem(getStorageKey("last_draft_update"), timestamp);
   console.log(`>>> [booking-data] Draft timestamp atualizado: ${timestamp}`);
+
+  // Dispara evento para o editor saber que houve mudança e salvar no banco
+  window.dispatchEvent(
+    new CustomEvent("local_draft_changed", { detail: { timestamp } }),
+  );
 }
 
 export function getDraftTimestamp(): string | null {
@@ -236,6 +241,7 @@ export const defaultFooterSettings: FooterSettings = {
 };
 
 export type AppearanceSettings = {
+  backgroundColor?: string;
   backgroundImageUrl?: string;
   overlay?: {
     color: string;
@@ -751,6 +757,48 @@ export function saveBookingConfirmationSettings(
   }
 }
 
+export function clearAllCustomizationCache(): void {
+  if (typeof window === "undefined") return;
+
+  const keysToClear = [
+    "heroSettings",
+    "aboutHeroSettings",
+    "storySettings",
+    "teamSettings",
+    "testimonialsSettings",
+    "fontSettings",
+    "colorSettings",
+    "servicesSettings",
+    "valuesSettings",
+    "gallerySettings",
+    "ctaSettings",
+    "headerSettings",
+    "footerSettings",
+    "bookingServiceSettings",
+    "bookingDateSettings",
+    "bookingTimeSettings",
+    "bookingFormSettings",
+    "bookingConfirmationSettings",
+    "pageVisibility",
+    "visibleSections",
+    "layoutGlobal",
+    "siteProfile",
+    "studio_data",
+    "studio_last_slug",
+    "last_draft_update",
+    "services",
+    "studioSettings",
+  ];
+
+  keysToClear.forEach((key) => {
+    localStorage.removeItem(getStorageKey(key));
+    // Também limpa a versão sem o prefixo do usuário, por precaução
+    localStorage.removeItem(key);
+  });
+
+  console.log(">>> [booking-data] Todo o cache de customização foi limpo.");
+}
+
 export type TeamMember = {
   id: string;
   name: string;
@@ -1180,6 +1228,7 @@ export function saveColorSettings(settings: ColorSettings): void {
     getStorageKey("colorSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("colorSettingsUpdated"));
   }

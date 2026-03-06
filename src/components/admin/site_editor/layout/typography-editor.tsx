@@ -34,7 +34,7 @@ export function TypographyEditor({
   onUpdate,
   onHighlight,
   hasChanges,
-  onSave,
+  onSave: externalOnSave,
 }: TypographyEditorProps) {
   const handleAccordionChange = (values: string | string[]) => {
     if (onHighlight) {
@@ -230,7 +230,7 @@ export function TypographyEditor({
         <Button
           type="button"
           disabled={!hasChanges}
-          onClick={onSave}
+          onClick={externalOnSave}
           className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
             hasChanges
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"

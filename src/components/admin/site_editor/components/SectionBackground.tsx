@@ -15,6 +15,7 @@ interface SectionBackgroundProps {
     imageX?: number;
     imageY?: number;
     appearance?: {
+      backgroundColor?: string;
       backgroundImageUrl?: string;
       overlay?: {
         color: string;
@@ -35,12 +36,15 @@ export function SectionBackground({
 }: SectionBackgroundProps) {
   const [imageError, setImageError] = useState(false);
 
-  // Se o tipo for 'color', a URL da imagem DEVE ser anulada, ignorando o banco. 
-  const bgImage = settings.bgType === "image" 
-    ? (settings.appearance?.backgroundImageUrl || settings.bgImage || defaultImage) 
-    : null; 
-  const hasValidImage = settings.bgType === "image" && !!bgImage; 
-  
+  // Se o tipo for 'color', a URL da imagem DEVE ser anulada, ignorando o banco.
+  const bgImage =
+    settings.bgType === "image"
+      ? settings.appearance?.backgroundImageUrl ||
+        settings.bgImage ||
+        defaultImage
+      : null;
+  const hasValidImage = settings.bgType === "image" && !!bgImage;
+
   // Só mostramos imagem se o TIPO selecionado for 'image' E existir uma URL e não houver erro
   const shouldShowImage = hasValidImage && !imageError;
 
@@ -56,7 +60,10 @@ export function SectionBackground({
       <div
         className="absolute inset-0 z-0 transition-colors duration-500"
         style={{
-          backgroundColor: settings.bgColor || "transparent",
+          backgroundColor:
+            settings.appearance?.backgroundColor ||
+            settings.bgColor ||
+            "transparent",
           backgroundImage: settings.bgType === "color" ? "none" : undefined,
           display:
             settings.bgType === "color" || !shouldShowImage ? "block" : "none",

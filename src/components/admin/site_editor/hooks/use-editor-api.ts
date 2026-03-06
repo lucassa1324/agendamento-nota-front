@@ -1,4 +1,10 @@
-import { type RefObject, useCallback, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useToast } from "@/hooks/use-toast";
 import type {
   BookingStepSettings,
@@ -128,8 +134,10 @@ type EditorStateSetters = {
 };
 
 type UseEditorApiParams = {
-  iframeRef: RefObject<HTMLIFrameElement | null>;
-  loadExternalConfig: (config: Record<string, unknown>) => void;
+  loadExternalConfig: (
+    config: SiteConfigData,
+    force?: boolean,
+  ) => void;
   settings: EditorSettings;
   lastSaved: EditorSavedState;
   lastApplied: EditorAppliedState;
@@ -139,7 +147,6 @@ type UseEditorApiParams = {
 };
 
 export function useEditorApi({
-  iframeRef,
   loadExternalConfig,
   settings,
   lastSaved,
@@ -150,9 +157,12 @@ export function useEditorApi({
 }: UseEditorApiParams) {
   const { toast } = useToast();
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const fetchAbortControllerRef = useRef<AbortController | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const getChangedSettings = useCallback(() => {
     const changes: Partial<SiteConfigData> = {};
@@ -178,7 +188,9 @@ export function useEditorApi({
     if (hasChanged(settings.teamSettings, lastSaved.lastSavedTeam)) {
       changes.team = settings.teamSettings;
     }
-    if (hasChanged(settings.testimonialsSettings, lastSaved.lastSavedTestimonials)) {
+    if (
+      hasChanged(settings.testimonialsSettings, lastSaved.lastSavedTestimonials)
+    ) {
       changes.testimonials = settings.testimonialsSettings;
     }
     if (hasChanged(settings.fontSettings, lastSaved.lastSavedFont)) {
@@ -303,12 +315,22 @@ export function useEditorApi({
       pageVisibility: settings.pageVisibility,
       visibleSections: settings.visibleSections,
     });
+    
+    // Dispara um evento para notificar outros hooks que o localStorage mudou
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('local_draft_changed'));
+    }
   }, [saveLocalDrafts, settings]);
 
   const handleSaveGlobal = useCallback(
-    async (shouldReloadFromBank = true) => {
+    async () => {
+      if (isPublishing) {
+        console.log(
+          ">>> [useEditorApi] Ignorando save global durante publicação...",
+        );
+        return;
+      }
       console.log(">>> [useEditorApi] Iniciando salvamento global...");
-      handleSaveLocal();
 
       if (companyId) {
         setIsSaving(true);
@@ -316,70 +338,14 @@ export function useEditorApi({
           const changes = getChangedSettings();
           console.log(">>> [useEditorApi] Alterações detectadas:", changes);
 
-          // LOG DE PUBLICAÇÃO: Verificar se dados do Hero estão corretos
-          if (changes.hero) {
-            console.log("Dados enviados para publicação (Hero):", {
-              bgType: (changes.hero as any).bgType,
-              bgImage: (changes.hero as any).bgImage,
-              appearanceImageUrl: (changes.hero as any).appearance?.backgroundImageUrl
-            });
+          if (Object.keys(changes).length === 0) {
+            console.log(
+              ">>> [useEditorApi] Nenhuma alteração detectada. Pulando salvamento.",
+            );
+            return;
           }
 
-          // Auditoria de imagens em alterações críticas (Hero, Story, etc.)
-          if (changes.hero?.bgType === "image" && changes.hero.bgImage) {
-            console.log(`>>> [PUBLISH_SUCCESS] Hero image: ${changes.hero.bgImage}`);
-          }
-          if (changes.aboutHero?.bgType === "image" && changes.aboutHero.bgImage) {
-            console.log(`>>> [PUBLISH_SUCCESS] About Hero image: ${changes.aboutHero.bgImage}`);
-          }
-          if (changes.story?.image) {
-            console.log(`>>> [PUBLISH_SUCCESS] Story content image: ${changes.story.image}`);
-          }
-          if (changes.story?.bgType === "image" && changes.story.bgImage) {
-            console.log(`>>> [PUBLISH_SUCCESS] Story background: ${changes.story.bgImage}`);
-          }
-
-          // Auditoria de imagens nos passos de agendamento (Booking Steps)
-          if (changes.bookingSteps) {
-            const steps = changes.bookingSteps;
-            if (steps.service?.bgType === "image" && steps.service.bgImage) {
-              console.log(`>>> [PUBLISH_SUCCESS] Booking Service image: ${steps.service.bgImage}`);
-            }
-            if (steps.date?.bgType === "image" && steps.date.bgImage) {
-              console.log(`>>> [PUBLISH_SUCCESS] Booking Date image: ${steps.date.bgImage}`);
-            }
-            if (steps.time?.bgType === "image" && steps.time.bgImage) {
-              console.log(`>>> [PUBLISH_SUCCESS] Booking Time image: ${steps.time.bgImage}`);
-            }
-            if (steps.form?.bgType === "image" && steps.form.bgImage) {
-              console.log(`>>> [PUBLISH_SUCCESS] Booking Form image: ${steps.form.bgImage}`);
-            }
-            if (steps.confirmation?.bgType === "image" && steps.confirmation.bgImage) {
-               console.log(`>>> [PUBLISH_SUCCESS] Booking Confirmation image: ${steps.confirmation.bgImage}`);
-             }
-           }
- 
-           // Validação de presença de URLs de imagem antes de publicar
-           const missingImages: string[] = [];
-           if (changes.hero?.bgType === "image" && !changes.hero.bgImage) missingImages.push("Banner Principal");
-           if (changes.aboutHero?.bgType === "image" && !changes.aboutHero.bgImage) missingImages.push("Banner Sobre");
-           if (changes.story?.bgType === "image" && !changes.story.bgImage) missingImages.push("História (Fundo)");
-           if (changes.gallery?.bgType === "image" && !changes.gallery.bgImage) missingImages.push("Galeria (Fundo)");
- 
-           if (changes.bookingSteps) {
-             const steps = changes.bookingSteps;
-             if (steps.service?.bgType === "image" && !steps.service.bgImage) missingImages.push("Agendamento - Passo 1");
-             if (steps.date?.bgType === "image" && !steps.date.bgImage) missingImages.push("Agendamento - Passo 2");
-             if (steps.time?.bgType === "image" && !steps.time.bgImage) missingImages.push("Agendamento - Passo 3");
-             if (steps.form?.bgType === "image" && !steps.form.bgImage) missingImages.push("Agendamento - Passo 4");
-             if (steps.confirmation?.bgType === "image" && !steps.confirmation.bgImage) missingImages.push("Agendamento - Passo 5");
-           }
- 
-           if (missingImages.length > 0) {
-             console.warn(">>> [useEditorApi] Atenção: As seguintes seções estão em modo imagem mas não possuem URL definida:", missingImages);
-           }
- 
-           const payload: Record<string, unknown> = { ...changes };
+          const payload: Record<string, unknown> = {};
 
           const sectionsToGlobal = [
             "hero",
@@ -395,9 +361,12 @@ export function useEditorApi({
             "footer",
           ];
 
-          // Mapeamento de seções para a estrutura técnica esperada pelo banco de dados
           const sectionToDatabasePath: Record<string, string> = {
-            hero: "home.hero",
+            hero: "home.heroBanner",
+            aboutHero: "home.aboutHero",
+            story: "home.storySection",
+            team: "home.teamSection",
+            testimonials: "home.testimonialsSection",
             services: "home.servicesSection",
             values: "home.valuesSection",
             gallery: "home.gallerySection",
@@ -405,69 +374,51 @@ export function useEditorApi({
           };
 
           for (const section of sectionsToGlobal) {
-            if (changes[section as keyof typeof changes]) {
-              let sectionData = changes[
-                section as keyof typeof changes
-              ] as Record<string, unknown>;
-
-              // GARANTIR LIMPEZA DE IMAGEM SE FOR COR:
-              // Se o tipo for cor, forçamos a URL da imagem a ser vazia para o banco refletir a mudança
-              if (sectionData.bgType === "color") {
-                console.log(
-                  `>>> [PUBLISH_CLEANUP] Forçando limpeza de imagem para a seção ${section} (bgType === "color")`,
-                );
-                sectionData = {
-                  ...sectionData,
-                  bgImage: "",
-                  appearance: {
-                    ...((sectionData.appearance as Record<string, unknown>) ||
-                      {}),
-                    backgroundImageUrl: "",
-                  },
+            const sectionKey = section as keyof typeof changes;
+              if (changes[sectionKey]) {
+                const sectionData = {
+                  ...(changes[sectionKey] as Record<string, unknown>),
                 };
-              }
 
-              // 1. Manter a estrutura atual no layoutGlobal (para retrocompatibilidade/outros usos)
-              payload.layoutGlobal = {
-                ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-                [section]: sectionData,
-              };
+                if (!payload.layoutGlobal) payload.layoutGlobal = {};
+              const layoutKey = section === "hero" ? "heroBanner" : section;
+              (payload.layoutGlobal as Record<string, unknown>)[layoutKey] =
+                sectionData;
 
-              // 2. Mapear para a nova estrutura solicitada (home.heroBanner.appearance)
               const dbPath = sectionToDatabasePath[section];
-              if (dbPath && sectionData?.appearance) {
-                const [root, sub] = dbPath.split('.');
-                
-                // Inicializa a estrutura de objeto aninhado se necessário
+              if (dbPath) {
+                const [root, sub] = dbPath.split(".");
                 if (!payload[root]) payload[root] = {};
                 const rootObj = payload[root] as Record<string, unknown>;
-                
+
                 if (!rootObj[sub]) rootObj[sub] = {};
                 const subObj = rootObj[sub] as Record<string, unknown>;
 
-                // Define o appearance e content na nova estrutura para todas as seções mapeadas
                 const appearance = sectionData.appearance as
                   | Record<string, unknown>
                   | undefined;
 
-                const overlayOpacity =
-                  typeof sectionData.overlayOpacity === "number"
-                    ? sectionData.overlayOpacity
-                    : 0.5;
-
-                const backgroundImageUrl =
-                  typeof appearance?.backgroundImageUrl === "string"
-                    ? appearance.backgroundImageUrl
-                    : "";
-
                 subObj.appearance = {
-                  ...appearance,
-                  backgroundImageUrl,
-                  showBackgroundImage: Boolean(backgroundImageUrl),
-                  overlayOpacity,
+                  ...(appearance || {}),
+                  backgroundImageUrl:
+                    sectionData.bgImage || appearance?.backgroundImageUrl || "",
+                  showBackgroundImage: sectionData.bgType === "image",
+                  backgroundColor:
+                    (sectionData.bgColor as string) ||
+                    (appearance?.backgroundColor as string) ||
+                    "#ffffff",
+                  overlayOpacity:
+                    typeof sectionData.overlayOpacity === "number"
+                      ? sectionData.overlayOpacity
+                      : appearance?.overlayOpacity ?? 0.5,
                 };
 
-                subObj.content = {
+                subObj.bgType = sectionData.bgType || "color";
+                subObj.bgImage =
+                  sectionData.bgImage || appearance?.backgroundImageUrl || "";
+
+                // Mapeamento de conteúdo específico por seção
+                const content: Record<string, unknown> = {
                   title:
                     typeof sectionData.title === "string"
                       ? sectionData.title
@@ -476,247 +427,219 @@ export function useEditorApi({
                     typeof sectionData.subtitle === "string"
                       ? sectionData.subtitle
                       : "",
+                  titleFont: sectionData.titleFont || "",
+                  titleColor: sectionData.titleColor || "",
+                  subtitleFont: sectionData.subtitleFont || "",
+                  subtitleColor: sectionData.subtitleColor || "",
                 };
 
-                console.log(
-                  `>>> [useEditorApi] Mapeando ${section} para ${dbPath}.appearance e ${dbPath}.content`
-                );
+                // Campos extras para Hero
+                if (section === "hero" || section === "aboutHero") {
+                  content.badge = sectionData.badge || "";
+                  content.showBadge = sectionData.showBadge ?? true;
+                  content.primaryButton = sectionData.primaryButton || "";
+                  content.secondaryButton = sectionData.secondaryButton || "";
+                }
+
+                // Campos extras para Story
+                if (section === "story") {
+                  content.text = sectionData.content || "";
+                  content.image = sectionData.image || "";
+                }
+
+                // Campos extras para Depoimentos
+                if (section === "testimonials") {
+                  content.testimonials = sectionData.testimonials || [];
+                  content.starColor = sectionData.starColor || "";
+                  content.cardBgColor = sectionData.cardBgColor || "";
+                  content.cardNameFont = sectionData.cardNameFont || "";
+                  content.cardNameColor = sectionData.cardNameColor || "";
+                  content.cardTextFont = sectionData.cardTextFont || "";
+                  content.cardTextColor = sectionData.cardTextColor || "";
+                  content.cardRatingColor = sectionData.cardRatingColor || "";
+                  content.cardBorderRadius = sectionData.cardBorderRadius || "";
+                }
+
+                // Campos extras para Galeria
+                if (section === "gallery") {
+                  content.buttonText = sectionData.buttonText || "";
+                  content.buttonFont = sectionData.buttonFont || "";
+                  content.buttonColor = sectionData.buttonColor || "";
+                  content.buttonTextColor = sectionData.buttonTextColor || "";
+                  content.layout = sectionData.layout || "grid";
+                  content.columns = sectionData.columns || 3;
+                  content.gap = sectionData.gap || 16;
+                  content.aspectRatio = sectionData.aspectRatio || "square";
+                }
+
+                // Campos extras para CTA
+                if (section === "cta") {
+                  content.buttonText = sectionData.buttonText || "";
+                  content.buttonFont = sectionData.buttonFont || "";
+                  content.buttonColor = sectionData.buttonColor || "";
+                  content.buttonTextColor = sectionData.buttonTextColor || "";
+                  content.alignment = sectionData.alignment || "center";
+                }
+
+                // Campos extras para Valores
+                if (section === "values") {
+                  content.items = sectionData.items || [];
+                  content.cardBgColor = sectionData.cardBgColor || "";
+                  content.cardTitleFont = sectionData.cardTitleFont || "";
+                  content.cardTitleColor = sectionData.cardTitleColor || "";
+                  content.cardDescriptionFont =
+                    sectionData.cardDescriptionFont || "";
+                  content.cardDescriptionColor =
+                    sectionData.cardDescriptionColor || "";
+                  content.cardIconColor = sectionData.cardIconColor || "";
+                }
+
+                // Campos extras para Serviços
+                if (section === "services") {
+                  content.cardBgColor = sectionData.cardBgColor || "";
+                  content.cardTitleFont = sectionData.cardTitleFont || "";
+                  content.cardTitleColor = sectionData.cardTitleColor || "";
+                  content.cardDescriptionFont =
+                    sectionData.cardDescriptionFont || "";
+                  content.cardDescriptionColor =
+                    sectionData.cardDescriptionColor || "";
+                  content.cardPriceFont = sectionData.cardPriceFont || "";
+                  content.cardPriceColor = sectionData.cardPriceColor || "";
+                  content.cardIconColor = sectionData.cardIconColor || "";
+                  content.cardBorderRadius = sectionData.cardBorderRadius || "";
+                  content.cardBorderWidth = sectionData.cardBorderWidth || "";
+                  content.cardBorderColor = sectionData.cardBorderColor || "";
+                }
+
+                // Campos extras para Equipe
+                if (section === "team") {
+                  content.members = sectionData.members || [];
+                  content.cardBgColor = sectionData.cardBgColor || "";
+                  content.cardTitleFont = sectionData.cardTitleFont || "";
+                  content.cardTitleColor = sectionData.cardTitleColor || "";
+                  content.cardRoleFont = sectionData.cardRoleFont || "";
+                  content.cardRoleColor = sectionData.cardRoleColor || "";
+                  content.cardDescriptionFont =
+                    sectionData.cardDescriptionFont || "";
+                  content.cardDescriptionColor =
+                    sectionData.cardDescriptionColor || "";
+                }
+
+                subObj.content = content;
               }
             }
+          }
+
+          // Tratamento especial para fontes e cores globais (Theme)
+          if (changes.theme) {
+            const fontData = changes.theme as Record<string, unknown>;
+            if (!payload.theme) payload.theme = {};
+            (payload.theme as Record<string, unknown>).fonts = {
+              primary: fontData.primaryFont || "",
+              secondary: fontData.secondaryFont || "",
+              accent: fontData.accentFont || "",
+            };
           }
 
           if (changes.colors) {
-            const colors = changes.colors as Record<string, string | undefined>;
-            payload.layoutGlobal = {
-              ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-              siteColors: {
-                primary: colors.primary,
-                secondary: colors.secondary,
-                accent: colors.accent || colors.primary,
-                background: colors.background,
-                text: colors.text,
-                buttonText: colors.buttonText || "#ffffff",
-              },
+            const colorData = changes.colors as Record<string, unknown>;
+            if (!payload.theme) payload.theme = {};
+            (payload.theme as Record<string, unknown>).colors = {
+              primary: colorData.primaryColor || "",
+              secondary: colorData.secondaryColor || "",
+              accent: colorData.accentColor || "",
+              background: colorData.backgroundColor || "",
+              text: colorData.textColor || "",
             };
-            delete payload.colors;
           }
 
-          if (changes.theme) {
-            payload.typography = changes.theme;
-            payload.layoutGlobal = {
-              ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-              fontes: changes.theme,
-            };
-            delete payload.theme;
+          // Tratar Header/Footer (se não estiverem no loop acima)
+          if (changes.header) {
+            if (!payload.layoutGlobal) payload.layoutGlobal = {};
+            (payload.layoutGlobal as Record<string, unknown>).header =
+              changes.header;
+          }
+          if (changes.footer) {
+            if (!payload.layoutGlobal) payload.layoutGlobal = {};
+            (payload.layoutGlobal as Record<string, unknown>).footer =
+              changes.footer;
           }
 
-          if (changes.visibleSections) {
-            payload.layoutGlobal = {
-              ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-              visibleSections: changes.visibleSections,
-            };
-            delete payload.visibleSections;
-          }
-
+          // Tratar Visibilidade
           if (changes.pageVisibility) {
-            payload.layoutGlobal = {
-              ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-              pageVisibility: changes.pageVisibility,
-            };
-            delete payload.pageVisibility;
+            payload.pageVisibility = changes.pageVisibility;
+          }
+          if (changes.visibleSections) {
+            payload.visibleSections = changes.visibleSections;
           }
 
-          const bookingChanges: Record<string, unknown> = {};
+          // Tratar Passos de Agendamento
           if (changes.bookingSteps) {
-            interface StepConfig {
-              bgType?: string;
-              bgColor?: string;
-              bgImage?: string;
-              appearance?: Record<string, unknown>;
-              backgroundColor?: string;
-              cardBgColor?: string;
-              cardConfig?: {
-                backgroundColor?: string;
-              };
-              [key: string]: unknown;
-            }
-            const steps = changes.bookingSteps as Record<string, StepConfig>;
-
-            // Helper para limpar imagem em passos de agendamento se for cor
-            const sanitizeStep = (step: StepConfig) => {
-              if (step.bgType === "color") {
-                return {
-                  ...step,
-                  bgImage: "",
-                  appearance: {
-                    ...(step.appearance || {}),
-                    backgroundImageUrl: "",
-                  },
-                };
-              }
-              return step;
-            };
-
-            if (steps.service) {
-              const cleanStep = sanitizeStep(steps.service);
-              bookingChanges.step1Services = {
-                ...cleanStep,
-                bgType: cleanStep.bgType,
-                bgColor: cleanStep.bgColor,
-                cardConfig: {
-                  backgroundColor:
-                    cleanStep.cardConfig?.backgroundColor ||
-                    cleanStep.cardBgColor ||
-                    cleanStep.backgroundColor ||
-                    "#FFFFFF",
-                },
-              };
-            }
-            if (steps.date) {
-              const cleanStep = sanitizeStep(steps.date);
-              bookingChanges.step2Dates = {
-                ...cleanStep,
-                bgType: cleanStep.bgType,
-                bgColor: cleanStep.bgColor,
-                cardConfig: {
-                  backgroundColor:
-                    cleanStep.cardConfig?.backgroundColor ||
-                    cleanStep.cardBgColor ||
-                    cleanStep.backgroundColor ||
-                    "#FFFFFF",
-                },
-              };
-            }
-            if (steps.time) {
-              const cleanStep = sanitizeStep(steps.time);
-              bookingChanges.step3Times = {
-                ...cleanStep,
-                bgType: cleanStep.bgType,
-                bgColor: cleanStep.bgColor,
-                cardConfig: {
-                  backgroundColor:
-                    cleanStep.cardConfig?.backgroundColor ||
-                    cleanStep.cardBgColor ||
-                    cleanStep.backgroundColor ||
-                    "#FFFFFF",
-                },
-              };
-            }
-            if (steps.form) {
-              const cleanStep = sanitizeStep(steps.form);
-              bookingChanges.step4Form = {
-                ...cleanStep,
-                bgType: cleanStep.bgType,
-                bgColor: cleanStep.bgColor,
-                cardConfig: {
-                  backgroundColor:
-                    cleanStep.cardConfig?.backgroundColor ||
-                    cleanStep.cardBgColor ||
-                    cleanStep.backgroundColor ||
-                    "#FFFFFF",
-                },
-              };
-            }
-            if (steps.confirmation) {
-              const cleanStep = sanitizeStep(steps.confirmation);
-              bookingChanges.step5Confirmation = {
-                ...cleanStep,
-                bgType: cleanStep.bgType,
-                bgColor: cleanStep.bgColor,
-                cardConfig: {
-                  backgroundColor:
-                    cleanStep.cardConfig?.backgroundColor ||
-                    cleanStep.cardBgColor ||
-                    cleanStep.backgroundColor ||
-                    "#FFFFFF",
-                },
-              };
-            }
-
-            delete payload.bookingSteps;
-          }
-
-          if (Object.keys(bookingChanges).length > 0) {
             payload.appointmentFlow = {
-              ...((payload.appointmentFlow as Record<string, unknown>) || {}),
-              ...bookingChanges,
-            };
-            const currentLayoutGlobal =
-              (payload.layoutGlobal as Record<string, unknown>) || {};
-            payload.layoutGlobal = {
-              ...currentLayoutGlobal,
-              bookingSteps: {
-                ...((currentLayoutGlobal.bookingSteps as Record<
-                  string,
-                  unknown
-                >) || {}),
-                ...bookingChanges,
-              },
-            };
-          }
-
-          console.log(">>> [useEditorApi] Payload final para PATCH:", payload);
-
-          await siteCustomizerService.saveCustomization(companyId, payload);
-          console.log(">>> [useEditorApi] Publicação concluída. Mantendo rascunhos locais até confirmação da recarga...");
-          // clearLocalDrafts(); // Não limpar imediatamente para evitar tela rosa se o banco demorar a propagar
-
-          if (shouldReloadFromBank) {
-            console.log(">>> [useEditorApi] Recarregando dados do banco...");
-            try {
-              const fresh =
-                await siteCustomizerService.getCustomization(companyId);
-              if (fresh) {
-                console.log(">>> [useEditorApi] Dados atualizados recebidos:", fresh);
-                
-                // ATUALIZAR CACHE LOCAL (Sincronizar DB -> LocalStorage)
-                if (typeof window !== "undefined") {
-                  console.log(">>> [CACHE_SYNC] Atualizando LocalStorage com dados frescos do banco...");
-                  localStorage.setItem("studio_data", JSON.stringify(fresh));
-                }
-
-                loadExternalConfig(fresh as unknown as Record<string, unknown>);
-                const layoutGlobal = fresh.layoutGlobal || fresh.layout_global;
-                const freshColors =
-                  fresh.colors ||
-                  layoutGlobal?.siteColors ||
-                  layoutGlobal?.cores_base;
-                const freshFonts =
-                  fresh.theme || fresh.typography || layoutGlobal?.fontes;
-
-                if (iframeRef.current?.contentWindow) {
-                  if (freshColors) {
-                    iframeRef.current.contentWindow.postMessage(
-                      { type: "UPDATE_COLORS", settings: freshColors },
-                      "*",
-                    );
-                  }
-                  if (freshFonts) {
-                    iframeRef.current.contentWindow.postMessage(
-                      { type: "UPDATE_TYPOGRAPHY", settings: freshFonts },
-                      "*",
-                    );
-                  }
-                }
+              steps: {
+                ...(changes.bookingSteps.service ? { service: changes.bookingSteps.service } : {}),
+                ...(changes.bookingSteps.date ? { date: changes.bookingSteps.date } : {}),
+                ...(changes.bookingSteps.time ? { time: changes.bookingSteps.time } : {}),
+                ...(changes.bookingSteps.form ? { form: changes.bookingSteps.form } : {}),
+                ...(changes.bookingSteps.confirmation ? { confirmation: changes.bookingSteps.confirmation } : {}),
               }
-            } catch (reloadErr) {
-              console.warn(
-                ">>> [ADMIN_WARN] Falha ao recarregar dados do banco após salvar:",
-                reloadErr,
-              );
-            }
-          } else {
-            console.log(
-              "[useEditorApi] Pulando recarga do banco conforme solicitado (shouldReloadFromBank=false)",
-            );
+            };
           }
 
-          toast({
-            title: "Salvo com sucesso!",
-            description: "As alterações foram publicadas no seu site.",
-          });
+          // Limpar o payload de campos undefined para não quebrar o deepMerge do back
+          const cleanPayload = JSON.parse(JSON.stringify(payload));
+
+          console.log(">>> [useEditorApi] Payload final limpo para PATCH:", cleanPayload);
+
+          const fresh = await siteCustomizerService.saveDraftCustomization( 
+            companyId, 
+            cleanPayload, 
+          ); 
+
+          console.log(">>> [SYNC] Rascunho salvo. Iniciando limpeza de caches locais..."); 
+
+          // 1. LIMPEZA RADICAL DE CACHE LOCAL 
+          if (typeof window !== "undefined") { 
+            localStorage.removeItem("studio_data"); 
+            localStorage.removeItem(`site_draft_${companyId}`); 
+            
+            try { 
+              // Verifica se a função existe no contexto do hook ou utilitário local 
+              if (typeof clearLocalDrafts === "function") { 
+                clearLocalDrafts(); 
+              } 
+            } catch (_e) { 
+              console.warn("Aviso: Falha ao limpar rascunhos locais, prosseguindo..."); 
+            } 
+          } 
+ 
+          // 2. ATUALIZAÇÃO DO ESTADO VISUAL COM DADOS CONFIRMADOS 
+          if (fresh) { 
+            if (typeof loadExternalConfig === "function") { 
+              loadExternalConfig(fresh, true); 
+            } 
+ 
+            if (typeof window !== "undefined") { 
+              localStorage.setItem("studio_data", JSON.stringify(fresh)); 
+            }
+          } 
+ 
+          // 3. FINALIZAÇÃO DO FLUXO 
+          if (typeof handleSaveLocal === "function") handleSaveLocal(); 
+          setIsSaving(false); 
+          
+          try { 
+            toast({ 
+              title: "Salvo com sucesso!", 
+              description: "As alterações foram salvas no rascunho.", 
+              duration: 2000, 
+            }); 
+          } catch(_e) {} 
         } catch (err) {
-          console.error(">>> [useEditorApi] Erro fatal ao salvar no backend:", err);
+          console.error(
+            ">>> [useEditorApi] Erro fatal ao salvar no backend:",
+            err,
+          );
           toast({
             title: "Erro ao salvar",
             description:
@@ -727,7 +650,9 @@ export function useEditorApi({
           setIsSaving(false);
         }
       } else {
-        console.warn(">>> [useEditorApi] companyId não encontrado, salvando apenas localmente.");
+        console.warn(
+          ">>> [useEditorApi] companyId não encontrado, salvando apenas localmente.",
+        );
         toast({
           title: "Site salvo localmente!",
           description: "As alterações foram salvas no navegador.",
@@ -784,38 +709,116 @@ export function useEditorApi({
     },
     [
       companyId,
+      isPublishing,
       getChangedSettings,
-      iframeRef,
       loadExternalConfig,
       handleSaveLocal,
       setters,
       settings,
       toast,
+      clearLocalDrafts,
     ],
   );
 
+  useEffect(() => {
+    return () => {
+      if (fetchAbortControllerRef.current) {
+        fetchAbortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   const fetchCustomization = useCallback(
     async (id: string) => {
+      // Cancela busca anterior se houver
+      if (fetchAbortControllerRef.current) {
+        fetchAbortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      fetchAbortControllerRef.current = controller;
+
       setCompanyId(id);
       setIsFetching(true);
       setFetchError(null);
       try {
-        const data = await siteCustomizerService.getCustomization(id);
+        const data = await siteCustomizerService.getDraftCustomization(
+          id,
+          controller.signal,
+        );
         if (data) {
-          loadExternalConfig(data as unknown as Record<string, unknown>);
+          loadExternalConfig(data);
           return data;
         }
         return null;
       } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          console.log(">>> [useEditorApi] Busca de customização cancelada.");
+          return null;
+        }
         console.warn(">>> [ADMIN_WARN] Falha ao buscar customização:", err);
         setFetchError("Falha ao carregar configurações do site.");
         return null;
       } finally {
-        setIsFetching(false);
+        if (fetchAbortControllerRef.current === controller) {
+          setIsFetching(false);
+          fetchAbortControllerRef.current = null;
+        }
       }
     },
     [loadExternalConfig],
   );
+
+  const handlePublish = useCallback(async () => {
+    if (!companyId) return;
+
+    setIsPublishing(true);
+    setIsSaving(true);
+    try {
+      console.log(">>> [useEditorApi] Iniciando publicação global...");
+
+      // 1. Primeiro salvamos qualquer rascunho pendente
+      const changes = getChangedSettings();
+      if (Object.keys(changes).length > 0) {
+        console.log(">>> [useEditorApi] Salvando rascunho antes de publicar...");
+        await handleSaveGlobal(); // Salva sem recarregar do banco ainda
+      }
+
+      // 2. Disparamos a publicação (copiar rascunho -> principal)
+      const success = await siteCustomizerService.publishCustomization(companyId);
+
+      if (success) {
+        toast({
+          title: "Site Publicado!",
+          description: "As alterações agora estão visíveis para todos os clientes.",
+        });
+
+        // 3. Recarregar do banco para garantir sincronia total
+        await fetchCustomization(companyId);
+      } else {
+        toast({
+          title: "Erro ao publicar",
+          description: "Não foi possível publicar as alterações. Tente novamente.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error(">>> [useEditorApi] Erro ao publicar:", err);
+      toast({
+        title: "Erro de rede",
+        description: "Falha na comunicação com o servidor.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+      setIsPublishing(false);
+    }
+  }, [
+    companyId,
+    toast,
+    handleSaveGlobal,
+    getChangedSettings,
+    fetchCustomization,
+  ]);
 
   const hasUnsavedGlobalChanges = useMemo(() => {
     const heroChanged =
@@ -910,14 +913,43 @@ export function useEditorApi({
     settings.visibleSections,
   ]);
 
+  // --- NOVO: Efeito para Auto-Save no Banco ---
+  useEffect(() => {
+    const handleLocalChange = () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+
+      // Debounce de 3 segundos para evitar excesso de requisições ao banco
+      autoSaveTimerRef.current = setTimeout(() => {
+        console.log(
+          ">>> [AutoSave] Mudança local detectada via evento. Sincronizando com o banco...",
+        );
+        // Chama o save global sem recarregar do banco
+        // para manter a fluidez da edição e evitar sobrescrever rascunhos locais em progresso.
+        handleSaveGlobal();
+      }, 3000);
+    };
+
+    window.addEventListener("local_draft_changed", handleLocalChange);
+    return () => {
+      window.removeEventListener("local_draft_changed", handleLocalChange);
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [handleSaveGlobal]);
+
   return {
     fetchCustomization,
     getChangedSettings,
     handleSaveLocal,
     handleSaveGlobal,
+    handlePublish,
     hasUnsavedGlobalChanges,
     isFetching,
-    fetchError,
     isSaving,
+    isPublishing,
+    fetchError,
   };
 }

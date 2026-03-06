@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 interface AppearanceSettings {
+  backgroundColor?: string;
   backgroundImageUrl?: string;
   overlay?: {
     color: string;
@@ -24,22 +25,29 @@ export function SessionWrapper({
   className,
   id,
 }: SessionWrapperProps) {
-  // Se não houver configurações de aparência (background ou overlay), 
+  // Se não houver configurações de aparência (background ou overlay),
   // renderizamos os filhos diretamente sem o wrapper extra.
-  const hasBackground = !!appearance?.backgroundImageUrl && appearance.backgroundImageUrl.trim() !== "";
+  const hasBackground = !!(
+    appearance?.backgroundImageUrl &&
+    appearance.backgroundImageUrl.trim() !== ""
+  );
+  const hasBackgroundColor = !!(
+    appearance?.backgroundColor && appearance.backgroundColor !== "transparent"
+  );
   const hasOverlay = !!(appearance?.overlay && appearance.overlay.opacity > 0);
 
-  if (!hasBackground && !hasOverlay) {
+  if (!hasBackground && !hasOverlay && !hasBackgroundColor) {
     return <>{children}</>;
   }
 
   const sectionStyle: CSSProperties = {
     position: "relative",
-    // Se a URL estiver vazia ou for desativada, force 'none' 
-    backgroundImage: appearance?.backgroundImageUrl ? `url(${appearance.backgroundImageUrl})` : "none",
-    backgroundColor: "transparent",
-  }; 
-
+    // Se a URL estiver vazia ou for desativada, force 'none'
+    backgroundImage: appearance?.backgroundImageUrl
+      ? `url(${appearance.backgroundImageUrl})`
+      : "none",
+    backgroundColor: appearance?.backgroundColor || "transparent",
+  };
 
   const overlayStyle: CSSProperties = {
     backgroundColor: appearance?.overlay?.color || "transparent",

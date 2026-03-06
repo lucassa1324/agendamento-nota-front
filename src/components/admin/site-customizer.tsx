@@ -114,6 +114,7 @@ export function SiteCustomizer() {
     handleApplyBookingConfirmation,
     handleSaveLocal,
     handleSaveGlobal,
+    handlePublish,
     resetSettings,
     handleSectionReset,
     hasHeroChanges,
@@ -139,6 +140,7 @@ export function SiteCustomizer() {
     fetchCustomization,
     isFetching: isConfigFetching,
     isSaving,
+    isPublishing,
     setActiveSectionId,
   } = useSiteEditor(iframeRef);
 
@@ -147,6 +149,11 @@ export function SiteCustomizer() {
   useEffect(() => {
     fetchCustomizationRef.current = fetchCustomization;
   }, [fetchCustomization]);
+
+  const applyAndSave = (applyFn: () => void) => () => {
+    applyFn();
+    handleSaveGlobal();
+  };
 
   const handleToggleStatus = async () => {
     const business = businesses[0];
@@ -357,24 +364,24 @@ export function SiteCustomizer() {
     onUpdateBookingForm: handleUpdateBookingForm,
     onUpdateBookingConfirmation: handleUpdateBookingConfirmation,
     onUpdateBackground: handleUpdateBackground,
-    onSaveFont: handleApplyTypography,
-    onSaveColors: handleApplyColors,
-    onSaveHero: handleApplyHero,
-    onSaveAboutHero: handleApplyAboutHero,
-    onSaveStory: handleApplyStory,
-    onSaveTeam: handleApplyTeam,
-    onSaveTestimonials: handleApplyTestimonials,
-    onSaveServices: handleApplyServices,
-    onSaveValues: handleApplyValues,
-    onSaveGallery: handleApplyGallery,
-    onSaveCTA: handleApplyCTA,
-    onSaveHeader: handleApplyHeader,
-    onSaveFooter: handleApplyFooter,
-    onSaveBookingService: handleApplyBookingService,
-    onSaveBookingDate: handleApplyBookingDate,
-    onSaveBookingTime: handleApplyBookingTime,
-    onSaveBookingForm: handleApplyBookingForm,
-    onSaveBookingConfirmation: handleApplyBookingConfirmation,
+    onSaveFont: applyAndSave(handleApplyTypography),
+    onSaveColors: applyAndSave(handleApplyColors),
+    onSaveHero: applyAndSave(handleApplyHero),
+    onSaveAboutHero: applyAndSave(handleApplyAboutHero),
+    onSaveStory: applyAndSave(handleApplyStory),
+    onSaveTeam: applyAndSave(handleApplyTeam),
+    onSaveTestimonials: applyAndSave(handleApplyTestimonials),
+    onSaveServices: applyAndSave(handleApplyServices),
+    onSaveValues: applyAndSave(handleApplyValues),
+    onSaveGallery: applyAndSave(handleApplyGallery),
+    onSaveCTA: applyAndSave(handleApplyCTA),
+    onSaveHeader: applyAndSave(handleApplyHeader),
+    onSaveFooter: applyAndSave(handleApplyFooter),
+    onSaveBookingService: applyAndSave(handleApplyBookingService),
+    onSaveBookingDate: applyAndSave(handleApplyBookingDate),
+    onSaveBookingTime: applyAndSave(handleApplyBookingTime),
+    onSaveBookingForm: applyAndSave(handleApplyBookingForm),
+    onSaveBookingConfirmation: applyAndSave(handleApplyBookingConfirmation),
     hasFontChanges,
     hasColorChanges,
     hasHeroChanges,
@@ -406,7 +413,9 @@ export function SiteCustomizer() {
     onPageVisibilityChange: handlePageVisibilityChange,
     onSaveLocal: handleSaveLocal,
     onSaveGlobal: handleSaveGlobal,
+    onPublish: handlePublish,
     isSaving,
+    isPublishing,
     hasUnsavedGlobalChanges,
     pages,
     sections,

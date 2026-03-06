@@ -74,20 +74,12 @@ export function HeroSection() {
     const layoutGlobal = config?.layoutGlobal || config?.layout_global;
     const dbHero = config?.hero || layoutGlobal?.hero;
 
-    const normalizeHero = (hero: HeroSettings): HeroSettings => {
-      const hasImage = !!(hero.appearance?.backgroundImageUrl || hero.bgImage);
-      return {
-        ...hero,
-        bgType: hasImage ? (hero.bgType || "image") : "color"
-      };
-    };
-
     if (!isPreview && dbHero) {
       console.log(
         ">>> [HERO_SYNC] Aplicando dados do banco no carregamento inicial:",
         renderSafeText(dbHero.title),
       );
-      setCustomStyles(normalizeHero(dbHero));
+      setCustomStyles(dbHero);
     } else {
       setCustomStyles(getHeroSettings());
     }
@@ -101,13 +93,10 @@ export function HeroSection() {
           ">>> [HERO_SYNC] Atualização recebida via MessageEvent:",
           renderSafeText(event.data.settings.title),
         );
-        setCustomStyles((prev) => {
-          const updated = {
-            ...prev,
-            ...event.data.settings,
-          };
-          return normalizeHero(updated);
-        });
+        setCustomStyles((prev) => ({
+          ...prev,
+          ...event.data.settings,
+        }));
       }
 
       if (event.data.type === "HIGHLIGHT_SECTION") {
@@ -131,7 +120,9 @@ export function HeroSection() {
       // Se estivermos em modo preview, não aceite dados vindos de 'DataReady' ou 'fetch' direto do banco.
       // Apenas aceite dados vindos via 'window.addEventListener("message", ...)'
       if (isPreview) {
-        console.log("[HERO_SYNC] Modo Preview detectado. Bloqueando sobreposição pelo banco.");
+        console.log(
+          "[HERO_SYNC] Modo Preview detectado. Bloqueando sobreposição pelo banco.",
+        );
         return;
       }
       const cfg = config;
@@ -142,7 +133,7 @@ export function HeroSection() {
           ">>> [HERO_SYNC] Aplicando dados do banco via evento DataReady:",
           renderSafeText(heroFromDb.title),
         );
-        setCustomStyles(normalizeHero(heroFromDb));
+        setCustomStyles(heroFromDb);
       }
     };
 
@@ -169,14 +160,22 @@ export function HeroSection() {
   }, [config]);
 
   useEffect(() => {
-    console.log('[BG_CHECK]', { 
-      type: customStyles.bgType, 
-      hasImage: !!(customStyles.appearance?.backgroundImageUrl || customStyles.bgImage),
-      bgColor: customStyles.bgColor
+    console.log("[BG_CHECK]", {
+      type: customStyles.bgType,
+      hasImage: !!(
+        customStyles.appearance?.backgroundImageUrl || customStyles.bgImage
+      ),
+      bgColor: customStyles.bgColor,
     });
-  }, [customStyles.bgType, customStyles.appearance?.backgroundImageUrl, customStyles.bgImage, customStyles.bgColor]);
+  }, [
+    customStyles.bgType,
+    customStyles.appearance?.backgroundImageUrl,
+    customStyles.bgImage,
+    customStyles.bgColor,
+  ]);
 
-  const heroBackgroundUrl = customStyles.bgImage || customStyles.appearance?.backgroundImageUrl;
+  const heroBackgroundUrl =
+    customStyles.bgImage || customStyles.appearance?.backgroundImageUrl;
   const effectiveOverlayOpacity =
     customStyles.appearance?.overlay?.opacity ??
     (heroBackgroundUrl ? 0 : customStyles.overlayOpacity);
@@ -197,11 +196,20 @@ export function HeroSection() {
 
   const hasImage = !!heroBackgroundUrl && heroBackgroundUrl.trim() !== "";
 
+  // Prioriza explicitamente a cor do banco/studio se disponível
+  const effectiveBackgroundColor =
+    customStyles.appearance?.backgroundColor ||
+    customStyles.bgColor ||
+    "#ffffff";
+
   useEffect(() => {
     if (isMounted) {
-      console.log('[SINC_SUCESSO] Lógica de fundo blindada');
+      console.log("[SINC_SUCESSO] Lógica de fundo blindada", {
+        backgroundColor: effectiveBackgroundColor,
+        bgType: customStyles.bgType,
+      });
     }
-  }, [isMounted]);
+  }, [isMounted, effectiveBackgroundColor, customStyles.bgType]);
 
   if (!isMounted) {
     return (
@@ -230,153 +238,161 @@ export function HeroSection() {
             "ring-8 ring-inset ring-primary/30",
         )}
       >
-      <SectionBackground
-        settings={{
-          // Aqui forçamos o tipo correto: se não tem URL ou se o tipo explicitamente for cor, o tipo TEM que ser 'color'
-          bgType: (customStyles.bgType === "color" || !hasImage ? "color" : "image") as "color" | "image",
-          bgColor: customStyles.bgColor || "transparent",
-          bgImage: heroBackgroundUrl || "",
-          imageOpacity: effectiveImageOpacity,
-          overlayOpacity: effectiveOverlayOpacity,
-          imageScale: customStyles.imageScale,
-          imageX: customStyles.imageX,
-          imageY: customStyles.imageY,
-          appearance: customStyles.appearance,
-        }}
-        // Deixe o defaultImage vazio para ele não inventar imagem sozinho
-        defaultImage="" 
-        gradientClassName="bg-linear-to-b from-background/50 via-background/80 to-background"
-      />
+        <SectionBackground
+          settings={{
+            // Aqui forçamos o tipo correto: se não tem URL ou se o tipo explicitamente for cor, o tipo TEM que ser 'color'
+            bgType: (customStyles.bgType === "color" || !hasImage
+              ? "color"
+              : "image") as "color" | "image",
+            bgColor: effectiveBackgroundColor,
+            bgImage: heroBackgroundUrl || "",
+            imageOpacity: effectiveImageOpacity,
+            overlayOpacity: effectiveOverlayOpacity,
+            imageScale: customStyles.imageScale,
+            imageX: customStyles.imageX,
+            imageY: customStyles.imageY,
+            appearance: {
+              ...customStyles.appearance,
+              backgroundColor: effectiveBackgroundColor,
+            },
+          }}
+          // Deixe o defaultImage vazio para ele não inventar imagem sozinho
+          defaultImage=""
+          gradientClassName="bg-linear-to-b from-background/50 via-background/80 to-background"
+        />
 
-      {/* Content */}
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-3xl mx-auto text-center">
-          {customStyles.showBadge !== false && (
-            <div
+        {/* Content */}
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-3xl mx-auto text-center">
+            {customStyles.showBadge !== false && (
+              <div
+                className={cn(
+                  "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6 animate-in fade-in zoom-in duration-500",
+                  getHighlightClass("hero-badge"),
+                )}
+                style={{
+                  fontFamily: customStyles.badgeFont || "var(--font-body)",
+                  borderColor: customStyles.badgeColor
+                    ? `${customStyles.badgeColor}33`
+                    : "var(--secondary)",
+                  backgroundColor: customStyles.badgeColor
+                    ? `${customStyles.badgeColor}11`
+                    : "transparent",
+                }}
+              >
+                {(() => {
+                  const BadgeIcon =
+                    iconMap[customStyles.badgeIcon || "Sparkles"] || Sparkles;
+                  return (
+                    <BadgeIcon
+                      className="w-4 h-4"
+                      style={{
+                        color: customStyles.badgeColor || "var(--secondary)",
+                      }}
+                    />
+                  );
+                })()}
+                <span
+                  className="text-sm font-medium"
+                  style={{
+                    color:
+                      customStyles.badgeTextColor ||
+                      customStyles.badgeColor ||
+                      "var(--foreground)",
+                  }}
+                >
+                  {renderSafeText(customStyles.badge) ||
+                    "Especialistas em Design de Sobrancelhas"}
+                </span>
+              </div>
+            )}
+
+            <h1
               className={cn(
-                "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6 animate-in fade-in zoom-in duration-500",
-                getHighlightClass("hero-badge"),
+                "font-serif text-5xl md:text-7xl font-bold mb-6 text-balance leading-tight transition-all duration-300",
+                getHighlightClass("hero-title"),
               )}
               style={{
-                fontFamily: customStyles.badgeFont || "var(--font-body)",
-                borderColor: customStyles.badgeColor
-                  ? `${customStyles.badgeColor}33`
-                  : "var(--secondary)",
-                backgroundColor: customStyles.badgeColor
-                  ? `${customStyles.badgeColor}11`
-                  : "transparent",
+                fontFamily: customStyles.titleFont || "var(--font-title)",
+                color: customStyles.titleColor || "var(--foreground)",
               }}
             >
-              {(() => {
-                const BadgeIcon =
-                  iconMap[customStyles.badgeIcon || "Sparkles"] || Sparkles;
-                return (
-                  <BadgeIcon
-                    className="w-4 h-4"
-                    style={{
-                      color: customStyles.badgeColor || "var(--secondary)",
-                    }}
-                  />
-                );
-              })()}
-              <span
-                className="text-sm font-medium"
-                style={{
-                  color:
-                    customStyles.badgeTextColor ||
-                    customStyles.badgeColor ||
-                    "var(--foreground)",
-                }}
-              >
-                {renderSafeText(customStyles.badge) ||
-                  "Especialistas em Design de Sobrancelhas"}
-              </span>
+              {renderSafeText(customStyles.title) ||
+                "Realce Sua Beleza Natural"}
+            </h1>
+
+            <p
+              className={cn(
+                "text-lg md:text-xl mb-8 text-pretty leading-relaxed max-w-2xl mx-auto transition-all duration-300",
+                !customStyles.subtitleColor && "text-muted-foreground",
+                getHighlightClass("hero-subtitle"),
+              )}
+              style={{
+                fontFamily: customStyles.subtitleFont || "var(--font-subtitle)",
+                color: customStyles.subtitleColor || "var(--foreground)",
+              }}
+            >
+              {renderSafeText(customStyles.subtitle) || description}
+            </p>
+
+            <div
+              className={cn(
+                "flex flex-col sm:flex-row gap-4 justify-center",
+                getHighlightClass("hero-buttons"),
+              )}
+            >
+              {pageVisibility.agendar !== false && (
+                <Button
+                  asChild
+                  size="lg"
+                  className={cn(
+                    "h-14 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                    getHighlightClass("hero-primary-button"),
+                  )}
+                  style={{
+                    backgroundColor:
+                      customStyles.primaryButtonColor || "var(--primary)",
+                    color: customStyles.primaryButtonTextColor || "#ffffff",
+                    fontFamily:
+                      customStyles.primaryButtonFont || "var(--font-body)",
+                  }}
+                >
+                  <Link href="/agendamento">
+                    {renderSafeText(customStyles.primaryButton) ||
+                      "Agendar Horário"}
+                  </Link>
+                </Button>
+              )}
+              {pageVisibility.galeria !== false && (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className={cn(
+                    "h-14 px-8 text-base font-bold rounded-full bg-background/50 backdrop-blur-sm border-border hover:bg-background/80 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                    getHighlightClass("hero-secondary-button"),
+                  )}
+                  style={{
+                    color:
+                      customStyles.secondaryButtonTextColor ||
+                      customStyles.secondaryButtonColor ||
+                      "var(--foreground)",
+                    borderColor:
+                      customStyles.secondaryButtonColor || "var(--secondary)",
+                    fontFamily:
+                      customStyles.secondaryButtonFont || "var(--font-body)",
+                  }}
+                >
+                  <Link href="/galeria">
+                    {renderSafeText(customStyles.secondaryButton) ||
+                      "Ver Trabalhos"}
+                  </Link>
+                </Button>
+              )}
             </div>
-          )}
-
-          <h1
-            className={cn(
-              "font-serif text-5xl md:text-7xl font-bold mb-6 text-balance leading-tight transition-all duration-300",
-              getHighlightClass("hero-title"),
-            )}
-            style={{
-              fontFamily: customStyles.titleFont || "var(--font-title)",
-              color: customStyles.titleColor || "var(--foreground)",
-            }}
-          >
-            {renderSafeText(customStyles.title) || "Realce Sua Beleza Natural"}
-          </h1>
-
-          <p
-            className={cn(
-              "text-lg md:text-xl mb-8 text-pretty leading-relaxed max-w-2xl mx-auto transition-all duration-300",
-              !customStyles.subtitleColor && "text-muted-foreground",
-              getHighlightClass("hero-subtitle"),
-            )}
-            style={{
-              fontFamily: customStyles.subtitleFont || "var(--font-subtitle)",
-              color: customStyles.subtitleColor || "var(--foreground)",
-            }}
-          >
-            {renderSafeText(customStyles.subtitle) || description}
-          </p>
-
-          <div
-            className={cn(
-              "flex flex-col sm:flex-row gap-4 justify-center",
-              getHighlightClass("hero-buttons"),
-            )}
-          >
-            {pageVisibility.agendar !== false && (
-              <Button
-                asChild
-                size="lg"
-                className={cn(
-                  "h-14 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
-                  getHighlightClass("hero-primary-button"),
-                )}
-                style={{
-                  backgroundColor:
-                    customStyles.primaryButtonColor || "var(--primary)",
-                  color: customStyles.primaryButtonTextColor || "#ffffff",
-                  fontFamily:
-                    customStyles.primaryButtonFont || "var(--font-body)",
-                }}
-              >
-                <Link href="/agendamento">
-                  {renderSafeText(customStyles.primaryButton) || "Agendar Horário"}
-                </Link>
-              </Button>
-            )}
-            {pageVisibility.galeria !== false && (
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className={cn(
-                  "h-14 px-8 text-base font-bold rounded-full bg-background/50 backdrop-blur-sm border-border hover:bg-background/80 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
-                  getHighlightClass("hero-secondary-button"),
-                )}
-                style={{
-                  color:
-                    customStyles.secondaryButtonTextColor ||
-                    customStyles.secondaryButtonColor ||
-                    "var(--foreground)",
-                  borderColor:
-                    customStyles.secondaryButtonColor || "var(--secondary)",
-                  fontFamily:
-                    customStyles.secondaryButtonFont || "var(--font-body)",
-                }}
-              >
-                <Link href="/galeria">
-                  {renderSafeText(customStyles.secondaryButton) || "Ver Trabalhos"}
-                </Link>
-              </Button>
-            )}
           </div>
         </div>
-      </div>
-    </section>
+      </section>
     </SessionWrapper>
   );
 }

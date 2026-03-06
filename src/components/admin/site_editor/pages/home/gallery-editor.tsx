@@ -44,7 +44,7 @@ export function GalleryEditor({
   settings,
   onUpdate,
   onUpdateBackground,
-  onSave,
+  onSave: externalOnSave,
   hasChanges,
 }: GalleryEditorProps) {
   const { studio } = useStudio();
@@ -355,7 +355,7 @@ export function GalleryEditor({
         <Button
           type="button"
           disabled={!hasChanges}
-          onClick={onSave}
+          onClick={externalOnSave}
           className={cn(
             "w-full h-11 text-sm font-bold transition-all duration-300",
             hasChanges

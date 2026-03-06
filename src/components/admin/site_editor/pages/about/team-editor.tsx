@@ -601,7 +601,7 @@ export function TeamEditor({
         <Button
           type="button"
           disabled={!hasChanges}
-          onClick={handleSave}
+          onClick={externalOnSave}
           className={cn(
             "w-full h-11 text-sm font-bold transition-all duration-300",
             hasChanges

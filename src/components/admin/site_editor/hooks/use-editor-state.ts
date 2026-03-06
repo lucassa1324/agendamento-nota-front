@@ -40,44 +40,67 @@ import type { BackgroundSettings } from "../components/BackgroundEditor";
 export function useEditorState() {
   // Helper para sincronizar bgImage com appearance.backgroundImageUrl
   const syncBackground = useCallback(
-    <T extends { bgImage?: string; bgType?: string; appearance?: AppearanceSettings }>(
+    <
+      T extends {
+        bgImage?: string;
+        bgType?: string;
+        bgColor?: string;
+        appearance?: AppearanceSettings;
+      },
+    >(
       prev: T,
       updates: Partial<T>,
     ): T => {
-    const newState = { ...prev, ...updates };
-    
-    // Se bgType mudou para "color", limpa a imagem de forma absoluta
-    if (updates.bgType === "color") { 
-      newState.bgImage = ""; 
-      if (newState.appearance) { 
-        newState.appearance.backgroundImageUrl = ""; 
-      } 
-    }
-    // Se bgImage foi definida, garante bgType como image
-    else if (updates.bgImage) {
-      newState.bgType = "image";
-      newState.appearance = {
-        ...(newState.appearance || {}),
-        backgroundImageUrl: updates.bgImage
-      };
-    }
-    // Se appearance.backgroundImageUrl foi definida, sincroniza bgImage e garante bgType
-    else if (updates.appearance?.backgroundImageUrl) {
-      newState.bgImage = updates.appearance.backgroundImageUrl;
-      newState.bgType = "image";
-    }
-    // Se bgImage ou backgroundImageUrl foram limpos explicitamente, volta para color
-    else if (updates.bgImage === "" || updates.appearance?.backgroundImageUrl === "") {
-      newState.bgType = "color";
-      newState.bgImage = "";
-      newState.appearance = {
-        ...(newState.appearance || {}),
-        backgroundImageUrl: ""
-      };
-    }
-    
-    return newState;
-  }, []);
+      const newState = { ...prev, ...updates };
+      const nextAppearance = { ...(newState.appearance || {}) };
+
+      if (updates.bgColor !== undefined) {
+        nextAppearance.backgroundColor = updates.bgColor;
+        newState.bgColor = updates.bgColor;
+      }
+
+      if (updates.appearance?.backgroundColor !== undefined) {
+        nextAppearance.backgroundColor = updates.appearance.backgroundColor;
+        newState.bgColor = updates.appearance.backgroundColor;
+      }
+
+      if (
+        updates.bgColor !== undefined ||
+        updates.appearance?.backgroundColor !== undefined
+      ) {
+        newState.appearance = nextAppearance;
+      }
+
+      // Se bgImage foi definida, apenas atualizamos a URL, mantendo o bgType atual 
+      // para permitir que o usuário escolha explicitamente entre cor e imagem.
+      if (updates.bgImage) {
+        newState.appearance = {
+          ...(newState.appearance || {}),
+          backgroundImageUrl: updates.bgImage,
+        };
+      }
+      // Se appearance.backgroundImageUrl foi definida, sincroniza bgImage e garante bgType
+      else if (updates.appearance?.backgroundImageUrl) {
+        newState.bgImage = updates.appearance.backgroundImageUrl;
+        newState.bgType = "image";
+      }
+      // Se bgImage ou backgroundImageUrl foram limpos explicitamente, volta para color
+      else if (
+        updates.bgImage === "" ||
+        updates.appearance?.backgroundImageUrl === ""
+      ) {
+        newState.bgType = "color";
+        newState.bgImage = "";
+        newState.appearance = {
+          ...(newState.appearance || {}),
+          backgroundImageUrl: "",
+        };
+      }
+
+      return newState;
+    },
+    [],
+  );
 
   const [heroSettings, setHeroSettings] =
     useState<HeroSettings>(defaultHeroSettings);
@@ -225,33 +248,54 @@ export function useEditorState() {
 
   const [activeSectionId, setActiveSectionId] = useState<string>("hero");
 
-  const handleUpdateHero = useCallback((updates: Partial<HeroSettings>) => {
-    console.log(">>> [useEditorState] handleUpdateHero chamado com:", updates);
-    setHeroSettings((prev: HeroSettings) => {
-      const newState = syncBackground(prev, updates);
-      console.log(">>> [useEditorState] Estado HERO atualizado. bgImage:", newState.bgImage, " appearance.backgroundImageUrl:", newState.appearance?.backgroundImageUrl);
-      return newState;
-    });
-  }, [syncBackground]);
-
-  const handleUpdateAboutHero = useCallback(
+  const handleUpdateHero = useCallback(
     (updates: Partial<HeroSettings>) => {
-      setAboutHeroSettings((prev: HeroSettings) => syncBackground(prev, updates));
+      console.log(
+        ">>> [useEditorState] handleUpdateHero chamado com:",
+        updates,
+      );
+      setHeroSettings((prev: HeroSettings) => {
+        const newState = syncBackground(prev, updates);
+        console.log(
+          ">>> [useEditorState] Estado HERO atualizado. bgImage:",
+          newState.bgImage,
+          " appearance.backgroundImageUrl:",
+          newState.appearance?.backgroundImageUrl,
+        );
+        return newState;
+      });
     },
     [syncBackground],
   );
 
-  const handleUpdateStory = useCallback((updates: Partial<StorySettings>) => {
-    setStorySettings((prev: StorySettings) => syncBackground(prev, updates));
-  }, [syncBackground]);
+  const handleUpdateAboutHero = useCallback(
+    (updates: Partial<HeroSettings>) => {
+      setAboutHeroSettings((prev: HeroSettings) =>
+        syncBackground(prev, updates),
+      );
+    },
+    [syncBackground],
+  );
 
-  const handleUpdateTeam = useCallback((updates: Partial<TeamSettings>) => {
-    setTeamSettings((prev: TeamSettings) => syncBackground(prev, updates));
-  }, [syncBackground]);
+  const handleUpdateStory = useCallback(
+    (updates: Partial<StorySettings>) => {
+      setStorySettings((prev: StorySettings) => syncBackground(prev, updates));
+    },
+    [syncBackground],
+  );
+
+  const handleUpdateTeam = useCallback(
+    (updates: Partial<TeamSettings>) => {
+      setTeamSettings((prev: TeamSettings) => syncBackground(prev, updates));
+    },
+    [syncBackground],
+  );
 
   const handleUpdateTestimonials = useCallback(
     (updates: Partial<TestimonialsSettings>) => {
-      setTestimonialsSettings((prev: TestimonialsSettings) => syncBackground(prev, updates));
+      setTestimonialsSettings((prev: TestimonialsSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
@@ -266,25 +310,37 @@ export function useEditorState() {
 
   const handleUpdateServices = useCallback(
     (updates: Partial<ServicesSettings>) => {
-      setServicesSettings((prev: ServicesSettings) => syncBackground(prev, updates));
+      setServicesSettings((prev: ServicesSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
 
-  const handleUpdateValues = useCallback((updates: Partial<ValuesSettings>) => {
-    setValuesSettings((prev: ValuesSettings) => syncBackground(prev, updates));
-  }, [syncBackground]);
+  const handleUpdateValues = useCallback(
+    (updates: Partial<ValuesSettings>) => {
+      setValuesSettings((prev: ValuesSettings) =>
+        syncBackground(prev, updates),
+      );
+    },
+    [syncBackground],
+  );
 
   const handleUpdateGallery = useCallback(
     (updates: Partial<GallerySettings>) => {
-      setGallerySettings((prev: GallerySettings) => syncBackground(prev, updates));
+      setGallerySettings((prev: GallerySettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
 
-  const handleUpdateCTA = useCallback((updates: Partial<CTASettings>) => {
-    setCTASettings((prev: CTASettings) => syncBackground(prev, updates));
-  }, [syncBackground]);
+  const handleUpdateCTA = useCallback(
+    (updates: Partial<CTASettings>) => {
+      setCTASettings((prev: CTASettings) => syncBackground(prev, updates));
+    },
+    [syncBackground],
+  );
 
   const handleUpdateHeader = useCallback((updates: Partial<HeaderSettings>) => {
     setHeaderSettings((prev: HeaderSettings) => ({ ...prev, ...updates }));
@@ -296,35 +352,45 @@ export function useEditorState() {
 
   const handleUpdateBookingService = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingServiceSettings((prev: BookingStepSettings) => syncBackground(prev, updates));
+      setBookingServiceSettings((prev: BookingStepSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
 
   const handleUpdateBookingDate = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingDateSettings((prev: BookingStepSettings) => syncBackground(prev, updates));
+      setBookingDateSettings((prev: BookingStepSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
 
   const handleUpdateBookingTime = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingTimeSettings((prev: BookingStepSettings) => syncBackground(prev, updates));
+      setBookingTimeSettings((prev: BookingStepSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
 
   const handleUpdateBookingForm = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingFormSettings((prev: BookingStepSettings) => syncBackground(prev, updates));
+      setBookingFormSettings((prev: BookingStepSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
 
   const handleUpdateBookingConfirmation = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingConfirmationSettings((prev: BookingStepSettings) => syncBackground(prev, updates));
+      setBookingConfirmationSettings((prev: BookingStepSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
@@ -352,31 +418,59 @@ export function useEditorState() {
   const handleUpdateBackground = useCallback(
     (updates: Partial<BackgroundSettings>, sectionId?: string) => {
       const targetSectionId = sectionId || activeSectionId;
-      console.log(`>>> [useEditorState] handleUpdateBackground para seção: ${targetSectionId}`, updates);
-      
-      const updateFnMap: Record<string, (u: Partial<BackgroundSettings>) => void> = {
+      console.log(
+        `>>> [useEditorState] handleUpdateBackground para seção: ${targetSectionId}`,
+        updates,
+      );
+
+      const updateFnMap: Record<
+        string,
+        (u: Partial<BackgroundSettings>) => void
+      > = {
         hero: handleUpdateHero as (u: Partial<BackgroundSettings>) => void,
-        "about-hero": handleUpdateAboutHero as (u: Partial<BackgroundSettings>) => void,
+        "about-hero": handleUpdateAboutHero as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
         story: handleUpdateStory as (u: Partial<BackgroundSettings>) => void,
         team: handleUpdateTeam as (u: Partial<BackgroundSettings>) => void,
-        testimonials: handleUpdateTestimonials as (u: Partial<BackgroundSettings>) => void,
-        services: handleUpdateServices as (u: Partial<BackgroundSettings>) => void,
+        testimonials: handleUpdateTestimonials as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        services: handleUpdateServices as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
         values: handleUpdateValues as (u: Partial<BackgroundSettings>) => void,
-        "gallery-preview": handleUpdateGallery as (u: Partial<BackgroundSettings>) => void,
-        "gallery-grid": handleUpdateGallery as (u: Partial<BackgroundSettings>) => void,
+        "gallery-preview": handleUpdateGallery as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        "gallery-grid": handleUpdateGallery as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
         cta: handleUpdateCTA as (u: Partial<BackgroundSettings>) => void,
-        "booking-service": handleUpdateBookingService as (u: Partial<BackgroundSettings>) => void,
-        "booking-date": handleUpdateBookingDate as (u: Partial<BackgroundSettings>) => void,
-        "booking-time": handleUpdateBookingTime as (u: Partial<BackgroundSettings>) => void,
-        "booking-form": handleUpdateBookingForm as (u: Partial<BackgroundSettings>) => void,
-        "booking-confirmation": handleUpdateBookingConfirmation as (u: Partial<BackgroundSettings>) => void,
+        "booking-service": handleUpdateBookingService as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        "booking-date": handleUpdateBookingDate as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        "booking-time": handleUpdateBookingTime as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        "booking-form": handleUpdateBookingForm as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        "booking-confirmation": handleUpdateBookingConfirmation as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
       };
 
       const updateFn = updateFnMap[targetSectionId];
       if (updateFn) {
         updateFn(updates);
       } else {
-        console.warn(`>>> [useEditorState] Nenhuma função de atualização encontrada para a seção: ${targetSectionId}`);
+        console.warn(
+          `>>> [useEditorState] Nenhuma função de atualização encontrada para a seção: ${targetSectionId}`,
+        );
       }
     },
     [

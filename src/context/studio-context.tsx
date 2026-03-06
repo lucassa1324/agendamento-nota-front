@@ -29,6 +29,12 @@ import type {
 } from "@/lib/booking-data";
 import {
   getStorageKey,
+  saveAboutHeroSettings,
+  saveBookingConfirmationSettings,
+  saveBookingDateSettings,
+  saveBookingFormSettings,
+  saveBookingServiceSettings,
+  saveBookingTimeSettings,
   saveColorSettings,
   saveCTASettings,
   saveFontSettings,
@@ -40,6 +46,9 @@ import {
   saveServices,
   saveServicesSettings,
   saveSiteProfile,
+  saveStorySettings,
+  saveTeamSettings,
+  saveTestimonialsSettings,
   saveValuesSettings,
   saveVisibleSections,
 } from "@/lib/booking-data";
@@ -70,7 +79,9 @@ export function StudioProvider({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [slug, setSlug] = useState<string | null>(initialSlug || null);
-  const [businessId, setBusinessId] = useState<string | null>(initialId || null);
+  const [businessId, setBusinessId] = useState<string | null>(
+    initialId || null,
+  );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const refreshData = useCallback(() => {
@@ -88,7 +99,10 @@ export function StudioProvider({
       };
       window.addEventListener("site-published-success", handleGlobalUpdate);
       return () =>
-        window.removeEventListener("site-published-success", handleGlobalUpdate);
+        window.removeEventListener(
+          "site-published-success",
+          handleGlobalUpdate,
+        );
     }
   }, [refreshData]);
   // const router = useRouter();
@@ -96,10 +110,197 @@ export function StudioProvider({
   const isPreview =
     typeof window !== "undefined" &&
     window.location.search.includes("preview=true");
+  const isAdminPath = pathname?.startsWith("/admin") ?? false;
 
   const updateStudioInfo = useCallback((updates: Partial<Business>) => {
     setStudio((prev) => (prev ? { ...prev, ...updates } : null));
   }, []);
+
+  const mapConfig = useCallback(
+    (customData: Record<string, unknown>): SiteConfigData => {
+      const rawCandidate = customData as Record<string, unknown>;
+      const hasDirectConfig =
+        "layoutGlobal" in rawCandidate ||
+        "layout_global" in rawCandidate ||
+        "home" in rawCandidate ||
+        "hero" in rawCandidate ||
+        "heroBanner" in rawCandidate ||
+        "colors" in rawCandidate ||
+        "theme" in rawCandidate ||
+        "typography" in rawCandidate;
+      const raw = hasDirectConfig
+        ? rawCandidate
+        : (customData?.siteCustomization as Record<string, unknown>) ||
+          customData;
+      const config = raw as SiteConfigData;
+      const layoutGlobal = (config.layoutGlobal ||
+        config.layout_global ||
+        {}) as Record<string, unknown>;
+      const home = config.home as Record<string, Record<string, unknown>> | null;
+      const layoutColors = (layoutGlobal?.siteColors || layoutGlobal) as Record<
+        string,
+        unknown
+      >;
+
+      const finalColors: ColorSettings = {
+        primary:
+          (layoutColors?.primary as string) ||
+          (config.colors?.primary as string) ||
+          "#bf6e8a",
+        secondary:
+          (layoutColors?.secondary as string) ||
+          (config.colors?.secondary as string) ||
+          "#4b5563",
+        background:
+          (layoutColors?.background as string) ||
+          (config.colors?.background as string) ||
+          "#ffffff",
+        text:
+          (layoutColors?.text as string) ||
+          (config.colors?.text as string) ||
+          "#111827",
+        accent:
+          (layoutColors?.accent as string) ||
+          (config.colors?.accent as string) ||
+          "#bf6e8a",
+        buttonText:
+          (layoutColors?.buttonText as string) ||
+          (config.colors?.buttonText as string) ||
+          "#ffffff",
+      };
+
+      return {
+        ...config,
+        colors: finalColors,
+        hero: (layoutGlobal?.heroBanner ||
+          layoutGlobal?.hero ||
+          home?.heroBanner ||
+          home?.hero ||
+          (config as Record<string, unknown>).heroBanner ||
+          config.hero) as HeroSettings | undefined,
+        aboutHero: (layoutGlobal?.aboutHero || config.aboutHero) as
+          | HeroSettings
+          | undefined,
+        story: (layoutGlobal?.story || config.story) as
+          | StorySettings
+          | undefined,
+        team: (layoutGlobal?.team || config.team) as TeamSettings | undefined,
+        testimonials: (layoutGlobal?.testimonials || config.testimonials) as
+          | TestimonialsSettings
+          | undefined,
+        services: (layoutGlobal?.services ||
+          home?.servicesSection ||
+          home?.services ||
+          config.services) as
+          | ServicesSettings
+          | undefined,
+        values: (layoutGlobal?.values ||
+          home?.valuesSection ||
+          home?.values ||
+          config.values) as
+          | ValuesSettings
+          | undefined,
+        gallery: (layoutGlobal?.gallery ||
+          home?.gallerySection ||
+          home?.gallery ||
+          config.gallery) as
+          | GallerySettings
+          | undefined,
+        cta: (layoutGlobal?.cta ||
+          home?.ctaSection ||
+          home?.cta ||
+          config.cta) as CTASettings | undefined,
+        header: (layoutGlobal?.header || config.header) as
+          | HeaderSettings
+          | undefined,
+        footer: (layoutGlobal?.footer || config.footer) as
+          | FooterSettings
+          | undefined,
+        theme: (layoutGlobal?.fontes ||
+          layoutGlobal?.typography ||
+          config.theme ||
+          config.typography) as FontSettings | undefined,
+        visibleSections: (layoutGlobal?.visibleSections ||
+          layoutGlobal?.visible_sections ||
+          config.visibleSections ||
+          config.visible_sections) as Record<string, boolean> | undefined,
+        pageVisibility: (layoutGlobal?.pageVisibility ||
+          layoutGlobal?.page_visibility ||
+          config.pageVisibility ||
+          config.page_visibility) as Record<string, boolean> | undefined,
+        bookingSteps: (layoutGlobal?.bookingSteps ||
+          layoutGlobal?.appointmentFlow ||
+          config.bookingSteps ||
+          config.booking_steps ||
+          config.appointmentFlow ||
+          config.appointment_flow) as SiteConfigData["bookingSteps"],
+      };
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!isPreview || typeof window === "undefined") return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+      if (event.data.type !== "UPDATE_SITE_DATA") return;
+
+      const incoming =
+        (event.data.data as Record<string, unknown>) ||
+        (event.data.settings as Record<string, unknown>) ||
+        (event.data.siteCustomization as Record<string, unknown>) ||
+        (event.data.payload as Record<string, unknown>) ||
+        (event.data as Record<string, unknown>);
+
+      const mappedConfig = mapConfig(incoming);
+      setStudio((prev) =>
+        prev
+          ? { ...prev, config: mappedConfig as unknown as Business["config"] }
+          : prev,
+      );
+
+      const lg = (mappedConfig.layoutGlobal ||
+        (mappedConfig as Record<string, unknown>).layout_global ||
+        {}) as Record<string, unknown>;
+      localStorage.setItem("layoutGlobal", JSON.stringify(lg));
+
+      if (mappedConfig.hero) saveHeroSettings(mappedConfig.hero);
+      if (mappedConfig.aboutHero) saveAboutHeroSettings(mappedConfig.aboutHero);
+      if (mappedConfig.story) saveStorySettings(mappedConfig.story);
+      if (mappedConfig.team) saveTeamSettings(mappedConfig.team);
+      if (mappedConfig.testimonials)
+        saveTestimonialsSettings(mappedConfig.testimonials);
+      if (mappedConfig.services) saveServicesSettings(mappedConfig.services);
+      if (mappedConfig.values) saveValuesSettings(mappedConfig.values);
+      if (mappedConfig.gallery) saveGallerySettings(mappedConfig.gallery);
+      if (mappedConfig.cta) saveCTASettings(mappedConfig.cta);
+      if (mappedConfig.header) saveHeaderSettings(mappedConfig.header);
+      if (mappedConfig.footer) saveFooterSettings(mappedConfig.footer);
+      if (mappedConfig.visibleSections)
+        saveVisibleSections(mappedConfig.visibleSections);
+      if (mappedConfig.pageVisibility)
+        savePageVisibility(mappedConfig.pageVisibility);
+      if (mappedConfig.colors) saveColorSettings(mappedConfig.colors);
+      if (mappedConfig.theme) saveFontSettings(mappedConfig.theme);
+
+      if (mappedConfig.bookingSteps?.service)
+        saveBookingServiceSettings(mappedConfig.bookingSteps.service);
+      if (mappedConfig.bookingSteps?.date)
+        saveBookingDateSettings(mappedConfig.bookingSteps.date);
+      if (mappedConfig.bookingSteps?.time)
+        saveBookingTimeSettings(mappedConfig.bookingSteps.time);
+      if (mappedConfig.bookingSteps?.form)
+        saveBookingFormSettings(mappedConfig.bookingSteps.form);
+      if (mappedConfig.bookingSteps?.confirmation)
+        saveBookingConfirmationSettings(mappedConfig.bookingSteps.confirmation);
+
+      window.dispatchEvent(new Event("DataReady"));
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [isPreview, mapConfig]);
 
   // --- NOVO: Sincronização de Fonte Única da Verdade (DB -> LocalStorage) ---
   useEffect(() => {
@@ -295,7 +496,27 @@ export function StudioProvider({
     }
   }, [initialSlug, initialId]);
 
+  // --- NOVO: Listener para publicação bem sucedida ---
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handlePublishSuccess = () => {
+      console.log(
+        ">>> [StudioContext] Sinal de publicação recebido. Forçando atualização dos dados...",
+      );
+      // Incrementa o trigger para disparar o fetchStudio no useEffect principal
+      setRefreshTrigger((prev) => prev + 1);
+    };
+
+    window.addEventListener("site-published-success", handlePublishSuccess);
+    return () =>
+      window.removeEventListener("site-published-success", handlePublishSuccess);
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+
     if (isPreview) {
       if (typeof window !== "undefined") {
         const cachedStudio = localStorage.getItem("studio_data");
@@ -307,11 +528,11 @@ export function StudioProvider({
           }
         }
       }
-      setIsLoading(false);
-      return;
     }
     async function fetchStudio() {
-      console.log(`>>> [StudioProvider] Buscando dados (trigger: ${refreshTrigger})...`);
+      console.log(
+        `>>> [StudioProvider] Buscando dados (trigger: ${refreshTrigger})...`,
+      );
       let currentSlug = slug;
       let currentId = businessId;
 
@@ -343,57 +564,61 @@ export function StudioProvider({
           );
           setSlug(currentSlug);
         } else {
-            // Tenta extrair da PATH (/admin/[slug]/...)
-            const pathname = window.location.pathname;
-            if (pathname.startsWith("/admin/")) {
-              const segments = pathname.split("/").filter(Boolean);
-              // O padrão é /admin/[slug]/...
-              if (segments.length >= 2 && segments[0] === "admin" && segments[1] !== "master") {
-                currentSlug = segments[1];
+          // Tenta extrair da PATH (/admin/[slug]/...)
+          const pathname = window.location.pathname;
+          if (pathname.startsWith("/admin/")) {
+            const segments = pathname.split("/").filter(Boolean);
+            // O padrão é /admin/[slug]/...
+            if (
+              segments.length >= 2 &&
+              segments[0] === "admin" &&
+              segments[1] !== "master"
+            ) {
+              currentSlug = segments[1];
+              console.log(
+                `>>> [StudioProvider] SLUG extraído do PATH (/admin/[slug]): ${currentSlug}`,
+              );
+              setSlug(currentSlug);
+            }
+          }
+
+          if (!currentSlug) {
+            const host = window.location.host;
+            console.log(
+              `>>> [StudioProvider] Analisando HOST para extração de SLUG: ${host}`,
+            );
+
+            // Caso especial para desenvolvimento: subdomínio em localhost (ex: lucas-studio.localhost:3000)
+            if (host.includes(".localhost")) {
+              const parts = host.split(".");
+              if (parts.length > 1 && parts[0] !== "www") {
+                currentSlug = parts[0];
                 console.log(
-                  `>>> [StudioProvider] SLUG extraído do PATH (/admin/[slug]): ${currentSlug}`,
+                  `>>> [StudioProvider] SLUG extraído do subdomínio LOCALHOST: ${currentSlug}`,
                 );
                 setSlug(currentSlug);
               }
             }
-            
-            if (!currentSlug) {
-              const host = window.location.host;
-              console.log(
-                `>>> [StudioProvider] Analisando HOST para extração de SLUG: ${host}`,
-              );
-
-              // Caso especial para desenvolvimento: subdomínio em localhost (ex: lucas-studio.localhost:3000)
-              if (host.includes(".localhost")) {
-                const parts = host.split(".");
-                if (parts.length > 1 && parts[0] !== "www") {
-                  currentSlug = parts[0];
-                  console.log(
-                    `>>> [StudioProvider] SLUG extraído do subdomínio LOCALHOST: ${currentSlug}`,
-                  );
-                  setSlug(currentSlug);
-                }
-              }
-              // Caso para produção: subdomínio do BASE_DOMAIN
-              else if (
-                BASE_DOMAIN &&
-                host.endsWith(BASE_DOMAIN) &&
-                host !== BASE_DOMAIN &&
-                host !== `www.${BASE_DOMAIN}`
-              ) {
-                const possibleSlug = host
-                  .replace(`.${BASE_DOMAIN}`, "")
-                  .replace("www.", "");
-                if (possibleSlug) {
-                  currentSlug = possibleSlug;
-                  console.log(
-                    `>>> [StudioProvider] SLUG extraído do subdomínio PRODUÇÃO: ${currentSlug}`,
-                  );
-                  setSlug(currentSlug);
-                }
+            // Caso para produção: subdomínio do BASE_DOMAIN
+            else if (
+              BASE_DOMAIN &&
+              host.endsWith(BASE_DOMAIN) &&
+              host !== BASE_DOMAIN &&
+              host !== `www.${BASE_DOMAIN}`
+            ) {
+              const possibleSlug = host
+                .replace(`.${BASE_DOMAIN}`, "")
+                .replace("www.", "");
+              if (possibleSlug) {
+                currentSlug = possibleSlug;
+                console.log(
+                  `>>> [StudioProvider] SLUG extraído do subdomínio PRODUÇÃO: ${currentSlug}`,
+                );
+                setSlug(currentSlug);
               }
             }
           }
+        }
       }
 
       if (!currentId && !currentSlug) {
@@ -404,15 +629,19 @@ export function StudioProvider({
       try {
         const timestamp = Date.now();
         let fetchUrl: string;
-        
+
         if (currentId) {
           fetchUrl = `${API_BASE_URL}/api/business/${currentId}?t=${timestamp}`;
-          console.log(`>>> [CACHE_CHECK] StudioProvider buscando studio via ID: ${fetchUrl}`);
+          console.log(
+            `>>> [CACHE_CHECK] StudioProvider buscando studio via ID: ${fetchUrl}`,
+          );
         } else {
           // Normalização do slug para evitar erros de case-sensitivity e garantir consistência
           const finalSlug = (currentSlug || "").toLowerCase();
           fetchUrl = `${API_BASE_URL}/api/business/slug/${finalSlug}?t=${timestamp}`;
-          console.log(`>>> [CACHE_CHECK] StudioProvider buscando studio via SLUG: ${fetchUrl}`);
+          console.log(
+            `>>> [CACHE_CHECK] StudioProvider buscando studio via SLUG: ${fetchUrl}`,
+          );
         }
 
         let response: Response;
@@ -420,11 +649,18 @@ export function StudioProvider({
           response = await customFetch(fetchUrl, {
             credentials: "include",
             cache: "no-store",
+            next: { revalidate: 0 },
+            signal,
             headers: {
               Accept: "application/json",
             },
           });
         } catch (fetchErr: unknown) {
+          if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
+            console.log(">>> [StudioProvider] Busca de studio cancelada.");
+            return;
+          }
+
           const errorMessage =
             fetchErr instanceof Error ? fetchErr.message : "Erro desconhecido";
           console.error(
@@ -479,6 +715,8 @@ export function StudioProvider({
                   `${API_BASE_URL}/api/settings/profile/${data.id}`,
                   {
                     cache: "no-store",
+                    next: { revalidate: 0 },
+                    signal,
                     headers: { Accept: "application/json" },
                   },
                 );
@@ -509,6 +747,12 @@ export function StudioProvider({
                   );
                 }
               } catch (profileErr) {
+                if (
+                  profileErr instanceof Error &&
+                  profileErr.name === "AbortError"
+                ) {
+                  return;
+                }
                 console.error(
                   ">>> [DEBUG_API] Erro na chamada do perfil público:",
                   profileErr,
@@ -586,123 +830,19 @@ export function StudioProvider({
             }
             // ---------------------------------------------
 
-            // Helper para mapear configurações (Cores, Fontes, etc)
-            const mapConfig = (
-              customData: Record<string, unknown>,
-            ): SiteConfigData => {
-              const raw =
-                (customData?.siteCustomization as Record<string, unknown>) ||
-                customData;
-              const config = raw as SiteConfigData;
-              const layoutGlobal = (config.layoutGlobal ||
-                config.layout_global ||
-                {}) as Record<string, unknown>;
-              const layoutColors = (layoutGlobal?.siteColors ||
-                layoutGlobal) as Record<string, unknown>;
+            const customizationResponse = data?.id
+              ? await (isAdminPath || isPreview
+                  ? siteCustomizerService.getDraftCustomization(data.id, signal)
+                  : siteCustomizerService.getPublishedCustomization(data.id, signal))
+              : null;
 
-              // Mapeamento ultra-flexível para o background e outras cores
-              const finalColors: ColorSettings = {
-                primary:
-                  (layoutColors?.primary as string) ||
-                  (config.colors?.primary as string) ||
-                  "#bf6e8a",
-                secondary:
-                  (layoutColors?.secondary as string) ||
-                  (config.colors?.secondary as string) ||
-                  "#4b5563",
-                background:
-                  (layoutColors?.background as string) ||
-                  (config.colors?.background as string) ||
-                  "#ffffff",
-                text:
-                  (layoutColors?.text as string) ||
-                  (config.colors?.text as string) ||
-                  "#111827",
-                accent:
-                  (layoutColors?.accent as string) ||
-                  (config.colors?.accent as string) ||
-                  "#bf6e8a",
-                buttonText:
-                  (layoutColors?.buttonText as string) ||
-                  (config.colors?.buttonText as string) ||
-                  "#ffffff",
-              };
+            if (signal.aborted) return;
 
-              const mappedResult = {
-                ...config,
-                colors: finalColors,
-                // Prioridade para layoutGlobal (configurações salvas mais recentes) sobre o root config
-                hero: (layoutGlobal?.hero || config.hero) as
-                  | HeroSettings
-                  | undefined,
-                aboutHero: (layoutGlobal?.aboutHero || config.aboutHero) as
-                  | HeroSettings
-                  | undefined,
-                story: (layoutGlobal?.story || config.story) as
-                  | StorySettings
-                  | undefined,
-                team: (layoutGlobal?.team || config.team) as
-                  | TeamSettings
-                  | undefined,
-                testimonials: (layoutGlobal?.testimonials ||
-                  config.testimonials) as TestimonialsSettings | undefined,
-                services: (layoutGlobal?.services || config.services) as
-                  | ServicesSettings
-                  | undefined,
-                values: (layoutGlobal?.values || config.values) as
-                  | ValuesSettings
-                  | undefined,
-                gallery: (layoutGlobal?.gallery || config.gallery) as
-                  | GallerySettings
-                  | undefined,
-                cta: (layoutGlobal?.cta || config.cta) as
-                  | CTASettings
-                  | undefined,
-                header: (layoutGlobal?.header || config.header) as
-                  | HeaderSettings
-                  | undefined,
-                footer: (layoutGlobal?.footer || config.footer) as
-                  | FooterSettings
-                  | undefined,
-
-                theme: (layoutGlobal?.fontes ||
-                  layoutGlobal?.typography ||
-                  config.theme ||
-                  config.typography) as FontSettings | undefined,
-                visibleSections: (layoutGlobal?.visibleSections ||
-                  layoutGlobal?.visible_sections ||
-                  config.visibleSections ||
-                  config.visible_sections) as
-                  | Record<string, boolean>
-                  | undefined,
-                pageVisibility: (layoutGlobal?.pageVisibility ||
-                  layoutGlobal?.page_visibility ||
-                  config.pageVisibility ||
-                  config.page_visibility) as
-                  | Record<string, boolean>
-                  | undefined,
-                bookingSteps: (layoutGlobal?.bookingSteps ||
-                  layoutGlobal?.appointmentFlow ||
-                  config.bookingSteps ||
-                  config.booking_steps ||
-                  config.appointmentFlow ||
-                  config.appointment_flow) as SiteConfigData["bookingSteps"],
-              };
-
-              console.log(
-                ">>> [DEBUG_SYNC] bookingSteps mapeado:",
-                !!mappedResult.bookingSteps,
-              );
-              return mappedResult;
-            };
-
-            // Tenta mapear as configurações que JÁ VÊM na resposta do studio
-            // O backend muitas vezes já entrega o 'siteCustomization' ou 'config' aqui
             const initialConfig = mapConfig(
-              (data.siteCustomization || data.config || data) as Record<
-                string,
-                unknown
-              >,
+              ((customizationResponse && !customizationResponse.isFallback
+                ? customizationResponse
+                : data.siteCustomization || data.config || data) ??
+                {}) as Record<string, unknown>,
             );
 
             // NOVO: Persistência imediata do layoutGlobal no localStorage para sincronia com ThemeInjector
@@ -799,9 +939,8 @@ export function StudioProvider({
                 );
             }
             try {
-              const hasLocalDraft = (key: string) =>
-                typeof window !== "undefined" &&
-                localStorage.getItem(getStorageKey(key)) !== null;
+              const isEditor = isAdminPath || isPreview;
+
               const lg = (initialConfig.layoutGlobal ||
                 (initialConfig as Record<string, unknown>).layout_global) as
                 | Record<string, unknown>
@@ -816,46 +955,122 @@ export function StudioProvider({
                 (lg as Record<string, unknown>)?.fontes) as
                 | FontSettings
                 | undefined;
-              if (initialConfig.hero && !hasLocalDraft("heroSettings"))
+
+              // Sincronização inteligente:
+              // Se NÃO estiver no editor, os dados do banco SEMPRE sobrescrevem o cache local.
+              // Isso garante que o site público reflita o banco imediatamente.
+              const shouldOverride = !isEditor;
+
+              if (initialConfig.hero && shouldOverride) {
                 saveHeroSettings(initialConfig.hero);
-              if (initialConfig.header)
-                !hasLocalDraft("headerSettings") &&
-                  saveHeaderSettings(initialConfig.header);
-              if (initialConfig.footer)
-                !hasLocalDraft("footerSettings") &&
-                  saveFooterSettings(initialConfig.footer);
-              if (initialConfig.services)
-                !hasLocalDraft("servicesSettings") &&
-                  saveServicesSettings(initialConfig.services);
-              if (initialConfig.values)
-                !hasLocalDraft("valuesSettings") &&
-                  saveValuesSettings(initialConfig.values);
-              if (initialConfig.gallery)
-                !hasLocalDraft("gallerySettings") &&
-                  saveGallerySettings(initialConfig.gallery);
-              if (initialConfig.cta)
-                !hasLocalDraft("ctaSettings") &&
-                  saveCTASettings(initialConfig.cta);
-              if (initialConfig.pageVisibility)
-                !hasLocalDraft("pageVisibility") &&
-                  savePageVisibility(initialConfig.pageVisibility);
-              if (initialConfig.visibleSections)
-                !hasLocalDraft("visibleSections") &&
-                  saveVisibleSections(initialConfig.visibleSections);
-              if (colors)
-                !hasLocalDraft("colorSettings") && saveColorSettings(colors);
-              if (fonts)
-                !hasLocalDraft("fontSettings") && saveFontSettings(fonts);
+              }
+              if (initialConfig.header && shouldOverride)
+                saveHeaderSettings(initialConfig.header);
+              if (initialConfig.footer && shouldOverride)
+                saveFooterSettings(initialConfig.footer);
+              if (initialConfig.services && shouldOverride)
+                saveServicesSettings(initialConfig.services);
+              if (initialConfig.values && shouldOverride)
+                saveValuesSettings(initialConfig.values);
+              if (initialConfig.gallery && shouldOverride)
+                saveGallerySettings(initialConfig.gallery);
+              if (initialConfig.cta && shouldOverride)
+                saveCTASettings(initialConfig.cta);
+              if (initialConfig.pageVisibility && shouldOverride)
+                savePageVisibility(initialConfig.pageVisibility);
+              if (initialConfig.visibleSections && shouldOverride)
+                saveVisibleSections(initialConfig.visibleSections);
+              if (colors && shouldOverride)
+                saveColorSettings(colors);
+              if (fonts && shouldOverride)
+                saveFontSettings(fonts);
+
               if (typeof window !== "undefined") {
                 window.dispatchEvent(new Event("DataReady"));
               }
             } catch (_) {}
 
             // Busca de customização EXTRA (sem cache) apenas para garantir atualização em tempo real
-            if (data?.id) {
-              siteCustomizerService
-                .getCustomization(data.id)
+            const extraCustomization =
+              customizationResponse && !customizationResponse.isFallback
+                ? customizationResponse
+                : null;
+
+            if (extraCustomization) {
+              const mappedConfig = mapConfig(
+                extraCustomization as unknown as Record<string, unknown>,
+              );
+
+              setStudio((prev) => {
+                const newStudio = prev
+                  ? {
+                      ...prev,
+                      config: mappedConfig as unknown as Business["config"],
+                    }
+                  : null;
+                console.log(
+                  ">>> [DEBUG_SYNC] Estado Studio reidratado com novas cores:",
+                  mappedConfig.colors?.background || "N/A",
+                );
+                return newStudio;
+              });
+
+              try {
+                const lg = (mappedConfig.layoutGlobal ||
+                  (mappedConfig as Record<string, unknown>)
+                    .layout_global) as Record<string, unknown> | undefined;
+
+                if (lg) localStorage.setItem("layoutGlobal", JSON.stringify(lg));
+
+                const colors = (mappedConfig.colors ||
+                  lg?.siteColors ||
+                  (lg as Record<string, unknown>)?.cores_base) as
+                  | ColorSettings
+                  | undefined;
+                const fonts = (mappedConfig.theme ||
+                  mappedConfig.typography ||
+                  (lg as Record<string, unknown>)?.fontes) as
+                  | FontSettings
+                  | undefined;
+                const isEditor = isAdminPath || isPreview;
+                if (!isEditor) {
+                  if (mappedConfig.hero) {
+                    saveHeroSettings(mappedConfig.hero);
+                  }
+                  if (mappedConfig.header) saveHeaderSettings(mappedConfig.header);
+                  if (mappedConfig.footer) saveFooterSettings(mappedConfig.footer);
+                  if (mappedConfig.services)
+                    saveServicesSettings(mappedConfig.services);
+                  if (mappedConfig.values) saveValuesSettings(mappedConfig.values);
+                  if (mappedConfig.gallery)
+                    saveGallerySettings(mappedConfig.gallery);
+                  if (mappedConfig.cta) saveCTASettings(mappedConfig.cta);
+                  if (mappedConfig.pageVisibility)
+                    savePageVisibility(mappedConfig.pageVisibility);
+                  if (mappedConfig.visibleSections)
+                    saveVisibleSections(mappedConfig.visibleSections);
+                  if (colors) saveColorSettings(colors);
+                  if (fonts) saveFontSettings(fonts);
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new Event("DataReady"));
+                  }
+                }
+              } catch (_) {}
+            } else if (data?.id) {
+              const fetcher = (companyId: string, signal?: AbortSignal) =>
+                isAdminPath || isPreview
+                  ? siteCustomizerService.getDraftCustomization(
+                      companyId,
+                      signal,
+                    )
+                  : siteCustomizerService.getPublishedCustomization(
+                      companyId,
+                      signal,
+                    );
+
+              fetcher(data.id, signal)
                 .then((customization: SiteConfigData | null) => {
+                  if (signal.aborted) return;
                   if (!customization || customization.isFallback) {
                     console.log(
                       ">>> [StudioProvider] Customização extra falhou ou retornou fallback. Mantendo configuração inicial.",
@@ -869,7 +1084,6 @@ export function StudioProvider({
                     customization as unknown as Record<string, unknown>,
                   );
 
-                  // Atualiza o estado global imediatamente (Reidratação de Estado)
                   setStudio((prev) => {
                     const newStudio = prev
                       ? {
@@ -885,14 +1099,10 @@ export function StudioProvider({
                   });
 
                   try {
-                    const hasLocalDraft = (key: string) =>
-                      typeof window !== "undefined" &&
-                      localStorage.getItem(getStorageKey(key)) !== null;
                     const lg = (mappedConfig.layoutGlobal ||
                       (mappedConfig as Record<string, unknown>)
                         .layout_global) as Record<string, unknown> | undefined;
 
-                    // Salva no localStorage para persistência e para disparar eventos para componentes que ouvem storage
                     if (lg)
                       localStorage.setItem("layoutGlobal", JSON.stringify(lg));
 
@@ -906,39 +1116,31 @@ export function StudioProvider({
                       (lg as Record<string, unknown>)?.fontes) as
                       | FontSettings
                       | undefined;
-                    if (mappedConfig.hero && !hasLocalDraft("heroSettings"))
-                      saveHeroSettings(mappedConfig.hero);
-                    if (mappedConfig.header)
-                      !hasLocalDraft("headerSettings") &&
+                    const isEditor = isAdminPath || isPreview;
+                    if (!isEditor) {
+                      if (mappedConfig.hero) {
+                        saveHeroSettings(mappedConfig.hero);
+                      }
+                      if (mappedConfig.header)
                         saveHeaderSettings(mappedConfig.header);
-                    if (mappedConfig.footer)
-                      !hasLocalDraft("footerSettings") &&
+                      if (mappedConfig.footer)
                         saveFooterSettings(mappedConfig.footer);
-                    if (mappedConfig.services)
-                      !hasLocalDraft("servicesSettings") &&
+                      if (mappedConfig.services)
                         saveServicesSettings(mappedConfig.services);
-                    if (mappedConfig.values)
-                      !hasLocalDraft("valuesSettings") &&
+                      if (mappedConfig.values)
                         saveValuesSettings(mappedConfig.values);
-                    if (mappedConfig.gallery)
-                      !hasLocalDraft("gallerySettings") &&
+                      if (mappedConfig.gallery)
                         saveGallerySettings(mappedConfig.gallery);
-                    if (mappedConfig.cta)
-                      !hasLocalDraft("ctaSettings") &&
-                        saveCTASettings(mappedConfig.cta);
-                    if (mappedConfig.pageVisibility)
-                      !hasLocalDraft("pageVisibility") &&
+                      if (mappedConfig.cta) saveCTASettings(mappedConfig.cta);
+                      if (mappedConfig.pageVisibility)
                         savePageVisibility(mappedConfig.pageVisibility);
-                    if (mappedConfig.visibleSections)
-                      !hasLocalDraft("visibleSections") &&
+                      if (mappedConfig.visibleSections)
                         saveVisibleSections(mappedConfig.visibleSections);
-                    if (colors)
-                      !hasLocalDraft("colorSettings") &&
-                        saveColorSettings(colors);
-                    if (fonts)
-                      !hasLocalDraft("fontSettings") && saveFontSettings(fonts);
-                    if (typeof window !== "undefined") {
-                      window.dispatchEvent(new Event("DataReady"));
+                      if (colors) saveColorSettings(colors);
+                      if (fonts) saveFontSettings(fonts);
+                      if (typeof window !== "undefined") {
+                        window.dispatchEvent(new Event("DataReady"));
+                      }
                     }
                   } catch (_) {}
                 })
@@ -1029,7 +1231,11 @@ export function StudioProvider({
     }
 
     fetchStudio();
-  }, [slug, businessId, isPreview, refreshTrigger]);
+
+    return () => {
+      controller.abort();
+    };
+  }, [slug, businessId, isPreview, isAdminPath, refreshTrigger, mapConfig]);
 
   useEffect(() => {
     // REMOVIDO: Redirecionamento automático para /404 ou home
@@ -1064,19 +1270,16 @@ export function StudioProvider({
       businessId,
       updateStudioInfo,
     }),
-    [
-      studio,
-      isLoading,
-      error,
-      slug,
-      businessId,
-      updateStudioInfo
-    ],
+    [studio, isLoading, error, slug, businessId, updateStudioInfo],
   );
 
   // Tratamento visual para erro 404 (Studio não encontrado)
   // Mas evitamos mostrar esse 404 para rotas de admin, permitindo que o admin-layout tome decisões
-  if (!isLoading && error === "Studio não encontrado" && !pathname?.startsWith("/admin")) {
+  if (
+    !isLoading &&
+    error === "Studio não encontrado" &&
+    !pathname?.startsWith("/admin")
+  ) {
     return (
       <StudioContext.Provider value={value}>
         <div className="flex flex-col items-center justify-center min-h-screen px-4 text-center bg-white text-zinc-900 dark:bg-zinc-950 dark:text-zinc-50">
@@ -1101,9 +1304,7 @@ export function StudioProvider({
   }
 
   return (
-    <StudioContext.Provider value={value}>
-      {children}
-    </StudioContext.Provider>
+    <StudioContext.Provider value={value}>{children}</StudioContext.Provider>
   );
 }
 

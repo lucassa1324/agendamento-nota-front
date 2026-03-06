@@ -24,9 +24,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useStudio } from "@/context/studio-context";
 import {
-  getStorySettings,
   type StorySettings,
-  saveStorySettings,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { EDITOR_FONTS } from "../../components/editor-constants";
@@ -40,59 +38,18 @@ interface HistoryEditorProps {
 }
 
 export function HistoryEditor({
-  settings: propsSettings,
-  onUpdate: propsOnUpdate,
+  settings,
+  onUpdate,
   onUpdateBackground,
   onSave: externalOnSave,
-  hasChanges: externalHasChanges,
+  hasChanges,
 }: HistoryEditorProps) {
   const { studio } = useStudio();
-  const [localSettings, setLocalSettings] = useState<StorySettings | null>(
-    null,
-  );
-  const [internalHasChanges, setInternalHasChanges] = useState(false);
-  const hasChanges = externalHasChanges ?? internalHasChanges;
 
-  useEffect(() => {
-    if (!propsSettings) {
-      setLocalSettings(getStorySettings());
-    }
-  }, [propsSettings]);
+  if (!settings) return null;
 
-  const settings = propsSettings || localSettings;
-
-  const onUpdate = (updates: Partial<StorySettings>) => {
-    if (!settings) return;
-
-    if (propsOnUpdate) {
-      propsOnUpdate(updates);
-    } else {
-      const newSettings = { ...settings, ...updates };
-      setLocalSettings(newSettings);
-      setInternalHasChanges(true);
-
-      // Notificar iframe para preview em tempo real (apenas se for o local)
-      const iframe = document.querySelector("iframe");
-      if (iframe?.contentWindow) {
-        iframe.contentWindow.postMessage(
-          {
-            type: "UPDATE_STORY_SETTINGS",
-            settings: newSettings,
-          },
-          "*",
-        );
-      }
-    }
-  };
-
-  const handleSave = () => {
-    if (settings) {
-      if (!propsSettings) {
-        saveStorySettings(settings);
-        setInternalHasChanges(false);
-      }
-      if (externalOnSave) externalOnSave();
-    }
+  const handleUpdate = (updates: Partial<StorySettings>) => {
+    if (onUpdate) onUpdate(updates);
   };
 
   if (!settings) return null;
@@ -128,7 +85,7 @@ export function HistoryEditor({
                 </legend>
                 <Input
                   value={settings.title || ""}
-                  onChange={(e) => onUpdate({ title: e.target.value })}
+                  onChange={(e) => handleUpdate({ title: e.target.value })}
                   className="h-8 text-xs"
                   placeholder="Ex: Nossa História"
                 />
@@ -146,7 +103,7 @@ export function HistoryEditor({
                 <Select
                   value={settings.titleFont || "default"}
                   onValueChange={(v) =>
-                    onUpdate({ titleFont: v === "default" ? "" : v })
+                    handleUpdate({ titleFont: v === "default" ? "" : v })
                   }
                 >
                   <SelectTrigger className="h-8 text-[10px]">
@@ -183,7 +140,7 @@ export function HistoryEditor({
                       variant="ghost"
                       size="icon"
                       className="h-4 w-4 hover:text-primary"
-                      onClick={() => onUpdate({ titleColor: "" })}
+                      onClick={() => handleUpdate({ titleColor: "" })}
                     >
                       <RotateCcw className="w-3 h-3" />
                     </Button>
@@ -194,13 +151,17 @@ export function HistoryEditor({
                     type="color"
                     value={settings.titleColor || "#000000"}
                     className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50"
-                    onChange={(e) => onUpdate({ titleColor: e.target.value })}
+                    onChange={(e) =>
+                      handleUpdate({ titleColor: e.target.value })
+                    }
                   />
                   <Input
                     value={settings.titleColor || ""}
                     placeholder="Padrão"
                     className="h-8 text-[10px] flex-1 uppercase"
-                    onChange={(e) => onUpdate({ titleColor: e.target.value })}
+                    onChange={(e) =>
+                      handleUpdate({ titleColor: e.target.value })
+                    }
                   />
                 </div>
               </fieldset>
@@ -228,7 +189,7 @@ export function HistoryEditor({
               </legend>
               <Textarea
                 value={settings.content || ""}
-                onChange={(e) => onUpdate({ content: e.target.value })}
+                onChange={(e) => handleUpdate({ content: e.target.value })}
                 className="min-h-32 text-[11px] leading-snug resize-none"
                 placeholder="Conte a história do seu negócio..."
               />
@@ -245,7 +206,7 @@ export function HistoryEditor({
                 <Select
                   value={settings.contentFont || "default"}
                   onValueChange={(v) =>
-                    onUpdate({ contentFont: v === "default" ? "" : v })
+                    handleUpdate({ contentFont: v === "default" ? "" : v })
                   }
                 >
                   <SelectTrigger className="h-8 text-[10px]">
@@ -279,7 +240,7 @@ export function HistoryEditor({
                       variant="ghost"
                       size="icon"
                       className="h-4 w-4 hover:text-primary"
-                      onClick={() => onUpdate({ contentColor: "" })}
+                      onClick={() => handleUpdate({ contentColor: "" })}
                     >
                       <RotateCcw className="w-3 h-3" />
                     </Button>
@@ -290,13 +251,17 @@ export function HistoryEditor({
                     type="color"
                     value={settings.contentColor || "#333333"}
                     className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50"
-                    onChange={(e) => onUpdate({ contentColor: e.target.value })}
+                    onChange={(e) =>
+                      handleUpdate({ contentColor: e.target.value })
+                    }
                   />
                   <Input
                     value={settings.contentColor || ""}
                     placeholder="Padrão"
                     className="h-8 text-[10px] flex-1 uppercase"
-                    onChange={(e) => onUpdate({ contentColor: e.target.value })}
+                    onChange={(e) =>
+                      handleUpdate({ contentColor: e.target.value })
+                    }
                   />
                 </div>
               </fieldset>
@@ -316,7 +281,7 @@ export function HistoryEditor({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <ImageUploader
-              onUploadSuccess={(url) => onUpdate({ image: url })}
+              onUploadSuccess={(url) => handleUpdate({ image: url })}
               businessId={studio?.id || ""}
               section="story"
             />
@@ -350,7 +315,7 @@ export function HistoryEditor({
                 if (onUpdateBackground) {
                   onUpdateBackground(updates, "story");
                 } else {
-                  onUpdate(updates);
+                  handleUpdate(updates);
                 }
               }}
               section="story"
@@ -362,7 +327,7 @@ export function HistoryEditor({
                 section="story"
                 businessId={studio?.id || ""}
                 appearance={settings.appearance}
-                onChange={(appearance) => onUpdate({ appearance })}
+                onChange={(appearance) => handleUpdate({ appearance })}
                 title="Fundo Personalizado (B2)"
               />
             </div>
@@ -374,7 +339,7 @@ export function HistoryEditor({
         <Button
           type="button"
           disabled={!hasChanges}
-          onClick={handleSave}
+          onClick={externalOnSave}
           className={cn(
             "w-full h-11 text-sm font-bold transition-all duration-300",
             hasChanges

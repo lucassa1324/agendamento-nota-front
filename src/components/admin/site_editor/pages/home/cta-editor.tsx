@@ -42,7 +42,7 @@ export function CTAEditor({
   settings,
   onUpdate,
   onUpdateBackground,
-  onSave,
+  onSave: externalOnSave,
   hasChanges,
 }: CTAEditorProps) {
   const { studio } = useStudio();
@@ -306,7 +306,7 @@ export function CTAEditor({
         <Button
           type="button"
           disabled={!hasChanges}
-          onClick={onSave}
+          onClick={externalOnSave}
           className={cn(
             "w-full h-11 text-sm font-bold transition-all duration-300",
             hasChanges

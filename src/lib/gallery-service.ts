@@ -146,7 +146,10 @@ class GalleryService {
     const queryString = params.toString();
     const url = `${this.baseUrl}/public/${businessId}${queryString ? `?${queryString}` : ""}`;
 
-    const response = await customFetch(url);
+    const response = await customFetch(url, {
+      cache: "no-store",
+      next: { revalidate: 0 },
+    });
 
     if (response.status === 404) {
       console.log(

@@ -133,6 +133,8 @@ interface SidebarContentProps {
   onPageVisibilityChange: (id: string, isVisible: boolean) => void;
   onSaveLocal: () => void;
   onSaveGlobal: (shouldReloadFromBank?: boolean) => void;
+  onPublish: () => void;
+  isPublishing?: boolean;
   hasUnsavedGlobalChanges: boolean;
   pages: PageItem[];
   sections: Record<string, SectionItem[]>;
@@ -231,6 +233,8 @@ export const SidebarContent = memo(
     onPageVisibilityChange,
     onSaveLocal,
     onSaveGlobal,
+    onPublish,
+    isPublishing,
     hasUnsavedGlobalChanges,
     pages,
     sections,
@@ -557,83 +561,32 @@ export const SidebarContent = memo(
           )}
         </div>
 
-        <div className="p-6 pt-4 border-t border-border bg-background">
+        <div className="p-2 sm:p-3 xl:p-6 pt-2 sm:pt-3 xl:pt-4 border-t border-border bg-background">
           <Button
             type="button"
-            disabled={
-              isSaving ||
-              (!hasUnsavedGlobalChanges &&
-                !hasHeroChanges &&
-                !hasAboutHeroChanges &&
-                !hasStoryChanges &&
-                !hasTeamChanges &&
-                !hasTestimonialsChanges &&
-                !hasFontChanges &&
-                !hasServicesChanges &&
-                !hasValuesChanges &&
-                !hasGalleryChanges &&
-                !hasCTAChanges &&
-                !hasHeaderChanges &&
-                !hasFooterChanges &&
-                !hasBookingServiceChanges &&
-                !hasBookingDateChanges &&
-                !hasBookingTimeChanges &&
-                !hasBookingFormChanges &&
-                !hasBookingConfirmationChanges)
-            }
-            onClick={() => onSaveGlobal()}
+            disabled={isSaving || isPublishing || (!hasUnsavedGlobalChanges && !shouldSaveLocal)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log(">>> [SidebarContent] Botão Publicar clicado");
+              onPublish();
+            }}
             className={cn(
-              "w-full font-bold py-6 rounded-xl transition-all duration-300",
-              isSaving
+              "w-full h-8 sm:h-9 xl:h-11 font-bold rounded-lg xl:rounded-xl text-[10px] sm:text-xs xl:text-sm transition-all duration-300",
+              isPublishing
                 ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : hasUnsavedGlobalChanges ||
-                    hasHeroChanges ||
-                    hasAboutHeroChanges ||
-                    hasStoryChanges ||
-                    hasTeamChanges ||
-                    hasTestimonialsChanges ||
-                    hasFontChanges ||
-                    hasServicesChanges ||
-                    hasValuesChanges ||
-                    hasGalleryChanges ||
-                    hasCTAChanges ||
-                    hasHeaderChanges ||
-                    hasFooterChanges ||
-                    hasBookingServiceChanges ||
-                    hasBookingDateChanges ||
-                    hasBookingTimeChanges ||
-                    hasBookingFormChanges ||
-                    hasBookingConfirmationChanges
+                : hasUnsavedGlobalChanges || shouldSaveLocal
                   ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
                   : "bg-muted text-muted-foreground cursor-not-allowed",
             )}
           >
-            {isSaving ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
+            {isPublishing ? (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
                 <span>Publicando...</span>
               </div>
-            ) : hasUnsavedGlobalChanges ||
-              hasHeroChanges ||
-              hasAboutHeroChanges ||
-              hasStoryChanges ||
-              hasTeamChanges ||
-              hasTestimonialsChanges ||
-              hasFontChanges ||
-              hasServicesChanges ||
-              hasValuesChanges ||
-              hasGalleryChanges ||
-              hasCTAChanges ||
-              hasHeaderChanges ||
-              hasFooterChanges ||
-              hasBookingServiceChanges ||
-              hasBookingDateChanges ||
-              hasBookingTimeChanges ||
-              hasBookingFormChanges ||
-              hasBookingConfirmationChanges ? (
-              "Publicar Site"
             ) : (
-              "Tudo Atualizado"
+              "Publicar Site"
             )}
           </Button>
         </div>

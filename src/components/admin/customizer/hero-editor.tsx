@@ -53,7 +53,7 @@ export function HeroEditor({
   onUpdate,
   onUpdateBackground,
   hasChanges,
-  onSave,
+  onSave: externalOnSave,
 }: HeroEditorProps) {
   const { studio } = useStudio();
   // Helper to ensure updates are propagated correctly
@@ -123,7 +123,7 @@ export function HeroEditor({
         <Button
           type="button"
           disabled={!hasChanges}
-          onClick={onSave}
+          onClick={externalOnSave}
           className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
             hasChanges
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"

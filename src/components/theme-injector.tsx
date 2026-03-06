@@ -50,12 +50,16 @@ export function ThemeInjector() {
       return;
     }
 
-    // 1. Carregamento Inicial: Prioridade para Rascunhos Locais no Editor
+    // 1. Carregamento Inicial: Prioridade para Rascunhos Locais APENAS no Editor
     const loadSettings = () => {
       if (isLoading) return;
 
+      const isEditor =
+        typeof window !== "undefined" &&
+        (window.location.pathname.includes("/admin/site-editor") ||
+          window.location.search.includes("preview=true"));
+
       if (studio?.config) {
-        // Agora verificamos rascunhos locais ANTES dos dados da API para manter a edição fluida
         const config = studio.config as SiteConfigData;
 
         // Mapeamento flexível para suportar diferentes estruturas de config (camelCase ou snake_case)
@@ -79,24 +83,24 @@ export function ThemeInjector() {
           typeof window !== "undefined" &&
           localStorage.getItem(getStorageKey("fontSettings")) !== null;
 
-        if (hasLocalColors) {
+        // SE estiver no editor, prioriza rascunho. SE NÃO, prioriza banco.
+        if (isEditor && hasLocalColors) {
           console.log(
-            "[THEME_AUTO_APPLY] Usando RASCUNHO LOCAL de cores (Prioridade Editor)",
+            "[THEME_AUTO_APPLY] Usando RASCUNHO LOCAL de cores (Modo Editor)",
           );
           setColors(getColorSettings());
         } else if (apiColors && Object.keys(apiColors).length > 0) {
           console.log(
-            `[THEME_AUTO_APPLY] Cores do banco aplicadas no carregamento inicial: ${apiColors.primary || "#N/A"}`,
-            apiColors,
+            `[THEME_AUTO_APPLY] Cores do banco aplicadas: ${apiColors.primary || "#N/A"}`,
           );
           setColors(apiColors);
         } else {
           setColors(getColorSettings());
         }
 
-        if (hasLocalFonts) {
+        if (isEditor && hasLocalFonts) {
           console.log(
-            "[THEME_AUTO_APPLY] Usando RASCUNHO LOCAL de fontes (Prioridade Editor)",
+            "[THEME_AUTO_APPLY] Usando RASCUNHO LOCAL de fontes (Modo Editor)",
           );
           setFonts(getFontSettings());
         } else if (apiFonts && Object.keys(apiFonts).length > 0) {

@@ -86,7 +86,9 @@ export async function customFetch(url: string, options: RequestInit = {}) {
       headers,
     });
   } catch (error: unknown) {
-    // Tratamento de erro de rede ou CORS (Failed to fetch)
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
+    }
     const errorMessage =
       error instanceof Error ? error.message : "Erro desconhecido";
     console.error(

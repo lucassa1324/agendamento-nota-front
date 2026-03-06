@@ -21,7 +21,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const local = useEditorLocal();
   const state = useEditorState();
   
-  const { checkShouldRecoverDraft } = useDraftRecovery({ studioId: studio?.id });
+  const { checkShouldRecoverDraft } = useDraftRecovery();
   
   const { loadExternalConfig } = useEditorConfigLoader({
     local,
@@ -204,11 +204,12 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     fetchCustomization,
     handleSaveLocal,
     handleSaveGlobal,
+    handlePublish,
     hasUnsavedGlobalChanges,
     isFetching,
     isSaving,
+    isPublishing,
   } = useEditorApi({
-    iframeRef,
     loadExternalConfig,
     settings,
     lastSaved,
@@ -229,9 +230,11 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     fetchCustomization,
     handleSaveLocal,
     handleSaveGlobal,
+    handlePublish,
     hasUnsavedGlobalChanges,
     isFetching,
     isSaving,
+    isPublishing,
     // Changes detection
     ...changes,
     // Sync settings (previews)

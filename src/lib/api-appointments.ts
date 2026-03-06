@@ -149,6 +149,8 @@ class AppointmentService {
 
     const response = await customFetch(`${this.baseUrl}/company/${companyId}`, {
       method: "GET",
+      cache: "no-store",
+      next: { revalidate: 0 },
     });
     return this.handleResponse(response);
   }
@@ -168,6 +170,8 @@ class AppointmentService {
     const response = await customFetch(url, {
       method: "GET",
       credentials: "include",
+      cache: "no-store",
+      next: { revalidate: 0 },
     });
     return this.handleResponse(response);
   }

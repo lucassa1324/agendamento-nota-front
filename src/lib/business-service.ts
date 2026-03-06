@@ -64,6 +64,8 @@ class BusinessService {
       method: "GET",
       // Removido credentials para permitir chamadas públicas se o backend suportar
       credentials: "include", // customFetch gerencia Authorization
+      cache: "no-store",
+      next: { revalidate: 0 },
     });
 
     if (!response.ok) {
@@ -96,6 +98,8 @@ class BusinessService {
     const response = await customFetch(url, {
       method: "GET",
       credentials: "include",
+      cache: "no-store",
+      next: { revalidate: 0 },
     });
 
     if (!response.ok) {

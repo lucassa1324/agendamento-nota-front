@@ -35,7 +35,7 @@ export function BookingStepEditor({
   onUpdateBackground,
   onHighlight,
   hasChanges,
-  onSave,
+  onSave: externalOnSave,
   title,
 }: BookingStepEditorProps) {
   const { studio } = useStudio();
@@ -359,7 +359,7 @@ export function BookingStepEditor({
         <Button
           type="button"
           disabled={!hasChanges}
-          onClick={onSave}
+          onClick={externalOnSave}
           className={cn(
             "w-full h-11 text-sm font-bold transition-all duration-300",
             hasChanges

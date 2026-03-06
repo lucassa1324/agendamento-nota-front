@@ -2,6 +2,7 @@ import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/auth-client";
 import type { SiteConfigData } from "@/lib/site-config-types";
 import {
+  clearAllCustomizationCache,
   defaultColorSettings,
   defaultFontSettings,
   defaultFooterSettings,
@@ -71,18 +72,25 @@ class SiteCustomizerService {
     return response.json();
   }
 
-  async getCustomization(companyId: string): Promise<SiteConfigData | null> {
+  async getDraftCustomization(
+    companyId: string,
+    signal?: AbortSignal,
+  ): Promise<SiteConfigData | null> {
     const timestamp = Date.now();
 
     try {
       const response = await customFetch(
-        `${this.buildUrl("/api/settings/customization")}/${companyId}?t=${timestamp}`,
+        `${this.buildUrl("/api/settings/draft")}/${companyId}?t=${timestamp}`,
         {
           method: "GET",
+          signal,
           headers: {
             "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
           },
           cache: "no-store",
+          next: { revalidate: 0 },
         },
       );
 
@@ -97,6 +105,11 @@ class SiteCustomizerService {
 
       return data;
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log(">>> [SITE_DEBUG] Busca de customização (draft) cancelada.");
+        return null;
+      }
+
       console.warn(
         ">>> [SITE_WARN] Erro de rede ao buscar customização. Aplicando tema padrão (fallback).",
         error,
@@ -105,43 +118,112 @@ class SiteCustomizerService {
     }
   }
 
-  async saveCustomization(
-     companyId: string,
-     data: Partial<SiteConfigData>,
-   ): Promise<void> {
-     console.log(">>> [FRONT_API_CALL] Enviando para o servidor...", data);
- 
-     console.log(
-       `[CUSTOMIZER] Salvando configurações em: /api/settings/customization/${companyId}`,
-     );
-     console.log("Payload Final:", JSON.stringify(data, null, 2));
-     const response = await customFetch(
-       `${this.buildUrl("/api/settings/customization")}/${companyId}`,
-       {
-       method: "PATCH", // Use PATCH for partial updates
-       body: JSON.stringify(data),
-       credentials: "include",
-      },
-     );
- 
-     await this.handleResponse<void>(response);
-    if (response.ok) {
-      console.log(">>> [FRONT_SAVE_SUCCESS] Banco atualizado.");
+  async getPublishedCustomization(
+    companyId: string,
+    signal?: AbortSignal,
+  ): Promise<SiteConfigData | null> {
+    const timestamp = Date.now();
 
-      // Dispara um sinal de que o site mudou permanentemente
-      if (typeof window !== "undefined") {
-        console.log(
-          ">>> [PUBLISH_EVENT] Disparando evento 'site-published-success' e limpando cache físico.",
+    try {
+      const response = await customFetch(
+        `${this.buildUrl("/api/settings/published")}/${companyId}?t=${timestamp}`,
+        {
+          method: "GET",
+          signal,
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+            Pragma: "no-cache",
+          },
+          cache: "no-store",
+          next: { revalidate: 0 },
+        },
+      );
+
+      const data = await this.handleResponse<SiteConfigData>(response);
+
+      if (!data) {
+        console.warn(
+          ">>> [SITE_WARN] Falha ao obter customização publicada. Aplicando tema padrão (fallback).",
         );
-        window.dispatchEvent(new Event("site-published-success"));
-        // Limpa o cache físico para garantir
-        localStorage.removeItem("studio_data");
-        localStorage.removeItem("studio_last_slug");
+        return DEFAULT_SITE_CONFIG;
       }
+
+      return data;
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        console.log(">>> [SITE_DEBUG] Busca de customização (publicada) cancelada.");
+        return null;
+      }
+
+      console.warn(
+        ">>> [SITE_WARN] Erro de rede ao buscar customização publicada. Aplicando tema padrão (fallback).",
+        error,
+      );
+      return DEFAULT_SITE_CONFIG;
     }
   }
- 
-   async uploadBackgroundImage(
+
+  async saveCustomization(
+    companyId: string,
+    data: Partial<SiteConfigData>,
+  ): Promise<SiteConfigData | null> {
+    return this.saveDraftCustomization(companyId, data);
+  }
+
+  async saveDraftCustomization(
+    companyId: string,
+    data: Partial<SiteConfigData>,
+  ): Promise<SiteConfigData | null> {
+    console.log(">>> [FRONT_API_CALL] Enviando para o servidor...", data);
+
+    console.log(
+      `[CUSTOMIZER] Salvando configurações em: /api/settings/draft/${companyId}`,
+    );
+    console.log("Payload Final:", JSON.stringify(data, null, 2));
+    const rawResponse = await customFetch(
+      `${this.buildUrl("/api/settings/draft")}/${companyId}`,
+      {
+        method: "PATCH", // Use PATCH for partial updates
+        body: JSON.stringify(data),
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    const result = await this.handleResponse<SiteConfigData>(rawResponse);
+    if (rawResponse.ok && result) {
+      console.log(">>> [FRONT_SAVE_SUCCESS] Banco atualizado com sucesso.", result);
+    }
+    return result;
+  }
+
+  async publishCustomization(companyId: string): Promise<boolean> {
+    const rawResponse = await customFetch(
+      `${this.buildUrl("/api/settings/publish")}/${companyId}`,
+      {
+        method: "POST",
+        credentials: "include",
+      },
+    );
+
+    if (!rawResponse.ok) {
+      await this.handleResponse<void>(rawResponse);
+      return false;
+    }
+
+    await rawResponse.text().catch(() => "");
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("site-published-success"));
+      // Limpeza profunda de todo o cache local para garantir que a produção seja carregada fresca
+      clearAllCustomizationCache();
+    }
+    return true;
+  }
+
+  async uploadBackgroundImage(
     file: File | Blob,
     section: string,
     businessId: string,
@@ -162,23 +244,30 @@ class SiteCustomizerService {
         body: formData,
       },
     );
- 
-     if (!response.ok) {
-       const errorData = await response.json().catch(() => ({}));
-       console.error(">>> [SiteCustomizerService] Erro no upload:", errorData);
-       throw new Error(errorData.message || "Erro ao fazer upload da imagem.");
-     }
- 
-     const data = await response.json();
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error(">>> [SiteCustomizerService] Erro no upload:", errorData);
+      throw new Error(errorData.message || "Erro ao fazer upload da imagem.");
+    }
+
+    const data = await response.json();
     console.log(">>> [SiteCustomizerService] Resposta bruta do backend:", data);
 
     // Tentar encontrar a URL em diferentes formatos comuns
-    const imageUrl = data.url || data.data?.url || data.imageUrl || data.result?.url;
+    const imageUrl =
+      data.url || data.data?.url || data.imageUrl || data.result?.url;
 
     if (!imageUrl) {
-      console.error(">>> [SiteCustomizerService] ERRO: URL não encontrada na resposta:", data);
+      console.error(
+        ">>> [SiteCustomizerService] ERRO: URL não encontrada na resposta:",
+        data,
+      );
     } else {
-      console.log(">>> [SiteCustomizerService] URL extraída com sucesso:", imageUrl);
+      console.log(
+        ">>> [SiteCustomizerService] URL extraída com sucesso:",
+        imageUrl,
+      );
     }
 
     return imageUrl;
@@ -188,7 +277,9 @@ class SiteCustomizerService {
     imageUrl: string,
     businessId: string,
   ): Promise<boolean> {
-    console.log(`>>> [SiteCustomizerService] Solicitando deleção de imagem: ${imageUrl}`);
+    console.log(
+      `>>> [SiteCustomizerService] Solicitando deleção de imagem: ${imageUrl}`,
+    );
 
     try {
       const response = await customFetch(
@@ -204,14 +295,20 @@ class SiteCustomizerService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error(">>> [SiteCustomizerService] Erro ao deletar imagem:", errorData);
+        console.error(
+          ">>> [SiteCustomizerService] Erro ao deletar imagem:",
+          errorData,
+        );
         return false;
       }
 
       console.log(">>> [SiteCustomizerService] Deleção concluída com sucesso.");
       return true;
     } catch (error) {
-      console.error(">>> [SiteCustomizerService] Erro de rede ao deletar imagem:", error);
+      console.error(
+        ">>> [SiteCustomizerService] Erro de rede ao deletar imagem:",
+        error,
+      );
       return false;
     }
   }

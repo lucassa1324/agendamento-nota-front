@@ -32,7 +32,7 @@ export function HeaderEditor({
   settings,
   onUpdate,
   hasChanges,
-  onSave,
+  onSave: externalOnSave,
 }: HeaderEditorProps) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -332,7 +332,7 @@ export function HeaderEditor({
         <Button
           type="button"
           disabled={!hasChanges}
-          onClick={onSave}
+          onClick={externalOnSave}
           className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
             hasChanges
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
