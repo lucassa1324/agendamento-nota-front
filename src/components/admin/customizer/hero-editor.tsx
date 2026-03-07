@@ -1,17 +1,7 @@
 "use client";
 
-import {
-  Award,
-  Crown,
-  Flower2,
-  Gem,
-  Heart,
-  Moon,
-  Smile,
-  Sparkles,
-  Star,
-  Sun,
-} from "lucide-react";
+import { Award, Crown, Flower2, Gem, Heart, Moon, Smile, Sparkles, Star, Sun } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {

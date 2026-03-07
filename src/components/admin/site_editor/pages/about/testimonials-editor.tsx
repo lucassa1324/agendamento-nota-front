@@ -83,6 +83,10 @@ export function TestimonialsEditor({
 
   if (!settings) return null;
 
+  const handleUpdate = (updates: Partial<TestimonialsSettings>) => {
+    if (onUpdate) onUpdate(updates);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
       <Accordion
