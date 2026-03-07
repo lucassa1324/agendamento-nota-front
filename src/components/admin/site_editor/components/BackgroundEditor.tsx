@@ -1,12 +1,14 @@
 "use client";
 
-import { RotateCcw, X } from "lucide-react";
+import { RotateCcw, X, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { useStudio } from "@/context/studio-context";
+import { ImageUploader } from "./ImageUploader";
 
 export interface BackgroundSettings {
   bgType: "color" | "image";
@@ -40,6 +42,7 @@ export function BackgroundEditor({
   sectionId = "section",
   section = "general",
 }: BackgroundEditorProps) {
+  const { studio } = useStudio();
   // Normalização local: se bgImage estiver vazio mas appearance tiver a URL, usamos ela.
   // Isso resolve o problema da imagem sumir no editor se os campos estiverem dessincronizados.
   const currentBgImage =
@@ -166,6 +169,26 @@ export function BackgroundEditor({
         <div className="space-y-6">
           <fieldset className="space-y-1.5 border-none p-0 m-0">
             <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+              Upload de Imagem
+            </legend>
+            <ImageUploader
+              businessId={studio?.id || ""}
+              section={section}
+              onUploadSuccess={(url) => {
+                onUpdate({
+                  bgImage: url,
+                  appearance: {
+                    ...settings.appearance,
+                    backgroundImageUrl: url,
+                  },
+                });
+              }}
+              className="mb-4"
+            />
+          </fieldset>
+
+          <fieldset className="space-y-1.5 border-none p-0 m-0 pt-4 border-t border-border/30">
+            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
               URL da Imagem
               {currentBgImage && (
                 <span className="text-[9px] lowercase font-mono opacity-70">
@@ -196,6 +219,7 @@ export function BackgroundEditor({
                   className="h-8 w-8 text-destructive hover:bg-destructive/10"
                   onClick={() => {
                     onUpdate({
+                      bgType: "color",
                       bgImage: "",
                       appearance: {
                         ...settings.appearance,
