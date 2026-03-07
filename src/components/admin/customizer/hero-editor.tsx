@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useStudio } from "@/context/studio-context";
 import { BackgroundEditor, type BackgroundSettings } from "../site_editor/components/BackgroundEditor";
 import { SectionSubtitleEditor } from "../site_editor/components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../site_editor/components/SectionTitleEditor";
@@ -55,7 +54,6 @@ export function HeroEditor({
   hasChanges,
   onSave: externalOnSave,
 }: HeroEditorProps) {
-  const { studio } = useStudio();
   // Helper to ensure updates are propagated correctly
   const handleUpdate = (updates: Partial<HeroEditorProps["settings"]>) => {
     console.log(">>> [HeroEditor] handleUpdate chamado com:", updates);
@@ -106,16 +104,15 @@ export function HeroEditor({
               imageY: settings.imageY,
               appearance: settings.appearance,
             }}
-            section="hero"
-            businessId={studio?.id || ""}
-            onUpdate={(updates) => {
-              if (onUpdateBackground) {
-                onUpdateBackground(updates);
-              } else {
-                handleUpdate(updates);
-              }
-            }}
-          />
+          onUpdate={(updates) => {
+            if (onUpdateBackground) {
+              onUpdateBackground(updates, "hero");
+            } else {
+              handleUpdate(updates);
+            }
+          }}
+          section="hero"
+        />
          </TabsContent>
       </Tabs>
 

@@ -53,7 +53,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useStudio } from "@/context/studio-context";
 import type { ValueItem, ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
@@ -108,7 +107,6 @@ export function ValuesEditor({
   onSave: externalOnSave,
   hasChanges,
 }: ValuesEditorProps) {
-  const { studio } = useStudio();
   const handleSave = () => {
     if (externalOnSave) externalOnSave();
   };
@@ -466,11 +464,10 @@ export function ValuesEditor({
                 if (onUpdateBackground) {
                   onUpdateBackground(updates, "values");
                 } else {
-                  onUpdate({ ...updates });
+                  onUpdate(updates as Partial<ValuesSettings>);
                 }
               }}
               section="values"
-              businessId={studio?.id || ""}
             />
           </AccordionContent>
         </AccordionItem>

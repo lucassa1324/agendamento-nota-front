@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useStudio } from "@/context/studio-context";
 import type { ServicesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
@@ -40,8 +39,6 @@ export function ServicesEditor({
   onSave: externalOnSave,
   hasChanges,
 }: ServicesEditorProps) {
-  const { studio } = useStudio();
-
   if (!settings) return null;
 
   return (
@@ -494,11 +491,10 @@ export function ServicesEditor({
                 if (onUpdateBackground) {
                   onUpdateBackground(updates, "services");
                 } else {
-                  onUpdate(updates);
+                  onUpdate(updates as Partial<ServicesSettings>);
                 }
               }}
               section="services"
-              businessId={studio?.id || ""}
             />
           </AccordionContent>
         </AccordionItem>

@@ -1,10 +1,6 @@
 "use client";
 
-import { ImageIcon, Image as ImageIcon2, RotateCcw, Type } from "lucide-react";
-import { useEffect, useState } from "react";
-import { BackgroundEditor, type BackgroundSettings } from "@/components/admin/site_editor/components/BackgroundEditor";
-import { ImageUploader } from "@/components/admin/site_editor/components/ImageUploader";
-import { SectionBackgroundEditor } from "@/components/admin/site_editor/components/SectionBackgroundEditor";
+import { ImageIcon, RotateCcw, Type } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -13,7 +9,6 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
 import {
   Select,
   SelectContent,
@@ -23,11 +18,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useStudio } from "@/context/studio-context";
-import {
-  type StorySettings,
-} from "@/lib/booking-data";
+import type { StorySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { ImageUploader } from "../../components/ImageUploader";
 
 interface HistoryEditorProps {
   settings?: StorySettings;
@@ -51,8 +46,6 @@ export function HistoryEditor({
   const handleUpdate = (updates: Partial<StorySettings>) => {
     if (onUpdate) onUpdate(updates);
   };
-
-  if (!settings) return null;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
@@ -276,7 +269,7 @@ export function HistoryEditor({
         >
           <AccordionTrigger className="hover:no-underline py-4">
             <div className="flex items-center gap-2 text-primary font-serif italic text-sm">
-              <ImageIcon2 className="w-4 h-4" /> IMAGEM DE DESTAQUE
+              <ImageIcon className="w-4 h-4" /> IMAGEM DE DESTAQUE
             </div>
           </AccordionTrigger>
           <AccordionContent className="pb-4">
@@ -319,18 +312,7 @@ export function HistoryEditor({
                 }
               }}
               section="story"
-              businessId={studio?.id || ""}
             />
-
-            <div className="mt-6 pt-6 border-t border-border/50">
-              <SectionBackgroundEditor
-                section="story"
-                businessId={studio?.id || ""}
-                appearance={settings.appearance}
-                onChange={(appearance) => handleUpdate({ appearance })}
-                title="Fundo Personalizado (B2)"
-              />
-            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>

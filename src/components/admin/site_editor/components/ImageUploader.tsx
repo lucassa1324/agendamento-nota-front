@@ -67,7 +67,7 @@ export function ImageUploader({
         compressedSize: `${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`,
       });
 
-      // Preparar FormData para o Backblaze B2 via Backend
+      // Preparar FormData para o upload via Backend
       const formData = new FormData();
       formData.append("file", compressedFile);
       formData.append("businessId", businessId);
@@ -135,7 +135,7 @@ export function ImageUploader({
           </>
         ) : (
           <>
-            <Upload className="w-3.5 h-3.5" /> Fazer Upload (B2)
+            <Upload className="w-3.5 h-3.5" /> Fazer Upload
           </>
         )}
       </Button>

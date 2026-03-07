@@ -405,6 +405,10 @@ export const defaultStorySettings: StorySettings = {
   imageScale: 1,
   imageX: 50,
   imageY: 50,
+  appearance: {
+    backgroundColor: "",
+    backgroundImageUrl: "",
+  },
 };
 
 export const defaultValuesSettings: ValuesSettings = {

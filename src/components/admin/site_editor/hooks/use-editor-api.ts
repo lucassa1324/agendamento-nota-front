@@ -369,7 +369,7 @@ export function useEditorApi({
             testimonials: "home.testimonialsSection",
             services: "home.servicesSection",
             values: "home.valuesSection",
-            gallery: "home.gallerySection",
+            gallery: "home.galleryPreview",
             cta: "home.ctaSection",
           };
 
@@ -406,7 +406,7 @@ export function useEditorApi({
                   backgroundColor:
                     (sectionData.bgColor as string) ||
                     (appearance?.backgroundColor as string) ||
-                    "#ffffff",
+                    "",
                   overlayOpacity:
                     typeof sectionData.overlayOpacity === "number"
                       ? sectionData.overlayOpacity
@@ -414,6 +414,10 @@ export function useEditorApi({
                 };
 
                 subObj.bgType = sectionData.bgType || "color";
+                subObj.bgColor =
+                  (sectionData.bgColor as string) ||
+                  (appearance?.backgroundColor as string) ||
+                  "";
                 subObj.bgImage =
                   sectionData.bgImage || appearance?.backgroundImageUrl || "";
 

@@ -21,12 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useStudio } from "@/context/studio-context";
 import type { CTASettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
-import { SectionBackgroundEditor } from "../../components/SectionBackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -45,7 +43,6 @@ export function CTAEditor({
   onSave: externalOnSave,
   hasChanges,
 }: CTAEditorProps) {
-  const { studio } = useStudio();
   if (!settings) return null;
 
   return (
@@ -286,18 +283,7 @@ export function CTAEditor({
                 }
               }}
               section="cta"
-              businessId={studio?.id || ""}
             />
-
-            <div className="mt-6 pt-6 border-t border-border/50">
-              <SectionBackgroundEditor
-                section="cta"
-                businessId={studio?.id || ""}
-                appearance={settings.appearance}
-                onChange={(appearance) => onUpdate({ appearance })}
-                title="Fundo Personalizado (B2)"
-              />
-            </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>

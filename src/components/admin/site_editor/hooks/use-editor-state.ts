@@ -328,9 +328,17 @@ export function useEditorState() {
 
   const handleUpdateGallery = useCallback(
     (updates: Partial<GallerySettings>) => {
-      setGallerySettings((prev: GallerySettings) =>
-        syncBackground(prev, updates),
-      );
+      console.log(">>> [useEditorState] handleUpdateGallery chamado com:", updates);
+      setGallerySettings((prev: GallerySettings) => {
+        const newState = syncBackground(prev, updates);
+        console.log(">>> [useEditorState] Estado GALLERY atualizado:", {
+          bgType: newState.bgType,
+          bgColor: newState.bgColor,
+          bgImage: newState.bgImage,
+          appearance: newState.appearance
+        });
+        return newState;
+      });
     },
     [syncBackground],
   );
@@ -440,6 +448,7 @@ export function useEditorState() {
           u: Partial<BackgroundSettings>,
         ) => void,
         values: handleUpdateValues as (u: Partial<BackgroundSettings>) => void,
+        gallery: handleUpdateGallery as (u: Partial<BackgroundSettings>) => void,
         "gallery-preview": handleUpdateGallery as (
           u: Partial<BackgroundSettings>,
         ) => void,

@@ -72,11 +72,11 @@ const normalizeSection = <T extends Record<string, unknown>>(
     }
 
   const bgColor =
-    appearance.backgroundColor ??
-    value.backgroundColor ??
-    value.bgColor ??
-    appearance.cardBgColor ??
-    value.cardBgColor ??
+    (appearance.backgroundColor as string) ||
+    (value.backgroundColor as string) ||
+    (value.bgColor as string) ||
+    (appearance.cardBgColor as string) ||
+    (value.cardBgColor as string) ||
     "";
 
   const flattened = {
@@ -278,7 +278,8 @@ export function useEditorConfigLoader({
         ),
         gallery: normalizeSection(
           getSectionValue(
-            (home?.gallerySection ||
+            (home?.galleryPreview ||
+              home?.gallerySection ||
               home?.gallery ||
               layoutGlobal?.gallery ||
               baseConfig.gallery) as GallerySettings,

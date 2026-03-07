@@ -220,10 +220,16 @@ export function useEditorSync({
     () => ({ ...lastSavedColor, ...colorSettings }),
     [lastSavedColor, colorSettings],
   );
-  const previewGallerySettings = useMemo(
-    () => ({ ...lastSavedGallery, ...gallerySettings }),
-    [lastSavedGallery, gallerySettings],
-  );
+  const previewGallerySettings = useMemo(() => {
+    const merged = { ...lastSavedGallery, ...gallerySettings };
+    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    if (gallerySettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance)
+        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
+  }, [lastSavedGallery, gallerySettings]);
   const previewHeaderSettings = useMemo(
     () => ({ ...lastSavedHeader, ...headerSettings }),
     [lastSavedHeader, headerSettings],
@@ -351,10 +357,10 @@ export function useEditorSync({
     () => syncToIframe("UPDATE_COLORS", previewColorSettings),
     [previewColorSettings, syncToIframe],
   );
-  useEffect(
-    () => syncToIframe("UPDATE_GALLERY_SETTINGS", previewGallerySettings),
-    [previewGallerySettings, syncToIframe],
-  );
+  useEffect(() => {
+    console.log(">>> [EDITOR_SYNC] Syncing gallery settings to iframe:", previewGallerySettings);
+    syncToIframe("UPDATE_GALLERY_SETTINGS", previewGallerySettings);
+  }, [previewGallerySettings, syncToIframe]);
   useEffect(
     () => syncToIframe("UPDATE_CTA_SETTINGS", previewCTASettings),
     [previewCTASettings, syncToIframe],

@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useStudio } from "@/context/studio-context";
 import type { BookingStepSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
@@ -38,8 +37,6 @@ export function BookingStepEditor({
   onSave: externalOnSave,
   title,
 }: BookingStepEditorProps) {
-  const { studio } = useStudio();
-
   const handleAccordionChange = (values: string | string[]) => {
     if (onHighlight) {
       // O sectionId para os passos de agendamento deve corresponder aos IDs das seções no BookingFlow
@@ -254,7 +251,6 @@ export function BookingStepEditor({
                     }
                   }}
                   section={activeSection || "booking-service"}
-                  businessId={studio?.id || ""}
                 />
               </AccordionContent>
             </AccordionItem>

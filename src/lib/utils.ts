@@ -7,7 +7,7 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Converte um caminho de imagem em uma URL completa válida.
- * Atualmente prioriza URLs absolutas (Blackblaze B2) ou assets locais do frontend.
+ * Atualmente prioriza URLs absolutas ou assets locais do frontend.
  * O backend não serve mais arquivos da pasta /public.
  */
 export function getFullImageUrl(path: string | undefined | null) {
@@ -29,7 +29,7 @@ export function getFullImageUrl(path: string | undefined | null) {
 
   // Caminhos relativos sem / não são mais suportados pelo backend (/public desativado)
   console.warn(
-    `[getFullImageUrl] Caminho relativo detectado: "${path}". O backend não serve mais arquivos locais. Use o upload para o B2.`,
+    `[getFullImageUrl] Caminho relativo detectado: "${path}". O backend não serve mais arquivos locais. Use o upload para o armazenamento em nuvem.`,
   );
 
   return path;

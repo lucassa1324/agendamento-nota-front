@@ -52,9 +52,6 @@ export function TeamEditor({
   hasChanges,
 }: TeamEditorProps) {
   const { studio } = useStudio();
-  const handleSave = () => {
-    if (externalOnSave) externalOnSave();
-  };
 
   const addItem = () => {
     const newItem: TeamMember = {
@@ -187,11 +184,10 @@ export function TeamEditor({
                 if (onUpdateBackground) {
                   onUpdateBackground(updates, "team");
                 } else {
-                  onUpdate({ ...updates });
+                  onUpdate(updates);
                 }
               }}
               section="team"
-              businessId={studio?.id || ""}
             />
           </AccordionContent>
         </AccordionItem>

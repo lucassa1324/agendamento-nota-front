@@ -275,6 +275,7 @@ export function useEditorActions({
         testimonials: testimonialsSettings,
         services: servicesSettings,
         values: valuesSettings,
+        gallery: gallerySettings,
         "gallery-preview": gallerySettings,
         "gallery-grid": gallerySettings,
         cta: ctaSettings,
@@ -351,6 +352,7 @@ export function useEditorActions({
           testimonials: testimonialsSettings,
           services: servicesSettings,
           values: valuesSettings,
+          gallery: gallerySettings,
           "gallery-preview": gallerySettings,
           "gallery-grid": gallerySettings,
           cta: ctaSettings,
@@ -374,6 +376,7 @@ export function useEditorActions({
           saveTestimonialsSettings({ ...testimonialsSettings, ...u }),
         services: (u) => saveServicesSettings({ ...servicesSettings, ...u }),
         values: (u) => saveValuesSettings({ ...valuesSettings, ...u }),
+        gallery: (u) => saveGallerySettings({ ...gallerySettings, ...u }),
         "gallery-preview": (u) =>
           saveGallerySettings({ ...gallerySettings, ...u }),
         "gallery-grid": (u) =>
@@ -400,6 +403,13 @@ export function useEditorActions({
         const merged = currentSettings
           ? { ...currentSettings, ...normalizedUpdates }
           : normalizedUpdates;
+
+        console.log(`>>> [useEditorActions] Salvando rascunho para ${targetSectionId}:`, {
+          bgType: merged.bgType,
+          bgColor: merged.bgColor,
+          bgImage: merged.bgImage,
+          appearance: merged.appearance
+        });
 
         // Garante limpeza de bgImage se for cor
         if (merged.bgType === "color") {
@@ -449,7 +459,6 @@ export function useEditorActions({
       saveBookingTimeSettings,
       saveBookingFormSettings,
       saveBookingConfirmationSettings,
-      businessId,
       deleteOrphanImage,
     ],
   );
@@ -529,6 +538,7 @@ export function useEditorActions({
           setTestimonialsSettings(state.lastSavedTestimonials),
         services: () => setServicesSettings(state.lastSavedServices),
         values: () => setValuesSettings(state.lastSavedValues),
+        gallery: () => setGallerySettings(state.lastSavedGallery),
         "gallery-preview": () => setGallerySettings(state.lastSavedGallery),
         "gallery-grid": () => setGallerySettings(state.lastSavedGallery),
         cta: () => setCTASettings(state.lastSavedCTA),

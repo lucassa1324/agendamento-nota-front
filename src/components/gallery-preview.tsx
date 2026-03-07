@@ -20,7 +20,6 @@ import {
 import { type GalleryItem, galleryService } from "@/lib/gallery-service";
 import { cn, renderSafeText } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
-import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function GalleryPreview() {
@@ -45,132 +44,199 @@ export function GalleryPreview() {
     null,
   );
 
-  const loadData = useCallback(async (force = false) => {
-    const now = Date.now();
-    // Evita chamadas simultâneas ou muito próximas (menos de 1s entre elas)
-    // a menos que seja forçado (ex: clique manual ou salvamento)
-    if (loadingRef.current) return;
-    if (!force && now - lastFetchRef.current < 1000 && imagesRef.current.length > 0) return;
+  const loadData = useCallback(
+    async (force = false) => {
+      const now = Date.now();
+      // Evita chamadas simultâneas ou muito próximas (menos de 1s entre elas)
+      // a menos que seja forçado (ex: clique manual ou salvamento)
+      if (loadingRef.current) return;
+      if (
+        !force &&
+        now - lastFetchRef.current < 1000 &&
+        imagesRef.current.length > 0
+      )
+        return;
 
-    loadingRef.current = true;
-    lastFetchRef.current = now;
-    setIsLoading(true);
-    // Carrega configurações
-    let currentConfig: SiteConfigData | null = null;
+      loadingRef.current = true;
+      lastFetchRef.current = now;
+      // Removido setIsLoading(true) para evitar flicker no preview
+      // Só mostramos loading no primeiro carregamento real (fora do preview)
+      const isPreviewMode =
+        typeof window !== "undefined" &&
+        window.location.search.includes("preview=true");
 
-    try {
-      if (studio?.id) {
-        currentConfig = studio.config as SiteConfigData;
+      if (!isPreviewMode) {
+        setIsLoading(true);
+      }
 
-        // Busca imagens da nova API
-        try {
-          // Buscamos todas as imagens e filtramos localmente para garantir robustez,
-          // já que o filtro showInHome na API pode variar entre implementações.
-          const allImages = await galleryService.getPublicGallery(studio.id);
-          console.log(
-            ">>> [GALLERY_SYNC] Total de imagens na galeria:",
-            allImages?.length || 0,
-          );
-
-          const homeImages = Array.isArray(allImages)
-            ? allImages.filter((img) => {
-                const item = img as GalleryItem & {
-                  show_in_home?: boolean;
-                  showOnHome?: boolean;
-                };
-                return item.showInHome || item.show_in_home || item.showOnHome;
-              })
-            : [];
-
-          console.log(
-            ">>> [GALLERY_SYNC] Imagens marcadas para Home:",
-            homeImages.length,
-          );
-          const finalImages = homeImages.slice(0, 6);
-          setImages(finalImages);
-          imagesRef.current = finalImages;
-        } catch (error) {
-          console.warn(
-            ">>> [SITE_WARN] Erro ao carregar galeria via API",
-            error,
-          );
-          setImages([]);
-          imagesRef.current = [];
-        }
-      } else {
-        const cachedStudioStr = localStorage.getItem("studio_data");
-        if (cachedStudioStr) {
+      // PRIORIDADE: Modo Preview (localStorage) > Banco de Dados (studio.config)
+      if (isPreviewMode) {
+        const localSettings = getGallerySettings();
+        console.log(">>> [GALLERY_PREVIEW] Loaded from localStorage:", localSettings);
+        setSettings(localSettings);
+        setPageVisibility(getPageVisibility());
+        // No preview, ainda tentamos carregar as imagens do banco para visualização
+        if (studio?.id) {
           try {
-            const parsed = JSON.parse(cachedStudioStr);
-            currentConfig = parsed.config;
-
-            if (parsed.id) {
-              const allImages = await galleryService.getPublicGallery(
-                parsed.id,
-              );
-              const homeImages = Array.isArray(allImages)
-                ? allImages.filter((img) => {
-                    const item = img as GalleryItem & {
-                      show_in_home?: boolean;
-                      showOnHome?: boolean;
-                    };
-                    return (
-                      item.showInHome || item.show_in_home || item.showOnHome
-                    );
-                  })
-                : [];
-              const finalImages = homeImages.slice(0, 6);
-              setImages(finalImages);
-              imagesRef.current = finalImages;
-            }
+            const allImages = await galleryService.getPublicGallery(studio.id);
+            const homeImages = Array.isArray(allImages)
+              ? allImages.filter((img) => {
+                  const item = img as GalleryItem & {
+                    show_in_home?: boolean;
+                    showOnHome?: boolean;
+                  };
+                  return item.showInHome || item.show_in_home || item.showOnHome;
+                })
+              : [];
+            const finalImages = homeImages.slice(0, 6);
+            setImages(finalImages);
+            imagesRef.current = finalImages;
           } catch (e) {
-            console.error(
-              ">>> [GALLERY_ERROR] Erro ao parsear studio_data do cache",
-              e,
+            console.warn(">>> [GALLERY_PREVIEW] Erro ao carregar imagens:", e);
+          }
+        }
+        loadingRef.current = false;
+        setIsLoading(false);
+        return;
+      }
+
+      // Carrega configurações do Banco de Dados
+      let currentConfig: SiteConfigData | null = null;
+
+      try {
+        if (studio?.id) {
+          currentConfig = studio.config as SiteConfigData;
+
+          // Busca imagens da nova API
+          try {
+            // Buscamos todas as imagens e filtramos localmente para garantir robustez,
+            // já que o filtro showInHome na API pode variar entre implementações.
+            const allImages = await galleryService.getPublicGallery(studio.id);
+            console.log(
+              ">>> [GALLERY_SYNC] Total de imagens na galeria:",
+              allImages?.length || 0,
+            );
+
+            const homeImages = Array.isArray(allImages)
+              ? allImages.filter((img) => {
+                  const item = img as GalleryItem & {
+                    show_in_home?: boolean;
+                    showOnHome?: boolean;
+                  };
+                  return item.showInHome || item.show_in_home || item.showOnHome;
+                })
+              : [];
+
+            console.log(
+              ">>> [GALLERY_SYNC] Imagens marcadas para Home:",
+              homeImages.length,
+            );
+            const finalImages = homeImages.slice(0, 6);
+            setImages(finalImages);
+            imagesRef.current = finalImages;
+          } catch (error) {
+            console.warn(
+              ">>> [SITE_WARN] Erro ao carregar galeria via API",
+              error,
             );
             setImages([]);
             imagesRef.current = [];
           }
+        } else {
+          const cachedStudioStr = localStorage.getItem("studio_data");
+          if (cachedStudioStr) {
+            try {
+              const parsed = JSON.parse(cachedStudioStr);
+              currentConfig = parsed.config;
+
+              if (parsed.id) {
+                const allImages = await galleryService.getPublicGallery(
+                  parsed.id,
+                );
+                const homeImages = Array.isArray(allImages)
+                  ? allImages.filter((img) => {
+                      const item = img as GalleryItem & {
+                        show_in_home?: boolean;
+                        showOnHome?: boolean;
+                      };
+                      return (
+                        item.showInHome || item.show_in_home || item.showOnHome
+                      );
+                    })
+                  : [];
+                const finalImages = homeImages.slice(0, 6);
+                setImages(finalImages);
+                imagesRef.current = finalImages;
+              }
+            } catch (e) {
+              console.error(
+                ">>> [GALLERY_ERROR] Erro ao parsear studio_data do cache",
+                e,
+              );
+              setImages([]);
+              imagesRef.current = [];
+            }
+          }
         }
+
+        const layoutGlobal =
+          currentConfig?.layoutGlobal || currentConfig?.layout_global;
+        const home = currentConfig?.home as Record<string, any>;
+        const configGallery = home?.galleryPreview || home?.gallerySection || currentConfig?.gallery || layoutGlobal?.gallery;
+        setSettings((configGallery as GallerySettings) || getGallerySettings());
+
+        setPageVisibility(getPageVisibility());
+      } catch (error) {
+        console.error(
+          ">>> [GALLERY_ERROR] Erro geral ao carregar dados:",
+          error,
+        );
+      } finally {
+        loadingRef.current = false;
+        setIsLoading(false);
       }
-
-      const layoutGlobal =
-        currentConfig?.layoutGlobal || currentConfig?.layout_global;
-      const configGallery = currentConfig?.gallery || layoutGlobal?.gallery;
-      setSettings((configGallery as GallerySettings) || getGallerySettings());
-
-      setPageVisibility(getPageVisibility());
-    } catch (error) {
-      console.error(">>> [GALLERY_ERROR] Erro geral ao carregar dados:", error);
-    } finally {
-      loadingRef.current = false;
-      setIsLoading(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studio?.id, studio?.config])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    },
+    [studio?.id, studio?.config],
+  );
 
   useEffect(() => {
     setIsMounted(true);
+    const isPreview =
+      typeof window !== "undefined" &&
+      window.location.search.includes("preview=true");
+
     loadData();
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (
-      event.data.type === "UPDATE_GALLERY_SETTINGS" ||
-      event.data.type === "REFRESH_GALLERY" ||
-      event.data.type === "DataReady"
-    ) {
-      loadData(true);
-    }
+      // 1. Receber atualizações diretas de configurações (IGUAL AO HERO)
+      if (event.data.type === "UPDATE_GALLERY_SETTINGS" && event.data.settings) {
+        console.log(">>> [GALLERY_PREVIEW] Updating settings from message:", event.data.settings);
+        setSettings((prev) => {
+          const next = prev ? { ...prev, ...event.data.settings } : event.data.settings;
+          console.log(">>> [GALLERY_PREVIEW] Next settings:", next);
+          return next;
+        });
+        return; // Retornamos aqui para não chamar loadData desnecessariamente
+      }
 
+      // 2. Refresh forçado apenas quando necessário
       if (
-        event.data.type === "UPDATE_GALLERY_SETTINGS" &&
-        event.data.settings
+        event.data.type === "REFRESH_GALLERY" ||
+        (isPreview && event.data.type === "DataReady")
       ) {
-        setSettings((prev) =>
-          prev ? { ...prev, ...event.data.settings } : prev,
-        );
+        console.log(">>> [GALLERY_PREVIEW] Refresh requested via:", event.data.type);
+        if (isPreview) {
+          // Se for DataReady no preview, NÃO chamamos loadData se já temos configurações,
+          // pois isso causaria o reset/flicker. O HeroSection bloqueia isso.
+          if (event.data.type === "DataReady" && settings) {
+            console.log("[GALLERY_SYNC] Modo Preview detectado. Bloqueando sobreposição pelo banco.");
+            return;
+          }
+          loadData(true);
+        }
       }
 
       if (
@@ -189,14 +255,20 @@ export function GalleryPreview() {
     window.addEventListener("pageVisibilityUpdated", updateVisibility);
     window.addEventListener("galleryUpdated", refreshGallery);
     window.addEventListener("gallerySettingsUpdated", refreshGallery);
-    window.addEventListener("DataReady", refreshGallery);
+
+    // Só ouve o DataReady se estiver em modo preview
+    if (isPreview) {
+      window.addEventListener("DataReady", refreshGallery);
+    }
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("pageVisibilityUpdated", updateVisibility);
       window.removeEventListener("galleryUpdated", refreshGallery);
       window.removeEventListener("gallerySettingsUpdated", refreshGallery);
-      window.removeEventListener("DataReady", refreshGallery);
+      if (isPreview) {
+        window.removeEventListener("DataReady", refreshGallery);
+      }
     };
   }, [loadData]);
 
@@ -250,15 +322,14 @@ export function GalleryPreview() {
   }
 
   return (
-    <SessionWrapper appearance={settings?.appearance}>
-      <section
-        id="gallery-preview"
-        className={cn(
-          "py-20 md:py-32 relative overflow-hidden transition-all duration-500",
-          highlightedElement === "gallery-preview" &&
-            "ring-4 ring-primary ring-inset z-50",
-        )}
-      >
+    <section
+      id="gallery-preview"
+      className={cn(
+        "py-20 md:py-32 relative overflow-hidden transition-all duration-500",
+        highlightedElement === "gallery-preview" &&
+          "ring-4 ring-primary ring-inset z-50",
+      )}
+    >
       <SectionBackground settings={settings} />
 
       <div className="container mx-auto px-4 relative z-10">
@@ -361,6 +432,5 @@ export function GalleryPreview() {
         </div>
       </div>
     </section>
-    </SessionWrapper>
   );
 }

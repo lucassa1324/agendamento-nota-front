@@ -85,6 +85,16 @@ export function ValuesSection() {
   const studioConfig = studio?.config;
 
   const loadData = useCallback(() => {
+    // PRIORIDADE: URL de Preview (localStorage) > Banco de Dados (studioConfig)
+    const isPreviewMode =
+      typeof window !== "undefined" &&
+      window.location.search.includes("preview=true");
+
+    if (isPreviewMode) {
+      setSettings(getValuesSettings());
+      return;
+    }
+
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studioId) {
       const config = studioConfig as SiteConfigData | undefined;
@@ -98,6 +108,11 @@ export function ValuesSection() {
 
   useEffect(() => {
     setIsMounted(true);
+    
+    // Se não estiver em modo preview, ignora o DataReady (que vem do cache local)
+    // para garantir que pegamos os dados reais do banco de dados (studioConfig)
+    const isPreview = typeof window !== "undefined" && window.location.search.includes("preview=true");
+    
     loadData();
 
     const handleMessage = (event: MessageEvent) => {
@@ -120,12 +135,18 @@ export function ValuesSection() {
 
     window.addEventListener("message", handleMessage);
     window.addEventListener("valuesSettingsUpdated", loadData);
-    window.addEventListener("DataReady", loadData);
+    
+    // Só ouve o DataReady se estiver em modo preview
+    if (isPreview) {
+      window.addEventListener("DataReady", loadData);
+    }
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("valuesSettingsUpdated", loadData);
-      window.removeEventListener("DataReady", loadData);
+      if (isPreview) {
+        window.removeEventListener("DataReady", loadData);
+      }
     };
   }, [loadData]);
 

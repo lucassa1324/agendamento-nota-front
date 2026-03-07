@@ -1,15 +1,11 @@
 "use client";
 
-import imageCompression from "browser-image-compression";
-import { Loader2, RotateCcw, Upload, X } from "lucide-react";
-import NextImage from "next/image";
-import { useRef, useState } from "react";
+import { RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
-import { siteCustomizerService } from "@/lib/site-customizer-service";
 import { cn } from "@/lib/utils";
 
 export interface BackgroundSettings {
@@ -36,7 +32,6 @@ export interface BackgroundEditorProps {
   onUpdate: (updates: Partial<BackgroundSettings>) => void;
   sectionId?: string;
   section?: string;
-  businessId?: string;
 }
 
 export function BackgroundEditor({
@@ -44,11 +39,7 @@ export function BackgroundEditor({
   onUpdate,
   sectionId = "section",
   section = "general",
-  businessId = "",
 }: BackgroundEditorProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   // Normalização local: se bgImage estiver vazio mas appearance tiver a URL, usamos ela.
   // Isso resolve o problema da imagem sumir no editor se os campos estiverem dessincronizados.
   const currentBgImage =
@@ -61,125 +52,6 @@ export function BackgroundEditor({
       currentBgImage,
     });
   }
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log(
-      ">>> [BackgroundEditor] EVENTO: Usuário clicou em 'Abrir' no seletor de arquivos.",
-    );
-    const file = e.target.files?.[0];
-    if (!file) {
-      console.log(">>> [BackgroundEditor] Nenhum arquivo selecionado.");
-      return;
-    }
-
-    if (!businessId) {
-      console.error(
-        ">>> [BackgroundEditor] ERRO: businessId está vazio! O upload pode falhar.",
-      );
-      alert(
-        "Atenção: ID da empresa não encontrado. Tente recarregar a página.",
-      );
-      return;
-    }
-
-    console.log(">>> [BackgroundEditor] Arquivo selecionado:", {
-      nome: file.name,
-      tamanho: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-      tipo: file.type,
-      ultimaModificacao: new Date(file.lastModified).toLocaleString(),
-    });
-
-    // Validações básicas
-    if (!file.type.startsWith("image/")) {
-      console.error(
-        ">>> [BackgroundEditor] Erro: O arquivo selecionado não é uma imagem.",
-        file.type,
-      );
-      alert("Por favor, selecione um arquivo de imagem.");
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      console.error(
-        ">>> [BackgroundEditor] Erro: Imagem muito grande (> 10MB).",
-        file.size,
-      );
-      alert("A imagem deve ter no máximo 10MB.");
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      console.log(">>> [BackgroundEditor] Iniciando compressão da imagem...");
-      // Compressão
-      const options = {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-      };
-
-      const compressedFile = await imageCompression(file, options);
-      console.log(">>> [BackgroundEditor] Compressão concluída com sucesso:", {
-        tamanhoOriginal: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-        tamanhoComprimido: `${(compressedFile.size / 1024 / 1024).toFixed(2)} MB`,
-      });
-
-      // Upload para o servidor (Passo 1 do fluxo obrigatório)
-      console.log(
-        `>>> [BackgroundEditor] Chamando siteCustomizerService.uploadBackgroundImage (section: ${section}, businessId: ${businessId})...`,
-      );
-      const imageUrl = await siteCustomizerService.uploadBackgroundImage(
-        compressedFile,
-        section,
-        businessId,
-      );
-
-      console.log(">>> [BackgroundEditor] Resultado do Service:", imageUrl);
-
-      if (!imageUrl) {
-        console.error(
-          ">>> [BackgroundEditor] ERRO: URL da imagem retornada está vazia!",
-        );
-        // Não dar alert aqui se o service já logou o erro, mas vamos manter por segurança para o usuário
-        alert(
-          "O servidor não retornou o endereço da imagem. Verifique o console do navegador para mais detalhes.",
-        );
-        return;
-      }
-
-      // Atualizar estado com a URL retornada (Passo 2 do fluxo obrigatório)
-      console.log(
-        ">>> [BackgroundEditor] Atualizando estado local via onUpdate com URL:",
-        imageUrl,
-      );
-      onUpdate({
-        bgImage: imageUrl,
-        appearance: {
-          ...settings.appearance,
-          backgroundImageUrl: imageUrl,
-        },
-      });
-
-      console.log(
-        ">>> [BackgroundEditor] Processo de upload finalizado com sucesso.",
-      );
-    } catch (error) {
-      console.error(
-        ">>> [BackgroundEditor] ERRO CRÍTICO no processo de upload:",
-        error,
-      );
-      alert(
-        "Erro ao processar imagem. Verifique o console para mais detalhes.",
-      );
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) {
-        console.log(">>> [BackgroundEditor] Limpando o input de arquivo.");
-        fileInputRef.current.value = "";
-      }
-    }
-  };
 
   return (
     <fieldset
@@ -337,59 +209,6 @@ export function BackgroundEditor({
                 </Button>
               )}
             </div>
-
-            {/* Preview local da imagem para diagnóstico */}
-            {currentBgImage && (
-              <div className="mt-2 relative aspect-video w-full rounded-md overflow-hidden border border-border/50 bg-muted/20">
-                <NextImage
-                  src={currentBgImage}
-                  alt="Preview"
-                  fill
-                  unoptimized
-                  className="object-cover"
-                  onError={() => {
-                    console.error(
-                      ">>> [BackgroundEditor] Erro ao carregar preview da imagem:",
-                      currentBgImage,
-                    );
-                  }}
-                />
-                <div className="absolute bottom-1 right-1 bg-black/60 text-[8px] text-white px-1 rounded">
-                  Preview do Editor
-                </div>
-              </div>
-            )}
-
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept="image/*"
-              onChange={handleImageUpload}
-              disabled={isUploading}
-            />
-            <Button
-              variant="outline"
-              className="w-full h-10 border-dashed text-xs gap-2"
-              onClick={() => {
-                console.log(
-                  ">>> [BackgroundEditor] Botão de upload clicado. Abrindo seletor de arquivos...",
-                );
-                fileInputRef.current?.click();
-              }}
-              disabled={isUploading}
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-3.5 h-3.5" /> Fazer Upload
-                </>
-              )}
-            </Button>
           </fieldset>
 
           <fieldset className="space-y-1.5 border-none p-0 m-0">

@@ -53,9 +53,6 @@ export function TestimonialsEditor({
   hasChanges,
 }: TestimonialsEditorProps) {
   const { studio } = useStudio();
-  const handleSave = () => {
-    if (externalOnSave) externalOnSave();
-  };
 
   const addItem = () => {
     const newItem: Testimonial = {
@@ -190,11 +187,10 @@ export function TestimonialsEditor({
                 if (onUpdateBackground) {
                   onUpdateBackground(updates, "testimonials");
                 } else {
-                  onUpdate({ ...updates });
+                  handleUpdate(updates);
                 }
               }}
               section="testimonials"
-              businessId={studio?.id || ""}
             />
           </AccordionContent>
         </AccordionItem>
