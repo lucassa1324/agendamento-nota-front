@@ -329,7 +329,11 @@ export function HistoryEditor({
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? "Salvar Alterações" : "Nenhuma alteração"}
+          {hasChanges ? (
+            "Salvar Alterações"
+          ) : (
+            <span className="opacity-50">Nenhuma alteração</span>
+          )}
         </Button>
       </div>
     </div>

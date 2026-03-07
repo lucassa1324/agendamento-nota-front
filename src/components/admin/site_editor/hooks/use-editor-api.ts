@@ -322,6 +322,99 @@ export function useEditorApi({
     }
   }, [saveLocalDrafts, settings]);
 
+  const hasUnsavedGlobalChanges = useMemo(() => {
+    const heroChanged =
+      JSON.stringify(lastApplied.lastAppliedHero) !==
+      JSON.stringify(lastSaved.lastSavedHero);
+    const aboutHeroChanged =
+      JSON.stringify(lastApplied.lastAppliedAboutHero) !==
+      JSON.stringify(lastSaved.lastSavedAboutHero);
+    const storyChanged =
+      JSON.stringify(lastApplied.lastAppliedStory) !==
+      JSON.stringify(lastSaved.lastSavedStory);
+    const teamChanged =
+      JSON.stringify(lastApplied.lastAppliedTeam) !==
+      JSON.stringify(lastSaved.lastSavedTeam);
+    const testimonialsChanged =
+      JSON.stringify(lastApplied.lastAppliedTestimonials) !==
+      JSON.stringify(lastSaved.lastSavedTestimonials);
+    const fontChanged =
+      JSON.stringify(lastApplied.lastAppliedFont) !==
+      JSON.stringify(lastSaved.lastSavedFont);
+    const colorChanged =
+      JSON.stringify(lastApplied.lastAppliedColor) !==
+      JSON.stringify(lastSaved.lastSavedColor);
+    const servicesChanged =
+      JSON.stringify(lastApplied.lastAppliedServices) !==
+      JSON.stringify(lastSaved.lastSavedServices);
+    const valuesChanged =
+      JSON.stringify(lastApplied.lastAppliedValues) !==
+      JSON.stringify(lastSaved.lastSavedValues);
+    const galleryChanged =
+      JSON.stringify(lastApplied.lastAppliedGallery) !==
+      JSON.stringify(lastSaved.lastSavedGallery);
+    const ctaChanged =
+      JSON.stringify(lastApplied.lastAppliedCTA) !==
+      JSON.stringify(lastSaved.lastSavedCTA);
+    const headerChanged =
+      JSON.stringify(lastApplied.lastAppliedHeader) !==
+      JSON.stringify(lastSaved.lastSavedHeader);
+    const footerChanged =
+      JSON.stringify(lastApplied.lastAppliedFooter) !==
+      JSON.stringify(lastSaved.lastSavedFooter);
+
+    const bookingServiceChanged =
+      JSON.stringify(lastApplied.lastAppliedBookingService) !==
+      JSON.stringify(lastSaved.lastSavedBookingService);
+    const bookingDateChanged =
+      JSON.stringify(lastApplied.lastAppliedBookingDate) !==
+      JSON.stringify(lastSaved.lastSavedBookingDate);
+    const bookingTimeChanged =
+      JSON.stringify(lastApplied.lastAppliedBookingTime) !==
+      JSON.stringify(lastSaved.lastSavedBookingTime);
+    const bookingFormChanged =
+      JSON.stringify(lastApplied.lastAppliedBookingForm) !==
+      JSON.stringify(lastSaved.lastSavedBookingForm);
+    const bookingConfirmationChanged =
+      JSON.stringify(lastApplied.lastAppliedBookingConfirmation) !==
+      JSON.stringify(lastSaved.lastSavedBookingConfirmation);
+
+    const pageVisibilityChanged =
+      JSON.stringify(settings.pageVisibility) !==
+      JSON.stringify(lastSaved.lastSavedPageVisibility);
+    const visibleSectionsChanged =
+      JSON.stringify(settings.visibleSections) !==
+      JSON.stringify(lastSaved.lastSavedVisibleSections);
+
+    return [
+      heroChanged,
+      aboutHeroChanged,
+      storyChanged,
+      teamChanged,
+      testimonialsChanged,
+      fontChanged,
+      colorChanged,
+      servicesChanged,
+      valuesChanged,
+      galleryChanged,
+      ctaChanged,
+      headerChanged,
+      footerChanged,
+      bookingServiceChanged,
+      bookingDateChanged,
+      bookingTimeChanged,
+      bookingFormChanged,
+      bookingConfirmationChanged,
+      pageVisibilityChanged,
+      visibleSectionsChanged,
+    ].some(Boolean);
+  }, [
+    lastApplied,
+    lastSaved,
+    settings.pageVisibility,
+    settings.visibleSections,
+  ]);
+
   const handleSaveGlobal = useCallback(
     async () => {
       if (isPublishing) {
@@ -394,32 +487,52 @@ export function useEditorApi({
                 if (!rootObj[sub]) rootObj[sub] = {};
                 const subObj = rootObj[sub] as Record<string, unknown>;
 
-                const appearance = sectionData.appearance as
+                const appearance = (sectionData.appearance as
                   | Record<string, unknown>
-                  | undefined;
+                  | undefined) || {};
 
+                // Mapeia TODOS os campos de aparência para garantir sincronização total
                 subObj.appearance = {
-                  ...(appearance || {}),
+                  ...appearance,
                   backgroundImageUrl:
-                    sectionData.bgImage || appearance?.backgroundImageUrl || "",
+                    sectionData.bgImage || appearance.backgroundImageUrl || "",
                   showBackgroundImage: sectionData.bgType === "image",
                   backgroundColor:
                     (sectionData.bgColor as string) ||
-                    (appearance?.backgroundColor as string) ||
+                    (appearance.backgroundColor as string) ||
                     "",
                   overlayOpacity:
                     typeof sectionData.overlayOpacity === "number"
                       ? sectionData.overlayOpacity
-                      : appearance?.overlayOpacity ?? 0.5,
+                      : appearance.overlayOpacity ?? 0.5,
+                  // Garante campos de cores e fontes na aparência também
+                  titleColor: sectionData.titleColor || appearance.titleColor || "",
+                  subtitleColor: sectionData.subtitleColor || appearance.subtitleColor || "",
+                  titleFont: sectionData.titleFont || appearance.titleFont || "",
+                  subtitleFont: sectionData.subtitleFont || appearance.subtitleFont || "",
                 };
+
+                // Se for Hero, adiciona campos de botões e badge na aparência
+                if (section === "hero" || section === "aboutHero") {
+                  const heroApp = subObj.appearance as Record<string, unknown>;
+                  heroApp.badgeColor = sectionData.badgeColor || appearance.badgeColor || "";
+                  heroApp.badgeTextColor = sectionData.badgeTextColor || appearance.badgeTextColor || "";
+                  heroApp.badgeFont = sectionData.badgeFont || appearance.badgeFont || "";
+                  heroApp.primaryButtonColor = sectionData.primaryButtonColor || appearance.primaryButtonColor || "";
+                  heroApp.primaryButtonTextColor = sectionData.primaryButtonTextColor || appearance.primaryButtonTextColor || "";
+                  heroApp.primaryButtonFont = sectionData.primaryButtonFont || appearance.primaryButtonFont || "";
+                  heroApp.secondaryButtonColor = sectionData.secondaryButtonColor || appearance.secondaryButtonColor || "";
+                  heroApp.secondaryButtonTextColor = sectionData.secondaryButtonTextColor || appearance.secondaryButtonTextColor || "";
+                  heroApp.secondaryButtonFont = sectionData.secondaryButtonFont || appearance.secondaryButtonFont || "";
+                }
 
                 subObj.bgType = sectionData.bgType || "color";
                 subObj.bgColor =
                   (sectionData.bgColor as string) ||
-                  (appearance?.backgroundColor as string) ||
+                  (appearance.backgroundColor as string) ||
                   "";
                 subObj.bgImage =
-                  sectionData.bgImage || appearance?.backgroundImageUrl || "";
+                  sectionData.bgImage || appearance.backgroundImageUrl || "";
 
                 // Mapeamento de conteúdo específico por seção
                 const content: Record<string, unknown> = {
@@ -441,8 +554,22 @@ export function useEditorApi({
                 if (section === "hero" || section === "aboutHero") {
                   content.badge = sectionData.badge || "";
                   content.showBadge = sectionData.showBadge ?? true;
+                  content.badgeIcon = sectionData.badgeIcon || "";
+                  content.badgeColor = sectionData.badgeColor || "";
+                  content.badgeTextColor = sectionData.badgeTextColor || "";
                   content.primaryButton = sectionData.primaryButton || "";
+                  content.primaryButtonColor = sectionData.primaryButtonColor || "";
+                  content.primaryButtonTextColor =
+                    sectionData.primaryButtonTextColor || "";
+                  content.primaryButtonFont = sectionData.primaryButtonFont || "";
                   content.secondaryButton = sectionData.secondaryButton || "";
+                  content.secondaryButtonColor =
+                    sectionData.secondaryButtonColor || "";
+                  content.secondaryButtonTextColor =
+                    sectionData.secondaryButtonTextColor || "";
+                  content.secondaryButtonFont =
+                    sectionData.secondaryButtonFont || "";
+                  content.badgeFont = sectionData.badgeFont || "";
                 }
 
                 // Campos extras para Story
@@ -496,6 +623,8 @@ export function useEditorApi({
                   content.cardDescriptionColor =
                     sectionData.cardDescriptionColor || "";
                   content.cardIconColor = sectionData.cardIconColor || "";
+                  content.showTitle = sectionData.showTitle ?? true;
+                  content.showSubtitle = sectionData.showSubtitle ?? true;
                 }
 
                 // Campos extras para Serviços
@@ -513,6 +642,8 @@ export function useEditorApi({
                   content.cardBorderRadius = sectionData.cardBorderRadius || "";
                   content.cardBorderWidth = sectionData.cardBorderWidth || "";
                   content.cardBorderColor = sectionData.cardBorderColor || "";
+                  content.showTitle = sectionData.showTitle ?? true;
+                  content.showSubtitle = sectionData.showSubtitle ?? true;
                 }
 
                 // Campos extras para Equipe
@@ -628,18 +759,23 @@ export function useEditorApi({
             }
           } 
  
-          // 3. FINALIZAÇÃO DO FLUXO 
-          if (typeof handleSaveLocal === "function") handleSaveLocal(); 
-          setIsSaving(false); 
-          
-          try { 
-            toast({ 
-              title: "Salvo com sucesso!", 
-              description: "As alterações foram salvas no rascunho.", 
-              duration: 2000, 
-            }); 
-          } catch(_e) {} 
-        } catch (err) {
+      // 3. FINALIZAÇÃO DO FLUXO 
+      if (typeof handleSaveLocal === "function") handleSaveLocal(); 
+      setIsSaving(false); 
+      
+      // DISPARA EVENTO PARA FORÇAR REAVALIAÇÃO DE MUDANÇAS GLOBAIS
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("local_draft_changed"));
+      }
+
+      try { 
+        toast({ 
+          title: "Salvo com sucesso!", 
+          description: "As alterações foram salvas no rascunho.", 
+          duration: 2000, 
+        }); 
+      } catch(_e) {} 
+    } catch (err) {
           console.error(
             ">>> [useEditorApi] Erro fatal ao salvar no backend:",
             err,
@@ -663,6 +799,9 @@ export function useEditorApi({
         });
       }
 
+      // ATUALIZAÇÃO DO ESTADO LAST_SAVED
+      // Isso garante que shouldSaveLocal() retorne false até que novas mudanças sejam feitas.
+      // Note que NÃO atualizamos lastApplied aqui, pois o rascunho salvo ainda não foi publicado.
       setters.setLastSavedHero(settings.heroSettings);
       setters.setLastSavedAboutHero(settings.aboutHeroSettings);
       setters.setLastSavedStory(settings.storySettings);
@@ -687,29 +826,10 @@ export function useEditorApi({
         settings.bookingConfirmationSettings,
       );
 
-      setters.setLastAppliedHero(settings.heroSettings);
-      setters.setLastAppliedAboutHero(settings.aboutHeroSettings);
-      setters.setLastAppliedStory(settings.storySettings);
-      setters.setLastAppliedTeam(settings.teamSettings);
-      setters.setLastAppliedTestimonials(settings.testimonialsSettings);
-      setters.setLastAppliedFont(settings.fontSettings);
-      setters.setLastAppliedColor(settings.colorSettings);
-      setters.setLastAppliedServices(settings.servicesSettings);
-      setters.setLastAppliedValues(settings.valuesSettings);
-      setters.setLastAppliedGallery(settings.gallerySettings);
-      setters.setLastAppliedCTA(settings.ctaSettings);
-      setters.setLastAppliedHeader(settings.headerSettings);
-      setters.setLastAppliedFooter(settings.footerSettings);
-
-      setters.setLastAppliedBookingService(settings.bookingServiceSettings);
-      setters.setLastAppliedBookingDate(settings.bookingDateSettings);
-      setters.setLastAppliedBookingTime(settings.bookingTimeSettings);
-      setters.setLastAppliedBookingForm(settings.bookingFormSettings);
-      setters.setLastAppliedBookingConfirmation(
-        settings.bookingConfirmationSettings,
-      );
-
       window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
+      
+      // LOGS DE DEPURAÇÃO PARA IDENTIFICAR POR QUE O BOTÃO DE PUBLICAR PODE ESTAR DESABILITADO
+      console.log(">>> [useEditorApi] Fim de handleSaveGlobal. hasUnsavedGlobalChanges:", hasUnsavedGlobalChanges);
     },
     [
       companyId,
@@ -721,6 +841,7 @@ export function useEditorApi({
       settings,
       toast,
       clearLocalDrafts,
+      hasUnsavedGlobalChanges, // Adicionado às dependências
     ],
   );
 
@@ -797,8 +918,32 @@ export function useEditorApi({
         });
 
         // 3. Recarregar do banco para garantir sincronia total
-        await fetchCustomization(companyId);
-      } else {
+      await fetchCustomization(companyId);
+
+      // 4. ATUALIZAR ESTADOS LAST_APPLIED PARA REFLETIR QUE O RASCUNHO FOI PUBLICADO
+      // Isso fará com que hasUnsavedGlobalChanges se torne FALSE após a publicação
+      setters.setLastAppliedHero(settings.heroSettings);
+      setters.setLastAppliedAboutHero(settings.aboutHeroSettings);
+      setters.setLastAppliedStory(settings.storySettings);
+      setters.setLastAppliedTeam(settings.teamSettings);
+      setters.setLastAppliedTestimonials(settings.testimonialsSettings);
+      setters.setLastAppliedFont(settings.fontSettings);
+      setters.setLastAppliedColor(settings.colorSettings);
+      setters.setLastAppliedServices(settings.servicesSettings);
+      setters.setLastAppliedValues(settings.valuesSettings);
+      setters.setLastAppliedGallery(settings.gallerySettings);
+      setters.setLastAppliedCTA(settings.ctaSettings);
+      setters.setLastAppliedHeader(settings.headerSettings);
+      setters.setLastAppliedFooter(settings.footerSettings);
+
+      setters.setLastAppliedBookingService(settings.bookingServiceSettings);
+      setters.setLastAppliedBookingDate(settings.bookingDateSettings);
+      setters.setLastAppliedBookingTime(settings.bookingTimeSettings);
+      setters.setLastAppliedBookingForm(settings.bookingFormSettings);
+      setters.setLastAppliedBookingConfirmation(
+        settings.bookingConfirmationSettings,
+      );
+    } else {
         toast({
           title: "Erro ao publicar",
           description: "Não foi possível publicar as alterações. Tente novamente.",
@@ -822,99 +967,8 @@ export function useEditorApi({
     handleSaveGlobal,
     getChangedSettings,
     fetchCustomization,
-  ]);
-
-  const hasUnsavedGlobalChanges = useMemo(() => {
-    const heroChanged =
-      JSON.stringify(lastApplied.lastAppliedHero) !==
-      JSON.stringify(lastSaved.lastSavedHero);
-    const aboutHeroChanged =
-      JSON.stringify(lastApplied.lastAppliedAboutHero) !==
-      JSON.stringify(lastSaved.lastSavedAboutHero);
-    const storyChanged =
-      JSON.stringify(lastApplied.lastAppliedStory) !==
-      JSON.stringify(lastSaved.lastSavedStory);
-    const teamChanged =
-      JSON.stringify(lastApplied.lastAppliedTeam) !==
-      JSON.stringify(lastSaved.lastSavedTeam);
-    const testimonialsChanged =
-      JSON.stringify(lastApplied.lastAppliedTestimonials) !==
-      JSON.stringify(lastSaved.lastSavedTestimonials);
-    const fontChanged =
-      JSON.stringify(lastApplied.lastAppliedFont) !==
-      JSON.stringify(lastSaved.lastSavedFont);
-    const colorChanged =
-      JSON.stringify(lastApplied.lastAppliedColor) !==
-      JSON.stringify(lastSaved.lastSavedColor);
-    const servicesChanged =
-      JSON.stringify(lastApplied.lastAppliedServices) !==
-      JSON.stringify(lastSaved.lastSavedServices);
-    const valuesChanged =
-      JSON.stringify(lastApplied.lastAppliedValues) !==
-      JSON.stringify(lastSaved.lastSavedValues);
-    const galleryChanged =
-      JSON.stringify(lastApplied.lastAppliedGallery) !==
-      JSON.stringify(lastSaved.lastSavedGallery);
-    const ctaChanged =
-      JSON.stringify(lastApplied.lastAppliedCTA) !==
-      JSON.stringify(lastSaved.lastSavedCTA);
-    const headerChanged =
-      JSON.stringify(lastApplied.lastAppliedHeader) !==
-      JSON.stringify(lastSaved.lastSavedHeader);
-    const footerChanged =
-      JSON.stringify(lastApplied.lastAppliedFooter) !==
-      JSON.stringify(lastSaved.lastSavedFooter);
-
-    const bookingServiceChanged =
-      JSON.stringify(lastApplied.lastAppliedBookingService) !==
-      JSON.stringify(lastSaved.lastSavedBookingService);
-    const bookingDateChanged =
-      JSON.stringify(lastApplied.lastAppliedBookingDate) !==
-      JSON.stringify(lastSaved.lastSavedBookingDate);
-    const bookingTimeChanged =
-      JSON.stringify(lastApplied.lastAppliedBookingTime) !==
-      JSON.stringify(lastSaved.lastSavedBookingTime);
-    const bookingFormChanged =
-      JSON.stringify(lastApplied.lastAppliedBookingForm) !==
-      JSON.stringify(lastSaved.lastSavedBookingForm);
-    const bookingConfirmationChanged =
-      JSON.stringify(lastApplied.lastAppliedBookingConfirmation) !==
-      JSON.stringify(lastSaved.lastSavedBookingConfirmation);
-
-    const pageVisibilityChanged =
-      JSON.stringify(settings.pageVisibility) !==
-      JSON.stringify(lastSaved.lastSavedPageVisibility);
-    const visibleSectionsChanged =
-      JSON.stringify(settings.visibleSections) !==
-      JSON.stringify(lastSaved.lastSavedVisibleSections);
-
-    return [
-      heroChanged,
-      aboutHeroChanged,
-      storyChanged,
-      teamChanged,
-      testimonialsChanged,
-      fontChanged,
-      colorChanged,
-      servicesChanged,
-      valuesChanged,
-      galleryChanged,
-      ctaChanged,
-      headerChanged,
-      footerChanged,
-      bookingServiceChanged,
-      bookingDateChanged,
-      bookingTimeChanged,
-      bookingFormChanged,
-      bookingConfirmationChanged,
-      pageVisibilityChanged,
-      visibleSectionsChanged,
-    ].some(Boolean);
-  }, [
-    lastApplied,
-    lastSaved,
-    settings.pageVisibility,
-    settings.visibleSections,
+    setters,
+    settings,
   ]);
 
   // --- NOVO: Efeito para Auto-Save no Banco ---

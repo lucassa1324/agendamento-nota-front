@@ -9,6 +9,7 @@ import {
   type CTASettings,
   getCTASettings,
   getPageVisibility,
+  sanitizeColor,
 } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
@@ -43,16 +44,69 @@ export function CTASection() {
     setPageVisibility(getPageVisibility());
 
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    const config = studioConfig as Record<string, unknown>;
+    const config = studioConfig as Record<string, unknown> | undefined;
     const layoutGlobal = (config?.layoutGlobal ||
-      config?.layout_global) as Record<string, unknown>;
+      config?.layout_global) as Record<string, unknown> | undefined;
 
     // Buscar CTA no config ou no layoutGlobal
-    const dbCTA = (config?.cta ||
-      (layoutGlobal as Record<string, unknown>)?.cta) as CTASettings;
+    const home = config?.home as Record<string, unknown> | undefined;
+    const rawCTA = (home?.ctaSection ||
+      home?.cta ||
+      config?.cta ||
+      layoutGlobal?.cta) as
+      | Record<string, unknown>
+      | undefined;
 
-    if (dbCTA) {
-      setSettings(dbCTA as CTASettings);
+    if (rawCTA) {
+      const content = (rawCTA.content as Record<string, unknown>) || {};
+      const appearance = (rawCTA.appearance as Record<string, unknown>) || {};
+      const normalizedCTA = {
+        ...rawCTA,
+        ...content,
+        ...appearance,
+        title: (content.title as string) ?? (rawCTA.title as string),
+        subtitle: (content.subtitle as string) ?? (rawCTA.subtitle as string),
+        titleColor: sanitizeColor(
+          (appearance.titleColor as string) ||
+            (content.titleColor as string) ||
+            (rawCTA.titleColor as string),
+        ),
+        subtitleColor: sanitizeColor(
+          (appearance.subtitleColor as string) ||
+            (content.subtitleColor as string) ||
+            (rawCTA.subtitleColor as string),
+        ),
+        titleFont:
+          (appearance.titleFont as string) ||
+          (content.titleFont as string) ||
+          (rawCTA.titleFont as string),
+        subtitleFont:
+          (appearance.subtitleFont as string) ||
+          (content.subtitleFont as string) ||
+          (rawCTA.subtitleFont as string),
+        buttonColor: sanitizeColor(
+          (appearance.buttonColor as string) ||
+            (content.buttonColor as string) ||
+            (rawCTA.buttonColor as string),
+        ),
+        buttonTextColor: sanitizeColor(
+          (appearance.buttonTextColor as string) ||
+            (content.buttonTextColor as string) ||
+            (rawCTA.buttonTextColor as string),
+        ),
+        buttonLink: (content.buttonLink as string) ?? (rawCTA.buttonLink as string),
+        bgImage:
+          (appearance.backgroundImageUrl as string) ||
+          (rawCTA.bgImage as string) ||
+          "",
+        bgColor: sanitizeColor(
+          (appearance.backgroundColor as string) ||
+            (rawCTA.backgroundColor as string) ||
+            (rawCTA.bgColor as string) ||
+            "",
+        ),
+      };
+      setSettings(normalizedCTA as CTASettings);
     } else {
       setSettings(getCTASettings());
     }
@@ -69,9 +123,23 @@ export function CTASection() {
       if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "UPDATE_CTA_SETTINGS") {
-        setSettings((prev) =>
-          prev ? { ...prev, ...event.data.settings } : prev,
-        );
+        // Sanitize colors in real-time update
+        const updatedSettings = { ...event.data.settings };
+        const colorFields = [
+          "titleColor",
+          "subtitleColor",
+          "buttonColor",
+          "buttonTextColor",
+          "bgColor",
+        ];
+
+        colorFields.forEach((field) => {
+          if (updatedSettings[field] !== undefined) {
+            updatedSettings[field] = sanitizeColor(updatedSettings[field]);
+          }
+        });
+
+        setSettings((prev) => (prev ? { ...prev, ...updatedSettings } : prev));
       }
 
       if (
@@ -145,7 +213,9 @@ export function CTASection() {
               color: settings.buttonTextColor || "#ffffff",
             }}
           >
-            <Link href="/agendamento">{renderSafeText(settings.buttonText)}</Link>
+            <Link href={settings.buttonLink || "/agendamento"}>
+              {renderSafeText(settings.buttonText)}
+            </Link>
           </Button>
         </div>
       </div>

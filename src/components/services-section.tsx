@@ -33,6 +33,9 @@ import {
   Wind,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
+import { SessionWrapper } from "@/components/admin/site_editor/components/SessionWrapper";
+import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import {
@@ -40,11 +43,9 @@ import {
   getSettingsFromStorage,
   type Service,
   type ServicesSettings,
+  sanitizeColor,
 } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
-import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
-import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
-import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 const iconMap: Record<string, LucideIcon> = {
   Sparkles,
@@ -155,15 +156,104 @@ export function ServicesSection() {
         (s: Service) => s?.showOnHome === true,
       );
 
-      const layoutGlobal =
-        currentConfig?.layoutGlobal || currentConfig?.layout_global;
-      const configServices = currentConfig?.services || layoutGlobal?.services;
+      const layoutGlobal = (currentConfig?.layoutGlobal || currentConfig?.layout_global) as Record<string, unknown> | undefined;
+      
+      // No site em produção, priorizamos home.servicesSection se existir
+      const home = currentConfig?.home as Record<string, unknown> | undefined;
+      const homeServicesSection = (home?.servicesSection ||
+        home?.services_section) as Record<string, unknown> | undefined;
+
+      const configServices = (homeServicesSection ||
+        home?.services ||
+        currentConfig?.services ||
+        layoutGlobal?.services) as Record<string, unknown> | undefined;
+
+      let finalConfigServices: ServicesSettings | undefined;
+      if (configServices) {
+        const content = (configServices.content as Record<string, unknown>) || {};
+        const appearance =
+          (configServices.appearance as Record<string, unknown>) || {};
+        finalConfigServices = {
+          ...configServices,
+          ...content,
+          ...appearance,
+          title: (content.title as string) ?? (configServices.title as string),
+          subtitle:
+            (content.subtitle as string) ?? (configServices.subtitle as string),
+          titleColor: sanitizeColor(
+            (appearance.titleColor as string) ||
+              (content.titleColor as string) ||
+              (configServices.titleColor as string),
+          ),
+          subtitleColor: sanitizeColor(
+            (appearance.subtitleColor as string) ||
+              (content.subtitleColor as string) ||
+              (configServices.subtitleColor as string),
+          ),
+          titleFont:
+            (appearance.titleFont as string) ||
+            (content.titleFont as string) ||
+            (configServices.titleFont as string),
+          subtitleFont:
+            (appearance.subtitleFont as string) ||
+            (content.subtitleFont as string) ||
+            (configServices.subtitleFont as string),
+          cardBgColor: sanitizeColor(
+            (appearance.cardBgColor as string) ||
+              (content.cardBgColor as string) ||
+              (configServices.cardBgColor as string),
+          ),
+          cardTitleColor: sanitizeColor(
+            (appearance.cardTitleColor as string) ||
+              (content.cardTitleColor as string) ||
+              (configServices.cardTitleColor as string),
+          ),
+          cardDescriptionColor: sanitizeColor(
+            (appearance.cardDescriptionColor as string) ||
+              (content.cardDescriptionColor as string) ||
+              (configServices.cardDescriptionColor as string),
+          ),
+          cardPriceColor: sanitizeColor(
+            (appearance.cardPriceColor as string) ||
+              (content.cardPriceColor as string) ||
+              (configServices.cardPriceColor as string),
+          ),
+          cardIconColor: sanitizeColor(
+            (appearance.cardIconColor as string) ||
+              (content.cardIconColor as string) ||
+              (configServices.cardIconColor as string),
+          ),
+          cardTitleFont:
+            (appearance.cardTitleFont as string) ||
+            (content.cardTitleFont as string) ||
+            (configServices.cardTitleFont as string),
+          cardDescriptionFont:
+            (appearance.cardDescriptionFont as string) ||
+            (content.cardDescriptionFont as string) ||
+            (configServices.cardDescriptionFont as string),
+          cardPriceFont:
+            (appearance.cardPriceFont as string) ||
+            (content.cardPriceFont as string) ||
+            (configServices.cardPriceFont as string),
+          bgImage:
+            (appearance.backgroundImageUrl as string) ||
+            (configServices.bgImage as string) ||
+            "",
+          bgColor: sanitizeColor(
+            (appearance.backgroundColor as string) ||
+              (configServices.backgroundColor as string) ||
+              (configServices.bgColor as string) ||
+              "",
+          ),
+        } as unknown as ServicesSettings;
+      }
+      
       const isPreviewMode =
         typeof window !== "undefined" &&
         window.location.search.includes("preview=true");
       const finalSettings = isPreviewMode
         ? getServicesSettings()
-        : configServices || getServicesSettings();
+        : finalConfigServices || getServicesSettings();
 
       console.log(">>> [SITE_SERVICES] Sincronizando Serviços:", {
         forceRevalidate,
@@ -304,26 +394,32 @@ export function ServicesSection() {
       />
 
       <div className="container relative z-10 mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2
-            className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
-            style={{
-              color: settings.titleColor || "var(--foreground)",
-              fontFamily: settings.titleFont || "var(--font-title)",
-            }}
-          >
-            {renderSafeText(settings.title)}
-          </h2>
-          <p
-            className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
-            style={{
-              color: settings.subtitleColor || "var(--foreground)",
-              fontFamily: settings.subtitleFont || "var(--font-subtitle)",
-            }}
-          >
-            {renderSafeText(settings.subtitle)}
-          </p>
-        </div>
+        {(settings.showTitle !== false || settings.showSubtitle !== false) && (
+          <div className="text-center mb-16">
+            {settings.showTitle !== false && (
+              <h2
+                className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
+                style={{
+                  color: settings.titleColor || "var(--foreground)",
+                  fontFamily: settings.titleFont || "var(--font-title)",
+                }}
+              >
+                {renderSafeText(settings.title)}
+              </h2>
+            )}
+            {settings.showSubtitle !== false && (
+              <p
+                className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
+                style={{
+                  color: settings.subtitleColor || "var(--foreground)",
+                  fontFamily: settings.subtitleFont || "var(--font-subtitle)",
+                }}
+              >
+                {renderSafeText(settings.subtitle)}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {services?.map((service: Service, index: number) => {

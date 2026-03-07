@@ -35,7 +35,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
-import { getValuesSettings, type ValuesSettings } from "@/lib/booking-data";
+import { getValuesSettings, sanitizeColor, type ValuesSettings } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
@@ -98,9 +98,68 @@ export function ValuesSection() {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studioId) {
       const config = studioConfig as SiteConfigData | undefined;
-      const layoutGlobal = config?.layoutGlobal || config?.layout_global;
-      const configValues = config?.values || layoutGlobal?.values;
-      setSettings(configValues || getValuesSettings());
+      const layoutGlobal = (config?.layoutGlobal || config?.layout_global) as Record<string, unknown> | undefined;
+      const home = config?.home as Record<string, any> | undefined;
+      const rawValues = (home?.valuesSection || home?.values || config?.values || layoutGlobal?.values) as Record<string, any> | undefined;
+
+          if (rawValues) {
+            // Normalização manual semelhante ao que o editor faz
+            const content = (rawValues.content as Record<string, any>) || {};
+            const appearance = (rawValues.appearance as Record<string, any>) || {};
+            const normalizedValues = {
+              ...rawValues,
+              ...content,
+              ...appearance,
+              title: content.title ?? rawValues.title,
+              subtitle: content.subtitle ?? rawValues.subtitle,
+              showTitle: content.showTitle ?? appearance.showTitle ?? rawValues.showTitle ?? true,
+              showSubtitle: content.showSubtitle ?? appearance.showSubtitle ?? rawValues.showSubtitle ?? true,
+              titleColor: sanitizeColor(
+                appearance.titleColor || content.titleColor || rawValues.titleColor,
+              ),
+          subtitleColor: sanitizeColor(
+            appearance.subtitleColor ||
+              content.subtitleColor ||
+              rawValues.subtitleColor,
+          ),
+          titleFont:
+            appearance.titleFont || content.titleFont || rawValues.titleFont,
+          subtitleFont:
+            appearance.subtitleFont ||
+            content.subtitleFont ||
+            rawValues.subtitleFont,
+          cardBgColor: sanitizeColor(
+            appearance.cardBgColor ||
+              content.cardBgColor ||
+              rawValues.cardBgColor,
+          ),
+          cardTitleColor: sanitizeColor(
+            appearance.cardTitleColor ||
+              content.cardTitleColor ||
+              rawValues.cardTitleColor,
+          ),
+          cardDescriptionColor: sanitizeColor(
+            appearance.cardDescriptionColor ||
+              content.cardDescriptionColor ||
+              rawValues.cardDescriptionColor,
+          ),
+          cardIconColor: sanitizeColor(
+            appearance.cardIconColor ||
+              content.cardIconColor ||
+              rawValues.cardIconColor,
+          ),
+          bgImage: appearance.backgroundImageUrl || rawValues.bgImage || "",
+          bgColor: sanitizeColor(
+            appearance.backgroundColor ||
+              rawValues.backgroundColor ||
+              rawValues.bgColor ||
+              "",
+          ),
+        };
+        setSettings(normalizedValues as ValuesSettings);
+      } else {
+        setSettings(getValuesSettings());
+      }
     } else {
       setSettings(getValuesSettings());
     }
@@ -166,26 +225,32 @@ export function ValuesSection() {
       <SectionBackground settings={settings} />
 
       <div className="container relative z-10 mx-auto px-4">
-        <div className="text-center mb-16">
-          <h2
-            className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
-            style={{
-              color: settings?.titleColor || "var(--foreground)",
-              fontFamily: settings?.titleFont || "var(--font-title)",
-            }}
-          >
-            {renderSafeText(settings?.title)}
-          </h2>
-          <p
-            className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
-            style={{
-              color: settings?.subtitleColor || "var(--foreground)",
-              fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
-            }}
-          >
-            {renderSafeText(settings?.subtitle)}
-          </p>
-        </div>
+        {(settings?.showTitle !== false || settings?.showSubtitle !== false) && (
+          <div className="text-center mb-16">
+            {settings?.showTitle !== false && (
+              <h2
+                className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
+                style={{
+                  color: settings?.titleColor || "var(--foreground)",
+                  fontFamily: settings?.titleFont || "var(--font-title)",
+                }}
+              >
+                {renderSafeText(settings?.title)}
+              </h2>
+            )}
+            {settings?.showSubtitle !== false && (
+              <p
+                className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
+                style={{
+                  color: settings?.subtitleColor || "var(--foreground)",
+                  fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
+                }}
+              >
+                {renderSafeText(settings?.subtitle)}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {settings?.items?.map((value) => {

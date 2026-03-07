@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
-import { getTeamSettings, type TeamSettings } from "@/lib/booking-data";
+import { getTeamSettings, sanitizeColor, type TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
@@ -24,10 +24,33 @@ export function TeamSection() {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     const config = studioConfig as SiteConfigData | undefined;
     const layoutGlobal = config?.layoutGlobal || config?.layout_global;
-    const dbTeam = config?.team || layoutGlobal?.team;
+    const home = config?.home as Record<string, any> | undefined;
+    const rawTeam = (home?.teamSection || config?.team || layoutGlobal?.team) as Record<string, any> | undefined;
 
-    if (dbTeam) {
-      setSettings(dbTeam as TeamSettings);
+    if (rawTeam) {
+      const content = (rawTeam.content as Record<string, any>) || {};
+      const appearance = (rawTeam.appearance as Record<string, any>) || {};
+      const normalizedTeam = {
+        ...rawTeam,
+        ...content,
+        ...appearance,
+        title: content.title ?? rawTeam.title,
+        subtitle: content.subtitle ?? rawTeam.subtitle,
+        titleColor: sanitizeColor(appearance.titleColor || content.titleColor || rawTeam.titleColor),
+        subtitleColor: sanitizeColor(appearance.subtitleColor || content.subtitleColor || rawTeam.subtitleColor),
+        titleFont: appearance.titleFont || content.titleFont || rawTeam.titleFont,
+        subtitleFont: appearance.subtitleFont || content.subtitleFont || rawTeam.subtitleFont,
+        cardBgColor: sanitizeColor(appearance.cardBgColor || content.cardBgColor || rawTeam.cardBgColor),
+        cardTitleColor: sanitizeColor(appearance.cardTitleColor || content.cardTitleColor || rawTeam.cardTitleColor),
+        cardRoleColor: sanitizeColor(appearance.cardRoleColor || content.cardRoleColor || rawTeam.cardRoleColor),
+        cardDescriptionColor: sanitizeColor(appearance.cardDescriptionColor || content.cardDescriptionColor || rawTeam.cardDescriptionColor),
+        cardTitleFont: appearance.cardTitleFont || content.cardTitleFont || rawTeam.cardTitleFont,
+        cardRoleFont: appearance.cardRoleFont || content.cardRoleFont || rawTeam.cardRoleFont,
+        cardDescriptionFont: appearance.cardDescriptionFont || content.cardDescriptionFont || rawTeam.cardDescriptionFont,
+        bgImage: appearance.backgroundImageUrl || rawTeam.bgImage || "",
+        bgColor: sanitizeColor(appearance.backgroundColor || rawTeam.backgroundColor || rawTeam.bgColor || ""),
+      };
+      setSettings(normalizedTeam as TeamSettings);
     } else {
       setSettings(getTeamSettings());
     }

@@ -6,12 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import {
   getTestimonialsSettings,
+  sanitizeColor,
   type TestimonialsSettings,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
-import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
+import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 
 export function TestimonialsSection() {
   const { studio } = useStudio();
@@ -29,19 +30,85 @@ export function TestimonialsSection() {
     if (studioId) {
       const config = studioConfig as SiteConfigData | undefined;
       const layoutGlobal = config?.layoutGlobal || config?.layout_global;
-      const testimonialsSettings =
-        (config?.testimonials as TestimonialsSettings) ||
-        (layoutGlobal?.testimonials as TestimonialsSettings) ||
-        getTestimonialsSettings();
+      const home = config?.home as Record<string, any> | undefined;
+      const rawTestimonials =
+        (home?.testimonialsSection as Record<string, any>) ||
+        (config?.testimonials as Record<string, any>) ||
+        (layoutGlobal?.testimonials as Record<string, any>);
 
-      // Se o studio tiver depoimentos específicos, usamos eles
-      if (studio?.testimonials && studio.testimonials.length > 0) {
-        setSettings({
-          ...testimonialsSettings,
-          testimonials: studio.testimonials,
-        });
+      if (rawTestimonials) {
+        const content = (rawTestimonials.content as Record<string, any>) || {};
+        const appearance = (rawTestimonials.appearance as Record<string, any>) || {};
+        const testimonialsSettings = {
+          ...rawTestimonials,
+          ...content,
+          ...appearance,
+          title: content.title ?? rawTestimonials.title,
+          subtitle: content.subtitle ?? rawTestimonials.subtitle,
+          titleColor: sanitizeColor(
+            appearance.titleColor ||
+              content.titleColor ||
+              rawTestimonials.titleColor,
+          ),
+          subtitleColor: sanitizeColor(
+            appearance.subtitleColor ||
+              content.subtitleColor ||
+              rawTestimonials.subtitleColor,
+          ),
+          titleFont:
+            appearance.titleFont ||
+            content.titleFont ||
+            rawTestimonials.titleFont,
+          subtitleFont:
+            appearance.subtitleFont ||
+            content.subtitleFont ||
+            rawTestimonials.subtitleFont,
+          cardBgColor: sanitizeColor(
+            appearance.cardBgColor ||
+              content.cardBgColor ||
+              rawTestimonials.cardBgColor,
+          ),
+          cardNameColor: sanitizeColor(
+            appearance.cardNameColor ||
+              content.cardNameColor ||
+              rawTestimonials.cardNameColor,
+          ),
+          cardTextColor: sanitizeColor(
+            appearance.cardTextColor ||
+              content.cardTextColor ||
+              rawTestimonials.cardTextColor,
+          ),
+          cardNameFont:
+            appearance.cardNameFont ||
+            content.cardNameFont ||
+            rawTestimonials.cardNameFont,
+          cardTextFont:
+            appearance.cardTextFont ||
+            content.cardTextFont ||
+            rawTestimonials.cardTextFont,
+          starColor: sanitizeColor(
+            appearance.starColor || content.starColor || rawTestimonials.starColor,
+          ),
+          bgImage: appearance.backgroundImageUrl || rawTestimonials.bgImage || "",
+          bgColor: sanitizeColor(
+            appearance.backgroundColor ||
+              rawTestimonials.backgroundColor ||
+              rawTestimonials.bgColor ||
+              "",
+          ),
+        } as TestimonialsSettings;
+
+        // Se o studio tiver depoimentos específicos, usamos eles
+        if (studio?.testimonials && studio.testimonials.length > 0) {
+          setSettings({
+            ...testimonialsSettings,
+            testimonials: studio.testimonials,
+          });
+        } else {
+          setSettings(testimonialsSettings);
+        }
       } else {
-        setSettings(testimonialsSettings);
+        setSettings(getTestimonialsSettings());
       }
       return;
     }

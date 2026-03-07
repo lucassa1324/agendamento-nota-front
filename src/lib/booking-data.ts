@@ -252,13 +252,15 @@ export type AppearanceSettings = {
 export type HeroSettings = {
   badge: string;
   showBadge: boolean;
+  title: string;
+  subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
+  primaryButton: string;
+  secondaryButton: string;
   badgeIcon: string;
   badgeColor: string;
   badgeTextColor: string;
-  title: string;
-  subtitle: string;
-  primaryButton: string;
-  secondaryButton: string;
   bgType: "color" | "image";
   bgColor: string;
   bgImage: string;
@@ -278,11 +280,14 @@ export type HeroSettings = {
   subtitleColor: string;
   primaryButtonFont: string;
   secondaryButtonFont: string;
+  primaryButtonLink?: string;
+  secondaryButtonLink?: string;
   appearance?: AppearanceSettings;
 };
 
 export type StorySettings = {
   title: string;
+  showTitle?: boolean;
   titleColor: string;
   titleFont: string;
   content: string;
@@ -310,6 +315,8 @@ export type ValueItem = {
 export type ValuesSettings = {
   title: string;
   subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
   titleColor: string;
   subtitleColor: string;
   titleFont: string;
@@ -336,6 +343,8 @@ export type ValuesSettings = {
 export type ServicesSettings = {
   title: string;
   subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
   titleColor: string;
   subtitleColor: string;
   titleFont: string;
@@ -366,6 +375,8 @@ export type ServicesSettings = {
 export const defaultServicesSettings: ServicesSettings = {
   title: "Nossos Serviços",
   subtitle: "Tratamentos especializados para realçar seu olhar",
+  showTitle: true,
+  showSubtitle: true,
   titleColor: "",
   subtitleColor: "",
   titleFont: "",
@@ -415,6 +426,8 @@ export const defaultValuesSettings: ValuesSettings = {
   title: "Nossos Valores",
   subtitle:
     "Os princípios que guiam nosso trabalho e relacionamento com cada cliente",
+  showTitle: true,
+  showSubtitle: true,
   titleColor: "",
   subtitleColor: "",
   titleFont: "",
@@ -468,6 +481,8 @@ export const defaultValuesSettings: ValuesSettings = {
 export type GallerySettings = {
   title: string;
   subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
   buttonText: string;
   titleColor: string;
   subtitleColor: string;
@@ -476,6 +491,7 @@ export type GallerySettings = {
   titleFont: string;
   subtitleFont: string;
   buttonFont: string;
+  buttonLink?: string;
   layout: "grid" | "carousel";
   bgType: "color" | "image";
   bgColor: string;
@@ -514,6 +530,8 @@ export const defaultGallerySettings: GallerySettings = {
 export type CTASettings = {
   title: string;
   subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
   buttonText: string;
   titleColor: string;
   subtitleColor: string;
@@ -522,6 +540,7 @@ export type CTASettings = {
   titleFont: string;
   subtitleFont: string;
   buttonFont: string;
+  buttonLink?: string;
   bgType: "color" | "image";
   bgColor: string;
   bgImage: string;
@@ -536,6 +555,8 @@ export type CTASettings = {
 export type BookingStepSettings = {
   title: string;
   subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
   titleColor: string;
   subtitleColor: string;
   titleFont: string;

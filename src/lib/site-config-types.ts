@@ -35,6 +35,7 @@ export interface LayoutGlobalSettings {
 
 export interface SiteConfigData {
   [key: string]: unknown;
+  home?: Record<string, unknown>;
   hero?: HeroSettings;
   aboutHero?: HeroSettings;
   story?: StorySettings;

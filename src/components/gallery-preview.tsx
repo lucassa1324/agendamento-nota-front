@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Carousel,
   CarouselContent,
@@ -11,11 +10,13 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import {
   type GallerySettings,
   getGallerySettings,
   getPageVisibility,
+  sanitizeColor,
 } from "@/lib/booking-data";
 import { type GalleryItem, galleryService } from "@/lib/gallery-service";
 import { cn, renderSafeText } from "@/lib/utils";
@@ -32,6 +33,12 @@ export function GalleryPreview() {
   const imagesRef = useRef<GalleryItem[]>([]);
 
   const [settings, setSettings] = useState<GallerySettings | null>(null);
+  const settingsRef = useRef<GallerySettings | null>(null);
+
+  // Sincroniza o ref sempre que o state mudar
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
     {
       inicio: true,
@@ -179,11 +186,75 @@ export function GalleryPreview() {
           }
         }
 
-        const layoutGlobal =
-          currentConfig?.layoutGlobal || currentConfig?.layout_global;
+        const layoutGlobal = (currentConfig?.layoutGlobal ||
+          currentConfig?.layout_global) as Record<string, unknown> | undefined;
         const home = currentConfig?.home as Record<string, any>;
-        const configGallery = home?.galleryPreview || home?.gallerySection || currentConfig?.gallery || layoutGlobal?.gallery;
-        setSettings((configGallery as GallerySettings) || getGallerySettings());
+        const configGallery = (home?.galleryPreview ||
+          home?.gallerySection ||
+          home?.gallery ||
+          currentConfig?.gallery ||
+          layoutGlobal?.gallery) as Record<string, unknown> | undefined;
+        if (configGallery) {
+          const content = (configGallery.content as Record<string, any>) || {};
+          const appearance =
+            (configGallery.appearance as Record<string, any>) || {};
+          const normalizedGallery = {
+            ...configGallery,
+            ...content,
+            ...appearance,
+            title: (content.title as string) ?? (configGallery.title as string),
+            subtitle:
+              (content.subtitle as string) ??
+              (configGallery.subtitle as string),
+            titleColor: sanitizeColor(
+              (appearance.titleColor as string) ||
+                (content.titleColor as string) ||
+                (configGallery.titleColor as string),
+            ),
+            subtitleColor: sanitizeColor(
+              (appearance.subtitleColor as string) ||
+                (content.subtitleColor as string) ||
+                (configGallery.subtitleColor as string),
+            ),
+            titleFont:
+              (appearance.titleFont as string) ||
+              (content.titleFont as string) ||
+              (configGallery.titleFont as string),
+            subtitleFont:
+              (appearance.subtitleFont as string) ||
+              (content.subtitleFont as string) ||
+              (configGallery.subtitleFont as string),
+            buttonColor: sanitizeColor(
+              (appearance.buttonColor as string) ||
+                (content.buttonColor as string) ||
+                (configGallery.buttonColor as string),
+            ),
+            buttonTextColor: sanitizeColor(
+              (appearance.buttonTextColor as string) ||
+                (content.buttonTextColor as string) ||
+                (configGallery.buttonTextColor as string),
+            ),
+            buttonLink:
+              (content.buttonLink as string) ||
+              (configGallery.buttonLink as string) ||
+              "",
+            bgImage:
+              (appearance.backgroundImageUrl as string) ||
+              (configGallery.bgImage as string) ||
+              "",
+            bgColor: sanitizeColor(
+              (appearance.backgroundColor as string) ||
+                (configGallery.backgroundColor as string) ||
+                (configGallery.bgColor as string) ||
+                "",
+            ),
+          };
+          setSettings(
+            (normalizedGallery as GallerySettings) || getGallerySettings(),
+          );
+        } else {
+          setSettings(getGallerySettings());
+        }
 
         setPageVisibility(getPageVisibility());
       } catch (error) {
@@ -214,8 +285,25 @@ export function GalleryPreview() {
       // 1. Receber atualizações diretas de configurações (IGUAL AO HERO)
       if (event.data.type === "UPDATE_GALLERY_SETTINGS" && event.data.settings) {
         console.log(">>> [GALLERY_PREVIEW] Updating settings from message:", event.data.settings);
+        
+        // Sanitize colors in real-time update
+        const updatedSettings = { ...event.data.settings };
+        const colorFields = [
+          "titleColor",
+          "subtitleColor",
+          "buttonColor",
+          "buttonTextColor",
+          "bgColor",
+        ];
+
+        colorFields.forEach((field) => {
+          if (updatedSettings[field] !== undefined) {
+            updatedSettings[field] = sanitizeColor(updatedSettings[field]);
+          }
+        });
+
         setSettings((prev) => {
-          const next = prev ? { ...prev, ...event.data.settings } : event.data.settings;
+          const next = prev ? { ...prev, ...updatedSettings } : updatedSettings;
           console.log(">>> [GALLERY_PREVIEW] Next settings:", next);
           return next;
         });
@@ -231,7 +319,7 @@ export function GalleryPreview() {
         if (isPreview) {
           // Se for DataReady no preview, NÃO chamamos loadData se já temos configurações,
           // pois isso causaria o reset/flicker. O HeroSection bloqueia isso.
-          if (event.data.type === "DataReady" && settings) {
+          if (event.data.type === "DataReady" && settingsRef.current) {
             console.log("[GALLERY_SYNC] Modo Preview detectado. Bloqueando sobreposição pelo banco.");
             return;
           }
@@ -410,22 +498,18 @@ export function GalleryPreview() {
           </div>
         )}
 
-        <div className="text-center">
+        <div className="mt-12 text-center">
           <Button
             asChild
             size="lg"
-            variant="outline"
+            className="px-8 h-12 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 shadow-md hover:shadow-lg"
             style={{
-              borderColor: settings.buttonColor || "var(--primary)",
-              backgroundColor: settings.buttonColor ? "transparent" : undefined,
-              color:
-                settings.buttonTextColor ||
-                settings.buttonColor ||
-                "var(--primary)",
               fontFamily: settings.buttonFont || "var(--font-body)",
+              backgroundColor: settings.buttonColor || "var(--primary)",
+              color: settings.buttonTextColor || "#ffffff",
             }}
           >
-            <Link href="/galeria">
+            <Link href={settings.buttonLink || "/galeria"}>
               {renderSafeText(settings.buttonText) || "Ver Galeria Completa"}
             </Link>
           </Button>

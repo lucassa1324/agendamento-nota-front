@@ -2,13 +2,16 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-
 import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
+import { SessionWrapper } from "@/components/admin/site_editor/components/SessionWrapper";
 import { useStudio } from "@/context/studio-context";
-import { getStorySettings, type StorySettings } from "@/lib/booking-data";
+import {
+  getStorySettings,
+  sanitizeColor,
+  type StorySettings,
+} from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
-import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
+import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 
 export function StorySection() {
   const { studio } = useStudio();
@@ -23,10 +26,39 @@ export function StorySection() {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     const config = studioConfig as SiteConfigData | undefined;
     const layoutGlobal = config?.layoutGlobal || config?.layout_global;
-    const dbStory = config?.story || layoutGlobal?.story;
+    const home = config?.home as Record<string, any> | undefined;
+    const rawStory = (home?.storySection || home?.historySection || config?.story || layoutGlobal?.story) as Record<string, any> | undefined;
 
-    if (dbStory) {
-      setSettings(dbStory as StorySettings);
+    if (rawStory) {
+      const content = (rawStory.content as Record<string, any>) || {};
+      const appearance = (rawStory.appearance as Record<string, any>) || {};
+      const normalizedStory = {
+        ...rawStory,
+        ...content,
+        ...appearance,
+        title: content.title ?? rawStory.title,
+        content: content.content ?? rawStory.content,
+        titleColor: sanitizeColor(
+          appearance.titleColor || content.titleColor || rawStory.titleColor,
+        ),
+        titleFont:
+          appearance.titleFont || content.titleFont || rawStory.titleFont,
+        contentColor: sanitizeColor(
+          appearance.contentColor ||
+            content.contentColor ||
+            rawStory.contentColor,
+        ),
+        contentFont:
+          appearance.contentFont || content.contentFont || rawStory.contentFont,
+        bgImage: appearance.backgroundImageUrl || rawStory.bgImage || "",
+        bgColor: sanitizeColor(
+          appearance.backgroundColor ||
+            rawStory.backgroundColor ||
+            rawStory.bgColor ||
+            "",
+        ),
+      };
+      setSettings(normalizedStory as StorySettings);
     } else {
       setSettings(getStorySettings());
     }
@@ -55,9 +87,40 @@ export function StorySection() {
     const handleDataReady = () => {
       const cfg = studioConfig as SiteConfigData | undefined;
       const lg = cfg?.layoutGlobal || cfg?.layout_global;
-      const storyFromDb = cfg?.story || lg?.story;
-      if (storyFromDb) {
-        setSettings(storyFromDb as StorySettings);
+      const home = cfg?.home as Record<string, any> | undefined;
+      const rawStory = (home?.storySection || home?.historySection || cfg?.story || lg?.story) as Record<string, any> | undefined;
+      if (rawStory) {
+        const content = (rawStory.content as Record<string, any>) || {};
+        const appearance = (rawStory.appearance as Record<string, any>) || {};
+        const normalizedStory = {
+          ...rawStory,
+          ...content,
+          ...appearance,
+          title: content.title ?? rawStory.title,
+          content: content.content ?? rawStory.content,
+          titleColor: sanitizeColor(
+            appearance.titleColor || content.titleColor || rawStory.titleColor,
+          ),
+          titleFont:
+            appearance.titleFont || content.titleFont || rawStory.titleFont,
+          contentColor: sanitizeColor(
+            appearance.contentColor ||
+              content.contentColor ||
+              rawStory.contentColor,
+          ),
+          contentFont:
+            appearance.contentFont ||
+            content.contentFont ||
+            rawStory.contentFont,
+          bgImage: appearance.backgroundImageUrl || rawStory.bgImage || "",
+          bgColor: sanitizeColor(
+            appearance.backgroundColor ||
+              rawStory.backgroundColor ||
+              rawStory.bgColor ||
+              "",
+          ),
+        };
+        setSettings(normalizedStory as StorySettings);
       }
     };
 

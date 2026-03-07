@@ -232,7 +232,6 @@ export const SidebarContent = memo(
     pageVisibility,
     onPageVisibilityChange,
     onSaveLocal,
-    onSaveGlobal,
     onPublish,
     isPublishing,
     hasUnsavedGlobalChanges,
@@ -575,7 +574,7 @@ export const SidebarContent = memo(
               "w-full h-8 sm:h-9 xl:h-11 font-bold rounded-lg xl:rounded-xl text-[10px] sm:text-xs xl:text-sm transition-all duration-300",
               isPublishing
                 ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : hasUnsavedGlobalChanges || shouldSaveLocal
+                : (hasUnsavedGlobalChanges || shouldSaveLocal)
                   ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
                   : "bg-muted text-muted-foreground cursor-not-allowed",
             )}
@@ -585,8 +584,10 @@ export const SidebarContent = memo(
                 <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
                 <span>Publicando...</span>
               </div>
-            ) : (
+            ) : (hasUnsavedGlobalChanges || shouldSaveLocal) ? (
               "Publicar Site"
+            ) : (
+              <span className="opacity-50">Site Publicado</span>
             )}
           </Button>
         </div>
