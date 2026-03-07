@@ -266,12 +266,13 @@ export function AboutHero() {
               <Button
                 asChild
                 size="lg"
-                className="h-14 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                className="h-14 px-8 text-base font-bold rounded-full shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
                 style={{
                   backgroundColor:
                     settings.primaryButtonColor || "var(--primary)",
                   color: settings.primaryButtonTextColor || "#ffffff",
                   fontFamily: settings.primaryButtonFont || "var(--font-body)",
+                  boxShadow: `0 10px 15px -3px ${settings.primaryButtonColor ? `${settings.primaryButtonColor}40` : 'rgba(var(--primary), 0.25)'}`,
                 }}
               >
                 <Link href={settings.primaryButtonLink || "/agendamento"}>

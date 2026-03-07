@@ -206,11 +206,12 @@ export function CTASection() {
           <Button
             asChild
             size="lg"
-            className="text-lg px-8 shadow-lg hover:scale-105 transition-all duration-300"
+            className="text-lg px-8 shadow-lg transition-all duration-300 hover:scale-105"
             style={{
               fontFamily: settings.buttonFont || "var(--font-body)",
               backgroundColor: settings.buttonColor || "var(--primary)",
               color: settings.buttonTextColor || "#ffffff",
+              boxShadow: `0 10px 15px -3px ${settings.buttonColor ? `${settings.buttonColor}40` : 'rgba(var(--primary), 0.25)'}`,
             }}
           >
             <Link href={settings.buttonLink || "/agendamento"}>

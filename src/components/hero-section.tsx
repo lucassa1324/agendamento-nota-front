@@ -428,7 +428,7 @@ export function HeroSection() {
                   asChild
                   size="lg"
                   className={cn(
-                    "h-14 px-8 text-base font-bold rounded-full shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                    "h-14 px-8 text-base font-bold rounded-full shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
                     getHighlightClass("hero-primary-button"),
                   )}
                   style={{
@@ -437,6 +437,7 @@ export function HeroSection() {
                     color: customStyles.primaryButtonTextColor || "#ffffff",
                     fontFamily:
                       customStyles.primaryButtonFont || "var(--font-body)",
+                    boxShadow: `0 10px 15px -3px ${customStyles.primaryButtonColor ? `${customStyles.primaryButtonColor}40` : 'rgba(var(--primary), 0.25)'}`,
                   }}
                 >
                   <Link href={customStyles.primaryButtonLink || "/agendamento"}>
