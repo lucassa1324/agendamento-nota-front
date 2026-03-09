@@ -49,14 +49,14 @@ export function AboutHero() {
         badgeIcon:
           (content.badgeIcon as string) ?? (rawAboutHero.badgeIcon as string),
         badgeColor: sanitizeColor(
-          (appearance.badgeColor as string) ||
-            (content.badgeColor as string) ||
-            (rawAboutHero.badgeColor as string),
+          (rawAboutHero.badgeColor as string) ||
+            (appearance.badgeColor as string) ||
+            (content.badgeColor as string),
         ),
         badgeTextColor: sanitizeColor(
-          (appearance.badgeTextColor as string) ||
-            (content.badgeTextColor as string) ||
-            (rawAboutHero.badgeTextColor as string),
+          (rawAboutHero.badgeTextColor as string) ||
+            (appearance.badgeTextColor as string) ||
+            (content.badgeTextColor as string),
         ),
         primaryButton:
           (content.primaryButton as string) ??
@@ -71,51 +71,51 @@ export function AboutHero() {
           (content.secondaryButtonLink as string) ??
           (rawAboutHero.secondaryButtonLink as string),
         titleColor: sanitizeColor(
-          (appearance.titleColor as string) ||
-            (content.titleColor as string) ||
-            (rawAboutHero.titleColor as string),
+          (rawAboutHero.titleColor as string) ||
+            (appearance.titleColor as string) ||
+            (content.titleColor as string),
         ),
         subtitleColor: sanitizeColor(
-          (appearance.subtitleColor as string) ||
-            (content.subtitleColor as string) ||
-            (rawAboutHero.subtitleColor as string),
+          (rawAboutHero.subtitleColor as string) ||
+            (appearance.subtitleColor as string) ||
+            (content.subtitleColor as string),
         ),
         titleFont:
+          (rawAboutHero.titleFont as string) ||
           (appearance.titleFont as string) ||
-          (content.titleFont as string) ||
-          (rawAboutHero.titleFont as string),
+          (content.titleFont as string),
         subtitleFont:
+          (rawAboutHero.subtitleFont as string) ||
           (appearance.subtitleFont as string) ||
-          (content.subtitleFont as string) ||
-          (rawAboutHero.subtitleFont as string),
+          (content.subtitleFont as string),
         primaryButtonColor: sanitizeColor(
-          (appearance.primaryButtonColor as string) ||
-            (content.primaryButtonColor as string) ||
-            (rawAboutHero.primaryButtonColor as string),
+          (rawAboutHero.primaryButtonColor as string) ||
+            (appearance.primaryButtonColor as string) ||
+            (content.primaryButtonColor as string),
         ),
         primaryButtonTextColor: sanitizeColor(
-          (appearance.primaryButtonTextColor as string) ||
-            (content.primaryButtonTextColor as string) ||
-            (rawAboutHero.primaryButtonTextColor as string),
+          (rawAboutHero.primaryButtonTextColor as string) ||
+            (appearance.primaryButtonTextColor as string) ||
+            (content.primaryButtonTextColor as string),
         ),
         secondaryButtonColor: sanitizeColor(
-          (appearance.secondaryButtonColor as string) ||
-            (content.secondaryButtonColor as string) ||
-            (rawAboutHero.secondaryButtonColor as string),
+          (rawAboutHero.secondaryButtonColor as string) ||
+            (appearance.secondaryButtonColor as string) ||
+            (content.secondaryButtonColor as string),
         ),
         secondaryButtonTextColor: sanitizeColor(
-          (appearance.secondaryButtonTextColor as string) ||
-            (content.secondaryButtonTextColor as string) ||
-            (rawAboutHero.secondaryButtonTextColor as string),
+          (rawAboutHero.secondaryButtonTextColor as string) ||
+            (appearance.secondaryButtonTextColor as string) ||
+            (content.secondaryButtonTextColor as string),
         ),
         bgImage:
-          (appearance.backgroundImageUrl as string) ||
           (rawAboutHero.bgImage as string) ||
+          (appearance.backgroundImageUrl as string) ||
           "",
         bgColor: sanitizeColor(
-          (appearance.backgroundColor as string) ||
+          (rawAboutHero.bgColor as string) ||
             (rawAboutHero.backgroundColor as string) ||
-            (rawAboutHero.bgColor as string) ||
+            (appearance.backgroundColor as string) ||
             "",
         ),
       };

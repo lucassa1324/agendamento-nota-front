@@ -44,7 +44,7 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export function HeroSection() {
-  const { studio } = useStudio();
+  const { studio, isLoading } = useStudio();
   const [profile, setProfile] = useState<SiteProfile | null>(null);
   const [customStyles, setCustomStyles] = useState<Partial<HeroSettings>>({});
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
@@ -63,6 +63,13 @@ export function HeroSection() {
 
   const config = studio?.config as SiteConfigData | undefined;
 
+  // Log de depuração solicitado para verificar a estrutura dos dados
+  useEffect(() => {
+    if (config) {
+      console.log(">>> [HERO_RENDER_DEBUG]", config);
+    }
+  }, [config]);
+
   useEffect(() => {
     const isPreview = window.location.search.includes("preview=true");
     setIsMounted(true);
@@ -77,6 +84,8 @@ export function HeroSection() {
     if (!isPreview && rawHero) {
       const content = (rawHero.content as Record<string, unknown>) || {};
       const appearance = (rawHero.appearance as Record<string, unknown>) || {};
+      
+      // Mapeamento Robusto: Prioriza a RAIZ (conforme logs do banco), depois content, depois appearance
       const normalizedHero = {
         ...rawHero,
         ...content,
@@ -86,27 +95,27 @@ export function HeroSection() {
         showTitle: content.showTitle !== undefined ? content.showTitle : (rawHero.showTitle !== undefined ? rawHero.showTitle : true),
         showSubtitle: content.showSubtitle !== undefined ? content.showSubtitle : (rawHero.showSubtitle !== undefined ? rawHero.showSubtitle : true),
         showBadge: content.showBadge !== undefined ? content.showBadge : (rawHero.showBadge !== undefined ? rawHero.showBadge : true),
-        badge: content.badge ?? rawHero.badge,
-        badgeIcon: content.badgeIcon ?? rawHero.badgeIcon,
-        badgeFont: (appearance.badgeFont as string) || (content.badgeFont as string) || (rawHero.badgeFont as string),
-        badgeColor: sanitizeColor((appearance.badgeColor as string) || (content.badgeColor as string) || (rawHero.badgeColor as string)),
-        badgeTextColor: sanitizeColor((appearance.badgeTextColor as string) || (content.badgeTextColor as string) || (rawHero.badgeTextColor as string)),
-        primaryButton: (content.primaryButton as string) ?? (rawHero.primaryButton as string),
-        primaryButtonFont: (appearance.primaryButtonFont as string) || (content.primaryButtonFont as string) || (rawHero.primaryButtonFont as string),
-        primaryButtonColor: sanitizeColor((appearance.primaryButtonColor as string) || (content.primaryButtonColor as string) || (rawHero.primaryButtonColor as string)),
-        primaryButtonTextColor: sanitizeColor((appearance.primaryButtonTextColor as string) || (content.primaryButtonTextColor as string) || (rawHero.primaryButtonTextColor as string)),
-        primaryButtonLink: (content.primaryButtonLink as string) ?? (rawHero.primaryButtonLink as string),
-        secondaryButton: (content.secondaryButton as string) ?? (rawHero.secondaryButton as string),
-        secondaryButtonFont: (appearance.secondaryButtonFont as string) || (content.secondaryButtonFont as string) || (rawHero.secondaryButtonFont as string),
-        secondaryButtonColor: sanitizeColor((appearance.secondaryButtonColor as string) || (content.secondaryButtonColor as string) || (rawHero.secondaryButtonColor as string)),
-        secondaryButtonTextColor: sanitizeColor((appearance.secondaryButtonTextColor as string) || (content.secondaryButtonTextColor as string) || (rawHero.secondaryButtonTextColor as string)),
-        secondaryButtonLink: (content.secondaryButtonLink as string) ?? (rawHero.secondaryButtonLink as string),
-        titleColor: sanitizeColor((appearance.titleColor as string) || (content.titleColor as string) || (rawHero.titleColor as string)),
-        subtitleColor: sanitizeColor((appearance.subtitleColor as string) || (content.subtitleColor as string) || (rawHero.subtitleColor as string)),
-        titleFont: (appearance.titleFont as string) || (content.titleFont as string) || (rawHero.titleFont as string),
-        subtitleFont: (appearance.subtitleFont as string) || (content.subtitleFont as string) || (rawHero.subtitleFont as string),
-        bgImage: (appearance.backgroundImageUrl as string) || (rawHero.bgImage as string) || "",
-        bgColor: sanitizeColor((appearance.backgroundColor as string) || (rawHero.backgroundColor as string) || (rawHero.bgColor as string) || ""),
+        badge: (rawHero.badge as string) || (content.badge as string) || "",
+        badgeIcon: (rawHero.badgeIcon as string) || (content.badgeIcon as string) || "",
+        badgeFont: (rawHero.badgeFont as string) || (appearance.badgeFont as string) || (content.badgeFont as string),
+        badgeColor: sanitizeColor((rawHero.badgeColor as string) || (appearance.badgeColor as string) || (content.badgeColor as string)),
+        badgeTextColor: sanitizeColor((rawHero.badgeTextColor as string) || (appearance.badgeTextColor as string) || (content.badgeTextColor as string)),
+        primaryButton: (rawHero.primaryButton as string) ?? (content.primaryButton as string),
+        primaryButtonFont: (rawHero.primaryButtonFont as string) || (appearance.primaryButtonFont as string) || (content.primaryButtonFont as string),
+        primaryButtonColor: sanitizeColor((rawHero.primaryButtonColor as string) || (appearance.primaryButtonColor as string) || (content.primaryButtonColor as string)),
+        primaryButtonTextColor: sanitizeColor((rawHero.primaryButtonTextColor as string) || (appearance.primaryButtonTextColor as string) || (content.primaryButtonTextColor as string)),
+        primaryButtonLink: (rawHero.primaryButtonLink as string) ?? (content.primaryButtonLink as string),
+        secondaryButton: (rawHero.secondaryButton as string) ?? (content.secondaryButton as string),
+        secondaryButtonFont: (rawHero.secondaryButtonFont as string) || (appearance.secondaryButtonFont as string) || (content.secondaryButtonFont as string),
+        secondaryButtonColor: sanitizeColor((rawHero.secondaryButtonColor as string) || (appearance.secondaryButtonColor as string) || (content.secondaryButtonColor as string)),
+        secondaryButtonTextColor: sanitizeColor((rawHero.secondaryButtonTextColor as string) || (appearance.secondaryButtonTextColor as string) || (content.secondaryButtonTextColor as string)),
+        secondaryButtonLink: (rawHero.secondaryButtonLink as string) ?? (content.secondaryButtonLink as string),
+        titleColor: sanitizeColor((rawHero.titleColor as string) || (appearance.titleColor as string) || (content.titleColor as string)),
+        subtitleColor: sanitizeColor((rawHero.subtitleColor as string) || (appearance.subtitleColor as string) || (content.subtitleColor as string)),
+        titleFont: (rawHero.titleFont as string) || (appearance.titleFont as string) || (content.titleFont as string),
+        subtitleFont: (rawHero.subtitleFont as string) || (appearance.subtitleFont as string) || (content.subtitleFont as string),
+        bgImage: (rawHero.bgImage as string) || (appearance.backgroundImageUrl as string) || "",
+        bgColor: sanitizeColor((rawHero.bgColor as string) || (rawHero.backgroundColor as string) || (appearance.backgroundColor as string) || ""),
       };
       setCustomStyles(normalizedHero as HeroSettings);
     } else {
@@ -182,6 +191,8 @@ export function HeroSection() {
       if (rawHero) {
         const content = (rawHero.content as Record<string, unknown>) || {};
         const appearance = (rawHero.appearance as Record<string, unknown>) || {};
+        
+        // Mapeamento Robusto: Prioriza a RAIZ (conforme logs do banco), depois content, depois appearance
         const normalizedHero = {
           ...rawHero,
           ...content,
@@ -191,27 +202,27 @@ export function HeroSection() {
           showTitle: content.showTitle !== undefined ? content.showTitle : (rawHero.showTitle !== undefined ? rawHero.showTitle : true),
           showSubtitle: content.showSubtitle !== undefined ? content.showSubtitle : (rawHero.showSubtitle !== undefined ? rawHero.showSubtitle : true),
           showBadge: content.showBadge !== undefined ? content.showBadge : (rawHero.showBadge !== undefined ? rawHero.showBadge : true),
-          badge: content.badge ?? rawHero.badge,
-          badgeIcon: content.badgeIcon ?? rawHero.badgeIcon,
-          badgeFont: (appearance.badgeFont as string) || (content.badgeFont as string) || (rawHero.badgeFont as string),
-          badgeColor: sanitizeColor((appearance.badgeColor as string) || (content.badgeColor as string) || (rawHero.badgeColor as string)),
-          badgeTextColor: sanitizeColor((appearance.badgeTextColor as string) || (content.badgeTextColor as string) || (rawHero.badgeTextColor as string)),
-          primaryButton: (content.primaryButton as string) ?? (rawHero.primaryButton as string),
-          primaryButtonFont: (appearance.primaryButtonFont as string) || (content.primaryButtonFont as string) || (rawHero.primaryButtonFont as string),
-          primaryButtonColor: sanitizeColor((appearance.primaryButtonColor as string) || (content.primaryButtonColor as string) || (rawHero.primaryButtonColor as string)),
-          primaryButtonTextColor: sanitizeColor((appearance.primaryButtonTextColor as string) || (content.primaryButtonTextColor as string) || (rawHero.primaryButtonTextColor as string)),
-          primaryButtonLink: (content.primaryButtonLink as string) ?? (rawHero.primaryButtonLink as string),
-          secondaryButton: (content.secondaryButton as string) ?? (rawHero.secondaryButton as string),
-          secondaryButtonFont: (appearance.secondaryButtonFont as string) || (content.secondaryButtonFont as string) || (rawHero.secondaryButtonFont as string),
-          secondaryButtonColor: sanitizeColor((appearance.secondaryButtonColor as string) || (content.secondaryButtonColor as string) || (rawHero.secondaryButtonColor as string)),
-          secondaryButtonTextColor: sanitizeColor((appearance.secondaryButtonTextColor as string) || (content.secondaryButtonTextColor as string) || (rawHero.secondaryButtonTextColor as string)),
-          secondaryButtonLink: (content.secondaryButtonLink as string) ?? (rawHero.secondaryButtonLink as string),
-          titleColor: sanitizeColor((appearance.titleColor as string) || (content.titleColor as string) || (rawHero.titleColor as string)),
-          subtitleColor: sanitizeColor((appearance.subtitleColor as string) || (content.subtitleColor as string) || (rawHero.subtitleColor as string)),
-          titleFont: (appearance.titleFont as string) || (content.titleFont as string) || (rawHero.titleFont as string),
-          subtitleFont: (appearance.subtitleFont as string) || (content.subtitleFont as string) || (rawHero.subtitleFont as string),
-          bgImage: (appearance.backgroundImageUrl as string) || (rawHero.bgImage as string) || "",
-          bgColor: sanitizeColor((appearance.backgroundColor as string) || (rawHero.backgroundColor as string) || (rawHero.bgColor as string) || ""),
+          badge: (rawHero.badge as string) || (content.badge as string) || "",
+          badgeIcon: (rawHero.badgeIcon as string) || (content.badgeIcon as string) || "",
+          badgeFont: (rawHero.badgeFont as string) || (appearance.badgeFont as string) || (content.badgeFont as string),
+          badgeColor: sanitizeColor((rawHero.badgeColor as string) || (appearance.badgeColor as string) || (content.badgeColor as string)),
+          badgeTextColor: sanitizeColor((rawHero.badgeTextColor as string) || (appearance.badgeTextColor as string) || (content.badgeTextColor as string)),
+          primaryButton: (rawHero.primaryButton as string) ?? (content.primaryButton as string),
+          primaryButtonFont: (rawHero.primaryButtonFont as string) || (appearance.primaryButtonFont as string) || (content.primaryButtonFont as string),
+          primaryButtonColor: sanitizeColor((rawHero.primaryButtonColor as string) || (appearance.primaryButtonColor as string) || (content.primaryButtonColor as string)),
+          primaryButtonTextColor: sanitizeColor((rawHero.primaryButtonTextColor as string) || (appearance.primaryButtonTextColor as string) || (content.primaryButtonTextColor as string)),
+          primaryButtonLink: (rawHero.primaryButtonLink as string) ?? (content.primaryButtonLink as string),
+          secondaryButton: (rawHero.secondaryButton as string) ?? (content.secondaryButton as string),
+          secondaryButtonFont: (rawHero.secondaryButtonFont as string) || (appearance.secondaryButtonFont as string) || (content.secondaryButtonFont as string),
+          secondaryButtonColor: sanitizeColor((rawHero.secondaryButtonColor as string) || (appearance.secondaryButtonColor as string) || (content.secondaryButtonColor as string)),
+          secondaryButtonTextColor: sanitizeColor((rawHero.secondaryButtonTextColor as string) || (appearance.secondaryButtonTextColor as string) || (content.secondaryButtonTextColor as string)),
+          secondaryButtonLink: (rawHero.secondaryButtonLink as string) ?? (content.secondaryButtonLink as string),
+          titleColor: sanitizeColor((rawHero.titleColor as string) || (appearance.titleColor as string) || (content.titleColor as string)),
+          subtitleColor: sanitizeColor((rawHero.subtitleColor as string) || (appearance.subtitleColor as string) || (content.subtitleColor as string)),
+          titleFont: (rawHero.titleFont as string) || (appearance.titleFont as string) || (content.titleFont as string),
+          subtitleFont: (rawHero.subtitleFont as string) || (appearance.subtitleFont as string) || (content.subtitleFont as string),
+          bgImage: (rawHero.bgImage as string) || (appearance.backgroundImageUrl as string) || "",
+          bgColor: sanitizeColor((rawHero.bgColor as string) || (rawHero.backgroundColor as string) || (appearance.backgroundColor as string) || ""),
         };
         setCustomStyles(normalizedHero as HeroSettings);
       }
@@ -291,7 +302,7 @@ export function HeroSection() {
     }
   }, [isMounted, effectiveBackgroundColor, customStyles.bgType]);
 
-  if (!isMounted) {
+  if (!isMounted || isLoading) {
     return (
       <section
         id="hero"
@@ -299,9 +310,16 @@ export function HeroSection() {
       >
         <div className="container mx-auto px-4 text-center">
           <div className="max-w-3xl mx-auto">
-            <h1 className="font-serif text-5xl md:text-7xl font-bold mb-6">
-              Realce Sua Beleza Natural
+            <h1 className="font-serif text-5xl md:text-7xl font-bold mb-6 animate-pulse bg-gray-200 h-20 rounded-lg">
+              <span className="sr-only">Carregando título do Hero...</span>
             </h1>
+            <p className="animate-pulse bg-gray-200 h-10 w-2/3 mx-auto rounded-lg mb-8">
+              <span className="sr-only">Carregando subtítulo do Hero...</span>
+            </p>
+            <div className="flex gap-4 justify-center">
+              <div className="animate-pulse bg-gray-200 h-12 w-40 rounded-full"></div>
+              <div className="animate-pulse bg-gray-200 h-12 w-40 rounded-full"></div>
+            </div>
           </div>
         </div>
       </section>

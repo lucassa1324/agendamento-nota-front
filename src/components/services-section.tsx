@@ -80,7 +80,7 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export function ServicesSection() {
-  const { studio } = useStudio();
+  const { studio, isLoading } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
   const [settings, setSettings] = useState<ServicesSettings | null>(null);
@@ -89,8 +89,14 @@ export function ServicesSection() {
   );
 
   const studioId = studio?.id;
-  const studioSlug = studio?.slug;
   const studioConfig = studio?.config;
+
+  // Debug log para ver a estrutura do config que chega no site público
+  useEffect(() => {
+    if (studioConfig) {
+      console.log(">>> [SERVICES_RENDER_DEBUG] Config recebida:", studioConfig);
+    }
+  }, [studioConfig]);
 
   const loadData = useCallback(
     (forceRevalidate = false) => {
@@ -173,129 +179,102 @@ export function ServicesSection() {
         const content = (configServices.content as Record<string, unknown>) || {};
         const appearance =
           (configServices.appearance as Record<string, unknown>) || {};
+        
+        // MAPEAMENTO PLANO: Prioriza a raiz (que vem do banco) sobre content/appearance
         finalConfigServices = {
           ...configServices,
           ...content,
           ...appearance,
-          title: (content.title as string) ?? (configServices.title as string),
-          subtitle:
-            (content.subtitle as string) ?? (configServices.subtitle as string),
+          title: (configServices.title as string) || (content.title as string),
+          subtitle: (configServices.subtitle as string) || (content.subtitle as string),
           titleColor: sanitizeColor(
+            (configServices.titleColor as string) ||
             (appearance.titleColor as string) ||
-              (content.titleColor as string) ||
-              (configServices.titleColor as string),
+            (content.titleColor as string)
           ),
           subtitleColor: sanitizeColor(
+            (configServices.subtitleColor as string) ||
             (appearance.subtitleColor as string) ||
-              (content.subtitleColor as string) ||
-              (configServices.subtitleColor as string),
+            (content.subtitleColor as string)
           ),
           titleFont:
+            (configServices.titleFont as string) ||
             (appearance.titleFont as string) ||
-            (content.titleFont as string) ||
-            (configServices.titleFont as string),
+            (content.titleFont as string),
           subtitleFont:
+            (configServices.subtitleFont as string) ||
             (appearance.subtitleFont as string) ||
-            (content.subtitleFont as string) ||
-            (configServices.subtitleFont as string),
+            (content.subtitleFont as string),
           cardBgColor: sanitizeColor(
+            (configServices.cardBgColor as string) ||
             (appearance.cardBgColor as string) ||
-              (content.cardBgColor as string) ||
-              (configServices.cardBgColor as string),
+            (content.cardBgColor as string)
           ),
           cardTitleColor: sanitizeColor(
+            (configServices.cardTitleColor as string) ||
             (appearance.cardTitleColor as string) ||
-              (content.cardTitleColor as string) ||
-              (configServices.cardTitleColor as string),
+            (content.cardTitleColor as string)
           ),
           cardDescriptionColor: sanitizeColor(
+            (configServices.cardDescriptionColor as string) ||
             (appearance.cardDescriptionColor as string) ||
-              (content.cardDescriptionColor as string) ||
-              (configServices.cardDescriptionColor as string),
+            (content.cardDescriptionColor as string)
           ),
           cardPriceColor: sanitizeColor(
+            (configServices.cardPriceColor as string) ||
             (appearance.cardPriceColor as string) ||
-              (content.cardPriceColor as string) ||
-              (configServices.cardPriceColor as string),
+            (content.cardPriceColor as string)
           ),
           cardIconColor: sanitizeColor(
+            (configServices.cardIconColor as string) ||
             (appearance.cardIconColor as string) ||
-              (content.cardIconColor as string) ||
-              (configServices.cardIconColor as string),
+            (content.cardIconColor as string)
           ),
           cardTitleFont:
+            (configServices.cardTitleFont as string) ||
             (appearance.cardTitleFont as string) ||
-            (content.cardTitleFont as string) ||
-            (configServices.cardTitleFont as string),
+            (content.cardTitleFont as string),
           cardDescriptionFont:
+            (configServices.cardDescriptionFont as string) ||
             (appearance.cardDescriptionFont as string) ||
-            (content.cardDescriptionFont as string) ||
-            (configServices.cardDescriptionFont as string),
+            (content.cardDescriptionFont as string),
           cardPriceFont:
+            (configServices.cardPriceFont as string) ||
             (appearance.cardPriceFont as string) ||
-            (content.cardPriceFont as string) ||
-            (configServices.cardPriceFont as string),
+            (content.cardPriceFont as string),
           bgImage:
-            (appearance.backgroundImageUrl as string) ||
             (configServices.bgImage as string) ||
+            (appearance.backgroundImageUrl as string) ||
             "",
           bgColor: sanitizeColor(
+            (configServices.bgColor as string) ||
+            (configServices.backgroundColor as string) ||
             (appearance.backgroundColor as string) ||
-              (configServices.backgroundColor as string) ||
-              (configServices.bgColor as string) ||
-              "",
+            "",
           ),
         } as unknown as ServicesSettings;
       }
       
-      const isPreviewMode =
-        typeof window !== "undefined" &&
-        window.location.search.includes("preview=true");
-      const finalSettings = isPreviewMode
-        ? getServicesSettings()
-        : finalConfigServices || getServicesSettings();
-
-      console.log(">>> [SITE_SERVICES] Sincronizando Serviços:", {
-        forceRevalidate,
-        total_recebido: currentServices.length,
-        filtrados_home: homeServices.length,
-        slug_contexto: studioSlug,
-        isPreviewMode,
-        tem_settings_cache: !!settings,
-        nomes_na_home: homeServices.map((s) => s.name),
-      });
-
-      console.log(">>> [SITE_DEBUG] Config recebida:", {
-        cardBgColor: finalSettings.cardBgColor,
-        cardIconColor: finalSettings.cardIconColor,
-        cardTitleColor: finalSettings.cardTitleColor,
-        cardDescriptionColor: finalSettings.cardDescriptionColor,
-        hasLayoutGlobal: !!layoutGlobal,
-        servicesFromLayout: !!layoutGlobal?.services,
-      });
-
       setServices(homeServices);
-      setSettings(finalSettings);
+      if (finalConfigServices) {
+        setSettings(finalConfigServices);
+      } else {
+        setSettings(getServicesSettings());
+      }
     },
-    [studioId, studioSlug, studio?.services, studioConfig],
+    [studioId, studioConfig, studio?.services],
   );
 
   useEffect(() => {
     setIsMounted(true);
-    // Na primeira montagem no site oficial, forçamos a revalidação ignorando o cache local de settings
-    const isPreview =
-      typeof window !== "undefined" &&
-      window.location.search.includes("preview=true");
-    loadData(!isPreview);
+    loadData();
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "UPDATE_SERVICES_SETTINGS") {
         setSettings((prev) =>
-          prev
-            ? { ...prev, ...event.data.settings }
-            : (event.data.settings as ServicesSettings),
+          prev ? { ...prev, ...event.data.settings } : prev,
         );
       }
 
@@ -308,36 +287,29 @@ export function ServicesSection() {
       }
     };
 
-    const onSettingsUpdate = () => loadData();
-    const handleDataReady = () => {
-      if (isPreview) return;
-      loadData(true);
-    };
-
     window.addEventListener("message", handleMessage);
-    window.addEventListener("studioSettingsUpdated", onSettingsUpdate);
-    window.addEventListener("servicesSettingsUpdated", onSettingsUpdate);
-    window.addEventListener("servicesUpdated", onSettingsUpdate);
-    window.addEventListener("DataReady", handleDataReady);
+    window.addEventListener("servicesSettingsUpdated", () => loadData(true));
+    window.addEventListener("DataReady", () => loadData());
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("studioSettingsUpdated", onSettingsUpdate);
-      window.removeEventListener("servicesSettingsUpdated", onSettingsUpdate);
-      window.removeEventListener("servicesUpdated", onSettingsUpdate);
-      window.removeEventListener("DataReady", handleDataReady);
+      window.removeEventListener("servicesSettingsUpdated", () =>
+        loadData(true),
+      );
+      window.removeEventListener("DataReady", () => loadData());
     };
   }, [loadData]);
 
-  if (!isMounted) {
+  // Fallback Skeleton enquanto carrega do banco
+  if (!isMounted || isLoading) {
     return (
-      <section id="services" className="py-24 bg-background animate-pulse">
-        <div className="container mx-auto px-4 text-center">
-          <div className="h-10 w-64 bg-muted mx-auto mb-4 rounded" />
-          <div className="h-4 w-96 bg-muted mx-auto mb-12 rounded" />
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-64 bg-muted rounded-xl" />
+      <section id="services" className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="h-10 w-64 bg-gray-200 animate-pulse mx-auto mb-4 rounded"></div>
+          <div className="h-6 w-96 bg-gray-200 animate-pulse mx-auto mb-12 rounded"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-64 bg-gray-100 animate-pulse rounded-xl"></div>
             ))}
           </div>
         </div>
@@ -345,13 +317,6 @@ export function ServicesSection() {
     );
   }
 
-  // No editor (isPreview), permitimos renderizar mesmo sem serviços para o usuário poder configurar a seção
-  const isPreview =
-    typeof window !== "undefined" &&
-    window.location.search.includes("preview=true");
-
-  // Se não houver serviços e não estivermos no editor, a seção não deve aparecer
-  if (!isPreview && services.length === 0) return null;
   if (!settings) return null;
 
   const backgroundUrl =

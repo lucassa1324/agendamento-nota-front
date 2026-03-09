@@ -292,7 +292,7 @@ export function useEditorApi({
     return changes;
   }, [lastSaved, settings]);
 
-  const handleSaveLocal = useCallback(() => {
+  const handleSaveLocal = useCallback((skipEvent = false) => {
     saveLocalDrafts({
       heroSettings: settings.heroSettings,
       aboutHeroSettings: settings.aboutHeroSettings,
@@ -317,7 +317,7 @@ export function useEditorApi({
     });
     
     // Dispara um evento para notificar outros hooks que o localStorage mudou
-    if (typeof window !== 'undefined') {
+    if (!skipEvent && typeof window !== 'undefined') {
       window.dispatchEvent(new Event('local_draft_changed'));
     }
   }, [saveLocalDrafts, settings]);
@@ -416,8 +416,8 @@ export function useEditorApi({
   ]);
 
   const handleSaveGlobal = useCallback(
-    async () => {
-      if (isPublishing) {
+    async (shouldReload = true) => {
+      if (isPublishing && shouldReload) {
         console.log(
           ">>> [useEditorApi] Ignorando save global durante publicação...",
         );
@@ -472,11 +472,6 @@ export function useEditorApi({
                 const sectionData = {
                   ...(changes[sectionKey] as Record<string, unknown>),
                 };
-
-                if (!payload.layoutGlobal) payload.layoutGlobal = {};
-              const layoutKey = section === "hero" ? "heroBanner" : section;
-              (payload.layoutGlobal as Record<string, unknown>)[layoutKey] =
-                sectionData;
 
               const dbPath = sectionToDatabasePath[section];
               if (dbPath) {
@@ -534,158 +529,215 @@ export function useEditorApi({
                 subObj.bgImage =
                   sectionData.bgImage || appearance.backgroundImageUrl || "";
 
-                // Mapeamento de conteúdo específico por seção
-                const content: Record<string, unknown> = {
-                  title:
-                    typeof sectionData.title === "string"
-                      ? sectionData.title
-                      : "",
-                  subtitle:
-                    typeof sectionData.subtitle === "string"
-                      ? sectionData.subtitle
-                      : "",
+                // Mapeamento de conteúdo completo para persistência
+                const content: Record<string, any> = {
+                  title: sectionData.title || "",
+                  subtitle: sectionData.subtitle || "",
                   titleFont: sectionData.titleFont || "",
                   titleColor: sectionData.titleColor || "",
                   subtitleFont: sectionData.subtitleFont || "",
                   subtitleColor: sectionData.subtitleColor || "",
                 };
 
-                // Campos extras para Hero
+                // Inclusão explícita de campos na RAIZ para todas as seções
+                // Isso garante que o banco de dados receba os campos fora do objeto 'content'
+                Object.assign(subObj, {
+                  ...sectionData, // Joga todas as propriedades (incluindo camelCase) na raiz
+                  // Compatibilidade Snake Case para o Banco de Dados
+                  primary_button_color: sectionData.primaryButtonColor || sectionData.primary_button_color,
+                  secondary_button_color: sectionData.secondaryButtonColor || sectionData.secondary_button_color,
+                  button_text: sectionData.buttonText || sectionData.button_text,
+                  button_color: sectionData.buttonColor || sectionData.button_color,
+                  button_text_color: sectionData.buttonTextColor || sectionData.button_text_color,
+                  button_font: sectionData.buttonFont || sectionData.button_font,
+                  button_link: sectionData.buttonLink || sectionData.button_link,
+                  title_font: sectionData.titleFont || sectionData.title_font,
+                  subtitle_font: sectionData.subtitleFont || sectionData.subtitle_font,
+                  card_bg_color: sectionData.cardBgColor || sectionData.card_bg_color,
+                  bg_color: sectionData.bgColor || sectionData.bg_color,
+                  title_color: sectionData.titleColor || sectionData.title_color,
+                  subtitle_color: sectionData.subtitleColor || sectionData.subtitle_color,
+                  badge_color: sectionData.badgeColor || sectionData.badge_color,
+                  badge_text_color: sectionData.badgeTextColor || sectionData.badge_text_color,
+                  // Teste de Força Bruta: campo 'color' genérico para ver se o banco aceita
+                  color: sectionData.primaryButtonColor || sectionData.cardBgColor || sectionData.bgColor || "",
+                });
+
                 if (section === "hero" || section === "aboutHero") {
-                  content.badge = sectionData.badge || "";
-                  content.showBadge = sectionData.showBadge ?? true;
-                  content.badgeIcon = sectionData.badgeIcon || "";
-                  content.badgeColor = sectionData.badgeColor || "";
-                  content.badgeTextColor = sectionData.badgeTextColor || "";
-                  content.primaryButton = sectionData.primaryButton || "";
-                  content.primaryButtonColor = sectionData.primaryButtonColor || "";
-                  content.primaryButtonTextColor =
-                    sectionData.primaryButtonTextColor || "";
-                  content.primaryButtonFont = sectionData.primaryButtonFont || "";
-                  content.secondaryButton = sectionData.secondaryButton || "";
-                  content.secondaryButtonColor =
-                    sectionData.secondaryButtonColor || "";
-                  content.secondaryButtonTextColor =
-                    sectionData.secondaryButtonTextColor || "";
-                  content.secondaryButtonFont =
-                    sectionData.secondaryButtonFont || "";
-                  content.badgeFont = sectionData.badgeFont || "";
+                  subObj.content = {
+                    title: sectionData.title || "",
+                    subtitle: sectionData.subtitle || "",
+                  };
+                } else {
+                  // Campos específicos para outras seções (mantendo compatibilidade)
+                  if (section === "story") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.content = sectionData.content || "";
+                    content.image = sectionData.image || "";
+                  }
+
+                  if (section === "testimonials") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.testimonials = sectionData.testimonials || [];
+                    content.starColor = sectionData.starColor || "";
+                    content.cardBgColor = sectionData.cardBgColor || "";
+                    content.cardNameFont = sectionData.cardNameFont || "";
+                    content.cardNameColor = sectionData.cardNameColor || "";
+                    content.cardTextFont = sectionData.cardTextFont || "";
+                    content.cardTextColor = sectionData.cardTextColor || "";
+                    content.cardRatingColor = sectionData.cardRatingColor || "";
+                    content.cardBorderRadius = sectionData.cardBorderRadius || "";
+                  }
+
+                  if (section === "gallery") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.buttonText = sectionData.buttonText || "";
+                    content.buttonFont = sectionData.buttonFont || "";
+                    content.buttonColor = sectionData.buttonColor || "";
+                    content.buttonTextColor = sectionData.buttonTextColor || "";
+                    content.layout = sectionData.layout || "grid";
+                    content.columns = sectionData.columns || 3;
+                    content.gap = sectionData.gap || 16;
+                    content.aspectRatio = sectionData.aspectRatio || "square";
+                  }
+
+                  if (section === "cta") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.buttonText = sectionData.buttonText || "";
+                    content.buttonFont = sectionData.buttonFont || "";
+                    content.buttonColor = sectionData.buttonColor || "";
+                    content.buttonTextColor = sectionData.buttonTextColor || "";
+                    content.alignment = sectionData.alignment || "center";
+                  }
+
+                  if (section === "values") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.items = sectionData.items || [];
+                    content.cardBgColor = sectionData.cardBgColor || "";
+                    content.cardTitleFont = sectionData.cardTitleFont || "";
+                    content.cardTitleColor = sectionData.cardTitleColor || "";
+                    content.cardDescriptionFont =
+                      sectionData.cardDescriptionFont || "";
+                    content.cardDescriptionColor =
+                      sectionData.cardDescriptionColor || "";
+                    content.cardIconColor = sectionData.cardIconColor || "";
+                    content.showTitle = sectionData.showTitle ?? true;
+                    content.showSubtitle = sectionData.showSubtitle ?? true;
+                  }
+
+                  if (section === "services") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.cardBgColor = sectionData.cardBgColor || "";
+                    content.cardTitleFont = sectionData.cardTitleFont || "";
+                    content.cardTitleColor = sectionData.cardTitleColor || "";
+                    content.cardDescriptionFont =
+                      sectionData.cardDescriptionFont || "";
+                    content.cardDescriptionColor =
+                      sectionData.cardDescriptionColor || "";
+                    content.cardPriceFont = sectionData.cardPriceFont || "";
+                    content.cardPriceColor = sectionData.cardPriceColor || "";
+                    content.cardIconColor = sectionData.cardIconColor || "";
+                    content.cardBorderRadius = sectionData.cardBorderRadius || "";
+                    content.cardBorderWidth = sectionData.cardBorderWidth || "";
+                    content.cardBorderColor = sectionData.cardBorderColor || "";
+                    content.showTitle = sectionData.showTitle ?? true;
+                    content.showSubtitle = sectionData.showSubtitle ?? true;
+                  }
+
+                  if (section === "team") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.members = sectionData.members || [];
+                    content.cardBgColor = sectionData.cardBgColor || "";
+                    content.cardTitleFont = sectionData.cardTitleFont || "";
+                    content.cardTitleColor = sectionData.cardTitleColor || "";
+                    content.cardRoleFont = sectionData.cardRoleFont || "";
+                    content.cardRoleColor = sectionData.cardRoleColor || "";
+                    content.cardDescriptionFont =
+                      sectionData.cardDescriptionFont || "";
+                    content.cardDescriptionColor =
+                      sectionData.cardDescriptionColor || "";
+                  }
+
+                  subObj.content = content;
                 }
 
-                // Campos extras para Story
-                if (section === "story") {
-                  content.text = sectionData.content || "";
-                  content.image = sectionData.image || "";
+                sectionData.appearance = subObj.appearance;
+                if (subObj.content) {
+                  sectionData.content = subObj.content;
                 }
-
-                // Campos extras para Depoimentos
-                if (section === "testimonials") {
-                  content.testimonials = sectionData.testimonials || [];
-                  content.starColor = sectionData.starColor || "";
-                  content.cardBgColor = sectionData.cardBgColor || "";
-                  content.cardNameFont = sectionData.cardNameFont || "";
-                  content.cardNameColor = sectionData.cardNameColor || "";
-                  content.cardTextFont = sectionData.cardTextFont || "";
-                  content.cardTextColor = sectionData.cardTextColor || "";
-                  content.cardRatingColor = sectionData.cardRatingColor || "";
-                  content.cardBorderRadius = sectionData.cardBorderRadius || "";
-                }
-
-                // Campos extras para Galeria
-                if (section === "gallery") {
-                  content.buttonText = sectionData.buttonText || "";
-                  content.buttonFont = sectionData.buttonFont || "";
-                  content.buttonColor = sectionData.buttonColor || "";
-                  content.buttonTextColor = sectionData.buttonTextColor || "";
-                  content.layout = sectionData.layout || "grid";
-                  content.columns = sectionData.columns || 3;
-                  content.gap = sectionData.gap || 16;
-                  content.aspectRatio = sectionData.aspectRatio || "square";
-                }
-
-                // Campos extras para CTA
-                if (section === "cta") {
-                  content.buttonText = sectionData.buttonText || "";
-                  content.buttonFont = sectionData.buttonFont || "";
-                  content.buttonColor = sectionData.buttonColor || "";
-                  content.buttonTextColor = sectionData.buttonTextColor || "";
-                  content.alignment = sectionData.alignment || "center";
-                }
-
-                // Campos extras para Valores
-                if (section === "values") {
-                  content.items = sectionData.items || [];
-                  content.cardBgColor = sectionData.cardBgColor || "";
-                  content.cardTitleFont = sectionData.cardTitleFont || "";
-                  content.cardTitleColor = sectionData.cardTitleColor || "";
-                  content.cardDescriptionFont =
-                    sectionData.cardDescriptionFont || "";
-                  content.cardDescriptionColor =
-                    sectionData.cardDescriptionColor || "";
-                  content.cardIconColor = sectionData.cardIconColor || "";
-                  content.showTitle = sectionData.showTitle ?? true;
-                  content.showSubtitle = sectionData.showSubtitle ?? true;
-                }
-
-                // Campos extras para Serviços
-                if (section === "services") {
-                  content.cardBgColor = sectionData.cardBgColor || "";
-                  content.cardTitleFont = sectionData.cardTitleFont || "";
-                  content.cardTitleColor = sectionData.cardTitleColor || "";
-                  content.cardDescriptionFont =
-                    sectionData.cardDescriptionFont || "";
-                  content.cardDescriptionColor =
-                    sectionData.cardDescriptionColor || "";
-                  content.cardPriceFont = sectionData.cardPriceFont || "";
-                  content.cardPriceColor = sectionData.cardPriceColor || "";
-                  content.cardIconColor = sectionData.cardIconColor || "";
-                  content.cardBorderRadius = sectionData.cardBorderRadius || "";
-                  content.cardBorderWidth = sectionData.cardBorderWidth || "";
-                  content.cardBorderColor = sectionData.cardBorderColor || "";
-                  content.showTitle = sectionData.showTitle ?? true;
-                  content.showSubtitle = sectionData.showSubtitle ?? true;
-                }
-
-                // Campos extras para Equipe
-                if (section === "team") {
-                  content.members = sectionData.members || [];
-                  content.cardBgColor = sectionData.cardBgColor || "";
-                  content.cardTitleFont = sectionData.cardTitleFont || "";
-                  content.cardTitleColor = sectionData.cardTitleColor || "";
-                  content.cardRoleFont = sectionData.cardRoleFont || "";
-                  content.cardRoleColor = sectionData.cardRoleColor || "";
-                  content.cardDescriptionFont =
-                    sectionData.cardDescriptionFont || "";
-                  content.cardDescriptionColor =
-                    sectionData.cardDescriptionColor || "";
-                }
-
-                subObj.content = content;
               }
+
+              if (!payload.layoutGlobal) payload.layoutGlobal = {};
+              const layoutKey = section === "hero" ? "heroBanner" : section;
+              (payload.layoutGlobal as Record<string, unknown>)[layoutKey] =
+                sectionData;
             }
           }
 
           // Tratamento especial para fontes e cores globais (Theme)
           if (changes.theme) {
             const fontData = changes.theme as Record<string, unknown>;
-            if (!payload.theme) payload.theme = {};
-            (payload.theme as Record<string, unknown>).fonts = {
-              primary: fontData.primaryFont || "",
-              secondary: fontData.secondaryFont || "",
-              accent: fontData.accentFont || "",
+            const normalizedFonts = {
+              headingFont:
+                (fontData.headingFont as string) ||
+                (fontData.primaryFont as string) ||
+                "",
+              subtitleFont:
+                (fontData.subtitleFont as string) ||
+                (fontData.secondaryFont as string) ||
+                "",
+              bodyFont:
+                (fontData.bodyFont as string) ||
+                (fontData.accentFont as string) ||
+                "",
             };
+            if (!payload.layoutGlobal) payload.layoutGlobal = {};
+            const layoutGlobal = payload.layoutGlobal as Record<string, unknown>;
+            layoutGlobal.typography = normalizedFonts;
+            layoutGlobal.fontes = normalizedFonts;
+            layoutGlobal.font = normalizedFonts;
           }
 
           if (changes.colors) {
             const colorData = changes.colors as Record<string, unknown>;
-            if (!payload.theme) payload.theme = {};
-            (payload.theme as Record<string, unknown>).colors = {
-              primary: colorData.primaryColor || "",
-              secondary: colorData.secondaryColor || "",
-              accent: colorData.accentColor || "",
-              background: colorData.backgroundColor || "",
-              text: colorData.textColor || "",
+            const normalizedColors = {
+              primary:
+                (colorData.primary as string) ||
+                (colorData.primaryColor as string) ||
+                "",
+              secondary:
+                (colorData.secondary as string) ||
+                (colorData.secondaryColor as string) ||
+                "",
+              accent:
+                (colorData.accent as string) ||
+                (colorData.accentColor as string) ||
+                "",
+              background:
+                (colorData.background as string) ||
+                (colorData.backgroundColor as string) ||
+                "",
+              text:
+                (colorData.text as string) ||
+                (colorData.textColor as string) ||
+                "",
+              buttonText:
+                (colorData.buttonText as string) ||
+                (colorData.buttonTextColor as string) ||
+                "",
             };
+            if (!payload.layoutGlobal) payload.layoutGlobal = {};
+            const layoutGlobal = payload.layoutGlobal as Record<string, unknown>;
+            layoutGlobal.siteColors = normalizedColors;
+            layoutGlobal.cores_base = normalizedColors;
+            layoutGlobal.color = normalizedColors;
           }
 
           // Tratar Header/Footer (se não estiverem no loop acima)
@@ -702,10 +754,14 @@ export function useEditorApi({
 
           // Tratar Visibilidade
           if (changes.pageVisibility) {
-            payload.pageVisibility = changes.pageVisibility;
+            if (!payload.layoutGlobal) payload.layoutGlobal = {};
+            (payload.layoutGlobal as Record<string, unknown>).pageVisibility =
+              changes.pageVisibility;
           }
           if (changes.visibleSections) {
-            payload.visibleSections = changes.visibleSections;
+            if (!payload.layoutGlobal) payload.layoutGlobal = {};
+            (payload.layoutGlobal as Record<string, unknown>).visibleSections =
+              changes.visibleSections;
           }
 
           // Tratar Passos de Agendamento
@@ -726,47 +782,29 @@ export function useEditorApi({
 
           console.log(">>> [useEditorApi] Payload final limpo para PATCH:", cleanPayload);
 
-          const fresh = await siteCustomizerService.saveDraftCustomization( 
-            companyId, 
-            cleanPayload, 
-          ); 
+          const fresh = await siteCustomizerService.saveDraftCustomization(
+            companyId,
+            cleanPayload,
+          );
 
-          console.log(">>> [SYNC] Rascunho salvo. Iniciando limpeza de caches locais..."); 
+          if (typeof window !== "undefined") {
+            // Remove o cache antigo para evitar que a imagem ou cor velha 'ressuscite'
+            localStorage.removeItem("studio_data");
+            localStorage.removeItem(`site_draft_${companyId}`);
 
-          // 1. LIMPEZA RADICAL DE CACHE LOCAL 
-          if (typeof window !== "undefined") { 
-            localStorage.removeItem("studio_data"); 
-            localStorage.removeItem(`site_draft_${companyId}`); 
-            
-            try { 
-              // Verifica se a função existe no contexto do hook ou utilitário local 
-              if (typeof clearLocalDrafts === "function") { 
-                clearLocalDrafts(); 
-              } 
-            } catch (_e) { 
-              console.warn("Aviso: Falha ao limpar rascunhos locais, prosseguindo..."); 
-            } 
-          } 
- 
-          // 2. ATUALIZAÇÃO DO ESTADO VISUAL COM DADOS CONFIRMADOS 
-          if (fresh) { 
-            if (typeof loadExternalConfig === "function") { 
-              loadExternalConfig(fresh, true); 
-            } 
- 
-            if (typeof window !== "undefined") { 
-              localStorage.setItem("studio_data", JSON.stringify(fresh)); 
+            if (fresh && shouldReload) {
+              console.log(">>> [SYNC] Atualizando interface com dados frescos do servidor.");
+              // Usamos (fresh as any) para evitar erro de 'possibly null' que trava a execução
+              loadExternalConfig(fresh as any, true);
+              localStorage.setItem("studio_data", JSON.stringify(fresh));
             }
-          } 
- 
-      // 3. FINALIZAÇÃO DO FLUXO 
-      if (typeof handleSaveLocal === "function") handleSaveLocal(); 
-      setIsSaving(false); 
+          }
+
+          handleSaveLocal(true);
+          setIsSaving(false); 
       
-      // DISPARA EVENTO PARA FORÇAR REAVALIAÇÃO DE MUDANÇAS GLOBAIS
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      // REMOVIDO DISPARO RECURSIVO: O estado lastSaved já foi atualizado, 
+      // o que forçará a reavaliação de hasUnsavedGlobalChanges naturalmente.
 
       try { 
         toast({ 
@@ -840,7 +878,6 @@ export function useEditorApi({
       setters,
       settings,
       toast,
-      clearLocalDrafts,
       hasUnsavedGlobalChanges, // Adicionado às dependências
     ],
   );
@@ -905,7 +942,7 @@ export function useEditorApi({
       const changes = getChangedSettings();
       if (Object.keys(changes).length > 0) {
         console.log(">>> [useEditorApi] Salvando rascunho antes de publicar...");
-        await handleSaveGlobal(); // Salva sem recarregar do banco ainda
+        await handleSaveGlobal(false); // Salva sem recarregar do banco ainda
       }
 
       // 2. Disparamos a publicação (copiar rascunho -> principal)
@@ -985,7 +1022,7 @@ export function useEditorApi({
         );
         // Chama o save global sem recarregar do banco
         // para manter a fluidez da edição e evitar sobrescrever rascunhos locais em progresso.
-        handleSaveGlobal();
+        handleSaveGlobal(false);
       }, 3000);
     };
 

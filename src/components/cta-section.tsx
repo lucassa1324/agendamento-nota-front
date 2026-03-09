@@ -2,7 +2,7 @@
 
 import { Calendar } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import {
@@ -18,13 +18,9 @@ import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 export function CTASection() {
   const { studio } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
-  const [settings, setSettings] = useState<CTASettings | null>(() => {
-    if (typeof window !== "undefined") {
-      // Prioridade para o contexto se disponível
-      return null;
-    }
-    return null;
-  });
+  const [settings, setSettings] = useState<CTASettings | null>(null);
+  const isEditing = useRef(false);
+  
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
     {
       inicio: true,
@@ -39,91 +35,114 @@ export function CTASection() {
 
   const studioConfig = studio?.config;
 
+  // 1. Efeito para carregar estado inicial e reagir ao studioConfig
   useEffect(() => {
     setIsMounted(true);
     setPageVisibility(getPageVisibility());
 
-    // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    const config = studioConfig as Record<string, unknown> | undefined;
-    const layoutGlobal = (config?.layoutGlobal ||
-      config?.layout_global) as Record<string, unknown> | undefined;
+    // Se já estamos editando localmente (via postMessage), NÃO deixamos o studioConfig sobrescrever
+    if (isEditing.current) return;
 
-    // Buscar CTA no config ou no layoutGlobal
-    const home = config?.home as Record<string, unknown> | undefined;
-    const rawCTA = (home?.ctaSection ||
-      home?.cta ||
-      config?.cta ||
-      layoutGlobal?.cta) as
-      | Record<string, unknown>
-      | undefined;
+    // Tenta carregar do Storage primeiro (Rascunho)
+    const localDraft = getCTASettings();
+    const storageKey = `agendamento_nota_ctaSettings`;
+    const hasDraft = typeof window !== "undefined" && localStorage.getItem(storageKey) !== null;
 
-    if (rawCTA) {
-      const content = (rawCTA.content as Record<string, unknown>) || {};
-      const appearance = (rawCTA.appearance as Record<string, unknown>) || {};
-      const normalizedCTA = {
-        ...rawCTA,
-        ...content,
-        ...appearance,
-        title: (content.title as string) ?? (rawCTA.title as string),
-        subtitle: (content.subtitle as string) ?? (rawCTA.subtitle as string),
-        titleColor: sanitizeColor(
-          (appearance.titleColor as string) ||
-            (content.titleColor as string) ||
-            (rawCTA.titleColor as string),
-        ),
-        subtitleColor: sanitizeColor(
-          (appearance.subtitleColor as string) ||
-            (content.subtitleColor as string) ||
-            (rawCTA.subtitleColor as string),
-        ),
-        titleFont:
-          (appearance.titleFont as string) ||
-          (content.titleFont as string) ||
-          (rawCTA.titleFont as string),
-        subtitleFont:
-          (appearance.subtitleFont as string) ||
-          (content.subtitleFont as string) ||
-          (rawCTA.subtitleFont as string),
-        buttonColor: sanitizeColor(
-          (appearance.buttonColor as string) ||
-            (content.buttonColor as string) ||
-            (rawCTA.buttonColor as string),
-        ),
-        buttonTextColor: sanitizeColor(
-          (appearance.buttonTextColor as string) ||
-            (content.buttonTextColor as string) ||
-            (rawCTA.buttonTextColor as string),
-        ),
-        buttonLink: (content.buttonLink as string) ?? (rawCTA.buttonLink as string),
-        bgImage:
-          (appearance.backgroundImageUrl as string) ||
-          (rawCTA.bgImage as string) ||
-          "",
-        bgColor: sanitizeColor(
-          (appearance.backgroundColor as string) ||
-            (rawCTA.backgroundColor as string) ||
-            (rawCTA.bgColor as string) ||
+    if (hasDraft && localDraft) {
+      setSettings(localDraft);
+    } else if (studioConfig) {
+      // Só usa o studioConfig se não houver nada no storage e não estivermos editando
+      const config = studioConfig as Record<string, unknown>;
+      const layoutGlobal = (config?.layoutGlobal ||
+        config?.layout_global) as Record<string, unknown> | undefined;
+
+      // Buscar CTA no config ou no layoutGlobal
+      const home = config?.home as Record<string, unknown> | undefined;
+      const rawCTA = (home?.ctaSection ||
+        home?.cta ||
+        config?.cta ||
+        layoutGlobal?.cta) as
+        | Record<string, unknown>
+        | undefined;
+
+      if (rawCTA) {
+        const content = (rawCTA.content as Record<string, unknown>) || {};
+        const appearance = (rawCTA.appearance as Record<string, unknown>) || {};
+        const normalizedCTA = {
+          ...rawCTA,
+          ...content,
+          ...appearance,
+          title: (content.title as string) ?? (rawCTA.title as string),
+          subtitle: (content.subtitle as string) ?? (rawCTA.subtitle as string),
+          titleColor: sanitizeColor(
+            (rawCTA.titleColor as string) ||
+              (appearance.titleColor as string) ||
+              (content.titleColor as string),
+          ),
+          subtitleColor: sanitizeColor(
+            (rawCTA.subtitleColor as string) ||
+              (appearance.subtitleColor as string) ||
+              (content.subtitleColor as string),
+          ),
+          titleFont:
+            (rawCTA.titleFont as string) ||
+            (appearance.titleFont as string) ||
+            (content.titleFont as string),
+          subtitleFont:
+            (rawCTA.subtitleFont as string) ||
+            (appearance.subtitleFont as string) ||
+            (content.subtitleFont as string),
+          buttonColor: sanitizeColor(
+            (rawCTA.buttonColor as string) ||
+              (appearance.buttonColor as string) ||
+              (content.buttonColor as string),
+          ),
+          buttonTextColor: sanitizeColor(
+            (rawCTA.buttonTextColor as string) ||
+              (appearance.buttonTextColor as string) ||
+              (content.buttonTextColor as string),
+          ),
+          buttonLink: (content.buttonLink as string) ?? (rawCTA.buttonLink as string),
+          bgImage:
+            (rawCTA.bgImage as string) ||
+            (appearance.backgroundImageUrl as string) ||
             "",
-        ),
-      };
-      setSettings(normalizedCTA as CTASettings);
+          bgColor: sanitizeColor(
+            (rawCTA.bgColor as string) ||
+              (rawCTA.backgroundColor as string) ||
+              (appearance.backgroundColor as string) ||
+              "",
+          ),
+        };
+        setSettings(normalizedCTA as CTASettings);
+      } else {
+        setSettings(getCTASettings());
+      }
     } else {
       setSettings(getCTASettings());
     }
+  }, [studioConfig]);
 
+  // 2. Efeito para Listeners de Eventos e Mensagens
+  useEffect(() => {
     const handleVisibilityUpdate = () => {
       setPageVisibility(getPageVisibility());
     };
 
     const handleSettingsUpdate = () => {
-      setSettings(getCTASettings());
+      // Se não estivermos em modo de edição ativa via postMessage, podemos atualizar pelo storage
+      if (!isEditing.current) {
+        setSettings(getCTASettings());
+      }
     };
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "UPDATE_CTA_SETTINGS") {
-        // Sanitize colors in real-time update
+        // ATIVA O MODO DE EDIÇÃO LOCAL - Bloqueia atualizações do studioConfig
+        isEditing.current = true;
+
         const updatedSettings = { ...event.data.settings };
         const colorFields = [
           "titleColor",
@@ -139,7 +158,11 @@ export function CTASection() {
           }
         });
 
-        setSettings((prev) => (prev ? { ...prev, ...updatedSettings } : prev));
+        // Atualização atômica
+        setSettings((prev) => {
+          if (!prev) return updatedSettings as CTASettings;
+          return { ...prev, ...updatedSettings };
+        });
       }
 
       if (
@@ -157,13 +180,10 @@ export function CTASection() {
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener(
-        "pageVisibilityUpdated",
-        handleVisibilityUpdate,
-      );
+      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
       window.removeEventListener("ctaSettingsUpdated", handleSettingsUpdate);
     };
-  }, [studioConfig]);
+  }, []);
 
   if (!isMounted || !settings) return null;
   if (pageVisibility.agendar === false) return null;
@@ -192,7 +212,7 @@ export function CTASection() {
               color: settings.titleColor || "var(--foreground)",
             }}
           >
-            {renderSafeText(settings.title)}
+            {renderSafeText(settings.title || "")}
           </h2>
           <p
             className="text-lg mb-8 text-pretty leading-relaxed max-w-2xl mx-auto"
@@ -201,7 +221,7 @@ export function CTASection() {
               color: settings.subtitleColor || "var(--foreground)",
             }}
           >
-            {renderSafeText(settings.subtitle)}
+            {renderSafeText(settings.subtitle || "")}
           </p>
           <Button
             asChild
@@ -215,7 +235,7 @@ export function CTASection() {
             }}
           >
             <Link href={settings.buttonLink || "/agendamento"}>
-              {renderSafeText(settings.buttonText)}
+              {renderSafeText(settings.buttonText || "Agendar Horário")}
             </Link>
           </Button>
         </div>

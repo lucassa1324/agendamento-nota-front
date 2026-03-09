@@ -11,7 +11,7 @@ import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function TeamSection() {
-  const { studio } = useStudio();
+  const { studio, isLoading } = useStudio();
   const [settings, setSettings] = useState<TeamSettings | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
@@ -20,35 +20,90 @@ export function TeamSection() {
 
   const studioConfig = studio?.config;
 
+  // Debug log para ver a estrutura do config que chega no site público
+  useEffect(() => {
+    if (studioConfig) {
+      console.log(">>> [TEAM_RENDER_DEBUG] Config recebida:", studioConfig);
+    }
+  }, [studioConfig]);
+
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     const config = studioConfig as SiteConfigData | undefined;
     const layoutGlobal = config?.layoutGlobal || config?.layout_global;
-    const home = config?.home as Record<string, any> | undefined;
-    const rawTeam = (home?.teamSection || config?.team || layoutGlobal?.team) as Record<string, any> | undefined;
+    const home = config?.home as Record<string, unknown> | undefined;
+    const rawTeam = (home?.teamSection ||
+      config?.team ||
+      layoutGlobal?.team) as Record<string, unknown> | undefined;
 
     if (rawTeam) {
-      const content = (rawTeam.content as Record<string, any>) || {};
-      const appearance = (rawTeam.appearance as Record<string, any>) || {};
+      const content = (rawTeam.content as Record<string, unknown>) || {};
+      const appearance = (rawTeam.appearance as Record<string, unknown>) || {};
+      
+      // MAPEAMENTO PLANO: Prioriza a raiz (que vem do banco) sobre content/appearance
       const normalizedTeam = {
         ...rawTeam,
         ...content,
         ...appearance,
-        title: content.title ?? rawTeam.title,
-        subtitle: content.subtitle ?? rawTeam.subtitle,
-        titleColor: sanitizeColor(appearance.titleColor || content.titleColor || rawTeam.titleColor),
-        subtitleColor: sanitizeColor(appearance.subtitleColor || content.subtitleColor || rawTeam.subtitleColor),
-        titleFont: appearance.titleFont || content.titleFont || rawTeam.titleFont,
-        subtitleFont: appearance.subtitleFont || content.subtitleFont || rawTeam.subtitleFont,
-        cardBgColor: sanitizeColor(appearance.cardBgColor || content.cardBgColor || rawTeam.cardBgColor),
-        cardTitleColor: sanitizeColor(appearance.cardTitleColor || content.cardTitleColor || rawTeam.cardTitleColor),
-        cardRoleColor: sanitizeColor(appearance.cardRoleColor || content.cardRoleColor || rawTeam.cardRoleColor),
-        cardDescriptionColor: sanitizeColor(appearance.cardDescriptionColor || content.cardDescriptionColor || rawTeam.cardDescriptionColor),
-        cardTitleFont: appearance.cardTitleFont || content.cardTitleFont || rawTeam.cardTitleFont,
-        cardRoleFont: appearance.cardRoleFont || content.cardRoleFont || rawTeam.cardRoleFont,
-        cardDescriptionFont: appearance.cardDescriptionFont || content.cardDescriptionFont || rawTeam.cardDescriptionFont,
-        bgImage: appearance.backgroundImageUrl || rawTeam.bgImage || "",
-        bgColor: sanitizeColor(appearance.backgroundColor || rawTeam.backgroundColor || rawTeam.bgColor || ""),
+        title: (rawTeam.title as string) || (content.title as string),
+        subtitle: (rawTeam.subtitle as string) || (content.subtitle as string),
+        titleColor: sanitizeColor(
+          (rawTeam.titleColor as string) ||
+          (appearance.titleColor as string) ||
+          (content.titleColor as string)
+        ),
+        subtitleColor: sanitizeColor(
+          (rawTeam.subtitleColor as string) ||
+          (appearance.subtitleColor as string) ||
+          (content.subtitleColor as string)
+        ),
+        titleFont:
+          (rawTeam.titleFont as string) ||
+          (appearance.titleFont as string) ||
+          (content.titleFont as string),
+        subtitleFont:
+          (rawTeam.subtitleFont as string) ||
+          (appearance.subtitleFont as string) ||
+          (content.subtitleFont as string),
+        cardBgColor: sanitizeColor(
+          (rawTeam.cardBgColor as string) ||
+          (appearance.cardBgColor as string) ||
+          (content.cardBgColor as string)
+        ),
+        cardTitleColor: sanitizeColor(
+          (rawTeam.cardTitleColor as string) ||
+          (appearance.cardTitleColor as string) ||
+          (content.cardTitleColor as string)
+        ),
+        cardRoleColor: sanitizeColor(
+          (rawTeam.cardRoleColor as string) ||
+          (appearance.cardRoleColor as string) ||
+          (content.cardRoleColor as string)
+        ),
+        cardDescriptionColor: sanitizeColor(
+          (rawTeam.cardDescriptionColor as string) ||
+          (appearance.cardDescriptionColor as string) ||
+          (content.cardDescriptionColor as string)
+        ),
+        cardTitleFont:
+          (rawTeam.cardTitleFont as string) ||
+          (appearance.cardTitleFont as string) ||
+          (content.cardTitleFont as string),
+        cardRoleFont:
+          (rawTeam.cardRoleFont as string) ||
+          (appearance.cardRoleFont as string) ||
+          (content.cardRoleFont as string),
+        cardDescriptionFont:
+          (rawTeam.cardDescriptionFont as string) ||
+          (appearance.cardDescriptionFont as string) ||
+          (content.cardDescriptionFont as string),
+        bgImage: (rawTeam.bgImage as string) || appearance.backgroundImageUrl || "",
+        bgColor: sanitizeColor(
+          (rawTeam.bgColor as string) ||
+          (rawTeam.backgroundColor as string) ||
+          (appearance.backgroundColor as string) ||
+          "",
+        ),
       };
       setSettings(normalizedTeam as TeamSettings);
     } else {
@@ -89,8 +144,24 @@ export function TeamSection() {
     };
   }, [loadData]);
 
+  // Fallback Skeleton enquanto carrega do banco
+  if (!isMounted || isLoading) {
+    return (
+      <section id="team" className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="h-10 w-64 bg-gray-200 animate-pulse mx-auto mb-4 rounded"></div>
+          <div className="h-6 w-96 bg-gray-200 animate-pulse mx-auto mb-12 rounded"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-80 bg-gray-100 animate-pulse rounded-xl"></div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (!settings) return null;
-  if (!isMounted) return null;
 
   return (
     <SessionWrapper appearance={settings?.appearance}>

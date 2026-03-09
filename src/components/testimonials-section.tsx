@@ -15,7 +15,7 @@ import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 
 export function TestimonialsSection() {
-  const { studio } = useStudio();
+  const { studio, isLoading } = useStudio();
   const [settings, setSettings] = useState<TestimonialsSettings | null>(null);
   const [isMounted, setIsMounted] = useState(false);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
@@ -24,6 +24,13 @@ export function TestimonialsSection() {
 
   const studioId = studio?.id;
   const studioConfig = studio?.config;
+
+  // Debug log para ver a estrutura do config que chega no site público
+  useEffect(() => {
+    if (studioConfig) {
+      console.log(">>> [TESTIMONIALS_RENDER_DEBUG] Config recebida:", studioConfig);
+    }
+  }, [studioConfig]);
 
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
@@ -39,62 +46,66 @@ export function TestimonialsSection() {
       if (rawTestimonials) {
         const content = (rawTestimonials.content as Record<string, any>) || {};
         const appearance = (rawTestimonials.appearance as Record<string, any>) || {};
+        
+        // MAPEAMENTO PLANO: Prioriza a raiz (que vem do banco) sobre content/appearance
         const testimonialsSettings = {
           ...rawTestimonials,
           ...content,
           ...appearance,
-          title: content.title ?? rawTestimonials.title,
-          subtitle: content.subtitle ?? rawTestimonials.subtitle,
+          title: (rawTestimonials.title as string) || (content.title as string),
+          subtitle: (rawTestimonials.subtitle as string) || (content.subtitle as string),
           titleColor: sanitizeColor(
-            appearance.titleColor ||
-              content.titleColor ||
-              rawTestimonials.titleColor,
+            (rawTestimonials.titleColor as string) ||
+            (appearance.titleColor as string) ||
+            (content.titleColor as string)
           ),
           subtitleColor: sanitizeColor(
-            appearance.subtitleColor ||
-              content.subtitleColor ||
-              rawTestimonials.subtitleColor,
+            (rawTestimonials.subtitleColor as string) ||
+            (appearance.subtitleColor as string) ||
+            (content.subtitleColor as string)
           ),
           titleFont:
-            appearance.titleFont ||
-            content.titleFont ||
-            rawTestimonials.titleFont,
+            (rawTestimonials.titleFont as string) ||
+            (appearance.titleFont as string) ||
+            (content.titleFont as string),
           subtitleFont:
-            appearance.subtitleFont ||
-            content.subtitleFont ||
-            rawTestimonials.subtitleFont,
+            (rawTestimonials.subtitleFont as string) ||
+            (appearance.subtitleFont as string) ||
+            (content.subtitleFont as string),
           cardBgColor: sanitizeColor(
-            appearance.cardBgColor ||
-              content.cardBgColor ||
-              rawTestimonials.cardBgColor,
+            (rawTestimonials.cardBgColor as string) ||
+            (appearance.cardBgColor as string) ||
+            (content.cardBgColor as string)
           ),
           cardNameColor: sanitizeColor(
-            appearance.cardNameColor ||
-              content.cardNameColor ||
-              rawTestimonials.cardNameColor,
+            (rawTestimonials.cardNameColor as string) ||
+            (appearance.cardNameColor as string) ||
+            (content.cardNameColor as string)
           ),
           cardTextColor: sanitizeColor(
-            appearance.cardTextColor ||
-              content.cardTextColor ||
-              rawTestimonials.cardTextColor,
+            (rawTestimonials.cardTextColor as string) ||
+            (appearance.cardTextColor as string) ||
+            (content.cardTextColor as string)
           ),
           cardNameFont:
-            appearance.cardNameFont ||
-            content.cardNameFont ||
-            rawTestimonials.cardNameFont,
+            (rawTestimonials.cardNameFont as string) ||
+            (appearance.cardNameFont as string) ||
+            (content.cardNameFont as string),
           cardTextFont:
-            appearance.cardTextFont ||
-            content.cardTextFont ||
-            rawTestimonials.cardTextFont,
+            (rawTestimonials.cardTextFont as string) ||
+            (appearance.cardTextFont as string) ||
+            (content.cardTextFont as string),
           starColor: sanitizeColor(
-            appearance.starColor || content.starColor || rawTestimonials.starColor,
+            (rawTestimonials.starColor as string) || 
+            (appearance.starColor as string) || 
+            (content.starColor as string)
           ),
-          bgImage: appearance.backgroundImageUrl || rawTestimonials.bgImage || "",
+          bgImage: (rawTestimonials.bgImage as string) || appearance.backgroundImageUrl || "",
           bgColor: sanitizeColor(
-            appearance.backgroundColor ||
-              rawTestimonials.backgroundColor ||
-              rawTestimonials.bgColor ||
-              "",
+            (rawTestimonials.bgColor as string) ||
+            (rawTestimonials.backgroundColor as string) ||
+            (appearance.backgroundColor as string) ||
+            "",
           ),
         } as TestimonialsSettings;
 
@@ -149,8 +160,24 @@ export function TestimonialsSection() {
     };
   }, [loadData]);
 
+  // Fallback Skeleton enquanto carrega do banco
+  if (!isMounted || isLoading) {
+    return (
+      <section id="testimonials" className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="h-10 w-64 bg-gray-200 animate-pulse mx-auto mb-4 rounded"></div>
+          <div className="h-6 w-96 bg-gray-200 animate-pulse mx-auto mb-12 rounded"></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            {[1, 2].map((i) => (
+              <div key={i} className="h-64 bg-gray-100 animate-pulse rounded-xl"></div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (!settings) return null;
-  if (!isMounted) return null;
 
   return (
     <SessionWrapper appearance={settings?.appearance}>

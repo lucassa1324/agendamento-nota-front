@@ -18,9 +18,15 @@ export interface LayoutGlobalSettings {
   siteColors?: ColorSettings;
   cores_base?: ColorSettings;
   fontes?: FontSettings;
+  typography?: FontSettings;
+  font?: FontSettings;
+  color?: ColorSettings;
   visibleSections?: Record<string, boolean>;
+  visible_sections?: Record<string, boolean>;
   pageVisibility?: Record<string, boolean>;
+  page_visibility?: Record<string, boolean>;
   hero?: HeroSettings;
+  heroBanner?: HeroSettings;
   aboutHero?: HeroSettings;
   story?: StorySettings;
   team?: TeamSettings;

@@ -39,22 +39,24 @@ export function StorySection() {
         title: content.title ?? rawStory.title,
         content: content.content ?? rawStory.content,
         titleColor: sanitizeColor(
-          appearance.titleColor || content.titleColor || rawStory.titleColor,
+          rawStory.titleColor || appearance.titleColor || content.titleColor,
         ),
         titleFont:
-          appearance.titleFont || content.titleFont || rawStory.titleFont,
+          rawStory.titleFont || appearance.titleFont || content.titleFont,
         contentColor: sanitizeColor(
-          appearance.contentColor ||
-            content.contentColor ||
-            rawStory.contentColor,
+          rawStory.contentColor ||
+            appearance.contentColor ||
+            content.contentColor,
         ),
         contentFont:
-          appearance.contentFont || content.contentFont || rawStory.contentFont,
-        bgImage: appearance.backgroundImageUrl || rawStory.bgImage || "",
+          rawStory.contentFont ||
+          appearance.contentFont ||
+          content.contentFont,
+        bgImage: rawStory.bgImage || appearance.backgroundImageUrl || "",
         bgColor: sanitizeColor(
-          appearance.backgroundColor ||
+          rawStory.bgColor ||
             rawStory.backgroundColor ||
-            rawStory.bgColor ||
+            appearance.backgroundColor ||
             "",
         ),
       };
@@ -99,24 +101,24 @@ export function StorySection() {
           title: content.title ?? rawStory.title,
           content: content.content ?? rawStory.content,
           titleColor: sanitizeColor(
-            appearance.titleColor || content.titleColor || rawStory.titleColor,
+            rawStory.titleColor || appearance.titleColor || content.titleColor,
           ),
           titleFont:
-            appearance.titleFont || content.titleFont || rawStory.titleFont,
+            rawStory.titleFont || appearance.titleFont || content.titleFont,
           contentColor: sanitizeColor(
-            appearance.contentColor ||
-              content.contentColor ||
-              rawStory.contentColor,
+            rawStory.contentColor ||
+              appearance.contentColor ||
+              content.contentColor,
           ),
           contentFont:
+            rawStory.contentFont ||
             appearance.contentFont ||
-            content.contentFont ||
-            rawStory.contentFont,
-          bgImage: appearance.backgroundImageUrl || rawStory.bgImage || "",
+            content.contentFont,
+          bgImage: rawStory.bgImage || appearance.backgroundImageUrl || "",
           bgColor: sanitizeColor(
-            appearance.backgroundColor ||
+            rawStory.bgColor ||
               rawStory.backgroundColor ||
-              rawStory.bgColor ||
+              appearance.backgroundColor ||
               "",
           ),
         };

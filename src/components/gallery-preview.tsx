@@ -188,16 +188,17 @@ export function GalleryPreview() {
 
         const layoutGlobal = (currentConfig?.layoutGlobal ||
           currentConfig?.layout_global) as Record<string, unknown> | undefined;
-        const home = currentConfig?.home as Record<string, any>;
+        const home = currentConfig?.home as Record<string, unknown> | undefined;
         const configGallery = (home?.galleryPreview ||
           home?.gallerySection ||
           home?.gallery ||
           currentConfig?.gallery ||
           layoutGlobal?.gallery) as Record<string, unknown> | undefined;
         if (configGallery) {
-          const content = (configGallery.content as Record<string, any>) || {};
+          const content =
+            (configGallery.content as Record<string, unknown>) || {};
           const appearance =
-            (configGallery.appearance as Record<string, any>) || {};
+            (configGallery.appearance as Record<string, unknown>) || {};
           const normalizedGallery = {
             ...configGallery,
             ...content,
@@ -207,45 +208,45 @@ export function GalleryPreview() {
               (content.subtitle as string) ??
               (configGallery.subtitle as string),
             titleColor: sanitizeColor(
-              (appearance.titleColor as string) ||
-                (content.titleColor as string) ||
-                (configGallery.titleColor as string),
+              (configGallery.titleColor as string) ||
+                (appearance.titleColor as string) ||
+                (content.titleColor as string),
             ),
             subtitleColor: sanitizeColor(
-              (appearance.subtitleColor as string) ||
-                (content.subtitleColor as string) ||
-                (configGallery.subtitleColor as string),
+              (configGallery.subtitleColor as string) ||
+                (appearance.subtitleColor as string) ||
+                (content.subtitleColor as string),
             ),
             titleFont:
+              (configGallery.titleFont as string) ||
               (appearance.titleFont as string) ||
-              (content.titleFont as string) ||
-              (configGallery.titleFont as string),
+              (content.titleFont as string),
             subtitleFont:
+              (configGallery.subtitleFont as string) ||
               (appearance.subtitleFont as string) ||
-              (content.subtitleFont as string) ||
-              (configGallery.subtitleFont as string),
+              (content.subtitleFont as string),
             buttonColor: sanitizeColor(
-              (appearance.buttonColor as string) ||
-                (content.buttonColor as string) ||
-                (configGallery.buttonColor as string),
+              (configGallery.buttonColor as string) ||
+                (appearance.buttonColor as string) ||
+                (content.buttonColor as string),
             ),
             buttonTextColor: sanitizeColor(
-              (appearance.buttonTextColor as string) ||
-                (content.buttonTextColor as string) ||
-                (configGallery.buttonTextColor as string),
+              (configGallery.buttonTextColor as string) ||
+                (appearance.buttonTextColor as string) ||
+                (content.buttonTextColor as string),
             ),
             buttonLink:
               (content.buttonLink as string) ||
               (configGallery.buttonLink as string) ||
               "",
             bgImage:
-              (appearance.backgroundImageUrl as string) ||
               (configGallery.bgImage as string) ||
+              (appearance.backgroundImageUrl as string) ||
               "",
             bgColor: sanitizeColor(
-              (appearance.backgroundColor as string) ||
+              (configGallery.bgColor as string) ||
                 (configGallery.backgroundColor as string) ||
-                (configGallery.bgColor as string) ||
+                (appearance.backgroundColor as string) ||
                 "",
             ),
           };

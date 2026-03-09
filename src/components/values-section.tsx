@@ -74,7 +74,7 @@ const iconMap: Record<string, LucideIcon> = {
 };
 
 export function ValuesSection() {
-  const { studio } = useStudio();
+  const { studio, isLoading } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
   const [settings, setSettings] = useState<ValuesSettings | null>(null);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
@@ -83,6 +83,13 @@ export function ValuesSection() {
 
   const studioId = studio?.id;
   const studioConfig = studio?.config;
+
+  // Debug log para ver a estrutura do config que chega no site público
+  useEffect(() => {
+    if (studioConfig) {
+      console.log(">>> [VALUES_RENDER_DEBUG] Config recebida:", studioConfig);
+    }
+  }, [studioConfig]);
 
   const loadData = useCallback(() => {
     // PRIORIDADE: URL de Preview (localStorage) > Banco de Dados (studioConfig)
@@ -98,62 +105,73 @@ export function ValuesSection() {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studioId) {
       const config = studioConfig as SiteConfigData | undefined;
-      const layoutGlobal = (config?.layoutGlobal || config?.layout_global) as Record<string, unknown> | undefined;
-      const home = config?.home as Record<string, any> | undefined;
-      const rawValues = (home?.valuesSection || home?.values || config?.values || layoutGlobal?.values) as Record<string, any> | undefined;
+      const layoutGlobal = (config?.layoutGlobal ||
+        config?.layout_global) as Record<string, unknown> | undefined;
+      const home = config?.home as Record<string, unknown> | undefined;
+      const rawValues = (home?.valuesSection ||
+        home?.values ||
+        config?.values ||
+        layoutGlobal?.values) as Record<string, unknown> | undefined;
 
-          if (rawValues) {
-            // Normalização manual semelhante ao que o editor faz
-            const content = (rawValues.content as Record<string, any>) || {};
-            const appearance = (rawValues.appearance as Record<string, any>) || {};
-            const normalizedValues = {
-              ...rawValues,
-              ...content,
-              ...appearance,
-              title: content.title ?? rawValues.title,
-              subtitle: content.subtitle ?? rawValues.subtitle,
-              showTitle: content.showTitle ?? appearance.showTitle ?? rawValues.showTitle ?? true,
-              showSubtitle: content.showSubtitle ?? appearance.showSubtitle ?? rawValues.showSubtitle ?? true,
-              titleColor: sanitizeColor(
-                appearance.titleColor || content.titleColor || rawValues.titleColor,
-              ),
+      if (rawValues) {
+        // Normalização manual semelhante ao que o editor faz
+        const content = (rawValues.content as Record<string, unknown>) || {};
+        const appearance =
+          (rawValues.appearance as Record<string, unknown>) || {};
+        
+        // MAPEAMENTO PLANO: Prioriza a raiz (que vem do banco) sobre content/appearance
+        const normalizedValues = {
+          ...rawValues,
+          ...content,
+          ...appearance,
+          title: (rawValues.title as string) || (content.title as string),
+          subtitle: (rawValues.subtitle as string) || (content.subtitle as string),
+          showTitle: rawValues.showTitle ?? content.showTitle ?? appearance.showTitle ?? true,
+          showSubtitle: rawValues.showSubtitle ?? content.showSubtitle ?? appearance.showSubtitle ?? true,
+          titleColor: sanitizeColor(
+            (rawValues.titleColor as string) ||
+            (appearance.titleColor as string) ||
+            (content.titleColor as string)
+          ),
           subtitleColor: sanitizeColor(
-            appearance.subtitleColor ||
-              content.subtitleColor ||
-              rawValues.subtitleColor,
+            (rawValues.subtitleColor as string) ||
+            (appearance.subtitleColor as string) ||
+            (content.subtitleColor as string)
           ),
           titleFont:
-            appearance.titleFont || content.titleFont || rawValues.titleFont,
+            (rawValues.titleFont as string) ||
+            (appearance.titleFont as string) ||
+            (content.titleFont as string),
           subtitleFont:
-            appearance.subtitleFont ||
-            content.subtitleFont ||
-            rawValues.subtitleFont,
+            (rawValues.subtitleFont as string) ||
+            (appearance.subtitleFont as string) ||
+            (content.subtitleFont as string),
           cardBgColor: sanitizeColor(
-            appearance.cardBgColor ||
-              content.cardBgColor ||
-              rawValues.cardBgColor,
+            (rawValues.cardBgColor as string) ||
+            (appearance.cardBgColor as string) ||
+            (content.cardBgColor as string)
           ),
           cardTitleColor: sanitizeColor(
-            appearance.cardTitleColor ||
-              content.cardTitleColor ||
-              rawValues.cardTitleColor,
+            (rawValues.cardTitleColor as string) ||
+            (appearance.cardTitleColor as string) ||
+            (content.cardTitleColor as string)
           ),
           cardDescriptionColor: sanitizeColor(
-            appearance.cardDescriptionColor ||
-              content.cardDescriptionColor ||
-              rawValues.cardDescriptionColor,
+            (rawValues.cardDescriptionColor as string) ||
+            (appearance.cardDescriptionColor as string) ||
+            (content.cardDescriptionColor as string)
           ),
           cardIconColor: sanitizeColor(
-            appearance.cardIconColor ||
-              content.cardIconColor ||
-              rawValues.cardIconColor,
+            (rawValues.cardIconColor as string) ||
+            (appearance.cardIconColor as string) ||
+            (content.cardIconColor as string)
           ),
-          bgImage: appearance.backgroundImageUrl || rawValues.bgImage || "",
+          bgImage: (rawValues.bgImage as string) || appearance.backgroundImageUrl || "",
           bgColor: sanitizeColor(
-            appearance.backgroundColor ||
-              rawValues.backgroundColor ||
-              rawValues.bgColor ||
-              "",
+            (rawValues.bgColor as string) ||
+            (rawValues.backgroundColor as string) ||
+            (appearance.backgroundColor as string) ||
+            "",
           ),
         };
         setSettings(normalizedValues as ValuesSettings);
@@ -167,11 +185,6 @@ export function ValuesSection() {
 
   useEffect(() => {
     setIsMounted(true);
-    
-    // Se não estiver em modo preview, ignora o DataReady (que vem do cache local)
-    // para garantir que pegamos os dados reais do banco de dados (studioConfig)
-    const isPreview = typeof window !== "undefined" && window.location.search.includes("preview=true");
-    
     loadData();
 
     const handleMessage = (event: MessageEvent) => {
@@ -194,23 +207,33 @@ export function ValuesSection() {
 
     window.addEventListener("message", handleMessage);
     window.addEventListener("valuesSettingsUpdated", loadData);
-    
-    // Só ouve o DataReady se estiver em modo preview
-    if (isPreview) {
-      window.addEventListener("DataReady", loadData);
-    }
+    window.addEventListener("DataReady", loadData);
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("valuesSettingsUpdated", loadData);
-      if (isPreview) {
-        window.removeEventListener("DataReady", loadData);
-      }
+      window.removeEventListener("DataReady", loadData);
     };
   }, [loadData]);
 
+  // Fallback Skeleton enquanto carrega do banco
+  if (!isMounted || isLoading) {
+    return (
+      <section id="values" className="py-20 bg-background">
+        <div className="container mx-auto px-4">
+          <div className="h-10 w-64 bg-gray-200 animate-pulse mx-auto mb-4 rounded"></div>
+          <div className="h-6 w-96 bg-gray-200 animate-pulse mx-auto mb-12 rounded"></div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-48 bg-gray-100 animate-pulse rounded-xl"></div>
+            ))}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   if (!settings) return null;
-  if (!isMounted) return null;
 
   return (
     <SessionWrapper appearance={settings?.appearance}>
