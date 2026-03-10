@@ -243,6 +243,13 @@ export const defaultFooterSettings: FooterSettings = {
 export type AppearanceSettings = {
   backgroundColor?: string;
   backgroundImageUrl?: string;
+  primaryColor?: string;
+  accentColor?: string;
+  titleColor?: string;
+  subtitleColor?: string;
+  titleFont?: string;
+  subtitleFont?: string;
+  cardBgColor?: string;
   overlay?: {
     color: string;
     opacity: number;
@@ -689,12 +696,79 @@ export const defaultBookingConfirmationSettings: BookingStepSettings = {
   },
 };
 
-export function getBookingServiceSettings(): BookingStepSettings {
-  if (typeof window === "undefined") return defaultBookingServiceSettings;
-  const settings = localStorage.getItem(
-    getStorageKey("bookingServiceSettings"),
-  );
-  return settings ? JSON.parse(settings) : defaultBookingServiceSettings;
+export interface BookingConfig {
+  appointmentFlow?: {
+    steps?: {
+      service?: BookingStepSettings;
+      date?: BookingStepSettings;
+      time?: BookingStepSettings;
+      form?: BookingStepSettings;
+      confirmation?: BookingStepSettings;
+    };
+    service?: BookingStepSettings;
+    date?: BookingStepSettings;
+    time?: BookingStepSettings;
+    form?: BookingStepSettings;
+    confirmation?: BookingStepSettings;
+  };
+  bookingSteps?: {
+    service?: BookingStepSettings;
+    date?: BookingStepSettings;
+    time?: BookingStepSettings;
+    form?: BookingStepSettings;
+    confirmation?: BookingStepSettings;
+  };
+}
+
+export function getBookingServiceSettings(config?: BookingConfig): BookingStepSettings {
+  // 1. Inicia com o default imutável
+  let base = { ...defaultBookingServiceSettings };
+
+  // 2. Tenta carregar do config (seja appointmentFlow ou bookingSteps)
+  // Nota: O backend pode retornar config.appointmentFlow.steps.service OU config.appointmentFlow.service
+  const stepConfig = 
+    config?.bookingSteps?.service ||
+    config?.appointmentFlow?.steps?.service || 
+    config?.appointmentFlow?.service;
+  
+  if (stepConfig) {
+    base = {
+      ...base,
+      ...stepConfig,
+      appearance: {
+        ...(base.appearance || {}),
+        ...(stepConfig.appearance || {}),
+      },
+    };
+  } else if (typeof window !== "undefined") {
+    // 3. Se não houver config injetado, tenta o localStorage
+    const settings = localStorage.getItem(getStorageKey("bookingServiceSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = {
+          ...base,
+          ...saved,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(saved.appearance || {}),
+          },
+        };
+      } catch (e) {
+        console.error("Erro ao parsear bookingServiceSettings:", e);
+      }
+    }
+  }
+
+  // 4. Sanitização Final: Garante que os campos de topo reflitam o appearance se existirem
+  return {
+    ...base,
+    titleColor: base.titleColor || base.appearance?.titleColor || defaultBookingServiceSettings.titleColor,
+    subtitleColor: base.subtitleColor || base.appearance?.subtitleColor || defaultBookingServiceSettings.subtitleColor,
+    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingServiceSettings.titleFont,
+    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingServiceSettings.subtitleFont,
+    cardBgColor: base.cardBgColor || base.appearance?.cardBgColor || defaultBookingServiceSettings.cardBgColor,
+  };
 }
 
 export function saveBookingServiceSettings(
@@ -710,10 +784,49 @@ export function saveBookingServiceSettings(
   }
 }
 
-export function getBookingDateSettings(): BookingStepSettings {
-  if (typeof window === "undefined") return defaultBookingDateSettings;
-  const settings = localStorage.getItem(getStorageKey("bookingDateSettings"));
-  return settings ? JSON.parse(settings) : defaultBookingDateSettings;
+export function getBookingDateSettings(config?: BookingConfig): BookingStepSettings {
+  let base = { ...defaultBookingDateSettings };
+  const stepConfig = 
+    config?.bookingSteps?.date ||
+    config?.appointmentFlow?.steps?.date || 
+    config?.appointmentFlow?.date;
+  
+  if (stepConfig) {
+    base = {
+      ...base,
+      ...stepConfig,
+      appearance: {
+        ...(base.appearance || {}),
+        ...(stepConfig.appearance || {}),
+      },
+    };
+  } else if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingDateSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = {
+          ...base,
+          ...saved,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(saved.appearance || {}),
+          },
+        };
+      } catch (e) {
+        console.error("Erro ao parsear bookingDateSettings:", e);
+      }
+    }
+  }
+
+  return {
+    ...base,
+    titleColor: base.titleColor || base.appearance?.titleColor || defaultBookingDateSettings.titleColor,
+    subtitleColor: base.subtitleColor || base.appearance?.subtitleColor || defaultBookingDateSettings.subtitleColor,
+    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingDateSettings.titleFont,
+    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingDateSettings.subtitleFont,
+    cardBgColor: base.cardBgColor || base.appearance?.cardBgColor || defaultBookingDateSettings.cardBgColor,
+  };
 }
 
 export function saveBookingDateSettings(settings: BookingStepSettings): void {
@@ -727,10 +840,49 @@ export function saveBookingDateSettings(settings: BookingStepSettings): void {
   }
 }
 
-export function getBookingTimeSettings(): BookingStepSettings {
-  if (typeof window === "undefined") return defaultBookingTimeSettings;
-  const settings = localStorage.getItem(getStorageKey("bookingTimeSettings"));
-  return settings ? JSON.parse(settings) : defaultBookingTimeSettings;
+export function getBookingTimeSettings(config?: BookingConfig): BookingStepSettings {
+  let base = { ...defaultBookingTimeSettings };
+  const stepConfig = 
+    config?.bookingSteps?.time ||
+    config?.appointmentFlow?.steps?.time || 
+    config?.appointmentFlow?.time;
+  
+  if (stepConfig) {
+    base = {
+      ...base,
+      ...stepConfig,
+      appearance: {
+        ...(base.appearance || {}),
+        ...(stepConfig.appearance || {}),
+      },
+    };
+  } else if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingTimeSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = {
+          ...base,
+          ...saved,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(saved.appearance || {}),
+          },
+        };
+      } catch (e) {
+        console.error("Erro ao parsear bookingTimeSettings:", e);
+      }
+    }
+  }
+
+  return {
+    ...base,
+    titleColor: base.titleColor || base.appearance?.titleColor || defaultBookingTimeSettings.titleColor,
+    subtitleColor: base.subtitleColor || base.appearance?.subtitleColor || defaultBookingTimeSettings.subtitleColor,
+    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingTimeSettings.titleFont,
+    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingTimeSettings.subtitleFont,
+    cardBgColor: base.cardBgColor || base.appearance?.cardBgColor || defaultBookingTimeSettings.cardBgColor,
+  };
 }
 
 export function saveBookingTimeSettings(settings: BookingStepSettings): void {
@@ -744,10 +896,49 @@ export function saveBookingTimeSettings(settings: BookingStepSettings): void {
   }
 }
 
-export function getBookingFormSettings(): BookingStepSettings {
-  if (typeof window === "undefined") return defaultBookingFormSettings;
-  const settings = localStorage.getItem(getStorageKey("bookingFormSettings"));
-  return settings ? JSON.parse(settings) : defaultBookingFormSettings;
+export function getBookingFormSettings(config?: BookingConfig): BookingStepSettings {
+  let base = { ...defaultBookingFormSettings };
+  const stepConfig = 
+    config?.bookingSteps?.form ||
+    config?.appointmentFlow?.steps?.form || 
+    config?.appointmentFlow?.form;
+  
+  if (stepConfig) {
+    base = {
+      ...base,
+      ...stepConfig,
+      appearance: {
+        ...(base.appearance || {}),
+        ...(stepConfig.appearance || {}),
+      },
+    };
+  } else if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingFormSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = {
+          ...base,
+          ...saved,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(saved.appearance || {}),
+          },
+        };
+      } catch (e) {
+        console.error("Erro ao parsear bookingFormSettings:", e);
+      }
+    }
+  }
+
+  return {
+    ...base,
+    titleColor: base.titleColor || base.appearance?.titleColor || defaultBookingFormSettings.titleColor,
+    subtitleColor: base.subtitleColor || base.appearance?.subtitleColor || defaultBookingFormSettings.subtitleColor,
+    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingFormSettings.titleFont,
+    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingFormSettings.subtitleFont,
+    cardBgColor: base.cardBgColor || base.appearance?.cardBgColor || defaultBookingFormSettings.cardBgColor,
+  };
 }
 
 export function saveBookingFormSettings(settings: BookingStepSettings): void {
@@ -761,12 +952,49 @@ export function saveBookingFormSettings(settings: BookingStepSettings): void {
   }
 }
 
-export function getBookingConfirmationSettings(): BookingStepSettings {
-  if (typeof window === "undefined") return defaultBookingConfirmationSettings;
-  const settings = localStorage.getItem(
-    getStorageKey("bookingConfirmationSettings"),
-  );
-  return settings ? JSON.parse(settings) : defaultBookingConfirmationSettings;
+export function getBookingConfirmationSettings(config?: BookingConfig): BookingStepSettings {
+  let base = { ...defaultBookingConfirmationSettings };
+  const stepConfig = 
+    config?.bookingSteps?.confirmation ||
+    config?.appointmentFlow?.steps?.confirmation || 
+    config?.appointmentFlow?.confirmation;
+  
+  if (stepConfig) {
+    base = {
+      ...base,
+      ...stepConfig,
+      appearance: {
+        ...(base.appearance || {}),
+        ...(stepConfig.appearance || {}),
+      },
+    };
+  } else if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingConfirmationSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = {
+          ...base,
+          ...saved,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(saved.appearance || {}),
+          },
+        };
+      } catch (e) {
+        console.error("Erro ao parsear bookingConfirmationSettings:", e);
+      }
+    }
+  }
+
+  return {
+    ...base,
+    titleColor: base.titleColor || base.appearance?.titleColor || defaultBookingConfirmationSettings.titleColor,
+    subtitleColor: base.subtitleColor || base.appearance?.subtitleColor || defaultBookingConfirmationSettings.subtitleColor,
+    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingConfirmationSettings.titleFont,
+    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingConfirmationSettings.subtitleFont,
+    cardBgColor: base.cardBgColor || base.appearance?.cardBgColor || defaultBookingConfirmationSettings.cardBgColor,
+  };
 }
 
 export function saveBookingConfirmationSettings(
@@ -2281,7 +2509,7 @@ async function sendWhatsAppNotification(
   markNotificationsSent(booking.id, "whatsapp");
 }
 
-export interface BusinessConfig {
+export interface BusinessConfig extends BookingConfig {
   hero?: HeroSettings;
   typography?: FontSettings;
   interval?: string | number;

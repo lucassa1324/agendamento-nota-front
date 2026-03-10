@@ -153,7 +153,6 @@ export function useEditorApi({
   lastApplied,
   setters,
   saveLocalDrafts,
-  clearLocalDrafts,
 }: UseEditorApiParams) {
   const { toast } = useToast();
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -415,6 +414,54 @@ export function useEditorApi({
     settings.visibleSections,
   ]);
 
+  useEffect(() => {
+    return () => {
+      if (fetchAbortControllerRef.current) {
+        fetchAbortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  const fetchCustomization = useCallback(
+    async (id: string) => {
+      // Cancela busca anterior se houver
+      if (fetchAbortControllerRef.current) {
+        fetchAbortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      fetchAbortControllerRef.current = controller;
+
+      setCompanyId(id);
+      setIsFetching(true);
+      setFetchError(null);
+      try {
+        const data = await siteCustomizerService.getDraftCustomization(
+          id,
+          controller.signal,
+        );
+        if (data) {
+          loadExternalConfig(data);
+          return data;
+        }
+        return null;
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          console.log(">>> [useEditorApi] Busca de customização cancelada.");
+          return null;
+        }
+        console.warn(">>> [ADMIN_WARN] Falha ao buscar customização:", err);
+        setFetchError("Falha ao carregar configurações do site.");
+        return null;
+      } finally {
+        if (fetchAbortControllerRef.current === controller) {
+          setIsFetching(false);
+          fetchAbortControllerRef.current = null;
+        }
+      }
+    },
+    [loadExternalConfig],
+  );
+
   const handleSaveGlobal = useCallback(
     async (shouldReload = true) => {
       if (isPublishing && shouldReload) {
@@ -530,7 +577,7 @@ export function useEditorApi({
                   sectionData.bgImage || appearance.backgroundImageUrl || "";
 
                 // Mapeamento de conteúdo completo para persistência
-                const content: Record<string, any> = {
+                const content: Record<string, unknown> = {
                   title: sectionData.title || "",
                   subtitle: sectionData.subtitle || "",
                   titleFont: sectionData.titleFont || "",
@@ -766,6 +813,7 @@ export function useEditorApi({
 
           // Tratar Passos de Agendamento
           if (changes.bookingSteps) {
+            console.log(">>> [API_SAVE] Mapeando bookingSteps para appointmentFlow:", changes.bookingSteps);
             payload.appointmentFlow = {
               steps: {
                 ...(changes.bookingSteps.service ? { service: changes.bookingSteps.service } : {}),
@@ -775,6 +823,12 @@ export function useEditorApi({
                 ...(changes.bookingSteps.confirmation ? { confirmation: changes.bookingSteps.confirmation } : {}),
               }
             };
+            
+            // Log de Payload de Saída solicitado pelo usuário
+            console.log(">>> [API_SAVE] Enviando para o banco (appointmentFlow):", payload.appointmentFlow);
+            
+            // Adicionalmente, enviamos como bookingSteps para garantir compatibilidade se o banco esperar a chave separada
+            payload.bookingSteps = changes.bookingSteps;
           }
 
           // Limpar o payload de campos undefined para não quebrar o deepMerge do back
@@ -788,18 +842,25 @@ export function useEditorApi({
           );
 
           if (typeof window !== "undefined") {
-            // Remove o cache antigo para evitar que a imagem ou cor velha 'ressuscite'
-            localStorage.removeItem("studio_data");
-            localStorage.removeItem(`site_draft_${companyId}`);
+            // REMOVIDO: Não limpamos mais o rascunho local, apenas atualizamos com o que foi salvo
+            // localStorage.removeItem("studio_data");
+            // localStorage.removeItem(`site_draft_${companyId}`);
 
             if (fresh && shouldReload) {
               console.log(">>> [SYNC] Atualizando interface com dados frescos do servidor.");
-              // Usamos (fresh as any) para evitar erro de 'possibly null' que trava a execução
-              loadExternalConfig(fresh as any, true);
+              // Usamos (fresh as SiteConfigData) para evitar erro de 'possibly null' que trava a execução
+              loadExternalConfig(fresh as SiteConfigData, true);
               localStorage.setItem("studio_data", JSON.stringify(fresh));
+              
+              // Sincroniza o rascunho local com os dados frescos
+              handleSaveLocal(true);
+              
+              console.log(">>> [SYNC] Buscando customização atualizada para sincronizar contexto...");
+              await fetchCustomization(companyId);
             }
           }
 
+          // Garante que o rascunho local reflita o estado atual após o save
           handleSaveLocal(true);
           setIsSaving(false); 
       
@@ -878,56 +939,9 @@ export function useEditorApi({
       setters,
       settings,
       toast,
-      hasUnsavedGlobalChanges, // Adicionado às dependências
+      hasUnsavedGlobalChanges,
+      fetchCustomization, // Adicionado às dependências
     ],
-  );
-
-  useEffect(() => {
-    return () => {
-      if (fetchAbortControllerRef.current) {
-        fetchAbortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
-  const fetchCustomization = useCallback(
-    async (id: string) => {
-      // Cancela busca anterior se houver
-      if (fetchAbortControllerRef.current) {
-        fetchAbortControllerRef.current.abort();
-      }
-      const controller = new AbortController();
-      fetchAbortControllerRef.current = controller;
-
-      setCompanyId(id);
-      setIsFetching(true);
-      setFetchError(null);
-      try {
-        const data = await siteCustomizerService.getDraftCustomization(
-          id,
-          controller.signal,
-        );
-        if (data) {
-          loadExternalConfig(data);
-          return data;
-        }
-        return null;
-      } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
-          console.log(">>> [useEditorApi] Busca de customização cancelada.");
-          return null;
-        }
-        console.warn(">>> [ADMIN_WARN] Falha ao buscar customização:", err);
-        setFetchError("Falha ao carregar configurações do site.");
-        return null;
-      } finally {
-        if (fetchAbortControllerRef.current === controller) {
-          setIsFetching(false);
-          fetchAbortControllerRef.current = null;
-        }
-      }
-    },
-    [loadExternalConfig],
   );
 
   const handlePublish = useCallback(async () => {

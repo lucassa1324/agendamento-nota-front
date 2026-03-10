@@ -2,7 +2,7 @@
 
 import { CheckCircle2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BookingCalendar } from "@/components/booking-calendar";
 import { BookingConfirmation } from "@/components/booking-confirmation";
 import { BookingForm } from "@/components/booking-form";
@@ -13,17 +13,11 @@ import { useStudio } from "@/context/studio-context";
 import {
   type Booking,
   type BookingStepSettings,
-  defaultBookingConfirmationSettings,
-  defaultBookingDateSettings,
-  defaultBookingFormSettings,
-  defaultBookingServiceSettings,
-  defaultBookingTimeSettings,
   getBookingConfirmationSettings,
   getBookingDateSettings,
   getBookingFormSettings,
   getBookingServiceSettings,
   getBookingTimeSettings,
-  getStorageKey,
   parseDuration,
   type Service,
   saveBlockedPeriods,
@@ -58,63 +52,6 @@ interface StudioConfig {
   };
 }
 
-// Helper para sanitizar cores
-const sanitizeColor = (color: string | undefined): string | undefined => {
-  if (!color) return undefined;
-  const trimmed = color.trim();
-  if (
-    trimmed.startsWith("#") ||
-    trimmed.startsWith("rgb") ||
-    trimmed.startsWith("hsl")
-  ) {
-    return trimmed;
-  }
-  return `#${trimmed}`;
-};
-
-// Helper para normalizar configurações (usado tanto no load inicial quanto no preview)
-const normalizeStepSettings = (
-  stepData: Record<string, unknown> | undefined,
-): BookingStepSettings => {
-  if (!stepData) return {} as BookingStepSettings;
-
-  // 1. Resolver cor do CARD
-  // Prioridade para configurações específicas de card, com fallback para backgroundColor legado
-  const rawCardColor =
-    (stepData.cardBgColor as string) ||
-    (stepData.card_bg_color as string) ||
-    ((stepData.cardConfig as Record<string, unknown>)
-      ?.backgroundColor as string) ||
-    ((stepData.card_config as Record<string, unknown>)
-      ?.background_color as string) ||
-    (stepData.backgroundColor as string);
-
-  const finalCardColor = sanitizeColor(rawCardColor);
-
-  // 2. Resolver cor do FUNDO DA SEÇÃO
-  // NÃO usar rawCardColor como fallback para evitar que a cor do card pinte o fundo
-  const rawBgColor =
-    (stepData.bgColor as string) || (stepData.bg_color as string);
-  const finalBgColor = sanitizeColor(rawBgColor);
-
-  // 3. Resolver Appearance (Source of Truth do banco)
-  const appearance = (stepData.appearance as Record<string, unknown>) || {
-    backgroundImageUrl: (stepData.bgImage as string) || "",
-  };
-
-  return {
-    ...stepData,
-    cardBgColor: finalCardColor || "#FFFFFF",
-    bgColor: finalBgColor || "transparent",
-    appearance: {
-      backgroundImageUrl:
-        (appearance.backgroundImageUrl as string) ||
-        (stepData.bgImage as string) ||
-        "",
-    },
-  } as BookingStepSettings;
-};
-
 export function BookingFlow() {
   const { studio } = useStudio();
   const searchParams = useSearchParams();
@@ -135,21 +72,45 @@ export function BookingFlow() {
     null,
   );
 
+  // Force re-render on storage or specific events
+  const [tick, setTick] = useState(0);
+  const handleRefresh = useCallback(() => setTick((t) => t + 1), []);
+
   // Settings states
-  const [serviceSettings, setServiceSettings] = useState<BookingStepSettings>(
-    defaultBookingServiceSettings,
-  );
-  const [dateSettings, setDateSettings] = useState<BookingStepSettings>(
-    defaultBookingDateSettings,
-  );
-  const [timeSettings, setTimeSettings] = useState<BookingStepSettings>(
-    defaultBookingTimeSettings,
-  );
-  const [formSettings, setFormSettings] = useState<BookingStepSettings>(
-    defaultBookingFormSettings,
-  );
-  const [confirmationSettings, setConfirmationSettings] =
-    useState<BookingStepSettings>(defaultBookingConfirmationSettings);
+  const serviceSettings = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _ = tick;
+    return getBookingServiceSettings(studio?.config);
+  }, [studio?.config, tick]);
+
+  const dateSettings = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _ = tick;
+    return getBookingDateSettings(studio?.config);
+  }, [studio?.config, tick]);
+
+  const timeSettings = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _ = tick;
+    const settings = getBookingTimeSettings(studio?.config);
+    // Adicionar o intervalo global ao timeSettings se disponível no config do studio
+    if (studio?.config?.interval || studio?.config?.slotInterval) {
+      settings.interval = studio.config.interval || studio.config.slotInterval;
+    }
+    return settings;
+  }, [studio?.config, tick]);
+
+  const formSettings = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _ = tick;
+    return getBookingFormSettings(studio?.config);
+  }, [studio?.config, tick]);
+
+  const confirmationSettings = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _ = tick;
+    return getBookingConfirmationSettings(studio?.config);
+  }, [studio?.config, tick]);
 
   // Sincronizar Horários e Intervalo do Backend
   useEffect(() => {
@@ -292,142 +253,46 @@ export function BookingFlow() {
 
   // Load initial settings
   useEffect(() => {
-    const hasLocal = (key: string) => {
-      if (typeof window === "undefined") return false;
-      return localStorage.getItem(getStorageKey(key)) !== null;
+    window.addEventListener("storage", handleRefresh);
+    window.addEventListener("bookingServiceSettingsUpdated", handleRefresh);
+    window.addEventListener("bookingDateSettingsUpdated", handleRefresh);
+    window.addEventListener("bookingTimeSettingsUpdated", handleRefresh);
+    window.addEventListener("bookingFormSettingsUpdated", handleRefresh);
+    window.addEventListener(
+      "bookingConfirmationSettingsUpdated",
+      handleRefresh,
+    );
+
+    return () => {
+      window.removeEventListener("storage", handleRefresh);
+      window.removeEventListener("bookingServiceSettingsUpdated", handleRefresh);
+      window.removeEventListener("bookingDateSettingsUpdated", handleRefresh);
+      window.removeEventListener("bookingTimeSettingsUpdated", handleRefresh);
+      window.removeEventListener("bookingFormSettingsUpdated", handleRefresh);
+      window.removeEventListener(
+        "bookingConfirmationSettingsUpdated",
+        handleRefresh,
+      );
     };
-
-    console.log(">>> [BOOKING_DEBUG] Verificando rascunhos locais vs Studio data");
-
-    // 1. Carregar rascunhos do localStorage se existirem (Prioridade máxima para o editor)
-    if (hasLocal("bookingServiceSettings")) {
-      console.log(">>> [BOOKING_DEBUG] Usando rascunho local para Serviços");
-      setServiceSettings(getBookingServiceSettings());
-    }
-    if (hasLocal("bookingDateSettings")) {
-      console.log(">>> [BOOKING_DEBUG] Usando rascunho local para Data");
-      setDateSettings(getBookingDateSettings());
-    }
-    if (hasLocal("bookingTimeSettings")) {
-      console.log(">>> [BOOKING_DEBUG] Usando rascunho local para Horário");
-      setTimeSettings(getBookingTimeSettings());
-    }
-    if (hasLocal("bookingFormSettings")) {
-      console.log(">>> [BOOKING_DEBUG] Usando rascunho local para Formulário");
-      setFormSettings(getBookingFormSettings());
-    }
-    if (hasLocal("bookingConfirmationSettings")) {
-      console.log(
-        ">>> [BOOKING_DEBUG] Usando rascunho local para Confirmação",
-      );
-      setConfirmationSettings(getBookingConfirmationSettings());
-    }
-
-    // 2. Se tivermos dados do studio via context (multi-tenant), usamos eles para o que NÃO tiver rascunho local
-    if (studio?.config?.bookingSteps) {
-      const steps = studio.config.bookingSteps as Record<string, unknown>;
-
-      if (!hasLocal("bookingServiceSettings")) {
-        setServiceSettings(
-          normalizeStepSettings(
-            (steps.step1Services || steps.step1Service || steps.service) as
-              | Record<string, unknown>
-              | undefined,
-          ),
-        );
-      }
-
-      if (!hasLocal("bookingDateSettings")) {
-        setDateSettings(
-          normalizeStepSettings(
-            (steps.step2Dates || steps.step2Date || steps.date) as
-              | Record<string, unknown>
-              | undefined,
-          ),
-        );
-      }
-
-      const timeSettingsData = normalizeStepSettings(
-        (steps.step3Times || steps.step3Time || steps.time) as
-          | Record<string, unknown>
-          | undefined,
-      );
-
-      // Adicionar o intervalo global ao timeSettings se disponível no config do studio
-      if (studio?.config?.interval || studio?.config?.slotInterval) {
-        timeSettingsData.interval =
-          studio.config.interval || studio.config.slotInterval;
-      }
-
-      if (!hasLocal("bookingTimeSettings")) {
-        setTimeSettings(timeSettingsData);
-      }
-
-      if (!hasLocal("bookingFormSettings")) {
-        setFormSettings(
-          normalizeStepSettings(
-            (steps.step4Form || steps.form) as
-              | Record<string, unknown>
-              | undefined,
-          ),
-        );
-      }
-
-      if (!hasLocal("bookingConfirmationSettings")) {
-        setConfirmationSettings(
-          normalizeStepSettings(
-            (steps.step5Confirmation ||
-              steps.step4Confirmation ||
-              steps.confirmation) as Record<string, unknown> | undefined,
-          ),
-        );
-      }
-    } else if (
-      !hasLocal("bookingServiceSettings") &&
-      !hasLocal("bookingDateSettings") &&
-      !hasLocal("bookingTimeSettings") &&
-      !hasLocal("bookingFormSettings") &&
-      !hasLocal("bookingConfirmationSettings")
-    ) {
-      // Fallback total se não houver NADA
-      console.log(
-        ">>> [BOOKING_DEBUG] Sem rascunhos e sem config studio, usando padrões",
-      );
-      setServiceSettings(getBookingServiceSettings());
-      setDateSettings(getBookingDateSettings());
-      setTimeSettings(getBookingTimeSettings());
-      setFormSettings(getBookingFormSettings());
-      setConfirmationSettings(getBookingConfirmationSettings());
-    }
-  }, [studio]);
+  }, [handleRefresh]);
 
   // Listen for real-time updates from editor
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "UPDATE_BOOKING_SERVICE_SETTINGS") {
-        setServiceSettings(
-          normalizeStepSettings(event.data.settings as Record<string, unknown>),
-        );
+        handleRefresh();
       }
       if (event.data?.type === "UPDATE_BOOKING_DATE_SETTINGS") {
-        setDateSettings(
-          normalizeStepSettings(event.data.settings as Record<string, unknown>),
-        );
+        handleRefresh();
       }
       if (event.data?.type === "UPDATE_BOOKING_TIME_SETTINGS") {
-        setTimeSettings(
-          normalizeStepSettings(event.data.settings as Record<string, unknown>),
-        );
+        handleRefresh();
       }
       if (event.data?.type === "UPDATE_BOOKING_FORM_SETTINGS") {
-        setFormSettings(
-          normalizeStepSettings(event.data.settings as Record<string, unknown>),
-        );
+        handleRefresh();
       }
       if (event.data?.type === "UPDATE_BOOKING_CONFIRMATION_SETTINGS") {
-        setConfirmationSettings(
-          normalizeStepSettings(event.data.settings as Record<string, unknown>),
-        );
+        handleRefresh();
       }
       if (
         event.data?.type === "SCROLL_TO_SECTION" ||
@@ -443,25 +308,17 @@ export function BookingFlow() {
       }
     };
 
-    const handleServiceUpdate = () =>
-      setServiceSettings(getBookingServiceSettings());
-    const handleDateUpdate = () => setDateSettings(getBookingDateSettings());
-    const handleTimeUpdate = () => setTimeSettings(getBookingTimeSettings());
-    const handleFormUpdate = () => setFormSettings(getBookingFormSettings());
-    const handleConfirmationUpdate = () =>
-      setConfirmationSettings(getBookingConfirmationSettings());
-
     window.addEventListener("message", handleMessage);
     window.addEventListener(
       "bookingServiceSettingsUpdated",
-      handleServiceUpdate,
+      handleRefresh,
     );
-    window.addEventListener("bookingDateSettingsUpdated", handleDateUpdate);
-    window.addEventListener("bookingTimeSettingsUpdated", handleTimeUpdate);
-    window.addEventListener("bookingFormSettingsUpdated", handleFormUpdate);
+    window.addEventListener("bookingDateSettingsUpdated", handleRefresh);
+    window.addEventListener("bookingTimeSettingsUpdated", handleRefresh);
+    window.addEventListener("bookingFormSettingsUpdated", handleRefresh);
     window.addEventListener(
       "bookingConfirmationSettingsUpdated",
-      handleConfirmationUpdate,
+      handleRefresh,
     );
 
     // Notify editor that we are ready to receive settings
@@ -473,26 +330,26 @@ export function BookingFlow() {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener(
         "bookingServiceSettingsUpdated",
-        handleServiceUpdate,
+        handleRefresh,
       );
       window.removeEventListener(
         "bookingDateSettingsUpdated",
-        handleDateUpdate,
+        handleRefresh,
       );
       window.removeEventListener(
         "bookingTimeSettingsUpdated",
-        handleTimeUpdate,
+        handleRefresh,
       );
       window.removeEventListener(
         "bookingFormSettingsUpdated",
-        handleFormUpdate,
+        handleRefresh,
       );
       window.removeEventListener(
         "bookingConfirmationSettingsUpdated",
-        handleConfirmationUpdate,
+        handleRefresh,
       );
     };
-  }, []);
+  }, [handleRefresh]);
 
   const steps = [
     { id: "service", label: "Serviço", completed: selectedServices.length > 0 },
@@ -529,6 +386,38 @@ export function BookingFlow() {
     setConfirmedBooking(booking);
     setCurrentStep("confirmation");
   };
+
+  // Monitor de Consistência de Estado
+  useEffect(() => {
+    const steps = [
+      { name: "Service", settings: serviceSettings },
+      { name: "Date", settings: dateSettings },
+      { name: "Time", settings: timeSettings },
+      { name: "Form", settings: formSettings },
+      { name: "Confirmation", settings: confirmationSettings },
+    ];
+
+    steps.forEach((step) => {
+      if (step.settings) {
+        const appearance = step.settings.appearance || {};
+        const bgColor = appearance.backgroundColor || step.settings.bgColor;
+        const titleColor = appearance.titleColor || step.settings.titleColor;
+
+        if (!bgColor && step.settings.bgType === "color") {
+          console.warn(`>>> [CONSISTENCY] bgColor/backgroundColor ausente em ${step.name}`);
+        }
+        if (!titleColor) {
+          console.warn(`>>> [CONSISTENCY] titleColor ausente em ${step.name}`);
+        }
+      }
+    });
+  }, [
+    serviceSettings,
+    dateSettings,
+    timeSettings,
+    formSettings,
+    confirmationSettings,
+  ]);
 
   const handleReset = () => {
     setCurrentStep("service");
@@ -612,28 +501,36 @@ export function BookingFlow() {
         } as Booking)
       : null);
 
-  const renderStepHeader = (settings: BookingStepSettings) => (
-    <div className="text-center mb-12">
-      <h2
-        className="text-4xl md:text-5xl font-bold mb-4 transition-all duration-300"
-        style={{
-          color: settings.titleColor || "var(--primary)",
-          fontFamily: settings.titleFont || "var(--font-title)",
-        }}
-      >
-        {settings.title}
-      </h2>
-      <p
-        className="text-lg opacity-80 max-w-2xl mx-auto transition-all duration-300"
-        style={{
-          color: settings.subtitleColor || "var(--foreground)",
-          fontFamily: settings.subtitleFont || "var(--font-body)",
-        }}
-      >
-        {settings.subtitle}
-      </p>
-    </div>
-  );
+  const renderStepHeader = (settings: BookingStepSettings) => {
+    const appearance = settings.appearance || {};
+    const titleColor = appearance.titleColor || settings.titleColor || "var(--primary)";
+    const subtitleColor = appearance.subtitleColor || settings.subtitleColor || "var(--foreground)";
+    const titleFont = appearance.titleFont || settings.titleFont || "var(--font-title)";
+    const subtitleFont = appearance.subtitleFont || settings.subtitleFont || "var(--font-body)";
+
+    return (
+      <div className="text-center mb-12">
+        <h2
+          className="text-4xl md:text-5xl font-bold mb-4 transition-all duration-300"
+          style={{
+            color: titleColor,
+            fontFamily: titleFont,
+          }}
+        >
+          {settings.title}
+        </h2>
+        <p
+          className="text-lg opacity-80 max-w-2xl mx-auto transition-all duration-300"
+          style={{
+            color: subtitleColor,
+            fontFamily: subtitleFont,
+          }}
+        >
+          {settings.subtitle}
+        </p>
+      </div>
+    );
+  };
 
   return (
     <div id="booking" className="w-full mx-auto">

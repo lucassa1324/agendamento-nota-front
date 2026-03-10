@@ -28,6 +28,25 @@ import type {
   ValuesSettings,
 } from "@/lib/booking-data";
 import {
+  clearAboutHeroSettings,
+  defaultAboutHeroSettings,
+  defaultBookingConfirmationSettings,
+  defaultBookingDateSettings,
+  defaultBookingFormSettings,
+  defaultBookingServiceSettings,
+  defaultBookingTimeSettings,
+  defaultColorSettings,
+  defaultCTASettings,
+  defaultFontSettings,
+  defaultFooterSettings,
+  defaultGallerySettings,
+  defaultHeaderSettings,
+  defaultHeroSettings,
+  defaultServicesSettings,
+  defaultStorySettings,
+  defaultTeamSettings,
+  defaultTestimonialsSettings,
+  defaultValuesSettings,
   getStorageKey,
   saveAboutHeroSettings,
   saveBookingConfirmationSettings,
@@ -65,6 +84,46 @@ interface StudioContextType {
 }
 
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
+
+// Fallback "Site Base" hardcoded para emergências (Blindagem de UI)
+const SITE_BASE_FALLBACK = (id: string, slug: string): Business => ({
+  id: id || "fallback-id",
+  slug: slug || "fallback-slug",
+  name: "Site Base",
+  siteName: "Site Base",
+  active: true,
+  config: {
+    isFallback: true,
+    colors: defaultColorSettings,
+    hero: defaultHeroSettings,
+    aboutHero: defaultAboutHeroSettings,
+    story: defaultStorySettings,
+    team: defaultTeamSettings,
+    testimonials: defaultTestimonialsSettings,
+    services: defaultServicesSettings,
+    values: defaultValuesSettings,
+    gallery: defaultGallerySettings,
+    cta: defaultCTASettings,
+    header: defaultHeaderSettings,
+    footer: defaultFooterSettings,
+    theme: defaultFontSettings,
+    visibleSections: {
+      hero: true,
+      services: true,
+      gallery: true,
+      cta: true,
+      footer: true,
+    },
+    bookingSteps: {
+      service: defaultBookingServiceSettings,
+      date: defaultBookingDateSettings,
+      time: defaultBookingTimeSettings,
+      form: defaultBookingFormSettings,
+      confirmation: defaultBookingConfirmationSettings,
+    }
+  } as unknown as Business["config"],
+  services: [],
+});
 
 export function StudioProvider({
   children,
@@ -254,6 +313,13 @@ export function StudioProvider({
         (event.data as Record<string, unknown>);
 
       const mappedConfig = mapConfig(incoming);
+      
+      console.log(">>> [STUDIO_CONTEXT] Reidratando estado do Studio com dados recebidos:", {
+        hasColors: !!mappedConfig.colors,
+        hasTheme: !!mappedConfig.theme,
+        hasBooking: !!mappedConfig.bookingSteps
+      });
+
       setStudio((prev) =>
         prev
           ? { ...prev, config: mappedConfig as unknown as Business["config"] }
@@ -688,11 +754,21 @@ export function StudioProvider({
           console.log(">>> [StudioProvider] Resposta bruta do servidor:", text);
 
           if (!text || text.trim() === "") {
-            throw new Error("Resposta do servidor está vazia.");
+            console.warn(">>> [StudioProvider] Resposta vazia. Aplicando Site Base Fallback.");
+            setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
+            setIsLoading(false);
+            return;
           }
 
           try {
             const data = JSON.parse(text);
+            
+            if (!data || (!data.id && !data.slug)) {
+               console.warn(">>> [StudioProvider] Dados inválidos. Aplicando Site Base Fallback.");
+               setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
+               setIsLoading(false);
+               return;
+            }
             console.log(
               ">>> [StudioProvider] Dados do studio carregados com sucesso:",
               data?.id,
@@ -1173,60 +1249,30 @@ export function StudioProvider({
           );
 
           if (response.status === 404) {
+            console.warn(">>> [StudioProvider] 404 detectado. Aplicando Site Base Fallback.");
+            setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
             setError("Studio não encontrado");
           } else {
+            console.warn(`>>> [StudioProvider] Erro ${response.status}. Aplicando Site Base Fallback.`);
+            setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
             setError(`Erro do servidor (${response.status})`);
           }
         }
       } catch (err: unknown) {
-        const fetchUrl = `${API_BASE_URL}/api/business/slug/${currentSlug}`;
-        const currentOrigin =
-          typeof window !== "undefined" ? window.location.origin : "N/A";
-
-        const errorDetails = err as { stack?: string; cause?: unknown };
-
-        console.warn(
-          ">>> [StudioProvider] AVISO: Falha na rede ou processamento do Studio:",
-          {
-            message: err instanceof Error ? err.message : "Erro desconhecido",
-            stack: errorDetails.stack,
-            cause: errorDetails.cause,
-            api_url: API_BASE_URL,
-            fetch_url: fetchUrl,
-            current_origin: currentOrigin,
-            slug: currentSlug,
-          },
-        );
-
-        // Log detalhado do erro para inspeção no console do navegador
-        console.dir(err);
+        // ... (existing code for catch block)
+        console.warn(">>> [StudioProvider] Erro capturado. Aplicando Site Base Fallback.", err);
+        setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
         setError(
           err instanceof Error
             ? err.message
             : "Erro de conexão com o servidor.",
         );
-
-        // Plano C: Se tudo falhar, tenta usar o que estiver no cache mesmo que o erro tenha sido após o fetch
-        if (typeof window !== "undefined") {
-          const cachedStudio = localStorage.getItem("studio_data");
-          if (cachedStudio) {
-            setStudio((prev) => {
-              if (!prev) {
-                console.log(
-                  ">>> [StudioProvider] Plano C: Usando cache após erro de processamento.",
-                );
-                try {
-                  return JSON.parse(cachedStudio);
-                } catch (_) {
-                  return prev;
-                }
-              }
-              return prev;
-            });
-          }
-        }
       } finally {
-        setIsLoading(false);
+        // Garantimos um delay mínimo para evitar flickering e garantir sincronia
+        setTimeout(() => {
+          setIsLoading(false);
+          console.log(">>> [StudioProvider] Sincronização finalizada. Desativando loading.");
+        }, 300);
       }
     }
 

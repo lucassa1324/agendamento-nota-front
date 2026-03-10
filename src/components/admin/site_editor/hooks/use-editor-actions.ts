@@ -1,5 +1,19 @@
 import { useCallback } from "react";
-import type { BookingStepSettings, CTASettings } from "@/lib/booking-data";
+import type {
+  BookingStepSettings,
+  ColorSettings,
+  CTASettings,
+  FontSettings,
+  FooterSettings,
+  GallerySettings,
+  HeaderSettings,
+  HeroSettings,
+  ServicesSettings,
+  StorySettings,
+  TeamSettings,
+  TestimonialsSettings,
+  ValuesSettings,
+} from "@/lib/booking-data";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
 import type { BackgroundSettings } from "../components/BackgroundEditor";
 import type { useEditorLocal } from "./use-editor-local";

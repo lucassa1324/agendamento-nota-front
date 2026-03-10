@@ -96,7 +96,7 @@ export function SidebarNav({
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="block font-bold text-[11px] sm:text-xs xl:text-sm 2xl:text-base leading-tight truncate">
-                    {page.label}
+                    {typeof page.label === 'object' ? ((page.label as unknown as { text?: string }).text || "") : (page.label || "")}
                   </span>
                   <span className="text-[7px] sm:text-[8px] xl:text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
                     {sections[page.id]?.length || 0} Seções
@@ -169,7 +169,7 @@ export function SidebarNav({
                             )}
                           />
                           <span className="truncate max-w-25 xl:max-w-none text-[9px] sm:text-[10px] xl:text-xs">
-                            {section.name}
+                            {typeof section.name === 'object' ? ((section.name as unknown as { text?: string }).text || "") : (section.name || "")}
                           </span>
                         </div>
 

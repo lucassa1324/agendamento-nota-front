@@ -45,59 +45,102 @@ export function useEditorState() {
         bgImage?: string;
         bgType?: string;
         bgColor?: string;
+        titleColor?: string;
+        subtitleColor?: string;
+        titleFont?: string;
+        subtitleFont?: string;
+        cardBgColor?: string;
         appearance?: AppearanceSettings;
       },
     >(
       prev: T,
       updates: Partial<T>,
     ): T => {
-      const newState = { ...prev, ...updates };
-      const nextAppearance = { ...(newState.appearance || {}) };
+      // Merge inicial raso para pegar as propriedades de nível superior
+      const state = { ...prev, ...updates };
+
+      // Garantir que o objeto appearance seja mesclado profundamente (Deep Merge)
+      // Se updates trouxer um appearance, mesclamos com o anterior em vez de sobrescrever.
+      if (updates.appearance || prev.appearance) {
+        state.appearance = {
+          ...(prev.appearance || {}),
+          ...(updates.appearance || {}),
+        } as T["appearance"];
+      }
+
+      const nextAppearance = { ...(state.appearance || {}) };
+
+      // Tipografia e Cores de Texto (Prioridade para o que vem no updates, depois prev top-level, depois appearance)
+      if (updates.titleColor !== undefined) {
+        nextAppearance.titleColor = updates.titleColor;
+      } else if (prev.titleColor !== undefined) {
+        nextAppearance.titleColor = prev.titleColor;
+      }
+      
+      if (updates.subtitleColor !== undefined) {
+        nextAppearance.subtitleColor = updates.subtitleColor;
+      } else if (prev.subtitleColor !== undefined) {
+        nextAppearance.subtitleColor = prev.subtitleColor;
+      }
+
+      if (updates.titleFont !== undefined) {
+        nextAppearance.titleFont = updates.titleFont;
+      } else if (prev.titleFont !== undefined) {
+        nextAppearance.titleFont = prev.titleFont;
+      }
+
+      if (updates.subtitleFont !== undefined) {
+        nextAppearance.subtitleFont = updates.subtitleFont;
+      } else if (prev.subtitleFont !== undefined) {
+        nextAppearance.subtitleFont = prev.subtitleFont;
+      }
+
+      if (updates.cardBgColor !== undefined) {
+        nextAppearance.cardBgColor = updates.cardBgColor;
+      } else if (prev.cardBgColor !== undefined) {
+        nextAppearance.cardBgColor = prev.cardBgColor;
+      }
 
       if (updates.bgColor !== undefined) {
         nextAppearance.backgroundColor = updates.bgColor;
-        newState.bgColor = updates.bgColor;
+        state.bgColor = updates.bgColor;
       }
 
       if (updates.appearance?.backgroundColor !== undefined) {
         nextAppearance.backgroundColor = updates.appearance.backgroundColor;
-        newState.bgColor = updates.appearance.backgroundColor;
+        state.bgColor = updates.appearance.backgroundColor;
       }
 
-      if (
-        updates.bgColor !== undefined ||
-        updates.appearance?.backgroundColor !== undefined
-      ) {
-        newState.appearance = nextAppearance;
-      }
+      // Sincroniza o appearance final com as mudanças processadas
+      state.appearance = nextAppearance;
 
       // Se bgImage foi definida, apenas atualizamos a URL, mantendo o bgType atual 
       // para permitir que o usuário escolha explicitamente entre cor e imagem.
       if (updates.bgImage) {
-        newState.appearance = {
-          ...(newState.appearance || {}),
+        state.appearance = {
+          ...(state.appearance || {}),
           backgroundImageUrl: updates.bgImage,
         };
       }
       // Se appearance.backgroundImageUrl foi definida, sincroniza bgImage e garante bgType
       else if (updates.appearance?.backgroundImageUrl) {
-        newState.bgImage = updates.appearance.backgroundImageUrl;
-        newState.bgType = "image";
+        state.bgImage = updates.appearance.backgroundImageUrl;
+        state.bgType = "image";
       }
       // Se bgImage ou backgroundImageUrl foram limpos explicitamente, volta para color
       else if (
         updates.bgImage === "" ||
         updates.appearance?.backgroundImageUrl === ""
       ) {
-        newState.bgType = "color";
-        newState.bgImage = "";
-        newState.appearance = {
-          ...(newState.appearance || {}),
+        state.bgType = "color";
+        state.bgImage = "";
+        state.appearance = {
+          ...(state.appearance || {}),
           backgroundImageUrl: "",
         };
       }
 
-      return newState;
+      return state;
     },
     [],
   );
@@ -360,45 +403,56 @@ export function useEditorState() {
 
   const handleUpdateBookingService = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingServiceSettings((prev: BookingStepSettings) =>
-        syncBackground(prev, updates),
-      );
+      setBookingServiceSettings((prev: BookingStepSettings) => {
+        console.log(">>> [DEBUG] BookingService - Estado Anterior:", prev);
+        console.log(">>> [DEBUG] BookingService - Updates Recebidos:", updates);
+        // Sincroniza campos de topo com o objeto appearance se necessário via syncBackground
+        return syncBackground(prev, updates);
+      });
     },
     [syncBackground],
   );
 
   const handleUpdateBookingDate = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingDateSettings((prev: BookingStepSettings) =>
-        syncBackground(prev, updates),
-      );
+      setBookingDateSettings((prev: BookingStepSettings) => {
+        console.log(">>> [DEBUG] BookingDate - Estado Anterior:", prev);
+        console.log(">>> [DEBUG] BookingDate - Updates Recebidos:", updates);
+        return syncBackground(prev, updates);
+      });
     },
     [syncBackground],
   );
 
   const handleUpdateBookingTime = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingTimeSettings((prev: BookingStepSettings) =>
-        syncBackground(prev, updates),
-      );
+      setBookingTimeSettings((prev: BookingStepSettings) => {
+        console.log(">>> [DEBUG] BookingTime - Estado Anterior:", prev);
+        console.log(">>> [DEBUG] BookingTime - Updates Recebidos:", updates);
+        return syncBackground(prev, updates);
+      });
     },
     [syncBackground],
   );
 
   const handleUpdateBookingForm = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingFormSettings((prev: BookingStepSettings) =>
-        syncBackground(prev, updates),
-      );
+      setBookingFormSettings((prev: BookingStepSettings) => {
+        console.log(">>> [DEBUG] BookingForm - Estado Anterior:", prev);
+        console.log(">>> [DEBUG] BookingForm - Updates Recebidos:", updates);
+        return syncBackground(prev, updates);
+      });
     },
     [syncBackground],
   );
 
   const handleUpdateBookingConfirmation = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingConfirmationSettings((prev: BookingStepSettings) =>
-        syncBackground(prev, updates),
-      );
+      setBookingConfirmationSettings((prev: BookingStepSettings) => {
+        console.log(">>> [DEBUG] BookingConfirmation - Estado Anterior:", prev);
+        console.log(">>> [DEBUG] BookingConfirmation - Updates Recebidos:", updates);
+        return syncBackground(prev, updates);
+      });
     },
     [syncBackground],
   );

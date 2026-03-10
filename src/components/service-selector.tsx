@@ -37,6 +37,23 @@ export function ServiceSelector({
   }, [initialSelected]);
 
   useEffect(() => {
+    // Sincroniza os serviços se mudarem no studio
+    if (studio?.services) {
+      setServices(studio.services);
+    }
+  }, [studio?.services]);
+
+  useEffect(() => {
+    // Se settings for passado via props (modo preview), usamos ele diretamente.
+    // O pai BookingFlow já gerencia a prioridade entre rascunho local e studio context.
+    if (settings) {
+      console.log(
+        ">>> [SERVICE_SELECTOR] Usando settings via props (Prioridade Preview):",
+        settings.title,
+      );
+      return;
+    }
+
     // No flow do cliente, preferimos sempre os dados do studio vindos do context,
     // que são buscados da API com cache: 'no-store'.
     if (studio?.services && studio.services.length > 0) {
@@ -56,7 +73,7 @@ export function ServiceSelector({
         setServices(settings.services);
       }
     }
-  }, [studio]);
+  }, [studio, settings]);
 
   const extractConflicts = (s: Service): string[] => {
     let list: (string | number)[] = [];
@@ -186,10 +203,18 @@ export function ServiceSelector({
     0,
   );
 
+  const appearance = settings?.appearance || {};
+  const accentColor = appearance.accentColor || settings?.accentColor || "var(--primary)";
+  const cardBgColor = appearance.cardBgColor || settings?.cardBgColor || "transparent";
+  const titleColor = appearance.titleColor || settings?.titleColor || "var(--foreground)";
+  const subtitleColor = appearance.subtitleColor || settings?.subtitleColor || "var(--foreground)";
+  const titleFont = appearance.titleFont || settings?.titleFont || "var(--font-title)";
+  const subtitleFont = appearance.subtitleFont || settings?.subtitleFont || "var(--font-subtitle)";
+
   console.log(">>> [SERVICE_SELECTOR] Renderizando com settings:", {
     title: settings?.title,
-    cardBgColor: settings?.cardBgColor,
-    accentColor: settings?.accentColor,
+    cardBgColor,
+    accentColor,
   });
 
   return (
@@ -198,8 +223,8 @@ export function ServiceSelector({
         <h2
           className="text-2xl font-bold mb-2 transition-all duration-300"
           style={{
-            color: settings?.titleColor || "var(--foreground)",
-            fontFamily: settings?.titleFont || "var(--font-title)",
+            color: titleColor,
+            fontFamily: titleFont,
           }}
         >
           {settings?.title || "Escolha os Serviços"}
@@ -207,8 +232,8 @@ export function ServiceSelector({
         <p
           className="text-muted-foreground transition-all duration-300"
           style={{
-            color: settings?.subtitleColor || "var(--foreground)",
-            fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
+            color: subtitleColor,
+            fontFamily: subtitleFont,
           }}
         >
           {settings?.subtitle || "Você pode selecionar mais de um serviço"}
@@ -266,12 +291,12 @@ export function ServiceSelector({
               )}
               style={{
                 borderColor:
-                  isSelected && settings?.accentColor
-                    ? settings.accentColor
+                  isSelected && accentColor
+                    ? accentColor
                     : isConflicting
                       ? "var(--muted)"
                       : undefined,
-                backgroundColor: settings?.cardBgColor || undefined,
+                backgroundColor: cardBgColor || undefined,
               }}
               onClick={() => !isConflicting && toggleService(service)}
             >
@@ -279,7 +304,7 @@ export function ServiceSelector({
                 <div
                   className="absolute top-0 right-0 p-1"
                   style={{
-                    backgroundColor: settings?.accentColor || "var(--primary)",
+                    backgroundColor: accentColor,
                     color: "#fff",
                   }}
                 >
@@ -291,8 +316,8 @@ export function ServiceSelector({
                   <h3
                     className="font-bold text-lg"
                     style={{
-                      color: settings?.titleColor || "var(--foreground)",
-                      fontFamily: settings?.titleFont || "var(--font-title)",
+                      color: titleColor,
+                      fontFamily: titleFont,
                     }}
                   >
                     {service.name}
@@ -300,7 +325,7 @@ export function ServiceSelector({
                   <div
                     className="font-bold"
                     style={{
-                      color: settings?.accentColor || "var(--primary)",
+                      color: accentColor,
                     }}
                   >
                     R$ {service.price}
@@ -325,9 +350,9 @@ export function ServiceSelector({
         <Card
           className="border-primary/20 sticky bottom-4 z-10 shadow-lg"
           style={{
-            backgroundColor: settings?.cardBgColor || "var(--background)",
-            borderColor: settings?.accentColor
-              ? `${settings.accentColor}33`
+            backgroundColor: cardBgColor !== "transparent" ? cardBgColor : "var(--background)",
+            borderColor: accentColor
+              ? `${accentColor}33`
               : undefined,
           }}
         >
@@ -362,7 +387,7 @@ export function ServiceSelector({
               onClick={() => (onConfirm ? onConfirm() : onSelect(selected))}
               className="px-8 font-bold shadow-md transition-all hover:scale-105 active:scale-95"
               style={{
-                backgroundColor: settings?.accentColor || "var(--primary)",
+                backgroundColor: accentColor,
                 color: "#fff",
               }}
             >

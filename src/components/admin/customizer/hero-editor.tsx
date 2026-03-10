@@ -133,7 +133,7 @@ export function HeroEditor({
                 <div className="space-y-1.5">
                   <Label className="text-[10px] uppercase text-muted-foreground font-medium">Texto do Badge</Label>
                   <Input
-                    value={settings.badge || ""}
+                    value={typeof settings.badge === 'object' ? ((settings.badge as unknown as { text?: string }).text || "") : (settings.badge || "")}
                     onChange={(e) => handleUpdate({ badge: e.target.value })}
                     placeholder="Ex: Especialistas em Design"
                     className="h-8 text-xs"
@@ -245,7 +245,7 @@ export function HeroEditor({
                 <div className="space-y-1.5">
                   <Label className="text-[10px] uppercase text-muted-foreground font-medium">Texto</Label>
                   <Input
-                    value={settings.primaryButton || ""}
+                    value={typeof settings.primaryButton === 'object' ? ((settings.primaryButton as unknown as { text?: string }).text || "") : (settings.primaryButton || "")}
                     onChange={(e) => handleUpdate({ primaryButton: e.target.value })}
                     className="h-8 text-xs"
                   />
@@ -293,7 +293,7 @@ export function HeroEditor({
                 <div className="space-y-1.5">
                   <Label className="text-[10px] uppercase text-muted-foreground font-medium">Texto</Label>
                   <Input
-                    value={settings.secondaryButton || ""}
+                    value={typeof settings.secondaryButton === 'object' ? ((settings.secondaryButton as unknown as { text?: string }).text || "") : (settings.secondaryButton || "")}
                     onChange={(e) => handleUpdate({ secondaryButton: e.target.value })}
                     className="h-8 text-xs"
                   />

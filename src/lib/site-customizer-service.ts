@@ -69,7 +69,23 @@ class SiteCustomizerService {
       );
       return null;
     }
-    return response.json();
+    
+    const data = await response.json();
+
+    // Sanitização de appointmentFlow: Se vier como string, tenta parsear para objeto
+    if (data && typeof data === "object") {
+      const config = data.siteCustomization || data;
+      if (config && typeof config.appointmentFlow === "string") {
+        try {
+          config.appointmentFlow = JSON.parse(config.appointmentFlow);
+          console.log(">>> [SITE_DEBUG] appointmentFlow sanitizado de String para Objeto.");
+        } catch (e) {
+          console.error(">>> [SITE_ERROR] Falha ao parsear appointmentFlow:", e);
+        }
+      }
+    }
+
+    return data;
   }
 
   async getDraftCustomization(

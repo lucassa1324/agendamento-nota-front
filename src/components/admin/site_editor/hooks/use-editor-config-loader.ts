@@ -1,6 +1,5 @@
 import { useCallback, useRef } from "react";
 import {
-  type AppearanceSettings,
   type BookingStepSettings,
   type ColorSettings,
   type CTASettings,
@@ -49,57 +48,71 @@ interface UseEditorConfigLoaderProps {
 
 const normalizeSection = <T extends Record<string, unknown>>(
   value: T | undefined,
+  defaultValue?: T,
 ): T | undefined => {
-  if (!value) return value;
+  if (!value) return defaultValue;
 
-  const content = (value.content as Record<string, unknown>) || {};
-  const appearance = (value.appearance as Record<string, unknown>) || {};
+  // Deep merge com o valor padrão para garantir que todos os campos existam
+  const merged = defaultValue 
+    ? { ...defaultValue, ...value } 
+    : { ...value };
 
-  const bgImage = (appearance.backgroundImageUrl as string) || (value.bgImage as string) || "";
+  // Tratamento de segurança contra o Object Object Bug
+  // Se campos que deveriam ser strings vierem como objetos, extraímos o texto ou usamos o default
+  const safeString = (val: unknown, defaultStr: string = ""): string => {
+    if (typeof val === 'string') return val;
+    if (typeof val === 'object' && val !== null) {
+      const obj = val as Record<string, unknown>;
+      return (obj.text as string) || (obj.value as string) || defaultStr;
+    }
+    return val ? String(val) : defaultStr;
+  };
 
-  let bgType: "color" | "image" = value.bgType as "color" | "image";
-    // 2. Prioridade 1: Se o banco enviou explicitamente o tipo (bgType), usamos ele e não discutimos.
-    if (value.bgType === "color" || value.bgType === "image") {
-      bgType = value.bgType as "color" | "image";
+  const content = (merged.content as Record<string, unknown>) || {};
+  const appearance = (merged.appearance as Record<string, unknown>) || {};
+
+  const bgImage = safeString(appearance.backgroundImageUrl || merged.bgImage || "");
+
+  let bgType: "color" | "image" = merged.bgType as "color" | "image";
+    if (merged.bgType === "color" || merged.bgType === "image") {
+      bgType = merged.bgType as "color" | "image";
     } 
-    // 3. Prioridade 2: Se não tem bgType, mas tem a trava visual (showBackgroundImage), seguimos ela.
     else if (typeof appearance.showBackgroundImage === "boolean") {
       bgType = appearance.showBackgroundImage ? "image" : "color";
     } 
-    // 4. Prioridade 3: Só se não houver NADA das opções acima, olhamos se tem imagem.
     else {
       bgType = bgImage ? "image" : "color";
     }
 
-  const bgColor =
-    (appearance.backgroundColor as string) ||
-    (value.backgroundColor as string) ||
-    (value.bgColor as string) ||
-    (appearance.cardBgColor as string) ||
-    (value.cardBgColor as string) ||
-    "";
+  const bgColor = safeString(
+    appearance.backgroundColor ||
+    merged.backgroundColor ||
+    merged.bgColor ||
+    appearance.cardBgColor ||
+    merged.cardBgColor ||
+    ""
+  );
 
   const flattened = {
-    ...value,
+    ...merged,
     ...content,
     ...appearance,
-    title: content.title ?? value.title ?? "",
-    subtitle: content.subtitle ?? value.subtitle ?? "",
-    description: content.description ?? value.description ?? "",
+    title: safeString(content.title ?? merged.title ?? "", (defaultValue as Record<string, unknown> | undefined)?.title as string || ""),
+    subtitle: safeString(content.subtitle ?? merged.subtitle ?? "", (defaultValue as Record<string, unknown> | undefined)?.subtitle as string || ""),
+    description: safeString(content.description ?? merged.description ?? "", (defaultValue as Record<string, unknown> | undefined)?.description as string || ""),
     bgImage,
     bgColor,
     bgType,
-    overlayOpacity: appearance.overlayOpacity ?? value.overlayOpacity ?? 0.5,
+    overlayOpacity: appearance.overlayOpacity ?? merged.overlayOpacity ?? 0.5,
   };
 
   return flattened as T;
 };
 
-const normalizeHeroSettings = (value?: HeroSettings) => {
-  if (!value) return value;
+const normalizeHeroSettings = (value?: HeroSettings, defaultValue: HeroSettings = defaultHeroSettings) => {
+  if (!value) return defaultValue;
 
-  // Normalização baseada em section (achata content e appearance)
-  const base = normalizeSection(value) || value;
+  const base = normalizeSection(value, defaultValue) || value;
 
   console.log("[BG_CHECK] Normalizando HeroSettings:", {
     type: base.bgType,
@@ -111,7 +124,7 @@ const normalizeHeroSettings = (value?: HeroSettings) => {
     ...base,
     overlayOpacity: base.overlayOpacity ?? 0.5,
     imageOpacity:
-      base.imageOpacity === defaultHeroSettings.imageOpacity
+      base.imageOpacity === defaultValue.imageOpacity
         ? 1
         : base.imageOpacity,
   };
@@ -195,6 +208,52 @@ export function useEditorConfigLoader({
       ).siteCustomization || config) as SiteConfigData;
 
       const drafts = loadLocalDrafts();
+
+      // LOG de Sincronização
+      const apiTime = baseConfig.updatedAt ? new Date(baseConfig.updatedAt).getTime() : 0;
+      const localTime = Number(drafts.draftTimestamp) || 0;
+      const isFallback = (config as Record<string, unknown>).isFallback || (baseConfig as Record<string, unknown>).isFallback;
+      
+      console.log(`>>> [SYNC_CHECK] Server: ${apiTime} | Local: ${localTime} | Fallback: ${isFallback}`);
+
+      // Se o servidor for MAIS RECENTE, atualizamos o LocalStorage imediatamente para alinhar dispositivos
+      if (apiTime > localTime && !isFallback) {
+        console.log(">>> [SYNC] Conflito detectado: Banco é mais novo. Sobrescrevendo rascunho local para alinhar dispositivos.");
+        
+        // Sincronização profunda do rascunho local
+        if (baseConfig.hero) local.saveHeroSettings(baseConfig.hero as HeroSettings);
+        if (baseConfig.aboutHero) local.saveAboutHeroSettings(baseConfig.aboutHero as HeroSettings);
+        if (baseConfig.story) local.saveStorySettings(baseConfig.story as StorySettings);
+        if (baseConfig.team) local.saveTeamSettings(baseConfig.team as TeamSettings);
+        if (baseConfig.testimonials) local.saveTestimonialsSettings(baseConfig.testimonials as TestimonialsSettings);
+        if (baseConfig.services) local.saveServicesSettings(baseConfig.services as ServicesSettings);
+        if (baseConfig.values) local.saveValuesSettings(baseConfig.values as ValuesSettings);
+        if (baseConfig.gallery) local.saveGallerySettings(baseConfig.gallery as GallerySettings);
+        if (baseConfig.cta) local.saveCTASettings(baseConfig.cta as CTASettings);
+        if (baseConfig.header) local.saveHeaderSettings(baseConfig.header as HeaderSettings);
+        if (baseConfig.footer) local.saveFooterSettings(baseConfig.footer as FooterSettings);
+        if (baseConfig.colors) local.saveColorSettings(baseConfig.colors as ColorSettings);
+        if (baseConfig.theme) local.saveFontSettings(baseConfig.theme as FontSettings);
+        if (baseConfig.visibleSections) local.saveVisibleSections(baseConfig.visibleSections as Record<string, boolean>);
+        if (baseConfig.pageVisibility) local.savePageVisibility(baseConfig.pageVisibility as Record<string, boolean>);
+
+        // Passos de agendamento
+        const flow = (baseConfig.appointmentFlow || (baseConfig as Record<string, unknown>).bookingSteps) as Record<string, unknown> | undefined;
+        if (flow) {
+          if (flow.service) local.saveBookingServiceSettings(flow.service as BookingStepSettings);
+          if (flow.date) local.saveBookingDateSettings(flow.date as BookingStepSettings);
+          if (flow.time) local.saveBookingTimeSettings(flow.time as BookingStepSettings);
+          if (flow.form) local.saveBookingFormSettings(flow.form as BookingStepSettings);
+          if (flow.confirmation) local.saveBookingConfirmationSettings(flow.confirmation as BookingStepSettings);
+        }
+
+        // Atualiza o timestamp local para bater com o do servidor
+        localStorage.setItem(getStorageKey("last_draft_update"), new Date(apiTime).toISOString());
+        
+        // Recarrega os rascunhos após a sincronização para que o getSectionValue use os novos valores
+        Object.assign(drafts, loadLocalDrafts());
+      }
+
       const layoutGlobal = (baseConfig.layoutGlobal ||
         baseConfig.layout_global) as Record<string, unknown> | undefined;
       const home = baseConfig.home as
@@ -212,129 +271,275 @@ export function useEditorConfigLoader({
 
       const { shouldRecoverDrafts } = checkShouldRecoverDraft();
 
+      const isBankValueEmptyOrDefault = <T>(
+        bankValue: T | undefined,
+        defaultValue?: T,
+      ): boolean => {
+        const isBankValueValid =
+          bankValue !== undefined &&
+          bankValue !== null &&
+          Object.keys(bankValue as object).length > 0;
+
+        return (
+          !isBankValueValid ||
+          (!!defaultValue &&
+            JSON.stringify(bankValue) === JSON.stringify(defaultValue))
+        );
+      };
+
       const getSectionValue = <T>(
+        sectionKey: string,
         bankValue: T | undefined,
         draftValue: T | undefined,
+        defaultValue?: T,
       ): T | undefined => {
-        // PRIORIDADE: Banco de Dados > Rascunho Local
-        // Se houver qualquer valor vindo do banco, ele vence.
-        if (bankValue !== undefined && bankValue !== null && Object.keys(bankValue as object).length > 0) {
-          return bankValue;
+        const apiTime = baseConfig.updatedAt
+          ? new Date(baseConfig.updatedAt).getTime()
+          : config.updatedAt
+            ? new Date(config.updatedAt).getTime()
+            : 0;
+
+        const localTime = Number(drafts.draftTimestamp) || 0;
+        const isLocalNewer = shouldRecoverDrafts && localTime > apiTime;
+        const isServerNewer = apiTime > localTime;
+        const isFallback = (config as Record<string, unknown>).isFallback || (baseConfig as Record<string, unknown>).isFallback;
+
+        // Mapeamento inteligente para chaves de agendamento (JSONB aninhado)
+        let effectiveBankValue = bankValue;
+        if (sectionKey.startsWith("booking")) {
+          const stepKey = sectionKey
+            .replace("booking", "")
+            .replace("Settings", "")
+            .toLowerCase();
+          
+          const appointmentFlow = (baseConfig as Record<string, unknown>).appointmentFlow as Record<string, unknown> | undefined;
+          const nestedValue = 
+            (appointmentFlow?.[stepKey] as Record<string, unknown>) || 
+            (appointmentFlow?.steps as Record<string, unknown>)?.[stepKey] ||
+            (appointmentFlow?.steps as Record<string, unknown>)?.step1Services || // Mapeamento profundo para step1Services
+            ((baseConfig as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.[stepKey];
+
+          if (nestedValue && !isBankValueEmptyOrDefault(nestedValue as T, defaultValue)) {
+            effectiveBankValue = nestedValue as T;
+          }
         }
-        
-        // Se o banco estiver vazio e houver um rascunho que o usuário aceitou recuperar:
+
+        const isBankEmpty = isBankValueEmptyOrDefault(effectiveBankValue, defaultValue);
+
+        console.log(
+          `>>> [SYNC] Section: ${sectionKey} | Local: ${localTime} | Server: ${apiTime} | LocalNewer: ${isLocalNewer} | ServerNewer: ${isServerNewer} | BankEmpty: ${isBankEmpty} | IsFallback: ${isFallback}`,
+        );
+
+        // 1. Se o banco falhou (fallback), o LocalStorage vence sempre
+        if (isFallback) {
+          console.log(`>>> [LOADER] Fallback detectado para ${sectionKey}. Usando rascunho local.`);
+          return draftValue || defaultValue;
+        }
+
+        // 2. Se o servidor for MAIS RECENTE que o rascunho local, o servidor vence e limpa o conflito.
+        if (isServerNewer && !isBankEmpty) {
+          console.log(`>>> [LOADER] Servidor é mais recente para ${sectionKey}. Sincronizando LocalStorage.`);
+          return effectiveBankValue;
+        }
+
+        // 3. Se o rascunho local for MAIS RECENTE e tiver dados válidos, use o rascunho.
+        if (
+          isLocalNewer &&
+          draftValue !== undefined &&
+          draftValue !== null &&
+          Object.keys(draftValue as object).length > 0
+        ) {
+          console.log(`>>> [LOADER] Rascunho local é mais recente para ${sectionKey}.`);
+          return draftValue;
+        }
+
+        // 4. Se o banco NÃO estiver vazio e não houver rascunho mais recente, o banco vence.
+        if (!isBankEmpty) {
+          return effectiveBankValue;
+        }
+
+        // 5. Se o banco for vazio/default, mas o LocalStorage tiver dados, não sobrescreva (preserva edição em andamento).
+        if (
+          isBankEmpty &&
+          draftValue !== undefined &&
+          draftValue !== null &&
+          Object.keys(draftValue as object).length > 0
+        ) {
+          console.log(`>>> [LOADER] Banco vazio/default para ${sectionKey}, preservando rascunho local.`);
+          return draftValue;
+        }
+
+        // Fallback final
         if (shouldRecoverDrafts) return draftValue;
-        
-        return undefined;
+
+        return defaultValue;
       };
 
       const data = {
         ...baseConfig,
         hero: normalizeHeroSettings(
-          getSectionValue(heroSource, drafts.heroSettings as HeroSettings),
+          getSectionValue(
+            "heroSettings",
+            heroSource,
+            drafts.heroSettings as HeroSettings,
+            defaultHeroSettings,
+          ),
+          defaultHeroSettings,
         ),
         aboutHero: normalizeHeroSettings(
           getSectionValue(
+            "aboutHeroSettings",
             (layoutGlobal?.aboutHero || baseConfig.aboutHero) as HeroSettings,
             drafts.aboutHeroSettings as HeroSettings,
+            defaultAboutHeroSettings,
           ),
+          defaultAboutHeroSettings,
         ),
         story: normalizeSection(
           getSectionValue(
+            "storySettings",
             (layoutGlobal?.story || baseConfig.story) as StorySettings,
             drafts.storySettings as StorySettings,
+            defaultStorySettings,
           ),
+          defaultStorySettings,
         ),
         team: normalizeSection(
           getSectionValue(
+            "teamSettings",
             (layoutGlobal?.team || baseConfig.team) as TeamSettings,
             drafts.teamSettings as TeamSettings,
+            defaultTeamSettings,
           ),
+          defaultTeamSettings,
         ),
         testimonials: normalizeSection(
           getSectionValue(
+            "testimonialsSettings",
             (layoutGlobal?.testimonials ||
               baseConfig.testimonials) as TestimonialsSettings,
             drafts.testimonialsSettings as TestimonialsSettings,
+            defaultTestimonialsSettings,
           ),
+          defaultTestimonialsSettings,
         ),
         services: normalizeSection(
           getSectionValue(
+            "servicesSettings",
             (home?.servicesSection ||
               home?.services ||
               layoutGlobal?.services ||
               baseConfig.services) as ServicesSettings,
             drafts.servicesSettings as ServicesSettings,
+            defaultServicesSettings,
           ),
+          defaultServicesSettings,
         ),
         values: normalizeSection(
           getSectionValue(
+            "valuesSettings",
             (home?.valuesSection ||
               home?.values ||
               layoutGlobal?.values ||
               baseConfig.values) as ValuesSettings,
             drafts.valuesSettings as ValuesSettings,
+            defaultValuesSettings,
           ),
+          defaultValuesSettings,
         ),
         gallery: normalizeSection(
           getSectionValue(
+            "gallerySettings",
             (home?.galleryPreview ||
               home?.gallerySection ||
               home?.gallery ||
               layoutGlobal?.gallery ||
               baseConfig.gallery) as GallerySettings,
             drafts.gallerySettings as GallerySettings,
+            defaultGallerySettings,
           ),
+          defaultGallerySettings,
         ),
         cta: normalizeSection(
           getSectionValue(
+            "ctaSettings",
             (home?.ctaSection ||
               home?.cta ||
               layoutGlobal?.cta ||
               baseConfig.cta) as CTASettings,
             drafts.ctaSettings as CTASettings,
+            defaultCTASettings,
           ),
+          defaultCTASettings,
         ),
         header: getSectionValue(
+          "headerSettings",
           (layoutGlobal?.header || baseConfig.header) as HeaderSettings,
           drafts.headerSettings as HeaderSettings,
+          defaultHeaderSettings,
         ),
         footer: getSectionValue(
+          "footerSettings",
           (layoutGlobal?.footer || baseConfig.footer) as FooterSettings,
           drafts.footerSettings as FooterSettings,
+          defaultFooterSettings,
         ),
         bookingService: getSectionValue(
-          (layoutGlobal?.bookingService ||
-            baseConfig.bookingService) as AppearanceSettings,
-          drafts.bookingServiceSettings as AppearanceSettings,
+          "bookingServiceSettings",
+          ((baseConfig.appointmentFlow as Record<string, unknown>)?.service ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.service ||
+            (baseConfig.bookingSteps as Record<string, unknown>)?.service ||
+            baseConfig.bookingService) as BookingStepSettings,
+          drafts.bookingServiceSettings as BookingStepSettings,
+          defaultBookingServiceSettings,
         ),
         bookingDate: getSectionValue(
-          (layoutGlobal?.bookingDate ||
-            baseConfig.bookingDate) as AppearanceSettings,
-          drafts.bookingDateSettings as AppearanceSettings,
+          "bookingDateSettings",
+          ((baseConfig.appointmentFlow as Record<string, unknown>)?.date ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.date ||
+            (baseConfig.bookingSteps as Record<string, unknown>)?.date ||
+            baseConfig.bookingDate) as BookingStepSettings,
+          drafts.bookingDateSettings as BookingStepSettings,
+          defaultBookingDateSettings,
         ),
         bookingTime: getSectionValue(
-          (layoutGlobal?.bookingTime ||
-            baseConfig.bookingTime) as AppearanceSettings,
-          drafts.bookingTimeSettings as AppearanceSettings,
+          "bookingTimeSettings",
+          ((baseConfig.appointmentFlow as Record<string, unknown>)?.time ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.time ||
+            (baseConfig.bookingSteps as Record<string, unknown>)?.time ||
+            baseConfig.bookingTime) as BookingStepSettings,
+          drafts.bookingTimeSettings as BookingStepSettings,
+          defaultBookingTimeSettings,
         ),
         bookingForm: getSectionValue(
-          (layoutGlobal?.bookingForm ||
-            baseConfig.bookingForm) as AppearanceSettings,
-          drafts.bookingFormSettings as AppearanceSettings,
+          "bookingFormSettings",
+          ((baseConfig.appointmentFlow as Record<string, unknown>)?.form ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.form ||
+            (baseConfig.bookingSteps as Record<string, unknown>)?.form ||
+            baseConfig.bookingForm) as BookingStepSettings,
+          drafts.bookingFormSettings as BookingStepSettings,
+          defaultBookingFormSettings,
         ),
         bookingConfirmation: getSectionValue(
-          (layoutGlobal?.bookingConfirmation ||
-            baseConfig.bookingConfirmation) as AppearanceSettings,
-          drafts.bookingConfirmationSettings as AppearanceSettings,
+          "bookingConfirmationSettings",
+          ((baseConfig.appointmentFlow as Record<string, unknown>)?.confirmation ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.confirmation ||
+            (baseConfig.bookingSteps as Record<string, unknown>)?.confirmation ||
+            baseConfig.bookingConfirmation) as BookingStepSettings,
+          drafts.bookingConfirmationSettings as BookingStepSettings,
+          defaultBookingConfirmationSettings,
         ),
         font: getSectionValue(
+          "fontSettings",
           (layoutGlobal?.font || baseConfig.font) as FontSettings,
           drafts.fontSettings as FontSettings,
+          defaultFontSettings,
         ),
         color: getSectionValue(
+          "colorSettings",
           (layoutGlobal?.color || baseConfig.color) as ColorSettings,
           drafts.colorSettings as ColorSettings,
+          defaultColorSettings,
         ),
       } as SiteConfigData;
 
@@ -373,9 +578,17 @@ export function useEditorConfigLoader({
         heroDraft = mergedHeroDraft;
       }
 
-      // Autoridade máxima: Se temos dados do banco, eles SEMPRE sobrescrevem o local
+      // Autoridade máxima removida: agora usamos getSectionValue que já decide entre banco e rascunho.
       if (sanitizedHero) {
-        setLastSavedHero(sanitizedHero);
+        // Se o valor carregado for igual ao rascunho e o rascunho for mais recente, 
+        // mantemos o lastSaved como o valor do banco para permitir salvar.
+        const isUsingDraft = JSON.stringify(sanitizedHero) === JSON.stringify(drafts.heroSettings);
+        
+        if (isUsingDraft && !isBankValueEmptyOrDefault(heroSource, defaultHeroSettings)) {
+          setLastSavedHero(normalizeHeroSettings(heroSource) || defaultHeroSettings);
+        } else {
+          setLastSavedHero(sanitizedHero);
+        }
         setHeroSettings(sanitizedHero);
       }
 
@@ -386,141 +599,231 @@ export function useEditorConfigLoader({
         setSettings: (v: T) => void,
         setLastSaved: (v: T) => void,
         defaultValue: T,
+        bankValue: T | undefined,
       ) => {
         if (dataValue) {
-          setLastSaved(dataValue);
+          const isUsingDraft =
+            JSON.stringify(dataValue) === JSON.stringify(drafts[_draftKey]);
+
+          if (
+            isUsingDraft &&
+            !isBankValueEmptyOrDefault(bankValue, defaultValue)
+          ) {
+            setLastSaved(bankValue || defaultValue);
+          } else {
+            setLastSaved(dataValue);
+          }
           setSettings(dataValue);
         } else {
           setSettings(defaultValue);
+          setLastSaved(defaultValue);
         }
       };
 
       processSection(
         "aboutHeroSettings",
-        data.aboutHero,
+        data.aboutHero as HeroSettings,
         setAboutHeroSettings,
         setLastSavedAboutHero,
         defaultAboutHeroSettings,
+        (layoutGlobal?.aboutHero || baseConfig.aboutHero) as HeroSettings,
       );
       processSection(
         "storySettings",
-        data.story,
+        data.story as StorySettings,
         setStorySettings,
         setLastSavedStory,
         defaultStorySettings,
+        (layoutGlobal?.story || baseConfig.story) as StorySettings,
       );
       processSection(
         "teamSettings",
-        data.team,
+        data.team as TeamSettings,
         setTeamSettings,
         setLastSavedTeam,
         defaultTeamSettings,
+        (layoutGlobal?.team || baseConfig.team) as TeamSettings,
       );
       processSection(
         "testimonialsSettings",
-        data.testimonials,
+        data.testimonials as TestimonialsSettings,
         setTestimonialsSettings,
         setLastSavedTestimonials,
         defaultTestimonialsSettings,
+        (layoutGlobal?.testimonials ||
+          baseConfig.testimonials) as TestimonialsSettings,
       );
       processSection(
         "servicesSettings",
-        data.services,
+        data.services as ServicesSettings,
         setServicesSettings,
         setLastSavedServices,
         defaultServicesSettings,
+        (home?.servicesSection ||
+          home?.services ||
+          layoutGlobal?.services ||
+          baseConfig.services) as ServicesSettings,
       );
       processSection(
         "valuesSettings",
-        data.values,
+        data.values as ValuesSettings,
         setValuesSettings,
         setLastSavedValues,
         defaultValuesSettings,
+        (home?.valuesSection ||
+          home?.values ||
+          layoutGlobal?.values ||
+          baseConfig.values) as ValuesSettings,
       );
       processSection(
         "gallerySettings",
-        data.gallery,
+        data.gallery as GallerySettings,
         setGallerySettings,
         setLastSavedGallery,
         defaultGallerySettings,
+        (home?.galleryPreview ||
+          home?.gallerySection ||
+          home?.gallery ||
+          layoutGlobal?.gallery ||
+          baseConfig.gallery) as GallerySettings,
       );
       processSection(
         "ctaSettings",
-        data.cta,
+        data.cta as CTASettings,
         setCTASettings,
         setLastSavedCTA,
         defaultCTASettings,
+        (home?.ctaSection ||
+          home?.cta ||
+          layoutGlobal?.cta ||
+          baseConfig.cta) as CTASettings,
       );
       processSection(
         "headerSettings",
-        data.header,
+        data.header as HeaderSettings,
         setHeaderSettings,
         setLastSavedHeader,
         defaultHeaderSettings,
+        (layoutGlobal?.header || baseConfig.header) as HeaderSettings,
       );
       processSection(
         "footerSettings",
-        data.footer,
+        data.footer as FooterSettings,
         setFooterSettings,
         setLastSavedFooter,
         defaultFooterSettings,
+        (layoutGlobal?.footer || baseConfig.footer) as FooterSettings,
       );
       processSection(
         "fontSettings",
-        data.theme,
+        data.font as FontSettings,
         setFontSettings,
         setLastSavedFont,
         defaultFontSettings,
+        (layoutGlobal?.font || baseConfig.font) as FontSettings,
       );
       processSection(
         "colorSettings",
-        data.colors,
+        data.color as ColorSettings,
         setColorSettings,
         setLastSavedColor,
         defaultColorSettings,
+        (layoutGlobal?.color || baseConfig.color) as ColorSettings,
       );
 
       // Booking steps...
       const bookingSteps = [
         {
-          key: "bookingServiceSettings",
-          data: data.bookingSteps?.service,
-          set: setBookingServiceSettings,
-          setLast: setLastSavedBookingService,
+          key: "bookingServiceSettings" as keyof EditorLocalDrafts,
+          data: data.bookingService as BookingStepSettings, // Usando data (que é draft-aware)
+          bank:
+            ((layoutGlobal?.bookingSteps as Record<string, unknown>)?.service as BookingStepSettings) ||
+            ((baseConfig.bookingSteps as Record<string, unknown>)?.service as BookingStepSettings) ||
+            (((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.service as BookingStepSettings) ||
+            (((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.service as BookingStepSettings) ||
+            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.service as BookingStepSettings) ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)?.service as BookingStepSettings) ||
+            (layoutGlobal as Record<string, unknown>)?.bookingService ||
+            (baseConfig as Record<string, unknown>).bookingService,
+          set: setBookingServiceSettings as (v: BookingStepSettings) => void,
+          setLast: setLastSavedBookingService as (v: BookingStepSettings) => void,
           def: defaultBookingServiceSettings,
         },
         {
-          key: "bookingDateSettings",
-          data: data.bookingSteps?.date,
-          set: setBookingDateSettings,
-          setLast: setLastSavedBookingDate,
+          key: "bookingDateSettings" as keyof EditorLocalDrafts,
+          data: data.bookingDate as BookingStepSettings,
+          bank:
+            ((layoutGlobal?.bookingSteps as Record<string, unknown>)?.date as BookingStepSettings) ||
+            ((baseConfig.bookingSteps as Record<string, unknown>)?.date as BookingStepSettings) ||
+            (((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.date as BookingStepSettings) ||
+            (((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.date as BookingStepSettings) ||
+            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.date as BookingStepSettings) ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)?.date as BookingStepSettings) ||
+            (layoutGlobal as Record<string, unknown>)?.bookingDate ||
+            (baseConfig as Record<string, unknown>).bookingDate,
+          set: setBookingDateSettings as (v: BookingStepSettings) => void,
+          setLast: setLastSavedBookingDate as (v: BookingStepSettings) => void,
           def: defaultBookingDateSettings,
         },
         {
-          key: "bookingTimeSettings",
-          data: data.bookingSteps?.time,
-          set: setBookingTimeSettings,
-          setLast: setLastSavedBookingTime,
+          key: "bookingTimeSettings" as keyof EditorLocalDrafts,
+          data: data.bookingTime as BookingStepSettings,
+          bank:
+            ((layoutGlobal?.bookingSteps as Record<string, unknown>)?.time as BookingStepSettings) ||
+            ((baseConfig.bookingSteps as Record<string, unknown>)?.time as BookingStepSettings) ||
+            (((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.time as BookingStepSettings) ||
+            (((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.time as BookingStepSettings) ||
+            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.time as BookingStepSettings) ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)?.time as BookingStepSettings) ||
+            (layoutGlobal as Record<string, unknown>)?.bookingTime ||
+            (baseConfig as Record<string, unknown>).bookingTime,
+          set: setBookingTimeSettings as (v: BookingStepSettings) => void,
+          setLast: setLastSavedBookingTime as (v: BookingStepSettings) => void,
           def: defaultBookingTimeSettings,
         },
         {
-          key: "bookingFormSettings",
-          data: data.bookingSteps?.form,
-          set: setBookingFormSettings,
-          setLast: setLastSavedBookingForm,
+          key: "bookingFormSettings" as keyof EditorLocalDrafts,
+          data: data.bookingForm as BookingStepSettings,
+          bank:
+            ((layoutGlobal?.bookingSteps as Record<string, unknown>)?.form as BookingStepSettings) ||
+            ((baseConfig.bookingSteps as Record<string, unknown>)?.form as BookingStepSettings) ||
+            (((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.form as BookingStepSettings) ||
+            (((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.form as BookingStepSettings) ||
+            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.form as BookingStepSettings) ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)?.form as BookingStepSettings) ||
+            (layoutGlobal as Record<string, unknown>)?.bookingForm ||
+            (baseConfig as Record<string, unknown>).bookingForm,
+          set: setBookingFormSettings as (v: BookingStepSettings) => void,
+          setLast: setLastSavedBookingForm as (v: BookingStepSettings) => void,
           def: defaultBookingFormSettings,
         },
         {
-          key: "bookingConfirmationSettings",
-          data: data.bookingSteps?.confirmation,
-          set: setBookingConfirmationSettings,
-          setLast: setLastSavedBookingConfirmation,
+          key: "bookingConfirmationSettings" as keyof EditorLocalDrafts,
+          data: data.bookingConfirmation as BookingStepSettings,
+          bank:
+            ((layoutGlobal?.bookingSteps as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
+            ((baseConfig.bookingSteps as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
+            (((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
+            (((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
+            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
+            (layoutGlobal as Record<string, unknown>)?.bookingConfirmation ||
+            (baseConfig as Record<string, unknown>).bookingConfirmation,
+          set: setBookingConfirmationSettings as (v: BookingStepSettings) => void,
+          setLast: setLastSavedBookingConfirmation as (v: BookingStepSettings) => void,
           def: defaultBookingConfirmationSettings,
         },
       ];
 
       bookingSteps.forEach((step) => {
-        processSection(step.key, step.data, step.set, step.setLast, step.def);
+        processSection(
+          step.key,
+          step.data,
+          step.set,
+          step.setLast,
+          step.def,
+          step.bank as BookingStepSettings,
+        );
       });
 
       if (data.pageVisibility) {
@@ -541,20 +844,20 @@ export function useEditorConfigLoader({
         teamSettings: data.team || defaultTeamSettings,
         testimonialsSettings: data.testimonials || defaultTestimonialsSettings,
         fontSettings:
-          data.theme &&
-          typeof data.theme === "object" &&
-          Object.keys(data.theme).length > 0
-            ? (data.theme as FontSettings)
+          (data as Record<string, unknown>).theme &&
+          typeof (data as Record<string, unknown>).theme === "object" &&
+          Object.keys((data as Record<string, unknown>).theme as object).length > 0
+            ? ((data as Record<string, unknown>).theme as FontSettings)
             : data.font &&
                 typeof data.font === "object" &&
                 Object.keys(data.font).length > 0
               ? (data.font as FontSettings)
               : defaultFontSettings,
         colorSettings:
-          data.colors &&
-          typeof data.colors === "object" &&
-          Object.keys(data.colors).length > 0
-            ? (data.colors as ColorSettings)
+          (data as Record<string, unknown>).colors &&
+          typeof (data as Record<string, unknown>).colors === "object" &&
+          Object.keys((data as Record<string, unknown>).colors as object).length > 0
+            ? ((data as Record<string, unknown>).colors as ColorSettings)
             : data.color &&
                 typeof data.color === "object" &&
                 Object.keys(data.color).length > 0
@@ -567,50 +870,50 @@ export function useEditorConfigLoader({
         headerSettings: data.header || defaultHeaderSettings,
         footerSettings: data.footer || defaultFooterSettings,
         bookingServiceSettings:
-          data.bookingSteps?.service &&
-          typeof data.bookingSteps.service === "object" &&
-          Object.keys(data.bookingSteps.service).length > 0
-            ? (data.bookingSteps.service as BookingStepSettings)
+          ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.service &&
+          typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).service === "object" &&
+          Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).service as object).length > 0
+            ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).service as BookingStepSettings)
             : data.bookingService &&
                 typeof data.bookingService === "object" &&
                 Object.keys(data.bookingService).length > 0
               ? (data.bookingService as BookingStepSettings)
               : defaultBookingServiceSettings,
         bookingDateSettings:
-          data.bookingSteps?.date &&
-          typeof data.bookingSteps.date === "object" &&
-          Object.keys(data.bookingSteps.date).length > 0
-            ? (data.bookingSteps.date as BookingStepSettings)
+          ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.date &&
+          typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).date === "object" &&
+          Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).date as object).length > 0
+            ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).date as BookingStepSettings)
             : data.bookingDate &&
                 typeof data.bookingDate === "object" &&
                 Object.keys(data.bookingDate).length > 0
               ? (data.bookingDate as BookingStepSettings)
               : defaultBookingDateSettings,
         bookingTimeSettings:
-          data.bookingSteps?.time &&
-          typeof data.bookingSteps.time === "object" &&
-          Object.keys(data.bookingSteps.time).length > 0
-            ? (data.bookingSteps.time as BookingStepSettings)
+          ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.time &&
+          typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).time === "object" &&
+          Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).time as object).length > 0
+            ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).time as BookingStepSettings)
             : data.bookingTime &&
                 typeof data.bookingTime === "object" &&
                 Object.keys(data.bookingTime).length > 0
               ? (data.bookingTime as BookingStepSettings)
               : defaultBookingTimeSettings,
         bookingFormSettings:
-          data.bookingSteps?.form &&
-          typeof data.bookingSteps.form === "object" &&
-          Object.keys(data.bookingSteps.form).length > 0
-            ? (data.bookingSteps.form as BookingStepSettings)
+          ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.form &&
+          typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).form === "object" &&
+          Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).form as object).length > 0
+            ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).form as BookingStepSettings)
             : data.bookingForm &&
                 typeof data.bookingForm === "object" &&
                 Object.keys(data.bookingForm).length > 0
               ? (data.bookingForm as BookingStepSettings)
               : defaultBookingFormSettings,
         bookingConfirmationSettings:
-          data.bookingSteps?.confirmation &&
-          typeof data.bookingSteps.confirmation === "object" &&
-          Object.keys(data.bookingSteps.confirmation).length > 0
-            ? (data.bookingSteps.confirmation as BookingStepSettings)
+          ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.confirmation &&
+          typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).confirmation === "object" &&
+          Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).confirmation as object).length > 0
+            ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).confirmation as BookingStepSettings)
             : data.bookingConfirmation &&
                 typeof data.bookingConfirmation === "object" &&
                 Object.keys(data.bookingConfirmation).length > 0
@@ -645,6 +948,26 @@ export function useEditorConfigLoader({
       loadLocalDrafts,
       saveLocalDrafts,
       saveHeroSettings,
+      local.saveHeroSettings,
+      local.saveAboutHeroSettings,
+      local.saveStorySettings,
+      local.saveTeamSettings,
+      local.saveTestimonialsSettings,
+      local.saveServicesSettings,
+      local.saveValuesSettings,
+      local.saveGallerySettings,
+      local.saveCTASettings,
+      local.saveHeaderSettings,
+      local.saveFooterSettings,
+      local.saveColorSettings,
+      local.saveFontSettings,
+      local.saveVisibleSections,
+      local.savePageVisibility,
+      local.saveBookingServiceSettings,
+      local.saveBookingDateSettings,
+      local.saveBookingTimeSettings,
+      local.saveBookingFormSettings,
+      local.saveBookingConfirmationSettings,
       setHeroSettings,
       setAboutHeroSettings,
       setStorySettings,

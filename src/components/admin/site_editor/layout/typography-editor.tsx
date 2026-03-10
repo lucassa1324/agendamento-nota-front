@@ -97,7 +97,7 @@ export function TypographyEditor({
                 Selecione a fonte principal
               </legend>
               <Select
-                value={settings.headingFont}
+                value={typeof settings.headingFont === 'object' ? ((settings.headingFont as unknown as { text?: string, value?: string }).text || (settings.headingFont as unknown as { text?: string, value?: string }).value || "") : (settings.headingFont || "")}
                 onValueChange={(val) => onUpdate({ headingFont: val })}
               >
                 <SelectTrigger className="h-9 text-sm bg-background">
@@ -139,7 +139,7 @@ export function TypographyEditor({
                 Selecione a fonte para subtítulos
               </legend>
               <Select
-                value={settings.subtitleFont}
+                value={typeof settings.subtitleFont === 'object' ? ((settings.subtitleFont as unknown as { text?: string, value?: string }).text || (settings.subtitleFont as unknown as { text?: string, value?: string }).value || "") : (settings.subtitleFont || "")}
                 onValueChange={(val) => onUpdate({ subtitleFont: val })}
               >
                 <SelectTrigger className="h-9 text-sm bg-background">
@@ -181,7 +181,7 @@ export function TypographyEditor({
                 Selecione a fonte para textos
               </legend>
               <Select
-                value={settings.bodyFont}
+                value={typeof settings.bodyFont === 'object' ? ((settings.bodyFont as unknown as { text?: string, value?: string }).text || (settings.bodyFont as unknown as { text?: string, value?: string }).value || "") : (settings.bodyFont || "")}
                 onValueChange={(val) => onUpdate({ bodyFont: val })}
               >
                 <SelectTrigger className="h-9 text-sm bg-background">

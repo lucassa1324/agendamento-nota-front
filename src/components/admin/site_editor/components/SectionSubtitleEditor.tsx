@@ -45,7 +45,7 @@ export function SectionSubtitleEditor({
           {label}
         </legend>
         <Textarea
-          value={subtitle || ""}
+          value={typeof subtitle === 'object' ? ((subtitle as unknown as { text?: string }).text || "") : (subtitle || "")}
           onChange={(e) => onUpdate({ subtitle: e.target.value })}
           className="min-h-20 text-xs resize-none"
         />

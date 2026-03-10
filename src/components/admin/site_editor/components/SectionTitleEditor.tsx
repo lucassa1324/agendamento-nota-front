@@ -44,7 +44,7 @@ export function SectionTitleEditor({
           {label}
         </legend>
         <Input
-          value={title || ""}
+          value={typeof title === 'object' ? ((title as unknown as { text?: string }).text || "") : (title || "")}
           onChange={(e) => onUpdate({ title: e.target.value })}
           className="h-8 text-xs"
         />

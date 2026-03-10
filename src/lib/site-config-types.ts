@@ -67,5 +67,19 @@ export interface SiteConfigData {
     form?: BookingStepSettings;
     confirmation?: BookingStepSettings;
   };
+  appointmentFlow?: {
+    steps?: {
+      service?: BookingStepSettings;
+      date?: BookingStepSettings;
+      time?: BookingStepSettings;
+      form?: BookingStepSettings;
+      confirmation?: BookingStepSettings;
+    };
+    service?: BookingStepSettings;
+    date?: BookingStepSettings;
+    time?: BookingStepSettings;
+    form?: BookingStepSettings;
+    confirmation?: BookingStepSettings;
+  };
   updatedAt?: string;
 }
