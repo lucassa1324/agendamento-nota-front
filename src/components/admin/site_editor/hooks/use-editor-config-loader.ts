@@ -24,7 +24,6 @@ import {
   type FontSettings,
   type FooterSettings,
   type GallerySettings,
-  getStorageKey,
   type HeaderSettings,
   type HeroSettings,
   type ServicesSettings,
@@ -216,43 +215,9 @@ export function useEditorConfigLoader({
       
       console.log(`>>> [SYNC_CHECK] Server: ${apiTime} | Local: ${localTime} | Fallback: ${isFallback}`);
 
-      // Se o servidor for MAIS RECENTE, atualizamos o LocalStorage imediatamente para alinhar dispositivos
-      if (apiTime > localTime && !isFallback) {
-        console.log(">>> [SYNC] Conflito detectado: Banco é mais novo. Sobrescrevendo rascunho local para alinhar dispositivos.");
-        
-        // Sincronização profunda do rascunho local
-        if (baseConfig.hero) local.saveHeroSettings(baseConfig.hero as HeroSettings);
-        if (baseConfig.aboutHero) local.saveAboutHeroSettings(baseConfig.aboutHero as HeroSettings);
-        if (baseConfig.story) local.saveStorySettings(baseConfig.story as StorySettings);
-        if (baseConfig.team) local.saveTeamSettings(baseConfig.team as TeamSettings);
-        if (baseConfig.testimonials) local.saveTestimonialsSettings(baseConfig.testimonials as TestimonialsSettings);
-        if (baseConfig.services) local.saveServicesSettings(baseConfig.services as ServicesSettings);
-        if (baseConfig.values) local.saveValuesSettings(baseConfig.values as ValuesSettings);
-        if (baseConfig.gallery) local.saveGallerySettings(baseConfig.gallery as GallerySettings);
-        if (baseConfig.cta) local.saveCTASettings(baseConfig.cta as CTASettings);
-        if (baseConfig.header) local.saveHeaderSettings(baseConfig.header as HeaderSettings);
-        if (baseConfig.footer) local.saveFooterSettings(baseConfig.footer as FooterSettings);
-        if (baseConfig.colors) local.saveColorSettings(baseConfig.colors as ColorSettings);
-        if (baseConfig.theme) local.saveFontSettings(baseConfig.theme as FontSettings);
-        if (baseConfig.visibleSections) local.saveVisibleSections(baseConfig.visibleSections as Record<string, boolean>);
-        if (baseConfig.pageVisibility) local.savePageVisibility(baseConfig.pageVisibility as Record<string, boolean>);
-
-        // Passos de agendamento
-        const flow = (baseConfig.appointmentFlow || (baseConfig as Record<string, unknown>).bookingSteps) as Record<string, unknown> | undefined;
-        if (flow) {
-          if (flow.service) local.saveBookingServiceSettings(flow.service as BookingStepSettings);
-          if (flow.date) local.saveBookingDateSettings(flow.date as BookingStepSettings);
-          if (flow.time) local.saveBookingTimeSettings(flow.time as BookingStepSettings);
-          if (flow.form) local.saveBookingFormSettings(flow.form as BookingStepSettings);
-          if (flow.confirmation) local.saveBookingConfirmationSettings(flow.confirmation as BookingStepSettings);
-        }
-
-        // Atualiza o timestamp local para bater com o do servidor
-        localStorage.setItem(getStorageKey("last_draft_update"), new Date(apiTime).toISOString());
-        
-        // Recarrega os rascunhos após a sincronização para que o getSectionValue use os novos valores
-        Object.assign(drafts, loadLocalDrafts());
-      }
+      // REMOVIDO: Sincronização automática para o LocalStorage. 
+      // O Banco de Dados é a única fonte da verdade no F5.
+      // if (apiTime > localTime && !isFallback) { ... }
 
       const layoutGlobal = (baseConfig.layoutGlobal ||
         baseConfig.layout_global) as Record<string, unknown> | undefined;
@@ -548,11 +513,6 @@ export function useEditorConfigLoader({
       );
 
       const sanitizedHero = normalizeHeroSettings(data.hero);
-      const bankUpdatedAt = baseConfig.updatedAt
-        ? new Date(baseConfig.updatedAt).getTime()
-        : config.updatedAt
-          ? new Date(config.updatedAt).getTime()
-          : 0;
 
       let heroDraft = normalizeHeroSettings(
         drafts.heroSettings as HeroSettings | undefined,
@@ -929,18 +889,6 @@ export function useEditorConfigLoader({
       }
 
       if (typeof window !== "undefined") {
-        const draftKey = getStorageKey("last_draft_update");
-        if (bankUpdatedAt) {
-          localStorage.setItem(
-            draftKey,
-            new Date(bankUpdatedAt).toISOString(),
-          );
-        } else {
-          localStorage.removeItem(draftKey);
-        }
-      }
-
-      if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("DataReady"));
       }
     },
@@ -948,26 +896,6 @@ export function useEditorConfigLoader({
       loadLocalDrafts,
       saveLocalDrafts,
       saveHeroSettings,
-      local.saveHeroSettings,
-      local.saveAboutHeroSettings,
-      local.saveStorySettings,
-      local.saveTeamSettings,
-      local.saveTestimonialsSettings,
-      local.saveServicesSettings,
-      local.saveValuesSettings,
-      local.saveGallerySettings,
-      local.saveCTASettings,
-      local.saveHeaderSettings,
-      local.saveFooterSettings,
-      local.saveColorSettings,
-      local.saveFontSettings,
-      local.saveVisibleSections,
-      local.savePageVisibility,
-      local.saveBookingServiceSettings,
-      local.saveBookingDateSettings,
-      local.saveBookingTimeSettings,
-      local.saveBookingFormSettings,
-      local.saveBookingConfirmationSettings,
       setHeroSettings,
       setAboutHeroSettings,
       setStorySettings,

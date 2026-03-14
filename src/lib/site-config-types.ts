@@ -25,6 +25,7 @@ export interface LayoutGlobalSettings {
   visible_sections?: Record<string, boolean>;
   pageVisibility?: Record<string, boolean>;
   page_visibility?: Record<string, boolean>;
+  card_bg_color?: string;
   hero?: HeroSettings;
   heroBanner?: HeroSettings;
   aboutHero?: HeroSettings;
@@ -58,8 +59,14 @@ export interface SiteConfigData {
   footer?: FooterSettings;
   pageVisibility?: Record<string, boolean>;
   visibleSections?: Record<string, boolean>;
-  layoutGlobal?: LayoutGlobalSettings; // Suporte para estrutura aninhada do banco
-  layout_global?: LayoutGlobalSettings; // Suporte para snake_case do banco
+  siteCustomization?: {
+    layoutGlobal?: LayoutGlobalSettings;
+    layout_global?: LayoutGlobalSettings;
+  };
+  site_customization?: {
+    layoutGlobal?: LayoutGlobalSettings;
+    layout_global?: LayoutGlobalSettings;
+  };
   bookingSteps?: {
     service?: BookingStepSettings;
     date?: BookingStepSettings;

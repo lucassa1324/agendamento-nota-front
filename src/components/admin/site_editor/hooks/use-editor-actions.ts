@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import type {
   BookingStepSettings,
   ColorSettings,
@@ -110,6 +110,21 @@ export function useEditorActions({
     setLastAppliedBookingForm,
     setLastAppliedBookingConfirmation,
   } = state;
+
+  const saveTimersRef = useRef<Record<string, number>>({});
+
+  const scheduleDraftSave = useCallback((key: string, saveFn: () => void) => {
+    if (typeof window === "undefined") return;
+    const timers = saveTimersRef.current;
+    if (timers[key]) {
+      window.clearTimeout(timers[key]);
+    }
+    timers[key] = window.setTimeout(() => {
+      saveFn();
+      window.dispatchEvent(new Event("local_draft_changed"));
+      delete timers[key];
+    }, 1000);
+  }, []);
 
   const deleteOrphanImage = useCallback(
     async (url?: string) => {
@@ -428,6 +443,25 @@ export function useEditorActions({
           }),
       };
 
+      const saveKeyMap: Record<string, string> = {
+        hero: "heroSettings",
+        "about-hero": "aboutHeroSettings",
+        story: "storySettings",
+        team: "teamSettings",
+        testimonials: "testimonialsSettings",
+        services: "servicesSettings",
+        values: "valuesSettings",
+        gallery: "gallerySettings",
+        "gallery-preview": "gallerySettings",
+        "gallery-grid": "gallerySettings",
+        cta: "ctaSettings",
+        "booking-service": "bookingServiceSettings",
+        "booking-date": "bookingDateSettings",
+        "booking-time": "bookingTimeSettings",
+        "booking-form": "bookingFormSettings",
+        "booking-confirmation": "bookingConfirmationSettings",
+      };
+
       const saveFn = saveFnMap[targetSectionId];
       if (saveFn) {
         const currentSettings = currentSettingsMap[targetSectionId];
@@ -451,12 +485,8 @@ export function useEditorActions({
           };
         }
 
-        saveFn(merged);
-
-        // Dispara evento para o auto-save e sincronização de preview
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new Event("local_draft_changed"));
-        }
+        const saveKey = saveKeyMap[targetSectionId] || targetSectionId;
+        scheduleDraftSave(saveKey, () => saveFn(merged));
       }
     },
     [
@@ -491,140 +521,170 @@ export function useEditorActions({
       saveBookingFormSettings,
       saveBookingConfirmationSettings,
       deleteOrphanImage,
+      scheduleDraftSave,
     ],
   );
 
   const handleUpdateFont = useCallback(
     (updates: Partial<FontSettings>) => {
       handleUpdateFontState(updates);
-      saveFontSettings({ ...fontSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("fontSettings", () =>
+        saveFontSettings({ ...fontSettings, ...updates }),
+      );
     },
-    [handleUpdateFontState, saveFontSettings, fontSettings],
+    [handleUpdateFontState, scheduleDraftSave, saveFontSettings, fontSettings],
   );
 
   const handleUpdateColors = useCallback(
     (updates: Partial<ColorSettings>) => {
       handleUpdateColorsState(updates);
-      saveColorSettings({ ...colorSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("colorSettings", () =>
+        saveColorSettings({ ...colorSettings, ...updates }),
+      );
     },
-    [handleUpdateColorsState, saveColorSettings, colorSettings],
+    [
+      handleUpdateColorsState,
+      scheduleDraftSave,
+      saveColorSettings,
+      colorSettings,
+    ],
   );
 
   const handleUpdateHero = useCallback(
     (updates: Partial<HeroSettings>) => {
       handleUpdateHeroState(updates);
-      saveHeroSettings({ ...heroSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("heroSettings", () =>
+        saveHeroSettings({ ...heroSettings, ...updates }),
+      );
     },
-    [handleUpdateHeroState, saveHeroSettings, heroSettings],
+    [handleUpdateHeroState, scheduleDraftSave, saveHeroSettings, heroSettings],
   );
 
   const handleUpdateAboutHero = useCallback(
     (updates: Partial<HeroSettings>) => {
       handleUpdateAboutHeroState(updates);
-      saveAboutHeroSettings({ ...aboutHeroSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("aboutHeroSettings", () =>
+        saveAboutHeroSettings({ ...aboutHeroSettings, ...updates }),
+      );
     },
-    [handleUpdateAboutHeroState, saveAboutHeroSettings, aboutHeroSettings],
+    [
+      handleUpdateAboutHeroState,
+      scheduleDraftSave,
+      saveAboutHeroSettings,
+      aboutHeroSettings,
+    ],
   );
 
   const handleUpdateStory = useCallback(
     (updates: Partial<StorySettings>) => {
       handleUpdateStoryState(updates);
-      saveStorySettings({ ...storySettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("storySettings", () =>
+        saveStorySettings({ ...storySettings, ...updates }),
+      );
     },
-    [handleUpdateStoryState, saveStorySettings, storySettings],
+    [
+      handleUpdateStoryState,
+      scheduleDraftSave,
+      saveStorySettings,
+      storySettings,
+    ],
   );
 
   const handleUpdateTeam = useCallback(
     (updates: Partial<TeamSettings>) => {
       handleUpdateTeamState(updates);
-      saveTeamSettings({ ...teamSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("teamSettings", () =>
+        saveTeamSettings({ ...teamSettings, ...updates }),
+      );
     },
-    [handleUpdateTeamState, saveTeamSettings, teamSettings],
+    [handleUpdateTeamState, scheduleDraftSave, saveTeamSettings, teamSettings],
   );
 
   const handleUpdateTestimonials = useCallback(
     (updates: Partial<TestimonialsSettings>) => {
       handleUpdateTestimonialsState(updates);
-      saveTestimonialsSettings({ ...testimonialsSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("testimonialsSettings", () =>
+        saveTestimonialsSettings({ ...testimonialsSettings, ...updates }),
+      );
     },
-    [handleUpdateTestimonialsState, saveTestimonialsSettings, testimonialsSettings],
+    [
+      handleUpdateTestimonialsState,
+      scheduleDraftSave,
+      saveTestimonialsSettings,
+      testimonialsSettings,
+    ],
   );
 
   const handleUpdateServices = useCallback(
     (updates: Partial<ServicesSettings>) => {
       handleUpdateServicesState(updates);
-      saveServicesSettings({ ...servicesSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("servicesSettings", () =>
+        saveServicesSettings({ ...servicesSettings, ...updates }),
+      );
     },
-    [handleUpdateServicesState, saveServicesSettings, servicesSettings],
+    [
+      handleUpdateServicesState,
+      scheduleDraftSave,
+      saveServicesSettings,
+      servicesSettings,
+    ],
   );
 
   const handleUpdateGallery = useCallback(
     (updates: Partial<GallerySettings>) => {
       handleUpdateGalleryState(updates);
-      saveGallerySettings({ ...gallerySettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("gallerySettings", () =>
+        saveGallerySettings({ ...gallerySettings, ...updates }),
+      );
     },
-    [handleUpdateGalleryState, saveGallerySettings, gallerySettings],
+    [
+      handleUpdateGalleryState,
+      scheduleDraftSave,
+      saveGallerySettings,
+      gallerySettings,
+    ],
   );
 
   const handleUpdateHeader = useCallback(
     (updates: Partial<HeaderSettings>) => {
       handleUpdateHeaderState(updates);
-      saveHeaderSettings({ ...headerSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("headerSettings", () =>
+        saveHeaderSettings({ ...headerSettings, ...updates }),
+      );
     },
-    [handleUpdateHeaderState, saveHeaderSettings, headerSettings],
+    [
+      handleUpdateHeaderState,
+      scheduleDraftSave,
+      saveHeaderSettings,
+      headerSettings,
+    ],
   );
 
   const handleUpdateFooter = useCallback(
     (updates: Partial<FooterSettings>) => {
       handleUpdateFooterState(updates);
-      saveFooterSettings({ ...footerSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("footerSettings", () =>
+        saveFooterSettings({ ...footerSettings, ...updates }),
+      );
     },
-    [handleUpdateFooterState, saveFooterSettings, footerSettings],
+    [
+      handleUpdateFooterState,
+      scheduleDraftSave,
+      saveFooterSettings,
+      footerSettings,
+    ],
   );
 
   const handleUpdateBookingService = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       handleUpdateBookingServiceState(updates);
-      saveBookingServiceSettings({ ...bookingServiceSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("bookingServiceSettings", () =>
+        saveBookingServiceSettings({ ...bookingServiceSettings, ...updates }),
+      );
     },
     [
       handleUpdateBookingServiceState,
+      scheduleDraftSave,
       saveBookingServiceSettings,
       bookingServiceSettings,
     ],
@@ -633,35 +693,38 @@ export function useEditorActions({
   const handleUpdateValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
       handleUpdateValuesState(updates);
-      saveValuesSettings({ ...valuesSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("valuesSettings", () =>
+        saveValuesSettings({ ...valuesSettings, ...updates }),
+      );
     },
-    [handleUpdateValuesState, saveValuesSettings, valuesSettings],
+    [
+      handleUpdateValuesState,
+      scheduleDraftSave,
+      saveValuesSettings,
+      valuesSettings,
+    ],
   );
 
   const handleUpdateCTA = useCallback(
     (updates: Partial<CTASettings>) => {
       handleUpdateCTAState(updates);
-      saveCTASettings({ ...ctaSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("ctaSettings", () =>
+        saveCTASettings({ ...ctaSettings, ...updates }),
+      );
     },
-    [handleUpdateCTAState, saveCTASettings, ctaSettings],
+    [handleUpdateCTAState, scheduleDraftSave, saveCTASettings, ctaSettings],
   );
 
   const handleUpdateBookingDate = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       handleUpdateBookingDateState(updates);
-      saveBookingDateSettings({ ...bookingDateSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("bookingDateSettings", () =>
+        saveBookingDateSettings({ ...bookingDateSettings, ...updates }),
+      );
     },
     [
       handleUpdateBookingDateState,
+      scheduleDraftSave,
       saveBookingDateSettings,
       bookingDateSettings,
     ],
@@ -670,13 +733,13 @@ export function useEditorActions({
   const handleUpdateBookingTime = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       handleUpdateBookingTimeState(updates);
-      saveBookingTimeSettings({ ...bookingTimeSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("bookingTimeSettings", () =>
+        saveBookingTimeSettings({ ...bookingTimeSettings, ...updates }),
+      );
     },
     [
       handleUpdateBookingTimeState,
+      scheduleDraftSave,
       saveBookingTimeSettings,
       bookingTimeSettings,
     ],
@@ -685,13 +748,13 @@ export function useEditorActions({
   const handleUpdateBookingForm = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       handleUpdateBookingFormState(updates);
-      saveBookingFormSettings({ ...bookingFormSettings, ...updates });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("bookingFormSettings", () =>
+        saveBookingFormSettings({ ...bookingFormSettings, ...updates }),
+      );
     },
     [
       handleUpdateBookingFormState,
+      scheduleDraftSave,
       saveBookingFormSettings,
       bookingFormSettings,
     ],
@@ -700,16 +763,16 @@ export function useEditorActions({
   const handleUpdateBookingConfirmation = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       handleUpdateBookingConfirmationState(updates);
-      saveBookingConfirmationSettings({
-        ...bookingConfirmationSettings,
-        ...updates,
-      });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("local_draft_changed"));
-      }
+      scheduleDraftSave("bookingConfirmationSettings", () =>
+        saveBookingConfirmationSettings({
+          ...bookingConfirmationSettings,
+          ...updates,
+        }),
+      );
     },
     [
       handleUpdateBookingConfirmationState,
+      scheduleDraftSave,
       saveBookingConfirmationSettings,
       bookingConfirmationSettings,
     ],

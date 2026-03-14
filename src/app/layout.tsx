@@ -6,7 +6,7 @@ import type React from "react";
 import { FaviconUpdater } from "@/components/favicon-updater";
 import { LayoutClientWrapper } from "@/components/layout-client-wrapper";
 import { PreviewStyleManager } from "@/components/preview-style-manager";
-import { ThemeInjector } from "@/components/theme-injector";
+import { ThemeInjectorClient } from "@/components/theme-injector-client";
 import { Toaster } from "@/components/ui/toaster";
 import { StudioProvider } from "@/context/studio-context";
 import { API_BASE_URL } from "@/lib/auth-client";
@@ -74,7 +74,7 @@ export default async function RootLayout({
     >
       <body className={`font-sans antialiased`} suppressHydrationWarning>
         <StudioProvider initialSlug={slug}>
-          <ThemeInjector />
+          <ThemeInjectorClient />
           <PreviewStyleManager />
           <FaviconUpdater />
           <LayoutClientWrapper>{children}</LayoutClientWrapper>

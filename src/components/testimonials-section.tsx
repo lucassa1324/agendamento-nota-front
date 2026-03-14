@@ -2,6 +2,7 @@
 
 import { Star } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import {
@@ -12,7 +13,6 @@ import {
 import { cn } from "@/lib/utils";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
-import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 
 export function TestimonialsSection() {
   const { studio, isLoading } = useStudio();
@@ -36,16 +36,20 @@ export function TestimonialsSection() {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studioId) {
       const config = studioConfig as SiteConfigData | undefined;
-      const layoutGlobal = config?.layoutGlobal || config?.layout_global;
-      const home = config?.home as Record<string, any> | undefined;
+      const siteCustomization = config?.siteCustomization || config?.site_customization;
+      const layoutGlobal = siteCustomization?.layoutGlobal || 
+                          siteCustomization?.layout_global || 
+                          (config as Record<string, unknown>)?.layoutGlobal || 
+                          (config as Record<string, unknown>)?.layout_global;
+      const home = config?.home;
       const rawTestimonials =
-        (home?.testimonialsSection as Record<string, any>) ||
-        (config?.testimonials as Record<string, any>) ||
-        (layoutGlobal?.testimonials as Record<string, any>);
+        (home?.testimonialsSection as Record<string, unknown>) ||
+        (config?.testimonials as Record<string, unknown>) ||
+        (layoutGlobal as Record<string, unknown>)?.testimonials;
 
       if (rawTestimonials) {
-        const content = (rawTestimonials.content as Record<string, any>) || {};
-        const appearance = (rawTestimonials.appearance as Record<string, any>) || {};
+        const content = (rawTestimonials.content as Record<string, unknown>) || {};
+        const appearance = (rawTestimonials.appearance as Record<string, unknown>) || {};
         
         // MAPEAMENTO PLANO: Prioriza a raiz (que vem do banco) sobre content/appearance
         const testimonialsSettings = {

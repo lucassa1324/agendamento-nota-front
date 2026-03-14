@@ -28,7 +28,6 @@ import type {
   ValuesSettings,
 } from "@/lib/booking-data";
 import {
-  clearAboutHeroSettings,
   defaultAboutHeroSettings,
   defaultBookingConfirmationSettings,
   defaultBookingDateSettings,
@@ -48,6 +47,7 @@ import {
   defaultTestimonialsSettings,
   defaultValuesSettings,
   getStorageKey,
+  normalizeStepSettings,
   saveAboutHeroSettings,
   saveBookingConfirmationSettings,
   saveBookingDateSettings,
@@ -81,6 +81,7 @@ interface StudioContextType {
   slug: string | null;
   businessId: string | null;
   updateStudioInfo: (updates: Partial<Business>) => void;
+  refreshData: () => void;
 }
 
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
@@ -134,6 +135,12 @@ export function StudioProvider({
   initialSlug?: string;
   initialId?: string;
 }) {
+  const pathname = usePathname();
+  const isPreview =
+    typeof window !== "undefined" &&
+    window.location.search.includes("preview=true");
+  const isAdminPath = pathname?.startsWith("/admin") ?? false;
+
   const [studio, setStudio] = useState<Business | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -143,10 +150,126 @@ export function StudioProvider({
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hasCleared = sessionStorage.getItem("emergency_storage_cleared");
+    if (hasCleared) return;
+    localStorage.clear();
+    sessionStorage.clear();
+    sessionStorage.setItem("emergency_storage_cleared", "1");
+  }, []);
+
   const refreshData = useCallback(() => {
     console.log(">>> [STUDIO_CONTEXT] Forçando atualização de dados...");
     setRefreshTrigger((prev) => prev + 1);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !isPreview) return;
+
+    const handleSyncMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+
+      const { type, settings } = event.data;
+
+      if (typeof type === "string" && type.startsWith("UPDATE_") && settings) {
+        console.log(`>>> [STUDIO_CONTEXT] Recebendo sincronização via postMessage: ${type}`);
+        
+        setStudio((prev) => {
+          if (!prev) return null;
+          
+          const currentConfig = (prev.config as SiteConfigData) || {};
+          const updatedConfig = { ...currentConfig };
+
+          switch (type) {
+            case "UPDATE_HERO_SETTINGS":
+              updatedConfig.hero = settings;
+              break;
+            case "UPDATE_ABOUT_HERO_SETTINGS":
+              updatedConfig.aboutHero = settings;
+              break;
+            case "UPDATE_SERVICES_SETTINGS":
+              updatedConfig.services = settings;
+              break;
+            case "UPDATE_COLOR_SETTINGS":
+              updatedConfig.colors = settings;
+              break;
+            case "UPDATE_FONT_SETTINGS":
+              updatedConfig.theme = settings;
+              break;
+            case "UPDATE_GALLERY_SETTINGS":
+              updatedConfig.gallery = settings;
+              break;
+            case "UPDATE_STORY_SETTINGS":
+              updatedConfig.story = settings;
+              break;
+            case "UPDATE_TEAM_SETTINGS":
+              updatedConfig.team = settings;
+              break;
+            case "UPDATE_TESTIMONIALS_SETTINGS":
+              updatedConfig.testimonials = settings;
+              break;
+            case "UPDATE_VALUES_SETTINGS":
+              updatedConfig.values = settings;
+              break;
+            case "UPDATE_CTA_SETTINGS":
+              updatedConfig.cta = settings;
+              break;
+            case "UPDATE_HEADER_SETTINGS":
+              updatedConfig.header = settings;
+              break;
+            case "UPDATE_FOOTER_SETTINGS":
+              updatedConfig.footer = settings;
+              break;
+            case "UPDATE_PAGE_VISIBILITY":
+              updatedConfig.pageVisibility = settings;
+              break;
+            case "UPDATE_VISIBLE_SECTIONS":
+              updatedConfig.visibleSections = settings;
+              break;
+            case "UPDATE_BOOKING_SERVICE_SETTINGS":
+              updatedConfig.bookingSteps = {
+                ...updatedConfig.bookingSteps,
+                service: settings,
+              };
+              break;
+            case "UPDATE_BOOKING_DATE_SETTINGS":
+              updatedConfig.bookingSteps = {
+                ...updatedConfig.bookingSteps,
+                date: settings,
+              };
+              break;
+            case "UPDATE_BOOKING_TIME_SETTINGS":
+              updatedConfig.bookingSteps = {
+                ...updatedConfig.bookingSteps,
+                time: settings,
+              };
+              break;
+            case "UPDATE_BOOKING_FORM_SETTINGS":
+              updatedConfig.bookingSteps = {
+                ...updatedConfig.bookingSteps,
+                form: settings,
+              };
+              break;
+            case "UPDATE_BOOKING_CONFIRMATION_SETTINGS":
+              updatedConfig.bookingSteps = {
+                ...updatedConfig.bookingSteps,
+                confirmation: settings,
+              };
+              break;
+          }
+
+          return {
+            ...prev,
+            config: updatedConfig as unknown as Business["config"],
+          };
+        });
+      }
+    };
+
+    window.addEventListener("message", handleSyncMessage);
+    return () => window.removeEventListener("message", handleSyncMessage);
+  }, [isPreview]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -164,12 +287,6 @@ export function StudioProvider({
         );
     }
   }, [refreshData]);
-  // const router = useRouter();
-  const pathname = usePathname();
-  const isPreview =
-    typeof window !== "undefined" &&
-    window.location.search.includes("preview=true");
-  const isAdminPath = pathname?.startsWith("/admin") ?? false;
 
   const updateStudioInfo = useCallback((updates: Partial<Business>) => {
     setStudio((prev) => (prev ? { ...prev, ...updates } : null));
@@ -190,43 +307,163 @@ export function StudioProvider({
       const raw = hasDirectConfig
         ? rawCandidate
         : (customData?.siteCustomization as Record<string, unknown>) ||
+          (customData?.site_customization as Record<string, unknown>) ||
           customData;
       const config = raw as SiteConfigData;
+      const configRecord = config as SiteConfigData & Record<string, unknown>;
+
+      if (!configRecord.appointmentFlow && customData.appointmentFlow) {
+        configRecord.appointmentFlow = customData.appointmentFlow;
+      }
+      if (!configRecord.appointment_flow && customData.appointment_flow) {
+        configRecord.appointment_flow = customData.appointment_flow;
+      }
+      if (typeof configRecord.appointmentFlow === "string") {
+        try {
+          configRecord.appointmentFlow = JSON.parse(
+            configRecord.appointmentFlow,
+          );
+        } catch {
+          configRecord.appointmentFlow = undefined;
+        }
+      }
+      if (typeof configRecord.appointment_flow === "string") {
+        try {
+          configRecord.appointment_flow = JSON.parse(
+            configRecord.appointment_flow,
+          );
+        } catch {
+          configRecord.appointment_flow = undefined;
+        }
+      }
+
       const layoutGlobal = (config.layoutGlobal ||
         config.layout_global ||
         {}) as Record<string, unknown>;
       const home = config.home as Record<string, Record<string, unknown>> | null;
-      const layoutColors = (layoutGlobal?.siteColors || layoutGlobal) as Record<
-        string,
-        unknown
-      >;
+      const layoutColors = (layoutGlobal?.siteColors ||
+        (layoutGlobal as Record<string, unknown>)?.color ||
+        (layoutGlobal as Record<string, unknown>)?.site_colors ||
+        (layoutGlobal as Record<string, unknown>)?.cores_base ||
+        layoutGlobal) as Record<string, unknown>;
 
       const finalColors: ColorSettings = {
         primary:
           (layoutColors?.primary as string) ||
           (config.colors?.primary as string) ||
-          "#bf6e8a",
+          defaultColorSettings.primary ||
+          "#e4b4b4",
         secondary:
           (layoutColors?.secondary as string) ||
           (config.colors?.secondary as string) ||
-          "#4b5563",
+          defaultColorSettings.secondary ||
+          "#1a1a1a",
         background:
           (layoutColors?.background as string) ||
           (config.colors?.background as string) ||
+          defaultColorSettings.background ||
           "#ffffff",
         text:
           (layoutColors?.text as string) ||
           (config.colors?.text as string) ||
-          "#111827",
+          defaultColorSettings.text ||
+          "#1a1a1a",
         accent:
           (layoutColors?.accent as string) ||
           (config.colors?.accent as string) ||
-          "#bf6e8a",
+          defaultColorSettings.primary ||
+          "#e4b4b4",
         buttonText:
           (layoutColors?.buttonText as string) ||
           (config.colors?.buttonText as string) ||
           "#ffffff",
       };
+
+      const bookingFromLayoutRaw = (layoutGlobal?.bookingSteps ||
+        layoutGlobal?.booking_steps ||
+        layoutGlobal?.appointmentFlow ||
+        layoutGlobal?.appointment_flow) as SiteConfigData["bookingSteps"] | undefined;
+
+      const normalizedBookingFromLayout = bookingFromLayoutRaw
+        ? {
+            service: normalizeStepSettings(
+              bookingFromLayoutRaw.service as Record<string, unknown>,
+            ),
+            date: normalizeStepSettings(
+              bookingFromLayoutRaw.date as Record<string, unknown>,
+            ),
+            time: normalizeStepSettings(
+              bookingFromLayoutRaw.time as Record<string, unknown>,
+            ),
+            form: normalizeStepSettings(
+              bookingFromLayoutRaw.form as Record<string, unknown>,
+            ),
+            confirmation: normalizeStepSettings(
+              bookingFromLayoutRaw.confirmation as Record<string, unknown>,
+            ),
+          }
+        : undefined;
+
+      const layoutBookingLegacy =
+        (layoutGlobal as Record<string, unknown>)?.bookingService ||
+        (layoutGlobal as Record<string, unknown>)?.bookingDate ||
+        (layoutGlobal as Record<string, unknown>)?.bookingTime ||
+        (layoutGlobal as Record<string, unknown>)?.bookingForm ||
+        (layoutGlobal as Record<string, unknown>)?.bookingConfirmation
+          ? {
+              service: normalizeStepSettings(
+                (layoutGlobal as Record<string, unknown>)
+                  ?.bookingService as Record<string, unknown>,
+              ),
+              date: normalizeStepSettings(
+                (layoutGlobal as Record<string, unknown>)?.bookingDate as Record<
+                  string,
+                  unknown
+                >,
+              ),
+              time: normalizeStepSettings(
+                (layoutGlobal as Record<string, unknown>)?.bookingTime as Record<
+                  string,
+                  unknown
+                >,
+              ),
+              form: normalizeStepSettings(
+                (layoutGlobal as Record<string, unknown>)?.bookingForm as Record<
+                  string,
+                  unknown
+                >,
+              ),
+              confirmation: normalizeStepSettings(
+                (layoutGlobal as Record<string, unknown>)
+                  ?.bookingConfirmation as Record<string, unknown>,
+              ),
+            }
+          : undefined;
+
+      const bookingFromConfig = (config.bookingSteps ||
+        config.booking_steps ||
+        config.appointmentFlow ||
+        config.appointment_flow) as SiteConfigData["bookingSteps"] | undefined;
+
+      const normalizedBookingFromConfig = bookingFromConfig
+        ? {
+            service: normalizeStepSettings(
+              bookingFromConfig.service as Record<string, unknown>,
+            ),
+            date: normalizeStepSettings(
+              bookingFromConfig.date as Record<string, unknown>,
+            ),
+            time: normalizeStepSettings(
+              bookingFromConfig.time as Record<string, unknown>,
+            ),
+            form: normalizeStepSettings(
+              bookingFromConfig.form as Record<string, unknown>,
+            ),
+            confirmation: normalizeStepSettings(
+              bookingFromConfig.confirmation as Record<string, unknown>,
+            ),
+          }
+        : undefined;
 
       return {
         ...config,
@@ -287,12 +524,10 @@ export function StudioProvider({
           layoutGlobal?.page_visibility ||
           config.pageVisibility ||
           config.page_visibility) as Record<string, boolean> | undefined,
-        bookingSteps: (layoutGlobal?.bookingSteps ||
-          layoutGlobal?.appointmentFlow ||
-          config.bookingSteps ||
-          config.booking_steps ||
-          config.appointmentFlow ||
-          config.appointment_flow) as SiteConfigData["bookingSteps"],
+        bookingSteps:
+          normalizedBookingFromLayout ||
+          layoutBookingLegacy ||
+          normalizedBookingFromConfig,
       };
     },
     [],
@@ -584,18 +819,11 @@ export function StudioProvider({
     const signal = controller.signal;
 
     if (isPreview) {
-      if (typeof window !== "undefined") {
-        const cachedStudio = localStorage.getItem("studio_data");
-        if (cachedStudio) {
-          try {
-            setStudio(JSON.parse(cachedStudio));
-          } catch (_) {
-            setStudio(null);
-          }
-        }
-      }
+      // Removido: Não carregamos mais studio_data do localStorage no início
+      // O Banco de Dados deve ser a única fonte da verdade ao carregar/atualizar a página (F5)
     }
     async function fetchStudio() {
+      setError(null);
       console.log(
         `>>> [StudioProvider] Buscando dados (trigger: ${refreshTrigger})...`,
       );
@@ -733,18 +961,6 @@ export function StudioProvider({
             ">>> [StudioProvider] Falha Crítica na Rede ao buscar Studio:",
             errorMessage,
           );
-
-          // PLANO B: Tentar carregar do cache local se a rede falhar
-          const cachedStudio = localStorage.getItem("studio_data");
-          if (cachedStudio) {
-            console.log(
-              ">>> [StudioProvider] Plano B: Carregando dados do LocalStorage devido a falha de rede.",
-            );
-            const parsed = JSON.parse(cachedStudio);
-            setStudio(parsed);
-            setIsLoading(false);
-            return;
-          }
           throw fetchErr; // Re-lança se não houver cache
         }
 
@@ -914,23 +1130,15 @@ export function StudioProvider({
 
             if (signal.aborted) return;
 
-            const initialConfig = mapConfig(
-              ((customizationResponse && !customizationResponse.isFallback
+            const rawCustomization = ((customizationResponse &&
+              !customizationResponse.isFallback
                 ? customizationResponse
-                : data.siteCustomization || data.config || data) ??
-                {}) as Record<string, unknown>,
-            );
+                : data.siteCustomization ||
+                  data.site_customization ||
+                  data.config ||
+                  data) ?? {}) as Record<string, unknown>;
 
-            // NOVO: Persistência imediata do layoutGlobal no localStorage para sincronia com ThemeInjector
-            if (typeof window !== "undefined") {
-              const lg = (initialConfig.layoutGlobal ||
-                (initialConfig as Record<string, unknown>).layout_global ||
-                {}) as Record<string, unknown>;
-              localStorage.setItem("layoutGlobal", JSON.stringify(lg));
-              console.log(
-                ">>> [DEBUG_SYNC] layoutGlobal persistido no localStorage para ThemeInjector",
-              );
-            }
+            const initialConfig = mapConfig(rawCustomization);
 
             console.log(">>> [StudioProvider] Configuração inicial mapeada:", {
               hasConfig: !!initialConfig,
@@ -1014,125 +1222,8 @@ export function StudioProvider({
                   ),
                 );
             }
-            try {
-              const isEditor = isAdminPath || isPreview;
-
-              const lg = (initialConfig.layoutGlobal ||
-                (initialConfig as Record<string, unknown>).layout_global) as
-                | Record<string, unknown>
-                | undefined;
-              const colors = (initialConfig.colors ||
-                lg?.siteColors ||
-                (lg as Record<string, unknown>)?.cores_base) as
-                | ColorSettings
-                | undefined;
-              const fonts = (initialConfig.theme ||
-                initialConfig.typography ||
-                (lg as Record<string, unknown>)?.fontes) as
-                | FontSettings
-                | undefined;
-
-              // Sincronização inteligente:
-              // Se NÃO estiver no editor, os dados do banco SEMPRE sobrescrevem o cache local.
-              // Isso garante que o site público reflita o banco imediatamente.
-              const shouldOverride = !isEditor;
-
-              if (initialConfig.hero && shouldOverride) {
-                saveHeroSettings(initialConfig.hero);
-              }
-              if (initialConfig.header && shouldOverride)
-                saveHeaderSettings(initialConfig.header);
-              if (initialConfig.footer && shouldOverride)
-                saveFooterSettings(initialConfig.footer);
-              if (initialConfig.services && shouldOverride)
-                saveServicesSettings(initialConfig.services);
-              if (initialConfig.values && shouldOverride)
-                saveValuesSettings(initialConfig.values);
-              if (initialConfig.gallery && shouldOverride)
-                saveGallerySettings(initialConfig.gallery);
-              if (initialConfig.cta && shouldOverride)
-                saveCTASettings(initialConfig.cta);
-              if (initialConfig.pageVisibility && shouldOverride)
-                savePageVisibility(initialConfig.pageVisibility);
-              if (initialConfig.visibleSections && shouldOverride)
-                saveVisibleSections(initialConfig.visibleSections);
-              if (colors && shouldOverride)
-                saveColorSettings(colors);
-              if (fonts && shouldOverride)
-                saveFontSettings(fonts);
-
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(new Event("DataReady"));
-              }
-            } catch (_) {}
-
             // Busca de customização EXTRA (sem cache) apenas para garantir atualização em tempo real
-            const extraCustomization =
-              customizationResponse && !customizationResponse.isFallback
-                ? customizationResponse
-                : null;
-
-            if (extraCustomization) {
-              const mappedConfig = mapConfig(
-                extraCustomization as unknown as Record<string, unknown>,
-              );
-
-              setStudio((prev) => {
-                const newStudio = prev
-                  ? {
-                      ...prev,
-                      config: mappedConfig as unknown as Business["config"],
-                    }
-                  : null;
-                console.log(
-                  ">>> [DEBUG_SYNC] Estado Studio reidratado com novas cores:",
-                  mappedConfig.colors?.background || "N/A",
-                );
-                return newStudio;
-              });
-
-              try {
-                const lg = (mappedConfig.layoutGlobal ||
-                  (mappedConfig as Record<string, unknown>)
-                    .layout_global) as Record<string, unknown> | undefined;
-
-                if (lg) localStorage.setItem("layoutGlobal", JSON.stringify(lg));
-
-                const colors = (mappedConfig.colors ||
-                  lg?.siteColors ||
-                  (lg as Record<string, unknown>)?.cores_base) as
-                  | ColorSettings
-                  | undefined;
-                const fonts = (mappedConfig.theme ||
-                  mappedConfig.typography ||
-                  (lg as Record<string, unknown>)?.fontes) as
-                  | FontSettings
-                  | undefined;
-                const isEditor = isAdminPath || isPreview;
-                if (!isEditor) {
-                  if (mappedConfig.hero) {
-                    saveHeroSettings(mappedConfig.hero);
-                  }
-                  if (mappedConfig.header) saveHeaderSettings(mappedConfig.header);
-                  if (mappedConfig.footer) saveFooterSettings(mappedConfig.footer);
-                  if (mappedConfig.services)
-                    saveServicesSettings(mappedConfig.services);
-                  if (mappedConfig.values) saveValuesSettings(mappedConfig.values);
-                  if (mappedConfig.gallery)
-                    saveGallerySettings(mappedConfig.gallery);
-                  if (mappedConfig.cta) saveCTASettings(mappedConfig.cta);
-                  if (mappedConfig.pageVisibility)
-                    savePageVisibility(mappedConfig.pageVisibility);
-                  if (mappedConfig.visibleSections)
-                    saveVisibleSections(mappedConfig.visibleSections);
-                  if (colors) saveColorSettings(colors);
-                  if (fonts) saveFontSettings(fonts);
-                  if (typeof window !== "undefined") {
-                    window.dispatchEvent(new Event("DataReady"));
-                  }
-                }
-              } catch (_) {}
-            } else if (data?.id) {
+            if (data?.id) {
               const fetcher = (companyId: string, signal?: AbortSignal) =>
                 isAdminPath || isPreview
                   ? siteCustomizerService.getDraftCustomization(
@@ -1156,69 +1247,50 @@ export function StudioProvider({
                   console.log(
                     ">>> [StudioProvider] Customização extra recebida.",
                   );
+
                   const mappedConfig = mapConfig(
                     customization as unknown as Record<string, unknown>,
                   );
 
                   setStudio((prev) => {
-                    const newStudio = prev
-                      ? {
-                          ...prev,
-                          config: mappedConfig as unknown as Business["config"],
-                        }
-                      : null;
+                    if (!prev) return prev;
+                    const layoutGlobal =
+                      (mappedConfig.layoutGlobal ||
+                        (mappedConfig as Record<string, unknown>)
+                          .layout_global) as Record<string, unknown> | undefined;
+                    const newColors =
+                      (layoutGlobal?.siteColors as ColorSettings | undefined) ||
+                      (layoutGlobal?.color as ColorSettings | undefined) ||
+                      (layoutGlobal?.site_colors as ColorSettings | undefined) ||
+                      (layoutGlobal?.cores_base as ColorSettings | undefined) ||
+                      mappedConfig.colors;
+                    const hasNewColors =
+                      newColors && Object.keys(newColors).length > 0;
+                    if (!hasNewColors) {
+                      console.warn(
+                        ">>> [SYNC] Tentativa de sincronizar cores vazias abortada para evitar tela branca.",
+                      );
+                    }
+                    const nextColors = hasNewColors
+                      ? newColors
+                      : prev.config?.colors;
+                    const newStudio = {
+                      ...prev,
+                      config: {
+                        ...(mappedConfig as unknown as Business["config"]),
+                        colors: nextColors,
+                      },
+                    };
                     console.log(
                       ">>> [DEBUG_SYNC] Estado Studio reidratado com novas cores:",
-                      mappedConfig.colors?.background || "N/A",
+                      nextColors?.background || "N/A",
                     );
                     return newStudio;
                   });
 
-                  try {
-                    const lg = (mappedConfig.layoutGlobal ||
-                      (mappedConfig as Record<string, unknown>)
-                        .layout_global) as Record<string, unknown> | undefined;
-
-                    if (lg)
-                      localStorage.setItem("layoutGlobal", JSON.stringify(lg));
-
-                    const colors = (mappedConfig.colors ||
-                      lg?.siteColors ||
-                      (lg as Record<string, unknown>)?.cores_base) as
-                      | ColorSettings
-                      | undefined;
-                    const fonts = (mappedConfig.theme ||
-                      mappedConfig.typography ||
-                      (lg as Record<string, unknown>)?.fontes) as
-                      | FontSettings
-                      | undefined;
-                    const isEditor = isAdminPath || isPreview;
-                    if (!isEditor) {
-                      if (mappedConfig.hero) {
-                        saveHeroSettings(mappedConfig.hero);
-                      }
-                      if (mappedConfig.header)
-                        saveHeaderSettings(mappedConfig.header);
-                      if (mappedConfig.footer)
-                        saveFooterSettings(mappedConfig.footer);
-                      if (mappedConfig.services)
-                        saveServicesSettings(mappedConfig.services);
-                      if (mappedConfig.values)
-                        saveValuesSettings(mappedConfig.values);
-                      if (mappedConfig.gallery)
-                        saveGallerySettings(mappedConfig.gallery);
-                      if (mappedConfig.cta) saveCTASettings(mappedConfig.cta);
-                      if (mappedConfig.pageVisibility)
-                        savePageVisibility(mappedConfig.pageVisibility);
-                      if (mappedConfig.visibleSections)
-                        saveVisibleSections(mappedConfig.visibleSections);
-                      if (colors) saveColorSettings(colors);
-                      if (fonts) saveFontSettings(fonts);
-                      if (typeof window !== "undefined") {
-                        window.dispatchEvent(new Event("DataReady"));
-                      }
-                    }
-                  } catch (_) {}
+                  if (typeof window !== "undefined") {
+                    window.dispatchEvent(new Event("DataReady"));
+                  }
                 })
                 .catch((err) =>
                   console.warn(
@@ -1259,7 +1331,11 @@ export function StudioProvider({
           }
         }
       } catch (err: unknown) {
-        // ... (existing code for catch block)
+        if (err instanceof Error && err.name === "AbortError") {
+          console.log(">>> [StudioProvider] Fluxo de busca de studio abortado. Ignorando atualização de erro.");
+          return;
+        }
+
         console.warn(">>> [StudioProvider] Erro capturado. Aplicando Site Base Fallback.", err);
         setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
         setError(
@@ -1268,11 +1344,15 @@ export function StudioProvider({
             : "Erro de conexão com o servidor.",
         );
       } finally {
-        // Garantimos um delay mínimo para evitar flickering e garantir sincronia
-        setTimeout(() => {
-          setIsLoading(false);
-          console.log(">>> [StudioProvider] Sincronização finalizada. Desativando loading.");
-        }, 300);
+        if (!signal.aborted) {
+          // Garantimos um delay mínimo para evitar flickering e garantir sincronia
+          setTimeout(() => {
+            setIsLoading(false);
+            console.log(">>> [StudioProvider] Sincronização finalizada. Desativando loading.");
+          }, 300);
+        } else {
+           console.log(">>> [StudioProvider] Sinal abortado detectado no finally. Mantendo isLoading para próxima tentativa.");
+        }
       }
     }
 
@@ -1281,7 +1361,14 @@ export function StudioProvider({
     return () => {
       controller.abort();
     };
-  }, [slug, businessId, isPreview, isAdminPath, refreshTrigger, mapConfig]);
+  }, [
+    slug,
+    businessId,
+    isPreview,
+    isAdminPath,
+    refreshTrigger,
+    mapConfig,
+  ]);
 
   useEffect(() => {
     // REMOVIDO: Redirecionamento automático para /404 ou home
@@ -1315,8 +1402,9 @@ export function StudioProvider({
       slug,
       businessId,
       updateStudioInfo,
+      refreshData,
     }),
-    [studio, isLoading, error, slug, businessId, updateStudioInfo],
+    [studio, isLoading, error, slug, businessId, updateStudioInfo, refreshData],
   );
 
   // Tratamento visual para erro 404 (Studio não encontrado)

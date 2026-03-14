@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import type {
   BookingStepSettings,
@@ -20,6 +21,10 @@ import type {
   TeamSettings,
   TestimonialsSettings,
   ValuesSettings,
+} from "@/lib/booking-data";
+import {
+  clearAllCustomizationCache,
+  normalizePersistenceData,
 } from "@/lib/booking-data";
 import type { SiteConfigData } from "@/lib/site-config-types";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
@@ -153,8 +158,10 @@ export function useEditorApi({
   lastApplied,
   setters,
   saveLocalDrafts,
+  clearLocalDrafts,
 }: UseEditorApiParams) {
   const { toast } = useToast();
+  const { refreshData } = useStudio();
   const [companyId, setCompanyId] = useState<string | null>(null);
   const fetchAbortControllerRef = useRef<AbortController | null>(null);
   const [isFetching, setIsFetching] = useState(false);
@@ -199,31 +206,15 @@ export function useEditorApi({
       changes.colors = settings.colorSettings;
     }
     if (hasChanged(settings.servicesSettings, lastSaved.lastSavedServices)) {
-      console.log(">>> [useEditorApi] Services mudou:", {
-        currentAppearance: settings.servicesSettings.appearance,
-        savedAppearance: lastSaved.lastSavedServices.appearance,
-      });
       changes.services = settings.servicesSettings;
     }
     if (hasChanged(settings.valuesSettings, lastSaved.lastSavedValues)) {
-      console.log(">>> [useEditorApi] Values mudou:", {
-        currentAppearance: settings.valuesSettings.appearance,
-        savedAppearance: lastSaved.lastSavedValues.appearance,
-      });
       changes.values = settings.valuesSettings;
     }
     if (hasChanged(settings.gallerySettings, lastSaved.lastSavedGallery)) {
-      console.log(">>> [useEditorApi] Gallery mudou:", {
-        currentAppearance: settings.gallerySettings.appearance,
-        savedAppearance: lastSaved.lastSavedGallery.appearance,
-      });
       changes.gallery = settings.gallerySettings;
     }
     if (hasChanged(settings.ctaSettings, lastSaved.lastSavedCTA)) {
-      console.log(">>> [useEditorApi] CTA mudou:", {
-        currentAppearance: settings.ctaSettings.appearance,
-        savedAppearance: lastSaved.lastSavedCTA.appearance,
-      });
       changes.cta = settings.ctaSettings;
     }
     if (
@@ -814,27 +805,82 @@ export function useEditorApi({
           // Tratar Passos de Agendamento
           if (changes.bookingSteps) {
             console.log(">>> [API_SAVE] Mapeando bookingSteps para appointmentFlow:", changes.bookingSteps);
+            
+            // 1. Normalização Recursiva antes de mapear
+            const cleanBookingSteps = normalizePersistenceData(changes.bookingSteps) as Record<string, BookingStepSettings>;
+            const serviceCardBg =
+              cleanBookingSteps.service?.cardBgColor ||
+              (cleanBookingSteps.service?.appearance as Record<string, unknown> | undefined)
+                ?.cardBgColor;
+
             payload.appointmentFlow = {
               steps: {
-                ...(changes.bookingSteps.service ? { service: changes.bookingSteps.service } : {}),
-                ...(changes.bookingSteps.date ? { date: changes.bookingSteps.date } : {}),
-                ...(changes.bookingSteps.time ? { time: changes.bookingSteps.time } : {}),
-                ...(changes.bookingSteps.form ? { form: changes.bookingSteps.form } : {}),
-                ...(changes.bookingSteps.confirmation ? { confirmation: changes.bookingSteps.confirmation } : {}),
+                ...(cleanBookingSteps.service ? { 
+                  service: {
+                    ...cleanBookingSteps.service,
+                    // Mapeamento de Dualidade (camelCase -> snake_case)
+                    card_bg_color: cleanBookingSteps.service.cardBgColor,
+                    button_color: cleanBookingSteps.service.buttonColor,
+                    title_color: cleanBookingSteps.service.titleColor,
+                    subtitle_color: cleanBookingSteps.service.subtitleColor,
+                    accent_color: cleanBookingSteps.service.accentColor,
+                    bg_color: cleanBookingSteps.service.bgColor,
+                  } 
+                } : {}),
+                ...(cleanBookingSteps.date ? { 
+                  date: {
+                    ...cleanBookingSteps.date,
+                    title_color: cleanBookingSteps.date.titleColor,
+                    subtitle_color: cleanBookingSteps.date.subtitleColor,
+                    accent_color: cleanBookingSteps.date.accentColor,
+                    bg_color: cleanBookingSteps.date.bgColor,
+                  } 
+                } : {}),
+                ...(cleanBookingSteps.time ? { 
+                  time: {
+                    ...cleanBookingSteps.time,
+                    title_color: cleanBookingSteps.time.titleColor,
+                    subtitle_color: cleanBookingSteps.time.subtitleColor,
+                    accent_color: cleanBookingSteps.time.accentColor,
+                    bg_color: cleanBookingSteps.time.bgColor,
+                  } 
+                } : {}),
+                ...(cleanBookingSteps.form ? { 
+                  form: {
+                    ...cleanBookingSteps.form,
+                    title_color: cleanBookingSteps.form.titleColor,
+                    subtitle_color: cleanBookingSteps.form.subtitleColor,
+                    accent_color: cleanBookingSteps.form.accentColor,
+                    bg_color: cleanBookingSteps.form.bgColor,
+                  } 
+                } : {}),
+                ...(cleanBookingSteps.confirmation ? { 
+                  confirmation: {
+                    ...cleanBookingSteps.confirmation,
+                    title_color: cleanBookingSteps.confirmation.titleColor,
+                    subtitle_color: cleanBookingSteps.confirmation.subtitleColor,
+                    accent_color: cleanBookingSteps.confirmation.accentColor,
+                    bg_color: cleanBookingSteps.confirmation.bgColor,
+                  } 
+                } : {}),
               }
             };
+            if (cleanBookingSteps.service) {
+              const appointmentFlow = payload.appointmentFlow as Record<string, unknown>;
+              appointmentFlow.step1Services = {
+                cardConfig: {
+                  backgroundColor: (serviceCardBg as string) || "#ffffff",
+                  cardBackgroundColor: (serviceCardBg as string) || "#ffffff",
+                },
+              };
+            }
             
-            // Log de Payload de Saída solicitado pelo usuário
-            console.log(">>> [API_SAVE] Enviando para o banco (appointmentFlow):", payload.appointmentFlow);
-            
-            // Adicionalmente, enviamos como bookingSteps para garantir compatibilidade se o banco esperar a chave separada
-            payload.bookingSteps = changes.bookingSteps;
+            // Adicionalmente, enviamos como bookingSteps para garantir compatibilidade
+            payload.bookingSteps = cleanBookingSteps;
           }
 
           // Limpar o payload de campos undefined para não quebrar o deepMerge do back
           const cleanPayload = JSON.parse(JSON.stringify(payload));
-
-          console.log(">>> [useEditorApi] Payload final limpo para PATCH:", cleanPayload);
 
           const fresh = await siteCustomizerService.saveDraftCustomization(
             companyId,
@@ -842,26 +888,40 @@ export function useEditorApi({
           );
 
           if (typeof window !== "undefined") {
-            // REMOVIDO: Não limpamos mais o rascunho local, apenas atualizamos com o que foi salvo
-            // localStorage.removeItem("studio_data");
-            // localStorage.removeItem(`site_draft_${companyId}`);
-
             if (fresh && shouldReload) {
-              console.log(">>> [SYNC] Atualizando interface com dados frescos do servidor.");
-              // Usamos (fresh as SiteConfigData) para evitar erro de 'possibly null' que trava a execução
-              loadExternalConfig(fresh as SiteConfigData, true);
-              localStorage.setItem("studio_data", JSON.stringify(fresh));
+              console.log(">>> [SYNC] Salvamento bem-sucedido. Limpando localStorage para garantir que o Banco seja a única fonte da verdade.");
+              clearAllCustomizationCache();
+              clearLocalDrafts();
+
+              // 2. Notifica o contexto global (StudioContext) para buscar dados frescos do banco
+              refreshData();
               
-              // Sincroniza o rascunho local com os dados frescos
-              handleSaveLocal(true);
-              
-              console.log(">>> [SYNC] Buscando customização atualizada para sincronizar contexto...");
-              await fetchCustomization(companyId);
+              // 3. ATUALIZAÇÃO DO ESTADO LAST_SAVED
+              setters.setLastSavedHero(settings.heroSettings);
+              setters.setLastSavedAboutHero(settings.aboutHeroSettings);
+              setters.setLastSavedStory(settings.storySettings);
+              setters.setLastSavedTeam(settings.teamSettings);
+              setters.setLastSavedTestimonials(settings.testimonialsSettings);
+              setters.setLastSavedFont(settings.fontSettings);
+              setters.setLastSavedColor(settings.colorSettings);
+              setters.setLastSavedServices(settings.servicesSettings);
+              setters.setLastSavedValues(settings.valuesSettings);
+              setters.setLastSavedGallery(settings.gallerySettings);
+              setters.setLastSavedCTA(settings.ctaSettings);
+              setters.setLastSavedHeader(settings.headerSettings);
+              setters.setLastSavedFooter(settings.footerSettings);
+              setters.setLastSavedPageVisibility(settings.pageVisibility);
+              setters.setLastSavedVisibleSections(settings.visibleSections);
+              setters.setLastSavedBookingService(settings.bookingServiceSettings);
+              setters.setLastSavedBookingDate(settings.bookingDateSettings);
+              setters.setLastSavedBookingTime(settings.bookingTimeSettings);
+              setters.setLastSavedBookingForm(settings.bookingFormSettings);
+              setters.setLastSavedBookingConfirmation(settings.bookingConfirmationSettings);
+
+              console.log(">>> [SYNC] Estado LAST_SAVED atualizado e LocalStorage limpo.");
             }
           }
 
-          // Garante que o rascunho local reflita o estado atual após o save
-          handleSaveLocal(true);
           setIsSaving(false); 
       
       // REMOVIDO DISPARO RECURSIVO: O estado lastSaved já foi atualizado, 
@@ -892,38 +952,34 @@ export function useEditorApi({
         console.warn(
           ">>> [useEditorApi] companyId não encontrado, salvando apenas localmente.",
         );
+        
+        // Em modo local, atualizamos o lastSaved para refletir o que foi salvo no localStorage
+        setters.setLastSavedHero(settings.heroSettings);
+        setters.setLastSavedAboutHero(settings.aboutHeroSettings);
+        setters.setLastSavedStory(settings.storySettings);
+        setters.setLastSavedTeam(settings.teamSettings);
+        setters.setLastSavedTestimonials(settings.testimonialsSettings);
+        setters.setLastSavedFont(settings.fontSettings);
+        setters.setLastSavedColor(settings.colorSettings);
+        setters.setLastSavedServices(settings.servicesSettings);
+        setters.setLastSavedValues(settings.valuesSettings);
+        setters.setLastSavedGallery(settings.gallerySettings);
+        setters.setLastSavedCTA(settings.ctaSettings);
+        setters.setLastSavedHeader(settings.headerSettings);
+        setters.setLastSavedFooter(settings.footerSettings);
+        setters.setLastSavedPageVisibility(settings.pageVisibility);
+        setters.setLastSavedVisibleSections(settings.visibleSections);
+        setters.setLastSavedBookingService(settings.bookingServiceSettings);
+        setters.setLastSavedBookingDate(settings.bookingDateSettings);
+        setters.setLastSavedBookingTime(settings.bookingTimeSettings);
+        setters.setLastSavedBookingForm(settings.bookingFormSettings);
+        setters.setLastSavedBookingConfirmation(settings.bookingConfirmationSettings);
+
         toast({
           title: "Site salvo localmente!",
           description: "As alterações foram salvas no navegador.",
         });
       }
-
-      // ATUALIZAÇÃO DO ESTADO LAST_SAVED
-      // Isso garante que shouldSaveLocal() retorne false até que novas mudanças sejam feitas.
-      // Note que NÃO atualizamos lastApplied aqui, pois o rascunho salvo ainda não foi publicado.
-      setters.setLastSavedHero(settings.heroSettings);
-      setters.setLastSavedAboutHero(settings.aboutHeroSettings);
-      setters.setLastSavedStory(settings.storySettings);
-      setters.setLastSavedTeam(settings.teamSettings);
-      setters.setLastSavedTestimonials(settings.testimonialsSettings);
-      setters.setLastSavedFont(settings.fontSettings);
-      setters.setLastSavedColor(settings.colorSettings);
-      setters.setLastSavedServices(settings.servicesSettings);
-      setters.setLastSavedValues(settings.valuesSettings);
-      setters.setLastSavedGallery(settings.gallerySettings);
-      setters.setLastSavedCTA(settings.ctaSettings);
-      setters.setLastSavedHeader(settings.headerSettings);
-      setters.setLastSavedFooter(settings.footerSettings);
-      setters.setLastSavedPageVisibility(settings.pageVisibility);
-      setters.setLastSavedVisibleSections(settings.visibleSections);
-
-      setters.setLastSavedBookingService(settings.bookingServiceSettings);
-      setters.setLastSavedBookingDate(settings.bookingDateSettings);
-      setters.setLastSavedBookingTime(settings.bookingTimeSettings);
-      setters.setLastSavedBookingForm(settings.bookingFormSettings);
-      setters.setLastSavedBookingConfirmation(
-        settings.bookingConfirmationSettings,
-      );
 
       window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
       
@@ -934,13 +990,12 @@ export function useEditorApi({
       companyId,
       isPublishing,
       getChangedSettings,
-      loadExternalConfig,
-      handleSaveLocal,
+      clearLocalDrafts,
       setters,
       settings,
       toast,
       hasUnsavedGlobalChanges,
-      fetchCustomization, // Adicionado às dependências
+      refreshData,
     ],
   );
 

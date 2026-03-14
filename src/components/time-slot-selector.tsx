@@ -51,6 +51,16 @@ export function TimeSlotSelector({
   settings,
 }: TimeSlotSelectorProps) {
   const { studio } = useStudio();
+  const appearance = settings?.appearance || {};
+  
+  // Prioridade: Custom Setting > Global Appearance > Default Fallback
+  const accentColor = settings?.accentColor || appearance.accentColor || "var(--primary)";
+  const cardBgColor = settings?.cardBgColor || appearance.cardBgColor || "#FFFFFF";
+  const titleColor = settings?.titleColor || appearance.titleColor || "var(--foreground)";
+  const subtitleColor = settings?.subtitleColor || appearance.subtitleColor || "var(--muted-foreground)";
+  const titleFont = settings?.titleFont || appearance.titleFont || "var(--font-title)";
+  const subtitleFont = settings?.subtitleFont || appearance.subtitleFont || "var(--font-subtitle)";
+
   const [backendInterval, setBackendInterval] = useState<number | undefined>(
     undefined,
   );
@@ -293,9 +303,9 @@ export function TimeSlotSelector({
       <Card
         className="border-primary/20 overflow-hidden relative"
         style={{
-          backgroundColor: settings?.cardBgColor || "#FFFFFF",
-          borderColor: settings?.accentColor
-            ? `${settings.accentColor}33`
+          backgroundColor: cardBgColor,
+          borderColor: accentColor
+            ? `${accentColor}33`
             : undefined,
         }}
       >
@@ -314,7 +324,7 @@ export function TimeSlotSelector({
             )}
             style={{
               backgroundColor: !isPreviousDayDisabled
-                ? settings?.accentColor || "var(--primary)"
+                ? accentColor
                 : undefined,
             }}
             title="Dia anterior"
@@ -327,8 +337,8 @@ export function TimeSlotSelector({
             <h3
               className="font-bold text-xl"
               style={{
-                color: settings?.titleColor || "var(--foreground)",
-                fontFamily: settings?.titleFont || "var(--font-title)",
+                color: titleColor,
+                fontFamily: titleFont,
               }}
             >
               {services.length > 1
@@ -338,10 +348,8 @@ export function TimeSlotSelector({
             <div
               className="text-base font-medium capitalize"
               style={{
-                color: settings?.subtitleColor
-                  ? `${settings.subtitleColor}cc`
-                  : "var(--foreground)",
-                fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
+                color: subtitleColor,
+                fontFamily: subtitleFont,
               }}
             >
               {format(currentDate, "eeee, d 'de' MMMM 'de' yyyy", {
@@ -362,7 +370,7 @@ export function TimeSlotSelector({
             onClick={handleNextDay}
             className="h-12 w-12 rounded-xl text-primary-foreground shadow-md transition-all duration-200 hover:scale-105 active:scale-95"
             style={{
-              backgroundColor: settings?.accentColor || "var(--primary)",
+              backgroundColor: accentColor,
             }}
             title="Próximo dia"
           >
@@ -375,8 +383,8 @@ export function TimeSlotSelector({
         <h2
           className="text-3xl font-bold"
           style={{
-            color: settings?.titleColor || "var(--foreground)",
-            fontFamily: settings?.titleFont || "var(--font-title)",
+            color: titleColor,
+            fontFamily: titleFont,
           }}
         >
           {settings?.title || "Escolha o Horário"}
@@ -384,8 +392,8 @@ export function TimeSlotSelector({
         <p
           className="capitalize"
           style={{
-            color: settings?.subtitleColor || "var(--foreground)",
-            fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
+            color: subtitleColor,
+            fontFamily: subtitleFont,
           }}
         >
           {formattedDate}
@@ -396,7 +404,10 @@ export function TimeSlotSelector({
         <CardContent className="p-8">
           {isLoadingBookings ? (
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <div
+                className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"
+                style={{ borderColor: accentColor, borderTopColor: "transparent" }}
+              />
               <p className="text-muted-foreground animate-pulse">
                 Verificando horários disponíveis...
               </p>
@@ -417,19 +428,18 @@ export function TimeSlotSelector({
                   )}
                   style={{
                     borderColor:
-                      slot.available && settings?.accentColor
-                        ? settings.accentColor
+                      slot.available && accentColor
+                        ? accentColor
                         : undefined,
                     color:
-                      slot.available && settings?.accentColor
-                        ? settings.accentColor
+                      slot.available && accentColor
+                        ? accentColor
                         : "var(--foreground)",
                     backgroundColor: "transparent",
                   }}
                   onMouseEnter={(e) => {
                     if (slot.available) {
-                      e.currentTarget.style.backgroundColor =
-                        settings?.accentColor || "var(--primary)";
+                      e.currentTarget.style.backgroundColor = accentColor;
                       e.currentTarget.style.color = "#fff";
                     }
                   }}
@@ -437,7 +447,7 @@ export function TimeSlotSelector({
                     if (slot.available) {
                       e.currentTarget.style.backgroundColor = "transparent";
                       e.currentTarget.style.color =
-                        settings?.accentColor || "var(--foreground)";
+                        accentColor || "var(--foreground)";
                     }
                   }}
                 >

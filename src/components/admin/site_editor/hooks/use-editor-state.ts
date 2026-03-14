@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useStudio } from "@/context/studio-context";
 import type {
   AppearanceSettings,
   BookingStepSettings,
@@ -15,6 +16,7 @@ import type {
   TestimonialsSettings,
   ValuesSettings,
 } from "@/lib/booking-data";
+import { type SiteConfigData } from "@/lib/site-config-types";
 import {
   defaultAboutHeroSettings,
   defaultBookingConfirmationSettings,
@@ -34,10 +36,12 @@ import {
   defaultTeamSettings,
   defaultTestimonialsSettings,
   defaultValuesSettings,
+  sanitizeColor,
 } from "@/lib/booking-data";
 import type { BackgroundSettings } from "../components/BackgroundEditor";
 
 export function useEditorState() {
+  const { studio } = useStudio();
   // Helper para sincronizar bgImage com appearance.backgroundImageUrl
   const syncBackground = useCallback(
     <
@@ -50,6 +54,7 @@ export function useEditorState() {
         titleFont?: string;
         subtitleFont?: string;
         cardBgColor?: string;
+        accentColor?: string;
         appearance?: AppearanceSettings;
       },
     >(
@@ -72,15 +77,19 @@ export function useEditorState() {
 
       // Tipografia e Cores de Texto (Prioridade para o que vem no updates, depois prev top-level, depois appearance)
       if (updates.titleColor !== undefined) {
-        nextAppearance.titleColor = updates.titleColor;
+        nextAppearance.titleColor = sanitizeColor(updates.titleColor);
+        state.titleColor = sanitizeColor(updates.titleColor);
       } else if (prev.titleColor !== undefined) {
-        nextAppearance.titleColor = prev.titleColor;
+        nextAppearance.titleColor = sanitizeColor(prev.titleColor);
+        state.titleColor = sanitizeColor(prev.titleColor);
       }
       
       if (updates.subtitleColor !== undefined) {
-        nextAppearance.subtitleColor = updates.subtitleColor;
+        nextAppearance.subtitleColor = sanitizeColor(updates.subtitleColor);
+        state.subtitleColor = sanitizeColor(updates.subtitleColor);
       } else if (prev.subtitleColor !== undefined) {
-        nextAppearance.subtitleColor = prev.subtitleColor;
+        nextAppearance.subtitleColor = sanitizeColor(prev.subtitleColor);
+        state.subtitleColor = sanitizeColor(prev.subtitleColor);
       }
 
       if (updates.titleFont !== undefined) {
@@ -96,19 +105,31 @@ export function useEditorState() {
       }
 
       if (updates.cardBgColor !== undefined) {
-        nextAppearance.cardBgColor = updates.cardBgColor;
+        nextAppearance.cardBgColor = sanitizeColor(updates.cardBgColor);
+        state.cardBgColor = sanitizeColor(updates.cardBgColor);
       } else if (prev.cardBgColor !== undefined) {
-        nextAppearance.cardBgColor = prev.cardBgColor;
+        nextAppearance.cardBgColor = sanitizeColor(prev.cardBgColor);
+        state.cardBgColor = sanitizeColor(prev.cardBgColor);
+      }
+
+      if (updates.accentColor !== undefined) {
+        nextAppearance.accentColor = sanitizeColor(updates.accentColor);
+        state.accentColor = sanitizeColor(updates.accentColor);
+      } else if (prev.accentColor !== undefined) {
+        nextAppearance.accentColor = sanitizeColor(prev.accentColor);
+        state.accentColor = sanitizeColor(prev.accentColor);
       }
 
       if (updates.bgColor !== undefined) {
-        nextAppearance.backgroundColor = updates.bgColor;
-        state.bgColor = updates.bgColor;
+        const sanitized = sanitizeColor(updates.bgColor);
+        nextAppearance.backgroundColor = sanitized;
+        state.bgColor = sanitized;
       }
 
       if (updates.appearance?.backgroundColor !== undefined) {
-        nextAppearance.backgroundColor = updates.appearance.backgroundColor;
-        state.bgColor = updates.appearance.backgroundColor;
+        const sanitized = sanitizeColor(updates.appearance.backgroundColor);
+        nextAppearance.backgroundColor = sanitized;
+        state.bgColor = sanitized;
       }
 
       // Sincroniza o appearance final com as mudanças processadas
@@ -291,8 +312,151 @@ export function useEditorState() {
 
   const [activeSectionId, setActiveSectionId] = useState<string>("hero");
 
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isInitialSyncDone, setIsInitialSyncDone] = useState(false);
+
+  // 1. Adicionar um efeito que observa o studio.config para sincronização inicial reativa
+  useEffect(() => {
+    // Só sincronizamos se os dados do banco existirem e se o utilizador ainda não fez alterações manuais (isDirty)
+    if (studio?.config && !isDirty) {
+      const config = studio.config as SiteConfigData;
+      console.log(">>> [SYNC] Sincronizando estado do editor com studio.config (isDirty=false)");
+
+      const siteCustomization = config.siteCustomization || config.site_customization;
+      const layoutGlobal = (siteCustomization?.layoutGlobal ||
+        siteCustomization?.layout_global) || {};
+      
+      const siteColors = (layoutGlobal as any)?.siteColors || (layoutGlobal as any)?.color || (layoutGlobal as any)?.site_colors || (layoutGlobal as any)?.cores_base;
+      const siteFonts = (layoutGlobal as any)?.fontes || (layoutGlobal as any)?.typography;
+      const appointmentFlow = config.appointmentFlow as Record<string, unknown> | undefined;
+      const step1Services =
+        (appointmentFlow?.step1Services as Record<string, unknown>) ||
+        (appointmentFlow?.step1_services as Record<string, unknown>) ||
+        (appointmentFlow?.step1_service as Record<string, unknown>);
+      const step1CardConfig =
+        (step1Services?.cardConfig as Record<string, unknown>) ||
+        (step1Services?.card_config as Record<string, unknown>);
+      const step1CardBg = sanitizeColor(
+        (step1CardConfig?.backgroundColor as string) ||
+          (step1CardConfig?.cardBackgroundColor as string) ||
+          (step1CardConfig?.background_color as string) ||
+          (step1CardConfig?.card_background_color as string),
+      );
+
+      const hasValidColors = (colors: any) => 
+        colors && Object.values(colors).some(v => typeof v === 'string' && v.startsWith('#') && v.length >= 4);
+
+      if (hasValidColors(siteColors) || hasValidColors(config.colors)) {
+        console.log(">>> [SYNC] Cores válidas encontradas no banco. Aplicando...");
+        setColorSettings(prev => ({
+          ...prev,
+          ...(config.colors || {}),
+          ...(siteColors || {}),
+        }));
+      } else {
+        console.warn(">>> [SYNC] Cores do banco inválidas ou vazias. Mantendo default.");
+      }
+
+      if (siteFonts || config.typography || config.theme) {
+        setFontSettings(prev => ({
+          ...prev,
+          ...(config.theme || {}),
+          ...(config.typography || {}),
+          ...(siteFonts || {}),
+        }));
+      }
+
+      if (config.hero) setHeroSettings(prev => ({ ...prev, ...config.hero }));
+      if (config.about) setAboutHeroSettings(prev => ({ ...prev, ...(config.about as any) }));
+      if (config.story) setStorySettings(prev => ({ ...prev, ...config.story }));
+      if (config.team) setTeamSettings(prev => ({ ...prev, ...config.team }));
+      if (config.testimonials) setTestimonialsSettings(prev => ({ ...prev, ...config.testimonials }));
+      if (config.services) setServicesSettings(prev => ({ ...prev, ...config.services }));
+      if (config.values) setValuesSettings(prev => ({ ...prev, ...config.values }));
+      if (config.gallery) setGallerySettings(prev => ({ ...prev, ...config.gallery }));
+      if (config.cta) setCTASettings(prev => ({ ...prev, ...config.cta }));
+      if (config.header) setHeaderSettings(prev => ({ ...prev, ...config.header }));
+      if (config.footer) setFooterSettings(prev => ({ ...prev, ...config.footer }));
+      
+      // Sincronizar bookingSteps se houver
+      const bookingSteps = (config.appointmentFlow || config.bookingSteps) as
+        | Record<string, BookingStepSettings | undefined>
+        | undefined;
+      const serviceStep = bookingSteps?.service;
+      if (bookingSteps) {
+        if (serviceStep) {
+          setBookingServiceSettings(prev => ({
+            ...prev,
+            ...serviceStep,
+            cardBgColor:
+              sanitizeColor(serviceStep.cardBgColor || step1CardBg) ||
+              prev.cardBgColor,
+          }));
+        } else if (step1CardBg) {
+          setBookingServiceSettings(prev => ({
+            ...prev,
+            cardBgColor: step1CardBg,
+          }));
+        }
+        if (bookingSteps.date) setBookingDateSettings(prev => ({ ...prev, ...bookingSteps.date }));
+        if (bookingSteps.time) setBookingTimeSettings(prev => ({ ...prev, ...bookingSteps.time }));
+        if (bookingSteps.form) setBookingFormSettings(prev => ({ ...prev, ...bookingSteps.form }));
+        if (bookingSteps.confirmation) setBookingConfirmationSettings(prev => ({ ...prev, ...bookingSteps.confirmation }));
+      }
+
+      // Seções e Visibilidade
+      if (config.visibleSections) setVisibleSections(prev => ({ ...prev, ...config.visibleSections }));
+      if (config.pageVisibility) setPageVisibility(prev => ({ ...prev, ...config.pageVisibility }));
+
+      console.log(">>> [SYNC] Estado do editor sincronizado com o Banco de Dados.");
+    }
+  }, [studio?.config, isDirty]);
+
+  // --- Efeito de Inicialização (TASK 1 & 4) ---
+  // Monitora a chegada dos dados salvos no banco (lastSaved) para forçar a sincronização inicial
+  useEffect(() => {
+    if (isInitialSyncDone) return;
+
+    // Critério: Observamos os estados 'lastSaved' que vêm do fetch inicial
+    const hasSavedColors =
+      lastSavedColor.primary !== defaultColorSettings.primary &&
+      lastSavedColor.primary !== "";
+    const hasSavedHero =
+      lastSavedHero.title !== defaultHeroSettings.title ||
+      lastSavedHero.bgImage !== "";
+
+    if (hasSavedColors || hasSavedHero) {
+      console.log(
+        ">>> [INIT_LOAD] Dados do banco detectados em lastSaved. Sincronizando estado local 'dirty'.",
+      );
+
+      // Sincronizar seções de agendamento que costumam dar fallback rosa
+      setBookingServiceSettings((prev) => syncBackground(prev, {}));
+      setBookingDateSettings((prev) => syncBackground(prev, {}));
+      setBookingTimeSettings((prev) => syncBackground(prev, {}));
+      setBookingFormSettings((prev) => syncBackground(prev, {}));
+      setBookingConfirmationSettings((prev) => syncBackground(prev, {}));
+
+      // Sincronizar outras seções principais
+      setHeroSettings((prev) => syncBackground(prev, {}));
+      setServicesSettings((prev) => syncBackground(prev, {}));
+      setValuesSettings((prev) => syncBackground(prev, {}));
+      setCTASettings((prev) => syncBackground(prev, {}));
+
+      setIsInitialSyncDone(true);
+    }
+  }, [
+    isInitialSyncDone,
+    lastSavedColor.primary,
+    lastSavedHero.title,
+    lastSavedHero.bgImage,
+    syncBackground,
+  ]);
+
   const handleUpdateHero = useCallback(
     (updates: Partial<HeroSettings>) => {
+      setIsDirty(true);
       console.log(
         ">>> [useEditorState] handleUpdateHero chamado com:",
         updates,
@@ -313,6 +477,7 @@ export function useEditorState() {
 
   const handleUpdateAboutHero = useCallback(
     (updates: Partial<HeroSettings>) => {
+      setIsDirty(true);
       setAboutHeroSettings((prev: HeroSettings) =>
         syncBackground(prev, updates),
       );
@@ -322,6 +487,7 @@ export function useEditorState() {
 
   const handleUpdateStory = useCallback(
     (updates: Partial<StorySettings>) => {
+      setIsDirty(true);
       setStorySettings((prev: StorySettings) => syncBackground(prev, updates));
     },
     [syncBackground],
@@ -329,6 +495,7 @@ export function useEditorState() {
 
   const handleUpdateTeam = useCallback(
     (updates: Partial<TeamSettings>) => {
+      setIsDirty(true);
       setTeamSettings((prev: TeamSettings) => syncBackground(prev, updates));
     },
     [syncBackground],
@@ -336,6 +503,7 @@ export function useEditorState() {
 
   const handleUpdateTestimonials = useCallback(
     (updates: Partial<TestimonialsSettings>) => {
+      setIsDirty(true);
       setTestimonialsSettings((prev: TestimonialsSettings) =>
         syncBackground(prev, updates),
       );
@@ -344,15 +512,18 @@ export function useEditorState() {
   );
 
   const handleUpdateFont = useCallback((updates: Partial<FontSettings>) => {
+    setIsDirty(true);
     setFontSettings((prev: FontSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateColors = useCallback((updates: Partial<ColorSettings>) => {
+    setIsDirty(true);
     setColorSettings((prev: ColorSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateServices = useCallback(
     (updates: Partial<ServicesSettings>) => {
+      setIsDirty(true);
       setServicesSettings((prev: ServicesSettings) =>
         syncBackground(prev, updates),
       );
@@ -362,6 +533,7 @@ export function useEditorState() {
 
   const handleUpdateValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
+      setIsDirty(true);
       setValuesSettings((prev: ValuesSettings) =>
         syncBackground(prev, updates),
       );
@@ -371,6 +543,7 @@ export function useEditorState() {
 
   const handleUpdateGallery = useCallback(
     (updates: Partial<GallerySettings>) => {
+      setIsDirty(true);
       console.log(">>> [useEditorState] handleUpdateGallery chamado com:", updates);
       setGallerySettings((prev: GallerySettings) => {
         const newState = syncBackground(prev, updates);
@@ -388,71 +561,68 @@ export function useEditorState() {
 
   const handleUpdateCTA = useCallback(
     (updates: Partial<CTASettings>) => {
+      setIsDirty(true);
       setCTASettings((prev: CTASettings) => syncBackground(prev, updates));
     },
     [syncBackground],
   );
 
   const handleUpdateHeader = useCallback((updates: Partial<HeaderSettings>) => {
+    setIsDirty(true);
     setHeaderSettings((prev: HeaderSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateFooter = useCallback((updates: Partial<FooterSettings>) => {
+    setIsDirty(true);
     setFooterSettings((prev: FooterSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateBookingService = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingServiceSettings((prev: BookingStepSettings) => {
-        console.log(">>> [DEBUG] BookingService - Estado Anterior:", prev);
-        console.log(">>> [DEBUG] BookingService - Updates Recebidos:", updates);
-        // Sincroniza campos de topo com o objeto appearance se necessário via syncBackground
-        return syncBackground(prev, updates);
-      });
+      setIsDirty(true);
+      setBookingServiceSettings((prev: BookingStepSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
 
   const handleUpdateBookingDate = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingDateSettings((prev: BookingStepSettings) => {
-        console.log(">>> [DEBUG] BookingDate - Estado Anterior:", prev);
-        console.log(">>> [DEBUG] BookingDate - Updates Recebidos:", updates);
-        return syncBackground(prev, updates);
-      });
+      setIsDirty(true);
+      setBookingDateSettings((prev: BookingStepSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
 
   const handleUpdateBookingTime = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingTimeSettings((prev: BookingStepSettings) => {
-        console.log(">>> [DEBUG] BookingTime - Estado Anterior:", prev);
-        console.log(">>> [DEBUG] BookingTime - Updates Recebidos:", updates);
-        return syncBackground(prev, updates);
-      });
+      setIsDirty(true);
+      setBookingTimeSettings((prev: BookingStepSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
 
   const handleUpdateBookingForm = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingFormSettings((prev: BookingStepSettings) => {
-        console.log(">>> [DEBUG] BookingForm - Estado Anterior:", prev);
-        console.log(">>> [DEBUG] BookingForm - Updates Recebidos:", updates);
-        return syncBackground(prev, updates);
-      });
+      setIsDirty(true);
+      setBookingFormSettings((prev: BookingStepSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
 
   const handleUpdateBookingConfirmation = useCallback(
     (updates: Partial<BookingStepSettings>) => {
-      setBookingConfirmationSettings((prev: BookingStepSettings) => {
-        console.log(">>> [DEBUG] BookingConfirmation - Estado Anterior:", prev);
-        console.log(">>> [DEBUG] BookingConfirmation - Updates Recebidos:", updates);
-        return syncBackground(prev, updates);
-      });
+      setIsDirty(true);
+      setBookingConfirmationSettings((prev: BookingStepSettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
@@ -596,6 +766,8 @@ export function useEditorState() {
     setPageVisibility,
     visibleSections,
     setVisibleSections,
+    isInitialized,
+    setIsInitialized,
     lastAppliedHero,
     setLastAppliedHero,
     lastAppliedAboutHero,

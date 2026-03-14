@@ -13,17 +13,26 @@ import { useStudio } from "@/context/studio-context";
 import {
   type Booking,
   type BookingStepSettings,
+  defaultBookingConfirmationSettings,
+  defaultBookingDateSettings,
+  defaultBookingFormSettings,
+  defaultBookingServiceSettings,
+  defaultBookingTimeSettings,
+  defaultColorSettings,
   getBookingConfirmationSettings,
   getBookingDateSettings,
   getBookingFormSettings,
   getBookingServiceSettings,
   getBookingTimeSettings,
+  normalizeStepSettings,
   parseDuration,
   type Service,
+  sanitizeColor,
   saveBlockedPeriods,
   saveWeekSchedule,
 } from "@/lib/booking-data";
 import { businessService } from "@/lib/business-service";
+import type { SiteConfigData } from "@/lib/site-config-types";
 import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
 
 type BookingStep = "service" | "date" | "time" | "form" | "confirmation";
@@ -53,7 +62,7 @@ interface StudioConfig {
 }
 
 export function BookingFlow() {
-  const { studio } = useStudio();
+  const { studio, isLoading } = useStudio();
   const searchParams = useSearchParams();
   const only = searchParams.get("only");
 
@@ -71,46 +80,334 @@ export function BookingFlow() {
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(
     null,
   );
+  const [previewOverrides, setPreviewOverrides] = useState<
+    Partial<Record<BookingStep, BookingStepSettings>>
+  >({});
 
   // Force re-render on storage or specific events
   const [tick, setTick] = useState(0);
   const handleRefresh = useCallback(() => setTick((t) => t + 1), []);
 
+  const totalService = useMemo(() => {
+    if (selectedServices.length === 0) {
+      // Se estivermos em modo de isolamento no editor, fornecemos um serviço mock
+      if (only?.startsWith("booking-")) {
+        return {
+          id: "mock-service",
+          name: "Serviço de Exemplo",
+          price: 100,
+          duration: 60,
+          description:
+            "Este é um serviço de exemplo para visualização no editor.",
+        } as Service;
+      }
+      return null;
+    }
+
+    // Se houver apenas um serviço, retorna ele diretamente para evitar perda de propriedades (como conflictingServiceIds)
+    if (selectedServices.length === 1) {
+      return selectedServices[0];
+    }
+
+    // Se houver múltiplos, cria o aglomerado
+    return {
+      id: selectedServices.map((s) => s.id).join(","),
+      name: selectedServices.map((s) => s.name).join(", "),
+      price: selectedServices.reduce(
+        (acc, s) => acc + (Number(s.price) || 0),
+        0,
+      ),
+      duration: selectedServices.reduce(
+        (acc, s) => acc + parseDuration(s.duration),
+        0,
+      ),
+      description: selectedServices.map((s) => s.name).join(", "),
+      conflictingServiceIds: selectedServices.flatMap(
+        (s) => s.conflictingServiceIds || [],
+      ),
+      advancedRules: {
+        conflicts: selectedServices.flatMap((s) => {
+          const advRules = s.advancedRules || s.advanced_rules;
+          if (Array.isArray(advRules)) return advRules;
+          return advRules?.conflicts || [];
+        }),
+      },
+    } as Service;
+  }, [selectedServices, only]);
+
   // Settings states
+  const globalColors = useMemo(() => {
+    const config = studio?.config as SiteConfigData | undefined;
+    const siteCustomization = config?.siteCustomization || config?.site_customization;
+    const layoutGlobal =
+      siteCustomization?.layoutGlobal || siteCustomization?.layout_global;
+    const siteColors = (layoutGlobal as Record<string, unknown>)?.siteColors as
+      | Record<string, string>
+      | undefined;
+    
+    const appointmentFlow = (config?.appointmentFlow || config?.appointment_flow) as Record<string, unknown> | undefined;
+    const appointmentFlowColors = (appointmentFlow?.colors || appointmentFlow?.cores) as Record<string, string> | undefined;
+
+    return {
+      background:
+        appointmentFlowColors?.background ||
+        siteColors?.background ||
+        ((layoutGlobal as Record<string, unknown>)?.background as string) ||
+        config?.colors?.background ||
+        defaultColorSettings.background,
+      text:
+        siteColors?.text ||
+        config?.colors?.text ||
+        defaultColorSettings.text,
+    };
+  }, [studio?.config]);
+
+  const applyGlobalFallbacks = useCallback(
+    (settings: BookingStepSettings) => {
+      const appearance = settings.appearance || {};
+      return {
+        ...settings,
+        bgColor: settings.bgColor || appearance.backgroundColor || globalColors.background,
+        titleColor: settings.titleColor || appearance.titleColor || globalColors.text,
+        subtitleColor:
+          settings.subtitleColor || appearance.subtitleColor || globalColors.text,
+        appearance: {
+          ...appearance,
+          backgroundColor:
+            appearance.backgroundColor || settings.bgColor || globalColors.background,
+          titleColor:
+            appearance.titleColor || settings.titleColor || globalColors.text,
+          subtitleColor:
+            appearance.subtitleColor || settings.subtitleColor || globalColors.text,
+        },
+      };
+    },
+    [globalColors.background, globalColors.text],
+  );
+
+  const normalizeBookingStep = useCallback(
+    (
+      stepKey: "service" | "date" | "time" | "form" | "confirmation",
+      defaults: BookingStepSettings,
+    ) => {
+      const config = studio?.config as SiteConfigData | undefined;
+      const appointmentFlow = (config?.appointmentFlow ||
+        config?.appointment_flow) as Record<string, unknown> | undefined;
+      const step1Services =
+        (appointmentFlow?.step1Services as Record<string, unknown>) ||
+        (appointmentFlow?.step1_services as Record<string, unknown>) ||
+        (appointmentFlow?.step1_service as Record<string, unknown>);
+      const step1CardConfig =
+        (step1Services?.cardConfig as Record<string, unknown>) ||
+        (step1Services?.card_config as Record<string, unknown>);
+      const cardBgFromFlow = sanitizeColor(
+        (step1CardConfig?.backgroundColor as string) ||
+          (step1CardConfig?.cardBackgroundColor as string) ||
+          (step1CardConfig?.background_color as string) ||
+          (step1CardConfig?.card_background_color as string),
+      );
+
+      const appointmentFlowSteps = (config?.appointmentFlow as {
+        steps?: Partial<Record<BookingStep, BookingStepSettings>>;
+      } | undefined)?.steps;
+      const appointmentFlowSnakeSteps = (config?.appointment_flow as {
+        steps?: Partial<Record<BookingStep, BookingStepSettings>>;
+      } | undefined)?.steps;
+
+      const stepConfig =
+        config?.bookingSteps?.[stepKey] ||
+        appointmentFlowSteps?.[stepKey] ||
+        appointmentFlowSnakeSteps?.[stepKey] ||
+        (config?.appointmentFlow as Partial<
+          Record<BookingStep, BookingStepSettings>
+        > | undefined)?.[stepKey] ||
+        (config?.appointment_flow as Partial<
+          Record<BookingStep, BookingStepSettings>
+        > | undefined)?.[stepKey];
+
+      let base = { ...defaults };
+      if (stepConfig) {
+        const step = stepConfig as BookingStepSettings;
+        base = {
+          ...base,
+          ...step,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(step.appearance || {}),
+          },
+        };
+      }
+      return {
+        ...base,
+        titleColor:
+          sanitizeColor(
+            base.titleColor ||
+              base.appearance?.titleColor ||
+              defaults.titleColor,
+          ) || "",
+        subtitleColor:
+          sanitizeColor(
+            base.subtitleColor ||
+              base.appearance?.subtitleColor ||
+              defaults.subtitleColor,
+          ) || "",
+        titleFont:
+          base.titleFont || base.appearance?.titleFont || defaults.titleFont,
+        subtitleFont:
+          base.subtitleFont ||
+          base.appearance?.subtitleFont ||
+          defaults.subtitleFont,
+        cardBgColor:
+          sanitizeColor(
+            (stepKey === "service" ? cardBgFromFlow : undefined) ||
+              base.cardBgColor ||
+              base.appearance?.cardBgColor ||
+              defaults.cardBgColor,
+          ) || (stepKey === "service" ? "#ffffff" : ""),
+        accentColor:
+          sanitizeColor(
+            base.accentColor ||
+              base.appearance?.accentColor ||
+              defaults.accentColor,
+          ) || "",
+        bgColor:
+          sanitizeColor(
+            base.bgColor ||
+              base.appearance?.backgroundColor ||
+              defaults.bgColor,
+          ) || "",
+      };
+    },
+    [studio?.config],
+  );
+
   const serviceSettings = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _ = tick;
-    return getBookingServiceSettings(studio?.config);
-  }, [studio?.config, tick]);
+    const base = studio?.config
+      ? normalizeBookingStep("service", defaultBookingServiceSettings)
+      : getBookingServiceSettings(studio?.config);
+    const override = previewOverrides.service;
+    const merged = override
+      ? {
+          ...base,
+          ...override,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(override.appearance || {}),
+          },
+        }
+      : base;
+    return applyGlobalFallbacks(merged);
+  }, [
+    studio?.config,
+    tick,
+    applyGlobalFallbacks,
+    normalizeBookingStep,
+    previewOverrides.service,
+  ]);
 
   const dateSettings = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _ = tick;
-    return getBookingDateSettings(studio?.config);
-  }, [studio?.config, tick]);
+    const base = studio?.config
+      ? normalizeBookingStep("date", defaultBookingDateSettings)
+      : getBookingDateSettings(studio?.config);
+    const override = previewOverrides.date;
+    const merged = override
+      ? {
+          ...base,
+          ...override,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(override.appearance || {}),
+          },
+        }
+      : base;
+    return applyGlobalFallbacks(merged);
+  }, [
+    studio?.config,
+    tick,
+    applyGlobalFallbacks,
+    normalizeBookingStep,
+    previewOverrides.date,
+  ]);
 
   const timeSettings = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _ = tick;
-    const settings = getBookingTimeSettings(studio?.config);
-    // Adicionar o intervalo global ao timeSettings se disponível no config do studio
+    const base = studio?.config
+      ? normalizeBookingStep("time", defaultBookingTimeSettings)
+      : getBookingTimeSettings(studio?.config);
+    const override = previewOverrides.time;
+    const merged = override
+      ? {
+          ...base,
+          ...override,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(override.appearance || {}),
+          },
+        }
+      : base;
     if (studio?.config?.interval || studio?.config?.slotInterval) {
-      settings.interval = studio.config.interval || studio.config.slotInterval;
+      merged.interval = studio.config.interval || studio.config.slotInterval;
     }
-    return settings;
-  }, [studio?.config, tick]);
+    return applyGlobalFallbacks(merged);
+  }, [
+    studio?.config,
+    tick,
+    applyGlobalFallbacks,
+    normalizeBookingStep,
+    previewOverrides.time,
+  ]);
 
   const formSettings = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _ = tick;
-    return getBookingFormSettings(studio?.config);
-  }, [studio?.config, tick]);
+    const base = studio?.config
+      ? normalizeBookingStep("form", defaultBookingFormSettings)
+      : getBookingFormSettings(studio?.config);
+    const override = previewOverrides.form;
+    const merged = override
+      ? {
+          ...base,
+          ...override,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(override.appearance || {}),
+          },
+        }
+      : base;
+    return applyGlobalFallbacks(merged);
+  }, [
+    studio?.config,
+    tick,
+    applyGlobalFallbacks,
+    normalizeBookingStep,
+    previewOverrides.form,
+  ]);
 
   const confirmationSettings = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const _ = tick;
-    return getBookingConfirmationSettings(studio?.config);
-  }, [studio?.config, tick]);
+    const base = studio?.config
+      ? normalizeBookingStep("confirmation", defaultBookingConfirmationSettings)
+      : getBookingConfirmationSettings(studio?.config);
+    const override = previewOverrides.confirmation;
+    const merged = override
+      ? {
+          ...base,
+          ...override,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(override.appearance || {}),
+          },
+        }
+      : base;
+    return applyGlobalFallbacks(merged);
+  }, [
+    studio?.config,
+    tick,
+    applyGlobalFallbacks,
+    normalizeBookingStep,
+    previewOverrides.confirmation,
+  ]);
 
   // Sincronizar Horários e Intervalo do Backend
   useEffect(() => {
@@ -280,18 +577,93 @@ export function BookingFlow() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "UPDATE_BOOKING_SERVICE_SETTINGS") {
+        const settings = event.data.settings as Record<string, unknown> | undefined;
+        if (settings) {
+          const normalized = normalizeStepSettings(settings);
+          setPreviewOverrides((prev) => ({
+            ...prev,
+            service: {
+              ...(prev.service || {}),
+              ...normalized,
+              appearance: {
+                ...(prev.service?.appearance || {}),
+                ...(normalized.appearance || {}),
+              },
+            },
+          }));
+        }
         handleRefresh();
       }
       if (event.data?.type === "UPDATE_BOOKING_DATE_SETTINGS") {
+        const settings = event.data.settings as Record<string, unknown> | undefined;
+        if (settings) {
+          const normalized = normalizeStepSettings(settings);
+          setPreviewOverrides((prev) => ({
+            ...prev,
+            date: {
+              ...(prev.date || {}),
+              ...normalized,
+              appearance: {
+                ...(prev.date?.appearance || {}),
+                ...(normalized.appearance || {}),
+              },
+            },
+          }));
+        }
         handleRefresh();
       }
       if (event.data?.type === "UPDATE_BOOKING_TIME_SETTINGS") {
+        const settings = event.data.settings as Record<string, unknown> | undefined;
+        if (settings) {
+          const normalized = normalizeStepSettings(settings);
+          setPreviewOverrides((prev) => ({
+            ...prev,
+            time: {
+              ...(prev.time || {}),
+              ...normalized,
+              appearance: {
+                ...(prev.time?.appearance || {}),
+                ...(normalized.appearance || {}),
+              },
+            },
+          }));
+        }
         handleRefresh();
       }
       if (event.data?.type === "UPDATE_BOOKING_FORM_SETTINGS") {
+        const settings = event.data.settings as Record<string, unknown> | undefined;
+        if (settings) {
+          const normalized = normalizeStepSettings(settings);
+          setPreviewOverrides((prev) => ({
+            ...prev,
+            form: {
+              ...(prev.form || {}),
+              ...normalized,
+              appearance: {
+                ...(prev.form?.appearance || {}),
+                ...(normalized.appearance || {}),
+              },
+            },
+          }));
+        }
         handleRefresh();
       }
       if (event.data?.type === "UPDATE_BOOKING_CONFIRMATION_SETTINGS") {
+        const settings = event.data.settings as Record<string, unknown> | undefined;
+        if (settings) {
+          const normalized = normalizeStepSettings(settings);
+          setPreviewOverrides((prev) => ({
+            ...prev,
+            confirmation: {
+              ...(prev.confirmation || {}),
+              ...normalized,
+              appearance: {
+                ...(prev.confirmation?.appearance || {}),
+                ...(normalized.appearance || {}),
+              },
+            },
+          }));
+        }
         handleRefresh();
       }
       if (
@@ -419,6 +791,20 @@ export function BookingFlow() {
     confirmationSettings,
   ]);
 
+  // TASK 2: Bloqueio de Renderização
+  if (isLoading || !studio?.config) {
+    return (
+      <div className="flex h-[50vh] w-full items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/50">
+        <div className="flex flex-col items-center gap-2">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <p className="text-sm text-muted-foreground animate-pulse">
+            Carregando configurações do studio...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const handleReset = () => {
     setCurrentStep("service");
     setSelectedServices([]);
@@ -426,53 +812,6 @@ export function BookingFlow() {
     setSelectedTime("");
     setConfirmedBooking(null);
   };
-
-  const totalService = useMemo(() => {
-    if (selectedServices.length === 0) {
-      // Se estivermos em modo de isolamento no editor, fornecemos um serviço mock
-      if (only?.startsWith("booking-")) {
-        return {
-          id: "mock-service",
-          name: "Serviço de Exemplo",
-          price: 100,
-          duration: 60,
-          description:
-            "Este é um serviço de exemplo para visualização no editor.",
-        } as Service;
-      }
-      return null;
-    }
-
-    // Se houver apenas um serviço, retorna ele diretamente para evitar perda de propriedades (como conflictingServiceIds)
-    if (selectedServices.length === 1) {
-      return selectedServices[0];
-    }
-
-    // Se houver múltiplos, cria o aglomerado
-    return {
-      id: selectedServices.map((s) => s.id).join(","),
-      name: selectedServices.map((s) => s.name).join(", "),
-      price: selectedServices.reduce(
-        (acc, s) => acc + (Number(s.price) || 0),
-        0,
-      ),
-      duration: selectedServices.reduce(
-        (acc, s) => acc + parseDuration(s.duration),
-        0,
-      ),
-      description: selectedServices.map((s) => s.name).join(", "),
-      conflictingServiceIds: selectedServices.flatMap(
-        (s) => s.conflictingServiceIds || [],
-      ),
-      advancedRules: {
-        conflicts: selectedServices.flatMap((s) => {
-          const advRules = s.advancedRules || s.advanced_rules;
-          if (Array.isArray(advRules)) return advRules;
-          return advRules?.conflicts || [];
-        }),
-      },
-    } as Service;
-  }, [selectedServices, only]);
 
   const effectiveDate =
     selectedDate ||
@@ -503,10 +842,12 @@ export function BookingFlow() {
 
   const renderStepHeader = (settings: BookingStepSettings) => {
     const appearance = settings.appearance || {};
-    const titleColor = appearance.titleColor || settings.titleColor || "var(--primary)";
-    const subtitleColor = appearance.subtitleColor || settings.subtitleColor || "var(--foreground)";
-    const titleFont = appearance.titleFont || settings.titleFont || "var(--font-title)";
-    const subtitleFont = appearance.subtitleFont || settings.subtitleFont || "var(--font-body)";
+    
+    // Prioridade: Custom Setting > Global Appearance > Default Fallback
+    const titleColor = settings.titleColor || appearance.titleColor || "var(--foreground)";
+    const subtitleColor = settings.subtitleColor || appearance.subtitleColor || "var(--muted-foreground)";
+    const titleFont = settings.titleFont || appearance.titleFont || "var(--font-title)";
+    const subtitleFont = settings.subtitleFont || appearance.subtitleFont || "var(--font-body)";
 
     return (
       <div className="text-center mb-12">
@@ -520,7 +861,7 @@ export function BookingFlow() {
           {settings.title}
         </h2>
         <p
-          className="text-lg opacity-80 max-w-2xl mx-auto transition-all duration-300"
+          className="text-lg max-w-2xl mx-auto transition-all duration-300"
           style={{
             color: subtitleColor,
             fontFamily: subtitleFont,
@@ -533,7 +874,13 @@ export function BookingFlow() {
   };
 
   return (
-    <div id="booking" className="w-full mx-auto">
+    <div
+      id="booking"
+      className="w-full mx-auto"
+      style={{
+        backgroundColor: "var(--booking-background, transparent)",
+      }}
+    >
       {/* Progress Steps */}
       {currentStep !== "confirmation" && (
         <div className="max-w-4xl mx-auto px-4">
@@ -723,7 +1070,6 @@ export function BookingFlow() {
               <div className="max-w-4xl mx-auto">
                 <BookingConfirmation
                   booking={effectiveBooking}
-                  service={totalService}
                   onReset={handleReset}
                   settings={confirmationSettings}
                 />

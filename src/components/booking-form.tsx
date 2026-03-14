@@ -38,6 +38,16 @@ export function BookingForm({
   settings,
 }: BookingFormProps) {
   const { studio } = useStudio();
+  const appearance = settings?.appearance || {};
+  
+  // Prioridade: Custom Setting > Global Appearance > Default Fallback
+  const accentColor = settings?.accentColor || appearance.accentColor || "var(--primary)";
+  const cardBgColor = settings?.cardBgColor || appearance.cardBgColor || "#FFFFFF";
+  const titleColor = settings?.titleColor || appearance.titleColor || "var(--foreground)";
+  const subtitleColor = settings?.subtitleColor || appearance.subtitleColor || "var(--muted-foreground)";
+  const titleFont = settings?.titleFont || appearance.titleFont || "var(--font-title)";
+  const subtitleFont = settings?.subtitleFont || appearance.subtitleFont || "var(--font-subtitle)";
+
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -191,39 +201,43 @@ export function BookingForm({
         <Card
           className="border-primary/20 p-4"
           style={{
-            backgroundColor: settings?.cardBgColor || "var(--muted)",
-            borderColor: settings?.accentColor
-              ? `${settings.accentColor}33`
-              : undefined,
+            backgroundColor: cardBgColor,
+            borderColor: accentColor ? `${accentColor}33` : undefined,
           }}
         >
           <div className="text-sm space-y-1">
             <div
               className="font-semibold"
               style={{
-                color: settings?.titleColor || "var(--foreground)",
-                fontFamily: settings?.titleFont || "var(--font-title)",
+                color: titleColor,
+                fontFamily: titleFont,
               }}
             >
               {services.map((s) => s.name).join(", ")}
             </div>
-            <div className="text-muted-foreground capitalize">
+            <div
+              className="text-muted-foreground capitalize"
+              style={{ color: subtitleColor }}
+            >
               {formattedDate}
             </div>
             <div
               className="font-bold"
               style={{
-                color: settings?.accentColor || "var(--primary)",
+                color: accentColor,
               }}
             >
               {time}
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div
+              className="text-xs text-muted-foreground"
+              style={{ color: subtitleColor }}
+            >
               Duração Total: {durationHHmm}
             </div>
             <div
               className="font-semibold"
-              style={{ color: settings?.accentColor || "var(--primary)" }}
+              style={{ color: accentColor }}
             >
               R$ {totalPrice.toFixed(2)}
             </div>
@@ -233,7 +247,7 @@ export function BookingForm({
 
       <h2
         className="text-2xl font-bold mb-6 text-center"
-        style={{ fontFamily: "var(--font-title)", color: "var(--foreground)" }}
+        style={{ fontFamily: titleFont, color: titleColor }}
       >
         Seus Dados
       </h2>
@@ -241,16 +255,19 @@ export function BookingForm({
       <Card
         className="border-primary/20"
         style={{
-          backgroundColor: settings?.cardBgColor || "#FFFFFF",
-          borderColor: settings?.accentColor
-            ? `${settings.accentColor}33`
-            : undefined,
+          backgroundColor: cardBgColor,
+          borderColor: accentColor ? `${accentColor}33` : undefined,
         }}
       >
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Completo *</Label>
+              <Label
+                htmlFor="name"
+                style={{ color: titleColor, fontFamily: subtitleFont }}
+              >
+                Nome Completo *
+              </Label>
               <Input
                 id="name"
                 type="text"
@@ -263,15 +280,20 @@ export function BookingForm({
                 className="focus-visible:ring-accent"
                 style={
                   {
-                    "--tw-ring-color":
-                      settings?.accentColor || "var(--primary)",
+                    "--tw-ring-color": accentColor,
+                    fontFamily: subtitleFont,
                   } as React.CSSProperties
                 }
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
+              <Label
+                htmlFor="email"
+                style={{ color: titleColor, fontFamily: subtitleFont }}
+              >
+                E-mail
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -283,15 +305,20 @@ export function BookingForm({
                 className="focus-visible:ring-accent"
                 style={
                   {
-                    "--tw-ring-color":
-                      settings?.accentColor || "var(--primary)",
+                    "--tw-ring-color": accentColor,
+                    fontFamily: subtitleFont,
                   } as React.CSSProperties
                 }
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefone / WhatsApp *</Label>
+              <Label
+                htmlFor="phone"
+                style={{ color: titleColor, fontFamily: subtitleFont }}
+              >
+                Telefone / WhatsApp *
+              </Label>
               <Input
                 id="phone"
                 type="tel"
@@ -300,12 +327,12 @@ export function BookingForm({
                 onChange={(e) =>
                   setFormData({ ...formData, phone: e.target.value })
                 }
-                placeholder="(11) 99999-9999"
+                placeholder="(00) 00000-0000"
                 className="focus-visible:ring-accent"
                 style={
                   {
-                    "--tw-ring-color":
-                      settings?.accentColor || "var(--primary)",
+                    "--tw-ring-color": accentColor,
+                    fontFamily: subtitleFont,
                   } as React.CSSProperties
                 }
               />
@@ -314,21 +341,20 @@ export function BookingForm({
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 text-lg font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full h-12 text-lg font-semibold transition-all duration-300"
               style={{
-                backgroundColor: settings?.accentColor || "var(--primary)",
+                backgroundColor: accentColor,
                 color: "#fff",
+                fontFamily: titleFont,
               }}
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Processando...
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Salvando...
                 </>
-              ) : initialBooking ? (
-                "Salvar Alterações"
               ) : (
-                "Confirmar Agendamento"
+                "Finalizar Agendamento"
               )}
             </Button>
           </form>

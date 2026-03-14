@@ -208,27 +208,42 @@ export function ServicesSection() {
           cardBgColor: sanitizeColor(
             (configServices.cardBgColor as string) ||
             (appearance.cardBgColor as string) ||
-            (content.cardBgColor as string)
+            (content.cardBgColor as string) ||
+            ((configServices.cardBgColor as Record<string, unknown>)?.text as string) ||
+            ((appearance.cardBgColor as Record<string, unknown>)?.text as string) ||
+            ((content.cardBgColor as Record<string, unknown>)?.text as string)
           ),
           cardTitleColor: sanitizeColor(
             (configServices.cardTitleColor as string) ||
             (appearance.cardTitleColor as string) ||
-            (content.cardTitleColor as string)
+            (content.cardTitleColor as string) ||
+            ((configServices.cardTitleColor as Record<string, unknown>)?.text as string) ||
+            ((appearance.cardTitleColor as Record<string, unknown>)?.text as string) ||
+            ((content.cardTitleColor as Record<string, unknown>)?.text as string)
           ),
           cardDescriptionColor: sanitizeColor(
             (configServices.cardDescriptionColor as string) ||
             (appearance.cardDescriptionColor as string) ||
-            (content.cardDescriptionColor as string)
+            (content.cardDescriptionColor as string) ||
+            ((configServices.cardDescriptionColor as Record<string, unknown>)?.text as string) ||
+            ((appearance.cardDescriptionColor as Record<string, unknown>)?.text as string) ||
+            ((content.cardDescriptionColor as Record<string, unknown>)?.text as string)
           ),
           cardPriceColor: sanitizeColor(
             (configServices.cardPriceColor as string) ||
             (appearance.cardPriceColor as string) ||
-            (content.cardPriceColor as string)
+            (content.cardPriceColor as string) ||
+            ((configServices.cardPriceColor as Record<string, unknown>)?.text as string) ||
+            ((appearance.cardPriceColor as Record<string, unknown>)?.text as string) ||
+            ((content.cardPriceColor as Record<string, unknown>)?.text as string)
           ),
           cardIconColor: sanitizeColor(
             (configServices.cardIconColor as string) ||
             (appearance.cardIconColor as string) ||
-            (content.cardIconColor as string)
+            (content.cardIconColor as string) ||
+            ((configServices.cardIconColor as Record<string, unknown>)?.text as string) ||
+            ((appearance.cardIconColor as Record<string, unknown>)?.text as string) ||
+            ((content.cardIconColor as Record<string, unknown>)?.text as string)
           ),
           cardTitleFont:
             (configServices.cardTitleFont as string) ||

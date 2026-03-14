@@ -63,35 +63,25 @@ export function HeroSection() {
 
   const config = studio?.config as SiteConfigData | undefined;
 
-  // Log de depuração solicitado para verificar a estrutura dos dados
+  // Sincronização Unificada: O estado customStyles agora é derivado DIRETAMENTE do StudioContext.
+  // Isso resolve a divergência entre editor e preview, pois ambos passam a beber da mesma fonte.
   useEffect(() => {
-    if (config) {
-      console.log(">>> [HERO_RENDER_DEBUG]", config);
-    }
-  }, [config]);
+    if (!config) return;
 
-  useEffect(() => {
-    const isPreview = window.location.search.includes("preview=true");
-    setIsMounted(true);
-    setProfile(getSiteProfile());
-
-    // Carregar configurações iniciais
-    // Se tivermos dados do studio via context (multi-tenant), usamos eles
     const home = config?.home as Record<string, unknown> | undefined;
     const layoutGlobal = (config?.layoutGlobal || config?.layout_global) as Record<string, unknown> | undefined;
     const rawHero = (home?.heroBanner || home?.hero || config?.heroBanner || config?.hero || layoutGlobal?.heroBanner || layoutGlobal?.hero) as Record<string, unknown> | undefined;
 
-    if (!isPreview && rawHero) {
+    if (rawHero) {
       const content = (rawHero.content as Record<string, unknown>) || {};
       const appearance = (rawHero.appearance as Record<string, unknown>) || {};
       
-      // Mapeamento Robusto: Prioriza a RAIZ (conforme logs do banco), depois content, depois appearance
       const normalizedHero = {
         ...rawHero,
         ...content,
         ...appearance,
-        title: content.title ?? rawHero.title,
-        subtitle: content.subtitle ?? rawHero.subtitle,
+        title: (content.title as string) ?? (rawHero.title as string),
+        subtitle: (content.subtitle as string) ?? (rawHero.subtitle as string),
         showTitle: content.showTitle !== undefined ? content.showTitle : (rawHero.showTitle !== undefined ? rawHero.showTitle : true),
         showSubtitle: content.showSubtitle !== undefined ? content.showSubtitle : (rawHero.showSubtitle !== undefined ? rawHero.showSubtitle : true),
         showBadge: content.showBadge !== undefined ? content.showBadge : (rawHero.showBadge !== undefined ? rawHero.showBadge : true),
@@ -121,134 +111,46 @@ export function HeroSection() {
     } else {
       setCustomStyles(getHeroSettings());
     }
-    setPageVisibility(getPageVisibility());
+  }, [config]);
+
+  // Log de depuração solicitado para verificar a estrutura dos dados
+  useEffect(() => {
+    if (config) {
+      console.log(">>> [HERO_RENDER_DEBUG]", config);
+    }
+  }, [config]);
+
+  useEffect(() => {
+    setIsMounted(true);
+    setProfile(getSiteProfile());
+
+    const handleProfileUpdate = () => {
+      setProfile(getSiteProfile());
+    };
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_HERO_SETTINGS") {
-        console.log(
-          ">>> [HERO_SYNC] Atualização recebida via MessageEvent:",
-          renderSafeText(event.data.settings.title),
-        );
-
-        // Sanitize colors in real-time update
-        const updatedSettings = { ...event.data.settings };
-        const colorFields = [
-          "badgeColor",
-          "badgeTextColor",
-          "titleColor",
-          "subtitleColor",
-          "primaryButtonColor",
-          "primaryButtonTextColor",
-          "secondaryButtonColor",
-          "secondaryButtonTextColor",
-          "bgColor",
-        ];
-
-        colorFields.forEach((field) => {
-          if (updatedSettings[field] !== undefined) {
-            updatedSettings[field] = sanitizeColor(updatedSettings[field]);
-          }
-        });
-
-        setCustomStyles((prev) => ({
-          ...prev,
-          ...updatedSettings,
-        }));
-      }
-
       if (event.data.type === "HIGHLIGHT_SECTION") {
         setHighlightedElement(event.data.sectionId);
-        // Remove highlight after 2 seconds
         setTimeout(() => {
           setHighlightedElement(null);
         }, 2000);
       }
     };
 
-    const handleSettingsUpdate = () => {
-      setCustomStyles(getHeroSettings());
-    };
-
-    const handleVisibilityUpdate = () => {
-      setPageVisibility(getPageVisibility());
-    };
-
-    const handleDataReady = () => {
-      // Se estivermos em modo preview, não aceite dados vindos de 'DataReady' ou 'fetch' direto do banco.
-      // Apenas aceite dados vindos via 'window.addEventListener("message", ...)'
-      if (isPreview) {
-        console.log(
-          "[HERO_SYNC] Modo Preview detectado. Bloqueando sobreposição pelo banco.",
-        );
-        return;
-      }
-      const cfg = config;
-      const home = cfg?.home as Record<string, unknown> | undefined;
-      const lg = (cfg?.layoutGlobal || cfg?.layout_global) as Record<string, unknown> | undefined;
-      const rawHero = (home?.heroBanner || home?.hero || cfg?.heroBanner || cfg?.hero || lg?.heroBanner || lg?.hero) as Record<string, unknown> | undefined;
-      if (rawHero) {
-        const content = (rawHero.content as Record<string, unknown>) || {};
-        const appearance = (rawHero.appearance as Record<string, unknown>) || {};
-        
-        // Mapeamento Robusto: Prioriza a RAIZ (conforme logs do banco), depois content, depois appearance
-        const normalizedHero = {
-          ...rawHero,
-          ...content,
-          ...appearance,
-          title: content.title ?? rawHero.title,
-          subtitle: content.subtitle ?? rawHero.subtitle,
-          showTitle: content.showTitle !== undefined ? content.showTitle : (rawHero.showTitle !== undefined ? rawHero.showTitle : true),
-          showSubtitle: content.showSubtitle !== undefined ? content.showSubtitle : (rawHero.showSubtitle !== undefined ? rawHero.showSubtitle : true),
-          showBadge: content.showBadge !== undefined ? content.showBadge : (rawHero.showBadge !== undefined ? rawHero.showBadge : true),
-          badge: (rawHero.badge as string) || (content.badge as string) || "",
-          badgeIcon: (rawHero.badgeIcon as string) || (content.badgeIcon as string) || "",
-          badgeFont: (rawHero.badgeFont as string) || (appearance.badgeFont as string) || (content.badgeFont as string),
-          badgeColor: sanitizeColor((rawHero.badgeColor as string) || (appearance.badgeColor as string) || (content.badgeColor as string)),
-          badgeTextColor: sanitizeColor((rawHero.badgeTextColor as string) || (appearance.badgeTextColor as string) || (content.badgeTextColor as string)),
-          primaryButton: (rawHero.primaryButton as string) ?? (content.primaryButton as string),
-          primaryButtonFont: (rawHero.primaryButtonFont as string) || (appearance.primaryButtonFont as string) || (content.primaryButtonFont as string),
-          primaryButtonColor: sanitizeColor((rawHero.primaryButtonColor as string) || (appearance.primaryButtonColor as string) || (content.primaryButtonColor as string)),
-          primaryButtonTextColor: sanitizeColor((rawHero.primaryButtonTextColor as string) || (appearance.primaryButtonTextColor as string) || (content.primaryButtonTextColor as string)),
-          primaryButtonLink: (rawHero.primaryButtonLink as string) ?? (content.primaryButtonLink as string),
-          secondaryButton: (rawHero.secondaryButton as string) ?? (content.secondaryButton as string),
-          secondaryButtonFont: (rawHero.secondaryButtonFont as string) || (appearance.secondaryButtonFont as string) || (content.secondaryButtonFont as string),
-          secondaryButtonColor: sanitizeColor((rawHero.secondaryButtonColor as string) || (appearance.secondaryButtonColor as string) || (content.secondaryButtonColor as string)),
-          secondaryButtonTextColor: sanitizeColor((rawHero.secondaryButtonTextColor as string) || (appearance.secondaryButtonTextColor as string) || (content.secondaryButtonTextColor as string)),
-          secondaryButtonLink: (rawHero.secondaryButtonLink as string) ?? (content.secondaryButtonLink as string),
-          titleColor: sanitizeColor((rawHero.titleColor as string) || (appearance.titleColor as string) || (content.titleColor as string)),
-          subtitleColor: sanitizeColor((rawHero.subtitleColor as string) || (appearance.subtitleColor as string) || (content.subtitleColor as string)),
-          titleFont: (rawHero.titleFont as string) || (appearance.titleFont as string) || (content.titleFont as string),
-          subtitleFont: (rawHero.subtitleFont as string) || (appearance.subtitleFont as string) || (content.subtitleFont as string),
-          bgImage: (rawHero.bgImage as string) || (appearance.backgroundImageUrl as string) || "",
-          bgColor: sanitizeColor((rawHero.bgColor as string) || (rawHero.backgroundColor as string) || (appearance.backgroundColor as string) || ""),
-        };
-        setCustomStyles(normalizedHero as HeroSettings);
-      }
-    };
-
-    const handleProfileUpdate = () => {
-      setProfile(getSiteProfile());
-    };
-
     window.addEventListener("message", handleMessage);
-    window.addEventListener("heroSettingsUpdated", handleSettingsUpdate);
-    window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+    window.addEventListener("heroSettingsUpdated", () => setCustomStyles(getHeroSettings()));
+    window.addEventListener("pageVisibilityUpdated", () => setPageVisibility(getPageVisibility()));
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
-    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("heroSettingsUpdated", handleSettingsUpdate);
-      window.removeEventListener(
-        "pageVisibilityUpdated",
-        handleVisibilityUpdate,
-      );
+      window.removeEventListener("heroSettingsUpdated", () => setCustomStyles(getHeroSettings()));
+      window.removeEventListener("pageVisibilityUpdated", () => setPageVisibility(getPageVisibility()));
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
-      window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [config]);
+  }, []);
 
   useEffect(() => {
     console.log("[BG_CHECK]", {

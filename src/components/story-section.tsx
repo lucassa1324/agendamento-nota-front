@@ -4,14 +4,14 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "@/components/admin/site_editor/components/SessionWrapper";
+import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { useStudio } from "@/context/studio-context";
 import {
   getStorySettings,
-  sanitizeColor,
   type StorySettings,
+  sanitizeColor,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 
 export function StorySection() {
   const { studio } = useStudio();
@@ -25,42 +25,46 @@ export function StorySection() {
   useEffect(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     const config = studioConfig as SiteConfigData | undefined;
-    const layoutGlobal = config?.layoutGlobal || config?.layout_global;
-    const home = config?.home as Record<string, any> | undefined;
-    const rawStory = (home?.storySection || home?.historySection || config?.story || layoutGlobal?.story) as Record<string, any> | undefined;
+    const siteCustomization = config?.siteCustomization || config?.site_customization;
+    const layoutGlobal = siteCustomization?.layoutGlobal || 
+                        siteCustomization?.layout_global || 
+                        (config as Record<string, unknown>)?.layoutGlobal || 
+                        (config as Record<string, unknown>)?.layout_global;
+    const home = config?.home;
+    const rawStory = (home?.storySection || home?.historySection || config?.story || (layoutGlobal as Record<string, unknown>)?.story) as Record<string, unknown> | undefined;
 
     if (rawStory) {
-      const content = (rawStory.content as Record<string, any>) || {};
-      const appearance = (rawStory.appearance as Record<string, any>) || {};
+      const content = (rawStory.content as Record<string, unknown>) || {};
+      const appearance = (rawStory.appearance as Record<string, unknown>) || {};
       const normalizedStory = {
         ...rawStory,
         ...content,
         ...appearance,
-        title: content.title ?? rawStory.title,
-        content: content.content ?? rawStory.content,
+        title: (content.title as string) ?? (rawStory.title as string),
+        content: (content.content as string) ?? (rawStory.content as string),
         titleColor: sanitizeColor(
-          rawStory.titleColor || appearance.titleColor || content.titleColor,
+          (rawStory.titleColor as string) || (appearance.titleColor as string) || (content.titleColor as string),
         ),
         titleFont:
-          rawStory.titleFont || appearance.titleFont || content.titleFont,
+          (rawStory.titleFont as string) || (appearance.titleFont as string) || (content.titleFont as string),
         contentColor: sanitizeColor(
-          rawStory.contentColor ||
-            appearance.contentColor ||
-            content.contentColor,
+          (rawStory.contentColor as string) ||
+            (appearance.contentColor as string) ||
+            (content.contentColor as string),
         ),
         contentFont:
-          rawStory.contentFont ||
-          appearance.contentFont ||
-          content.contentFont,
-        bgImage: rawStory.bgImage || appearance.backgroundImageUrl || "",
+          (rawStory.contentFont as string) ||
+          (appearance.contentFont as string) ||
+          (content.contentFont as string),
+        bgImage: (rawStory.bgImage as string) || (appearance.backgroundImageUrl as string) || "",
         bgColor: sanitizeColor(
-          rawStory.bgColor ||
-            rawStory.backgroundColor ||
-            appearance.backgroundColor ||
+          (rawStory.bgColor as string) ||
+            (rawStory.backgroundColor as string) ||
+            (appearance.backgroundColor as string) ||
             "",
         ),
       };
-      setSettings(normalizedStory as StorySettings);
+      setSettings(normalizedStory as unknown as StorySettings);
     } else {
       setSettings(getStorySettings());
     }
@@ -88,41 +92,41 @@ export function StorySection() {
     };
     const handleDataReady = () => {
       const cfg = studioConfig as SiteConfigData | undefined;
-      const lg = cfg?.layoutGlobal || cfg?.layout_global;
-      const home = cfg?.home as Record<string, any> | undefined;
-      const rawStory = (home?.storySection || home?.historySection || cfg?.story || lg?.story) as Record<string, any> | undefined;
-      if (rawStory) {
-        const content = (rawStory.content as Record<string, any>) || {};
-        const appearance = (rawStory.appearance as Record<string, any>) || {};
+      const lg = (cfg?.layoutGlobal || cfg?.layout_global) as Record<string, unknown> | undefined;
+      const homeData = cfg?.home;
+      const rawStoryData = (homeData?.storySection || homeData?.historySection || cfg?.story || lg?.story) as Record<string, unknown> | undefined;
+      if (rawStoryData) {
+        const content = (rawStoryData.content as Record<string, unknown>) || {};
+        const appearance = (rawStoryData.appearance as Record<string, unknown>) || {};
         const normalizedStory = {
-          ...rawStory,
+          ...rawStoryData,
           ...content,
           ...appearance,
-          title: content.title ?? rawStory.title,
-          content: content.content ?? rawStory.content,
+          title: (content.title as string) ?? (rawStoryData.title as string),
+          content: (content.content as string) ?? (rawStoryData.content as string),
           titleColor: sanitizeColor(
-            rawStory.titleColor || appearance.titleColor || content.titleColor,
+            (rawStoryData.titleColor as string) || (appearance.titleColor as string) || (content.titleColor as string),
           ),
           titleFont:
-            rawStory.titleFont || appearance.titleFont || content.titleFont,
+            (rawStoryData.titleFont as string) || (appearance.titleFont as string) || (content.titleFont as string),
           contentColor: sanitizeColor(
-            rawStory.contentColor ||
-              appearance.contentColor ||
-              content.contentColor,
+            (rawStoryData.contentColor as string) ||
+              (appearance.contentColor as string) ||
+              (content.contentColor as string),
           ),
           contentFont:
-            rawStory.contentFont ||
-            appearance.contentFont ||
-            content.contentFont,
-          bgImage: rawStory.bgImage || appearance.backgroundImageUrl || "",
+            (rawStoryData.contentFont as string) ||
+            (appearance.contentFont as string) ||
+            (content.contentFont as string),
+          bgImage: (rawStoryData.bgImage as string) || (appearance.backgroundImageUrl as string) || "",
           bgColor: sanitizeColor(
-            rawStory.bgColor ||
-              rawStory.backgroundColor ||
-              appearance.backgroundColor ||
+            (rawStoryData.bgColor as string) ||
+              (rawStoryData.backgroundColor as string) ||
+              (appearance.backgroundColor as string) ||
               "",
           ),
         };
-        setSettings(normalizedStory as StorySettings);
+        setSettings(normalizedStory as unknown as StorySettings);
       }
     };
 

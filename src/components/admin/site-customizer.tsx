@@ -10,6 +10,8 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ThemeInjectorClient } from "@/components/theme-injector-client";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -28,6 +30,7 @@ import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/auth-client";
 import type { Business } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+
 import { pages, sections } from "./site_editor/components/editor-constants";
 import { HeaderControls } from "./site_editor/components/header-controls";
 import { PreviewFrame } from "./site_editor/components/preview-frame";
@@ -596,20 +599,23 @@ export function SiteCustomizer() {
         </div>
 
         {/* Preview Area */}
-        <PreviewFrame
-          iframeRef={iframeRef}
-          previewMode={previewMode}
-          currentWidth={currentWidth}
-          mobileScale={mobileScale}
-          desktopScale={desktopScale}
-          isAutoZoom={isAutoZoom}
-          setManualWidth={setManualWidth}
-          previewUrl={previewUrl}
-          previewKey={previewKey}
-          activePageData={activePageData}
-          containerRef={containerRef}
-          isMobile={isMobile}
-        />
+        <div className="flex-1 flex flex-col relative overflow-hidden h-full min-w-0">
+          <ThemeInjectorClient iframeRef={iframeRef} />
+          <PreviewFrame
+            iframeRef={iframeRef}
+            previewMode={previewMode}
+            currentWidth={currentWidth}
+            mobileScale={mobileScale}
+            desktopScale={desktopScale}
+            isAutoZoom={isAutoZoom}
+            setManualWidth={setManualWidth}
+            previewUrl={previewUrl}
+            previewKey={previewKey}
+            activePageData={activePageData}
+            containerRef={containerRef}
+            isMobile={isMobile}
+          />
+        </div>
       </div>
     </div>
   );

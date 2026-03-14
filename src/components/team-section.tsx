@@ -30,11 +30,15 @@ export function TeamSection() {
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     const config = studioConfig as SiteConfigData | undefined;
-    const layoutGlobal = config?.layoutGlobal || config?.layout_global;
-    const home = config?.home as Record<string, unknown> | undefined;
+    const siteCustomization = config?.siteCustomization || config?.site_customization;
+    const layoutGlobal = siteCustomization?.layoutGlobal || 
+                        siteCustomization?.layout_global || 
+                        (config as Record<string, unknown>)?.layoutGlobal || 
+                        (config as Record<string, unknown>)?.layout_global;
+    const home = config?.home;
     const rawTeam = (home?.teamSection ||
       config?.team ||
-      layoutGlobal?.team) as Record<string, unknown> | undefined;
+      (layoutGlobal as Record<string, unknown>)?.team) as Record<string, unknown> | undefined;
 
     if (rawTeam) {
       const content = (rawTeam.content as Record<string, unknown>) || {};

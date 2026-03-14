@@ -461,7 +461,6 @@ export function AdminBookingFlow({
       {currentStep === "confirmation" && confirmedBooking && totalService && (
         <BookingConfirmation
           booking={confirmedBooking}
-          service={totalService}
           onReset={onComplete || handleReset}
           isUpdate={!!initialBooking}
           backToHomeHref={slug ? `/admin/${slug}/dashboard/agendamentos` : "/"}

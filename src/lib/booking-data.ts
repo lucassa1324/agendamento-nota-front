@@ -1,4 +1,5 @@
 import { inventoryService } from "./inventory-service";
+import type { SiteConfigData } from "./site-config-types";
 
 export type ServiceResource = {
   inventoryId: string;
@@ -129,6 +130,79 @@ export type DaySchedule = {
 export type WeekSchedule = DaySchedule[];
 
 // Helper para isolamento de dados por usuário
+export const sanitizeColor = (
+  color: unknown,
+): string | undefined => {
+  if (!color) return undefined;
+  
+  // Se for um objeto, tenta extrair a string de cor (caso comum em alguns componentes de UI)
+  if (typeof color === "object" && color !== null) {
+    const colorObj = color as Record<string, unknown>;
+    if (typeof colorObj.hex === "string") return colorObj.hex;
+    if (typeof colorObj.text === "string") return colorObj.text;
+    if (typeof colorObj.color === "string") return colorObj.color;
+    // Se não encontrar nada óbvio, tenta converter para string e ver o que acontece
+    try {
+      const str = String(color);
+      if (str.startsWith("[object")) return undefined;
+      return sanitizeColor(str);
+    } catch (_e) {
+      return undefined;
+    }
+  }
+
+  if (typeof color !== "string") return undefined;
+
+  const trimmed = color.trim();
+  if (
+    trimmed.startsWith("#") ||
+    trimmed.startsWith("rgb") ||
+    trimmed.startsWith("hsl") ||
+    trimmed.startsWith("var")
+  ) {
+    return trimmed;
+  }
+  // Se for apenas hex sem #, adiciona #
+  if (/^[0-9A-Fa-f]{3,6}$/.test(trimmed)) {
+    return `#${trimmed}`;
+  }
+  return trimmed;
+};
+
+/**
+ * Função de utilidade que limpa o objeto de configurações antes de qualquer operação 
+ * de persistência ou renderização, garantindo que "lixo" de UI não chegue ao estado global.
+ * Implementa normalização recursiva para chaves de cores.
+ */
+export const normalizePersistenceData = (data: unknown): unknown => {
+  if (!data || typeof data !== "object") return data;
+
+  // Se for um array, processa cada item
+  if (Array.isArray(data)) {
+    return data.map(item => normalizePersistenceData(item));
+  }
+
+  const cleanData: Record<string, unknown> = { ...(data as Record<string, unknown>) };
+
+  Object.keys(cleanData).forEach((key) => {
+    const value = cleanData[key];
+
+    // 1. Se o valor for um objeto que parece uma cor (ex: ColorPicker), sanitiza
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const v = value as Record<string, unknown>;
+      if (v.hex || v.color || v.rgb) {
+        cleanData[key] = sanitizeColor(value);
+      } 
+      // 2. Se for um objeto aninhado (não nulo), limpa recursivamente
+      else if (!(value instanceof Date)) {
+        cleanData[key] = normalizePersistenceData(value);
+      }
+    }
+  });
+
+  return cleanData;
+};
+
 export function getStorageKey(key: string): string {
   if (typeof window === "undefined") return key;
   const userId = localStorage.getItem("current_admin_id");
@@ -139,7 +213,7 @@ export function getStorageKey(key: string): string {
 export function updateDraftTimestamp(): void {
   if (typeof window === "undefined") return;
   const timestamp = new Date().toISOString();
-  localStorage.setItem(getStorageKey("last_draft_update"), timestamp);
+  // localStorage.setItem(getStorageKey("last_draft_update"), timestamp);
   console.log(`>>> [booking-data] Draft timestamp atualizado: ${timestamp}`);
 
   // Dispara evento para o editor saber que houve mudança e salvar no banco
@@ -149,8 +223,8 @@ export function updateDraftTimestamp(): void {
 }
 
 export function getDraftTimestamp(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(getStorageKey("last_draft_update"));
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return null;
 }
 
 export type NotificationSettings = {
@@ -583,6 +657,7 @@ export type BookingStepSettings = {
   step3Times?: {
     interval?: string | number;
   };
+  buttonColor?: string;
   appearance?: AppearanceSettings;
 };
 
@@ -720,17 +795,39 @@ export interface BookingConfig {
   };
 }
 
-export function getBookingServiceSettings(config?: BookingConfig): BookingStepSettings {
+export function getBookingServiceSettings(config?: SiteConfigData): BookingStepSettings {
   // 1. Inicia com o default imutável
   let base = { ...defaultBookingServiceSettings };
 
+  // Extrai as cores globais do site a partir da configuração
+  const siteCustomization = config?.siteCustomization || config?.site_customization;
+  const layoutGlobal = siteCustomization?.layoutGlobal || siteCustomization?.layout_global;
+  const siteColors = (layoutGlobal as Record<string, unknown>)?.siteColors as Record<string, string> | undefined;
+  const globalCardBgColor = siteColors?.cardBackground;
+  const globalAccentColor = siteColors?.accent;
+  const globalBgColor = siteColors?.background;
+  const appointmentFlow = (config as Record<string, unknown> | undefined)
+    ?.appointmentFlow as Record<string, unknown> | undefined;
+  const step1Services =
+    (appointmentFlow?.step1Services as Record<string, unknown>) ||
+    (appointmentFlow?.step1_services as Record<string, unknown>) ||
+    (appointmentFlow?.step1_service as Record<string, unknown>);
+  const step1CardConfig =
+    (step1Services?.cardConfig as Record<string, unknown>) ||
+    (step1Services?.card_config as Record<string, unknown>);
+  const step1CardBg = sanitizeColor(
+    (step1CardConfig?.backgroundColor as string) ||
+      (step1CardConfig?.cardBackgroundColor as string) ||
+      (step1CardConfig?.background_color as string) ||
+      (step1CardConfig?.card_background_color as string),
+  );
+
   // 2. Tenta carregar do config (seja appointmentFlow ou bookingSteps)
-  // Nota: O backend pode retornar config.appointmentFlow.steps.service OU config.appointmentFlow.service
-  const stepConfig = 
-    config?.bookingSteps?.service ||
-    config?.appointmentFlow?.steps?.service || 
-    config?.appointmentFlow?.service;
-  
+  const stepConfig =
+    (config as any)?.bookingSteps?.service ||
+    (config as any)?.appointmentFlow?.steps?.service ||
+    (config as any)?.appointmentFlow?.service;
+
   if (stepConfig) {
     base = {
       ...base,
@@ -740,44 +837,28 @@ export function getBookingServiceSettings(config?: BookingConfig): BookingStepSe
         ...(stepConfig.appearance || {}),
       },
     };
-  } else if (typeof window !== "undefined") {
-    // 3. Se não houver config injetado, tenta o localStorage
-    const settings = localStorage.getItem(getStorageKey("bookingServiceSettings"));
-    if (settings) {
-      try {
-        const saved = JSON.parse(settings);
-        base = {
-          ...base,
-          ...saved,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(saved.appearance || {}),
-          },
-        };
-      } catch (e) {
-        console.error("Erro ao parsear bookingServiceSettings:", e);
-      }
-    }
   }
 
-  // 4. Sanitização Final: Garante que os campos de topo reflitam o appearance se existirem
+  // 4. Sanitização Final: Garante que os campos de topo reflitam o appearance se existirem e estejam sanitizados
   return {
     ...base,
-    titleColor: base.titleColor || base.appearance?.titleColor || defaultBookingServiceSettings.titleColor,
-    subtitleColor: base.subtitleColor || base.appearance?.subtitleColor || defaultBookingServiceSettings.subtitleColor,
+    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingServiceSettings.titleColor) || "",
+    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingServiceSettings.subtitleColor) || "",
     titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingServiceSettings.titleFont,
     subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingServiceSettings.subtitleFont,
-    cardBgColor: base.cardBgColor || base.appearance?.cardBgColor || defaultBookingServiceSettings.cardBgColor,
+    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || step1CardBg || globalCardBgColor || defaultBookingServiceSettings.cardBgColor) || "",
+    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || globalAccentColor || defaultBookingServiceSettings.accentColor) || "",
+    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || globalBgColor || defaultBookingServiceSettings.bgColor) || "",
   };
 }
 
 export function saveBookingServiceSettings(
   settings: BookingStepSettings,
 ): void {
-  localStorage.setItem(
-    getStorageKey("bookingServiceSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("bookingServiceSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingServiceSettingsUpdated"));
@@ -800,40 +881,44 @@ export function getBookingDateSettings(config?: BookingConfig): BookingStepSetti
         ...(stepConfig.appearance || {}),
       },
     };
-  } else if (typeof window !== "undefined") {
-    const settings = localStorage.getItem(getStorageKey("bookingDateSettings"));
-    if (settings) {
-      try {
-        const saved = JSON.parse(settings);
-        base = {
-          ...base,
-          ...saved,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(saved.appearance || {}),
-          },
-        };
-      } catch (e) {
-        console.error("Erro ao parsear bookingDateSettings:", e);
-      }
-    }
   }
+  // O Banco de Dados é a única fonte da verdade no F5.
+  // else if (typeof window !== "undefined") {
+  //   const settings = localStorage.getItem(getStorageKey("bookingDateSettings"));
+  //   if (settings) {
+  //     try {
+  //       const saved = JSON.parse(settings);
+  //       base = {
+  //         ...base,
+  //         ...saved,
+  //         appearance: {
+  //           ...(base.appearance || {}),
+  //           ...(saved.appearance || {}),
+  //         },
+  //       };
+  //     } catch (e) {
+  //       console.error("Erro ao parsear bookingDateSettings:", e);
+  //     }
+  //   }
+  // }
 
   return {
     ...base,
-    titleColor: base.titleColor || base.appearance?.titleColor || defaultBookingDateSettings.titleColor,
-    subtitleColor: base.subtitleColor || base.appearance?.subtitleColor || defaultBookingDateSettings.subtitleColor,
+    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingDateSettings.titleColor) || "",
+    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingDateSettings.subtitleColor) || "",
     titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingDateSettings.titleFont,
     subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingDateSettings.subtitleFont,
-    cardBgColor: base.cardBgColor || base.appearance?.cardBgColor || defaultBookingDateSettings.cardBgColor,
+    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingDateSettings.cardBgColor) || "",
+    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingDateSettings.accentColor) || "",
+    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingDateSettings.bgColor) || "",
   };
 }
 
 export function saveBookingDateSettings(settings: BookingStepSettings): void {
-  localStorage.setItem(
-    getStorageKey("bookingDateSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("bookingDateSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingDateSettingsUpdated"));
@@ -856,40 +941,44 @@ export function getBookingTimeSettings(config?: BookingConfig): BookingStepSetti
         ...(stepConfig.appearance || {}),
       },
     };
-  } else if (typeof window !== "undefined") {
-    const settings = localStorage.getItem(getStorageKey("bookingTimeSettings"));
-    if (settings) {
-      try {
-        const saved = JSON.parse(settings);
-        base = {
-          ...base,
-          ...saved,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(saved.appearance || {}),
-          },
-        };
-      } catch (e) {
-        console.error("Erro ao parsear bookingTimeSettings:", e);
-      }
-    }
   }
+  // O Banco de Dados é a única fonte da verdade no F5.
+  // else if (typeof window !== "undefined") {
+  //   const settings = localStorage.getItem(getStorageKey("bookingTimeSettings"));
+  //   if (settings) {
+  //     try {
+  //       const saved = JSON.parse(settings);
+  //       base = {
+  //         ...base,
+  //         ...saved,
+  //         appearance: {
+  //           ...(base.appearance || {}),
+  //           ...(saved.appearance || {}),
+  //         },
+  //       };
+  //     } catch (e) {
+  //       console.error("Erro ao parsear bookingTimeSettings:", e);
+  //     }
+  //   }
+  // }
 
   return {
     ...base,
-    titleColor: base.titleColor || base.appearance?.titleColor || defaultBookingTimeSettings.titleColor,
-    subtitleColor: base.subtitleColor || base.appearance?.subtitleColor || defaultBookingTimeSettings.subtitleColor,
+    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingTimeSettings.titleColor) || "",
+    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingTimeSettings.subtitleColor) || "",
     titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingTimeSettings.titleFont,
     subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingTimeSettings.subtitleFont,
-    cardBgColor: base.cardBgColor || base.appearance?.cardBgColor || defaultBookingTimeSettings.cardBgColor,
+    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingTimeSettings.cardBgColor) || "",
+    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingTimeSettings.accentColor) || "",
+    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingTimeSettings.bgColor) || "",
   };
 }
 
 export function saveBookingTimeSettings(settings: BookingStepSettings): void {
-  localStorage.setItem(
-    getStorageKey("bookingTimeSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("bookingTimeSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingTimeSettingsUpdated"));
@@ -912,40 +1001,44 @@ export function getBookingFormSettings(config?: BookingConfig): BookingStepSetti
         ...(stepConfig.appearance || {}),
       },
     };
-  } else if (typeof window !== "undefined") {
-    const settings = localStorage.getItem(getStorageKey("bookingFormSettings"));
-    if (settings) {
-      try {
-        const saved = JSON.parse(settings);
-        base = {
-          ...base,
-          ...saved,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(saved.appearance || {}),
-          },
-        };
-      } catch (e) {
-        console.error("Erro ao parsear bookingFormSettings:", e);
-      }
-    }
   }
+  // O Banco de Dados é a única fonte da verdade no F5.
+  // else if (typeof window !== "undefined") {
+  //   const settings = localStorage.getItem(getStorageKey("bookingFormSettings"));
+  //   if (settings) {
+  //     try {
+  //       const saved = JSON.parse(settings);
+  //       base = {
+  //         ...base,
+  //         ...saved,
+  //         appearance: {
+  //           ...(base.appearance || {}),
+  //           ...(saved.appearance || {}),
+  //         },
+  //       };
+  //     } catch (e) {
+  //       console.error("Erro ao parsear bookingFormSettings:", e);
+  //     }
+  //   }
+  // }
 
   return {
     ...base,
-    titleColor: base.titleColor || base.appearance?.titleColor || defaultBookingFormSettings.titleColor,
-    subtitleColor: base.subtitleColor || base.appearance?.subtitleColor || defaultBookingFormSettings.subtitleColor,
+    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingFormSettings.titleColor) || "",
+    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingFormSettings.subtitleColor) || "",
     titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingFormSettings.titleFont,
     subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingFormSettings.subtitleFont,
-    cardBgColor: base.cardBgColor || base.appearance?.cardBgColor || defaultBookingFormSettings.cardBgColor,
+    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingFormSettings.cardBgColor) || "",
+    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingFormSettings.accentColor) || "",
+    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingFormSettings.bgColor) || "",
   };
 }
 
 export function saveBookingFormSettings(settings: BookingStepSettings): void {
-  localStorage.setItem(
-    getStorageKey("bookingFormSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("bookingFormSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingFormSettingsUpdated"));
@@ -968,42 +1061,46 @@ export function getBookingConfirmationSettings(config?: BookingConfig): BookingS
         ...(stepConfig.appearance || {}),
       },
     };
-  } else if (typeof window !== "undefined") {
-    const settings = localStorage.getItem(getStorageKey("bookingConfirmationSettings"));
-    if (settings) {
-      try {
-        const saved = JSON.parse(settings);
-        base = {
-          ...base,
-          ...saved,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(saved.appearance || {}),
-          },
-        };
-      } catch (e) {
-        console.error("Erro ao parsear bookingConfirmationSettings:", e);
-      }
-    }
   }
+  // O Banco de Dados é a única fonte da verdade no F5.
+  // else if (typeof window !== "undefined") {
+  //   const settings = localStorage.getItem(getStorageKey("bookingConfirmationSettings"));
+  //   if (settings) {
+  //     try {
+  //       const saved = JSON.parse(settings);
+  //       base = {
+  //         ...base,
+  //         ...saved,
+  //         appearance: {
+  //           ...(base.appearance || {}),
+  //           ...(saved.appearance || {}),
+  //         },
+  //       };
+  //     } catch (e) {
+  //       console.error("Erro ao parsear bookingConfirmationSettings:", e);
+  //     }
+  //   }
+  // }
 
   return {
     ...base,
-    titleColor: base.titleColor || base.appearance?.titleColor || defaultBookingConfirmationSettings.titleColor,
-    subtitleColor: base.subtitleColor || base.appearance?.subtitleColor || defaultBookingConfirmationSettings.subtitleColor,
+    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingConfirmationSettings.titleColor) || "",
+    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingConfirmationSettings.subtitleColor) || "",
     titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingConfirmationSettings.titleFont,
     subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingConfirmationSettings.subtitleFont,
-    cardBgColor: base.cardBgColor || base.appearance?.cardBgColor || defaultBookingConfirmationSettings.cardBgColor,
+    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingConfirmationSettings.cardBgColor) || "",
+    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingConfirmationSettings.accentColor) || "",
+    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingConfirmationSettings.bgColor) || "",
   };
 }
 
 export function saveBookingConfirmationSettings(
   settings: BookingStepSettings,
 ): void {
-  localStorage.setItem(
-    getStorageKey("bookingConfirmationSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("bookingConfirmationSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingConfirmationSettingsUpdated"));
@@ -1047,6 +1144,8 @@ export function clearAllCustomizationCache(): void {
     localStorage.removeItem(getStorageKey(key));
     // Também limpa a versão sem o prefixo do usuário, por precaução
     localStorage.removeItem(key);
+    localStorage.removeItem(`aura_${key}`);
+    localStorage.removeItem(`booking_${key}`);
   });
 
   console.log(">>> [booking-data] Todo o cache de customização foi limpo.");
@@ -1246,22 +1345,6 @@ export type ColorSettings = {
 
 export const services: Service[] = [];
 
-// Helper para sanitizar cores
-export const sanitizeColor = (
-  color: string | undefined,
-): string | undefined => {
-  if (!color) return undefined;
-  const trimmed = color.trim();
-  if (
-    trimmed.startsWith("#") ||
-    trimmed.startsWith("rgb") ||
-    trimmed.startsWith("hsl")
-  ) {
-    return trimmed;
-  }
-  return `#${trimmed}`;
-};
-
 // Helper para normalizar configurações (usado tanto no load inicial quanto no preview)
 export const normalizeStepSettings = (
   stepData: Record<string, unknown> | undefined,
@@ -1275,8 +1358,12 @@ export const normalizeStepSettings = (
     (stepData.card_bg_color as string) ||
     ((stepData.cardConfig as Record<string, unknown>)
       ?.backgroundColor as string) ||
+    ((stepData.cardConfig as Record<string, unknown>)
+      ?.cardBackgroundColor as string) ||
     ((stepData.card_config as Record<string, unknown>)
       ?.background_color as string) ||
+    ((stepData.card_config as Record<string, unknown>)
+      ?.card_background_color as string) ||
     (stepData.backgroundColor as string);
 
   const finalCardColor = sanitizeColor(rawCardColor);
@@ -1471,16 +1558,14 @@ export const defaultColorSettings: ColorSettings = {
 };
 
 export function getColorSettings(): ColorSettings {
-  if (typeof window === "undefined") return defaultColorSettings;
-  const settings = localStorage.getItem(getStorageKey("colorSettings"));
-  return settings ? JSON.parse(settings) : defaultColorSettings;
+  return defaultColorSettings;
 }
 
 export function saveColorSettings(settings: ColorSettings): void {
-  localStorage.setItem(
-    getStorageKey("colorSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("colorSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("colorSettingsUpdated"));
@@ -1713,77 +1798,61 @@ const minutesToTime = (minutes: number) => {
 };
 
 export function getBookingsFromStorage(): Booking[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const bookings = localStorage.getItem(getStorageKey("bookings"));
-    if (!bookings || bookings === "undefined") return [];
-    const parsed = JSON.parse(bookings);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.warn(">>> [STORAGE_WARN] Erro ao ler agendamentos:", error);
-    return [];
-  }
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return [];
 }
 
 export function saveBookingToStorage(booking: Booking): void {
-  const bookings = getBookingsFromStorage();
-  bookings.push(booking);
-  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(bookings));
+  // const bookings = getBookingsFromStorage();
+  // bookings.push(booking);
+  // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(bookings));
 }
 
 export function saveBookingsToStorage(newBookings: Booking[]): void {
-  const bookings = getBookingsFromStorage();
-  const updated = [...bookings, ...newBookings];
-  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
+  // const bookings = getBookingsFromStorage();
+  // const updated = [...bookings, ...newBookings];
+  // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function updateBookingStatus(
   bookingId: string,
   status: BookingStatus,
 ): void {
-  const bookings = getBookingsFromStorage();
-  const updated = bookings.map((b) =>
-    b.id === bookingId ? { ...b, status } : b,
-  );
-  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
+  // const bookings = getBookingsFromStorage();
+  // const updated = bookings.map((b) =>
+  //   b.id === bookingId ? { ...b, status } : b,
+  // );
+  // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function updateBooking(updatedBooking: Booking): void {
-  const bookings = getBookingsFromStorage();
-  const updated = bookings.map((b) =>
-    b.id === updatedBooking.id ? updatedBooking : b,
-  );
-  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
+  // const bookings = getBookingsFromStorage();
+  // const updated = bookings.map((b) =>
+  //   b.id === updatedBooking.id ? updatedBooking : b,
+  // );
+  // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function markNotificationsSent(
   bookingId: string,
   type: "email" | "whatsapp",
 ): void {
-  const bookings = getBookingsFromStorage();
-  const updated = bookings.map((b) =>
-    b.id === bookingId
-      ? { ...b, notificationsSent: { ...b.notificationsSent, [type]: true } }
-      : b,
-  );
-  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
+  // const bookings = getBookingsFromStorage();
+  // const updated = bookings.map((b) =>
+  //   b.id === bookingId
+  //     ? { ...b, notificationsSent: { ...b.notificationsSent, [type]: true } }
+  //     : b,
+  // );
+  // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function getInventoryFromStorage(): InventoryItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const inventory = localStorage.getItem(getStorageKey("inventory"));
-    if (!inventory || inventory === "undefined") return [];
-    const parsed = JSON.parse(inventory);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.warn(">>> [STORAGE_WARN] Erro ao ler inventário:", error);
-    return [];
-  }
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return [];
 }
 
 export function saveInventoryToStorage(inventory: InventoryItem[]): void {
-  localStorage.setItem(getStorageKey("inventory"), JSON.stringify(inventory));
+  // localStorage.setItem(getStorageKey("inventory"), JSON.stringify(inventory));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("inventoryUpdated"));
   }
@@ -2032,6 +2101,10 @@ export function getSettingsFromStorage(): StudioSettings {
     scheduleSettings: defaultScheduleSettings,
   };
 
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultValue;
+
+  /* 
   if (typeof window === "undefined") return defaultValue;
 
   try {
@@ -2049,13 +2122,14 @@ export function getSettingsFromStorage(): StudioSettings {
     );
     return defaultValue;
   }
+  */
 }
 
 export function saveSettingsToStorage(settings: StudioSettings): void {
-  localStorage.setItem(
-    getStorageKey("studioSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("studioSettings"),
+  //   JSON.stringify(settings),
+  // );
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("studioSettingsUpdated"));
   }
@@ -2067,13 +2141,17 @@ export function getScheduleSettings(): ScheduleSettings {
 }
 
 export function getWeekSchedule(): WeekSchedule {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultWeekSchedule;
+  /*
   if (typeof window === "undefined") return defaultWeekSchedule;
   const settings = localStorage.getItem(getStorageKey("weekSchedule"));
   return settings ? JSON.parse(settings) : defaultWeekSchedule;
+  */
 }
 
 export function saveWeekSchedule(schedule: WeekSchedule): void {
-  localStorage.setItem(getStorageKey("weekSchedule"), JSON.stringify(schedule));
+  // localStorage.setItem(getStorageKey("weekSchedule"), JSON.stringify(schedule));
 }
 
 export type GalleryImage = {
@@ -2086,22 +2164,30 @@ export type GalleryImage = {
 };
 
 export function getGalleryImages(): GalleryImage[] {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return [];
+  /*
   if (typeof window === "undefined") return [];
   const images = localStorage.getItem(getStorageKey("galleryImages"));
   return images ? JSON.parse(images) : [];
+  */
 }
 
 export function saveGalleryImages(images: GalleryImage[]): void {
-  localStorage.setItem(getStorageKey("galleryImages"), JSON.stringify(images));
+  // localStorage.setItem(getStorageKey("galleryImages"), JSON.stringify(images));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("galleryUpdated"));
   }
 }
 
 export function getBlockedPeriods(): BlockedPeriod[] {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return [];
+  /*
   if (typeof window === "undefined") return [];
   const blocked = localStorage.getItem(getStorageKey("blockedPeriods"));
   return blocked ? JSON.parse(blocked) : [];
+  */
 }
 
 export function getServices(): Service[] {
@@ -2114,11 +2200,13 @@ export function getServices(): Service[] {
 export function saveServices(newServices: Service[]): void {
   const settings = getSettingsFromStorage();
   settings.services = newServices;
+  /*
   localStorage.setItem(
     getStorageKey("studioSettings"),
     JSON.stringify(settings),
   );
   localStorage.setItem(getStorageKey("services"), JSON.stringify(newServices));
+  */
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("studioSettingsUpdated"));
     window.dispatchEvent(new Event("servicesUpdated"));
@@ -2126,57 +2214,69 @@ export function saveServices(newServices: Service[]): void {
 }
 
 export function saveBlockedPeriods(blocked: BlockedPeriod[]): void {
-  localStorage.setItem(
-    getStorageKey("blockedPeriods"),
-    JSON.stringify(blocked),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("blockedPeriods"),
+  //   JSON.stringify(blocked),
+  // );
 }
 
 export function getNotificationSettings(): NotificationSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultNotificationSettings;
+  /*
   if (typeof window === "undefined") return defaultNotificationSettings;
   const settings = localStorage.getItem(getStorageKey("notificationSettings"));
   return settings ? JSON.parse(settings) : defaultNotificationSettings;
+  */
 }
 
 export function saveNotificationSettings(settings: NotificationSettings): void {
-  localStorage.setItem(
-    getStorageKey("notificationSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("notificationSettings"),
+  //   JSON.stringify(settings),
+  // );
 }
 
 export function getGoogleCalendarSettings(): GoogleCalendarSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultGoogleCalendarSettings;
+  /*
   if (typeof window === "undefined") return defaultGoogleCalendarSettings;
   const settings = localStorage.getItem(
     getStorageKey("googleCalendarSettings"),
   );
   return settings ? JSON.parse(settings) : defaultGoogleCalendarSettings;
+  */
 }
 
 export function saveGoogleCalendarSettings(
   settings: GoogleCalendarSettings,
 ): void {
-  localStorage.setItem(
-    getStorageKey("googleCalendarSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("googleCalendarSettings"),
+  //   JSON.stringify(settings),
+  // );
 }
 
 export function getSiteProfile(): SiteProfile {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultSiteProfile;
+  /*
   if (typeof window === "undefined") return defaultSiteProfile;
   const profile = localStorage.getItem(getStorageKey("siteProfile"));
   return profile
     ? { ...defaultSiteProfile, ...JSON.parse(profile) }
     : defaultSiteProfile;
+  */
 }
 
 export function saveSiteProfile(profile: SiteProfile): void {
-  const storageKey = getStorageKey("siteProfile");
-  console.log(
-    `>>> [booking-data] Salvando siteProfile em ${storageKey}:`,
-    profile,
-  );
-  localStorage.setItem(storageKey, JSON.stringify(profile));
+  // const storageKey = getStorageKey("siteProfile");
+  // console.log(
+  //   `>>> [booking-data] Salvando siteProfile em ${storageKey}:`,
+  //   profile,
+  // );
+  // localStorage.setItem(storageKey, JSON.stringify(profile));
   // Dispatch custom event so components can update immediately
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("siteProfileUpdated"));
@@ -2184,6 +2284,9 @@ export function saveSiteProfile(profile: SiteProfile): void {
 }
 
 export function getHeroSettings(): HeroSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultHeroSettings;
+  /*
   if (typeof window === "undefined") return defaultHeroSettings;
   const storageKey = getStorageKey("heroSettings");
   const settings = localStorage.getItem(storageKey);
@@ -2193,15 +2296,16 @@ export function getHeroSettings(): HeroSettings {
     );
   }
   return settings ? JSON.parse(settings) : defaultHeroSettings;
+  */
 }
 
 export function saveHeroSettings(settings: HeroSettings): void {
-  const storageKey = getStorageKey("heroSettings");
-  console.log(
-    `>>> [booking-data] Salvando heroSettings em ${storageKey}:`,
-    settings,
-  );
-  localStorage.setItem(storageKey, JSON.stringify(settings));
+  // const storageKey = getStorageKey("heroSettings");
+  // console.log(
+  //   `>>> [booking-data] Salvando heroSettings em ${storageKey}:`,
+  //   settings,
+  // );
+  // localStorage.setItem(storageKey, JSON.stringify(settings));
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("heroSettingsUpdated"));
@@ -2219,16 +2323,20 @@ export const defaultAboutHeroSettings: HeroSettings = {
 };
 
 export function getAboutHeroSettings(): HeroSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultAboutHeroSettings;
+  /*
   if (typeof window === "undefined") return defaultAboutHeroSettings;
   const settings = localStorage.getItem(getStorageKey("aboutHeroSettings"));
   return settings ? JSON.parse(settings) : defaultAboutHeroSettings;
+  */
 }
 
 export function saveAboutHeroSettings(settings: HeroSettings): void {
-  localStorage.setItem(
-    getStorageKey("aboutHeroSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("aboutHeroSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("aboutHeroSettingsUpdated"));
@@ -2236,16 +2344,20 @@ export function saveAboutHeroSettings(settings: HeroSettings): void {
 }
 
 export function getStorySettings(): StorySettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultStorySettings;
+  /*
   if (typeof window === "undefined") return defaultStorySettings;
   const settings = localStorage.getItem(getStorageKey("storySettings"));
   return settings ? JSON.parse(settings) : defaultStorySettings;
+  */
 }
 
 export function saveStorySettings(settings: StorySettings): void {
-  localStorage.setItem(
-    getStorageKey("storySettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("storySettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("storySettingsUpdated"));
@@ -2253,16 +2365,20 @@ export function saveStorySettings(settings: StorySettings): void {
 }
 
 export function getValuesSettings(): ValuesSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultValuesSettings;
+  /*
   if (typeof window === "undefined") return defaultValuesSettings;
   const settings = localStorage.getItem(getStorageKey("valuesSettings"));
   return settings ? JSON.parse(settings) : defaultValuesSettings;
+  */
 }
 
 export function saveValuesSettings(settings: ValuesSettings): void {
-  localStorage.setItem(
-    getStorageKey("valuesSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("valuesSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("valuesSettingsUpdated"));
@@ -2270,16 +2386,20 @@ export function saveValuesSettings(settings: ValuesSettings): void {
 }
 
 export function getServicesSettings(): ServicesSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultServicesSettings;
+  /*
   if (typeof window === "undefined") return defaultServicesSettings;
   const settings = localStorage.getItem(getStorageKey("servicesSettings"));
   return settings ? JSON.parse(settings) : defaultServicesSettings;
+  */
 }
 
 export function saveServicesSettings(settings: ServicesSettings): void {
-  localStorage.setItem(
-    getStorageKey("servicesSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("servicesSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("servicesSettingsUpdated"));
@@ -2287,13 +2407,17 @@ export function saveServicesSettings(settings: ServicesSettings): void {
 }
 
 export function getFontSettings(): FontSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultFontSettings;
+  /*
   if (typeof window === "undefined") return defaultFontSettings;
   const settings = localStorage.getItem(getStorageKey("fontSettings"));
   return settings ? JSON.parse(settings) : defaultFontSettings;
+  */
 }
 
 export function saveFontSettings(settings: FontSettings): void {
-  localStorage.setItem(getStorageKey("fontSettings"), JSON.stringify(settings));
+  // localStorage.setItem(getStorageKey("fontSettings"), JSON.stringify(settings));
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("fontSettingsUpdated"));
@@ -2301,16 +2425,20 @@ export function saveFontSettings(settings: FontSettings): void {
 }
 
 export function getGallerySettings(): GallerySettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultGallerySettings;
+  /*
   if (typeof window === "undefined") return defaultGallerySettings;
   const settings = localStorage.getItem(getStorageKey("gallerySettings"));
   return settings ? JSON.parse(settings) : defaultGallerySettings;
+  */
 }
 
 export function saveGallerySettings(settings: GallerySettings): void {
-  localStorage.setItem(
-    getStorageKey("gallerySettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("gallerySettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("gallerySettingsUpdated"));
@@ -2318,13 +2446,17 @@ export function saveGallerySettings(settings: GallerySettings): void {
 }
 
 export function getCTASettings(): CTASettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultCTASettings;
+  /*
   if (typeof window === "undefined") return defaultCTASettings;
   const settings = localStorage.getItem(getStorageKey("ctaSettings"));
   return settings ? JSON.parse(settings) : defaultCTASettings;
+  */
 }
 
 export function saveCTASettings(settings: CTASettings): void {
-  localStorage.setItem(getStorageKey("ctaSettings"), JSON.stringify(settings));
+  // localStorage.setItem(getStorageKey("ctaSettings"), JSON.stringify(settings));
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("ctaSettingsUpdated"));
@@ -2332,13 +2464,17 @@ export function saveCTASettings(settings: CTASettings): void {
 }
 
 export function getTeamSettings(): TeamSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultTeamSettings;
+  /*
   if (typeof window === "undefined") return defaultTeamSettings;
   const settings = localStorage.getItem(getStorageKey("teamSettings"));
   return settings ? JSON.parse(settings) : defaultTeamSettings;
+  */
 }
 
 export function saveTeamSettings(settings: TeamSettings): void {
-  localStorage.setItem(getStorageKey("teamSettings"), JSON.stringify(settings));
+  // localStorage.setItem(getStorageKey("teamSettings"), JSON.stringify(settings));
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("teamSettingsUpdated"));
@@ -2346,16 +2482,20 @@ export function saveTeamSettings(settings: TeamSettings): void {
 }
 
 export function getTestimonialsSettings(): TestimonialsSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultTestimonialsSettings;
+  /*
   if (typeof window === "undefined") return defaultTestimonialsSettings;
   const settings = localStorage.getItem(getStorageKey("testimonialsSettings"));
   return settings ? JSON.parse(settings) : defaultTestimonialsSettings;
+  */
 }
 
 export function saveTestimonialsSettings(settings: TestimonialsSettings): void {
-  localStorage.setItem(
-    getStorageKey("testimonialsSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("testimonialsSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("testimonialsSettingsUpdated"));
@@ -2363,16 +2503,20 @@ export function saveTestimonialsSettings(settings: TestimonialsSettings): void {
 }
 
 export function getHeaderSettings(): HeaderSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultHeaderSettings;
+  /*
   if (typeof window === "undefined") return defaultHeaderSettings;
   const settings = localStorage.getItem(getStorageKey("headerSettings"));
   return settings ? JSON.parse(settings) : defaultHeaderSettings;
+  */
 }
 
 export function saveHeaderSettings(settings: HeaderSettings): void {
-  localStorage.setItem(
-    getStorageKey("headerSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("headerSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("headerSettingsUpdated"));
@@ -2380,16 +2524,20 @@ export function saveHeaderSettings(settings: HeaderSettings): void {
 }
 
 export function getFooterSettings(): FooterSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultFooterSettings;
+  /*
   if (typeof window === "undefined") return defaultFooterSettings;
   const settings = localStorage.getItem(getStorageKey("footerSettings"));
   return settings ? JSON.parse(settings) : defaultFooterSettings;
+  */
 }
 
 export function saveFooterSettings(settings: FooterSettings): void {
-  localStorage.setItem(
-    getStorageKey("footerSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("footerSettings"),
+  //   JSON.stringify(settings),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("footerSettingsUpdated"));
@@ -2397,30 +2545,32 @@ export function saveFooterSettings(settings: FooterSettings): void {
 }
 
 export function getPageVisibility(): Record<string, boolean> {
-  if (typeof window === "undefined") {
-    return {
-      inicio: true,
-      galeria: true,
-      sobre: true,
-      agendar: true,
-    };
-  }
-  const visibility = localStorage.getItem(getStorageKey("pageVisibility"));
-  if (visibility) return JSON.parse(visibility);
-
-  return {
+  const defaultVisibility = {
     inicio: true,
     galeria: true,
     sobre: true,
     agendar: true,
   };
+
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultVisibility;
+
+  /*
+  if (typeof window === "undefined") {
+    return defaultVisibility;
+  }
+  const visibility = localStorage.getItem(getStorageKey("pageVisibility"));
+  if (visibility) return JSON.parse(visibility);
+
+  return defaultVisibility;
+  */
 }
 
 export function savePageVisibility(visibility: Record<string, boolean>): void {
-  localStorage.setItem(
-    getStorageKey("pageVisibility"),
-    JSON.stringify(visibility),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("pageVisibility"),
+  //   JSON.stringify(visibility),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("pageVisibilityUpdated"));
@@ -2428,25 +2578,7 @@ export function savePageVisibility(visibility: Record<string, boolean>): void {
 }
 
 export function getVisibleSections(): Record<string, boolean> {
-  if (typeof window === "undefined") {
-    return {
-      header: true,
-      footer: true,
-      hero: true,
-      story: true,
-      services: true,
-      values: true,
-      "gallery-preview": true,
-      cta: true,
-      "gallery-grid": true,
-      "about-hero": true,
-      booking: true,
-    };
-  }
-  const sections = localStorage.getItem(getStorageKey("visibleSections"));
-  if (sections) return JSON.parse(sections);
-
-  return {
+  const defaultSections = {
     header: true,
     footer: true,
     hero: true,
@@ -2459,13 +2591,26 @@ export function getVisibleSections(): Record<string, boolean> {
     "about-hero": true,
     booking: true,
   };
+
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultSections;
+
+  /*
+  if (typeof window === "undefined") {
+    return defaultSections;
+  }
+  const sections = localStorage.getItem(getStorageKey("visibleSections"));
+  if (sections) return JSON.parse(sections);
+
+  return defaultSections;
+  */
 }
 
 export function saveVisibleSections(sections: Record<string, boolean>): void {
-  localStorage.setItem(
-    getStorageKey("visibleSections"),
-    JSON.stringify(sections),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("visibleSections"),
+  //   JSON.stringify(sections),
+  // );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("visibleSectionsUpdated"));
@@ -2509,12 +2654,9 @@ async function sendWhatsAppNotification(
   markNotificationsSent(booking.id, "whatsapp");
 }
 
-export interface BusinessConfig extends BookingConfig {
-  hero?: HeroSettings;
-  typography?: FontSettings;
+export interface BusinessConfig extends SiteConfigData {
   interval?: string | number;
   slotInterval?: string | number;
-  [key: string]: unknown;
 }
 
 export interface Business {

@@ -84,10 +84,8 @@ export type EditorLocalDrafts = {
 
 export function useEditorLocal() {
   const hasLocalDraft = useCallback((key: string) => {
-    return (
-      typeof window !== "undefined" &&
-      localStorage.getItem(getStorageKey(key)) !== null
-    );
+    if (!key) return false;
+    return false;
   }, []);
 
   const loadLocalDrafts = useCallback((): EditorLocalDrafts => {
@@ -139,6 +137,7 @@ export function useEditorLocal() {
   }, []);
 
   const clearLocalDrafts = useCallback(() => {
+    if (typeof window === "undefined") return;
     const keys = [
       "heroSettings",
       "aboutHeroSettings",
@@ -170,6 +169,7 @@ export function useEditorLocal() {
   }, []);
 
   const forceClearSectionDraft = useCallback((key: string) => {
+    if (typeof window === "undefined") return;
     localStorage.removeItem(getStorageKey(key));
     console.log(">>> [LOCAL_STORAGE] Limpeza forçada executada para:", key);
   }, []);

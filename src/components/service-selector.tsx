@@ -204,12 +204,14 @@ export function ServiceSelector({
   );
 
   const appearance = settings?.appearance || {};
-  const accentColor = appearance.accentColor || settings?.accentColor || "var(--primary)";
-  const cardBgColor = appearance.cardBgColor || settings?.cardBgColor || "transparent";
-  const titleColor = appearance.titleColor || settings?.titleColor || "var(--foreground)";
-  const subtitleColor = appearance.subtitleColor || settings?.subtitleColor || "var(--foreground)";
-  const titleFont = appearance.titleFont || settings?.titleFont || "var(--font-title)";
-  const subtitleFont = appearance.subtitleFont || settings?.subtitleFont || "var(--font-subtitle)";
+
+  // Prioridade: Custom Setting > Global Appearance > Default Fallback
+  const accentColor = settings?.accentColor || appearance.accentColor || "var(--primary)";
+  const cardBgColor = settings?.cardBgColor || appearance.cardBgColor || "#ffffff";
+  const titleColor = settings?.titleColor || appearance.titleColor || "var(--foreground)";
+  const subtitleColor = settings?.subtitleColor || appearance.subtitleColor || "var(--muted-foreground)";
+  const titleFont = settings?.titleFont || appearance.titleFont || "var(--font-title)";
+  const subtitleFont = settings?.subtitleFont || appearance.subtitleFont || "var(--font-subtitle)";
 
   console.log(">>> [SERVICE_SELECTOR] Renderizando com settings:", {
     title: settings?.title,
@@ -284,7 +286,7 @@ export function ServiceSelector({
                   : `service-select-${index}`
               }
               className={cn(
-                "border-border cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden bg-transparent shadow-none",
+                "border-border cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden shadow-none",
                 isSelected && "ring-1",
                 isConflicting &&
                   "opacity-40 grayscale cursor-not-allowed border-dashed pointer-events-none",
@@ -296,7 +298,7 @@ export function ServiceSelector({
                     : isConflicting
                       ? "var(--muted)"
                       : undefined,
-                backgroundColor: cardBgColor || undefined,
+                backgroundColor: cardBgColor,
               }}
               onClick={() => !isConflicting && toggleService(service)}
             >

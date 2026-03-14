@@ -37,12 +37,19 @@ export function SectionBackground({
   const [imageError, setImageError] = useState(false);
 
   // Se o tipo for 'color', a URL da imagem DEVE ser anulada, ignorando o banco.
-  const bgImage =
+  // TASK 2: Se a URL começar com #, tratamos como nulo (bug do banco enviando hex como imagem)
+  let bgImage =
     settings.bgType === "image"
       ? settings.appearance?.backgroundImageUrl ||
         settings.bgImage ||
         defaultImage
       : null;
+
+  if (bgImage?.startsWith("#")) {
+    console.warn(`[IMAGE_BUG_FIX] Ignorando hex ${bgImage} como URL de imagem`);
+    bgImage = null;
+  }
+
   const hasValidImage = settings.bgType === "image" && !!bgImage;
 
   // Só mostramos imagem se o TIPO selecionado for 'image' E existir uma URL e não houver erro
