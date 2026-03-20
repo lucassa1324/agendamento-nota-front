@@ -31,6 +31,10 @@ const DEFAULT_SITE_CONFIG: SiteConfigData = {
     gallery: true,
     cta: true,
     footer: true,
+    values: true,
+    story: true,
+    testimonials: true,
+    team: true,
   },
 };
 
@@ -78,9 +82,9 @@ class SiteCustomizerService {
 
     // A partir daqui, trabalhamos com o objeto de dados.
     // A lógica de mapeamento precisa ser aplicada aqui.
-    const config = (data as any).siteCustomization || data;
+    const config = (data as Record<string, unknown>).siteCustomization as Record<string, unknown> || data as Record<string, unknown>;
 
-    const layoutGlobal = config.layoutGlobal || {};
+    const layoutGlobal = config.layoutGlobal as Record<string, unknown> || {};
     const siteColors = layoutGlobal.siteColors;
 
     // Se 'siteColors' existir dentro de 'layoutGlobal', nós o promovemos para o nível 'colors' principal.
@@ -88,13 +92,13 @@ class SiteCustomizerService {
     if (siteColors && typeof siteColors === 'object') {
       console.log(">>> [SITE_DEBUG] Mapeando cores de siteCustomization.layoutGlobal.siteColors para a raiz do config.");
       // Mescla as cores, dando prioridade para as que vêm de 'siteColors'.
-      config.colors = { ...(config.colors || {}), ...siteColors };
+      config.colors = { ...(config.colors as Record<string, unknown> || {}), ...siteColors as Record<string, unknown> };
     }
 
     // Sanitização de appointmentFlow: Se vier como string, tenta parsear para objeto
     if (config && typeof config.appointmentFlow === "string") {
       try {
-        config.appointmentFlow = JSON.parse(config.appointmentFlow);
+        config.appointmentFlow = JSON.parse(config.appointmentFlow as string);
         console.log(">>> [SITE_DEBUG] appointmentFlow sanitizado de String para Objeto.");
       } catch (e) {
         console.error(">>> [SITE_ERROR] Falha ao parsear appointmentFlow:", e);

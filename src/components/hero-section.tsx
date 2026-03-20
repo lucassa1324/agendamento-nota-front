@@ -26,7 +26,10 @@ import {
   sanitizeColor,
 } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
-import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import {
+  SectionBackground,
+  type SectionBackgroundSettings,
+} from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
@@ -55,6 +58,7 @@ export function HeroSection() {
       agendar: true,
     },
   );
+  console.log(">>> [HERO] pageVisibility:", pageVisibility);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
   );
@@ -136,6 +140,9 @@ export function HeroSection() {
         setTimeout(() => {
           setHighlightedElement(null);
         }, 2000);
+      } else if (event.data.type === "UPDATE_HERO_SETTINGS") {
+        console.log(">>> [HERO] Recebido update via postMessage", event.data.settings);
+        setCustomStyles((prev) => ({ ...prev, ...event.data.settings }));
       }
     };
 
@@ -167,47 +174,16 @@ export function HeroSection() {
     customStyles.bgColor,
   ]);
 
-  const heroBackgroundUrl =
-    customStyles.bgImage || customStyles.appearance?.backgroundImageUrl;
-  const effectiveOverlayOpacity =
-    customStyles.appearance?.overlay?.opacity ??
-    (heroBackgroundUrl ? 0 : customStyles.overlayOpacity);
-  const effectiveImageOpacity =
-    heroBackgroundUrl && !customStyles.appearance?.overlay
-      ? 1
-      : customStyles.imageOpacity;
-
   const getHighlightClass = (id: string) => {
     return highlightedElement === id
       ? "ring-4 ring-primary ring-offset-4 rounded-lg transition-all duration-500 scale-[1.02] z-20 relative"
       : "transition-all duration-500 relative";
   };
 
-  const description =
-    profile?.description ||
-    "Transforme seu olhar com técnicas profissionais de design de sobrancelhas. Atendimento personalizado para destacar sua beleza única.";
-
-  const hasImage = !!heroBackgroundUrl && heroBackgroundUrl.trim() !== "";
-
-  // Prioriza explicitamente a cor do banco/studio se disponível
-  const effectiveBackgroundColor =
-    customStyles.appearance?.backgroundColor ||
-    customStyles.bgColor ||
-    "#ffffff";
-
-  useEffect(() => {
-    if (isMounted) {
-      console.log("[SINC_SUCESSO] Lógica de fundo blindada", {
-        backgroundColor: effectiveBackgroundColor,
-        bgType: customStyles.bgType,
-      });
-    }
-  }, [isMounted, effectiveBackgroundColor, customStyles.bgType]);
-
   if (!isMounted || isLoading) {
     return (
       <section
-        id="hero"
+        id="inicio"
         className="relative min-h-[90vh] flex items-center justify-center bg-background"
       >
         <div className="container mx-auto px-4 text-center">
@@ -228,41 +204,24 @@ export function HeroSection() {
     );
   }
 
+  if (!customStyles) return null;
+
+  const description =
+    profile?.description ||
+    "Transforme seu olhar com técnicas profissionais de design de sobrancelhas. Atendimento personalizado para destacar sua beleza única.";
+
   return (
-    <SessionWrapper appearance={customStyles.appearance}>
+    <SessionWrapper appearance={customStyles?.appearance}>
       <section
-        id="hero"
+        id="inicio"
         className={cn(
-          "relative min-h-[90vh] flex items-center justify-center overflow-hidden transition-all duration-700",
-          (highlightedElement === "hero-bg" || highlightedElement === "hero") &&
-            "ring-8 ring-inset ring-primary/30",
+          "relative min-h-[80vh] md:min-h-screen flex items-center transition-all duration-500 pt-16 md:pt-0 overflow-hidden",
+          getHighlightClass("inicio"),
         )}
       >
-        <SectionBackground
-          settings={{
-            // Aqui forçamos o tipo correto: se não tem URL ou se o tipo explicitamente for cor, o tipo TEM que ser 'color'
-            bgType: (customStyles.bgType === "color" || !hasImage
-              ? "color"
-              : "image") as "color" | "image",
-            bgColor: effectiveBackgroundColor,
-            bgImage: heroBackgroundUrl || "",
-            imageOpacity: effectiveImageOpacity,
-            overlayOpacity: effectiveOverlayOpacity,
-            imageScale: customStyles.imageScale,
-            imageX: customStyles.imageX,
-            imageY: customStyles.imageY,
-            appearance: {
-              ...customStyles.appearance,
-              backgroundColor: effectiveBackgroundColor,
-            },
-          }}
-          // Deixe o defaultImage vazio para ele não inventar imagem sozinho
-          defaultImage=""
-          gradientClassName="bg-linear-to-b from-background/50 via-background/80 to-background"
-        />
+        <SectionBackground settings={customStyles as SectionBackgroundSettings} />
 
-        {/* Content */}
-        <div className="container mx-auto px-4 relative z-10">
+        <div className="container relative z-10 mx-auto px-4 py-20">
           <div className="max-w-3xl mx-auto text-center">
             {customStyles.showBadge !== false && (
               <div
@@ -312,7 +271,9 @@ export function HeroSection() {
                   getHighlightClass("hero-title"),
                 )}
                 style={{
-                  fontFamily: customStyles.titleFont || "var(--font-title)",
+                  fontFamily: customStyles.titleFont
+                    ? `"${customStyles.titleFont}", sans-serif`
+                    : "var(--font-title)",
                   color: customStyles.titleColor || "var(--foreground)",
                 }}
               >
@@ -329,7 +290,9 @@ export function HeroSection() {
                   getHighlightClass("hero-subtitle"),
                 )}
                 style={{
-                  fontFamily: customStyles.subtitleFont || "var(--font-subtitle)",
+                  fontFamily: customStyles.subtitleFont
+                    ? `"${customStyles.subtitleFont}", sans-serif`
+                    : "var(--font-subtitle)",
                   color: customStyles.subtitleColor || "var(--foreground)",
                 }}
               >

@@ -324,10 +324,34 @@ export type AppearanceSettings = {
   titleFont?: string;
   subtitleFont?: string;
   cardBgColor?: string;
+  cardTitleColor?: string;
+  cardDescriptionColor?: string;
+  cardPriceColor?: string;
+  cardIconColor?: string;
+  cardTitleFont?: string;
+  cardDescriptionFont?: string;
+  badgeColor?: string;
+  badgeTextColor?: string;
+  primaryButtonColor?: string;
+  secondaryButtonColor?: string;
+  primaryButtonTextColor?: string;
+  secondaryButtonTextColor?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+  cardBorderRadius?: number;
+  cardBorderWidth?: number;
+  cardBorderColor?: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
+  bgType?: string;
   overlay?: {
     color: string;
     opacity: number;
   };
+  imageOpacity?: number;
+  imageScale?: number;
+  imageX?: number;
+  imageY?: number;
 };
 
 export type HeroSettings = {
@@ -556,6 +580,13 @@ export const defaultValuesSettings: ValuesSettings = {
       description:
         "Sempre atualizadas com as últimas tendências e técnicas do mercado de beleza.",
     },
+    {
+      id: "5",
+      icon: "Medal",
+      title: "Biossegurança e Higiene",
+      description:
+        "Seguimos rigorosos protocolos de esterilização e materiais descartáveis para sua total segurança.",
+    },
   ],
 };
 
@@ -583,6 +614,8 @@ export type GallerySettings = {
   imageX: number;
   imageY: number;
   appearance?: AppearanceSettings;
+  // Card specific styles
+  cardBgColor?: string;
 };
 
 export const defaultGallerySettings: GallerySettings = {
@@ -606,6 +639,7 @@ export const defaultGallerySettings: GallerySettings = {
   imageScale: 1,
   imageX: 50,
   imageY: 50,
+  cardBgColor: "",
 };
 
 export type CTASettings = {
@@ -824,17 +858,17 @@ export function getBookingServiceSettings(config?: SiteConfigData): BookingStepS
 
   // 2. Tenta carregar do config (seja appointmentFlow ou bookingSteps)
   const stepConfig =
-    (config as any)?.bookingSteps?.service ||
-    (config as any)?.appointmentFlow?.steps?.service ||
-    (config as any)?.appointmentFlow?.service;
+    config?.bookingSteps?.service ||
+    config?.appointmentFlow?.steps?.service ||
+    config?.appointmentFlow?.service;
 
   if (stepConfig) {
     base = {
       ...base,
-      ...stepConfig,
+      ...(stepConfig as BookingStepSettings),
       appearance: {
         ...(base.appearance || {}),
-        ...(stepConfig.appearance || {}),
+        ...((stepConfig as BookingStepSettings).appearance || {}),
       },
     };
   }
@@ -853,7 +887,7 @@ export function getBookingServiceSettings(config?: SiteConfigData): BookingStepS
 }
 
 export function saveBookingServiceSettings(
-  settings: BookingStepSettings,
+  _settings: BookingStepSettings,
 ): void {
   // localStorage.setItem(
   //   getStorageKey("bookingServiceSettings"),
@@ -875,10 +909,10 @@ export function getBookingDateSettings(config?: BookingConfig): BookingStepSetti
   if (stepConfig) {
     base = {
       ...base,
-      ...stepConfig,
+      ...(stepConfig as BookingStepSettings),
       appearance: {
         ...(base.appearance || {}),
-        ...(stepConfig.appearance || {}),
+        ...((stepConfig as BookingStepSettings).appearance || {}),
       },
     };
   }
@@ -914,7 +948,7 @@ export function getBookingDateSettings(config?: BookingConfig): BookingStepSetti
   };
 }
 
-export function saveBookingDateSettings(settings: BookingStepSettings): void {
+export function saveBookingDateSettings(_settings: BookingStepSettings): void {
   // localStorage.setItem(
   //   getStorageKey("bookingDateSettings"),
   //   JSON.stringify(settings),
@@ -935,10 +969,10 @@ export function getBookingTimeSettings(config?: BookingConfig): BookingStepSetti
   if (stepConfig) {
     base = {
       ...base,
-      ...stepConfig,
+      ...(stepConfig as BookingStepSettings),
       appearance: {
         ...(base.appearance || {}),
-        ...(stepConfig.appearance || {}),
+        ...((stepConfig as BookingStepSettings).appearance || {}),
       },
     };
   }
@@ -974,7 +1008,7 @@ export function getBookingTimeSettings(config?: BookingConfig): BookingStepSetti
   };
 }
 
-export function saveBookingTimeSettings(settings: BookingStepSettings): void {
+export function saveBookingTimeSettings(_settings: BookingStepSettings): void {
   // localStorage.setItem(
   //   getStorageKey("bookingTimeSettings"),
   //   JSON.stringify(settings),
@@ -995,10 +1029,10 @@ export function getBookingFormSettings(config?: BookingConfig): BookingStepSetti
   if (stepConfig) {
     base = {
       ...base,
-      ...stepConfig,
+      ...(stepConfig as BookingStepSettings),
       appearance: {
         ...(base.appearance || {}),
-        ...(stepConfig.appearance || {}),
+        ...((stepConfig as BookingStepSettings).appearance || {}),
       },
     };
   }
@@ -1034,7 +1068,7 @@ export function getBookingFormSettings(config?: BookingConfig): BookingStepSetti
   };
 }
 
-export function saveBookingFormSettings(settings: BookingStepSettings): void {
+export function saveBookingFormSettings(_settings: BookingStepSettings): void {
   // localStorage.setItem(
   //   getStorageKey("bookingFormSettings"),
   //   JSON.stringify(settings),
@@ -1055,10 +1089,10 @@ export function getBookingConfirmationSettings(config?: BookingConfig): BookingS
   if (stepConfig) {
     base = {
       ...base,
-      ...stepConfig,
+      ...(stepConfig as BookingStepSettings),
       appearance: {
         ...(base.appearance || {}),
-        ...(stepConfig.appearance || {}),
+        ...((stepConfig as BookingStepSettings).appearance || {}),
       },
     };
   }
@@ -1095,7 +1129,7 @@ export function getBookingConfirmationSettings(config?: BookingConfig): BookingS
 }
 
 export function saveBookingConfirmationSettings(
-  settings: BookingStepSettings,
+  _settings: BookingStepSettings,
 ): void {
   // localStorage.setItem(
   //   getStorageKey("bookingConfirmationSettings"),
@@ -1353,17 +1387,28 @@ export const normalizeStepSettings = (
 
   // 1. Resolver cor do CARD
   // Prioridade para configurações específicas de card, com fallback para backgroundColor legado
+  const cardConfig = (stepData.cardConfig || stepData.card_config || {}) as Record<string, unknown>;
+  const appearanceRaw = (stepData.appearance || {}) as Record<string, unknown>;
+  const content = (stepData.content || {}) as Record<string, unknown>;
+  const itemsStyle = (stepData.itemsStyle || stepData.items_style || {}) as Record<string, unknown>;
+
   const rawCardColor =
     (stepData.cardBgColor as string) ||
     (stepData.card_bg_color as string) ||
-    ((stepData.cardConfig as Record<string, unknown>)
-      ?.backgroundColor as string) ||
-    ((stepData.cardConfig as Record<string, unknown>)
-      ?.cardBackgroundColor as string) ||
-    ((stepData.card_config as Record<string, unknown>)
-      ?.background_color as string) ||
-    ((stepData.card_config as Record<string, unknown>)
-      ?.card_background_color as string) ||
+    (stepData.cardBackgroundColor as string) ||
+    (stepData.card_background_color as string) ||
+    (cardConfig.cardBackgroundColor as string) ||
+    (cardConfig.backgroundColor as string) ||
+    (cardConfig.card_background_color as string) ||
+    (cardConfig.background_color as string) ||
+    (appearanceRaw.cardBgColor as string) ||
+    (appearanceRaw.cardBackgroundColor as string) ||
+    (appearanceRaw.card_bg_color as string) ||
+    (appearanceRaw.card_background_color as string) ||
+    (content.cardBgColor as string) ||
+    (content.card_bg_color as string) ||
+    (itemsStyle.itemBackgroundColor as string) ||
+    (itemsStyle.item_background_color as string) ||
     (stepData.backgroundColor as string);
 
   const finalCardColor = sanitizeColor(rawCardColor);
@@ -1381,7 +1426,7 @@ export const normalizeStepSettings = (
 
   return {
     ...stepData,
-    cardBgColor: finalCardColor || "#FFFFFF",
+    cardBgColor: finalCardColor || "",
     bgColor: finalBgColor || "transparent",
     appearance: {
       backgroundImageUrl:
@@ -1561,7 +1606,7 @@ export function getColorSettings(): ColorSettings {
   return defaultColorSettings;
 }
 
-export function saveColorSettings(settings: ColorSettings): void {
+export function saveColorSettings(_settings: ColorSettings): void {
   // localStorage.setItem(
   //   getStorageKey("colorSettings"),
   //   JSON.stringify(settings),
@@ -1802,21 +1847,21 @@ export function getBookingsFromStorage(): Booking[] {
   return [];
 }
 
-export function saveBookingToStorage(booking: Booking): void {
+export function saveBookingToStorage(_booking: Booking): void {
   // const bookings = getBookingsFromStorage();
   // bookings.push(booking);
   // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(bookings));
 }
 
-export function saveBookingsToStorage(newBookings: Booking[]): void {
+export function saveBookingsToStorage(_newBookings: Booking[]): void {
   // const bookings = getBookingsFromStorage();
   // const updated = [...bookings, ...newBookings];
   // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function updateBookingStatus(
-  bookingId: string,
-  status: BookingStatus,
+  _bookingId: string,
+  _status: BookingStatus,
 ): void {
   // const bookings = getBookingsFromStorage();
   // const updated = bookings.map((b) =>
@@ -1825,7 +1870,7 @@ export function updateBookingStatus(
   // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
-export function updateBooking(updatedBooking: Booking): void {
+export function updateBooking(_updatedBooking: Booking): void {
   // const bookings = getBookingsFromStorage();
   // const updated = bookings.map((b) =>
   //   b.id === updatedBooking.id ? updatedBooking : b,
@@ -1834,8 +1879,8 @@ export function updateBooking(updatedBooking: Booking): void {
 }
 
 export function markNotificationsSent(
-  bookingId: string,
-  type: "email" | "whatsapp",
+  _bookingId: string,
+  _type: "email" | "whatsapp",
 ): void {
   // const bookings = getBookingsFromStorage();
   // const updated = bookings.map((b) =>
@@ -1851,7 +1896,7 @@ export function getInventoryFromStorage(): InventoryItem[] {
   return [];
 }
 
-export function saveInventoryToStorage(inventory: InventoryItem[]): void {
+export function saveInventoryToStorage(_inventory: InventoryItem[]): void {
   // localStorage.setItem(getStorageKey("inventory"), JSON.stringify(inventory));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("inventoryUpdated"));
@@ -2125,7 +2170,7 @@ export function getSettingsFromStorage(): StudioSettings {
   */
 }
 
-export function saveSettingsToStorage(settings: StudioSettings): void {
+export function saveSettingsToStorage(_settings: StudioSettings): void {
   // localStorage.setItem(
   //   getStorageKey("studioSettings"),
   //   JSON.stringify(settings),
@@ -2150,7 +2195,7 @@ export function getWeekSchedule(): WeekSchedule {
   */
 }
 
-export function saveWeekSchedule(schedule: WeekSchedule): void {
+export function saveWeekSchedule(_schedule: WeekSchedule): void {
   // localStorage.setItem(getStorageKey("weekSchedule"), JSON.stringify(schedule));
 }
 
@@ -2173,7 +2218,7 @@ export function getGalleryImages(): GalleryImage[] {
   */
 }
 
-export function saveGalleryImages(images: GalleryImage[]): void {
+export function saveGalleryImages(_images: GalleryImage[]): void {
   // localStorage.setItem(getStorageKey("galleryImages"), JSON.stringify(images));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("galleryUpdated"));
@@ -2197,10 +2242,10 @@ export function getServices(): Service[] {
     : services;
 }
 
-export function saveServices(newServices: Service[]): void {
+export function saveServices(_newServices: Service[]): void {
+  /*
   const settings = getSettingsFromStorage();
   settings.services = newServices;
-  /*
   localStorage.setItem(
     getStorageKey("studioSettings"),
     JSON.stringify(settings),
@@ -2213,7 +2258,7 @@ export function saveServices(newServices: Service[]): void {
   }
 }
 
-export function saveBlockedPeriods(blocked: BlockedPeriod[]): void {
+export function saveBlockedPeriods(_blocked: BlockedPeriod[]): void {
   // localStorage.setItem(
   //   getStorageKey("blockedPeriods"),
   //   JSON.stringify(blocked),
@@ -2230,7 +2275,7 @@ export function getNotificationSettings(): NotificationSettings {
   */
 }
 
-export function saveNotificationSettings(settings: NotificationSettings): void {
+export function saveNotificationSettings(_settings: NotificationSettings): void {
   // localStorage.setItem(
   //   getStorageKey("notificationSettings"),
   //   JSON.stringify(settings),
@@ -2250,7 +2295,7 @@ export function getGoogleCalendarSettings(): GoogleCalendarSettings {
 }
 
 export function saveGoogleCalendarSettings(
-  settings: GoogleCalendarSettings,
+  _settings: GoogleCalendarSettings,
 ): void {
   // localStorage.setItem(
   //   getStorageKey("googleCalendarSettings"),
@@ -2270,7 +2315,7 @@ export function getSiteProfile(): SiteProfile {
   */
 }
 
-export function saveSiteProfile(profile: SiteProfile): void {
+export function saveSiteProfile(_profile: SiteProfile): void {
   // const storageKey = getStorageKey("siteProfile");
   // console.log(
   //   `>>> [booking-data] Salvando siteProfile em ${storageKey}:`,
@@ -2299,7 +2344,7 @@ export function getHeroSettings(): HeroSettings {
   */
 }
 
-export function saveHeroSettings(settings: HeroSettings): void {
+export function saveHeroSettings(_settings: HeroSettings): void {
   // const storageKey = getStorageKey("heroSettings");
   // console.log(
   //   `>>> [booking-data] Salvando heroSettings em ${storageKey}:`,
@@ -2332,7 +2377,7 @@ export function getAboutHeroSettings(): HeroSettings {
   */
 }
 
-export function saveAboutHeroSettings(settings: HeroSettings): void {
+export function saveAboutHeroSettings(_settings: HeroSettings): void {
   // localStorage.setItem(
   //   getStorageKey("aboutHeroSettings"),
   //   JSON.stringify(settings),
@@ -2353,7 +2398,7 @@ export function getStorySettings(): StorySettings {
   */
 }
 
-export function saveStorySettings(settings: StorySettings): void {
+export function saveStorySettings(_settings: StorySettings): void {
   // localStorage.setItem(
   //   getStorageKey("storySettings"),
   //   JSON.stringify(settings),
@@ -2365,20 +2410,16 @@ export function saveStorySettings(settings: StorySettings): void {
 }
 
 export function getValuesSettings(): ValuesSettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultValuesSettings;
-  /*
   if (typeof window === "undefined") return defaultValuesSettings;
   const settings = localStorage.getItem(getStorageKey("valuesSettings"));
   return settings ? JSON.parse(settings) : defaultValuesSettings;
-  */
 }
 
 export function saveValuesSettings(settings: ValuesSettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("valuesSettings"),
-  //   JSON.stringify(settings),
-  // );
+  localStorage.setItem(
+    getStorageKey("valuesSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("valuesSettingsUpdated"));
@@ -2395,7 +2436,7 @@ export function getServicesSettings(): ServicesSettings {
   */
 }
 
-export function saveServicesSettings(settings: ServicesSettings): void {
+export function saveServicesSettings(_settings: ServicesSettings): void {
   // localStorage.setItem(
   //   getStorageKey("servicesSettings"),
   //   JSON.stringify(settings),
@@ -2416,7 +2457,7 @@ export function getFontSettings(): FontSettings {
   */
 }
 
-export function saveFontSettings(settings: FontSettings): void {
+export function saveFontSettings(_settings: FontSettings): void {
   // localStorage.setItem(getStorageKey("fontSettings"), JSON.stringify(settings));
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
@@ -2434,7 +2475,7 @@ export function getGallerySettings(): GallerySettings {
   */
 }
 
-export function saveGallerySettings(settings: GallerySettings): void {
+export function saveGallerySettings(_settings: GallerySettings): void {
   // localStorage.setItem(
   //   getStorageKey("gallerySettings"),
   //   JSON.stringify(settings),
@@ -2455,7 +2496,7 @@ export function getCTASettings(): CTASettings {
   */
 }
 
-export function saveCTASettings(settings: CTASettings): void {
+export function saveCTASettings(_settings: CTASettings): void {
   // localStorage.setItem(getStorageKey("ctaSettings"), JSON.stringify(settings));
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
@@ -2473,7 +2514,7 @@ export function getTeamSettings(): TeamSettings {
   */
 }
 
-export function saveTeamSettings(settings: TeamSettings): void {
+export function saveTeamSettings(_settings: TeamSettings): void {
   // localStorage.setItem(getStorageKey("teamSettings"), JSON.stringify(settings));
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
@@ -2491,7 +2532,7 @@ export function getTestimonialsSettings(): TestimonialsSettings {
   */
 }
 
-export function saveTestimonialsSettings(settings: TestimonialsSettings): void {
+export function saveTestimonialsSettings(_settings: TestimonialsSettings): void {
   // localStorage.setItem(
   //   getStorageKey("testimonialsSettings"),
   //   JSON.stringify(settings),
@@ -2512,7 +2553,7 @@ export function getHeaderSettings(): HeaderSettings {
   */
 }
 
-export function saveHeaderSettings(settings: HeaderSettings): void {
+export function saveHeaderSettings(_settings: HeaderSettings): void {
   // localStorage.setItem(
   //   getStorageKey("headerSettings"),
   //   JSON.stringify(settings),
@@ -2533,7 +2574,7 @@ export function getFooterSettings(): FooterSettings {
   */
 }
 
-export function saveFooterSettings(settings: FooterSettings): void {
+export function saveFooterSettings(_settings: FooterSettings): void {
   // localStorage.setItem(
   //   getStorageKey("footerSettings"),
   //   JSON.stringify(settings),
@@ -2566,7 +2607,7 @@ export function getPageVisibility(): Record<string, boolean> {
   */
 }
 
-export function savePageVisibility(visibility: Record<string, boolean>): void {
+export function savePageVisibility(_visibility: Record<string, boolean>): void {
   // localStorage.setItem(
   //   getStorageKey("pageVisibility"),
   //   JSON.stringify(visibility),
@@ -2606,7 +2647,7 @@ export function getVisibleSections(): Record<string, boolean> {
   */
 }
 
-export function saveVisibleSections(sections: Record<string, boolean>): void {
+export function saveVisibleSections(_sections: Record<string, boolean>): void {
   // localStorage.setItem(
   //   getStorageKey("visibleSections"),
   //   JSON.stringify(sections),

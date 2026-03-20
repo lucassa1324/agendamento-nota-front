@@ -2,7 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
-import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
+import {
+  SectionBackground,
+  type SectionBackgroundSettings,
+} from "@/components/admin/site_editor/components/SectionBackground";
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { GalleryGrid } from "@/components/gallery-grid";
 import { useStudio } from "@/context/studio-context";
@@ -128,7 +131,7 @@ export default function GaleriaPage({
     <main>
       {isSectionVisible("gallery-grid") && (
         <section className="relative py-20 md:py-32 overflow-hidden">
-          <SectionBackground settings={gallerySettings} />
+          <SectionBackground settings={gallerySettings as SectionBackgroundSettings} />
 
           <div className="container mx-auto px-4 relative z-10">
             <div className="text-center mb-16">

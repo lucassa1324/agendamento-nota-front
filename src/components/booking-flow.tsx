@@ -33,7 +33,10 @@ import {
 } from "@/lib/booking-data";
 import { businessService } from "@/lib/business-service";
 import type { SiteConfigData } from "@/lib/site-config-types";
-import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import {
+  SectionBackground,
+  type SectionBackgroundSettings,
+} from "./admin/site_editor/components/SectionBackground";
 
 type BookingStep = "service" | "date" | "time" | "form" | "confirmation";
 
@@ -83,6 +86,20 @@ export function BookingFlow() {
   const [previewOverrides, setPreviewOverrides] = useState<
     Partial<Record<BookingStep, BookingStepSettings>>
   >({});
+
+  // Debug visibility and state
+  useEffect(() => {
+    const pageVisibility = (studio?.config as Record<string, unknown>)?.pageVisibility as Record<string, boolean> || {};
+    console.log(">>> [BOOKING_FLOW] Renderizando com:", {
+      isLoading,
+      hasStudio: !!studio,
+      only,
+      currentStep,
+      selectedServicesCount: selectedServices.length,
+      pageVisibility,
+      agendarVisible: pageVisibility.agendar !== false
+    });
+  }, [isLoading, studio, only, currentStep, selectedServices.length]);
 
   // Force re-render on storage or specific events
   const [tick, setTick] = useState(0);
@@ -282,7 +299,7 @@ export function BookingFlow() {
   );
 
   const serviceSettings = useMemo(() => {
-    const _ = tick;
+    void tick;
     const base = studio?.config
       ? normalizeBookingStep("service", defaultBookingServiceSettings)
       : getBookingServiceSettings(studio?.config);
@@ -307,7 +324,7 @@ export function BookingFlow() {
   ]);
 
   const dateSettings = useMemo(() => {
-    const _ = tick;
+    void tick;
     const base = studio?.config
       ? normalizeBookingStep("date", defaultBookingDateSettings)
       : getBookingDateSettings(studio?.config);
@@ -332,7 +349,7 @@ export function BookingFlow() {
   ]);
 
   const timeSettings = useMemo(() => {
-    const _ = tick;
+    void tick;
     const base = studio?.config
       ? normalizeBookingStep("time", defaultBookingTimeSettings)
       : getBookingTimeSettings(studio?.config);
@@ -360,7 +377,7 @@ export function BookingFlow() {
   ]);
 
   const formSettings = useMemo(() => {
-    const _ = tick;
+    void tick;
     const base = studio?.config
       ? normalizeBookingStep("form", defaultBookingFormSettings)
       : getBookingFormSettings(studio?.config);
@@ -385,7 +402,7 @@ export function BookingFlow() {
   ]);
 
   const confirmationSettings = useMemo(() => {
-    const _ = tick;
+    void tick;
     const base = studio?.config
       ? normalizeBookingStep("confirmation", defaultBookingConfirmationSettings)
       : getBookingConfirmationSettings(studio?.config);
@@ -972,7 +989,7 @@ export function BookingFlow() {
             id="booking-service"
             className="relative py-12 md:py-20 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
           >
-            <SectionBackground settings={serviceSettings} />
+            <SectionBackground settings={serviceSettings as SectionBackgroundSettings} />
             <div className="container mx-auto px-4 relative z-10">
               {renderStepHeader(serviceSettings)}
               <div className="max-w-4xl mx-auto">
@@ -992,7 +1009,7 @@ export function BookingFlow() {
             id="booking-date"
             className="relative py-12 md:py-20 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
           >
-            <SectionBackground settings={dateSettings} />
+            <SectionBackground settings={dateSettings as SectionBackgroundSettings} />
             <div className="container mx-auto px-4 relative z-10">
               {renderStepHeader(dateSettings)}
               <div className="max-w-4xl mx-auto">
@@ -1011,7 +1028,7 @@ export function BookingFlow() {
             id="booking-time"
             className="relative py-12 md:py-20 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
           >
-            <SectionBackground settings={timeSettings} />
+            <SectionBackground settings={timeSettings as SectionBackgroundSettings} />
             <div className="container mx-auto px-4 relative z-10">
               {renderStepHeader(timeSettings)}
               <div className="max-w-4xl mx-auto">
@@ -1036,7 +1053,7 @@ export function BookingFlow() {
               id="booking-form"
               className="relative py-12 md:py-20 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
             >
-              <SectionBackground settings={formSettings} />
+              <SectionBackground settings={formSettings as SectionBackgroundSettings} />
               <div className="container mx-auto px-4 relative z-10">
                 {renderStepHeader(formSettings)}
                 <div className="max-w-2xl mx-auto">
@@ -1064,7 +1081,7 @@ export function BookingFlow() {
             id="booking-confirmation"
             className="relative py-12 md:py-20 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
           >
-            <SectionBackground settings={confirmationSettings} />
+            <SectionBackground settings={confirmationSettings as SectionBackgroundSettings} />
             <div className="container mx-auto px-4 relative z-10">
               {renderStepHeader(confirmationSettings)}
               <div className="max-w-4xl mx-auto">

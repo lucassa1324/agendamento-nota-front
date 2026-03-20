@@ -147,8 +147,211 @@ type UseEditorApiParams = {
   lastSaved: EditorSavedState;
   lastApplied: EditorAppliedState;
   setters: EditorStateSetters;
+  setIsDirty: (value: boolean) => void;
   saveLocalDrafts: (drafts: EditorLocalDrafts) => void;
   clearLocalDrafts: () => void;
+};
+
+const ensureValuesCardBg = (
+  config: SiteConfigData,
+  valuesSettings: ValuesSettings,
+): SiteConfigData => {
+  const fallback = valuesSettings?.cardBgColor || "";
+  if (!fallback) return config;
+
+  const rawConfig = config as Record<string, unknown>;
+  const root =
+    (rawConfig.siteCustomization as Record<string, unknown> | undefined) ||
+    rawConfig;
+  const home = root.home as Record<string, unknown> | undefined;
+  const layoutGlobal = root.layoutGlobal as Record<string, unknown> | undefined;
+
+  const homeValuesSection = home
+    ? ((home.valuesSection || home.values) as Record<string, unknown> | undefined)
+    : undefined;
+  const valuesSection =
+    homeValuesSection ||
+    (layoutGlobal?.values as Record<string, unknown> | undefined) ||
+    (root.values as Record<string, unknown> | undefined);
+
+  if (!valuesSection) {
+    const nextValuesSection = {
+      ...valuesSettings,
+      cardBgColor: fallback,
+      cardBackgroundColor: fallback,
+      card_background_color: fallback,
+      content: {
+        cardBgColor: fallback,
+      },
+    };
+    const nextHome = { ...(home || {}), valuesSection: nextValuesSection };
+    const nextRoot = { ...root, home: nextHome };
+    return rawConfig.siteCustomization
+      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
+      : (nextRoot as unknown as SiteConfigData);
+  }
+
+  const appearance = valuesSection.appearance as
+    | Record<string, unknown>
+    | undefined;
+  const content = valuesSection.content as Record<string, unknown> | undefined;
+  const itemsStyle = valuesSection.itemsStyle as
+    | Record<string, unknown>
+    | undefined;
+  const cardConfig = valuesSection.cardConfig as
+    | Record<string, unknown>
+    | undefined;
+
+  const hasCardBg = Boolean(
+    (valuesSection.cardBgColor as string) ||
+      (valuesSection.cardBackgroundColor as string) ||
+      (valuesSection.card_background_color as string) ||
+      (cardConfig?.backgroundColor as string) ||
+      (cardConfig?.cardBackgroundColor as string) ||
+      (content?.cardBgColor as string) ||
+      (itemsStyle?.itemBackgroundColor as string) ||
+      (appearance?.cardBgColor as string),
+  );
+
+  if (hasCardBg) return config;
+
+  const nextValuesSection = {
+    ...valuesSection,
+    cardBgColor: fallback,
+    cardBackgroundColor: fallback,
+    card_background_color: fallback,
+    content: {
+      ...(content || {}),
+      cardBgColor: fallback,
+    },
+  };
+
+  if (homeValuesSection && home) {
+    const nextHome = {
+      ...home,
+      ...(home.valuesSection
+        ? { valuesSection: nextValuesSection }
+        : { values: nextValuesSection }),
+    };
+    const nextRoot = { ...root, home: nextHome };
+    return rawConfig.siteCustomization
+      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
+      : (nextRoot as unknown as SiteConfigData);
+  }
+
+  if (layoutGlobal?.values) {
+    const nextLayoutGlobal = { ...layoutGlobal, values: nextValuesSection };
+    const nextRoot = { ...root, layoutGlobal: nextLayoutGlobal };
+    return rawConfig.siteCustomization
+      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
+      : (nextRoot as unknown as SiteConfigData);
+  }
+
+  const nextRoot = { ...root, values: nextValuesSection };
+  return rawConfig.siteCustomization
+    ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
+    : (nextRoot as unknown as SiteConfigData);
+};
+
+const ensureServicesCardBg = (
+  config: SiteConfigData,
+  servicesSettings: ServicesSettings,
+): SiteConfigData => {
+  const fallback = servicesSettings?.cardBgColor || "";
+  if (!fallback) return config;
+
+  const rawConfig = config as Record<string, unknown>;
+  const root =
+    (rawConfig.siteCustomization as Record<string, unknown> | undefined) ||
+    rawConfig;
+  const home = root.home as Record<string, unknown> | undefined;
+  const layoutGlobal = root.layoutGlobal as Record<string, unknown> | undefined;
+
+  const homeServicesSection = home
+    ? ((home.servicesSection || home.services) as Record<string, unknown> | undefined)
+    : undefined;
+  const servicesSection =
+    homeServicesSection ||
+    (layoutGlobal?.services as Record<string, unknown> | undefined) ||
+    (root.services as Record<string, unknown> | undefined);
+
+  if (!servicesSection) {
+    const nextServicesSection = {
+      ...servicesSettings,
+      cardBgColor: fallback,
+      cardBackgroundColor: fallback,
+      card_background_color: fallback,
+      content: {
+        cardBgColor: fallback,
+      },
+    };
+    const nextHome = { ...(home || {}), servicesSection: nextServicesSection };
+    const nextRoot = { ...root, home: nextHome };
+    return rawConfig.siteCustomization
+      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
+      : (nextRoot as unknown as SiteConfigData);
+  }
+
+  const appearance = servicesSection.appearance as
+    | Record<string, unknown>
+    | undefined;
+  const content = servicesSection.content as Record<string, unknown> | undefined;
+  const itemsStyle = servicesSection.itemsStyle as
+    | Record<string, unknown>
+    | undefined;
+  const cardConfig = servicesSection.cardConfig as
+    | Record<string, unknown>
+    | undefined;
+
+  const hasCardBg = Boolean(
+    (servicesSection.cardBgColor as string) ||
+      (servicesSection.cardBackgroundColor as string) ||
+      (servicesSection.card_background_color as string) ||
+      (cardConfig?.backgroundColor as string) ||
+      (cardConfig?.cardBackgroundColor as string) ||
+      (content?.cardBgColor as string) ||
+      (itemsStyle?.itemBackgroundColor as string) ||
+      (appearance?.cardBgColor as string),
+  );
+
+  if (hasCardBg) return config;
+
+  const nextServicesSection = {
+    ...servicesSection,
+    cardBgColor: fallback,
+    cardBackgroundColor: fallback,
+    card_background_color: fallback,
+    content: {
+      ...(content || {}),
+      cardBgColor: fallback,
+    },
+  };
+
+  if (homeServicesSection && home) {
+    const nextHome = {
+      ...home,
+      ...(home.servicesSection
+        ? { servicesSection: nextServicesSection }
+        : { services: nextServicesSection }),
+    };
+    const nextRoot = { ...root, home: nextHome };
+    return rawConfig.siteCustomization
+      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
+      : (nextRoot as unknown as SiteConfigData);
+  }
+
+  if (layoutGlobal?.services) {
+    const nextLayoutGlobal = { ...layoutGlobal, services: nextServicesSection };
+    const nextRoot = { ...root, layoutGlobal: nextLayoutGlobal };
+    return rawConfig.siteCustomization
+      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
+      : (nextRoot as unknown as SiteConfigData);
+  }
+
+  const nextRoot = { ...root, services: nextServicesSection };
+  return rawConfig.siteCustomization
+    ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
+    : (nextRoot as unknown as SiteConfigData);
 };
 
 export function useEditorApi({
@@ -157,6 +360,7 @@ export function useEditorApi({
   lastSaved,
   lastApplied,
   setters,
+  setIsDirty,
   saveLocalDrafts,
   clearLocalDrafts,
 }: UseEditorApiParams) {
@@ -537,7 +741,26 @@ export function useEditorApi({
                   overlayOpacity:
                     typeof sectionData.overlayOpacity === "number"
                       ? sectionData.overlayOpacity
-                      : appearance.overlayOpacity ?? 0.5,
+                      : appearance.overlayOpacity ?? 0,
+                  overlay: {
+                    ...(appearance.overlay || {}),
+                    color: ((sectionData.appearance as Record<string, unknown>)?.overlay as Record<string, unknown>)?.color as string || ((appearance.overlay as Record<string, unknown>)?.color as string) || "",
+                    opacity: typeof sectionData.overlayOpacity === "number"
+                      ? sectionData.overlayOpacity
+                      : (appearance.overlay as Record<string, unknown>)?.opacity as number ?? 0,
+                  },
+                  imageOpacity: typeof sectionData.imageOpacity === "number"
+                    ? sectionData.imageOpacity
+                    : appearance.imageOpacity ?? 1,
+                  imageScale: typeof sectionData.imageScale === "number"
+                    ? sectionData.imageScale
+                    : appearance.imageScale ?? 1,
+                  imageX: typeof sectionData.imageX === "number"
+                    ? sectionData.imageX
+                    : appearance.imageX ?? 50,
+                  imageY: typeof sectionData.imageY === "number"
+                    ? sectionData.imageY
+                    : appearance.imageY ?? 50,
                   // Garante campos de cores e fontes na aparência também
                   titleColor: sectionData.titleColor || appearance.titleColor || "",
                   subtitleColor: sectionData.subtitleColor || appearance.subtitleColor || "",
@@ -577,8 +800,13 @@ export function useEditorApi({
                   subtitleColor: sectionData.subtitleColor || "",
                 };
 
-                // Inclusão explícita de campos na RAIZ para todas as seções
-                // Isso garante que o banco de dados receba os campos fora do objeto 'content'
+                const genericColor =
+                  section === "values"
+                    ? (sectionData.bgColor as string) || ""
+                    : sectionData.primaryButtonColor ||
+                      sectionData.cardBgColor ||
+                      sectionData.bgColor ||
+                      "";
                 Object.assign(subObj, {
                   ...sectionData, // Joga todas as propriedades (incluindo camelCase) na raiz
                   // Compatibilidade Snake Case para o Banco de Dados
@@ -592,13 +820,14 @@ export function useEditorApi({
                   title_font: sectionData.titleFont || sectionData.title_font,
                   subtitle_font: sectionData.subtitleFont || sectionData.subtitle_font,
                   card_bg_color: sectionData.cardBgColor || sectionData.card_bg_color,
+                  card_background_color: sectionData.cardBgColor || sectionData.card_background_color,
+                  cardBackgroundColor: sectionData.cardBgColor || sectionData.cardBackgroundColor,
                   bg_color: sectionData.bgColor || sectionData.bg_color,
                   title_color: sectionData.titleColor || sectionData.title_color,
                   subtitle_color: sectionData.subtitleColor || sectionData.subtitle_color,
                   badge_color: sectionData.badgeColor || sectionData.badge_color,
                   badge_text_color: sectionData.badgeTextColor || sectionData.badge_text_color,
-                  // Teste de Força Bruta: campo 'color' genérico para ver se o banco aceita
-                  color: sectionData.primaryButtonColor || sectionData.cardBgColor || sectionData.bgColor || "",
+                  color: genericColor,
                 });
 
                 if (section === "hero" || section === "aboutHero") {
@@ -627,6 +856,16 @@ export function useEditorApi({
                     content.cardTextColor = sectionData.cardTextColor || "";
                     content.cardRatingColor = sectionData.cardRatingColor || "";
                     content.cardBorderRadius = sectionData.cardBorderRadius || "";
+
+                    // Suporte para cardConfig exigido pelo backend
+                    const cardConfig = {
+                      backgroundColor: sectionData.cardBgColor || "",
+                      cardBackgroundColor: sectionData.cardBgColor || "",
+                      background_color: sectionData.cardBgColor || "",
+                      card_background_color: sectionData.cardBgColor || "",
+                    };
+                    subObj.cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
                   }
 
                   if (section === "gallery") {
@@ -640,6 +879,17 @@ export function useEditorApi({
                     content.columns = sectionData.columns || 3;
                     content.gap = sectionData.gap || 16;
                     content.aspectRatio = sectionData.aspectRatio || "square";
+                    content.cardBgColor = (sectionData as Record<string, unknown>).cardBgColor as string || "";
+
+                    // Suporte para cardConfig exigido pelo backend
+                    const cardConfig = {
+                      backgroundColor: (sectionData as Record<string, unknown>).cardBgColor as string || "",
+                      cardBackgroundColor: (sectionData as Record<string, unknown>).cardBgColor as string || "",
+                      background_color: (sectionData as Record<string, unknown>).cardBgColor as string || "",
+                      card_background_color: (sectionData as Record<string, unknown>).cardBgColor as string || "",
+                    };
+                    subObj.cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
                   }
 
                   if (section === "cta") {
@@ -666,6 +916,16 @@ export function useEditorApi({
                     content.cardIconColor = sectionData.cardIconColor || "";
                     content.showTitle = sectionData.showTitle ?? true;
                     content.showSubtitle = sectionData.showSubtitle ?? true;
+
+                    // Suporte para cardConfig exigido pelo backend
+                    const cardConfig = {
+                      backgroundColor: sectionData.cardBgColor || "",
+                      cardBackgroundColor: sectionData.cardBgColor || "",
+                      background_color: sectionData.cardBgColor || "",
+                      card_background_color: sectionData.cardBgColor || "",
+                    };
+                    subObj.cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
                   }
 
                   if (section === "services") {
@@ -686,6 +946,18 @@ export function useEditorApi({
                     content.cardBorderColor = sectionData.cardBorderColor || "";
                     content.showTitle = sectionData.showTitle ?? true;
                     content.showSubtitle = sectionData.showSubtitle ?? true;
+
+                    // Novo: Suporte para cardConfig exigido pelo backend
+                    const cardConfig = {
+                      backgroundColor: sectionData.cardBgColor || "",
+                      cardBackgroundColor: sectionData.cardBgColor || "",
+                      background_color: sectionData.cardBgColor || "",
+                      card_background_color: sectionData.cardBgColor || "",
+                    };
+                    
+                    subObj.cardConfig = cardConfig;
+                    // Garantir que o cardConfig também vá para o layoutGlobal.services
+                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
                   }
 
                   if (section === "team") {
@@ -701,6 +973,16 @@ export function useEditorApi({
                       sectionData.cardDescriptionFont || "";
                     content.cardDescriptionColor =
                       sectionData.cardDescriptionColor || "";
+
+                    // Suporte para cardConfig exigido pelo backend
+                    const cardConfig = {
+                      backgroundColor: sectionData.cardBgColor || "",
+                      cardBackgroundColor: sectionData.cardBgColor || "",
+                      background_color: sectionData.cardBgColor || "",
+                      card_background_color: sectionData.cardBgColor || "",
+                    };
+                    subObj.cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
                   }
 
                   subObj.content = content;
@@ -820,47 +1102,100 @@ export function useEditorApi({
                     ...cleanBookingSteps.service,
                     // Mapeamento de Dualidade (camelCase -> snake_case)
                     card_bg_color: cleanBookingSteps.service.cardBgColor,
+                    card_background_color: cleanBookingSteps.service.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.service.cardBgColor,
                     button_color: cleanBookingSteps.service.buttonColor,
                     title_color: cleanBookingSteps.service.titleColor,
                     subtitle_color: cleanBookingSteps.service.subtitleColor,
                     accent_color: cleanBookingSteps.service.accentColor,
                     bg_color: cleanBookingSteps.service.bgColor,
+                    // Suporte para cardConfig exigido pelo backend no fluxo de agendamento
+                    cardConfig: {
+                      backgroundColor: cleanBookingSteps.service.cardBgColor || "",
+                      cardBackgroundColor: cleanBookingSteps.service.cardBgColor || "",
+                      background_color: cleanBookingSteps.service.cardBgColor || "",
+                      card_background_color: cleanBookingSteps.service.cardBgColor || "",
+                    }
                   } 
                 } : {}),
                 ...(cleanBookingSteps.date ? { 
                   date: {
                     ...cleanBookingSteps.date,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.date.cardBgColor,
+                    card_background_color: cleanBookingSteps.date.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.date.cardBgColor,
                     title_color: cleanBookingSteps.date.titleColor,
                     subtitle_color: cleanBookingSteps.date.subtitleColor,
                     accent_color: cleanBookingSteps.date.accentColor,
                     bg_color: cleanBookingSteps.date.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor: cleanBookingSteps.date.cardBgColor || "",
+                      cardBackgroundColor: cleanBookingSteps.date.cardBgColor || "",
+                      background_color: cleanBookingSteps.date.cardBgColor || "",
+                      card_background_color: cleanBookingSteps.date.cardBgColor || "",
+                    }
                   } 
                 } : {}),
                 ...(cleanBookingSteps.time ? { 
                   time: {
                     ...cleanBookingSteps.time,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.time.cardBgColor,
+                    card_background_color: cleanBookingSteps.time.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.time.cardBgColor,
                     title_color: cleanBookingSteps.time.titleColor,
                     subtitle_color: cleanBookingSteps.time.subtitleColor,
                     accent_color: cleanBookingSteps.time.accentColor,
                     bg_color: cleanBookingSteps.time.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor: cleanBookingSteps.time.cardBgColor || "",
+                      cardBackgroundColor: cleanBookingSteps.time.cardBgColor || "",
+                      background_color: cleanBookingSteps.time.cardBgColor || "",
+                      card_background_color: cleanBookingSteps.time.cardBgColor || "",
+                    }
                   } 
                 } : {}),
                 ...(cleanBookingSteps.form ? { 
                   form: {
                     ...cleanBookingSteps.form,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.form.cardBgColor,
+                    card_background_color: cleanBookingSteps.form.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.form.cardBgColor,
                     title_color: cleanBookingSteps.form.titleColor,
                     subtitle_color: cleanBookingSteps.form.subtitleColor,
                     accent_color: cleanBookingSteps.form.accentColor,
                     bg_color: cleanBookingSteps.form.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor: cleanBookingSteps.form.cardBgColor || "",
+                      cardBackgroundColor: cleanBookingSteps.form.cardBgColor || "",
+                      background_color: cleanBookingSteps.form.cardBgColor || "",
+                      card_background_color: cleanBookingSteps.form.cardBgColor || "",
+                    }
                   } 
                 } : {}),
                 ...(cleanBookingSteps.confirmation ? { 
                   confirmation: {
                     ...cleanBookingSteps.confirmation,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.confirmation.cardBgColor,
+                    card_background_color: cleanBookingSteps.confirmation.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.confirmation.cardBgColor,
                     title_color: cleanBookingSteps.confirmation.titleColor,
                     subtitle_color: cleanBookingSteps.confirmation.subtitleColor,
                     accent_color: cleanBookingSteps.confirmation.accentColor,
                     bg_color: cleanBookingSteps.confirmation.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor: cleanBookingSteps.confirmation.cardBgColor || "",
+                      cardBackgroundColor: cleanBookingSteps.confirmation.cardBgColor || "",
+                      background_color: cleanBookingSteps.confirmation.cardBgColor || "",
+                      card_background_color: cleanBookingSteps.confirmation.cardBgColor || "",
+                    }
                   } 
                 } : {}),
               }
@@ -871,6 +1206,8 @@ export function useEditorApi({
                 cardConfig: {
                   backgroundColor: (serviceCardBg as string) || "#ffffff",
                   cardBackgroundColor: (serviceCardBg as string) || "#ffffff",
+                  background_color: (serviceCardBg as string) || "#ffffff",
+                  card_background_color: (serviceCardBg as string) || "#ffffff",
                 },
               };
             }
@@ -888,15 +1225,21 @@ export function useEditorApi({
           );
 
           if (typeof window !== "undefined") {
-            if (fresh && shouldReload) {
-              console.log(">>> [SYNC] Salvamento bem-sucedido. Limpando localStorage para garantir que o Banco seja a única fonte da verdade.");
+            if (fresh) {
+              console.log(">>> [SYNC] Salvamento bem-sucedido. Sincronizando estado com resposta do banco.");
+              
+              const safeWithValues = ensureValuesCardBg(fresh, settings.valuesSettings);
+              const safeFresh = ensureServicesCardBg(safeWithValues, settings.servicesSettings);
+              loadExternalConfig(safeFresh, true);
+
+              // 2. Limpa o localStorage para garantir que o Banco seja a única fonte da verdade.
               clearAllCustomizationCache();
               clearLocalDrafts();
 
-              // 2. Notifica o contexto global (StudioContext) para buscar dados frescos do banco
+              // 3. Notifica o contexto global (StudioContext) para buscar dados frescos do banco
               refreshData();
               
-              // 3. ATUALIZAÇÃO DO ESTADO LAST_SAVED
+              // 4. ATUALIZAÇÃO DO ESTADO LAST_SAVED (Sempre que o save no banco der certo)
               setters.setLastSavedHero(settings.heroSettings);
               setters.setLastSavedAboutHero(settings.aboutHeroSettings);
               setters.setLastSavedStory(settings.storySettings);
@@ -917,8 +1260,10 @@ export function useEditorApi({
               setters.setLastSavedBookingTime(settings.bookingTimeSettings);
               setters.setLastSavedBookingForm(settings.bookingFormSettings);
               setters.setLastSavedBookingConfirmation(settings.bookingConfirmationSettings);
+              
+              setIsDirty(false);
 
-              console.log(">>> [SYNC] Estado LAST_SAVED atualizado e LocalStorage limpo.");
+              console.log(">>> [SYNC] Estado LAST_SAVED atualizado.");
             }
           }
 
@@ -996,6 +1341,7 @@ export function useEditorApi({
       toast,
       hasUnsavedGlobalChanges,
       refreshData,
+      loadExternalConfig,
     ],
   );
 

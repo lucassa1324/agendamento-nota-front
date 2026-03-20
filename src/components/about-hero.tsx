@@ -10,7 +10,10 @@ import {
   sanitizeColor,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import {
+  SectionBackground,
+  type SectionBackgroundSettings,
+} from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 
 export function AboutHero() {
@@ -184,29 +187,14 @@ export function AboutHero() {
       <section
         id="about-hero"
         className={cn(
-          "relative py-20 md:py-32 overflow-hidden transition-all duration-700",
-          (highlightedElement === "about-hero-bg" ||
-            highlightedElement === "about-hero") &&
-            "ring-8 ring-inset ring-primary/30",
+          "relative min-h-[60vh] flex items-center transition-all duration-500 overflow-hidden",
+          highlightedElement === "about-hero" &&
+            "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >
-        <SectionBackground
-          settings={{
-            bgType: settings.bgType as "color" | "image",
-            bgColor: settings.bgColor,
-            bgImage: settings.bgImage,
-            imageOpacity: settings.imageOpacity,
-            overlayOpacity: settings.overlayOpacity,
-            imageScale: settings.imageScale,
-            imageX: settings.imageX,
-            imageY: settings.imageY,
-            appearance: settings.appearance,
-          }}
-          defaultImage="/beauty-salon-professional-workspace.jpg"
-          gradientClassName="bg-linear-to-b from-background/50 via-background/80 to-background"
-        />
+      <SectionBackground settings={settings as SectionBackgroundSettings} />
 
-      <div className="container mx-auto px-4 relative z-10">
+      <div className="container relative z-10 mx-auto px-4 py-20">
         <div className="max-w-3xl mx-auto text-center">
           {settings.showBadge !== false && (
             <div

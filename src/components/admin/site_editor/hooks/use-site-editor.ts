@@ -27,6 +27,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     local,
     state,
     checkShouldRecoverDraft,
+    slug: studio?.slug,
   });
   
   const {
@@ -228,6 +229,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     lastSaved,
     lastApplied,
     setters,
+    setIsDirty: state.setIsDirty,
     saveLocalDrafts: local.saveLocalDrafts,
     clearLocalDrafts: local.clearLocalDrafts,
   });

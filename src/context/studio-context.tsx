@@ -114,6 +114,10 @@ const SITE_BASE_FALLBACK = (id: string, slug: string): Business => ({
       gallery: true,
       cta: true,
       footer: true,
+      values: true,
+      story: true,
+      testimonials: true,
+      team: true,
     },
     bookingSteps: {
       service: defaultBookingServiceSettings,
@@ -384,58 +388,54 @@ export function StudioProvider({
         layoutGlobal?.appointmentFlow ||
         layoutGlobal?.appointment_flow) as SiteConfigData["bookingSteps"] | undefined;
 
+      // Normalização profunda para garantir que o cardBgColor seja capturado de qualquer fonte (snake_case, cardConfig, etc.)
+      const normalizeDeepStep = (step: any) => {
+        if (!step) return undefined;
+        // normalizeStepSettings em booking-data.ts já é robusto o suficiente para capturar cardBgColor de múltiplas fontes
+        return normalizeStepSettings(step as Record<string, unknown>);
+      };
+
       const normalizedBookingFromLayout = bookingFromLayoutRaw
         ? {
-            service: normalizeStepSettings(
-              bookingFromLayoutRaw.service as Record<string, unknown>,
-            ),
-            date: normalizeStepSettings(
-              bookingFromLayoutRaw.date as Record<string, unknown>,
-            ),
-            time: normalizeStepSettings(
-              bookingFromLayoutRaw.time as Record<string, unknown>,
-            ),
-            form: normalizeStepSettings(
-              bookingFromLayoutRaw.form as Record<string, unknown>,
-            ),
-            confirmation: normalizeStepSettings(
-              bookingFromLayoutRaw.confirmation as Record<string, unknown>,
-            ),
+            service: normalizeDeepStep(bookingFromLayoutRaw.service),
+            date: normalizeDeepStep(bookingFromLayoutRaw.date),
+            time: normalizeDeepStep(bookingFromLayoutRaw.time),
+            form: normalizeDeepStep(bookingFromLayoutRaw.form),
+            confirmation: normalizeDeepStep(bookingFromLayoutRaw.confirmation),
           }
         : undefined;
 
       const layoutBookingLegacy =
         (layoutGlobal as Record<string, unknown>)?.bookingService ||
+        (layoutGlobal as Record<string, unknown>)?.booking_service ||
         (layoutGlobal as Record<string, unknown>)?.bookingDate ||
+        (layoutGlobal as Record<string, unknown>)?.booking_date ||
         (layoutGlobal as Record<string, unknown>)?.bookingTime ||
+        (layoutGlobal as Record<string, unknown>)?.booking_time ||
         (layoutGlobal as Record<string, unknown>)?.bookingForm ||
-        (layoutGlobal as Record<string, unknown>)?.bookingConfirmation
+        (layoutGlobal as Record<string, unknown>)?.booking_form ||
+        (layoutGlobal as Record<string, unknown>)?.bookingConfirmation ||
+        (layoutGlobal as Record<string, unknown>)?.booking_confirmation
           ? {
-              service: normalizeStepSettings(
-                (layoutGlobal as Record<string, unknown>)
-                  ?.bookingService as Record<string, unknown>,
+              service: normalizeDeepStep(
+                (layoutGlobal as Record<string, unknown>)?.bookingService ||
+                  (layoutGlobal as Record<string, unknown>)?.booking_service,
               ),
-              date: normalizeStepSettings(
-                (layoutGlobal as Record<string, unknown>)?.bookingDate as Record<
-                  string,
-                  unknown
-                >,
+              date: normalizeDeepStep(
+                (layoutGlobal as Record<string, unknown>)?.bookingDate ||
+                  (layoutGlobal as Record<string, unknown>)?.booking_date,
               ),
-              time: normalizeStepSettings(
-                (layoutGlobal as Record<string, unknown>)?.bookingTime as Record<
-                  string,
-                  unknown
-                >,
+              time: normalizeDeepStep(
+                (layoutGlobal as Record<string, unknown>)?.bookingTime ||
+                  (layoutGlobal as Record<string, unknown>)?.booking_time,
               ),
-              form: normalizeStepSettings(
-                (layoutGlobal as Record<string, unknown>)?.bookingForm as Record<
-                  string,
-                  unknown
-                >,
+              form: normalizeDeepStep(
+                (layoutGlobal as Record<string, unknown>)?.bookingForm ||
+                  (layoutGlobal as Record<string, unknown>)?.booking_form,
               ),
-              confirmation: normalizeStepSettings(
-                (layoutGlobal as Record<string, unknown>)
-                  ?.bookingConfirmation as Record<string, unknown>,
+              confirmation: normalizeDeepStep(
+                (layoutGlobal as Record<string, unknown>)?.bookingConfirmation ||
+                  (layoutGlobal as Record<string, unknown>)?.booking_confirmation,
               ),
             }
           : undefined;
@@ -447,21 +447,11 @@ export function StudioProvider({
 
       const normalizedBookingFromConfig = bookingFromConfig
         ? {
-            service: normalizeStepSettings(
-              bookingFromConfig.service as Record<string, unknown>,
-            ),
-            date: normalizeStepSettings(
-              bookingFromConfig.date as Record<string, unknown>,
-            ),
-            time: normalizeStepSettings(
-              bookingFromConfig.time as Record<string, unknown>,
-            ),
-            form: normalizeStepSettings(
-              bookingFromConfig.form as Record<string, unknown>,
-            ),
-            confirmation: normalizeStepSettings(
-              bookingFromConfig.confirmation as Record<string, unknown>,
-            ),
+            service: normalizeDeepStep(bookingFromConfig.service),
+            date: normalizeDeepStep(bookingFromConfig.date),
+            time: normalizeDeepStep(bookingFromConfig.time),
+            form: normalizeDeepStep(bookingFromConfig.form),
+            confirmation: normalizeDeepStep(bookingFromConfig.confirmation),
           }
         : undefined;
 
@@ -484,18 +474,26 @@ export function StudioProvider({
         testimonials: (layoutGlobal?.testimonials || config.testimonials) as
           | TestimonialsSettings
           | undefined,
-        services: (layoutGlobal?.services ||
-          home?.servicesSection ||
-          home?.services ||
-          config.services) as
-          | ServicesSettings
-          | undefined,
-        values: (layoutGlobal?.values ||
-          home?.valuesSection ||
-          home?.values ||
-          config.values) as
-          | ValuesSettings
-          | undefined,
+        services: normalizeDeepStep(
+          layoutGlobal?.services ||
+            layoutGlobal?.services_section ||
+            layoutGlobal?.services_settings ||
+            home?.servicesSection ||
+            home?.services_section ||
+            home?.services ||
+            config.services ||
+            (config as any).services_section,
+        ) as ServicesSettings | undefined,
+        values: normalizeDeepStep(
+          layoutGlobal?.values ||
+            layoutGlobal?.values_section ||
+            layoutGlobal?.values_settings ||
+            home?.valuesSection ||
+            home?.values_section ||
+            home?.values ||
+            config.values ||
+            (config as any).values_section,
+        ) as ValuesSettings | undefined,
         gallery: (layoutGlobal?.gallery ||
           home?.gallerySection ||
           home?.gallery ||

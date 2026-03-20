@@ -4,25 +4,28 @@ import Image from "next/image";
 import { useState } from "react";
 import { cn, getFullImageUrl } from "@/lib/utils";
 
-interface SectionBackgroundProps {
-  settings: {
-    bgType: "color" | "image";
-    bgColor?: string;
-    bgImage?: string;
-    imageOpacity?: number;
-    overlayOpacity?: number;
-    imageScale?: number;
-    imageX?: number;
-    imageY?: number;
-    appearance?: {
-      backgroundColor?: string;
-      backgroundImageUrl?: string;
-      overlay?: {
-        color: string;
-        opacity: number;
-      };
+export interface SectionBackgroundSettings {
+  bgType: "color" | "image";
+  bgColor?: string;
+  bgImage?: string;
+  imageOpacity?: number;
+  overlayOpacity?: number;
+  imageScale?: number;
+  imageX?: number;
+  imageY?: number;
+  appearance?: {
+    backgroundColor?: string;
+    backgroundImageUrl?: string;
+    overlay?: {
+      color: string;
+      opacity: number;
     };
+    imageOpacity?: number;
   };
+}
+
+export interface SectionBackgroundProps {
+  settings: SectionBackgroundSettings;
   className?: string;
   gradientClassName?: string;
   defaultImage?: string;
@@ -50,14 +53,40 @@ export function SectionBackground({
     bgImage = null;
   }
 
-  const hasValidImage = settings.bgType === "image" && !!bgImage;
+  const hasValidImage = !!bgImage;
+
+  // Calculamos valores efetivos com fallbacks robustos
+  const effectiveBgType = settings.bgType || (hasValidImage ? "image" : "color");
+  
+  const effectiveImageOpacity = 
+    settings.imageOpacity ?? 
+    settings.appearance?.imageOpacity ?? 
+    1;
+
+  const effectiveOverlayOpacity = 
+    settings.overlayOpacity ?? 
+    settings.appearance?.overlay?.opacity ?? 
+    0;
+
+  const effectiveOverlayColor = 
+    settings.appearance?.overlay?.color || 
+    "";
+
+  const effectiveBackgroundColor = 
+    settings.appearance?.backgroundColor || 
+    settings.bgColor || 
+    "transparent";
+
+  const effectiveImageScale = settings.imageScale ?? 1;
+  const effectiveImageX = settings.imageX ?? 50;
+  const effectiveImageY = settings.imageY ?? 50;
 
   // Só mostramos imagem se o TIPO selecionado for 'image' E existir uma URL e não houver erro
-  const shouldShowImage = hasValidImage && !imageError;
+  const shouldShowImage = effectiveBgType === "image" && hasValidImage && !imageError;
 
   return (
     <div
-      key={`${settings.bgType}-${bgImage}`}
+      key={`${effectiveBgType}-${bgImage}`}
       className={cn(
         "absolute inset-0 overflow-hidden pointer-events-none min-h-100",
         className,
@@ -67,13 +96,10 @@ export function SectionBackground({
       <div
         className="absolute inset-0 z-0 transition-colors duration-500"
         style={{
-          backgroundColor:
-            settings.appearance?.backgroundColor ||
-            settings.bgColor ||
-            "transparent",
-          backgroundImage: settings.bgType === "color" ? "none" : undefined,
+          backgroundColor: effectiveBackgroundColor,
+          backgroundImage: effectiveBgType === "color" ? "none" : undefined,
           display:
-            settings.bgType === "color" || !shouldShowImage ? "block" : "none",
+            effectiveBgType === "color" || !shouldShowImage ? "block" : "none",
         }}
       />
 
@@ -91,9 +117,9 @@ export function SectionBackground({
             fill
             className="object-cover"
             style={{
-              opacity: settings.imageOpacity ?? 1,
-              transform: `scale(${settings.imageScale ?? 1})`,
-              objectPosition: `${settings.imageX ?? 50}% ${settings.imageY ?? 50}%`,
+              opacity: effectiveImageOpacity,
+              transform: `scale(${effectiveImageScale})`,
+              objectPosition: `${effectiveImageX}% ${effectiveImageY}%`,
             }}
             priority={!!defaultImage}
             onError={() => {
@@ -106,15 +132,16 @@ export function SectionBackground({
         </div>
       )}
 
-      {/* Overlay/Gradient Layer */}
+      {/* Overlay Layer */}
       <div
         className={cn(
           "absolute inset-0 z-1 transition-opacity duration-500",
-          gradientClassName ||
-            "bg-linear-to-b from-black/20 via-black/50 to-black",
+          !effectiveOverlayColor && !gradientClassName && "bg-linear-to-b from-black/20 via-black/50 to-black",
+          !effectiveOverlayColor && gradientClassName
         )}
         style={{
-          opacity: settings.overlayOpacity ?? 0,
+          opacity: effectiveOverlayOpacity,
+          backgroundColor: effectiveOverlayColor,
         }}
       />
     </div>

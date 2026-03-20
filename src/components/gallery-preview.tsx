@@ -20,7 +20,10 @@ import {
 } from "@/lib/booking-data";
 import { type GalleryItem, galleryService } from "@/lib/gallery-service";
 import { cn, renderSafeText } from "@/lib/utils";
-import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import {
+  SectionBackground,
+  type SectionBackgroundSettings,
+} from "./admin/site_editor/components/SectionBackground";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 export function GalleryPreview() {
@@ -249,6 +252,15 @@ export function GalleryPreview() {
                 (appearance.backgroundColor as string) ||
                 "",
             ),
+            cardBgColor: sanitizeColor(
+              (configGallery.cardBgColor as string) ||
+              (configGallery.cardBackgroundColor as string) ||
+              (configGallery.card_background_color as string) ||
+              ((configGallery.cardConfig as Record<string, unknown>)?.cardBackgroundColor as string) ||
+              ((configGallery.cardConfig as Record<string, unknown>)?.backgroundColor as string) ||
+              (appearance.cardBgColor as string) ||
+              (content.cardBgColor as string)
+            ),
           };
           setSettings(
             (normalizedGallery as GallerySettings) || getGallerySettings(),
@@ -419,7 +431,7 @@ export function GalleryPreview() {
           "ring-4 ring-primary ring-inset z-50",
       )}
     >
-      <SectionBackground settings={settings} />
+      <SectionBackground settings={settings as SectionBackgroundSettings} />
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="text-center mb-16">
@@ -450,6 +462,9 @@ export function GalleryPreview() {
                 <div
                   key={image?.id}
                   className="aspect-square rounded-lg overflow-hidden hover:scale-105 transition-transform relative"
+                  style={{
+                    backgroundColor: settings.cardBgColor || "transparent",
+                  }}
                 >
                   <Image
                     src={image?.imageUrl || ""}
@@ -475,7 +490,12 @@ export function GalleryPreview() {
                       key={image?.id}
                       className="pl-2 md:pl-4 basis-1/2 md:basis-1/3 lg:basis-1/4"
                     >
-                      <div className="aspect-square rounded-lg overflow-hidden relative group">
+                      <div
+                        className="aspect-square rounded-lg overflow-hidden relative group"
+                        style={{
+                          backgroundColor: settings.cardBgColor || "transparent",
+                        }}
+                      >
                         <Image
                           src={image?.imageUrl || ""}
                           alt={renderSafeText(image?.title) || ""}

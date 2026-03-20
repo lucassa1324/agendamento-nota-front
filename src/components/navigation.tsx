@@ -41,6 +41,7 @@ export function Navigation({
       agendar: true,
     },
   );
+  console.log(">>> [NAVIGATION] pageVisibility:", pageVisibility);
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
   >({});

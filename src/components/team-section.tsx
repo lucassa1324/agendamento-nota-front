@@ -6,7 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import { getTeamSettings, sanitizeColor, type TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import {
+  SectionBackground,
+  type SectionBackgroundSettings,
+} from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
@@ -71,6 +74,10 @@ export function TeamSection() {
           (content.subtitleFont as string),
         cardBgColor: sanitizeColor(
           (rawTeam.cardBgColor as string) ||
+          (rawTeam.cardBackgroundColor as string) ||
+          (rawTeam.card_background_color as string) ||
+          ((rawTeam.cardConfig as Record<string, unknown>)?.cardBackgroundColor as string) ||
+          ((rawTeam.cardConfig as Record<string, unknown>)?.backgroundColor as string) ||
           (appearance.cardBgColor as string) ||
           (content.cardBgColor as string)
         ),
@@ -170,16 +177,16 @@ export function TeamSection() {
   return (
     <SessionWrapper appearance={settings?.appearance}>
       <section
-        id="team"
+        id="equipe"
         className={cn(
           "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
-          highlightedElement === "team" &&
+          highlightedElement === "equipe" &&
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >
-        <SectionBackground settings={settings} />
+      <SectionBackground settings={settings as SectionBackgroundSettings} />
 
-        <div className="container relative z-10 mx-auto px-4">
+      <div className="container relative z-10 mx-auto px-4">
         <div className="text-center mb-16">
           <h2
             className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"

@@ -2,7 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
+import {
+  SectionBackground,
+  type SectionBackgroundSettings,
+} from "@/components/admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "@/components/admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { useStudio } from "@/context/studio-context";
@@ -146,14 +149,14 @@ export function StorySection() {
   return (
     <SessionWrapper appearance={settings?.appearance}>
       <section
-        id="story"
+        id="historia"
         className={cn(
           "relative py-20 md:py-32 overflow-hidden transition-all duration-500",
-          highlightedElement === "story" &&
+          highlightedElement === "historia" &&
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >
-        <SectionBackground settings={settings} />
+        <SectionBackground settings={settings as SectionBackgroundSettings} />
         <div className="container mx-auto px-4 relative z-10">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="relative h-100 w-full overflow-hidden rounded-2xl shadow-xl">

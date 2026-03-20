@@ -693,8 +693,9 @@ export function useEditorActions({
   const handleUpdateValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
       handleUpdateValuesState(updates);
+      const newSettings = { ...valuesSettings, ...updates };
       scheduleDraftSave("valuesSettings", () =>
-        saveValuesSettings({ ...valuesSettings, ...updates }),
+        saveValuesSettings(newSettings),
       );
     },
     [

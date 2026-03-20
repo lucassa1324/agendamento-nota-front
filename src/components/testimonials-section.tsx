@@ -11,7 +11,10 @@ import {
   type TestimonialsSettings,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import {
+  SectionBackground,
+  type SectionBackgroundSettings,
+} from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 
 export function TestimonialsSection() {
@@ -78,6 +81,10 @@ export function TestimonialsSection() {
             (content.subtitleFont as string),
           cardBgColor: sanitizeColor(
             (rawTestimonials.cardBgColor as string) ||
+            (rawTestimonials.cardBackgroundColor as string) ||
+            (rawTestimonials.card_background_color as string) ||
+            ((rawTestimonials.cardConfig as Record<string, unknown>)?.cardBackgroundColor as string) ||
+            ((rawTestimonials.cardConfig as Record<string, unknown>)?.backgroundColor as string) ||
             (appearance.cardBgColor as string) ||
             (content.cardBgColor as string)
           ),
@@ -193,9 +200,9 @@ export function TestimonialsSection() {
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >
-        <SectionBackground settings={settings} />
+      <SectionBackground settings={settings as SectionBackgroundSettings} />
 
-        <div className="container relative z-10 mx-auto px-4">
+      <div className="container relative z-10 mx-auto px-4">
         <div className="text-center mb-16">
           <h2
             className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"

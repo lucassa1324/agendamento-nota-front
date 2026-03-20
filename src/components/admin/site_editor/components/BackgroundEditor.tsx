@@ -1,33 +1,17 @@
 "use client";
 
-import { RotateCcw, X, Upload } from "lucide-react";
+import { RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
-import { cn } from "@/lib/utils";
 import { useStudio } from "@/context/studio-context";
+import { cn } from "@/lib/utils";
 import { ImageUploader } from "./ImageUploader";
+import type { SectionBackgroundSettings } from "./SectionBackground";
 
-export interface BackgroundSettings {
-  bgType: "color" | "image";
-  bgColor: string;
-  bgImage: string;
-  imageOpacity: number;
-  overlayOpacity: number;
-  imageScale: number;
-  imageX: number;
-  imageY: number;
-  appearance?: {
-    backgroundColor?: string;
-    backgroundImageUrl?: string;
-    overlay?: {
-      color: string;
-      opacity: number;
-    };
-  };
-}
+export type BackgroundSettings = SectionBackgroundSettings;
 
 export interface BackgroundEditorProps {
   settings: BackgroundSettings;
@@ -351,8 +335,87 @@ export function BackgroundEditor({
           min={0}
           max={100}
           step={1}
-          onValueChange={([v]) => onUpdate({ overlayOpacity: v / 100 })}
+          onValueChange={([v]) => onUpdate({ 
+            overlayOpacity: v / 100,
+            appearance: {
+              ...settings.appearance,
+              overlay: {
+                ...settings.appearance?.overlay,
+                opacity: v / 100,
+                color: settings.appearance?.overlay?.color || ""
+              }
+            }
+          })}
         />
+        
+        {/* Color Picker para Sobreposição - Só mostra se opacidade > 0 */}
+        {(settings.overlayOpacity || 0) > 0 && (
+          <div className="pt-3 space-y-1.5 animate-in fade-in slide-in-from-top-1">
+            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+              Cor da Sobreposição
+              {settings.appearance?.overlay?.color && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 hover:text-primary"
+                  onClick={() =>
+                    onUpdate({
+                      appearance: {
+                        ...settings.appearance,
+                        overlay: {
+                          ...settings.appearance?.overlay,
+                          color: "",
+                              opacity: settings.overlayOpacity ?? 0
+                        },
+                      },
+                    })
+                  }
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </Button>
+              )}
+            </legend>
+            <div className="flex gap-2">
+              <Input
+                type="color"
+                value={settings.appearance?.overlay?.color || "#000000"}
+                className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = e.target.value;
+                  onUpdate({
+                    appearance: {
+                      ...settings.appearance,
+                      overlay: {
+                        ...settings.appearance?.overlay,
+                        color: value,
+                        opacity: settings.overlayOpacity ?? 0
+                      },
+                    },
+                  });
+                }}
+              />
+              <Input
+                value={settings.appearance?.overlay?.color || ""}
+                placeholder="Padrão (Gradiente)"
+                className="h-8 text-[10px] flex-1 uppercase"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = e.target.value;
+                  onUpdate({
+                    appearance: {
+                      ...settings.appearance,
+                      overlay: {
+                        ...settings.appearance?.overlay,
+                        color: value,
+                        opacity: settings.overlayOpacity ?? 0
+                      },
+                    },
+                  });
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         <p className="text-[9px] text-muted-foreground mt-1">
           {settings.bgType === "image"
             ? "Cria um degradê suave para melhorar a leitura do texto sobre a imagem."

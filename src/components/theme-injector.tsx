@@ -9,6 +9,10 @@ import {
   defaultFontSettings,
   sanitizeColor,
 } from "@/lib/booking-data";
+
+// Extender FontSettings para incluir extraFonts
+type ExtendedFontSettings = FontSettings & { extraFonts?: string[] };
+
 import type {
   LayoutGlobalSettings,
   SiteConfigData,
@@ -24,7 +28,11 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
   const { studio, isLoading } = useStudio();
   const { isInitialized, setIsInitialized } = useEditorState();
 
-  const loadSettings = useCallback(() => {
+  const loadSettings = useCallback((): {
+    colors: ColorSettings;
+    fonts: ExtendedFontSettings;
+    sectionStyles: Record<string, string>;
+  } => {
     // REQUISITO: Banco de Dados como única fonte da verdade.
     // Removemos fallbacks para localStorage aqui para evitar loops e inconsistências no F5.
 
@@ -151,12 +159,39 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
         sectionStyles["--card-background"] = layoutGlobal.card_bg_color;
       }
 
-      return { colors: colorSettings, fonts: fontSettings, sectionStyles };
+      // Coleta de Fontes Extras (Seções)
+      const extraFonts = new Set<string>();
+      
+      // Hero
+      const hero = config.hero as Record<string, unknown> | undefined;
+      const heroContent = hero?.content as Record<string, unknown> | undefined;
+      const heroAppearance = hero?.appearance as Record<string, unknown> | undefined;
+      
+      const heroTitleFont = (heroAppearance?.titleFont as string) || (heroContent?.titleFont as string) || (hero?.titleFont as string);
+      if (heroTitleFont) extraFonts.add(heroTitleFont);
+      
+      const heroSubtitleFont = (heroAppearance?.subtitleFont as string) || (heroContent?.subtitleFont as string) || (hero?.subtitleFont as string);
+      if (heroSubtitleFont) extraFonts.add(heroSubtitleFont);
+
+      // Services
+      const services = config.services as Record<string, unknown> | undefined;
+      const servicesAppearance = services?.appearance as Record<string, unknown> | undefined;
+      if (servicesAppearance?.titleFont) extraFonts.add(servicesAppearance.titleFont as string);
+      if (servicesAppearance?.subtitleFont) extraFonts.add(servicesAppearance.subtitleFont as string);
+      if (servicesAppearance?.cardTitleFont) extraFonts.add(servicesAppearance.cardTitleFont as string);
+      if (servicesAppearance?.cardDescriptionFont) extraFonts.add(servicesAppearance.cardDescriptionFont as string);
+      if (servicesAppearance?.cardPriceFont) extraFonts.add(servicesAppearance.cardPriceFont as string);
+
+      return { 
+        colors: colorSettings, 
+        fonts: { ...fontSettings, extraFonts: Array.from(extraFonts) }, 
+        sectionStyles 
+      };
     }
 
     return {
       colors: defaultColorSettings,
-      fonts: defaultFontSettings,
+      fonts: { ...defaultFontSettings, extraFonts: [] },
       sectionStyles: {} as Record<string, string>,
     };
   }, [studio?.config]);
@@ -168,7 +203,7 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
   } = loadSettings();
 
   const [colors, setColors] = useState<ColorSettings | null>(initialColors);
-  const [fonts, setFonts] = useState<FontSettings | null>(initialFonts);
+  const [fonts, setFonts] = useState<ExtendedFontSettings | null>(initialFonts);
   const [sectionStyles, setSectionStyles] = useState<Record<string, string>>(
     initialSectionStyles,
   );
@@ -222,8 +257,44 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
       if (event.data.type === "UPDATE_COLORS") {
         setColors(event.data.settings);
       } else if (event.data.type === "UPDATE_TYPOGRAPHY") {
-        setFonts(event.data.settings);
-      } else if (event.data.type === "UPDATE_EDITOR_STATE") {
+        setFonts((prev) => 
+          prev ? { ...prev, ...event.data.settings } : event.data.settings
+        );
+      } else if (event.data.type === "UPDATE_HERO_SETTINGS") {
+        console.log(">>> [THEME] Recebido update HERO:", event.data.settings);
+        setFonts((prev) => {
+          // Se prev for null, tentamos recuperar do loadSettings ou usamos default
+          const current = prev || loadSettings().fonts;
+          const newExtras = new Set(current.extraFonts || []);
+          const settings = event.data.settings;
+          
+          if (settings?.titleFont) {
+             console.log(">>> [THEME] Adicionando fonte extra (Hero Title):", settings.titleFont);
+             newExtras.add(settings.titleFont);
+          }
+          if (settings?.subtitleFont) {
+             console.log(">>> [THEME] Adicionando fonte extra (Hero Subtitle):", settings.subtitleFont);
+             newExtras.add(settings.subtitleFont);
+          }
+          
+          return { ...current, extraFonts: Array.from(newExtras) };
+        });
+      } else if (event.data.type === "UPDATE_SERVICES_SETTINGS") {
+        console.log(">>> [THEME] Recebido update SERVICES:", event.data.settings);
+        setFonts((prev) => {
+           const current = prev || loadSettings().fonts;
+           const newExtras = new Set(current.extraFonts || []);
+           const settings = event.data.settings;
+
+            if (settings?.titleFont) newExtras.add(settings.titleFont);
+            if (settings?.subtitleFont) newExtras.add(settings.subtitleFont);
+            if (settings?.cardTitleFont) newExtras.add(settings.cardTitleFont);
+            if (settings?.cardDescriptionFont) newExtras.add(settings.cardDescriptionFont);
+            if (settings?.cardPriceFont) newExtras.add(settings.cardPriceFont);
+            
+            return { ...current, extraFonts: Array.from(newExtras) };
+       });
+     } else if (event.data.type === "UPDATE_EDITOR_STATE") {
         // Quando o estado completo mudar, recarregamos tudo
         updateTheme();
       }
@@ -243,11 +314,48 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
   useEffect(() => {
     if (isFixedColorPage || !colors || !fonts) return;
 
-    // Forçar Injeção Direta no DOM (:root)
+    // Forçar Injeção Direta no DOM (:root) e carregar fontes
     const applyToDocument = (doc: Document) => {
       const root = doc.documentElement;
+      console.log(">>> [THEME] Injetando estilos e fontes no documento:", fonts);
 
-      // Fonts
+      // 1. Injetar Link do Google Fonts
+      const fontFamilies = new Set<string>();
+      const defaultFonts = ["Inter", "Playfair Display"];
+
+      if (fonts.headingFont && !defaultFonts.includes(fonts.headingFont))
+        fontFamilies.add(fonts.headingFont.replace(/\s+/g, "+"));
+      if (fonts.subtitleFont && !defaultFonts.includes(fonts.subtitleFont))
+        fontFamilies.add(fonts.subtitleFont.replace(/\s+/g, "+"));
+      if (fonts.bodyFont && !defaultFonts.includes(fonts.bodyFont))
+        fontFamilies.add(fonts.bodyFont.replace(/\s+/g, "+"));
+      
+      // Adicionar fontes extras coletadas
+      if (fonts.extraFonts) {
+        fonts.extraFonts.forEach(font => {
+          if (font && !defaultFonts.includes(font)) {
+            fontFamilies.add(font.replace(/\s+/g, "+"));
+          }
+        });
+      }
+
+      const familiesArray = Array.from(fontFamilies);
+      if (familiesArray.length > 0) {
+        const googleFontsUrl = `https://fonts.googleapis.com/css2?${familiesArray.map((f) => `family=${f}:wght@400;500;600;700;800;900`).join("&")}&display=swap`;
+        
+        let link = doc.getElementById("dynamic-google-fonts") as HTMLLinkElement;
+        if (!link) {
+          link = doc.createElement("link");
+          link.id = "dynamic-google-fonts";
+          link.rel = "stylesheet";
+          doc.head.appendChild(link);
+        }
+        if (link.href !== googleFontsUrl) {
+          link.href = googleFontsUrl;
+        }
+      }
+
+      // Fonts Variables
       if (fonts.bodyFont) {
         root.style.setProperty("--font-body", `"${fonts.bodyFont}", sans-serif`);
         root.style.setProperty("--font-sans", `"${fonts.bodyFont}", sans-serif`);
@@ -341,6 +449,15 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
     fontFamilies.add(fonts.subtitleFont.replace(/\s+/g, "+"));
   if (fonts.bodyFont && !defaultFonts.includes(fonts.bodyFont))
     fontFamilies.add(fonts.bodyFont.replace(/\s+/g, "+"));
+  
+  // Adicionar fontes extras coletadas
+  if (fonts.extraFonts) {
+    fonts.extraFonts.forEach(font => {
+      if (font && !defaultFonts.includes(font)) {
+        fontFamilies.add(font.replace(/\s+/g, "+"));
+      }
+    });
+  }
 
   const familiesArray = Array.from(fontFamilies);
   const googleFontsUrl =
@@ -373,15 +490,15 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
         
         /* Font Family Overrides */
         h1, h2, .font-serif, .font-title {
-          font-family: ${fonts.headingFont ? `"${fonts.headingFont}", serif` : "inherit"} !important;
+          font-family: ${fonts.headingFont ? `"${fonts.headingFont}", serif` : "inherit"};
         }
 
         h3, h4, .font-subtitle {
-          font-family: ${fonts.subtitleFont ? `"${fonts.subtitleFont}", sans-serif` : "inherit"} !important;
+          font-family: ${fonts.subtitleFont ? `"${fonts.subtitleFont}", sans-serif` : "inherit"};
         }
         
         body, p, span, li, button, .font-sans, .font-body {
-          font-family: ${fonts.bodyFont ? `"${fonts.bodyFont}", sans-serif` : "inherit"} !important;
+          font-family: ${fonts.bodyFont ? `"${fonts.bodyFont}", sans-serif` : "inherit"};
         }
       `}
       </style>

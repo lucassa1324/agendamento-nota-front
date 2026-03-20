@@ -1,5 +1,5 @@
 import { type RefObject, useCallback, useEffect, useMemo } from "react";
-import { normalizeStepSettings } from "@/lib/booking-data";
+import { normalizeStepSettings, sanitizeColor } from "@/lib/booking-data";
 import type { useEditorState } from "./use-editor-state";
 
 interface UseEditorSyncProps {
@@ -121,12 +121,40 @@ export function useEditorSync({
   }, [lastSavedServices, servicesSettings]);
 
   const previewValuesSettings = useMemo(() => {
-    const merged = { ...lastSavedValues, ...valuesSettings };
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
+    const merged = { ...lastSavedValues, ...valuesSettings } as
+      | (typeof valuesSettings & Record<string, unknown>)
+      | (typeof lastSavedValues & Record<string, unknown>);
     if (valuesSettings.bgType === "color") {
       merged.bgImage = "";
       if (merged.appearance)
         merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    const mergedRecord = merged as Record<string, unknown>;
+    const mergedCardConfig =
+      mergedRecord.cardConfig as Record<string, unknown> | undefined;
+    const mergedContent =
+      mergedRecord.content as Record<string, unknown> | undefined;
+    const mergedItemsStyle =
+      mergedRecord.itemsStyle as Record<string, unknown> | undefined;
+    const mergedAppearance =
+      mergedRecord.appearance as Record<string, unknown> | undefined;
+    const resolvedCardBgColor =
+      sanitizeColor(
+        (merged.cardBgColor as string | undefined) ||
+          (mergedRecord.cardBackgroundColor as string | undefined) ||
+          (mergedRecord.card_background_color as string | undefined) ||
+          (mergedCardConfig?.cardBackgroundColor as string | undefined) ||
+          (mergedCardConfig?.backgroundColor as string | undefined) ||
+          (mergedContent?.cardBgColor as string | undefined) ||
+          (mergedItemsStyle?.itemBackgroundColor as string | undefined) ||
+          (mergedAppearance?.cardBgColor as string | undefined) ||
+          (mergedAppearance?.cardBackgroundColor as string | undefined),
+      ) || "";
+    if (!merged.cardBgColor && resolvedCardBgColor) {
+      merged.cardBgColor = resolvedCardBgColor;
+    }
+    if (!mergedRecord.cardBackgroundColor && resolvedCardBgColor) {
+      mergedRecord.cardBackgroundColor = resolvedCardBgColor;
     }
     return merged;
   }, [lastSavedValues, valuesSettings]);
@@ -345,10 +373,15 @@ export function useEditorSync({
     () => syncToIframe("UPDATE_SERVICES_SETTINGS", previewServicesSettings),
     [previewServicesSettings, syncToIframe],
   );
-  useEffect(
-    () => syncToIframe("UPDATE_VALUES_SETTINGS", previewValuesSettings),
-    [previewValuesSettings, syncToIframe],
-  );
+  useEffect(() => {
+    console.log(">>> [EDITOR_SYNC] Syncing values settings to iframe:", previewValuesSettings);
+    syncToIframe("UPDATE_VALUES_SETTINGS", previewValuesSettings);
+  }, [previewValuesSettings, syncToIframe]);
+
+  useEffect(() => {
+    console.log(">>> [EDITOR_SYNC] Syncing booking service settings to iframe:", previewBookingServiceSettings);
+    syncToIframe("UPDATE_BOOKING_SERVICE_SETTINGS", previewBookingServiceSettings);
+  }, [previewBookingServiceSettings, syncToIframe]);
   useEffect(
     () => syncToIframe("UPDATE_TYPOGRAPHY", previewFontSettings),
     [previewFontSettings, syncToIframe],
@@ -372,14 +405,6 @@ export function useEditorSync({
   useEffect(
     () => syncToIframe("UPDATE_FOOTER_SETTINGS", previewFooterSettings),
     [previewFooterSettings, syncToIframe],
-  );
-  useEffect(
-    () =>
-      syncToIframe(
-        "UPDATE_BOOKING_SERVICE_SETTINGS",
-        previewBookingServiceSettings,
-      ),
-    [previewBookingServiceSettings, syncToIframe],
   );
   useEffect(
     () =>
@@ -421,53 +446,41 @@ export function useEditorSync({
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "BOOKING_FLOW_READY") {
-        console.log(">>> [EDITOR] BookingFlow ready, resending settings...");
+      if (event.data?.type === "BOOKING_FLOW_READY" || event.data?.type === "IFRAME_READY") {
+        console.log(`>>> [EDITOR] ${event.data.type} recebido, enviando todas as configurações...`);
         if (iframeRef.current?.contentWindow) {
           const win = iframeRef.current.contentWindow;
-          win.postMessage(
-            {
-              type: "UPDATE_BOOKING_SERVICE_SETTINGS",
-              settings: previewBookingServiceSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_BOOKING_DATE_SETTINGS",
-              settings: previewBookingDateSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_BOOKING_TIME_SETTINGS",
-              settings: previewBookingTimeSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_BOOKING_FORM_SETTINGS",
-              settings: previewBookingFormSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_BOOKING_CONFIRMATION_SETTINGS",
-              settings: previewBookingConfirmationSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            { type: "UPDATE_COLORS", settings: previewColorSettings },
-            "*",
-          );
-          win.postMessage(
-            { type: "UPDATE_TYPOGRAPHY", settings: previewFontSettings },
-            "*",
-          );
+          
+          // Enviar configurações globais de tema
+          win.postMessage({ type: "UPDATE_COLORS", settings: previewColorSettings }, "*");
+          win.postMessage({ type: "UPDATE_TYPOGRAPHY", settings: previewFontSettings }, "*");
+          
+          // Enviar visibilidade
+          win.postMessage({ type: "UPDATE_PAGE_VISIBILITY", settings: pageVisibility }, "*");
+          win.postMessage({ type: "UPDATE_VISIBLE_SECTIONS", settings: visibleSections }, "*");
+
+          // Enviar configurações de cada seção
+          win.postMessage({ type: "UPDATE_HERO_SETTINGS", settings: previewHeroSettings }, "*");
+          win.postMessage({ type: "UPDATE_ABOUT_HERO_SETTINGS", settings: previewAboutHeroSettings }, "*");
+          win.postMessage({ type: "UPDATE_STORY_SETTINGS", settings: previewStorySettings }, "*");
+          win.postMessage({ type: "UPDATE_TEAM_SETTINGS", settings: previewTeamSettings }, "*");
+          win.postMessage({ type: "UPDATE_TESTIMONIALS_SETTINGS", settings: previewTestimonialsSettings }, "*");
+          win.postMessage({ type: "UPDATE_SERVICES_SETTINGS", settings: previewServicesSettings }, "*");
+          win.postMessage({ type: "UPDATE_VALUES_SETTINGS", settings: previewValuesSettings }, "*");
+          win.postMessage({ type: "UPDATE_GALLERY_SETTINGS", settings: previewGallerySettings }, "*");
+          win.postMessage({ type: "UPDATE_CTA_SETTINGS", settings: previewCTASettings }, "*");
+          win.postMessage({ type: "UPDATE_HEADER_SETTINGS", settings: previewHeaderSettings }, "*");
+          win.postMessage({ type: "UPDATE_FOOTER_SETTINGS", settings: previewFooterSettings }, "*");
+
+          // Enviar configurações de agendamento
+          win.postMessage({ type: "UPDATE_BOOKING_SERVICE_SETTINGS", settings: previewBookingServiceSettings }, "*");
+          win.postMessage({ type: "UPDATE_BOOKING_DATE_SETTINGS", settings: previewBookingDateSettings }, "*");
+          win.postMessage({ type: "UPDATE_BOOKING_TIME_SETTINGS", settings: previewBookingTimeSettings }, "*");
+          win.postMessage({ type: "UPDATE_BOOKING_FORM_SETTINGS", settings: previewBookingFormSettings }, "*");
+          win.postMessage({ type: "UPDATE_BOOKING_CONFIRMATION_SETTINGS", settings: previewBookingConfirmationSettings }, "*");
+          
+          // Dados do site completo (fallback)
+          win.postMessage({ type: "UPDATE_SITE_DATA", data: siteCustomization }, "*");
         }
       }
     };
@@ -475,6 +488,17 @@ export function useEditorSync({
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
   }, [
+    previewHeroSettings,
+    previewAboutHeroSettings,
+    previewStorySettings,
+    previewTeamSettings,
+    previewTestimonialsSettings,
+    previewServicesSettings,
+    previewValuesSettings,
+    previewGallerySettings,
+    previewCTASettings,
+    previewHeaderSettings,
+    previewFooterSettings,
     previewBookingServiceSettings,
     previewBookingDateSettings,
     previewBookingTimeSettings,
@@ -482,6 +506,9 @@ export function useEditorSync({
     previewBookingConfirmationSettings,
     previewColorSettings,
     previewFontSettings,
+    pageVisibility,
+    visibleSections,
+    siteCustomization,
     iframeRef,
   ]);
 

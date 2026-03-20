@@ -12,7 +12,10 @@ import {
   sanitizeColor,
 } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
-import { SectionBackground } from "./admin/site_editor/components/SectionBackground";
+import {
+  SectionBackground,
+  type SectionBackgroundSettings,
+} from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 
 export function CTASection() {
@@ -29,6 +32,7 @@ export function CTASection() {
       agendar: true,
     },
   );
+  console.log(">>> [CTA] pageVisibility:", pageVisibility);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
   );
@@ -197,7 +201,7 @@ export function CTASection() {
           highlightedElement === "cta" && "ring-4 ring-primary ring-inset z-50",
         )}
       >
-      <SectionBackground settings={settings} />
+      <SectionBackground settings={settings as SectionBackgroundSettings} />
 
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl p-8 md:p-16 text-center border border-border/50 shadow-xl">

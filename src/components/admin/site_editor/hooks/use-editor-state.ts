@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useStudio } from "@/context/studio-context";
 import type {
-  AppearanceSettings,
   BookingStepSettings,
   ColorSettings,
   CTASettings,
@@ -16,7 +15,6 @@ import type {
   TestimonialsSettings,
   ValuesSettings,
 } from "@/lib/booking-data";
-import { type SiteConfigData } from "@/lib/site-config-types";
 import {
   defaultAboutHeroSettings,
   defaultBookingConfirmationSettings,
@@ -36,132 +34,887 @@ import {
   defaultTeamSettings,
   defaultTestimonialsSettings,
   defaultValuesSettings,
+  normalizeStepSettings,
   sanitizeColor,
 } from "@/lib/booking-data";
+import type { SiteConfigData } from "@/lib/site-config-types";
 import type { BackgroundSettings } from "../components/BackgroundEditor";
+
+const resolveBgType = (
+  explicit: unknown,
+  imageValue?: string,
+): "color" | "image" =>
+  explicit === "image" || explicit === "color"
+    ? explicit
+    : imageValue
+      ? "image"
+      : "color";
 
 export function useEditorState() {
   const { studio } = useStudio();
   // Helper para sincronizar bgImage com appearance.backgroundImageUrl
   const syncBackground = useCallback(
-    <
-      T extends {
-        bgImage?: string;
-        bgType?: string;
-        bgColor?: string;
-        titleColor?: string;
-        subtitleColor?: string;
-        titleFont?: string;
-        subtitleFont?: string;
-        cardBgColor?: string;
-        accentColor?: string;
-        appearance?: AppearanceSettings;
-      },
-    >(
-      prev: T,
-      updates: Partial<T>,
-    ): T => {
-      // Merge inicial raso para pegar as propriedades de nível superior
-      const state = { ...prev, ...updates };
+    <T extends object>(prev: T, updates: Partial<T>): T => {
+      const state = { ...prev, ...updates } as Record<string, unknown>;
+      const upds = updates as Record<string, unknown>;
+      const prvs = prev as Record<string, unknown>;
+      const appearanceUpdate = upds.appearance as
+        | Record<string, unknown>
+        | undefined;
+      const appearancePrev = prvs.appearance as
+        | Record<string, unknown>
+        | undefined;
 
-      // Garantir que o objeto appearance seja mesclado profundamente (Deep Merge)
-      // Se updates trouxer um appearance, mesclamos com o anterior em vez de sobrescrever.
-      if (updates.appearance || prev.appearance) {
-        state.appearance = {
-          ...(prev.appearance || {}),
-          ...(updates.appearance || {}),
-        } as T["appearance"];
+      const nextAppearance = {
+        ...(appearancePrev || {}),
+        ...(appearanceUpdate || {}),
+      } as Record<string, unknown>;
+
+      // Helper para sincronizar cores com fallback seguro (Blindagem)
+      const syncColor = (
+        fieldName: string,
+        updateVal: unknown,
+        prevVal: unknown,
+        appearanceKey?: string,
+      ) => {
+        // Tenta pegar o valor do update (topo ou appearance)
+        const valFromUpdate =
+          updateVal !== undefined
+            ? updateVal
+            : appearanceKey
+              ? appearanceUpdate?.[appearanceKey]
+              : undefined;
+
+        if (valFromUpdate !== undefined) {
+          const sanitized = sanitizeColor(valFromUpdate);
+          // Se o valor de atualização for inválido e não for string vazia, mantemos o valor anterior
+          const final =
+            sanitized !== undefined
+              ? sanitized
+              : valFromUpdate === ""
+                ? ""
+                : (prevVal as string);
+          state[fieldName] = final;
+          if (appearanceKey) nextAppearance[appearanceKey] = final;
+        } else if (prevVal !== undefined) {
+          const sanitized = sanitizeColor(prevVal);
+          const final =
+            sanitized !== undefined
+              ? sanitized
+              : prevVal === ""
+                ? ""
+                : (prevVal as string);
+          state[fieldName] = final;
+          if (appearanceKey) nextAppearance[appearanceKey] = final;
+        }
+      };
+
+      // Tipografia e Cores de Texto
+      syncColor("titleColor", upds.titleColor, prvs.titleColor, "titleColor");
+      syncColor(
+        "subtitleColor",
+        upds.subtitleColor,
+        prvs.subtitleColor,
+        "subtitleColor",
+      );
+
+      if (upds.titleFont !== undefined) {
+        nextAppearance.titleFont = upds.titleFont;
+      } else if (prvs.titleFont !== undefined) {
+        nextAppearance.titleFont = prvs.titleFont;
       }
 
-      const nextAppearance = { ...(state.appearance || {}) };
-
-      // Tipografia e Cores de Texto (Prioridade para o que vem no updates, depois prev top-level, depois appearance)
-      if (updates.titleColor !== undefined) {
-        nextAppearance.titleColor = sanitizeColor(updates.titleColor);
-        state.titleColor = sanitizeColor(updates.titleColor);
-      } else if (prev.titleColor !== undefined) {
-        nextAppearance.titleColor = sanitizeColor(prev.titleColor);
-        state.titleColor = sanitizeColor(prev.titleColor);
-      }
-      
-      if (updates.subtitleColor !== undefined) {
-        nextAppearance.subtitleColor = sanitizeColor(updates.subtitleColor);
-        state.subtitleColor = sanitizeColor(updates.subtitleColor);
-      } else if (prev.subtitleColor !== undefined) {
-        nextAppearance.subtitleColor = sanitizeColor(prev.subtitleColor);
-        state.subtitleColor = sanitizeColor(prev.subtitleColor);
+      if (upds.subtitleFont !== undefined) {
+        nextAppearance.subtitleFont = upds.subtitleFont;
+      } else if (prvs.subtitleFont !== undefined) {
+        nextAppearance.subtitleFont = prvs.subtitleFont;
       }
 
-      if (updates.titleFont !== undefined) {
-        nextAppearance.titleFont = updates.titleFont;
-      } else if (prev.titleFont !== undefined) {
-        nextAppearance.titleFont = prev.titleFont;
+      // Card Styles Sync
+      syncColor(
+        "cardBgColor",
+        upds.cardBgColor,
+        prvs.cardBgColor,
+        "cardBgColor",
+      );
+      syncColor(
+        "cardTitleColor",
+        upds.cardTitleColor,
+        prvs.cardTitleColor,
+        "cardTitleColor",
+      );
+      syncColor(
+        "cardDescriptionColor",
+        upds.cardDescriptionColor,
+        prvs.cardDescriptionColor,
+        "cardDescriptionColor",
+      );
+      syncColor(
+        "cardIconColor",
+        upds.cardIconColor,
+        prvs.cardIconColor,
+        "cardIconColor",
+      );
+
+      syncColor(
+        "cardPriceColor",
+        upds.cardPriceColor,
+        prvs.cardPriceColor,
+        "cardPriceColor",
+      );
+
+      syncColor("badgeColor", upds.badgeColor, prvs.badgeColor, "badgeColor");
+      syncColor(
+        "badgeTextColor",
+        upds.badgeTextColor,
+        prvs.badgeTextColor,
+        "badgeTextColor",
+      );
+      syncColor(
+        "primaryButtonColor",
+        upds.primaryButtonColor,
+        prvs.primaryButtonColor,
+        "primaryButtonColor",
+      );
+      syncColor(
+        "secondaryButtonColor",
+        upds.secondaryButtonColor,
+        prvs.secondaryButtonColor,
+        "secondaryButtonColor",
+      );
+      syncColor(
+        "primaryButtonTextColor",
+        upds.primaryButtonTextColor,
+        prvs.primaryButtonTextColor,
+        "primaryButtonTextColor",
+      );
+      syncColor(
+        "secondaryButtonTextColor",
+        upds.secondaryButtonTextColor,
+        prvs.secondaryButtonTextColor,
+        "secondaryButtonTextColor",
+      );
+
+      syncColor(
+        "buttonColor",
+        upds.buttonColor,
+        prvs.buttonColor,
+        "buttonColor",
+      );
+
+      syncColor(
+        "buttonTextColor",
+        upds.buttonTextColor,
+        prvs.buttonTextColor,
+        "buttonTextColor",
+      );
+
+      // Card Borders Sync
+      if (upds.cardBorderRadius !== undefined) {
+        nextAppearance.cardBorderRadius = upds.cardBorderRadius;
+        state.cardBorderRadius = upds.cardBorderRadius;
+      } else if (prvs.cardBorderRadius !== undefined) {
+        state.cardBorderRadius = prvs.cardBorderRadius;
       }
 
-      if (updates.subtitleFont !== undefined) {
-        nextAppearance.subtitleFont = updates.subtitleFont;
-      } else if (prev.subtitleFont !== undefined) {
-        nextAppearance.subtitleFont = prev.subtitleFont;
+      if (upds.cardBorderWidth !== undefined) {
+        nextAppearance.cardBorderWidth = upds.cardBorderWidth;
+        state.cardBorderWidth = upds.cardBorderWidth;
+      } else if (prvs.cardBorderWidth !== undefined) {
+        state.cardBorderWidth = prvs.cardBorderWidth;
       }
 
-      if (updates.cardBgColor !== undefined) {
-        nextAppearance.cardBgColor = sanitizeColor(updates.cardBgColor);
-        state.cardBgColor = sanitizeColor(updates.cardBgColor);
-      } else if (prev.cardBgColor !== undefined) {
-        nextAppearance.cardBgColor = sanitizeColor(prev.cardBgColor);
-        state.cardBgColor = sanitizeColor(prev.cardBgColor);
+      syncColor(
+        "cardBorderColor",
+        upds.cardBorderColor,
+        prvs.cardBorderColor,
+        "cardBorderColor",
+      );
+
+      if (upds.cardTitleFont !== undefined) {
+        nextAppearance.cardTitleFont = upds.cardTitleFont;
+      } else if (prvs.cardTitleFont !== undefined) {
+        nextAppearance.cardTitleFont = prvs.cardTitleFont;
       }
 
-      if (updates.accentColor !== undefined) {
-        nextAppearance.accentColor = sanitizeColor(updates.accentColor);
-        state.accentColor = sanitizeColor(updates.accentColor);
-      } else if (prev.accentColor !== undefined) {
-        nextAppearance.accentColor = sanitizeColor(prev.accentColor);
-        state.accentColor = sanitizeColor(prev.accentColor);
+      if (upds.cardDescriptionFont !== undefined) {
+        nextAppearance.cardDescriptionFont = upds.cardDescriptionFont;
+      } else if (prvs.cardDescriptionFont !== undefined) {
+        nextAppearance.cardDescriptionFont = prvs.cardDescriptionFont;
       }
 
-      if (updates.bgColor !== undefined) {
-        const sanitized = sanitizeColor(updates.bgColor);
-        nextAppearance.backgroundColor = sanitized;
-        state.bgColor = sanitized;
+      syncColor(
+        "accentColor",
+        upds.accentColor,
+        prvs.accentColor,
+        "accentColor",
+      );
+
+      // Background Color Sync (bgColor -> appearance.backgroundColor)
+      syncColor("bgColor", upds.bgColor, prvs.bgColor, "backgroundColor");
+
+      // Background Image Sync (bgImage -> appearance.backgroundImageUrl)
+      if (upds.bgImage !== undefined) {
+        nextAppearance.backgroundImageUrl = upds.bgImage;
+        state.bgImage = upds.bgImage;
+        // Se a imagem for definida e não for vazia, garantimos que o tipo seja 'image'
+        if (upds.bgImage && upds.bgImage !== "" && !upds.bgType) {
+          nextAppearance.bgType = "image";
+          state.bgType = "image";
+        } else if ((upds.bgImage === "" || !upds.bgImage) && !upds.bgType) {
+          // Se a imagem for limpa e não houver tipo definido, voltamos para 'color'
+          nextAppearance.bgType = "color";
+          state.bgType = "color";
+        }
+      } else if (appearanceUpdate?.backgroundImageUrl !== undefined) {
+        state.bgImage = appearanceUpdate.backgroundImageUrl;
+        nextAppearance.backgroundImageUrl = appearanceUpdate.backgroundImageUrl;
+        if (
+          appearanceUpdate.backgroundImageUrl &&
+          appearanceUpdate.backgroundImageUrl !== "" &&
+          !upds.bgType &&
+          !appearanceUpdate.bgType
+        ) {
+          nextAppearance.bgType = "image";
+          state.bgType = "image";
+        }
+      } else if (prvs.bgImage !== undefined) {
+        state.bgImage = prvs.bgImage;
+        nextAppearance.backgroundImageUrl = prvs.bgImage;
       }
 
-      if (updates.appearance?.backgroundColor !== undefined) {
-        const sanitized = sanitizeColor(updates.appearance.backgroundColor);
-        nextAppearance.backgroundColor = sanitized;
-        state.bgColor = sanitized;
+      // Sync bgType
+      if (upds.bgType !== undefined) {
+        nextAppearance.bgType = upds.bgType;
+        state.bgType = upds.bgType;
+      } else if (appearanceUpdate?.bgType !== undefined) {
+        state.bgType = appearanceUpdate.bgType;
+        nextAppearance.bgType = appearanceUpdate.bgType;
+      } else if (prvs.bgType !== undefined) {
+        state.bgType = prvs.bgType;
+        nextAppearance.bgType = prvs.bgType;
+      }
+
+      // Overlay Sync
+      if (upds.overlayOpacity !== undefined) {
+        nextAppearance.overlay = {
+          ...(nextAppearance.overlay || { color: "" }),
+          opacity: upds.overlayOpacity,
+        };
+        state.overlayOpacity = upds.overlayOpacity;
+      } else if (prvs.overlayOpacity !== undefined) {
+        state.overlayOpacity = prvs.overlayOpacity;
+      }
+
+      const overlayUpdate = appearanceUpdate?.overlay as
+        | Record<string, unknown>
+        | undefined;
+      if (overlayUpdate?.color !== undefined) {
+        nextAppearance.overlay = {
+          ...(nextAppearance.overlay || { opacity: state.overlayOpacity || 0 }),
+          color: overlayUpdate.color,
+        };
+      }
+
+      // Image Controls Sync
+      if (upds.imageOpacity !== undefined) {
+        nextAppearance.imageOpacity = upds.imageOpacity;
+        state.imageOpacity = upds.imageOpacity;
+      } else if (prvs.imageOpacity !== undefined) {
+        state.imageOpacity = prvs.imageOpacity;
+      }
+
+      if (upds.imageScale !== undefined) {
+        nextAppearance.imageScale = upds.imageScale;
+        state.imageScale = upds.imageScale;
+      } else if (prvs.imageScale !== undefined) {
+        state.imageScale = prvs.imageScale;
+      }
+
+      if (upds.imageX !== undefined) {
+        nextAppearance.imageX = upds.imageX;
+        state.imageX = upds.imageX;
+      } else if (prvs.imageX !== undefined) {
+        state.imageX = prvs.imageX;
+      }
+
+      if (upds.imageY !== undefined) {
+        nextAppearance.imageY = upds.imageY;
+        state.imageY = upds.imageY;
+      } else if (prvs.imageY !== undefined) {
+        state.imageY = prvs.imageY;
       }
 
       // Sincroniza o appearance final com as mudanças processadas
       state.appearance = nextAppearance;
 
-      // Se bgImage foi definida, apenas atualizamos a URL, mantendo o bgType atual 
-      // para permitir que o usuário escolha explicitamente entre cor e imagem.
-      if (updates.bgImage) {
-        state.appearance = {
-          ...(state.appearance || {}),
-          backgroundImageUrl: updates.bgImage,
-        };
-      }
-      // Se appearance.backgroundImageUrl foi definida, sincroniza bgImage e garante bgType
-      else if (updates.appearance?.backgroundImageUrl) {
-        state.bgImage = updates.appearance.backgroundImageUrl;
-        state.bgType = "image";
-      }
-      // Se bgImage ou backgroundImageUrl foram limpos explicitamente, volta para color
-      else if (
-        updates.bgImage === "" ||
-        updates.appearance?.backgroundImageUrl === ""
-      ) {
-        state.bgType = "color";
-        state.bgImage = "";
-        state.appearance = {
-          ...(state.appearance || {}),
-          backgroundImageUrl: "",
-        };
-      }
+      return state as T;
+    },
+    [],
+  );
 
-      return state;
+  // Helpers para normalização de dados do banco (Dual-Case Blindagem)
+  const normalizeHeroFromConfig = useCallback((hero: unknown): HeroSettings => {
+    if (!hero || typeof hero !== "object") return defaultHeroSettings;
+    const heroData = hero as Record<string, unknown>;
+    const appearance = (heroData.appearance as Record<string, unknown>) || {};
+    const heroImage =
+      (heroData.bgImage as string) ||
+      (appearance.backgroundImageUrl as string) ||
+      "";
+    const heroBgType = resolveBgType(
+      heroData.bgType ?? appearance.bgType,
+      heroImage,
+    );
+    return {
+      ...defaultHeroSettings,
+      ...(hero as Partial<HeroSettings>),
+      titleColor:
+        sanitizeColor(heroData.titleColor ?? appearance.titleColor) ||
+        defaultHeroSettings.titleColor,
+      subtitleColor:
+        sanitizeColor(heroData.subtitleColor ?? appearance.subtitleColor) ||
+        defaultHeroSettings.subtitleColor,
+      bgColor:
+        sanitizeColor(heroData.bgColor ?? appearance.backgroundColor) ||
+        defaultHeroSettings.bgColor,
+      bgImage: heroImage,
+      bgType: heroBgType,
+      appearance: {
+        ...defaultHeroSettings.appearance,
+        ...appearance,
+        titleColor: sanitizeColor(heroData.titleColor ?? appearance.titleColor),
+        subtitleColor: sanitizeColor(
+          heroData.subtitleColor ?? appearance.subtitleColor,
+        ),
+        backgroundColor: sanitizeColor(
+          heroData.bgColor ?? appearance.backgroundColor,
+        ),
+        backgroundImageUrl: heroImage,
+        bgType: heroBgType,
+      },
+    };
+  }, []);
+
+  const normalizeValuesFromConfig = useCallback(
+    (values: unknown): ValuesSettings => {
+      if (!values || typeof values !== "object") return defaultValuesSettings;
+      const valuesData = values as Record<string, unknown>;
+      const appearance =
+        (valuesData.appearance as Record<string, unknown>) || {};
+      const content = (valuesData.content as Record<string, unknown>) || {};
+      const itemsStyle =
+        (valuesData.itemsStyle as Record<string, unknown>) || {};
+      const cardConfig =
+        (valuesData.cardConfig as Record<string, unknown>) || {};
+      const valuesImage =
+        (valuesData.bgImage as string) ||
+        (appearance.backgroundImageUrl as string) ||
+        "";
+      const valuesBgType = resolveBgType(
+        valuesData.bgType ?? appearance.bgType,
+        valuesImage,
+      );
+
+      const cardBg = sanitizeColor(
+        valuesData.cardBgColor ||
+          valuesData.cardBackgroundColor ||
+          valuesData.card_background_color ||
+          cardConfig.backgroundColor ||
+          cardConfig.cardBackgroundColor ||
+          content.cardBgColor ||
+          itemsStyle.itemBackgroundColor ||
+          appearance.cardBgColor,
+      );
+
+      return {
+        ...defaultValuesSettings,
+        ...(values as Partial<ValuesSettings>),
+        titleColor:
+          sanitizeColor(valuesData.titleColor || appearance.titleColor) ||
+          defaultValuesSettings.titleColor,
+        subtitleColor:
+          sanitizeColor(valuesData.subtitleColor || appearance.subtitleColor) ||
+          defaultValuesSettings.subtitleColor,
+        cardBgColor: cardBg || defaultValuesSettings.cardBgColor,
+        cardTitleColor:
+          sanitizeColor(
+            valuesData.cardTitleColor ||
+              appearance.cardTitleColor ||
+              content.cardTitleColor,
+          ) || defaultValuesSettings.cardTitleColor,
+        cardDescriptionColor:
+          sanitizeColor(
+            valuesData.cardDescriptionColor ||
+              appearance.cardDescriptionColor ||
+              content.cardDescriptionColor,
+          ) || defaultValuesSettings.cardDescriptionColor,
+        cardIconColor:
+          sanitizeColor(
+            valuesData.cardIconColor ||
+              appearance.cardIconColor ||
+              content.cardIconColor,
+          ) || defaultValuesSettings.cardIconColor,
+        bgColor:
+          sanitizeColor(valuesData.bgColor || appearance.backgroundColor) ||
+          defaultValuesSettings.bgColor,
+        bgImage: valuesImage,
+        bgType: valuesBgType,
+        appearance: {
+          ...defaultValuesSettings.appearance,
+          ...appearance,
+          titleColor: sanitizeColor(
+            valuesData.titleColor || appearance.titleColor,
+          ),
+          subtitleColor: sanitizeColor(
+            valuesData.subtitleColor || appearance.subtitleColor,
+          ),
+          cardBgColor: cardBg,
+          cardTitleColor: sanitizeColor(
+            valuesData.cardTitleColor ||
+              appearance.cardTitleColor ||
+              content.cardTitleColor,
+          ),
+          cardDescriptionColor: sanitizeColor(
+            valuesData.cardDescriptionColor ||
+              appearance.cardDescriptionColor ||
+              content.cardDescriptionColor,
+          ),
+          cardIconColor: sanitizeColor(
+            valuesData.cardIconColor ||
+              appearance.cardIconColor ||
+              content.cardIconColor,
+          ),
+          backgroundColor: sanitizeColor(
+            valuesData.bgColor || appearance.backgroundColor,
+          ),
+          backgroundImageUrl: valuesImage,
+          bgType: valuesBgType,
+        },
+      };
+    },
+    [],
+  );
+
+  const normalizeServicesFromConfig = useCallback(
+    (services: unknown): ServicesSettings => {
+      if (!services || typeof services !== "object")
+        return defaultServicesSettings;
+      const servicesData = services as Record<string, unknown>;
+      const appearance =
+        (servicesData.appearance as Record<string, unknown>) || {};
+      const content = (servicesData.content as Record<string, unknown>) || {};
+      const itemsStyle =
+        (servicesData.itemsStyle as Record<string, unknown>) || {};
+      const cardConfig =
+        (servicesData.cardConfig as Record<string, unknown>) || {};
+      const servicesImage =
+        (servicesData.bgImage as string) ||
+        (appearance.backgroundImageUrl as string) ||
+        "";
+      const servicesBgType = resolveBgType(
+        servicesData.bgType ?? appearance.bgType,
+        servicesImage,
+      );
+
+      const cardBg = sanitizeColor(
+        servicesData.cardBgColor ||
+          servicesData.cardBackgroundColor ||
+          servicesData.card_background_color ||
+          cardConfig.backgroundColor ||
+          cardConfig.cardBackgroundColor ||
+          content.cardBgColor ||
+          itemsStyle.itemBackgroundColor ||
+          appearance.cardBgColor,
+      );
+
+      return {
+        ...defaultServicesSettings,
+        ...(services as Partial<ServicesSettings>),
+        titleColor:
+          sanitizeColor(servicesData.titleColor || appearance.titleColor) ||
+          defaultServicesSettings.titleColor,
+        subtitleColor:
+          sanitizeColor(
+            servicesData.subtitleColor || appearance.subtitleColor,
+          ) || defaultServicesSettings.subtitleColor,
+        cardBgColor: cardBg || defaultServicesSettings.cardBgColor,
+        cardTitleColor:
+          sanitizeColor(
+            servicesData.cardTitleColor ||
+              appearance.cardTitleColor ||
+              content.cardTitleColor,
+          ) || defaultServicesSettings.cardTitleColor,
+        cardDescriptionColor:
+          sanitizeColor(
+            servicesData.cardDescriptionColor ||
+              appearance.cardDescriptionColor ||
+              content.cardDescriptionColor,
+          ) || defaultServicesSettings.cardDescriptionColor,
+        cardPriceColor:
+          sanitizeColor(
+            servicesData.cardPriceColor ||
+              appearance.cardPriceColor ||
+              content.cardPriceColor,
+          ) || defaultServicesSettings.cardPriceColor,
+        cardIconColor:
+          sanitizeColor(
+            servicesData.cardIconColor ||
+              appearance.cardIconColor ||
+              content.cardIconColor,
+          ) || defaultServicesSettings.cardIconColor,
+        bgColor:
+          sanitizeColor(servicesData.bgColor || appearance.backgroundColor) ||
+          defaultServicesSettings.bgColor,
+        bgImage: servicesImage,
+        bgType: servicesBgType,
+        appearance: {
+          ...defaultServicesSettings.appearance,
+          ...appearance,
+          titleColor: sanitizeColor(
+            servicesData.titleColor || appearance.titleColor,
+          ),
+          subtitleColor: sanitizeColor(
+            servicesData.subtitleColor || appearance.subtitleColor,
+          ),
+          cardBgColor: cardBg,
+          cardTitleColor: sanitizeColor(
+            servicesData.cardTitleColor ||
+              appearance.cardTitleColor ||
+              content.cardTitleColor,
+          ),
+          cardDescriptionColor: sanitizeColor(
+            servicesData.cardDescriptionColor ||
+              appearance.cardDescriptionColor ||
+              content.cardDescriptionColor,
+          ),
+          cardPriceColor: sanitizeColor(
+            servicesData.cardPriceColor ||
+              appearance.cardPriceColor ||
+              content.cardPriceColor,
+          ),
+          cardIconColor: sanitizeColor(
+            servicesData.cardIconColor ||
+              appearance.cardIconColor ||
+              content.cardIconColor,
+          ),
+          backgroundColor: sanitizeColor(
+            servicesData.bgColor || appearance.backgroundColor,
+          ),
+          backgroundImageUrl: servicesImage,
+          bgType: servicesBgType,
+        },
+      };
+    },
+    [],
+  );
+
+  const normalizeGalleryFromConfig = useCallback(
+    (gallery: unknown): GallerySettings => {
+      if (!gallery || typeof gallery !== "object")
+        return defaultGallerySettings;
+      const galleryData = gallery as Record<string, unknown>;
+      const appearance =
+        (galleryData.appearance as Record<string, unknown>) || {};
+      const content = (galleryData.content as Record<string, unknown>) || {};
+      const itemsStyle =
+        (galleryData.itemsStyle as Record<string, unknown>) || {};
+      const cardConfig =
+        (galleryData.cardConfig as Record<string, unknown>) || {};
+      const galleryImage =
+        (galleryData.bgImage as string) ||
+        (appearance.backgroundImageUrl as string) ||
+        "";
+      const galleryBgType = resolveBgType(
+        galleryData.bgType ?? appearance.bgType,
+        galleryImage,
+      );
+
+      const cardBg = sanitizeColor(
+        galleryData.cardBgColor ||
+          galleryData.cardBackgroundColor ||
+          galleryData.card_background_color ||
+          cardConfig.backgroundColor ||
+          cardConfig.cardBackgroundColor ||
+          content.cardBgColor ||
+          itemsStyle.itemBackgroundColor ||
+          appearance.cardBgColor,
+      );
+
+      return {
+        ...defaultGallerySettings,
+        ...(gallery as Partial<GallerySettings>),
+        titleColor:
+          sanitizeColor(galleryData.titleColor || appearance.titleColor) ||
+          defaultGallerySettings.titleColor,
+        subtitleColor:
+          sanitizeColor(
+            galleryData.subtitleColor || appearance.subtitleColor,
+          ) || defaultGallerySettings.subtitleColor,
+        buttonColor:
+          sanitizeColor(galleryData.buttonColor || appearance.buttonColor) ||
+          defaultGallerySettings.buttonColor,
+        buttonTextColor:
+          sanitizeColor(
+            galleryData.buttonTextColor || appearance.buttonTextColor,
+          ) || defaultGallerySettings.buttonTextColor,
+        cardBgColor: cardBg || defaultGallerySettings.cardBgColor,
+        bgColor:
+          sanitizeColor(galleryData.bgColor || appearance.backgroundColor) ||
+          defaultGallerySettings.bgColor,
+        bgImage: galleryImage,
+        bgType: galleryBgType,
+        appearance: {
+          ...defaultGallerySettings.appearance,
+          ...appearance,
+          titleColor: sanitizeColor(
+            galleryData.titleColor || appearance.titleColor,
+          ),
+          subtitleColor: sanitizeColor(
+            galleryData.subtitleColor || appearance.subtitleColor,
+          ),
+          buttonColor: sanitizeColor(
+            galleryData.buttonColor || appearance.buttonColor,
+          ),
+          buttonTextColor: sanitizeColor(
+            galleryData.buttonTextColor || appearance.buttonTextColor,
+          ),
+          cardBgColor: cardBg,
+          backgroundColor: sanitizeColor(
+            galleryData.bgColor || appearance.backgroundColor,
+          ),
+          backgroundImageUrl: galleryImage,
+          bgType: galleryBgType,
+        },
+      };
+    },
+    [],
+  );
+
+  const normalizeCTAFromConfig = useCallback((cta: unknown): CTASettings => {
+    if (!cta || typeof cta !== "object") return defaultCTASettings;
+    const ctaData = cta as Record<string, unknown>;
+    const appearance = (ctaData.appearance as Record<string, unknown>) || {};
+    const ctaImage =
+      (ctaData.bgImage as string) ||
+      (appearance.backgroundImageUrl as string) ||
+      "";
+    const ctaBgType = resolveBgType(
+      ctaData.bgType ?? appearance.bgType,
+      ctaImage,
+    );
+    return {
+      ...defaultCTASettings,
+      ...(cta as Partial<CTASettings>),
+      titleColor:
+        sanitizeColor(ctaData.titleColor || appearance.titleColor) ||
+        defaultCTASettings.titleColor,
+      subtitleColor:
+        sanitizeColor(ctaData.subtitleColor || appearance.subtitleColor) ||
+        defaultCTASettings.subtitleColor,
+      buttonColor:
+        sanitizeColor(ctaData.buttonColor || appearance.buttonColor) ||
+        defaultCTASettings.buttonColor,
+      buttonTextColor:
+        sanitizeColor(ctaData.buttonTextColor || appearance.buttonTextColor) ||
+        defaultCTASettings.buttonTextColor,
+      bgColor:
+        sanitizeColor(ctaData.bgColor || appearance.backgroundColor) ||
+        defaultCTASettings.bgColor,
+      bgImage: ctaImage,
+      bgType: ctaBgType,
+      appearance: {
+        ...defaultCTASettings.appearance,
+        ...appearance,
+        titleColor: sanitizeColor(ctaData.titleColor || appearance.titleColor),
+        subtitleColor: sanitizeColor(
+          ctaData.subtitleColor || appearance.subtitleColor,
+        ),
+        buttonColor: sanitizeColor(
+          ctaData.buttonColor || appearance.buttonColor,
+        ),
+        buttonTextColor: sanitizeColor(
+          ctaData.buttonTextColor || appearance.buttonTextColor,
+        ),
+        backgroundColor: sanitizeColor(
+          ctaData.bgColor || appearance.backgroundColor,
+        ),
+        backgroundImageUrl: ctaImage,
+        bgType: ctaBgType,
+      },
+    };
+  }, []);
+
+  const normalizeStoryFromConfig = useCallback(
+    (story: unknown): StorySettings => {
+      if (!story || typeof story !== "object") return defaultStorySettings;
+      const storyData = story as Record<string, unknown>;
+      const appearance =
+        (storyData.appearance as Record<string, unknown>) || {};
+      const storyImage =
+        (storyData.bgImage as string) ||
+        (appearance.backgroundImageUrl as string) ||
+        "";
+      const storyBgType = resolveBgType(
+        storyData.bgType ?? appearance.bgType,
+        storyImage,
+      );
+      return {
+        ...defaultStorySettings,
+        ...(story as Partial<StorySettings>),
+        titleColor:
+          sanitizeColor(storyData.titleColor || appearance.titleColor) ||
+          defaultStorySettings.titleColor,
+        contentColor:
+          sanitizeColor(storyData.contentColor) ||
+          defaultStorySettings.contentColor,
+        bgColor:
+          sanitizeColor(storyData.bgColor || appearance.backgroundColor) ||
+          defaultStorySettings.bgColor,
+        bgImage: storyImage,
+        bgType: storyBgType,
+        appearance: {
+          ...defaultStorySettings.appearance,
+          ...appearance,
+          titleColor: sanitizeColor(
+            storyData.titleColor || appearance.titleColor,
+          ),
+          backgroundColor: sanitizeColor(
+            storyData.bgColor || appearance.backgroundColor,
+          ),
+          backgroundImageUrl: storyImage,
+          bgType: storyBgType,
+        },
+      };
+    },
+    [],
+  );
+
+  const normalizeTeamFromConfig = useCallback((team: unknown): TeamSettings => {
+    if (!team || typeof team !== "object") return defaultTeamSettings;
+    const teamData = team as Record<string, unknown>;
+    const appearance = (teamData.appearance as Record<string, unknown>) || {};
+    const teamImage =
+      (teamData.bgImage as string) ||
+      (appearance.backgroundImageUrl as string) ||
+      "";
+    const teamBgType = resolveBgType(
+      teamData.bgType ?? appearance.bgType,
+      teamImage,
+    );
+    return {
+      ...defaultTeamSettings,
+      ...(team as Partial<TeamSettings>),
+      titleColor:
+        sanitizeColor(teamData.titleColor || appearance.titleColor) ||
+        defaultTeamSettings.titleColor,
+      subtitleColor:
+        sanitizeColor(teamData.subtitleColor || appearance.subtitleColor) ||
+        defaultTeamSettings.subtitleColor,
+      bgColor:
+        sanitizeColor(teamData.bgColor || appearance.backgroundColor) ||
+        defaultTeamSettings.bgColor,
+      bgImage: teamImage,
+      bgType: teamBgType,
+      appearance: {
+        ...defaultTeamSettings.appearance,
+        ...appearance,
+        titleColor: sanitizeColor(teamData.titleColor || appearance.titleColor),
+        subtitleColor: sanitizeColor(
+          teamData.subtitleColor || appearance.subtitleColor,
+        ),
+        backgroundColor: sanitizeColor(
+          teamData.bgColor || appearance.backgroundColor,
+        ),
+        backgroundImageUrl: teamImage,
+        bgType: teamBgType,
+      },
+    };
+  }, []);
+
+  const normalizeTestimonialsFromConfig = useCallback(
+    (testimonials: unknown): TestimonialsSettings => {
+      if (!testimonials || typeof testimonials !== "object")
+        return defaultTestimonialsSettings;
+      const testimonialsData = testimonials as Record<string, unknown>;
+      const appearance =
+        (testimonialsData.appearance as Record<string, unknown>) || {};
+      const testimonialsImage =
+        (testimonialsData.bgImage as string) ||
+        (appearance.backgroundImageUrl as string) ||
+        "";
+      const testimonialsBgType = resolveBgType(
+        testimonialsData.bgType ?? appearance.bgType,
+        testimonialsImage,
+      );
+      return {
+        ...defaultTestimonialsSettings,
+        ...(testimonials as Partial<TestimonialsSettings>),
+        titleColor:
+          sanitizeColor(testimonialsData.titleColor || appearance.titleColor) ||
+          defaultTestimonialsSettings.titleColor,
+        subtitleColor:
+          sanitizeColor(
+            testimonialsData.subtitleColor || appearance.subtitleColor,
+          ) || defaultTestimonialsSettings.subtitleColor,
+        bgColor:
+          sanitizeColor(
+            testimonialsData.bgColor || appearance.backgroundColor,
+          ) || defaultTestimonialsSettings.bgColor,
+        bgImage: testimonialsImage,
+        bgType: testimonialsBgType,
+        appearance: {
+          ...defaultTestimonialsSettings.appearance,
+          ...appearance,
+          titleColor: sanitizeColor(
+            testimonialsData.titleColor || appearance.titleColor,
+          ),
+          subtitleColor: sanitizeColor(
+            testimonialsData.subtitleColor || appearance.subtitleColor,
+          ),
+          backgroundColor: sanitizeColor(
+            testimonialsData.bgColor || appearance.backgroundColor,
+          ),
+          backgroundImageUrl: testimonialsImage,
+          bgType: testimonialsBgType,
+        },
+      };
+    },
+    [],
+  );
+
+  const normalizeHeaderFromConfig = useCallback(
+    (header: unknown): HeaderSettings => {
+      if (!header || typeof header !== "object") return defaultHeaderSettings;
+      const headerData = header as Record<string, unknown>;
+      return {
+        ...defaultHeaderSettings,
+        ...(header as Partial<HeaderSettings>),
+        bgColor:
+          sanitizeColor(headerData.bgColor || headerData.background_color) ||
+          defaultHeaderSettings.bgColor,
+        textColor:
+          sanitizeColor(headerData.textColor || headerData.text_color) ||
+          defaultHeaderSettings.textColor,
+      };
+    },
+    [],
+  );
+
+  const normalizeFooterFromConfig = useCallback(
+    (footer: unknown): FooterSettings => {
+      if (!footer || typeof footer !== "object") return defaultFooterSettings;
+      const footerData = footer as Record<string, unknown>;
+      return {
+        ...defaultFooterSettings,
+        ...(footer as Partial<FooterSettings>),
+        bgColor:
+          sanitizeColor(footerData.bgColor || footerData.background_color) ||
+          defaultFooterSettings.bgColor,
+        textColor:
+          sanitizeColor(footerData.textColor || footerData.text_color) ||
+          defaultFooterSettings.textColor,
+      };
     },
     [],
   );
@@ -321,45 +1074,45 @@ export function useEditorState() {
     // Só sincronizamos se os dados do banco existirem e se o utilizador ainda não fez alterações manuais (isDirty)
     if (studio?.config && !isDirty) {
       const config = studio.config as SiteConfigData;
-      console.log(">>> [SYNC] Sincronizando estado do editor com studio.config (isDirty=false)");
-
-      const siteCustomization = config.siteCustomization || config.site_customization;
-      const layoutGlobal = (siteCustomization?.layoutGlobal ||
-        siteCustomization?.layout_global) || {};
-      
-      const siteColors = (layoutGlobal as any)?.siteColors || (layoutGlobal as any)?.color || (layoutGlobal as any)?.site_colors || (layoutGlobal as any)?.cores_base;
-      const siteFonts = (layoutGlobal as any)?.fontes || (layoutGlobal as any)?.typography;
-      const appointmentFlow = config.appointmentFlow as Record<string, unknown> | undefined;
-      const step1Services =
-        (appointmentFlow?.step1Services as Record<string, unknown>) ||
-        (appointmentFlow?.step1_services as Record<string, unknown>) ||
-        (appointmentFlow?.step1_service as Record<string, unknown>);
-      const step1CardConfig =
-        (step1Services?.cardConfig as Record<string, unknown>) ||
-        (step1Services?.card_config as Record<string, unknown>);
-      const step1CardBg = sanitizeColor(
-        (step1CardConfig?.backgroundColor as string) ||
-          (step1CardConfig?.cardBackgroundColor as string) ||
-          (step1CardConfig?.background_color as string) ||
-          (step1CardConfig?.card_background_color as string),
+      console.log(
+        ">>> [SYNC] Sincronizando estado do editor com studio.config (isDirty=false)",
       );
 
-      const hasValidColors = (colors: any) => 
-        colors && Object.values(colors).some(v => typeof v === 'string' && v.startsWith('#') && v.length >= 4);
+      const siteCustomization =
+        config.siteCustomization || config.site_customization;
+      const layoutGlobal = (siteCustomization?.layoutGlobal ||
+        siteCustomization?.layout_global ||
+        {}) as Record<string, unknown>;
+
+      const siteColors =
+        (layoutGlobal.siteColors as Record<string, unknown> | undefined) ||
+        (layoutGlobal.color as Record<string, unknown> | undefined) ||
+        (layoutGlobal.site_colors as Record<string, unknown> | undefined) ||
+        (layoutGlobal.cores_base as Record<string, unknown> | undefined);
+      const siteFonts =
+        (layoutGlobal.fontes as Record<string, unknown> | undefined) ||
+        (layoutGlobal.typography as Record<string, unknown> | undefined);
+
+      const hasValidColors = (colors?: unknown) =>
+        !!colors &&
+        typeof colors === "object" &&
+        Object.values(colors as Record<string, unknown>).some(
+          (value) =>
+            typeof value === "string" &&
+            value.startsWith("#") &&
+            value.length >= 4,
+        );
 
       if (hasValidColors(siteColors) || hasValidColors(config.colors)) {
-        console.log(">>> [SYNC] Cores válidas encontradas no banco. Aplicando...");
-        setColorSettings(prev => ({
+        setColorSettings((prev) => ({
           ...prev,
           ...(config.colors || {}),
           ...(siteColors || {}),
         }));
-      } else {
-        console.warn(">>> [SYNC] Cores do banco inválidas ou vazias. Mantendo default.");
       }
 
       if (siteFonts || config.typography || config.theme) {
-        setFontSettings(prev => ({
+        setFontSettings((prev) => ({
           ...prev,
           ...(config.theme || {}),
           ...(config.typography || {}),
@@ -367,51 +1120,76 @@ export function useEditorState() {
         }));
       }
 
-      if (config.hero) setHeroSettings(prev => ({ ...prev, ...config.hero }));
-      if (config.about) setAboutHeroSettings(prev => ({ ...prev, ...(config.about as any) }));
-      if (config.story) setStorySettings(prev => ({ ...prev, ...config.story }));
-      if (config.team) setTeamSettings(prev => ({ ...prev, ...config.team }));
-      if (config.testimonials) setTestimonialsSettings(prev => ({ ...prev, ...config.testimonials }));
-      if (config.services) setServicesSettings(prev => ({ ...prev, ...config.services }));
-      if (config.values) setValuesSettings(prev => ({ ...prev, ...config.values }));
-      if (config.gallery) setGallerySettings(prev => ({ ...prev, ...config.gallery }));
-      if (config.cta) setCTASettings(prev => ({ ...prev, ...config.cta }));
-      if (config.header) setHeaderSettings(prev => ({ ...prev, ...config.header }));
-      if (config.footer) setFooterSettings(prev => ({ ...prev, ...config.footer }));
-      
+      if (config.hero) setHeroSettings(normalizeHeroFromConfig(config.hero));
+      if (config.about)
+        setAboutHeroSettings(normalizeHeroFromConfig(config.about));
+      if (config.story)
+        setStorySettings(normalizeStoryFromConfig(config.story));
+      if (config.team) setTeamSettings(normalizeTeamFromConfig(config.team));
+      if (config.testimonials)
+        setTestimonialsSettings(
+          normalizeTestimonialsFromConfig(config.testimonials),
+        );
+      if (config.services)
+        setServicesSettings(normalizeServicesFromConfig(config.services));
+      if (config.values)
+        setValuesSettings(normalizeValuesFromConfig(config.values));
+      if (config.gallery)
+        setGallerySettings(normalizeGalleryFromConfig(config.gallery));
+      if (config.cta) setCTASettings(normalizeCTAFromConfig(config.cta));
+      if (config.header)
+        setHeaderSettings(normalizeHeaderFromConfig(config.header));
+      if (config.footer)
+        setFooterSettings(normalizeFooterFromConfig(config.footer));
+
       // Sincronizar bookingSteps se houver
       const bookingSteps = (config.appointmentFlow || config.bookingSteps) as
         | Record<string, BookingStepSettings | undefined>
         | undefined;
-      const serviceStep = bookingSteps?.service;
+
       if (bookingSteps) {
-        if (serviceStep) {
-          setBookingServiceSettings(prev => ({
-            ...prev,
-            ...serviceStep,
-            cardBgColor:
-              sanitizeColor(serviceStep.cardBgColor || step1CardBg) ||
-              prev.cardBgColor,
-          }));
-        } else if (step1CardBg) {
-          setBookingServiceSettings(prev => ({
-            ...prev,
-            cardBgColor: step1CardBg,
-          }));
+        if (bookingSteps.service) {
+          setBookingServiceSettings(
+            normalizeStepSettings(bookingSteps.service),
+          );
         }
-        if (bookingSteps.date) setBookingDateSettings(prev => ({ ...prev, ...bookingSteps.date }));
-        if (bookingSteps.time) setBookingTimeSettings(prev => ({ ...prev, ...bookingSteps.time }));
-        if (bookingSteps.form) setBookingFormSettings(prev => ({ ...prev, ...bookingSteps.form }));
-        if (bookingSteps.confirmation) setBookingConfirmationSettings(prev => ({ ...prev, ...bookingSteps.confirmation }));
+        if (bookingSteps.date)
+          setBookingDateSettings(normalizeStepSettings(bookingSteps.date));
+        if (bookingSteps.time)
+          setBookingTimeSettings(normalizeStepSettings(bookingSteps.time));
+        if (bookingSteps.form)
+          setBookingFormSettings(normalizeStepSettings(bookingSteps.form));
+        if (bookingSteps.confirmation) {
+          setBookingConfirmationSettings(
+            normalizeStepSettings(bookingSteps.confirmation),
+          );
+        }
       }
 
       // Seções e Visibilidade
-      if (config.visibleSections) setVisibleSections(prev => ({ ...prev, ...config.visibleSections }));
-      if (config.pageVisibility) setPageVisibility(prev => ({ ...prev, ...config.pageVisibility }));
+      if (config.visibleSections)
+        setVisibleSections((prev) => ({ ...prev, ...config.visibleSections }));
+      if (config.pageVisibility)
+        setPageVisibility((prev) => ({ ...prev, ...config.pageVisibility }));
 
-      console.log(">>> [SYNC] Estado do editor sincronizado com o Banco de Dados.");
+      console.log(
+        ">>> [SYNC] Estado do editor sincronizado com o Banco de Dados.",
+      );
     }
-  }, [studio?.config, isDirty]);
+  }, [
+    studio?.config,
+    isDirty,
+    normalizeHeroFromConfig,
+    normalizeServicesFromConfig,
+    normalizeValuesFromConfig,
+    normalizeGalleryFromConfig,
+    normalizeCTAFromConfig,
+    normalizeStoryFromConfig,
+    normalizeTeamFromConfig,
+    normalizeTestimonialsFromConfig,
+    normalizeHeaderFromConfig,
+    normalizeFooterFromConfig,
+  ]);
 
   // --- Efeito de Inicialização (TASK 1 & 4) ---
   // Monitora a chegada dos dados salvos no banco (lastSaved) para forçar a sincronização inicial
@@ -457,20 +1235,7 @@ export function useEditorState() {
   const handleUpdateHero = useCallback(
     (updates: Partial<HeroSettings>) => {
       setIsDirty(true);
-      console.log(
-        ">>> [useEditorState] handleUpdateHero chamado com:",
-        updates,
-      );
-      setHeroSettings((prev: HeroSettings) => {
-        const newState = syncBackground(prev, updates);
-        console.log(
-          ">>> [useEditorState] Estado HERO atualizado. bgImage:",
-          newState.bgImage,
-          " appearance.backgroundImageUrl:",
-          newState.appearance?.backgroundImageUrl,
-        );
-        return newState;
-      });
+      setHeroSettings((prev: HeroSettings) => syncBackground(prev, updates));
     },
     [syncBackground],
   );
@@ -518,7 +1283,21 @@ export function useEditorState() {
 
   const handleUpdateColors = useCallback((updates: Partial<ColorSettings>) => {
     setIsDirty(true);
-    setColorSettings((prev: ColorSettings) => ({ ...prev, ...updates }));
+    setColorSettings((prev: ColorSettings) => {
+      const newState = { ...prev };
+      if (updates.primary !== undefined)
+        newState.primary = sanitizeColor(updates.primary) || prev.primary;
+      if (updates.secondary !== undefined)
+        newState.secondary = sanitizeColor(updates.secondary) || prev.secondary;
+      if (updates.accent !== undefined)
+        newState.accent = sanitizeColor(updates.accent) || prev.accent;
+      if (updates.background !== undefined)
+        newState.background =
+          sanitizeColor(updates.background) || prev.background;
+      if (updates.text !== undefined)
+        newState.text = sanitizeColor(updates.text) || prev.text;
+      return newState;
+    });
   }, []);
 
   const handleUpdateServices = useCallback(
@@ -544,17 +1323,9 @@ export function useEditorState() {
   const handleUpdateGallery = useCallback(
     (updates: Partial<GallerySettings>) => {
       setIsDirty(true);
-      console.log(">>> [useEditorState] handleUpdateGallery chamado com:", updates);
-      setGallerySettings((prev: GallerySettings) => {
-        const newState = syncBackground(prev, updates);
-        console.log(">>> [useEditorState] Estado GALLERY atualizado:", {
-          bgType: newState.bgType,
-          bgColor: newState.bgColor,
-          bgImage: newState.bgImage,
-          appearance: newState.appearance
-        });
-        return newState;
-      });
+      setGallerySettings((prev: GallerySettings) =>
+        syncBackground(prev, updates),
+      );
     },
     [syncBackground],
   );
@@ -569,20 +1340,48 @@ export function useEditorState() {
 
   const handleUpdateHeader = useCallback((updates: Partial<HeaderSettings>) => {
     setIsDirty(true);
-    setHeaderSettings((prev: HeaderSettings) => ({ ...prev, ...updates }));
+    setHeaderSettings((prev: HeaderSettings) => {
+      const newState = { ...prev, ...updates };
+      if (updates.bgColor !== undefined)
+        newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+      if (updates.textColor !== undefined)
+        newState.textColor = sanitizeColor(updates.textColor) || prev.textColor;
+      if (updates.buttonBgColor !== undefined)
+        newState.buttonBgColor =
+          sanitizeColor(updates.buttonBgColor) || prev.buttonBgColor;
+      if (updates.buttonTextColor !== undefined)
+        newState.buttonTextColor =
+          sanitizeColor(updates.buttonTextColor) || prev.buttonTextColor;
+      return newState;
+    });
   }, []);
 
   const handleUpdateFooter = useCallback((updates: Partial<FooterSettings>) => {
     setIsDirty(true);
-    setFooterSettings((prev: FooterSettings) => ({ ...prev, ...updates }));
+    setFooterSettings((prev: FooterSettings) => {
+      const newState = { ...prev, ...updates };
+      if (updates.bgColor !== undefined)
+        newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+      if (updates.textColor !== undefined)
+        newState.textColor = sanitizeColor(updates.textColor) || prev.textColor;
+      if (updates.titleColor !== undefined)
+        newState.titleColor =
+          sanitizeColor(updates.titleColor) || prev.titleColor;
+      if (updates.iconColor !== undefined)
+        newState.iconColor = sanitizeColor(updates.iconColor) || prev.iconColor;
+      return newState;
+    });
   }, []);
 
   const handleUpdateBookingService = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       setIsDirty(true);
-      setBookingServiceSettings((prev: BookingStepSettings) =>
-        syncBackground(prev, updates),
-      );
+      setBookingServiceSettings((prev: BookingStepSettings) => {
+        const newState = syncBackground(prev, updates);
+        if (updates.bgColor !== undefined)
+          newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+        return normalizeStepSettings(newState);
+      });
     },
     [syncBackground],
   );
@@ -590,9 +1389,12 @@ export function useEditorState() {
   const handleUpdateBookingDate = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       setIsDirty(true);
-      setBookingDateSettings((prev: BookingStepSettings) =>
-        syncBackground(prev, updates),
-      );
+      setBookingDateSettings((prev: BookingStepSettings) => {
+        const newState = syncBackground(prev, updates);
+        if (updates.bgColor !== undefined)
+          newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+        return normalizeStepSettings(newState);
+      });
     },
     [syncBackground],
   );
@@ -600,9 +1402,12 @@ export function useEditorState() {
   const handleUpdateBookingTime = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       setIsDirty(true);
-      setBookingTimeSettings((prev: BookingStepSettings) =>
-        syncBackground(prev, updates),
-      );
+      setBookingTimeSettings((prev: BookingStepSettings) => {
+        const newState = syncBackground(prev, updates);
+        if (updates.bgColor !== undefined)
+          newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+        return normalizeStepSettings(newState);
+      });
     },
     [syncBackground],
   );
@@ -610,9 +1415,12 @@ export function useEditorState() {
   const handleUpdateBookingForm = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       setIsDirty(true);
-      setBookingFormSettings((prev: BookingStepSettings) =>
-        syncBackground(prev, updates),
-      );
+      setBookingFormSettings((prev: BookingStepSettings) => {
+        const newState = syncBackground(prev, updates);
+        if (updates.bgColor !== undefined)
+          newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+        return normalizeStepSettings(newState);
+      });
     },
     [syncBackground],
   );
@@ -620,9 +1428,12 @@ export function useEditorState() {
   const handleUpdateBookingConfirmation = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       setIsDirty(true);
-      setBookingConfirmationSettings((prev: BookingStepSettings) =>
-        syncBackground(prev, updates),
-      );
+      setBookingConfirmationSettings((prev: BookingStepSettings) => {
+        const newState = syncBackground(prev, updates);
+        if (updates.bgColor !== undefined)
+          newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+        return normalizeStepSettings(newState);
+      });
     },
     [syncBackground],
   );
@@ -672,7 +1483,9 @@ export function useEditorState() {
           u: Partial<BackgroundSettings>,
         ) => void,
         values: handleUpdateValues as (u: Partial<BackgroundSettings>) => void,
-        gallery: handleUpdateGallery as (u: Partial<BackgroundSettings>) => void,
+        gallery: handleUpdateGallery as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
         "gallery-preview": handleUpdateGallery as (
           u: Partial<BackgroundSettings>,
         ) => void,
@@ -867,5 +1680,7 @@ export function useEditorState() {
     handleUpdateBackground,
     activeSectionId,
     setActiveSectionId,
+    isDirty,
+    setIsDirty,
   };
 }

@@ -79,6 +79,45 @@ const iconMap: Record<string, LucideIcon> = {
   Wind,
 };
 
+const MOCK_SERVICES: Service[] = [
+  {
+    id: "mock-1",
+    name: "Corte de Cabelo Premium",
+    description: "Corte moderno realizado com visagismo para realçar seu rosto.",
+    price: 60,
+    duration: 45,
+    icon: "Scissors",
+    showOnHome: true,
+  },
+  {
+    id: "mock-2",
+    name: "Barba com Toalha Quente",
+    description: "Experiência relaxante com hidratação e alinhamento completo.",
+    price: 40,
+    duration: 30,
+    icon: "Smile",
+    showOnHome: true,
+  },
+  {
+    id: "mock-3",
+    name: "Combo Completo",
+    description: "Cabelo, barba e sobrancelha com finalização exclusiva.",
+    price: 90,
+    duration: 90,
+    icon: "Sparkles",
+    showOnHome: true,
+  },
+  {
+    id: "mock-4",
+    name: "Sobrancelha Design",
+    description: "Limpeza e design de sobrancelhas com pinça ou cera.",
+    price: 25,
+    duration: 20,
+    icon: "Star",
+    showOnHome: true,
+  },
+];
+
 export function ServicesSection() {
   const { studio, isLoading } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
@@ -90,19 +129,13 @@ export function ServicesSection() {
 
   const studioId = studio?.id;
   const studioConfig = studio?.config;
-
-  // Debug log para ver a estrutura do config que chega no site público
-  useEffect(() => {
-    if (studioConfig) {
-      console.log(">>> [SERVICES_RENDER_DEBUG] Config recebida:", studioConfig);
-    }
-  }, [studioConfig]);
+  const isInsideIframe = typeof window !== "undefined" && window.parent !== window;
 
   const loadData = useCallback(
     (forceRevalidate = false) => {
       // Tenta pegar do cache primeiro para ser instantâneo
       const cachedStudioStr = localStorage.getItem("studio_data");
-      const settings = getSettingsFromStorage();
+      const settingsFromStorage = getSettingsFromStorage();
 
       let currentServices: Service[] = [];
       let currentConfig: SiteConfigData | null = null;
@@ -113,11 +146,11 @@ export function ServicesSection() {
       // 1. Prioridade para studioSettings (onde o ServicesManager salva)
       if (
         useCache &&
-        settings &&
-        settings.services &&
-        settings.services.length > 0
+        settingsFromStorage &&
+        settingsFromStorage.services &&
+        settingsFromStorage.services.length > 0
       ) {
-        currentServices = settings.services;
+        currentServices = settingsFromStorage.services;
       }
 
       // 2. Context do studio (Dados vindos da API/Backend)
@@ -158,9 +191,16 @@ export function ServicesSection() {
       });
 
       // Filtra apenas os serviços marcados para home
-      const homeServices = normalizedServices.filter(
-        (s: Service) => s?.showOnHome === true,
+      let homeServices: Service[] = normalizedServices.filter(
+          (s: Service) => s?.showOnHome === true,
       );
+
+      // Se estivermos em um iframe (Editor), usamos mock data conforme sugerido pelo usuário
+      if (isInsideIframe) {
+        homeServices = MOCK_SERVICES;
+      } else if (homeServices.length === 0 && normalizedServices.length > 0) {
+        homeServices = normalizedServices;
+      }
 
       const layoutGlobal = (currentConfig?.layoutGlobal || currentConfig?.layout_global) as Record<string, unknown> | undefined;
       
@@ -207,6 +247,10 @@ export function ServicesSection() {
             (content.subtitleFont as string),
           cardBgColor: sanitizeColor(
             (configServices.cardBgColor as string) ||
+            (configServices.cardBackgroundColor as string) ||
+            (configServices.card_background_color as string) ||
+            ((configServices.cardConfig as Record<string, unknown>)?.cardBackgroundColor as string) ||
+            ((configServices.cardConfig as Record<string, unknown>)?.backgroundColor as string) ||
             (appearance.cardBgColor as string) ||
             (content.cardBgColor as string) ||
             ((configServices.cardBgColor as Record<string, unknown>)?.text as string) ||
@@ -267,6 +311,20 @@ export function ServicesSection() {
             (appearance.backgroundColor as string) ||
             "",
           ),
+          bgType: (configServices.bgType || appearance.bgType || "color") as "color" | "image",
+          imageOpacity: Number(configServices.imageOpacity ?? appearance.imageOpacity ?? 1),
+          overlayOpacity: Number(configServices.overlayOpacity ?? appearance.overlayOpacity ?? (appearance.overlay as Record<string, unknown>)?.opacity ?? 0),
+          imageScale: Number(configServices.imageScale ?? appearance.imageScale ?? 1),
+          imageX: Number(configServices.imageX ?? appearance.imageX ?? 50),
+          imageY: Number(configServices.imageY ?? appearance.imageY ?? 50),
+          appearance: {
+            ...appearance,
+            overlay: {
+              ...(appearance.overlay as Record<string, unknown> || {}),
+              color: (configServices.overlayColor || (appearance.overlay as Record<string, unknown>)?.color || "") as string,
+              opacity: Number(configServices.overlayOpacity ?? appearance.overlayOpacity ?? (appearance.overlay as Record<string, unknown>)?.opacity ?? 0),
+            },
+          },
         } as unknown as ServicesSettings;
       }
       
@@ -277,7 +335,7 @@ export function ServicesSection() {
         setSettings(getServicesSettings());
       }
     },
-    [studioId, studioConfig, studio?.services],
+    [studioId, studioConfig, studio?.services, isInsideIframe],
   );
 
   useEffect(() => {
@@ -316,7 +374,7 @@ export function ServicesSection() {
   }, [loadData]);
 
   // Fallback Skeleton enquanto carrega do banco
-  if (!isMounted || isLoading) {
+  if (!isMounted || (isLoading && !isInsideIframe)) {
     return (
       <section id="services" className="py-20 bg-background">
         <div className="container mx-auto px-4">
@@ -334,17 +392,6 @@ export function ServicesSection() {
 
   if (!settings) return null;
 
-  const backgroundUrl =
-    settings.bgImage || settings.appearance?.backgroundImageUrl;
-  const hasImage = !!backgroundUrl && backgroundUrl.trim() !== "";
-  const effectiveOverlayOpacity =
-    settings.appearance?.overlay?.opacity ??
-    (backgroundUrl ? 0 : settings.overlayOpacity);
-  const effectiveImageOpacity =
-    backgroundUrl && !settings.appearance?.overlay ? 1 : settings.imageOpacity;
-  const effectiveBackgroundColor =
-    settings.appearance?.backgroundColor || settings.bgColor || "#ffffff";
-
   return (
     <SessionWrapper appearance={settings?.appearance}>
       <section
@@ -355,23 +402,7 @@ export function ServicesSection() {
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >
-      <SectionBackground
-        settings={{
-          ...settings,
-          bgType: (settings.bgType === "color" || !hasImage
-            ? "color"
-            : "image") as "color" | "image",
-          bgColor: effectiveBackgroundColor,
-          bgImage: backgroundUrl || "",
-          imageOpacity: effectiveImageOpacity,
-          overlayOpacity: effectiveOverlayOpacity,
-          appearance: {
-            ...settings.appearance,
-            backgroundColor: effectiveBackgroundColor,
-          },
-        }}
-        defaultImage=""
-      />
+      <SectionBackground settings={settings} />
 
       <div className="container relative z-10 mx-auto px-4">
         {(settings.showTitle !== false || settings.showSubtitle !== false) && (
@@ -381,7 +412,9 @@ export function ServicesSection() {
                 className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
                 style={{
                   color: settings.titleColor || "var(--foreground)",
-                  fontFamily: settings.titleFont || "var(--font-title)",
+                  fontFamily: settings.titleFont
+                    ? `"${settings.titleFont}", sans-serif`
+                    : "var(--font-title)",
                 }}
               >
                 {renderSafeText(settings.title)}
@@ -392,7 +425,9 @@ export function ServicesSection() {
                 className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
                 style={{
                   color: settings.subtitleColor || "var(--foreground)",
-                  fontFamily: settings.subtitleFont || "var(--font-subtitle)",
+                  fontFamily: settings.subtitleFont
+                    ? `"${settings.subtitleFont}", sans-serif`
+                    : "var(--font-subtitle)",
                 }}
               >
                 {renderSafeText(settings.subtitle)}
@@ -423,7 +458,7 @@ export function ServicesSection() {
                 }
                 className="border-border hover:border-accent transition-all duration-300 overflow-hidden"
                 style={{
-                  backgroundColor: settings?.cardBgColor || "white",
+                  backgroundColor: settings?.cardBgColor || "var(--card, white)",
                   borderRadius: settings?.cardBorderRadius || "0.75rem",
                   borderWidth: settings?.cardBorderWidth || "1px",
                   borderColor: settings?.cardBorderColor || "var(--border)",
@@ -435,7 +470,7 @@ export function ServicesSection() {
                     style={{
                       backgroundColor: settings?.cardIconColor
                         ? `${settings.cardIconColor}1a`
-                        : "var(--muted)",
+                        : "var(--primary-muted, rgba(0, 0, 0, 0.05))",
                     }}
                   >
                     <Icon
@@ -448,35 +483,40 @@ export function ServicesSection() {
                   <h3
                     className="text-xl font-semibold mb-2"
                     style={{
-                      color: settings?.cardTitleColor || "var(--foreground)",
-                      fontFamily:
-                        settings?.cardTitleFont || "var(--font-subtitle)",
+                      color: settings?.cardTitleColor || "var(--card-foreground, var(--foreground))",
+                      fontFamily: settings?.cardTitleFont
+                        ? `"${settings.cardTitleFont}", sans-serif`
+                        : "var(--font-subtitle)",
                     }}
                   >
-                    {renderSafeText(service?.name)}
+                    {renderSafeText(service?.name) || "Serviço sem nome"}
                   </h3>
                   <p
                     className="text-sm mb-4 leading-relaxed opacity-80"
                     style={{
                       color:
-                        settings?.cardDescriptionColor || "var(--foreground)",
-                      fontFamily:
-                        settings?.cardDescriptionFont || "var(--font-text)",
+                        settings?.cardDescriptionColor || "var(--card-foreground, var(--foreground))",
+                      fontFamily: settings?.cardDescriptionFont
+                        ? `"${settings.cardDescriptionFont}", sans-serif`
+                        : "var(--font-text)",
                     }}
                   >
-                    {renderSafeText(service?.description)}
+                    {renderSafeText(service?.description) || "Sem descrição disponível"}
                   </p>
                   <div className="flex items-center justify-between mt-auto">
                     <span
                       className="font-bold text-lg"
                       style={{
                         color: settings?.cardPriceColor || "var(--primary)",
+                        fontFamily: settings?.cardPriceFont
+                          ? `"${settings.cardPriceFont}", sans-serif`
+                          : "inherit",
                       }}
                     >
-                      R$ {renderSafeText(service?.price)}
+                      R$ {renderSafeText(service?.price) || "0,00"}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {renderSafeText(service?.duration)} min
+                      {renderSafeText(service?.duration) || "0"} min
                     </span>
                   </div>
                 </CardContent>

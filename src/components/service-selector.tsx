@@ -134,6 +134,10 @@ export function ServiceSelector({
 
     const serviceConflicts = extractConflicts(service);
 
+    console.log(`>>> [CHECK_CONFLICT] Verificando: ${service.name} (ID: ${serviceId}, Group: ${serviceGroupId})`);
+    console.log(`>>> [CHECK_CONFLICT] Conflitos do serviço:`, serviceConflicts);
+    console.log(`>>> [CHECK_CONFLICT] Serviços selecionados:`, currentSelected.map(s => s.name));
+
     for (const s of currentSelected) {
       const selectedId = s.id.toString();
       const selectedGroupId = (
@@ -147,16 +151,22 @@ export function ServiceSelector({
         selectedGroupId &&
         serviceGroupId === selectedGroupId
       ) {
-        return `O serviço "${service.name}" conflita com "${s.name}" (mesmo grupo: ${serviceGroupId})`;
+        const msg = `O serviço "${service.name}" conflita com "${s.name}" (mesmo grupo: ${serviceGroupId})`;
+        console.warn(`>>> [CHECK_CONFLICT] Conflito de GRUPO detectado:`, msg);
+        return msg;
       }
 
       // 2. Conflito individual (Bidirecional)
       if (serviceConflicts.includes(selectedId)) {
-        return `O serviço "${service.name}" bloqueia o serviço "${s.name}"`;
+        const msg = `O serviço "${service.name}" bloqueia o serviço "${s.name}"`;
+        console.warn(`>>> [CHECK_CONFLICT] Conflito INDIVIDUAL (A bloqueia B) detectado:`, msg);
+        return msg;
       }
 
       if (selectedConflicts.includes(serviceId)) {
-        return `O serviço "${s.name}" bloqueia o serviço "${service.name}"`;
+        const msg = `O serviço "${s.name}" bloqueia o serviço "${service.name}"`;
+        console.warn(`>>> [CHECK_CONFLICT] Conflito INDIVIDUAL (B bloqueia A) detectado:`, msg);
+        return msg;
       }
     }
     return null;
