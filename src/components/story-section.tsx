@@ -18,6 +18,8 @@ import { cn } from "@/lib/utils";
 
 const safeString = (val: unknown, defaultStr: string = ""): string => {
   if (typeof val === "string") return val;
+  if (val === null || val === undefined) return defaultStr;
+  
   if (Array.isArray(val)) {
     const joined = val
       .map((item) => safeString(item, ""))
@@ -25,13 +27,24 @@ const safeString = (val: unknown, defaultStr: string = ""): string => {
       .join("\n");
     return joined || defaultStr;
   }
-  if (typeof val === "object" && val !== null) {
+  
+  if (typeof val === "object") {
     const obj = val as Record<string, unknown>;
     const candidate =
-      obj.text ?? obj.value ?? obj.content ?? obj.title ?? defaultStr;
-    return safeString(candidate, defaultStr);
+      obj.text ?? obj.value ?? obj.content ?? obj.title;
+    
+    if (candidate !== undefined && candidate !== val) {
+      return safeString(candidate, defaultStr);
+    }
+    
+    try {
+      return JSON.stringify(val);
+    } catch (e) {
+      return defaultStr;
+    }
   }
-  return val ? String(val) : defaultStr;
+  
+  return String(val);
 };
 
 export function StorySection() {
@@ -253,12 +266,16 @@ export function StorySection() {
                 fontFamily: settings.contentFont || "var(--font-body)",
               }}
             >
-              {contentText
-                .split("\n")
-                .filter((p) => p && p.trim() !== "")
-                .map((paragraph, index) => (
-                  <p key={`${paragraph.slice(0, 20)}-${index}`}>{paragraph}</p>
-                ))}
+              {typeof contentText === "string" && contentText.split ? (
+                contentText
+                  .split("\n")
+                  .filter((p) => p && p.trim() !== "")
+                  .map((paragraph, index) => (
+                    <p key={`${paragraph.slice(0, 20)}-${index}`}>{paragraph}</p>
+                  ))
+              ) : (
+                <p>{String(contentText || "")}</p>
+              )}
             </div>
           </div>
         </div>

@@ -184,6 +184,9 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações do Sobre aplicadas.",
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    }
   }, [aboutHeroSettings, setLastAppliedAboutHero, toast]);
 
   const handleApplyStory = useCallback(() => {
@@ -192,6 +195,9 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações da História aplicadas.",
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    }
   }, [storySettings, setLastAppliedStory, toast]);
 
   const handleApplyTeam = useCallback(() => {
@@ -200,6 +206,9 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações da Equipe aplicadas.",
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    }
   }, [teamSettings, setLastAppliedTeam, toast]);
 
   const handleApplyTestimonials = useCallback(() => {
@@ -208,6 +217,9 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Depoimentos aplicadas.",
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    }
   }, [testimonialsSettings, setLastAppliedTestimonials, toast]);
 
   const handleApplyFont = useCallback(() => {
@@ -216,6 +228,9 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Fontes aplicadas.",
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    }
   }, [fontSettings, setLastAppliedFont, toast]);
 
   const handleApplyTypography = handleApplyFont;
@@ -226,6 +241,9 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Cores aplicadas.",
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    }
   }, [colorSettings, setLastAppliedColor, toast]);
 
   const handleApplyServices = useCallback(() => {
@@ -234,6 +252,9 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Serviços aplicadas.",
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    }
   }, [servicesSettings, setLastAppliedServices, toast]);
 
   const handleApplyHomeValues = useCallback(() => {
@@ -242,6 +263,9 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Valores aplicadas.",
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    }
   }, [homeValuesSettings, setLastAppliedHomeValues, toast]);
 
   const handleApplyAboutUsValues = useCallback(() => {
@@ -250,6 +274,9 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Valores aplicadas.",
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    }
   }, [aboutUsValuesSettings, setLastAppliedAboutUsValues, toast]);
 
   const handleApplyGallery = useCallback(() => {
@@ -262,6 +289,9 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações da Galeria aplicadas.",
     });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    }
   }, [
     activeSectionId,
     galleryPageSettings,
@@ -274,6 +304,9 @@ export function useEditorActions({
   const handleApplyCTA = useCallback(() => {
     setLastAppliedCTA(ctaSettings);
     toast({ title: "Sucesso", description: "Configurações de CTA aplicadas." });
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    }
   }, [ctaSettings, setLastAppliedCTA, toast]);
 
   const handleApplyHeader = useCallback(() => {
