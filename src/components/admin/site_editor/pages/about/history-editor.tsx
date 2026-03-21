@@ -77,7 +77,7 @@ export function HistoryEditor({
                   Texto do Título
                 </legend>
                 <Input
-                  value={settings.title || ""}
+                  value={typeof settings.title === 'string' ? settings.title : ""}
                   onChange={(e) => handleUpdate({ title: e.target.value })}
                   className="h-8 text-xs"
                   placeholder="Ex: Nossa História"
@@ -181,7 +181,7 @@ export function HistoryEditor({
                 Texto da História
               </legend>
               <Textarea
-                value={settings.content || ""}
+                value={typeof settings.content === 'string' ? settings.content : ""}
                 onChange={(e) => handleUpdate({ content: e.target.value })}
                 className="min-h-32 text-[11px] leading-snug resize-none"
                 placeholder="Conte a história do seu negócio..."

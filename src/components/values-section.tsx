@@ -37,7 +37,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import {
   type AppearanceSettings,
-  getValuesSettings,
+  getAboutUsValuesSettings,
+  getHomeValuesSettings,
   sanitizeColor,
   type ValueItem,
   type ValuesSettings,
@@ -82,7 +83,11 @@ const iconMap: Record<string, LucideIcon> = {
   Wind,
 };
 
-export function ValuesSection() {
+export function ValuesSection({
+  source = "home",
+}: {
+  source?: "home" | "about";
+}) {
   const { studio, isLoading } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
   const [settings, setSettings] = useState<ValuesSettings | null>(null);
@@ -257,20 +262,35 @@ export function ValuesSection() {
         | Record<string, unknown>
         | undefined;
       const home = config?.home as Record<string, unknown> | undefined;
-      const rawValues = (home?.valuesSection ||
-        home?.values ||
-        config?.values ||
-        layoutGlobal?.values) as Record<string, unknown> | undefined;
+      const aboutUs = (config as Record<string, unknown>)?.aboutUs as
+        | Record<string, unknown>
+        | undefined;
+      const rawValues =
+        source === "home"
+          ? ((config?.homeValuesSettings ||
+              home?.valuesSection ||
+              home?.values ||
+              config?.values ||
+              layoutGlobal?.values) as Record<string, unknown> | undefined)
+          : ((config?.aboutUsValuesSettings ||
+              aboutUs?.valuesSection ||
+              aboutUs?.values ||
+              config?.values ||
+              layoutGlobal?.values) as Record<string, unknown> | undefined);
 
       if (rawValues) {
         setSettings(normalizeValues(rawValues));
       } else {
-        setSettings(getValuesSettings());
+        setSettings(
+          source === "home" ? getHomeValuesSettings() : getAboutUsValuesSettings(),
+        );
       }
     } else {
-      setSettings(getValuesSettings());
+      setSettings(
+        source === "home" ? getHomeValuesSettings() : getAboutUsValuesSettings(),
+      );
     }
-  }, [normalizeValues, studioId, studioConfig]);
+  }, [normalizeValues, source, studioId, studioConfig]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -279,9 +299,12 @@ export function ValuesSection() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_VALUES_SETTINGS") {
+      if (
+        event.data.type === "UPDATE_HOME_VALUES_SETTINGS" &&
+        source === "home"
+      ) {
         console.log(
-          ">>> [VALUES_SECTION] Mensagem UPDATE_VALUES_SETTINGS recebida:",
+          ">>> [VALUES_SECTION] Mensagem UPDATE_HOME_VALUES_SETTINGS recebida:",
           event.data.settings,
         );
         const incoming = event.data.settings as Record<string, unknown> | undefined;
@@ -314,16 +337,51 @@ export function ValuesSection() {
       }
 
       if (
-        event.data.type === "UPDATE_SITE_DATA" &&
-        (event.data.data?.values || event.data.data?.valuesSection)
+        event.data.type === "UPDATE_ABOUT_US_VALUES_SETTINGS" &&
+        source === "about"
       ) {
         console.log(
-          ">>> [VALUES_SECTION] Mensagem UPDATE_SITE_DATA recebida:",
-          event.data.data.values,
+          ">>> [VALUES_SECTION] Mensagem UPDATE_ABOUT_US_VALUES_SETTINGS recebida:",
+          event.data.settings,
         );
+        const incoming = event.data.settings as Record<string, unknown> | undefined;
+        if (incoming) {
+          const incomingAppearance =
+            incoming.appearance as Record<string, unknown> | undefined;
+          const incomingContent =
+            incoming.content as Record<string, unknown> | undefined;
+          const incomingItemsStyle =
+            incoming.itemsStyle as Record<string, unknown> | undefined;
+          const incomingCardBg =
+            (incoming.cardBgColor as string) ||
+            (incomingAppearance?.cardBgColor as string) ||
+            (incomingAppearance?.cardBackgroundColor as string) ||
+            (incomingContent?.cardBgColor as string) ||
+            (incomingItemsStyle?.itemBackgroundColor as string);
+          setSettings((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  ...incoming,
+                  ...(incomingCardBg ? { cardBgColor: incomingCardBg } : {}),
+                }
+              : {
+                  ...(incoming as ValuesSettings),
+                  ...(incomingCardBg ? { cardBgColor: incomingCardBg } : {}),
+                },
+          );
+        }
+      }
+
+      if (event.data.type === "UPDATE_SITE_DATA") {
         const siteValues =
-          (event.data.data.valuesSection as Record<string, unknown>) ||
-          (event.data.data.values as Record<string, unknown>);
+          source === "home"
+            ? ((event.data.data?.homeValuesSettings ||
+                event.data.data?.valuesSection ||
+                event.data.data?.values) as Record<string, unknown> | undefined)
+            : ((event.data.data?.aboutUsValuesSettings ||
+                event.data.data?.valuesSection ||
+                event.data.data?.values) as Record<string, unknown> | undefined);
         if (siteValues) {
           setSettings(normalizeValues(siteValues));
         }
@@ -339,15 +397,17 @@ export function ValuesSection() {
     };
 
     window.addEventListener("message", handleMessage);
-    window.addEventListener("valuesSettingsUpdated", loadData);
+    const updateEvent =
+      source === "home" ? "homeValuesSettingsUpdated" : "aboutUsValuesSettingsUpdated";
+    window.addEventListener(updateEvent, loadData);
     window.addEventListener("DataReady", loadData);
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("valuesSettingsUpdated", loadData);
+      window.removeEventListener(updateEvent, loadData);
       window.removeEventListener("DataReady", loadData);
     };
-  }, [loadData, normalizeValues]);
+  }, [loadData, normalizeValues, source]);
 
   // Fallback Skeleton enquanto carrega do banco
   if (!isMounted || isLoading) {

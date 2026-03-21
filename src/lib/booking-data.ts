@@ -1154,6 +1154,8 @@ export function clearAllCustomizationCache(): void {
     "colorSettings",
     "servicesSettings",
     "valuesSettings",
+    "homeValuesSettings",
+    "aboutUsValuesSettings",
     "gallerySettings",
     "ctaSettings",
     "headerSettings",
@@ -2409,6 +2411,40 @@ export function saveStorySettings(_settings: StorySettings): void {
   }
 }
 
+export function getHomeValuesSettings(): ValuesSettings {
+  if (typeof window === "undefined") return defaultValuesSettings;
+  const settings = localStorage.getItem(getStorageKey("homeValuesSettings"));
+  return settings ? JSON.parse(settings) : defaultValuesSettings;
+}
+
+export function saveHomeValuesSettings(settings: ValuesSettings): void {
+  localStorage.setItem(
+    getStorageKey("homeValuesSettings"),
+    JSON.stringify(settings),
+  );
+  updateDraftTimestamp();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("homeValuesSettingsUpdated"));
+  }
+}
+
+export function getAboutUsValuesSettings(): ValuesSettings {
+  if (typeof window === "undefined") return defaultValuesSettings;
+  const settings = localStorage.getItem(getStorageKey("aboutUsValuesSettings"));
+  return settings ? JSON.parse(settings) : defaultValuesSettings;
+}
+
+export function saveAboutUsValuesSettings(settings: ValuesSettings): void {
+  localStorage.setItem(
+    getStorageKey("aboutUsValuesSettings"),
+    JSON.stringify(settings),
+  );
+  updateDraftTimestamp();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("aboutUsValuesSettingsUpdated"));
+  }
+}
+
 export function getValuesSettings(): ValuesSettings {
   if (typeof window === "undefined") return defaultValuesSettings;
   const settings = localStorage.getItem(getStorageKey("valuesSettings"));
@@ -2483,6 +2519,17 @@ export function saveGallerySettings(_settings: GallerySettings): void {
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("gallerySettingsUpdated"));
+  }
+}
+
+export function getGalleryPageSettings(): GallerySettings {
+  return defaultGallerySettings;
+}
+
+export function saveGalleryPageSettings(_settings: GallerySettings): void {
+  updateDraftTimestamp();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("galleryPageSettingsUpdated"));
   }
 }
 

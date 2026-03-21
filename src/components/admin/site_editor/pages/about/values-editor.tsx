@@ -462,7 +462,7 @@ export function ValuesEditor({
               }}
               onUpdate={(updates) => {
                 if (onUpdateBackground) {
-                  onUpdateBackground(updates, "values");
+                  onUpdateBackground(updates, "about-us-values");
                 } else {
                   onUpdate(updates as Partial<ValuesSettings>);
                 }

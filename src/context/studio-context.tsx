@@ -49,6 +49,7 @@ import {
   getStorageKey,
   normalizeStepSettings,
   saveAboutHeroSettings,
+  saveAboutUsValuesSettings,
   saveBookingConfirmationSettings,
   saveBookingDateSettings,
   saveBookingFormSettings,
@@ -58,9 +59,11 @@ import {
   saveCTASettings,
   saveFontSettings,
   saveFooterSettings,
+  saveGalleryPageSettings,
   saveGallerySettings,
   saveHeaderSettings,
   saveHeroSettings,
+  saveHomeValuesSettings,
   savePageVisibility,
   saveServices,
   saveServicesSettings,
@@ -68,7 +71,6 @@ import {
   saveStorySettings,
   saveTeamSettings,
   saveTestimonialsSettings,
-  saveValuesSettings,
   saveVisibleSections,
 } from "@/lib/booking-data";
 import type { SiteConfigData } from "@/lib/site-config-types";
@@ -103,6 +105,8 @@ const SITE_BASE_FALLBACK = (id: string, slug: string): Business => ({
     testimonials: defaultTestimonialsSettings,
     services: defaultServicesSettings,
     values: defaultValuesSettings,
+    homeValuesSettings: defaultValuesSettings,
+    aboutUsValuesSettings: defaultValuesSettings,
     gallery: defaultGallerySettings,
     cta: defaultCTASettings,
     header: defaultHeaderSettings,
@@ -201,8 +205,17 @@ export function StudioProvider({
             case "UPDATE_FONT_SETTINGS":
               updatedConfig.theme = settings;
               break;
+            case "UPDATE_GALLERY_PREVIEW":
+              updatedConfig.galleryPreviewSettings = settings;
+              break;
+            case "UPDATE_GALLERY_PAGE":
+              updatedConfig.galleryPageSettings = settings;
+              break;
             case "UPDATE_GALLERY_SETTINGS":
-              updatedConfig.gallery = settings;
+              updatedConfig.galleryPreviewSettings = settings;
+              break;
+            case "UPDATE_GALLERY_PAGE_SETTINGS":
+              updatedConfig.galleryPageSettings = settings;
               break;
             case "UPDATE_STORY_SETTINGS":
               updatedConfig.story = settings;
@@ -213,8 +226,11 @@ export function StudioProvider({
             case "UPDATE_TESTIMONIALS_SETTINGS":
               updatedConfig.testimonials = settings;
               break;
-            case "UPDATE_VALUES_SETTINGS":
-              updatedConfig.values = settings;
+            case "UPDATE_HOME_VALUES_SETTINGS":
+              updatedConfig.homeValuesSettings = settings;
+              break;
+            case "UPDATE_ABOUT_US_VALUES_SETTINGS":
+              updatedConfig.aboutUsValuesSettings = settings;
               break;
             case "UPDATE_CTA_SETTINGS":
               updatedConfig.cta = settings;
@@ -344,7 +360,10 @@ export function StudioProvider({
       const layoutGlobal = (config.layoutGlobal ||
         config.layout_global ||
         {}) as Record<string, unknown>;
-      const home = config.home as Record<string, Record<string, unknown>> | null;
+      const home = config.home as Record<string, unknown> | undefined;
+      const aboutUs = (config as Record<string, unknown>)?.aboutUs as
+        | Record<string, unknown>
+        | undefined;
       const layoutColors = (layoutGlobal?.siteColors ||
         (layoutGlobal as Record<string, unknown>)?.color ||
         (layoutGlobal as Record<string, unknown>)?.site_colors ||
@@ -389,7 +408,7 @@ export function StudioProvider({
         layoutGlobal?.appointment_flow) as SiteConfigData["bookingSteps"] | undefined;
 
       // Normalização profunda para garantir que o cardBgColor seja capturado de qualquer fonte (snake_case, cardConfig, etc.)
-      const normalizeDeepStep = (step: any) => {
+      const normalizeDeepStep = (step: unknown) => {
         if (!step) return undefined;
         // normalizeStepSettings em booking-data.ts já é robusto o suficiente para capturar cardBgColor de múltiplas fontes
         return normalizeStepSettings(step as Record<string, unknown>);
@@ -482,8 +501,22 @@ export function StudioProvider({
             home?.services_section ||
             home?.services ||
             config.services ||
-            (config as any).services_section,
+            (config as Record<string, unknown>).services_section,
         ) as ServicesSettings | undefined,
+        homeValuesSettings: normalizeDeepStep(
+          (config as Record<string, unknown>)?.homeValuesSettings ||
+            (layoutGlobal as Record<string, unknown>)?.homeValuesSettings ||
+            (home as Record<string, unknown>)?.valuesSection ||
+            (home as Record<string, unknown>)?.values ||
+            (config as Record<string, unknown>)?.values,
+        ) as ValuesSettings | undefined,
+        aboutUsValuesSettings: normalizeDeepStep(
+          (config as Record<string, unknown>)?.aboutUsValuesSettings ||
+            aboutUs?.valuesSection ||
+            aboutUs?.values ||
+            (layoutGlobal as Record<string, unknown>)?.aboutUsValuesSettings ||
+            (config as Record<string, unknown>)?.values,
+        ) as ValuesSettings | undefined,
         values: normalizeDeepStep(
           layoutGlobal?.values ||
             layoutGlobal?.values_section ||
@@ -492,14 +525,17 @@ export function StudioProvider({
             home?.values_section ||
             home?.values ||
             config.values ||
-            (config as any).values_section,
+            (config as Record<string, unknown>).values_section,
         ) as ValuesSettings | undefined,
+        galleryPreviewSettings: (config.galleryPreviewSettings ||
+          layoutGlobal?.galleryPreview ||
+          home?.galleryPreview ||
+          home?.gallerySection) as GallerySettings | undefined,
+        galleryPageSettings: (config.galleryPageSettings ||
+          config.gallery ||
+          layoutGlobal?.gallery) as GallerySettings | undefined,
         gallery: (layoutGlobal?.gallery ||
-          home?.gallerySection ||
-          home?.gallery ||
-          config.gallery) as
-          | GallerySettings
-          | undefined,
+          config.gallery) as GallerySettings | undefined,
         cta: (layoutGlobal?.cta ||
           home?.ctaSection ||
           home?.cta ||
@@ -571,8 +607,18 @@ export function StudioProvider({
       if (mappedConfig.testimonials)
         saveTestimonialsSettings(mappedConfig.testimonials);
       if (mappedConfig.services) saveServicesSettings(mappedConfig.services);
-      if (mappedConfig.values) saveValuesSettings(mappedConfig.values);
-      if (mappedConfig.gallery) saveGallerySettings(mappedConfig.gallery);
+      if (mappedConfig.homeValuesSettings)
+        saveHomeValuesSettings(mappedConfig.homeValuesSettings);
+      if (mappedConfig.aboutUsValuesSettings)
+        saveAboutUsValuesSettings(mappedConfig.aboutUsValuesSettings);
+      if (mappedConfig.galleryPreviewSettings)
+        saveGallerySettings(
+          mappedConfig.galleryPreviewSettings as GallerySettings,
+        );
+      if (mappedConfig.galleryPageSettings)
+        saveGalleryPageSettings(
+          mappedConfig.galleryPageSettings as GallerySettings,
+        );
       if (mappedConfig.cta) saveCTASettings(mappedConfig.cta);
       if (mappedConfig.header) saveHeaderSettings(mappedConfig.header);
       if (mappedConfig.footer) saveFooterSettings(mappedConfig.footer);
@@ -768,8 +814,6 @@ export function StudioProvider({
     if (studio && typeof window !== "undefined") {
       // Apenas acessando pathname para garantir que o efeito rode na troca de rota
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const _ = pathname;
-
       const siteName = studio.siteName || studio.name || "Agendamento";
       const suffix = studio.titleSuffix?.trim();
 
@@ -783,7 +827,7 @@ export function StudioProvider({
         document.title = siteName;
       }
     }
-  }, [studio, pathname]);
+  }, [studio]);
   // --------------------------------------------------------------------------
 
   useEffect(() => {
@@ -1104,7 +1148,8 @@ export function StudioProvider({
                   "headerSettings",
                   "footerSettings",
                   "servicesSettings",
-                  "valuesSettings",
+                  "homeValuesSettings",
+                  "aboutUsValuesSettings",
                   "gallerySettings",
                   "ctaSettings",
                   "pageVisibility",

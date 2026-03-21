@@ -501,7 +501,7 @@ export function ValuesEditor({
               }}
               onUpdate={(updates) => {
                 if (onUpdateBackground) {
-                  onUpdateBackground(updates, "values");
+                  onUpdateBackground(updates, "home-values");
                 } else {
                   onUpdate(updates);
                 }

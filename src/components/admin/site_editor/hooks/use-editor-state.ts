@@ -937,12 +937,16 @@ export function useEditorState() {
   const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(
     defaultServicesSettings,
   );
-  const [valuesSettings, setValuesSettings] = useState<ValuesSettings>(
+  const [homeValuesSettings, setHomeValuesSettings] = useState<ValuesSettings>(
     defaultValuesSettings,
   );
+  const [aboutUsValuesSettings, setAboutUsValuesSettings] =
+    useState<ValuesSettings>(defaultValuesSettings);
   const [gallerySettings, setGallerySettings] = useState<GallerySettings>(
     defaultGallerySettings,
   );
+  const [galleryPageSettings, setGalleryPageSettings] =
+    useState<GallerySettings>(defaultGallerySettings);
   const [ctaSettings, setCTASettings] =
     useState<CTASettings>(defaultCTASettings);
   const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(
@@ -986,12 +990,15 @@ export function useEditorState() {
     useState<ColorSettings>(defaultColorSettings);
   const [lastAppliedServices, setLastAppliedServices] =
     useState<ServicesSettings>(defaultServicesSettings);
-  const [lastAppliedValues, setLastAppliedValues] = useState<ValuesSettings>(
-    defaultValuesSettings,
-  );
+  const [lastAppliedHomeValues, setLastAppliedHomeValues] =
+    useState<ValuesSettings>(defaultValuesSettings);
+  const [lastAppliedAboutUsValues, setLastAppliedAboutUsValues] =
+    useState<ValuesSettings>(defaultValuesSettings);
   const [lastAppliedGallery, setLastAppliedGallery] = useState<GallerySettings>(
     defaultGallerySettings,
   );
+  const [lastAppliedGalleryPage, setLastAppliedGalleryPage] =
+    useState<GallerySettings>(defaultGallerySettings);
   const [lastAppliedCTA, setLastAppliedCTA] =
     useState<CTASettings>(defaultCTASettings);
   const [lastAppliedHeader, setLastAppliedHeader] = useState<HeaderSettings>(
@@ -1030,12 +1037,16 @@ export function useEditorState() {
   const [lastSavedServices, setLastSavedServices] = useState<ServicesSettings>(
     defaultServicesSettings,
   );
-  const [lastSavedValues, setLastSavedValues] = useState<ValuesSettings>(
+  const [lastSavedHomeValues, setLastSavedHomeValues] = useState<ValuesSettings>(
     defaultValuesSettings,
   );
+  const [lastSavedAboutUsValues, setLastSavedAboutUsValues] =
+    useState<ValuesSettings>(defaultValuesSettings);
   const [lastSavedGallery, setLastSavedGallery] = useState<GallerySettings>(
     defaultGallerySettings,
   );
+  const [lastSavedGalleryPage, setLastSavedGalleryPage] =
+    useState<GallerySettings>(defaultGallerySettings);
   const [lastSavedCTA, setLastSavedCTA] =
     useState<CTASettings>(defaultCTASettings);
   const [lastSavedHeader, setLastSavedHeader] = useState<HeaderSettings>(
@@ -1132,10 +1143,26 @@ export function useEditorState() {
         );
       if (config.services)
         setServicesSettings(normalizeServicesFromConfig(config.services));
-      if (config.values)
-        setValuesSettings(normalizeValuesFromConfig(config.values));
-      if (config.gallery)
-        setGallerySettings(normalizeGalleryFromConfig(config.gallery));
+      if (config.homeValuesSettings)
+        setHomeValuesSettings(normalizeValuesFromConfig(config.homeValuesSettings));
+      else if (config.values)
+        setHomeValuesSettings(normalizeValuesFromConfig(config.values));
+      
+      if (config.aboutUsValuesSettings)
+        setAboutUsValuesSettings(normalizeValuesFromConfig(config.aboutUsValuesSettings));
+      else if (config.values)
+        setAboutUsValuesSettings(normalizeValuesFromConfig(config.values));
+
+      if (config.galleryPreviewSettings)
+        setGallerySettings(
+          normalizeGalleryFromConfig(config.galleryPreviewSettings),
+        );
+      if (config.galleryPageSettings)
+        setGalleryPageSettings(
+          normalizeGalleryFromConfig(
+            config.galleryPageSettings,
+          ),
+        );
       if (config.cta) setCTASettings(normalizeCTAFromConfig(config.cta));
       if (config.header)
         setHeaderSettings(normalizeHeaderFromConfig(config.header));
@@ -1219,7 +1246,8 @@ export function useEditorState() {
       // Sincronizar outras seções principais
       setHeroSettings((prev) => syncBackground(prev, {}));
       setServicesSettings((prev) => syncBackground(prev, {}));
-      setValuesSettings((prev) => syncBackground(prev, {}));
+      setHomeValuesSettings((prev) => syncBackground(prev, {}));
+      setAboutUsValuesSettings((prev) => syncBackground(prev, {}));
       setCTASettings((prev) => syncBackground(prev, {}));
 
       setIsInitialSyncDone(true);
@@ -1237,7 +1265,7 @@ export function useEditorState() {
       setIsDirty(true);
       setHeroSettings((prev: HeroSettings) => syncBackground(prev, updates));
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
   const handleUpdateAboutHero = useCallback(
@@ -1247,7 +1275,7 @@ export function useEditorState() {
         syncBackground(prev, updates),
       );
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
   const handleUpdateStory = useCallback(
@@ -1255,7 +1283,7 @@ export function useEditorState() {
       setIsDirty(true);
       setStorySettings((prev: StorySettings) => syncBackground(prev, updates));
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
   const handleUpdateTeam = useCallback(
@@ -1263,7 +1291,7 @@ export function useEditorState() {
       setIsDirty(true);
       setTeamSettings((prev: TeamSettings) => syncBackground(prev, updates));
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
   const handleUpdateTestimonials = useCallback(
@@ -1273,13 +1301,13 @@ export function useEditorState() {
         syncBackground(prev, updates),
       );
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
   const handleUpdateFont = useCallback((updates: Partial<FontSettings>) => {
     setIsDirty(true);
     setFontSettings((prev: FontSettings) => ({ ...prev, ...updates }));
-  }, [setIsDirty]);
+  }, []);
 
   const handleUpdateColors = useCallback((updates: Partial<ColorSettings>) => {
     setIsDirty(true);
@@ -1298,7 +1326,7 @@ export function useEditorState() {
         newState.text = sanitizeColor(updates.text) || prev.text;
       return newState;
     });
-  }, [setIsDirty]);
+  }, []);
 
   const handleUpdateServices = useCallback(
     (updates: Partial<ServicesSettings>) => {
@@ -1332,13 +1360,13 @@ export function useEditorState() {
         return newState;
       });
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
-  const handleUpdateValues = useCallback(
+  const handleUpdateHomeValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
       setIsDirty(true);
-      setValuesSettings((prev: ValuesSettings) => {
+      setHomeValuesSettings((prev: ValuesSettings) => {
         const newState = syncBackground(prev, updates);
         if (updates.bgColor !== undefined)
           newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
@@ -1361,10 +1389,39 @@ export function useEditorState() {
         return newState;
       });
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
+  );
+  
+  const handleUpdateAboutUsValues = useCallback(
+    (updates: Partial<ValuesSettings>) => {
+      setIsDirty(true);
+      setAboutUsValuesSettings((prev: ValuesSettings) => {
+        const newState = syncBackground(prev, updates);
+        if (updates.bgColor !== undefined)
+          newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+        if (updates.titleColor !== undefined)
+          newState.titleColor =
+            sanitizeColor(updates.titleColor) || prev.titleColor;
+        if (updates.subtitleColor !== undefined)
+          newState.subtitleColor =
+            sanitizeColor(updates.subtitleColor) || prev.subtitleColor;
+        if (updates.cardBgColor !== undefined)
+          newState.cardBgColor =
+            sanitizeColor(updates.cardBgColor) || prev.cardBgColor;
+        if (updates.cardTitleColor !== undefined)
+          newState.cardTitleColor =
+            sanitizeColor(updates.cardTitleColor) || prev.cardTitleColor;
+        if (updates.cardDescriptionColor !== undefined)
+          newState.cardDescriptionColor =
+            sanitizeColor(updates.cardDescriptionColor) ||
+            prev.cardDescriptionColor;
+        return newState;
+      });
+    },
+    [syncBackground],
   );
 
-  const handleUpdateGallery = useCallback(
+  const handleUpdateGalleryPreview = useCallback(
     (updates: Partial<GallerySettings>) => {
       setIsDirty(true);
       setGallerySettings((prev: GallerySettings) => {
@@ -1389,7 +1446,35 @@ export function useEditorState() {
         return newState;
       });
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
+  );
+
+  const handleUpdateGalleryPage = useCallback(
+    (updates: Partial<GallerySettings>) => {
+      setIsDirty(true);
+      setGalleryPageSettings((prev: GallerySettings) => {
+        const newState = syncBackground(prev, updates);
+        if (updates.bgColor !== undefined)
+          newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+        if (updates.titleColor !== undefined)
+          newState.titleColor =
+            sanitizeColor(updates.titleColor) || prev.titleColor;
+        if (updates.subtitleColor !== undefined)
+          newState.subtitleColor =
+            sanitizeColor(updates.subtitleColor) || prev.subtitleColor;
+        if (updates.buttonColor !== undefined)
+          newState.buttonColor =
+            sanitizeColor(updates.buttonColor) || prev.buttonColor;
+        if (updates.buttonTextColor !== undefined)
+          newState.buttonTextColor =
+            sanitizeColor(updates.buttonTextColor) || prev.buttonTextColor;
+        if (updates.cardBgColor !== undefined)
+          newState.cardBgColor =
+            sanitizeColor(updates.cardBgColor) || prev.cardBgColor;
+        return newState;
+      });
+    },
+    [syncBackground],
   );
 
   const handleUpdateCTA = useCallback(
@@ -1397,7 +1482,7 @@ export function useEditorState() {
       setIsDirty(true);
       setCTASettings((prev: CTASettings) => syncBackground(prev, updates));
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
   const handleUpdateHeader = useCallback((updates: Partial<HeaderSettings>) => {
@@ -1416,7 +1501,7 @@ export function useEditorState() {
           sanitizeColor(updates.buttonTextColor) || prev.buttonTextColor;
       return newState;
     });
-  }, [setIsDirty]);
+  }, []);
 
   const handleUpdateFooter = useCallback((updates: Partial<FooterSettings>) => {
     setIsDirty(true);
@@ -1433,7 +1518,7 @@ export function useEditorState() {
         newState.iconColor = sanitizeColor(updates.iconColor) || prev.iconColor;
       return newState;
     });
-  }, [setIsDirty]);
+  }, []);
 
   const handleUpdateBookingService = useCallback(
     (updates: Partial<BookingStepSettings>) => {
@@ -1445,7 +1530,7 @@ export function useEditorState() {
         return normalizeStepSettings(newState);
       });
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
   const handleUpdateBookingDate = useCallback(
@@ -1458,7 +1543,7 @@ export function useEditorState() {
         return normalizeStepSettings(newState);
       });
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
   const handleUpdateBookingTime = useCallback(
@@ -1471,7 +1556,7 @@ export function useEditorState() {
         return normalizeStepSettings(newState);
       });
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
   const handleUpdateBookingForm = useCallback(
@@ -1484,7 +1569,7 @@ export function useEditorState() {
         return normalizeStepSettings(newState);
       });
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
   const handleUpdateBookingConfirmation = useCallback(
@@ -1497,7 +1582,7 @@ export function useEditorState() {
         return normalizeStepSettings(newState);
       });
     },
-    [syncBackground, setIsDirty],
+    [syncBackground],
   );
 
   const handlePageVisibilityChange = useCallback(
@@ -1544,14 +1629,22 @@ export function useEditorState() {
         services: handleUpdateServices as (
           u: Partial<BackgroundSettings>,
         ) => void,
-        values: handleUpdateValues as (u: Partial<BackgroundSettings>) => void,
-        gallery: handleUpdateGallery as (
+        values: handleUpdateHomeValues as (
           u: Partial<BackgroundSettings>,
         ) => void,
-        "gallery-preview": handleUpdateGallery as (
+        "home-values": handleUpdateHomeValues as (
           u: Partial<BackgroundSettings>,
         ) => void,
-        "gallery-grid": handleUpdateGallery as (
+        "about-us-values": handleUpdateAboutUsValues as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        gallery: handleUpdateGalleryPreview as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        "gallery-preview": handleUpdateGalleryPreview as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        "gallery-grid": handleUpdateGalleryPage as (
           u: Partial<BackgroundSettings>,
         ) => void,
         cta: handleUpdateCTA as (u: Partial<BackgroundSettings>) => void,
@@ -1589,8 +1682,10 @@ export function useEditorState() {
       handleUpdateTeam,
       handleUpdateTestimonials,
       handleUpdateServices,
-      handleUpdateValues,
-      handleUpdateGallery,
+      handleUpdateHomeValues,
+      handleUpdateAboutUsValues,
+      handleUpdateGalleryPreview,
+      handleUpdateGalleryPage,
       handleUpdateCTA,
       handleUpdateBookingService,
       handleUpdateBookingDate,
@@ -1617,10 +1712,14 @@ export function useEditorState() {
     setColorSettings,
     servicesSettings,
     setServicesSettings,
-    valuesSettings,
-    setValuesSettings,
+    homeValuesSettings,
+    setHomeValuesSettings,
+    aboutUsValuesSettings,
+    setAboutUsValuesSettings,
     gallerySettings,
     setGallerySettings,
+    galleryPageSettings,
+    setGalleryPageSettings,
     ctaSettings,
     setCTASettings,
     headerSettings,
@@ -1659,10 +1758,14 @@ export function useEditorState() {
     setLastAppliedColor,
     lastAppliedServices,
     setLastAppliedServices,
-    lastAppliedValues,
-    setLastAppliedValues,
+    lastAppliedHomeValues,
+    setLastAppliedHomeValues,
+    lastAppliedAboutUsValues,
+    setLastAppliedAboutUsValues,
     lastAppliedGallery,
     setLastAppliedGallery,
+    lastAppliedGalleryPage,
+    setLastAppliedGalleryPage,
     lastAppliedCTA,
     setLastAppliedCTA,
     lastAppliedHeader,
@@ -1695,10 +1798,14 @@ export function useEditorState() {
     setLastSavedColor,
     lastSavedServices,
     setLastSavedServices,
-    lastSavedValues,
-    setLastSavedValues,
+    lastSavedHomeValues,
+    setLastSavedHomeValues,
+    lastSavedAboutUsValues,
+    setLastSavedAboutUsValues,
     lastSavedGallery,
     setLastSavedGallery,
+    lastSavedGalleryPage,
+    setLastSavedGalleryPage,
     lastSavedCTA,
     setLastSavedCTA,
     lastSavedHeader,
@@ -1727,8 +1834,10 @@ export function useEditorState() {
     handleUpdateFont,
     handleUpdateColors,
     handleUpdateServices,
-    handleUpdateValues,
-    handleUpdateGallery,
+    handleUpdateHomeValues,
+    handleUpdateAboutUsValues,
+    handleUpdateGalleryPreview,
+    handleUpdateGalleryPage,
     handleUpdateCTA,
     handleUpdateHeader,
     handleUpdateFooter,

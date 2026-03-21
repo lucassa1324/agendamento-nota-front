@@ -183,7 +183,7 @@ export default function Home({
     <main key={publishVersion}>
       {isVisible("hero") && <HeroSection />}
       {isVisible("services") && <ServicesSection />}
-      {isVisible("values") && <ValuesSection />}
+      {isVisible("values") && <ValuesSection source="home" />}
       {isVisible("gallery-preview") && <GalleryPreview />}
       {isVisible("cta") && <CTASection />}
     </main>

@@ -39,8 +39,10 @@ type EditorSettings = {
   fontSettings: FontSettings;
   colorSettings: ColorSettings;
   servicesSettings: ServicesSettings;
-  valuesSettings: ValuesSettings;
+  homeValuesSettings: ValuesSettings;
+  aboutUsValuesSettings: ValuesSettings;
   gallerySettings: GallerySettings;
+  galleryPageSettings: GallerySettings;
   ctaSettings: CTASettings;
   headerSettings: HeaderSettings;
   footerSettings: FooterSettings;
@@ -62,8 +64,10 @@ type EditorSavedState = {
   lastSavedFont: FontSettings;
   lastSavedColor: ColorSettings;
   lastSavedServices: ServicesSettings;
-  lastSavedValues: ValuesSettings;
+  lastSavedHomeValues: ValuesSettings;
+  lastSavedAboutUsValues: ValuesSettings;
   lastSavedGallery: GallerySettings;
+  lastSavedGalleryPage: GallerySettings;
   lastSavedCTA: CTASettings;
   lastSavedHeader: HeaderSettings;
   lastSavedFooter: FooterSettings;
@@ -85,8 +89,10 @@ type EditorAppliedState = {
   lastAppliedFont: FontSettings;
   lastAppliedColor: ColorSettings;
   lastAppliedServices: ServicesSettings;
-  lastAppliedValues: ValuesSettings;
+  lastAppliedHomeValues: ValuesSettings;
+  lastAppliedAboutUsValues: ValuesSettings;
   lastAppliedGallery: GallerySettings;
+  lastAppliedGalleryPage: GallerySettings;
   lastAppliedCTA: CTASettings;
   lastAppliedHeader: HeaderSettings;
   lastAppliedFooter: FooterSettings;
@@ -106,8 +112,10 @@ type EditorStateSetters = {
   setLastSavedFont: (value: FontSettings) => void;
   setLastSavedColor: (value: ColorSettings) => void;
   setLastSavedServices: (value: ServicesSettings) => void;
-  setLastSavedValues: (value: ValuesSettings) => void;
+  setLastSavedHomeValues: (value: ValuesSettings) => void;
+  setLastSavedAboutUsValues: (value: ValuesSettings) => void;
   setLastSavedGallery: (value: GallerySettings) => void;
+  setLastSavedGalleryPage: (value: GallerySettings) => void;
   setLastSavedCTA: (value: CTASettings) => void;
   setLastSavedHeader: (value: HeaderSettings) => void;
   setLastSavedFooter: (value: FooterSettings) => void;
@@ -126,8 +134,10 @@ type EditorStateSetters = {
   setLastAppliedFont: (value: FontSettings) => void;
   setLastAppliedColor: (value: ColorSettings) => void;
   setLastAppliedServices: (value: ServicesSettings) => void;
-  setLastAppliedValues: (value: ValuesSettings) => void;
+  setLastAppliedHomeValues: (value: ValuesSettings) => void;
+  setLastAppliedAboutUsValues: (value: ValuesSettings) => void;
   setLastAppliedGallery: (value: GallerySettings) => void;
+  setLastAppliedGalleryPage: (value: GallerySettings) => void;
   setLastAppliedCTA: (value: CTASettings) => void;
   setLastAppliedHeader: (value: HeaderSettings) => void;
   setLastAppliedFooter: (value: FooterSettings) => void;
@@ -155,6 +165,7 @@ type UseEditorApiParams = {
 const ensureValuesCardBg = (
   config: SiteConfigData,
   valuesSettings: ValuesSettings,
+  sectionKey: "homeValuesSettings" | "aboutUsValuesSettings" | "values" = "values",
 ): SiteConfigData => {
   const fallback = valuesSettings?.cardBgColor || "";
   if (!fallback) return config;
@@ -169,7 +180,9 @@ const ensureValuesCardBg = (
   const homeValuesSection = home
     ? ((home.valuesSection || home.values) as Record<string, unknown> | undefined)
     : undefined;
+  
   const valuesSection =
+    (root[sectionKey] as Record<string, unknown> | undefined) ||
     homeValuesSection ||
     (layoutGlobal?.values as Record<string, unknown> | undefined) ||
     (root.values as Record<string, unknown> | undefined);
@@ -184,6 +197,15 @@ const ensureValuesCardBg = (
         cardBgColor: fallback,
       },
     };
+    
+    // Se for uma das novas chaves de raiz, coloca lá
+    if (sectionKey !== "values") {
+      const nextRoot = { ...root, [sectionKey]: nextValuesSection };
+      return rawConfig.siteCustomization
+        ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
+        : (nextRoot as unknown as SiteConfigData);
+    }
+
     const nextHome = { ...(home || {}), valuesSection: nextValuesSection };
     const nextRoot = { ...root, home: nextHome };
     return rawConfig.siteCustomization
@@ -225,6 +247,14 @@ const ensureValuesCardBg = (
       cardBgColor: fallback,
     },
   };
+
+  // Se estiver na raiz (nova chave)
+  if (root[sectionKey]) {
+    const nextRoot = { ...root, [sectionKey]: nextValuesSection };
+    return rawConfig.siteCustomization
+      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
+      : (nextRoot as unknown as SiteConfigData);
+  }
 
   if (homeValuesSection && home) {
     const nextHome = {
@@ -412,11 +442,21 @@ export function useEditorApi({
     if (hasChanged(settings.servicesSettings, lastSaved.lastSavedServices)) {
       changes.services = settings.servicesSettings;
     }
-    if (hasChanged(settings.valuesSettings, lastSaved.lastSavedValues)) {
-      changes.values = settings.valuesSettings;
+    if (hasChanged(settings.homeValuesSettings, lastSaved.lastSavedHomeValues)) {
+      changes.homeValuesSettings = settings.homeValuesSettings;
+    }
+    if (
+      hasChanged(settings.aboutUsValuesSettings, lastSaved.lastSavedAboutUsValues)
+    ) {
+      changes.aboutUsValuesSettings = settings.aboutUsValuesSettings;
     }
     if (hasChanged(settings.gallerySettings, lastSaved.lastSavedGallery)) {
-      changes.gallery = settings.gallerySettings;
+      changes.galleryPreviewSettings = settings.gallerySettings;
+    }
+    if (
+      hasChanged(settings.galleryPageSettings, lastSaved.lastSavedGalleryPage)
+    ) {
+      changes.galleryPageSettings = settings.galleryPageSettings;
     }
     if (hasChanged(settings.ctaSettings, lastSaved.lastSavedCTA)) {
       changes.cta = settings.ctaSettings;
@@ -496,8 +536,10 @@ export function useEditorApi({
       fontSettings: settings.fontSettings,
       colorSettings: settings.colorSettings,
       servicesSettings: settings.servicesSettings,
-      valuesSettings: settings.valuesSettings,
+      homeValuesSettings: settings.homeValuesSettings,
+      aboutUsValuesSettings: settings.aboutUsValuesSettings,
       gallerySettings: settings.gallerySettings,
+      galleryPageSettings: settings.galleryPageSettings,
       ctaSettings: settings.ctaSettings,
       headerSettings: settings.headerSettings,
       footerSettings: settings.footerSettings,
@@ -541,12 +583,18 @@ export function useEditorApi({
     const servicesChanged =
       JSON.stringify(lastApplied.lastAppliedServices) !==
       JSON.stringify(lastSaved.lastSavedServices);
-    const valuesChanged =
-      JSON.stringify(lastApplied.lastAppliedValues) !==
-      JSON.stringify(lastSaved.lastSavedValues);
+    const homeValuesChanged =
+      JSON.stringify(lastApplied.lastAppliedHomeValues) !==
+      JSON.stringify(lastSaved.lastSavedHomeValues);
+    const aboutUsValuesChanged =
+      JSON.stringify(lastApplied.lastAppliedAboutUsValues) !==
+      JSON.stringify(lastSaved.lastSavedAboutUsValues);
     const galleryChanged =
       JSON.stringify(lastApplied.lastAppliedGallery) !==
       JSON.stringify(lastSaved.lastSavedGallery);
+    const galleryPageChanged =
+      JSON.stringify(lastApplied.lastAppliedGalleryPage) !==
+      JSON.stringify(lastSaved.lastSavedGalleryPage);
     const ctaChanged =
       JSON.stringify(lastApplied.lastAppliedCTA) !==
       JSON.stringify(lastSaved.lastSavedCTA);
@@ -589,8 +637,10 @@ export function useEditorApi({
       fontChanged,
       colorChanged,
       servicesChanged,
-      valuesChanged,
+      homeValuesChanged,
+      aboutUsValuesChanged,
       galleryChanged,
+      galleryPageChanged,
       ctaChanged,
       headerChanged,
       footerChanged,
@@ -689,308 +739,381 @@ export function useEditorApi({
             "team",
             "testimonials",
             "services",
-            "values",
-            "gallery",
+            "homeValuesSettings",
+            "aboutUsValuesSettings",
+            "galleryPreviewSettings",
+            "galleryPageSettings",
             "cta",
             "header",
             "footer",
           ];
 
-          const sectionToDatabasePath: Record<string, string> = {
+          const sectionToDatabasePath: Record<string, string | string[]> = {
             hero: "home.heroBanner",
             aboutHero: "home.aboutHero",
             story: "home.storySection",
             team: "home.teamSection",
             testimonials: "home.testimonialsSection",
             services: "home.servicesSection",
-            values: "home.valuesSection",
-            gallery: "home.galleryPreview",
+            homeValuesSettings: "homeValuesSettings",
+            aboutUsValuesSettings: [
+              "aboutUsValuesSettings",
+              "aboutUs.valuesSection",
+              "aboutUs.values",
+            ],
+            galleryPreviewSettings: "galleryPreviewSettings",
+            galleryPageSettings: "galleryPageSettings",
             cta: "home.ctaSection",
           };
 
           for (const section of sectionsToGlobal) {
             const sectionKey = section as keyof typeof changes;
-              if (changes[sectionKey]) {
-                const sectionData = {
-                  ...(changes[sectionKey] as Record<string, unknown>),
-                };
+            if (changes[sectionKey]) {
+              const sectionData = {
+                ...(changes[sectionKey] as Record<string, unknown>),
+              };
 
-              const dbPath = sectionToDatabasePath[section];
-              if (dbPath) {
-                const [root, sub] = dbPath.split(".");
-                if (!payload[root]) payload[root] = {};
-                const rootObj = payload[root] as Record<string, unknown>;
+              const dbPaths = sectionToDatabasePath[section];
+              const resolvedPaths = Array.isArray(dbPaths)
+                ? dbPaths
+                : dbPaths
+                  ? [dbPaths]
+                  : [];
+              if (resolvedPaths.length > 0) {
+                for (const dbPath of resolvedPaths) {
+                  const pathParts = dbPath.split(".");
+                  let subObj: Record<string, unknown>;
+                  if (pathParts.length === 1) {
+                    if (!payload[dbPath]) payload[dbPath] = {};
+                    subObj = payload[dbPath] as Record<string, unknown>;
+                  } else {
+                    const [root, sub] = pathParts;
+                    if (!payload[root]) payload[root] = {};
+                    const rootObj = payload[root] as Record<string, unknown>;
 
-                if (!rootObj[sub]) rootObj[sub] = {};
-                const subObj = rootObj[sub] as Record<string, unknown>;
+                    if (!rootObj[sub]) rootObj[sub] = {};
+                    subObj = rootObj[sub] as Record<string, unknown>;
+                  }
 
-                const appearance = (sectionData.appearance as
-                  | Record<string, unknown>
-                  | undefined) || {};
+                  const appearance = (sectionData.appearance as
+                    | Record<string, unknown>
+                    | undefined) || {};
 
-                // Mapeia TODOS os campos de aparência para garantir sincronização total
-                subObj.appearance = {
-                  ...appearance,
-                  backgroundImageUrl:
-                    sectionData.bgImage || appearance.backgroundImageUrl || "",
-                  showBackgroundImage: sectionData.bgType === "image",
-                  backgroundColor:
+                  // Mapeia TODOS os campos de aparência para garantir sincronização total
+                  subObj.appearance = {
+                    ...appearance,
+                    backgroundImageUrl:
+                      sectionData.bgImage || appearance.backgroundImageUrl || "",
+                    showBackgroundImage: sectionData.bgType === "image",
+                    backgroundColor:
+                      (sectionData.bgColor as string) ||
+                      (appearance.backgroundColor as string) ||
+                      "",
+                    overlayOpacity:
+                      typeof sectionData.overlayOpacity === "number"
+                        ? sectionData.overlayOpacity
+                        : appearance.overlayOpacity ?? 0,
+                    overlay: {
+                      ...(appearance.overlay || {}),
+                      color:
+                        ((sectionData.appearance as Record<string, unknown>)
+                          ?.overlay as Record<string, unknown>)?.color as string ||
+                        ((appearance.overlay as Record<string, unknown>)?.color as string) ||
+                        "",
+                      opacity:
+                        typeof sectionData.overlayOpacity === "number"
+                          ? sectionData.overlayOpacity
+                          : (appearance.overlay as Record<string, unknown>)?.opacity as number ?? 0,
+                    },
+                    imageOpacity:
+                      typeof sectionData.imageOpacity === "number"
+                        ? sectionData.imageOpacity
+                        : appearance.imageOpacity ?? 1,
+                    imageScale:
+                      typeof sectionData.imageScale === "number"
+                        ? sectionData.imageScale
+                        : appearance.imageScale ?? 1,
+                    imageX:
+                      typeof sectionData.imageX === "number"
+                        ? sectionData.imageX
+                        : appearance.imageX ?? 50,
+                    imageY:
+                      typeof sectionData.imageY === "number"
+                        ? sectionData.imageY
+                        : appearance.imageY ?? 50,
+                    // Garante campos de cores e fontes na aparência também
+                    titleColor: sectionData.titleColor || appearance.titleColor || "",
+                    subtitleColor: sectionData.subtitleColor || appearance.subtitleColor || "",
+                    titleFont: sectionData.titleFont || appearance.titleFont || "",
+                    subtitleFont: sectionData.subtitleFont || appearance.subtitleFont || "",
+                  };
+
+                  // Se for Hero, adiciona campos de botões e badge na aparência
+                  if (section === "hero" || section === "aboutHero") {
+                    const heroApp = subObj.appearance as Record<string, unknown>;
+                    heroApp.badgeColor =
+                      sectionData.badgeColor || appearance.badgeColor || "";
+                    heroApp.badgeTextColor =
+                      sectionData.badgeTextColor ||
+                      appearance.badgeTextColor ||
+                      "";
+                    heroApp.badgeFont = sectionData.badgeFont || appearance.badgeFont || "";
+                    heroApp.primaryButtonColor =
+                      sectionData.primaryButtonColor ||
+                      appearance.primaryButtonColor ||
+                      "";
+                    heroApp.primaryButtonTextColor =
+                      sectionData.primaryButtonTextColor ||
+                      appearance.primaryButtonTextColor ||
+                      "";
+                    heroApp.primaryButtonFont =
+                      sectionData.primaryButtonFont || appearance.primaryButtonFont || "";
+                    heroApp.secondaryButtonColor =
+                      sectionData.secondaryButtonColor ||
+                      appearance.secondaryButtonColor ||
+                      "";
+                    heroApp.secondaryButtonTextColor =
+                      sectionData.secondaryButtonTextColor ||
+                      appearance.secondaryButtonTextColor ||
+                      "";
+                    heroApp.secondaryButtonFont =
+                      sectionData.secondaryButtonFont ||
+                      appearance.secondaryButtonFont ||
+                      "";
+                  }
+
+                  subObj.bgType = sectionData.bgType || "color";
+                  subObj.bgColor =
                     (sectionData.bgColor as string) ||
                     (appearance.backgroundColor as string) ||
-                    "",
-                  overlayOpacity:
-                    typeof sectionData.overlayOpacity === "number"
-                      ? sectionData.overlayOpacity
-                      : appearance.overlayOpacity ?? 0,
-                  overlay: {
-                    ...(appearance.overlay || {}),
-                    color: ((sectionData.appearance as Record<string, unknown>)?.overlay as Record<string, unknown>)?.color as string || ((appearance.overlay as Record<string, unknown>)?.color as string) || "",
-                    opacity: typeof sectionData.overlayOpacity === "number"
-                      ? sectionData.overlayOpacity
-                      : (appearance.overlay as Record<string, unknown>)?.opacity as number ?? 0,
-                  },
-                  imageOpacity: typeof sectionData.imageOpacity === "number"
-                    ? sectionData.imageOpacity
-                    : appearance.imageOpacity ?? 1,
-                  imageScale: typeof sectionData.imageScale === "number"
-                    ? sectionData.imageScale
-                    : appearance.imageScale ?? 1,
-                  imageX: typeof sectionData.imageX === "number"
-                    ? sectionData.imageX
-                    : appearance.imageX ?? 50,
-                  imageY: typeof sectionData.imageY === "number"
-                    ? sectionData.imageY
-                    : appearance.imageY ?? 50,
-                  // Garante campos de cores e fontes na aparência também
-                  titleColor: sectionData.titleColor || appearance.titleColor || "",
-                  subtitleColor: sectionData.subtitleColor || appearance.subtitleColor || "",
-                  titleFont: sectionData.titleFont || appearance.titleFont || "",
-                  subtitleFont: sectionData.subtitleFont || appearance.subtitleFont || "",
-                };
+                    "";
+                  subObj.bgImage =
+                    sectionData.bgImage || appearance.backgroundImageUrl || "";
 
-                // Se for Hero, adiciona campos de botões e badge na aparência
-                if (section === "hero" || section === "aboutHero") {
-                  const heroApp = subObj.appearance as Record<string, unknown>;
-                  heroApp.badgeColor = sectionData.badgeColor || appearance.badgeColor || "";
-                  heroApp.badgeTextColor = sectionData.badgeTextColor || appearance.badgeTextColor || "";
-                  heroApp.badgeFont = sectionData.badgeFont || appearance.badgeFont || "";
-                  heroApp.primaryButtonColor = sectionData.primaryButtonColor || appearance.primaryButtonColor || "";
-                  heroApp.primaryButtonTextColor = sectionData.primaryButtonTextColor || appearance.primaryButtonTextColor || "";
-                  heroApp.primaryButtonFont = sectionData.primaryButtonFont || appearance.primaryButtonFont || "";
-                  heroApp.secondaryButtonColor = sectionData.secondaryButtonColor || appearance.secondaryButtonColor || "";
-                  heroApp.secondaryButtonTextColor = sectionData.secondaryButtonTextColor || appearance.secondaryButtonTextColor || "";
-                  heroApp.secondaryButtonFont = sectionData.secondaryButtonFont || appearance.secondaryButtonFont || "";
-                }
-
-                subObj.bgType = sectionData.bgType || "color";
-                subObj.bgColor =
-                  (sectionData.bgColor as string) ||
-                  (appearance.backgroundColor as string) ||
-                  "";
-                subObj.bgImage =
-                  sectionData.bgImage || appearance.backgroundImageUrl || "";
-
-                // Mapeamento de conteúdo completo para persistência
-                const content: Record<string, unknown> = {
-                  title: sectionData.title || "",
-                  subtitle: sectionData.subtitle || "",
-                  titleFont: sectionData.titleFont || "",
-                  titleColor: sectionData.titleColor || "",
-                  subtitleFont: sectionData.subtitleFont || "",
-                  subtitleColor: sectionData.subtitleColor || "",
-                };
-
-                const genericColor =
-                  section === "values"
-                    ? (sectionData.bgColor as string) || ""
-                    : sectionData.primaryButtonColor ||
-                      sectionData.cardBgColor ||
-                      sectionData.bgColor ||
-                      "";
-                Object.assign(subObj, {
-                  ...sectionData, // Joga todas as propriedades (incluindo camelCase) na raiz
-                  // Compatibilidade Snake Case para o Banco de Dados
-                  primary_button_color: sectionData.primaryButtonColor || sectionData.primary_button_color,
-                  secondary_button_color: sectionData.secondaryButtonColor || sectionData.secondary_button_color,
-                  button_text: sectionData.buttonText || sectionData.button_text,
-                  button_color: sectionData.buttonColor || sectionData.button_color,
-                  button_text_color: sectionData.buttonTextColor || sectionData.button_text_color,
-                  button_font: sectionData.buttonFont || sectionData.button_font,
-                  button_link: sectionData.buttonLink || sectionData.button_link,
-                  title_font: sectionData.titleFont || sectionData.title_font,
-                  subtitle_font: sectionData.subtitleFont || sectionData.subtitle_font,
-                  card_bg_color: sectionData.cardBgColor || sectionData.card_bg_color,
-                  card_background_color: sectionData.cardBgColor || sectionData.card_background_color,
-                  cardBackgroundColor: sectionData.cardBgColor || sectionData.cardBackgroundColor,
-                  bg_color: sectionData.bgColor || sectionData.bg_color,
-                  title_color: sectionData.titleColor || sectionData.title_color,
-                  subtitle_color: sectionData.subtitleColor || sectionData.subtitle_color,
-                  badge_color: sectionData.badgeColor || sectionData.badge_color,
-                  badge_text_color: sectionData.badgeTextColor || sectionData.badge_text_color,
-                  color: genericColor,
-                });
-
-                if (section === "hero" || section === "aboutHero") {
-                  subObj.content = {
+                  // Mapeamento de conteúdo completo para persistência
+                  const content: Record<string, unknown> = {
                     title: sectionData.title || "",
                     subtitle: sectionData.subtitle || "",
+                    titleFont: sectionData.titleFont || "",
+                    titleColor: sectionData.titleColor || "",
+                    subtitleFont: sectionData.subtitleFont || "",
+                    subtitleColor: sectionData.subtitleColor || "",
                   };
-                } else {
-                  // Campos específicos para outras seções (mantendo compatibilidade)
-                  if (section === "story") {
-                    content.title = sectionData.title || "";
-                    content.subtitle = sectionData.subtitle || "";
-                    content.content = sectionData.content || "";
-                    content.image = sectionData.image || "";
-                  }
 
-                  if (section === "testimonials") {
-                    content.title = sectionData.title || "";
-                    content.subtitle = sectionData.subtitle || "";
-                    content.testimonials = sectionData.testimonials || [];
-                    content.starColor = sectionData.starColor || "";
-                    content.cardBgColor = sectionData.cardBgColor || "";
-                    content.cardNameFont = sectionData.cardNameFont || "";
-                    content.cardNameColor = sectionData.cardNameColor || "";
-                    content.cardTextFont = sectionData.cardTextFont || "";
-                    content.cardTextColor = sectionData.cardTextColor || "";
-                    content.cardRatingColor = sectionData.cardRatingColor || "";
-                    content.cardBorderRadius = sectionData.cardBorderRadius || "";
+                  const genericColor =
+                    section === "homeValuesSettings" ||
+                    section === "aboutUsValuesSettings"
+                      ? (sectionData.bgColor as string) || ""
+                      : sectionData.primaryButtonColor ||
+                        sectionData.cardBgColor ||
+                        sectionData.bgColor ||
+                        "";
+                  Object.assign(subObj, {
+                    ...sectionData, // Joga todas as propriedades (incluindo camelCase) na raiz
+                    // Compatibilidade Snake Case para o Banco de Dados
+                    primary_button_color:
+                      sectionData.primaryButtonColor || sectionData.primary_button_color,
+                    secondary_button_color:
+                      sectionData.secondaryButtonColor || sectionData.secondary_button_color,
+                    button_text: sectionData.buttonText || sectionData.button_text,
+                    button_color: sectionData.buttonColor || sectionData.button_color,
+                    button_text_color:
+                      sectionData.buttonTextColor || sectionData.button_text_color,
+                    button_font: sectionData.buttonFont || sectionData.button_font,
+                    button_link: sectionData.buttonLink || sectionData.button_link,
+                    title_font: sectionData.titleFont || sectionData.title_font,
+                    subtitle_font: sectionData.subtitleFont || sectionData.subtitle_font,
+                    card_bg_color: sectionData.cardBgColor || sectionData.card_bg_color,
+                    card_background_color:
+                      sectionData.cardBgColor || sectionData.card_background_color,
+                    cardBackgroundColor:
+                      sectionData.cardBgColor || sectionData.cardBackgroundColor,
+                    bg_color: sectionData.bgColor || sectionData.bg_color,
+                    title_color: sectionData.titleColor || sectionData.title_color,
+                    subtitle_color: sectionData.subtitleColor || sectionData.subtitle_color,
+                    badge_color: sectionData.badgeColor || sectionData.badge_color,
+                    badge_text_color:
+                      sectionData.badgeTextColor || sectionData.badge_text_color,
+                    color: genericColor,
+                  });
 
-                    // Suporte para cardConfig exigido pelo backend
-                    const cardConfig = {
-                      backgroundColor: sectionData.cardBgColor || "",
-                      cardBackgroundColor: sectionData.cardBgColor || "",
-                      background_color: sectionData.cardBgColor || "",
-                      card_background_color: sectionData.cardBgColor || "",
+                  if (section === "hero" || section === "aboutHero") {
+                    subObj.content = {
+                      title: sectionData.title || "",
+                      subtitle: sectionData.subtitle || "",
                     };
-                    subObj.cardConfig = cardConfig;
-                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                  } else {
+                    // Campos específicos para outras seções (mantendo compatibilidade)
+                    if (section === "story") {
+                      content.title = sectionData.title || "";
+                      content.subtitle = sectionData.subtitle || "";
+                      content.content = sectionData.content || "";
+                      content.image = sectionData.image || "";
+                    }
+
+                    if (section === "testimonials") {
+                      content.title = sectionData.title || "";
+                      content.subtitle = sectionData.subtitle || "";
+                      content.testimonials = sectionData.testimonials || [];
+                      content.starColor = sectionData.starColor || "";
+                      content.cardBgColor = sectionData.cardBgColor || "";
+                      content.cardNameFont = sectionData.cardNameFont || "";
+                      content.cardNameColor = sectionData.cardNameColor || "";
+                      content.cardTextFont = sectionData.cardTextFont || "";
+                      content.cardTextColor = sectionData.cardTextColor || "";
+                      content.cardRatingColor = sectionData.cardRatingColor || "";
+                      content.cardBorderRadius = sectionData.cardBorderRadius || "";
+
+                      // Suporte para cardConfig exigido pelo backend
+                      const cardConfig = {
+                        backgroundColor: sectionData.cardBgColor || "",
+                        cardBackgroundColor: sectionData.cardBgColor || "",
+                        background_color: sectionData.cardBgColor || "",
+                        card_background_color: sectionData.cardBgColor || "",
+                      };
+                      subObj.cardConfig = cardConfig;
+                      (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                    }
+
+                    if (
+                      section === "galleryPreviewSettings" ||
+                      section === "galleryPageSettings"
+                    ) {
+                      content.title = sectionData.title || "";
+                      content.subtitle = sectionData.subtitle || "";
+                      content.buttonText = sectionData.buttonText || "";
+                      content.buttonFont = sectionData.buttonFont || "";
+                      content.buttonColor = sectionData.buttonColor || "";
+                      content.buttonTextColor = sectionData.buttonTextColor || "";
+                      content.layout = sectionData.layout || "grid";
+                      content.columns = sectionData.columns || 3;
+                      content.gap = sectionData.gap || 16;
+                      content.aspectRatio = sectionData.aspectRatio || "square";
+                      content.cardBgColor =
+                        (sectionData as Record<string, unknown>).cardBgColor as string || "";
+
+                      // Suporte para cardConfig exigido pelo backend
+                      const cardConfig = {
+                        backgroundColor:
+                          (sectionData as Record<string, unknown>).cardBgColor as string ||
+                          "",
+                        cardBackgroundColor:
+                          (sectionData as Record<string, unknown>).cardBgColor as string ||
+                          "",
+                        background_color:
+                          (sectionData as Record<string, unknown>).cardBgColor as string ||
+                          "",
+                        card_background_color:
+                          (sectionData as Record<string, unknown>).cardBgColor as string ||
+                          "",
+                      };
+                      subObj.cardConfig = cardConfig;
+                      (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                    }
+
+                    if (section === "cta") {
+                      content.title = sectionData.title || "";
+                      content.subtitle = sectionData.subtitle || "";
+                      content.buttonText = sectionData.buttonText || "";
+                      content.buttonFont = sectionData.buttonFont || "";
+                      content.buttonColor = sectionData.buttonColor || "";
+                      content.buttonTextColor = sectionData.buttonTextColor || "";
+                      content.alignment = sectionData.alignment || "center";
+                    }
+
+                    if (
+                      section === "homeValuesSettings" ||
+                      section === "aboutUsValuesSettings"
+                    ) {
+                      content.title = sectionData.title || "";
+                      content.subtitle = sectionData.subtitle || "";
+                      content.items = sectionData.items || [];
+                      content.cardBgColor = sectionData.cardBgColor || "";
+                      content.cardTitleFont = sectionData.cardTitleFont || "";
+                      content.cardTitleColor = sectionData.cardTitleColor || "";
+                      content.cardDescriptionFont =
+                        sectionData.cardDescriptionFont || "";
+                      content.cardDescriptionColor =
+                        sectionData.cardDescriptionColor || "";
+                      content.cardIconColor = sectionData.cardIconColor || "";
+                      content.showTitle = sectionData.showTitle ?? true;
+                      content.showSubtitle = sectionData.showSubtitle ?? true;
+
+                      // Suporte para cardConfig exigido pelo backend
+                      const cardConfig = {
+                        backgroundColor: sectionData.cardBgColor || "",
+                        cardBackgroundColor: sectionData.cardBgColor || "",
+                        background_color: sectionData.cardBgColor || "",
+                        card_background_color: sectionData.cardBgColor || "",
+                      };
+                      subObj.cardConfig = cardConfig;
+                      (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                    }
+
+                    if (section === "services") {
+                      content.title = sectionData.title || "";
+                      content.subtitle = sectionData.subtitle || "";
+                      content.cardBgColor = sectionData.cardBgColor || "";
+                      content.cardTitleFont = sectionData.cardTitleFont || "";
+                      content.cardTitleColor = sectionData.cardTitleColor || "";
+                      content.cardDescriptionFont =
+                        sectionData.cardDescriptionFont || "";
+                      content.cardDescriptionColor =
+                        sectionData.cardDescriptionColor || "";
+                      content.cardPriceFont = sectionData.cardPriceFont || "";
+                      content.cardPriceColor = sectionData.cardPriceColor || "";
+                      content.cardIconColor = sectionData.cardIconColor || "";
+                      content.cardBorderRadius = sectionData.cardBorderRadius || "";
+                      content.cardBorderWidth = sectionData.cardBorderWidth || "";
+                      content.cardBorderColor = sectionData.cardBorderColor || "";
+                      content.showTitle = sectionData.showTitle ?? true;
+                      content.showSubtitle = sectionData.showSubtitle ?? true;
+
+                      // Novo: Suporte para cardConfig exigido pelo backend
+                      const cardConfig = {
+                        backgroundColor: sectionData.cardBgColor || "",
+                        cardBackgroundColor: sectionData.cardBgColor || "",
+                        background_color: sectionData.cardBgColor || "",
+                        card_background_color: sectionData.cardBgColor || "",
+                      };
+
+                      subObj.cardConfig = cardConfig;
+                      // Garantir que o cardConfig também vá para o layoutGlobal.services
+                      (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                    }
+
+                    if (section === "team") {
+                      content.title = sectionData.title || "";
+                      content.subtitle = sectionData.subtitle || "";
+                      content.members = sectionData.members || [];
+                      content.cardBgColor = sectionData.cardBgColor || "";
+                      content.cardTitleFont = sectionData.cardTitleFont || "";
+                      content.cardTitleColor = sectionData.cardTitleColor || "";
+                      content.cardRoleFont = sectionData.cardRoleFont || "";
+                      content.cardRoleColor = sectionData.cardRoleColor || "";
+                      content.cardDescriptionFont =
+                        sectionData.cardDescriptionFont || "";
+                      content.cardDescriptionColor =
+                        sectionData.cardDescriptionColor || "";
+
+                      // Suporte para cardConfig exigido pelo backend
+                      const cardConfig = {
+                        backgroundColor: sectionData.cardBgColor || "",
+                        cardBackgroundColor: sectionData.cardBgColor || "",
+                        background_color: sectionData.cardBgColor || "",
+                        card_background_color: sectionData.cardBgColor || "",
+                      };
+                      subObj.cardConfig = cardConfig;
+                      (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                    }
+
+                    subObj.content = content;
                   }
 
-                  if (section === "gallery") {
-                    content.title = sectionData.title || "";
-                    content.subtitle = sectionData.subtitle || "";
-                    content.buttonText = sectionData.buttonText || "";
-                    content.buttonFont = sectionData.buttonFont || "";
-                    content.buttonColor = sectionData.buttonColor || "";
-                    content.buttonTextColor = sectionData.buttonTextColor || "";
-                    content.layout = sectionData.layout || "grid";
-                    content.columns = sectionData.columns || 3;
-                    content.gap = sectionData.gap || 16;
-                    content.aspectRatio = sectionData.aspectRatio || "square";
-                    content.cardBgColor = (sectionData as Record<string, unknown>).cardBgColor as string || "";
-
-                    // Suporte para cardConfig exigido pelo backend
-                    const cardConfig = {
-                      backgroundColor: (sectionData as Record<string, unknown>).cardBgColor as string || "",
-                      cardBackgroundColor: (sectionData as Record<string, unknown>).cardBgColor as string || "",
-                      background_color: (sectionData as Record<string, unknown>).cardBgColor as string || "",
-                      card_background_color: (sectionData as Record<string, unknown>).cardBgColor as string || "",
-                    };
-                    subObj.cardConfig = cardConfig;
-                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                  sectionData.appearance = subObj.appearance;
+                  if (subObj.content) {
+                    sectionData.content = subObj.content;
                   }
-
-                  if (section === "cta") {
-                    content.title = sectionData.title || "";
-                    content.subtitle = sectionData.subtitle || "";
-                    content.buttonText = sectionData.buttonText || "";
-                    content.buttonFont = sectionData.buttonFont || "";
-                    content.buttonColor = sectionData.buttonColor || "";
-                    content.buttonTextColor = sectionData.buttonTextColor || "";
-                    content.alignment = sectionData.alignment || "center";
-                  }
-
-                  if (section === "values") {
-                    content.title = sectionData.title || "";
-                    content.subtitle = sectionData.subtitle || "";
-                    content.items = sectionData.items || [];
-                    content.cardBgColor = sectionData.cardBgColor || "";
-                    content.cardTitleFont = sectionData.cardTitleFont || "";
-                    content.cardTitleColor = sectionData.cardTitleColor || "";
-                    content.cardDescriptionFont =
-                      sectionData.cardDescriptionFont || "";
-                    content.cardDescriptionColor =
-                      sectionData.cardDescriptionColor || "";
-                    content.cardIconColor = sectionData.cardIconColor || "";
-                    content.showTitle = sectionData.showTitle ?? true;
-                    content.showSubtitle = sectionData.showSubtitle ?? true;
-
-                    // Suporte para cardConfig exigido pelo backend
-                    const cardConfig = {
-                      backgroundColor: sectionData.cardBgColor || "",
-                      cardBackgroundColor: sectionData.cardBgColor || "",
-                      background_color: sectionData.cardBgColor || "",
-                      card_background_color: sectionData.cardBgColor || "",
-                    };
-                    subObj.cardConfig = cardConfig;
-                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
-                  }
-
-                  if (section === "services") {
-                    content.title = sectionData.title || "";
-                    content.subtitle = sectionData.subtitle || "";
-                    content.cardBgColor = sectionData.cardBgColor || "";
-                    content.cardTitleFont = sectionData.cardTitleFont || "";
-                    content.cardTitleColor = sectionData.cardTitleColor || "";
-                    content.cardDescriptionFont =
-                      sectionData.cardDescriptionFont || "";
-                    content.cardDescriptionColor =
-                      sectionData.cardDescriptionColor || "";
-                    content.cardPriceFont = sectionData.cardPriceFont || "";
-                    content.cardPriceColor = sectionData.cardPriceColor || "";
-                    content.cardIconColor = sectionData.cardIconColor || "";
-                    content.cardBorderRadius = sectionData.cardBorderRadius || "";
-                    content.cardBorderWidth = sectionData.cardBorderWidth || "";
-                    content.cardBorderColor = sectionData.cardBorderColor || "";
-                    content.showTitle = sectionData.showTitle ?? true;
-                    content.showSubtitle = sectionData.showSubtitle ?? true;
-
-                    // Novo: Suporte para cardConfig exigido pelo backend
-                    const cardConfig = {
-                      backgroundColor: sectionData.cardBgColor || "",
-                      cardBackgroundColor: sectionData.cardBgColor || "",
-                      background_color: sectionData.cardBgColor || "",
-                      card_background_color: sectionData.cardBgColor || "",
-                    };
-                    
-                    subObj.cardConfig = cardConfig;
-                    // Garantir que o cardConfig também vá para o layoutGlobal.services
-                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
-                  }
-
-                  if (section === "team") {
-                    content.title = sectionData.title || "";
-                    content.subtitle = sectionData.subtitle || "";
-                    content.members = sectionData.members || [];
-                    content.cardBgColor = sectionData.cardBgColor || "";
-                    content.cardTitleFont = sectionData.cardTitleFont || "";
-                    content.cardTitleColor = sectionData.cardTitleColor || "";
-                    content.cardRoleFont = sectionData.cardRoleFont || "";
-                    content.cardRoleColor = sectionData.cardRoleColor || "";
-                    content.cardDescriptionFont =
-                      sectionData.cardDescriptionFont || "";
-                    content.cardDescriptionColor =
-                      sectionData.cardDescriptionColor || "";
-
-                    // Suporte para cardConfig exigido pelo backend
-                    const cardConfig = {
-                      backgroundColor: sectionData.cardBgColor || "",
-                      cardBackgroundColor: sectionData.cardBgColor || "",
-                      background_color: sectionData.cardBgColor || "",
-                      card_background_color: sectionData.cardBgColor || "",
-                    };
-                    subObj.cardConfig = cardConfig;
-                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
-                  }
-
-                  subObj.content = content;
-                }
-
-                sectionData.appearance = subObj.appearance;
-                if (subObj.content) {
-                  sectionData.content = subObj.content;
                 }
               }
 
@@ -1228,8 +1351,9 @@ export function useEditorApi({
             if (fresh) {
               console.log(">>> [SYNC] Salvamento bem-sucedido. Sincronizando estado com resposta do banco.");
               
-              const safeWithValues = ensureValuesCardBg(fresh, settings.valuesSettings);
-              const safeFresh = ensureServicesCardBg(safeWithValues, settings.servicesSettings);
+              const safeWithHomeValues = ensureValuesCardBg(fresh, settings.homeValuesSettings, "homeValuesSettings");
+              const safeWithAboutUsValues = ensureValuesCardBg(safeWithHomeValues, settings.aboutUsValuesSettings, "aboutUsValuesSettings");
+              const safeFresh = ensureServicesCardBg(safeWithAboutUsValues, settings.servicesSettings);
               loadExternalConfig(safeFresh, true);
 
               // 2. Limpa o localStorage para garantir que o Banco seja a única fonte da verdade.
@@ -1248,8 +1372,10 @@ export function useEditorApi({
               setters.setLastSavedFont(settings.fontSettings);
               setters.setLastSavedColor(settings.colorSettings);
               setters.setLastSavedServices(settings.servicesSettings);
-              setters.setLastSavedValues(settings.valuesSettings);
+              setters.setLastSavedHomeValues(settings.homeValuesSettings);
+              setters.setLastSavedAboutUsValues(settings.aboutUsValuesSettings);
               setters.setLastSavedGallery(settings.gallerySettings);
+              setters.setLastSavedGalleryPage(settings.galleryPageSettings);
               setters.setLastSavedCTA(settings.ctaSettings);
               setters.setLastSavedHeader(settings.headerSettings);
               setters.setLastSavedFooter(settings.footerSettings);
@@ -1307,8 +1433,10 @@ export function useEditorApi({
         setters.setLastSavedFont(settings.fontSettings);
         setters.setLastSavedColor(settings.colorSettings);
         setters.setLastSavedServices(settings.servicesSettings);
-        setters.setLastSavedValues(settings.valuesSettings);
+        setters.setLastSavedHomeValues(settings.homeValuesSettings);
+        setters.setLastSavedAboutUsValues(settings.aboutUsValuesSettings);
         setters.setLastSavedGallery(settings.gallerySettings);
+        setters.setLastSavedGalleryPage(settings.galleryPageSettings);
         setters.setLastSavedCTA(settings.ctaSettings);
         setters.setLastSavedHeader(settings.headerSettings);
         setters.setLastSavedFooter(settings.footerSettings);
@@ -1383,8 +1511,10 @@ export function useEditorApi({
       setters.setLastAppliedFont(settings.fontSettings);
       setters.setLastAppliedColor(settings.colorSettings);
       setters.setLastAppliedServices(settings.servicesSettings);
-      setters.setLastAppliedValues(settings.valuesSettings);
+      setters.setLastAppliedHomeValues(settings.homeValuesSettings);
+      setters.setLastAppliedAboutUsValues(settings.aboutUsValuesSettings);
       setters.setLastAppliedGallery(settings.gallerySettings);
+      setters.setLastAppliedGalleryPage(settings.galleryPageSettings);
       setters.setLastAppliedCTA(settings.ctaSettings);
       setters.setLastAppliedHeader(settings.headerSettings);
       setters.setLastAppliedFooter(settings.footerSettings);

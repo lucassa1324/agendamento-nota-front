@@ -34,7 +34,12 @@ export interface LayoutGlobalSettings {
   testimonials?: TestimonialsSettings;
   services?: ServicesSettings;
   values?: ValuesSettings;
+  homeValuesSettings?: ValuesSettings;
+  aboutUsValuesSettings?: ValuesSettings;
+  galleryPreviewSettings?: GallerySettings;
+  galleryPageSettings?: GallerySettings;
   gallery?: GallerySettings;
+  galleryPage?: GallerySettings;
   cta?: CTASettings;
   header?: HeaderSettings;
   footer?: FooterSettings;
@@ -53,6 +58,8 @@ export interface SiteConfigData {
   colors?: ColorSettings;
   services?: ServicesSettings;
   values?: ValuesSettings;
+  homeValuesSettings?: ValuesSettings;
+  aboutUsValuesSettings?: ValuesSettings;
   gallery?: GallerySettings;
   cta?: CTASettings;
   header?: HeaderSettings;

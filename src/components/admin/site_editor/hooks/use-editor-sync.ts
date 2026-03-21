@@ -24,8 +24,10 @@ export function useEditorSync({
     fontSettings,
     colorSettings,
     servicesSettings,
-    valuesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
     gallerySettings,
+    galleryPageSettings,
     ctaSettings,
     headerSettings,
     footerSettings,
@@ -42,8 +44,10 @@ export function useEditorSync({
     lastSavedFont,
     lastSavedColor,
     lastSavedServices,
-    lastSavedValues,
+    lastSavedHomeValues,
+    lastSavedAboutUsValues,
     lastSavedGallery,
+    lastSavedGalleryPage,
     lastSavedCTA,
     lastSavedHeader,
     lastSavedFooter,
@@ -139,11 +143,11 @@ export function useEditorSync({
     return merged;
   }, [lastSavedServices, servicesSettings]);
 
-  const previewValuesSettings = useMemo(() => {
-    const merged = { ...lastSavedValues, ...valuesSettings } as
-      | (typeof valuesSettings & Record<string, unknown>)
-      | (typeof lastSavedValues & Record<string, unknown>);
-    if (valuesSettings.bgType === "color") {
+  const previewHomeValuesSettings = useMemo(() => {
+    const merged = { ...lastSavedHomeValues, ...homeValuesSettings } as
+      | (typeof homeValuesSettings & Record<string, unknown>)
+      | (typeof lastSavedHomeValues & Record<string, unknown>);
+    if (homeValuesSettings.bgType === "color") {
       merged.bgImage = "";
       if (merged.appearance)
         merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
@@ -176,7 +180,46 @@ export function useEditorSync({
       mergedRecord.cardBackgroundColor = resolvedCardBgColor;
     }
     return merged;
-  }, [lastSavedValues, valuesSettings]);
+  }, [lastSavedHomeValues, homeValuesSettings]);
+
+  const previewAboutUsValuesSettings = useMemo(() => {
+    const merged = { ...lastSavedAboutUsValues, ...aboutUsValuesSettings } as
+      | (typeof aboutUsValuesSettings & Record<string, unknown>)
+      | (typeof lastSavedAboutUsValues & Record<string, unknown>);
+    if (aboutUsValuesSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance)
+        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    const mergedRecord = merged as Record<string, unknown>;
+    const mergedCardConfig =
+      mergedRecord.cardConfig as Record<string, unknown> | undefined;
+    const mergedContent =
+      mergedRecord.content as Record<string, unknown> | undefined;
+    const mergedItemsStyle =
+      mergedRecord.itemsStyle as Record<string, unknown> | undefined;
+    const mergedAppearance =
+      mergedRecord.appearance as Record<string, unknown> | undefined;
+    const resolvedCardBgColor =
+      sanitizeColor(
+        (merged.cardBgColor as string | undefined) ||
+          (mergedRecord.cardBackgroundColor as string | undefined) ||
+          (mergedRecord.card_background_color as string | undefined) ||
+          (mergedCardConfig?.cardBackgroundColor as string | undefined) ||
+          (mergedCardConfig?.backgroundColor as string | undefined) ||
+          (mergedContent?.cardBgColor as string | undefined) ||
+          (mergedItemsStyle?.itemBackgroundColor as string | undefined) ||
+          (mergedAppearance?.cardBgColor as string | undefined) ||
+          (mergedAppearance?.cardBackgroundColor as string | undefined),
+      ) || "";
+    if (!merged.cardBgColor && resolvedCardBgColor) {
+      merged.cardBgColor = resolvedCardBgColor;
+    }
+    if (!mergedRecord.cardBackgroundColor && resolvedCardBgColor) {
+      mergedRecord.cardBackgroundColor = resolvedCardBgColor;
+    }
+    return merged;
+  }, [lastSavedAboutUsValues, aboutUsValuesSettings]);
 
   const previewCTASettings = useMemo(() => {
     const merged = { ...lastSavedCTA, ...ctaSettings };
@@ -294,6 +337,30 @@ export function useEditorSync({
     
     return merged;
   }, [lastSavedGallery, gallerySettings]);
+  const previewGalleryPageSettings = useMemo(() => {
+    const merged = { ...lastSavedGalleryPage, ...galleryPageSettings } as typeof galleryPageSettings & Record<string, unknown>;
+    if (galleryPageSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance)
+        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    merged.bgColor = sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
+    merged.titleColor = sanitizeColor(merged.titleColor) || "";
+    merged.subtitleColor = sanitizeColor(merged.subtitleColor) || "";
+    merged.buttonColor = sanitizeColor(merged.buttonColor) || "";
+    merged.buttonTextColor = sanitizeColor(merged.buttonTextColor) || "";
+    merged.cardBgColor = sanitizeColor(merged.cardBgColor || merged.appearance?.cardBgColor) || "";
+
+    if (merged.appearance) {
+      merged.appearance = {
+        ...merged.appearance,
+        backgroundColor: merged.bgColor,
+        cardBgColor: merged.cardBgColor,
+      };
+    }
+
+    return merged;
+  }, [lastSavedGalleryPage, galleryPageSettings]);
   const previewHeaderSettings = useMemo(
     () => ({ ...lastSavedHeader, ...headerSettings }),
     [lastSavedHeader, headerSettings],
@@ -328,8 +395,10 @@ export function useEditorSync({
       team: previewTeamSettings,
       testimonials: previewTestimonialsSettings,
       services: previewServicesSettings,
-      values: previewValuesSettings,
-      gallery: previewGallerySettings,
+      homeValuesSettings: previewHomeValuesSettings,
+      aboutUsValuesSettings: previewAboutUsValuesSettings,
+      galleryPreviewSettings: previewGallerySettings,
+      galleryPageSettings: previewGalleryPageSettings,
       cta: previewCTASettings,
       header: previewHeaderSettings,
       footer: previewFooterSettings,
@@ -345,8 +414,10 @@ export function useEditorSync({
         team: previewTeamSettings,
         testimonials: previewTestimonialsSettings,
         services: previewServicesSettings,
-        values: previewValuesSettings,
-        gallery: previewGallerySettings,
+        homeValuesSettings: previewHomeValuesSettings,
+        aboutUsValuesSettings: previewAboutUsValuesSettings,
+        galleryPreviewSettings: previewGallerySettings,
+        galleryPageSettings: previewGalleryPageSettings,
         cta: previewCTASettings,
         header: previewHeaderSettings,
         footer: previewFooterSettings,
@@ -364,8 +435,10 @@ export function useEditorSync({
       previewTeamSettings,
       previewTestimonialsSettings,
       previewServicesSettings,
-      previewValuesSettings,
+      previewHomeValuesSettings,
+      previewAboutUsValuesSettings,
       previewGallerySettings,
+      previewGalleryPageSettings,
       previewCTASettings,
       previewHeaderSettings,
       previewFooterSettings,
@@ -410,9 +483,14 @@ export function useEditorSync({
     [previewServicesSettings, syncToIframe],
   );
   useEffect(() => {
-    console.log(">>> [EDITOR_SYNC] Syncing values settings to iframe:", previewValuesSettings);
-    syncToIframe("UPDATE_VALUES_SETTINGS", previewValuesSettings);
-  }, [previewValuesSettings, syncToIframe]);
+    console.log(">>> [EDITOR_SYNC] Syncing Home values settings to iframe:", previewHomeValuesSettings);
+    syncToIframe("UPDATE_HOME_VALUES_SETTINGS", previewHomeValuesSettings);
+  }, [previewHomeValuesSettings, syncToIframe]);
+
+  useEffect(() => {
+    console.log(">>> [EDITOR_SYNC] Syncing About Us values settings to iframe:", previewAboutUsValuesSettings);
+    syncToIframe("UPDATE_ABOUT_US_VALUES_SETTINGS", previewAboutUsValuesSettings);
+  }, [previewAboutUsValuesSettings, syncToIframe]);
 
   useEffect(() => {
     console.log(">>> [EDITOR_SYNC] Syncing booking service settings to iframe:", previewBookingServiceSettings);
@@ -428,8 +506,12 @@ export function useEditorSync({
   );
   useEffect(() => {
     console.log(">>> [EDITOR_SYNC] Syncing gallery settings to iframe:", previewGallerySettings);
-    syncToIframe("UPDATE_GALLERY_SETTINGS", previewGallerySettings);
+    syncToIframe("UPDATE_GALLERY_PREVIEW", previewGallerySettings);
   }, [previewGallerySettings, syncToIframe]);
+  useEffect(() => {
+    console.log(">>> [EDITOR_SYNC] Syncing gallery page settings to iframe:", previewGalleryPageSettings);
+    syncToIframe("UPDATE_GALLERY_PAGE", previewGalleryPageSettings);
+  }, [previewGalleryPageSettings, syncToIframe]);
   useEffect(
     () => syncToIframe("UPDATE_CTA_SETTINGS", previewCTASettings),
     [previewCTASettings, syncToIframe],
@@ -502,8 +584,10 @@ export function useEditorSync({
           win.postMessage({ type: "UPDATE_TEAM_SETTINGS", settings: previewTeamSettings }, "*");
           win.postMessage({ type: "UPDATE_TESTIMONIALS_SETTINGS", settings: previewTestimonialsSettings }, "*");
           win.postMessage({ type: "UPDATE_SERVICES_SETTINGS", settings: previewServicesSettings }, "*");
-          win.postMessage({ type: "UPDATE_VALUES_SETTINGS", settings: previewValuesSettings }, "*");
-          win.postMessage({ type: "UPDATE_GALLERY_SETTINGS", settings: previewGallerySettings }, "*");
+          win.postMessage({ type: "UPDATE_HOME_VALUES_SETTINGS", settings: previewHomeValuesSettings }, "*");
+          win.postMessage({ type: "UPDATE_ABOUT_US_VALUES_SETTINGS", settings: previewAboutUsValuesSettings }, "*");
+          win.postMessage({ type: "UPDATE_GALLERY_PREVIEW", settings: previewGallerySettings }, "*");
+          win.postMessage({ type: "UPDATE_GALLERY_PAGE", settings: previewGalleryPageSettings }, "*");
           win.postMessage({ type: "UPDATE_CTA_SETTINGS", settings: previewCTASettings }, "*");
           win.postMessage({ type: "UPDATE_HEADER_SETTINGS", settings: previewHeaderSettings }, "*");
           win.postMessage({ type: "UPDATE_FOOTER_SETTINGS", settings: previewFooterSettings }, "*");
@@ -530,8 +614,10 @@ export function useEditorSync({
     previewTeamSettings,
     previewTestimonialsSettings,
     previewServicesSettings,
-    previewValuesSettings,
+    previewHomeValuesSettings,
+    previewAboutUsValuesSettings,
     previewGallerySettings,
+    previewGalleryPageSettings,
     previewCTASettings,
     previewHeaderSettings,
     previewFooterSettings,
@@ -555,10 +641,12 @@ export function useEditorSync({
     previewTeamSettings,
     previewTestimonialsSettings,
     previewServicesSettings,
-    previewValuesSettings,
+    previewHomeValuesSettings,
+    previewAboutUsValuesSettings,
     previewFontSettings,
     previewColorSettings,
     previewGallerySettings,
+    previewGalleryPageSettings,
     previewCTASettings,
     previewHeaderSettings,
     previewFooterSettings,

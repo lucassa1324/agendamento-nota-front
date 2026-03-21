@@ -36,6 +36,7 @@ interface GalleryEditorProps {
   onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSave?: () => void;
   hasChanges?: boolean;
+  sectionId?: string;
 }
 
 export function GalleryEditor({
@@ -44,6 +45,7 @@ export function GalleryEditor({
   onUpdateBackground,
   onSave: externalOnSave,
   hasChanges,
+  sectionId,
 }: GalleryEditorProps) {
   if (!settings) return null;
 
@@ -326,12 +328,13 @@ export function GalleryEditor({
               }}
               onUpdate={(updates) => {
                 if (onUpdateBackground) {
-                    onUpdateBackground(updates, "gallery");
+                    onUpdateBackground(updates, sectionId || "gallery-preview");
                   } else {
                     onUpdate(updates);
                   }
                 }}
-              section="gallery"
+              section={sectionId || "gallery-preview"}
+              sectionId={sectionId || "gallery-preview"}
             />
           </AccordionContent>
         </AccordionItem>

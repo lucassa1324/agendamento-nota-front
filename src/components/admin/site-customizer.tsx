@@ -64,8 +64,10 @@ export function SiteCustomizer() {
     fontSettings,
     colorSettings,
     servicesSettings,
-    valuesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
     gallerySettings,
+    galleryPageSettings,
     ctaSettings,
     headerSettings,
     footerSettings,
@@ -84,8 +86,10 @@ export function SiteCustomizer() {
     handleUpdateFont,
     handleUpdateColors,
     handleUpdateServices,
-    handleUpdateValues,
+    handleUpdateHomeValues,
+    handleUpdateAboutUsValues,
     handleUpdateGallery,
+    handleUpdateGalleryPage,
     handleUpdateCTA,
     handleUpdateHeader,
     handleUpdateFooter,
@@ -105,7 +109,8 @@ export function SiteCustomizer() {
     handleApplyTypography,
     handleApplyColors,
     handleApplyServices,
-    handleApplyValues,
+    handleApplyHomeValues,
+    handleApplyAboutUsValues,
     handleApplyGallery,
     handleApplyCTA,
     handleApplyHeader,
@@ -128,8 +133,10 @@ export function SiteCustomizer() {
     hasFontChanges,
     hasColorChanges,
     hasServicesChanges,
-    hasValuesChanges,
+    hasHomeValuesChanges,
+    hasAboutUsValuesChanges,
     hasGalleryChanges,
+    hasGalleryPageChanges,
     hasCTAChanges,
     hasHeaderChanges,
     hasFooterChanges,
@@ -338,8 +345,10 @@ export function SiteCustomizer() {
     teamSettings,
     testimonialsSettings,
     servicesSettings,
-    valuesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
     gallerySettings,
+    galleryPageSettings,
     ctaSettings,
     headerSettings,
     footerSettings,
@@ -356,8 +365,10 @@ export function SiteCustomizer() {
     onUpdateTeam: handleUpdateTeam,
     onUpdateTestimonials: handleUpdateTestimonials,
     onUpdateServices: handleUpdateServices,
-    onUpdateValues: handleUpdateValues,
+    onUpdateHomeValues: handleUpdateHomeValues,
+    onUpdateAboutUsValues: handleUpdateAboutUsValues,
     onUpdateGallery: handleUpdateGallery,
+    onUpdateGalleryPage: handleUpdateGalleryPage,
     onUpdateCTA: handleUpdateCTA,
     onUpdateHeader: handleUpdateHeader,
     onUpdateFooter: handleUpdateFooter,
@@ -375,7 +386,8 @@ export function SiteCustomizer() {
     onSaveTeam: applyAndSave(handleApplyTeam),
     onSaveTestimonials: applyAndSave(handleApplyTestimonials),
     onSaveServices: applyAndSave(handleApplyServices),
-    onSaveValues: applyAndSave(handleApplyValues),
+    onSaveHomeValues: applyAndSave(handleApplyHomeValues),
+    onSaveAboutUsValues: applyAndSave(handleApplyAboutUsValues),
     onSaveGallery: applyAndSave(handleApplyGallery),
     onSaveCTA: applyAndSave(handleApplyCTA),
     onSaveHeader: applyAndSave(handleApplyHeader),
@@ -393,8 +405,10 @@ export function SiteCustomizer() {
     hasTeamChanges,
     hasTestimonialsChanges,
     hasServicesChanges,
-    hasValuesChanges,
+    hasHomeValuesChanges,
+    hasAboutUsValuesChanges,
     hasGalleryChanges,
+    hasGalleryPageChanges,
     hasCTAChanges,
     hasHeaderChanges,
     hasFooterChanges,
@@ -434,8 +448,10 @@ export function SiteCustomizer() {
     hasFontChanges ||
     hasColorChanges ||
     hasServicesChanges ||
-    hasValuesChanges ||
+    hasHomeValuesChanges ||
+    hasAboutUsValuesChanges ||
     hasGalleryChanges ||
+    hasGalleryPageChanges ||
     hasCTAChanges ||
     hasHeaderChanges ||
     hasFooterChanges ||

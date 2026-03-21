@@ -63,7 +63,12 @@ const normalizeSection = <T extends Record<string, unknown>>(
     if (typeof val === 'string') return val;
     if (typeof val === 'object' && val !== null) {
       const obj = val as Record<string, unknown>;
-      return (obj.text as string) || (obj.value as string) || defaultStr;
+      // Tenta pegar o texto de várias formas comuns que o CMS pode enviar
+      const extracted = (obj.text as string) || (obj.value as string) || (obj.content as string) || (obj.title as string);
+      if (typeof extracted === 'string') return extracted;
+      
+      // Se ainda for objeto e tiver um toString personalizado, usa, senão retorna o default
+      return defaultStr;
     }
     return val ? String(val) : defaultStr;
   };
@@ -115,6 +120,7 @@ const normalizeSection = <T extends Record<string, unknown>>(
     title: safeString(content.title ?? merged.title ?? "", (defaultValue as Record<string, unknown> | undefined)?.title as string || ""),
     subtitle: safeString(content.subtitle ?? merged.subtitle ?? "", (defaultValue as Record<string, unknown> | undefined)?.subtitle as string || ""),
     description: safeString(content.description ?? merged.description ?? "", (defaultValue as Record<string, unknown> | undefined)?.description as string || ""),
+    content: safeString(content.content ?? merged.content ?? "", (defaultValue as Record<string, unknown> | undefined)?.content as string || ""),
     bgImage,
     bgColor,
     bgType,
@@ -148,6 +154,99 @@ const normalizeHeroSettings = (value?: HeroSettings, defaultValue: HeroSettings 
   };
 };
 
+const normalizeValuesSettings = (
+  valuesSource: ValuesSettings | undefined,
+  draftValue: ValuesSettings | undefined,
+  defaultValue: ValuesSettings = defaultValuesSettings,
+  getSectionValue: <T>(
+    sectionKey: string,
+    bankValue: T | undefined,
+    draftValue: T | undefined,
+    defaultValue?: T,
+  ) => T | undefined,
+  sectionKey: string,
+  slug?: string | null,
+) => {
+  const itemsStyle = (valuesSource as Record<string, unknown>)
+    ?.itemsStyle as Record<string, unknown> | undefined;
+  const itemsStyleCardBg =
+    (itemsStyle?.itemBackgroundColor as string) || "";
+    
+  const content = (valuesSource as Record<string, unknown>)?.content as Record<string, unknown> | undefined;
+  const contentCardBg = content?.cardBgColor as string || "";
+  const appearance = (valuesSource as Record<string, unknown>)?.appearance as Record<string, unknown> | undefined;
+  const appearanceCardBg =
+    (appearance?.cardBgColor as string) ||
+    (appearance?.cardBackgroundColor as string) ||
+    "";
+
+  const valuesSourceWithCardBg = (itemsStyleCardBg || contentCardBg || appearanceCardBg)
+    ? {
+        ...valuesSource,
+        cardBgColor:
+          (valuesSource as Record<string, unknown>).cardBgColor as
+            | string
+            | undefined || contentCardBg || appearanceCardBg || itemsStyleCardBg,
+        cardBackgroundColor:
+          (valuesSource as Record<string, unknown>)
+            .cardBackgroundColor as string | undefined ||
+          contentCardBg || appearanceCardBg || itemsStyleCardBg,
+      }
+    : (valuesSource || defaultValue);
+
+  const base = normalizeSection(
+    getSectionValue(
+      sectionKey,
+      valuesSourceWithCardBg,
+      draftValue,
+      defaultValue,
+    ),
+    defaultValue,
+  );
+
+  const sourceBgColor =
+    (valuesSource as Record<string, unknown>)?.bgColor ||
+    (valuesSource as Record<string, unknown>)?.backgroundColor ||
+    ((valuesSource as Record<string, unknown>)?.appearance as Record<
+      string,
+      unknown
+    >)?.backgroundColor;
+
+  const sourceCardBgColor =
+    (valuesSource as Record<string, unknown>)?.cardBgColor ||
+    (valuesSource as Record<string, unknown>)?.cardBackgroundColor ||
+    (valuesSource as Record<string, unknown>)?.card_background_color ||
+    ((valuesSource as Record<string, unknown>)
+      ?.cardConfig as Record<string, unknown>)?.backgroundColor ||
+    ((valuesSource as Record<string, unknown>)
+      ?.cardConfig as Record<string, unknown>)?.cardBackgroundColor ||
+    appearanceCardBg ||
+    contentCardBg ||
+    itemsStyleCardBg;
+
+  const hasExplicitBg = Boolean(
+    sourceBgColor && sourceBgColor !== sourceCardBgColor,
+  );
+
+  if (!hasExplicitBg && base?.cardBgColor && base.bgColor === base.cardBgColor) {
+    return {
+      ...base,
+      bgColor: "",
+      appearance: { ...base.appearance, backgroundColor: "" },
+    };
+  }
+
+  if (slug === "aura.teste" && (!base?.items || base.items.length < 5)) {
+    return {
+      ...defaultValue,
+      ...base,
+      items: defaultValue.items,
+    };
+  }
+
+  return base;
+};
+
 export function useEditorConfigLoader({
   local,
   state,
@@ -171,8 +270,10 @@ export function useEditorConfigLoader({
     setFontSettings,
     setColorSettings,
     setServicesSettings,
-    setValuesSettings,
+    setHomeValuesSettings,
+    setAboutUsValuesSettings,
     setGallerySettings,
+    setGalleryPageSettings,
     setCTASettings,
     setHeaderSettings,
     setFooterSettings,
@@ -191,8 +292,10 @@ export function useEditorConfigLoader({
     setLastSavedFont,
     setLastSavedColor,
     setLastSavedServices,
-    setLastSavedValues,
+    setLastSavedHomeValues,
+    setLastSavedAboutUsValues,
     setLastSavedGallery,
+    setLastSavedGalleryPage,
     setLastSavedCTA,
     setLastSavedHeader,
     setLastSavedFooter,
@@ -243,6 +346,9 @@ export function useEditorConfigLoader({
         baseConfig.layout_global) as Record<string, unknown> | undefined;
       const home = baseConfig.home as
         | Record<string, Record<string, unknown>>
+        | undefined;
+      const aboutUs = (baseConfig as Record<string, unknown>)?.aboutUs as
+        | Record<string, unknown>
         | undefined;
 
       const rootHeroBanner = (baseConfig as Record<string, unknown>)
@@ -439,84 +545,30 @@ export function useEditorConfigLoader({
           ),
           defaultServicesSettings,
         ),
-        values: (() => {
-          const valuesSource = (home?.valuesSection ||
+        homeValuesSettings: normalizeValuesSettings(
+          (baseConfig.homeValuesSettings ||
+            layoutGlobal?.homeValuesSettings ||
+            home?.valuesSection ||
             home?.values ||
-            layoutGlobal?.values ||
-            baseConfig.values) as ValuesSettings;
-          
-          const itemsStyle = (valuesSource as Record<string, unknown>)
-            ?.itemsStyle as Record<string, unknown> | undefined;
-          const itemsStyleCardBg =
-            (itemsStyle?.itemBackgroundColor as string) || "";
-            
-          const content = (valuesSource as Record<string, unknown>)?.content as Record<string, unknown> | undefined;
-          const contentCardBg = content?.cardBgColor as string || "";
-          const appearance = (valuesSource as Record<string, unknown>)?.appearance as Record<string, unknown> | undefined;
-          const appearanceCardBg =
-            (appearance?.cardBgColor as string) ||
-            (appearance?.cardBackgroundColor as string) ||
-            "";
-
-          const valuesSourceWithCardBg = (itemsStyleCardBg || contentCardBg || appearanceCardBg)
-            ? {
-                ...valuesSource,
-                cardBgColor:
-                  (valuesSource as Record<string, unknown>).cardBgColor as
-                    | string
-                    | undefined || contentCardBg || appearanceCardBg || itemsStyleCardBg,
-                cardBackgroundColor:
-                  (valuesSource as Record<string, unknown>)
-                    .cardBackgroundColor as string | undefined ||
-                  contentCardBg || appearanceCardBg || itemsStyleCardBg,
-              }
-            : valuesSource;
-          const base = normalizeSection(
-            getSectionValue(
-              "valuesSettings",
-              valuesSourceWithCardBg,
-              drafts.valuesSettings as ValuesSettings,
-              defaultValuesSettings,
-            ),
-            defaultValuesSettings,
-          );
-          const sourceBgColor =
-            (valuesSource as Record<string, unknown>)?.bgColor ||
-            (valuesSource as Record<string, unknown>)?.backgroundColor ||
-            ((valuesSource as Record<string, unknown>)?.appearance as Record<
-              string,
-              unknown
-            >)?.backgroundColor;
-          const sourceCardBgColor =
-            (valuesSource as Record<string, unknown>)?.cardBgColor ||
-            (valuesSource as Record<string, unknown>)?.cardBackgroundColor ||
-            (valuesSource as Record<string, unknown>)?.card_background_color ||
-            ((valuesSource as Record<string, unknown>)
-              ?.cardConfig as Record<string, unknown>)?.backgroundColor ||
-            ((valuesSource as Record<string, unknown>)
-              ?.cardConfig as Record<string, unknown>)?.cardBackgroundColor ||
-            appearanceCardBg ||
-            contentCardBg ||
-            itemsStyleCardBg;
-          const hasExplicitBg = Boolean(
-            sourceBgColor && sourceBgColor !== sourceCardBgColor,
-          );
-          if (!hasExplicitBg && base?.cardBgColor && base.bgColor === base.cardBgColor) {
-            return {
-              ...base,
-              bgColor: "",
-              appearance: { ...base.appearance, backgroundColor: "" },
-            };
-          }
-          if (slug === "aura.teste" && (!base?.items || base.items.length < 5)) {
-            return {
-              ...defaultValuesSettings,
-              ...base,
-              items: defaultValuesSettings.items,
-            };
-          }
-          return base;
-        })(),
+            baseConfig.values) as ValuesSettings,
+          drafts.homeValuesSettings as ValuesSettings,
+          defaultValuesSettings,
+          getSectionValue,
+          "homeValuesSettings",
+          slug,
+        ),
+        aboutUsValuesSettings: normalizeValuesSettings(
+          (baseConfig.aboutUsValuesSettings ||
+            layoutGlobal?.aboutUsValuesSettings ||
+            aboutUs?.valuesSection ||
+            aboutUs?.values ||
+            baseConfig.values) as ValuesSettings,
+          drafts.aboutUsValuesSettings as ValuesSettings,
+          defaultValuesSettings,
+          getSectionValue,
+          "aboutUsValuesSettings",
+          slug,
+        ),
         visibleSections: (() => {
           const base = (drafts.visibleSections as Record<string, boolean>) || 
             layoutGlobal?.visibleSections || 
@@ -542,15 +594,24 @@ export function useEditorConfigLoader({
           }
           return base;
         })(),
-        gallery: normalizeSection(
+        galleryPreviewSettings: normalizeSection(
           getSectionValue(
             "gallerySettings",
-            (home?.galleryPreview ||
+            (baseConfig.galleryPreviewSettings ||
+              home?.galleryPreview ||
               home?.gallerySection ||
-              home?.gallery ||
-              layoutGlobal?.gallery ||
-              baseConfig.gallery) as GallerySettings,
+              layoutGlobal?.galleryPreview ||
+              layoutGlobal?.gallerySection) as GallerySettings,
             drafts.gallerySettings as GallerySettings,
+            defaultGallerySettings,
+          ),
+          defaultGallerySettings,
+        ),
+        galleryPageSettings: normalizeSection(
+          getSectionValue(
+            "galleryPageSettings",
+            baseConfig.galleryPageSettings as GallerySettings,
+            drafts.galleryPageSettings as GallerySettings,
             defaultGallerySettings,
           ),
           defaultGallerySettings,
@@ -755,27 +816,50 @@ export function useEditorConfigLoader({
           baseConfig.services) as ServicesSettings,
       );
       processSection(
-        "valuesSettings",
-        data.values as ValuesSettings,
-        setValuesSettings,
-        setLastSavedValues,
+        "homeValuesSettings",
+        data.homeValuesSettings as ValuesSettings,
+        setHomeValuesSettings,
+        setLastSavedHomeValues,
         defaultValuesSettings,
-        (home?.valuesSection ||
+        (baseConfig.homeValuesSettings ||
+          layoutGlobal?.homeValuesSettings ||
+          home?.valuesSection ||
           home?.values ||
-          layoutGlobal?.values ||
+          baseConfig.values) as ValuesSettings,
+      );
+      processSection(
+        "aboutUsValuesSettings",
+        data.aboutUsValuesSettings as ValuesSettings,
+        setAboutUsValuesSettings,
+        setLastSavedAboutUsValues,
+        defaultValuesSettings,
+        (baseConfig.aboutUsValuesSettings ||
+          layoutGlobal?.aboutUsValuesSettings ||
+          aboutUs?.valuesSection ||
+          aboutUs?.values ||
           baseConfig.values) as ValuesSettings,
       );
       processSection(
         "gallerySettings",
-        data.gallery as GallerySettings,
+        data.galleryPreviewSettings as GallerySettings,
         setGallerySettings,
         setLastSavedGallery,
         defaultGallerySettings,
-        (home?.galleryPreview ||
+        (baseConfig.galleryPreviewSettings ||
+          home?.galleryPreview ||
           home?.gallerySection ||
-          home?.gallery ||
-          layoutGlobal?.gallery ||
-          baseConfig.gallery) as GallerySettings,
+          layoutGlobal?.galleryPreview ||
+          layoutGlobal?.gallerySection) as GallerySettings,
+      );
+      processSection(
+        "galleryPageSettings",
+        data.galleryPageSettings as GallerySettings,
+        setGalleryPageSettings,
+        setLastSavedGalleryPage,
+        defaultGallerySettings,
+        (baseConfig.galleryPageSettings ||
+          baseConfig.gallery ||
+          layoutGlobal?.gallery) as GallerySettings,
       );
       processSection(
         "ctaSettings",
@@ -954,8 +1038,14 @@ export function useEditorConfigLoader({
               ? (data.color as ColorSettings)
               : defaultColorSettings,
         servicesSettings: data.services || defaultServicesSettings,
-        valuesSettings: data.values || defaultValuesSettings,
-        gallerySettings: data.gallery || defaultGallerySettings,
+        homeValuesSettings: data.homeValuesSettings || defaultValuesSettings,
+        aboutUsValuesSettings: data.aboutUsValuesSettings || defaultValuesSettings,
+        gallerySettings:
+          (data.galleryPreviewSettings as GallerySettings) ||
+          defaultGallerySettings,
+        galleryPageSettings:
+          (data.galleryPageSettings as GallerySettings) ||
+          defaultGallerySettings,
         ctaSettings: data.cta || defaultCTASettings,
         headerSettings: data.header || defaultHeaderSettings,
         footerSettings: data.footer || defaultFooterSettings,
@@ -1034,8 +1124,10 @@ export function useEditorConfigLoader({
       setFontSettings,
       setColorSettings,
       setServicesSettings,
-      setValuesSettings,
+      setHomeValuesSettings,
+      setAboutUsValuesSettings,
       setGallerySettings,
+      setGalleryPageSettings,
       setCTASettings,
       setHeaderSettings,
       setFooterSettings,
@@ -1054,8 +1146,10 @@ export function useEditorConfigLoader({
       setLastSavedFont,
       setLastSavedColor,
       setLastSavedServices,
-      setLastSavedValues,
+      setLastSavedHomeValues,
+      setLastSavedAboutUsValues,
       setLastSavedGallery,
+      setLastSavedGalleryPage,
       setLastSavedCTA,
       setLastSavedHeader,
       setLastSavedFooter,

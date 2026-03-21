@@ -277,14 +277,10 @@ export function GalleryPreview() {
           }
         }
 
-        const layoutGlobal = (currentConfig?.layoutGlobal ||
-          currentConfig?.layout_global) as Record<string, unknown> | undefined;
         const home = currentConfig?.home as Record<string, unknown> | undefined;
-        const configGallery = (home?.galleryPreview ||
-          home?.gallerySection ||
-          home?.gallery ||
-          currentConfig?.gallery ||
-          layoutGlobal?.gallery) as Record<string, unknown> | undefined;
+        const configGallery = (currentConfig?.galleryPreviewSettings ||
+          home?.galleryPreview ||
+          home?.gallerySection) as Record<string, unknown> | undefined;
         setSettings(
           configGallery
             ? normalizeGallerySettings(configGallery)
@@ -317,7 +313,11 @@ export function GalleryPreview() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_GALLERY_SETTINGS" && event.data.settings) {
+      if (
+        (event.data.type === "UPDATE_GALLERY_PREVIEW" ||
+          event.data.type === "UPDATE_GALLERY_SETTINGS") &&
+        event.data.settings
+      ) {
         const incoming = event.data.settings as
           | Record<string, unknown>
           | undefined;
@@ -383,20 +383,13 @@ export function GalleryPreview() {
 
       if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
         const siteData = event.data.data as Record<string, unknown>;
-        const layoutGlobal =
-          (siteData.layoutGlobal ||
-            siteData.layout_global) as Record<string, unknown> | undefined;
         const home = siteData.home as Record<string, unknown> | undefined;
         const homeGallery =
-          (home?.galleryPreview ||
-            home?.gallerySection ||
-            home?.gallery) as Record<string, unknown> | undefined;
-        const siteGallery =
-          homeGallery ||
-          (siteData.gallery as Record<string, unknown> | undefined) ||
-          (layoutGlobal?.gallery as Record<string, unknown> | undefined);
-        if (siteGallery) {
-          setSettings(normalizeGallerySettings(siteGallery));
+          (siteData.galleryPreviewSettings ||
+            home?.galleryPreview ||
+            home?.gallerySection) as Record<string, unknown> | undefined;
+        if (homeGallery) {
+          setSettings(normalizeGallerySettings(homeGallery));
         }
       }
 

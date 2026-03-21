@@ -55,8 +55,10 @@ interface SidebarContentProps {
   teamSettings: TeamSettings;
   testimonialsSettings: TestimonialsSettings;
   servicesSettings: ServicesSettings;
-  valuesSettings: ValuesSettings;
+  homeValuesSettings: ValuesSettings;
+  aboutUsValuesSettings: ValuesSettings;
   gallerySettings: GallerySettings;
+  galleryPageSettings: GallerySettings;
   ctaSettings: CTASettings;
   headerSettings: HeaderSettings;
   footerSettings: FooterSettings;
@@ -73,8 +75,10 @@ interface SidebarContentProps {
   onUpdateTeam: (updates: Partial<TeamSettings>) => void;
   onUpdateTestimonials: (updates: Partial<TestimonialsSettings>) => void;
   onUpdateServices: (updates: Partial<ServicesSettings>) => void;
-  onUpdateValues: (updates: Partial<ValuesSettings>) => void;
+  onUpdateHomeValues: (updates: Partial<ValuesSettings>) => void;
+  onUpdateAboutUsValues: (updates: Partial<ValuesSettings>) => void;
   onUpdateGallery: (updates: Partial<GallerySettings>) => void;
+  onUpdateGalleryPage: (updates: Partial<GallerySettings>) => void;
   onUpdateCTA: (updates: Partial<CTASettings>) => void;
   onUpdateHeader: (updates: Partial<HeaderSettings>) => void;
   onUpdateFooter: (updates: Partial<FooterSettings>) => void;
@@ -92,7 +96,8 @@ interface SidebarContentProps {
   onSaveTeam: () => void;
   onSaveTestimonials: () => void;
   onSaveServices: () => void;
-  onSaveValues: () => void;
+  onSaveHomeValues: () => void;
+  onSaveAboutUsValues: () => void;
   onSaveGallery: () => void;
   onSaveCTA: () => void;
   onSaveHeader: () => void;
@@ -111,8 +116,10 @@ interface SidebarContentProps {
   hasTeamChanges: boolean;
   hasTestimonialsChanges: boolean;
   hasServicesChanges: boolean;
-  hasValuesChanges: boolean;
+  hasHomeValuesChanges: boolean;
+  hasAboutUsValuesChanges: boolean;
   hasGalleryChanges: boolean;
+  hasGalleryPageChanges: boolean;
   hasCTAChanges: boolean;
   hasHeaderChanges: boolean;
   hasFooterChanges: boolean;
@@ -155,8 +162,10 @@ export const SidebarContent = memo(
     teamSettings,
     testimonialsSettings,
     servicesSettings,
-    valuesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
     gallerySettings,
+    galleryPageSettings,
     ctaSettings,
     headerSettings,
     footerSettings,
@@ -173,8 +182,10 @@ export const SidebarContent = memo(
     onUpdateTeam,
     onUpdateTestimonials,
     onUpdateServices,
-    onUpdateValues,
+    onUpdateHomeValues,
+    onUpdateAboutUsValues,
     onUpdateGallery,
+    onUpdateGalleryPage,
     onUpdateCTA,
     onUpdateHeader,
     onUpdateFooter,
@@ -192,7 +203,8 @@ export const SidebarContent = memo(
     onSaveTeam,
     onSaveTestimonials,
     onSaveServices,
-    onSaveValues,
+    onSaveHomeValues,
+    onSaveAboutUsValues,
     onSaveGallery,
     onSaveCTA,
     onSaveHeader,
@@ -211,8 +223,10 @@ export const SidebarContent = memo(
     hasTeamChanges,
     hasTestimonialsChanges,
     hasServicesChanges,
-    hasValuesChanges,
+    hasHomeValuesChanges,
+    hasAboutUsValuesChanges,
     hasGalleryChanges,
+    hasGalleryPageChanges,
     hasCTAChanges,
     hasHeaderChanges,
     hasFooterChanges,
@@ -248,8 +262,10 @@ export const SidebarContent = memo(
       hasFontChanges ||
       hasColorChanges ||
       hasServicesChanges ||
-      hasValuesChanges ||
+      hasHomeValuesChanges ||
+      hasAboutUsValuesChanges ||
       hasGalleryChanges ||
+      hasGalleryPageChanges ||
       hasCTAChanges ||
       hasHeaderChanges ||
       hasFooterChanges ||
@@ -258,6 +274,19 @@ export const SidebarContent = memo(
       hasBookingTimeChanges ||
       hasBookingFormChanges ||
       hasBookingConfirmationChanges;
+
+    const isGallerySection =
+      activeSection === "gallery-preview" || activeSection === "gallery-grid";
+    const isGalleryPage = activeSection === "gallery-grid";
+    const currentGallerySettings = isGalleryPage
+      ? galleryPageSettings
+      : gallerySettings;
+    const currentGalleryUpdater = isGalleryPage
+      ? onUpdateGalleryPage
+      : onUpdateGallery;
+    const currentHasGalleryChanges = isGalleryPage
+      ? hasGalleryPageChanges
+      : hasGalleryChanges;
 
     return (
       <div className="flex flex-col h-full text-[clamp(0.7rem,1vw,0.875rem)]">
@@ -395,19 +424,19 @@ export const SidebarContent = memo(
                 {activeSection === "values" &&
                   (activePage === "sobre" ? (
                     <AboutValuesEditor
-                      settings={valuesSettings}
-                      onUpdate={onUpdateValues}
+                      settings={aboutUsValuesSettings}
+                      onUpdate={onUpdateAboutUsValues}
                       onUpdateBackground={onUpdateBackground}
-                      onSave={onSaveValues}
-                      hasChanges={hasValuesChanges}
+                      onSave={onSaveAboutUsValues}
+                      hasChanges={hasAboutUsValuesChanges}
                     />
                   ) : (
                     <ValuesEditor
-                      settings={valuesSettings}
-                      onUpdate={onUpdateValues}
+                      settings={homeValuesSettings}
+                      onUpdate={onUpdateHomeValues}
                       onUpdateBackground={onUpdateBackground}
-                      onSave={onSaveValues}
-                      hasChanges={hasValuesChanges}
+                      onSave={onSaveHomeValues}
+                      hasChanges={hasHomeValuesChanges}
                     />
                   ))}
 
@@ -431,14 +460,14 @@ export const SidebarContent = memo(
                   />
                 )}
 
-                {(activeSection === "gallery-preview" ||
-                  activeSection === "gallery-grid") && (
+                {isGallerySection && (
                   <GalleryEditor
-                    settings={gallerySettings}
-                    onUpdate={onUpdateGallery}
+                    settings={currentGallerySettings}
+                    onUpdate={currentGalleryUpdater}
                     onUpdateBackground={onUpdateBackground}
                     onSave={onSaveGallery}
-                    hasChanges={hasGalleryChanges}
+                    hasChanges={currentHasGalleryChanges}
+                    sectionId={activeSection || undefined}
                   />
                 )}
 

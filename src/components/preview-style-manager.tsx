@@ -2,18 +2,20 @@
 
 import { useEffect, useState } from "react";
 import {
+  getAboutUsValuesSettings,
   getColorSettings,
   getCTASettings,
   getFontSettings,
   getFooterSettings,
+  getGalleryPageSettings,
   getGallerySettings,
   getHeaderSettings,
   getHeroSettings,
+  getHomeValuesSettings,
   getServicesSettings,
   getStorySettings,
   getTeamSettings,
   getTestimonialsSettings,
-  getValuesSettings,
 } from "@/lib/booking-data";
 
 export function PreviewStyleManager() {
@@ -37,13 +39,15 @@ export function PreviewStyleManager() {
       const savedColors = getColorSettings();
       const heroSettings = getHeroSettings();
       const servicesSettings = getServicesSettings();
-      const valuesSettings = getValuesSettings();
+      const homeValuesSettings = getHomeValuesSettings();
+      const aboutUsValuesSettings = getAboutUsValuesSettings();
       const teamSettings = getTeamSettings();
       const testimonialsSettings = getTestimonialsSettings();
       const ctaSettings = getCTASettings();
       const headerSettings = getHeaderSettings();
       const footerSettings = getFooterSettings();
       const gallerySettings = getGallerySettings();
+      const galleryPageSettings = getGalleryPageSettings();
       const storySettings = getStorySettings();
 
       const extras = new Set<string>();
@@ -58,12 +62,21 @@ export function PreviewStyleManager() {
         extras.add(servicesSettings.cardDescriptionFont);
       if (servicesSettings.cardPriceFont)
         extras.add(servicesSettings.cardPriceFont);
-      if (valuesSettings.titleFont) extras.add(valuesSettings.titleFont);
-      if (valuesSettings.subtitleFont) extras.add(valuesSettings.subtitleFont);
-      if (valuesSettings.cardTitleFont)
-        extras.add(valuesSettings.cardTitleFont);
-      if (valuesSettings.cardDescriptionFont)
-        extras.add(valuesSettings.cardDescriptionFont);
+      if (homeValuesSettings.titleFont) extras.add(homeValuesSettings.titleFont);
+      if (homeValuesSettings.subtitleFont)
+        extras.add(homeValuesSettings.subtitleFont);
+      if (homeValuesSettings.cardTitleFont)
+        extras.add(homeValuesSettings.cardTitleFont);
+      if (homeValuesSettings.cardDescriptionFont)
+        extras.add(homeValuesSettings.cardDescriptionFont);
+      if (aboutUsValuesSettings.titleFont)
+        extras.add(aboutUsValuesSettings.titleFont);
+      if (aboutUsValuesSettings.subtitleFont)
+        extras.add(aboutUsValuesSettings.subtitleFont);
+      if (aboutUsValuesSettings.cardTitleFont)
+        extras.add(aboutUsValuesSettings.cardTitleFont);
+      if (aboutUsValuesSettings.cardDescriptionFont)
+        extras.add(aboutUsValuesSettings.cardDescriptionFont);
 
       if (teamSettings.titleFont) extras.add(teamSettings.titleFont);
       if (teamSettings.subtitleFont) extras.add(teamSettings.subtitleFont);
@@ -91,6 +104,12 @@ export function PreviewStyleManager() {
       if (gallerySettings.subtitleFont)
         extras.add(gallerySettings.subtitleFont);
       if (gallerySettings.buttonFont) extras.add(gallerySettings.buttonFont);
+      if (galleryPageSettings.titleFont)
+        extras.add(galleryPageSettings.titleFont);
+      if (galleryPageSettings.subtitleFont)
+        extras.add(galleryPageSettings.subtitleFont);
+      if (galleryPageSettings.buttonFont)
+        extras.add(galleryPageSettings.buttonFont);
       if (storySettings.titleFont) extras.add(storySettings.titleFont);
       if (storySettings.contentFont) extras.add(storySettings.contentFont);
 
@@ -161,7 +180,16 @@ export function PreviewStyleManager() {
             extras.add(event.data.settings.cardPriceFont);
           return { ...prev, extraFonts: Array.from(extras) };
         });
-      } else if (event.data.type === "UPDATE_VALUES_SETTINGS") {
+      } else if (event.data.type === "UPDATE_HOME_VALUES_SETTINGS") {
+        setFonts((prev) => {
+          const extras = new Set(prev.extraFonts);
+          if (event.data.settings?.titleFont)
+            extras.add(event.data.settings.titleFont);
+          if (event.data.settings?.subtitleFont)
+            extras.add(event.data.settings.subtitleFont);
+          return { ...prev, extraFonts: Array.from(extras) };
+        });
+      } else if (event.data.type === "UPDATE_ABOUT_US_VALUES_SETTINGS") {
         setFonts((prev) => {
           const extras = new Set(prev.extraFonts);
           if (event.data.settings?.titleFont)
@@ -227,7 +255,24 @@ export function PreviewStyleManager() {
             extras.add(event.data.settings.bodyFont);
           return { ...prev, extraFonts: Array.from(extras) };
         });
-      } else if (event.data.type === "UPDATE_GALLERY_SETTINGS") {
+      } else if (
+        event.data.type === "UPDATE_GALLERY_PREVIEW" ||
+        event.data.type === "UPDATE_GALLERY_SETTINGS"
+      ) {
+        setFonts((prev) => {
+          const extras = new Set(prev.extraFonts);
+          if (event.data.settings?.titleFont)
+            extras.add(event.data.settings.titleFont);
+          if (event.data.settings?.subtitleFont)
+            extras.add(event.data.settings.subtitleFont);
+          if (event.data.settings?.buttonFont)
+            extras.add(event.data.settings.buttonFont);
+          return { ...prev, extraFonts: Array.from(extras) };
+        });
+      } else if (
+        event.data.type === "UPDATE_GALLERY_PAGE" ||
+        event.data.type === "UPDATE_GALLERY_PAGE_SETTINGS"
+      ) {
         setFonts((prev) => {
           const extras = new Set(prev.extraFonts);
           if (event.data.settings?.titleFont)
@@ -259,7 +304,8 @@ export function PreviewStyleManager() {
     window.addEventListener("colorSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("heroSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("servicesSettingsUpdated", handleSettingsUpdate);
-    window.addEventListener("valuesSettingsUpdated", handleSettingsUpdate);
+    window.addEventListener("homeValuesSettingsUpdated", handleSettingsUpdate);
+    window.addEventListener("aboutUsValuesSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("teamSettingsUpdated", handleSettingsUpdate);
     window.addEventListener(
       "testimonialsSettingsUpdated",
@@ -269,6 +315,7 @@ export function PreviewStyleManager() {
     window.addEventListener("headerSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("footerSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("gallerySettingsUpdated", handleSettingsUpdate);
+    window.addEventListener("galleryPageSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("storySettingsUpdated", handleSettingsUpdate);
 
     return () => {
@@ -280,7 +327,8 @@ export function PreviewStyleManager() {
         "servicesSettingsUpdated",
         handleSettingsUpdate,
       );
-      window.removeEventListener("valuesSettingsUpdated", handleSettingsUpdate);
+      window.removeEventListener("homeValuesSettingsUpdated", handleSettingsUpdate);
+      window.removeEventListener("aboutUsValuesSettingsUpdated", handleSettingsUpdate);
       window.removeEventListener("teamSettingsUpdated", handleSettingsUpdate);
       window.removeEventListener(
         "testimonialsSettingsUpdated",
@@ -291,6 +339,10 @@ export function PreviewStyleManager() {
       window.removeEventListener("footerSettingsUpdated", handleSettingsUpdate);
       window.removeEventListener(
         "gallerySettingsUpdated",
+        handleSettingsUpdate,
+      );
+      window.removeEventListener(
+        "galleryPageSettingsUpdated",
         handleSettingsUpdate,
       );
       window.removeEventListener("storySettingsUpdated", handleSettingsUpdate);

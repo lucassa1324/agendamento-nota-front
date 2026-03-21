@@ -48,8 +48,10 @@ export function useEditorActions({
     handleUpdateFont: handleUpdateFontState,
     handleUpdateColors: handleUpdateColorsState,
     handleUpdateServices: handleUpdateServicesState,
-    handleUpdateValues: handleUpdateValuesState,
-    handleUpdateGallery: handleUpdateGalleryState,
+    handleUpdateHomeValues: handleUpdateHomeValuesState,
+    handleUpdateAboutUsValues: handleUpdateAboutUsValuesState,
+    handleUpdateGalleryPreview: handleUpdateGalleryPreviewState,
+    handleUpdateGalleryPage: handleUpdateGalleryPageState,
     handleUpdateHeader: handleUpdateHeaderState,
     handleUpdateFooter: handleUpdateFooterState,
     handleUpdateBookingService: handleUpdateBookingServiceState,
@@ -65,8 +67,10 @@ export function useEditorActions({
     fontSettings,
     colorSettings,
     servicesSettings,
-    valuesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
     gallerySettings,
+    galleryPageSettings,
     ctaSettings,
     headerSettings,
     footerSettings,
@@ -81,8 +85,10 @@ export function useEditorActions({
     setTeamSettings,
     setTestimonialsSettings,
     setServicesSettings,
-    setValuesSettings,
+    setHomeValuesSettings,
+    setAboutUsValuesSettings,
     setGallerySettings,
+    setGalleryPageSettings,
     setCTASettings,
     setHeaderSettings,
     setFooterSettings,
@@ -99,8 +105,10 @@ export function useEditorActions({
     setLastAppliedFont,
     setLastAppliedColor,
     setLastAppliedServices,
-    setLastAppliedValues,
+    setLastAppliedHomeValues,
+    setLastAppliedAboutUsValues,
     setLastAppliedGallery,
+    setLastAppliedGalleryPage,
     setLastAppliedCTA,
     setLastAppliedHeader,
     setLastAppliedFooter,
@@ -145,8 +153,10 @@ export function useEditorActions({
     saveTeamSettings,
     saveTestimonialsSettings,
     saveServicesSettings,
-    saveValuesSettings,
+    saveHomeValuesSettings,
+    saveAboutUsValuesSettings,
     saveGallerySettings,
+    saveGalleryPageSettings,
     saveCTASettings,
     saveHeaderSettings,
     saveFooterSettings,
@@ -226,21 +236,40 @@ export function useEditorActions({
     });
   }, [servicesSettings, setLastAppliedServices, toast]);
 
-  const handleApplyValues = useCallback(() => {
-    setLastAppliedValues(valuesSettings);
+  const handleApplyHomeValues = useCallback(() => {
+    setLastAppliedHomeValues(homeValuesSettings);
     toast({
       title: "Sucesso",
       description: "Configurações de Valores aplicadas.",
     });
-  }, [valuesSettings, setLastAppliedValues, toast]);
+  }, [homeValuesSettings, setLastAppliedHomeValues, toast]);
+
+  const handleApplyAboutUsValues = useCallback(() => {
+    setLastAppliedAboutUsValues(aboutUsValuesSettings);
+    toast({
+      title: "Sucesso",
+      description: "Configurações de Valores aplicadas.",
+    });
+  }, [aboutUsValuesSettings, setLastAppliedAboutUsValues, toast]);
 
   const handleApplyGallery = useCallback(() => {
-    setLastAppliedGallery(gallerySettings);
+    if (activeSectionId === "gallery-grid") {
+      setLastAppliedGalleryPage(galleryPageSettings);
+    } else {
+      setLastAppliedGallery(gallerySettings);
+    }
     toast({
       title: "Sucesso",
       description: "Configurações da Galeria aplicadas.",
     });
-  }, [gallerySettings, setLastAppliedGallery, toast]);
+  }, [
+    activeSectionId,
+    galleryPageSettings,
+    gallerySettings,
+    setLastAppliedGallery,
+    setLastAppliedGalleryPage,
+    toast,
+  ]);
 
   const handleApplyCTA = useCallback(() => {
     setLastAppliedCTA(ctaSettings);
@@ -320,10 +349,11 @@ export function useEditorActions({
         team: teamSettings,
         testimonials: testimonialsSettings,
         services: servicesSettings,
-        values: valuesSettings,
+        "home-values": homeValuesSettings,
+        "about-us-values": aboutUsValuesSettings,
         gallery: gallerySettings,
         "gallery-preview": gallerySettings,
-        "gallery-grid": gallerySettings,
+        "gallery-grid": galleryPageSettings,
         cta: ctaSettings,
         "booking-service": bookingServiceSettings as BackgroundSettings,
         "booking-date": bookingDateSettings as BackgroundSettings,
@@ -397,10 +427,11 @@ export function useEditorActions({
           team: teamSettings,
           testimonials: testimonialsSettings,
           services: servicesSettings,
-          values: valuesSettings,
+          "home-values": homeValuesSettings,
+          "about-us-values": aboutUsValuesSettings,
           gallery: gallerySettings,
           "gallery-preview": gallerySettings,
-          "gallery-grid": gallerySettings,
+          "gallery-grid": galleryPageSettings,
           cta: ctaSettings,
           "booking-service": bookingServiceSettings,
           "booking-date": bookingDateSettings,
@@ -421,12 +452,15 @@ export function useEditorActions({
         testimonials: (u) =>
           saveTestimonialsSettings({ ...testimonialsSettings, ...u }),
         services: (u) => saveServicesSettings({ ...servicesSettings, ...u }),
-        values: (u) => saveValuesSettings({ ...valuesSettings, ...u }),
+        "home-values": (u) =>
+          saveHomeValuesSettings({ ...homeValuesSettings, ...u }),
+        "about-us-values": (u) =>
+          saveAboutUsValuesSettings({ ...aboutUsValuesSettings, ...u }),
         gallery: (u) => saveGallerySettings({ ...gallerySettings, ...u }),
         "gallery-preview": (u) =>
           saveGallerySettings({ ...gallerySettings, ...u }),
         "gallery-grid": (u) =>
-          saveGallerySettings({ ...gallerySettings, ...u }),
+          saveGalleryPageSettings({ ...galleryPageSettings, ...u }),
         cta: (u) => saveCTASettings({ ...ctaSettings, ...u }),
         "booking-service": (u) =>
           saveBookingServiceSettings({ ...bookingServiceSettings, ...u }),
@@ -450,10 +484,11 @@ export function useEditorActions({
         team: "teamSettings",
         testimonials: "testimonialsSettings",
         services: "servicesSettings",
-        values: "valuesSettings",
+        "home-values": "homeValuesSettings",
+        "about-us-values": "aboutUsValuesSettings",
         gallery: "gallerySettings",
         "gallery-preview": "gallerySettings",
-        "gallery-grid": "gallerySettings",
+        "gallery-grid": "galleryPageSettings",
         cta: "ctaSettings",
         "booking-service": "bookingServiceSettings",
         "booking-date": "bookingDateSettings",
@@ -497,8 +532,10 @@ export function useEditorActions({
       teamSettings,
       testimonialsSettings,
       servicesSettings,
-      valuesSettings,
+      homeValuesSettings,
+      aboutUsValuesSettings,
       gallerySettings,
+      galleryPageSettings,
       ctaSettings,
       bookingServiceSettings,
       bookingDateSettings,
@@ -512,8 +549,10 @@ export function useEditorActions({
       saveTeamSettings,
       saveTestimonialsSettings,
       saveServicesSettings,
-      saveValuesSettings,
+      saveHomeValuesSettings,
+      saveAboutUsValuesSettings,
       saveGallerySettings,
+      saveGalleryPageSettings,
       saveCTASettings,
       saveBookingServiceSettings,
       saveBookingDateSettings,
@@ -632,16 +671,31 @@ export function useEditorActions({
 
   const handleUpdateGallery = useCallback(
     (updates: Partial<GallerySettings>) => {
-      handleUpdateGalleryState(updates);
+      handleUpdateGalleryPreviewState(updates);
       scheduleDraftSave("gallerySettings", () =>
         saveGallerySettings({ ...gallerySettings, ...updates }),
       );
     },
     [
-      handleUpdateGalleryState,
+      handleUpdateGalleryPreviewState,
       scheduleDraftSave,
       saveGallerySettings,
       gallerySettings,
+    ],
+  );
+
+  const handleUpdateGalleryPage = useCallback(
+    (updates: Partial<GallerySettings>) => {
+      handleUpdateGalleryPageState(updates);
+      scheduleDraftSave("galleryPageSettings", () =>
+        saveGalleryPageSettings({ ...galleryPageSettings, ...updates }),
+      );
+    },
+    [
+      handleUpdateGalleryPageState,
+      scheduleDraftSave,
+      saveGalleryPageSettings,
+      galleryPageSettings,
     ],
   );
 
@@ -690,19 +744,35 @@ export function useEditorActions({
     ],
   );
 
-  const handleUpdateValues = useCallback(
+  const handleUpdateHomeValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
-      handleUpdateValuesState(updates);
-      const newSettings = { ...valuesSettings, ...updates };
-      scheduleDraftSave("valuesSettings", () =>
-        saveValuesSettings(newSettings),
+      handleUpdateHomeValuesState(updates);
+      const newSettings = { ...homeValuesSettings, ...updates };
+      scheduleDraftSave("homeValuesSettings", () =>
+        saveHomeValuesSettings(newSettings),
       );
     },
     [
-      handleUpdateValuesState,
+      handleUpdateHomeValuesState,
       scheduleDraftSave,
-      saveValuesSettings,
-      valuesSettings,
+      saveHomeValuesSettings,
+      homeValuesSettings,
+    ],
+  );
+
+  const handleUpdateAboutUsValues = useCallback(
+    (updates: Partial<ValuesSettings>) => {
+      handleUpdateAboutUsValuesState(updates);
+      const newSettings = { ...aboutUsValuesSettings, ...updates };
+      scheduleDraftSave("aboutUsValuesSettings", () =>
+        saveAboutUsValuesSettings(newSettings),
+      );
+    },
+    [
+      handleUpdateAboutUsValuesState,
+      scheduleDraftSave,
+      saveAboutUsValuesSettings,
+      aboutUsValuesSettings,
     ],
   );
 
@@ -790,10 +860,13 @@ export function useEditorActions({
         testimonials: () =>
           setTestimonialsSettings(state.lastSavedTestimonials),
         services: () => setServicesSettings(state.lastSavedServices),
-        values: () => setValuesSettings(state.lastSavedValues),
+        "home-values": () => setHomeValuesSettings(state.lastSavedHomeValues),
+        "about-us-values": () =>
+          setAboutUsValuesSettings(state.lastSavedAboutUsValues),
         gallery: () => setGallerySettings(state.lastSavedGallery),
         "gallery-preview": () => setGallerySettings(state.lastSavedGallery),
-        "gallery-grid": () => setGallerySettings(state.lastSavedGallery),
+        "gallery-grid": () =>
+          setGalleryPageSettings(state.lastSavedGalleryPage),
         cta: () => setCTASettings(state.lastSavedCTA),
         header: () => setHeaderSettings(state.lastSavedHeader),
         footer: () => setFooterSettings(state.lastSavedFooter),
@@ -826,8 +899,10 @@ export function useEditorActions({
       state.lastSavedTeam,
       state.lastSavedTestimonials,
       state.lastSavedServices,
-      state.lastSavedValues,
+      state.lastSavedHomeValues,
+      state.lastSavedAboutUsValues,
       state.lastSavedGallery,
+      state.lastSavedGalleryPage,
       state.lastSavedCTA,
       state.lastSavedHeader,
       state.lastSavedFooter,
@@ -842,8 +917,10 @@ export function useEditorActions({
       setTeamSettings,
       setTestimonialsSettings,
       setServicesSettings,
-      setValuesSettings,
+      setHomeValuesSettings,
+      setAboutUsValuesSettings,
       setGallerySettings,
+      setGalleryPageSettings,
       setCTASettings,
       setHeaderSettings,
       setFooterSettings,
@@ -866,7 +943,8 @@ export function useEditorActions({
     handleApplyTypography,
     handleApplyColors,
     handleApplyServices,
-    handleApplyValues,
+    handleApplyHomeValues,
+    handleApplyAboutUsValues,
     handleApplyGallery,
     handleApplyCTA,
     handleApplyHeader,
@@ -886,6 +964,7 @@ export function useEditorActions({
     handleUpdateTestimonials,
     handleUpdateServices,
     handleUpdateGallery,
+    handleUpdateGalleryPage,
     handleUpdateHeader,
     handleUpdateFooter,
     handleUpdateBookingService,
@@ -894,7 +973,8 @@ export function useEditorActions({
     handleUpdateBookingForm,
     handleUpdateBookingConfirmation,
     handleUpdateCTA,
-    handleUpdateValues,
+    handleUpdateHomeValues,
+    handleUpdateAboutUsValues,
     handleUpdateFont,
     handleUpdateColors,
   };

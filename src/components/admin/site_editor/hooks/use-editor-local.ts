@@ -16,6 +16,7 @@ import type {
 } from "@/lib/booking-data";
 import {
   getAboutHeroSettings,
+  getAboutUsValuesSettings,
   getBookingConfirmationSettings,
   getBookingDateSettings,
   getBookingFormSettings,
@@ -25,18 +26,20 @@ import {
   getCTASettings,
   getFontSettings,
   getFooterSettings,
+  getGalleryPageSettings,
   getGallerySettings,
   getHeaderSettings,
   getHeroSettings,
+  getHomeValuesSettings,
   getPageVisibility,
   getServicesSettings,
   getStorageKey,
   getStorySettings,
   getTeamSettings,
   getTestimonialsSettings,
-  getValuesSettings,
   getVisibleSections,
   saveAboutHeroSettings,
+  saveAboutUsValuesSettings,
   saveBookingConfirmationSettings,
   saveBookingDateSettings,
   saveBookingFormSettings,
@@ -46,15 +49,16 @@ import {
   saveCTASettings,
   saveFontSettings,
   saveFooterSettings,
+  saveGalleryPageSettings,
   saveGallerySettings,
   saveHeaderSettings,
   saveHeroSettings,
+  saveHomeValuesSettings,
   savePageVisibility,
   saveServicesSettings,
   saveStorySettings,
   saveTeamSettings,
   saveTestimonialsSettings,
-  saveValuesSettings,
   saveVisibleSections,
 } from "@/lib/booking-data";
 
@@ -67,8 +71,10 @@ export type EditorLocalDrafts = {
   fontSettings: FontSettings;
   colorSettings: ColorSettings;
   servicesSettings: ServicesSettings;
-  valuesSettings: ValuesSettings;
+  homeValuesSettings: ValuesSettings;
+  aboutUsValuesSettings: ValuesSettings;
   gallerySettings: GallerySettings;
+  galleryPageSettings: GallerySettings;
   ctaSettings: CTASettings;
   headerSettings: HeaderSettings;
   footerSettings: FooterSettings;
@@ -98,8 +104,10 @@ export function useEditorLocal() {
       fontSettings: getFontSettings(),
       colorSettings: getColorSettings(),
       servicesSettings: getServicesSettings(),
-      valuesSettings: getValuesSettings(),
+      homeValuesSettings: getHomeValuesSettings(),
+      aboutUsValuesSettings: getAboutUsValuesSettings(),
       gallerySettings: getGallerySettings(),
+      galleryPageSettings: getGalleryPageSettings(),
       ctaSettings: getCTASettings(),
       headerSettings: getHeaderSettings(),
       footerSettings: getFooterSettings(),
@@ -122,8 +130,10 @@ export function useEditorLocal() {
     saveFontSettings(drafts.fontSettings);
     saveColorSettings(drafts.colorSettings);
     saveServicesSettings(drafts.servicesSettings);
-    saveValuesSettings(drafts.valuesSettings);
+    saveHomeValuesSettings(drafts.homeValuesSettings);
+    saveAboutUsValuesSettings(drafts.aboutUsValuesSettings);
     saveGallerySettings(drafts.gallerySettings);
+    saveGalleryPageSettings(drafts.galleryPageSettings);
     saveCTASettings(drafts.ctaSettings);
     saveHeaderSettings(drafts.headerSettings);
     saveFooterSettings(drafts.footerSettings);
@@ -147,8 +157,10 @@ export function useEditorLocal() {
       "fontSettings",
       "colorSettings",
       "servicesSettings",
-      "valuesSettings",
+      "homeValuesSettings",
+      "aboutUsValuesSettings",
       "gallerySettings",
+      "galleryPageSettings",
       "ctaSettings",
       "headerSettings",
       "footerSettings",
@@ -188,8 +200,10 @@ export function useEditorLocal() {
     saveFontSettings,
     saveColorSettings,
     saveServicesSettings,
-    saveValuesSettings,
+    saveHomeValuesSettings,
+    saveAboutUsValuesSettings,
     saveGallerySettings,
+    saveGalleryPageSettings,
     saveCTASettings,
     saveHeaderSettings,
     saveFooterSettings,

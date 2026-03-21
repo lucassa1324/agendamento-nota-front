@@ -118,7 +118,7 @@ export default function SobrePage({
     <main>
       {isSectionVisible("about-hero") && <AboutHero />}
       {isSectionVisible("story") && <StorySection />}
-      {isSectionVisible("values") && <ValuesSection />}
+      {isSectionVisible("values") && <ValuesSection source="about" />}
       {isSectionVisible("team") && <TeamSection />}
       {isSectionVisible("testimonials") && <TestimonialsSection />}
     </main>

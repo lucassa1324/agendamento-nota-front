@@ -25,8 +25,10 @@ interface UseEditorChangesProps {
     fontSettings: FontSettings;
     colorSettings: ColorSettings;
     servicesSettings: ServicesSettings;
-    valuesSettings: ValuesSettings;
+    homeValuesSettings: ValuesSettings;
+    aboutUsValuesSettings: ValuesSettings;
     gallerySettings: GallerySettings;
+    galleryPageSettings: GallerySettings;
     ctaSettings: CTASettings;
     headerSettings: HeaderSettings;
     footerSettings: FooterSettings;
@@ -45,8 +47,10 @@ interface UseEditorChangesProps {
     lastAppliedFont: FontSettings;
     lastAppliedColor: ColorSettings;
     lastAppliedServices: ServicesSettings;
-    lastAppliedValues: ValuesSettings;
+    lastAppliedHomeValues: ValuesSettings;
+    lastAppliedAboutUsValues: ValuesSettings;
     lastAppliedGallery: GallerySettings;
+    lastAppliedGalleryPage: GallerySettings;
     lastAppliedCTA: CTASettings;
     lastAppliedHeader: HeaderSettings;
     lastAppliedFooter: FooterSettings;
@@ -72,8 +76,10 @@ export function useEditorChanges({ settings, lastApplied }: UseEditorChangesProp
   const hasFontChanges = useMemo(() => hasChanged(settings.fontSettings, lastApplied.lastAppliedFont), [settings.fontSettings, lastApplied.lastAppliedFont]);
   const hasColorChanges = useMemo(() => hasChanged(settings.colorSettings, lastApplied.lastAppliedColor), [settings.colorSettings, lastApplied.lastAppliedColor]);
   const hasServicesChanges = useMemo(() => hasChanged(settings.servicesSettings, lastApplied.lastAppliedServices), [settings.servicesSettings, lastApplied.lastAppliedServices]);
-  const hasValuesChanges = useMemo(() => hasChanged(settings.valuesSettings, lastApplied.lastAppliedValues), [settings.valuesSettings, lastApplied.lastAppliedValues]);
+  const hasHomeValuesChanges = useMemo(() => hasChanged(settings.homeValuesSettings, lastApplied.lastAppliedHomeValues), [settings.homeValuesSettings, lastApplied.lastAppliedHomeValues]);
+  const hasAboutUsValuesChanges = useMemo(() => hasChanged(settings.aboutUsValuesSettings, lastApplied.lastAppliedAboutUsValues), [settings.aboutUsValuesSettings, lastApplied.lastAppliedAboutUsValues]);
   const hasGalleryChanges = useMemo(() => hasChanged(settings.gallerySettings, lastApplied.lastAppliedGallery), [settings.gallerySettings, lastApplied.lastAppliedGallery]);
+  const hasGalleryPageChanges = useMemo(() => hasChanged(settings.galleryPageSettings, lastApplied.lastAppliedGalleryPage), [settings.galleryPageSettings, lastApplied.lastAppliedGalleryPage]);
   const hasCTAChanges = useMemo(() => hasChanged(settings.ctaSettings, lastApplied.lastAppliedCTA), [settings.ctaSettings, lastApplied.lastAppliedCTA]);
   const hasHeaderChanges = useMemo(() => hasChanged(settings.headerSettings, lastApplied.lastAppliedHeader), [settings.headerSettings, lastApplied.lastAppliedHeader]);
   const hasFooterChanges = useMemo(() => hasChanged(settings.footerSettings, lastApplied.lastAppliedFooter), [settings.footerSettings, lastApplied.lastAppliedFooter]);
@@ -93,8 +99,10 @@ export function useEditorChanges({ settings, lastApplied }: UseEditorChangesProp
     hasFontChanges,
     hasColorChanges,
     hasServicesChanges,
-    hasValuesChanges,
+    hasHomeValuesChanges,
+    hasAboutUsValuesChanges,
     hasGalleryChanges,
+    hasGalleryPageChanges,
     hasCTAChanges,
     hasHeaderChanges,
     hasFooterChanges,
