@@ -110,13 +110,32 @@ export function useEditorSync({
   }, [lastSavedTestimonials, testimonialsSettings]);
 
   const previewServicesSettings = useMemo(() => {
-    const merged = { ...lastSavedServices, ...servicesSettings };
+    const merged = { ...lastSavedServices, ...servicesSettings } as typeof servicesSettings & Record<string, unknown>;
     // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
     if (servicesSettings.bgType === "color") {
       merged.bgImage = "";
       if (merged.appearance)
         merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
     }
+    
+    // Sanitização de Cores
+    merged.bgColor = sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
+    merged.titleColor = sanitizeColor(merged.titleColor) || "";
+    merged.subtitleColor = sanitizeColor(merged.subtitleColor) || "";
+    merged.cardBgColor = sanitizeColor(merged.cardBgColor || merged.appearance?.cardBgColor) || "";
+    merged.cardTitleColor = sanitizeColor(merged.cardTitleColor) || "";
+    merged.cardDescriptionColor = sanitizeColor(merged.cardDescriptionColor) || "";
+    merged.cardPriceColor = sanitizeColor(merged.cardPriceColor) || "";
+    merged.cardIconColor = sanitizeColor(merged.cardIconColor) || "";
+
+    if (merged.appearance) {
+      merged.appearance = {
+        ...merged.appearance,
+        backgroundColor: merged.bgColor,
+        cardBgColor: merged.cardBgColor,
+      };
+    }
+    
     return merged;
   }, [lastSavedServices, servicesSettings]);
 
@@ -249,13 +268,30 @@ export function useEditorSync({
     [lastSavedColor, colorSettings],
   );
   const previewGallerySettings = useMemo(() => {
-    const merged = { ...lastSavedGallery, ...gallerySettings };
+    const merged = { ...lastSavedGallery, ...gallerySettings } as typeof gallerySettings & Record<string, unknown>;
     // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
     if (gallerySettings.bgType === "color") {
       merged.bgImage = "";
       if (merged.appearance)
         merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
     }
+    
+    // Sanitização de Cores
+    merged.bgColor = sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
+    merged.titleColor = sanitizeColor(merged.titleColor) || "";
+    merged.subtitleColor = sanitizeColor(merged.subtitleColor) || "";
+    merged.buttonColor = sanitizeColor(merged.buttonColor) || "";
+    merged.buttonTextColor = sanitizeColor(merged.buttonTextColor) || "";
+    merged.cardBgColor = sanitizeColor(merged.cardBgColor || merged.appearance?.cardBgColor) || "";
+
+    if (merged.appearance) {
+      merged.appearance = {
+        ...merged.appearance,
+        backgroundColor: merged.bgColor,
+        cardBgColor: merged.cardBgColor,
+      };
+    }
+    
     return merged;
   }, [lastSavedGallery, gallerySettings]);
   const previewHeaderSettings = useMemo(

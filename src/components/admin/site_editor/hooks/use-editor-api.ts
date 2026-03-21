@@ -1342,6 +1342,7 @@ export function useEditorApi({
       hasUnsavedGlobalChanges,
       refreshData,
       loadExternalConfig,
+      setIsDirty,
     ],
   );
 

@@ -26,6 +26,42 @@ import {
 } from "./admin/site_editor/components/SectionBackground";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
+const MOCK_GALLERY: GalleryItem[] = [
+  {
+    id: "mock-gallery-1",
+    imageUrl: "/professional-eyebrow-artist-at-work.jpg",
+    title: "Design de Sobrancelhas",
+    category: "Sobrancelhas",
+    showInHome: true,
+    order: 1,
+    businessId: "mock",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+  },
+  {
+    id: "mock-gallery-2",
+    imageUrl: "/elegant-eyebrow-studio-interior-with-soft-lighting.jpg",
+    title: "Estúdio Premium",
+    category: "Ambiente",
+    showInHome: true,
+    order: 2,
+    businessId: "mock",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+  },
+  {
+    id: "mock-gallery-3",
+    imageUrl: "/beauty-salon-professional-workspace.jpg",
+    title: "Resultados Naturais",
+    category: "Resultados",
+    showInHome: true,
+    order: 3,
+    businessId: "mock",
+    createdAt: "2024-01-01T00:00:00.000Z",
+    updatedAt: "2024-01-01T00:00:00.000Z",
+  },
+];
+
 export function GalleryPreview() {
   const { studio } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
@@ -52,6 +88,76 @@ export function GalleryPreview() {
   );
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
+  );
+
+  const normalizeGallerySettings = useCallback(
+    (configGallery: Record<string, unknown>): GallerySettings => {
+      const content = (configGallery.content as Record<string, unknown>) || {};
+      const appearance =
+        (configGallery.appearance as Record<string, unknown>) || {};
+      return {
+        ...configGallery,
+        ...content,
+        ...appearance,
+        title: (content.title as string) ?? (configGallery.title as string),
+        subtitle:
+          (content.subtitle as string) ?? (configGallery.subtitle as string),
+        titleColor: sanitizeColor(
+          (configGallery.titleColor as string) ||
+            (appearance.titleColor as string) ||
+            (content.titleColor as string),
+        ),
+        subtitleColor: sanitizeColor(
+          (configGallery.subtitleColor as string) ||
+            (appearance.subtitleColor as string) ||
+            (content.subtitleColor as string),
+        ),
+        titleFont:
+          (configGallery.titleFont as string) ||
+          (appearance.titleFont as string) ||
+          (content.titleFont as string),
+        subtitleFont:
+          (configGallery.subtitleFont as string) ||
+          (appearance.subtitleFont as string) ||
+          (content.subtitleFont as string),
+        buttonColor: sanitizeColor(
+          (configGallery.buttonColor as string) ||
+            (appearance.buttonColor as string) ||
+            (content.buttonColor as string),
+        ),
+        buttonTextColor: sanitizeColor(
+          (configGallery.buttonTextColor as string) ||
+            (appearance.buttonTextColor as string) ||
+            (content.buttonTextColor as string),
+        ),
+        buttonLink:
+          (content.buttonLink as string) ||
+          (configGallery.buttonLink as string) ||
+          "",
+        bgImage:
+          (configGallery.bgImage as string) ||
+          (appearance.backgroundImageUrl as string) ||
+          "",
+        bgColor: sanitizeColor(
+          (configGallery.bgColor as string) ||
+            (configGallery.backgroundColor as string) ||
+            (appearance.backgroundColor as string) ||
+            "",
+        ),
+        cardBgColor: sanitizeColor(
+          (configGallery.cardBgColor as string) ||
+            (configGallery.cardBackgroundColor as string) ||
+            (configGallery.card_background_color as string) ||
+            ((configGallery.cardConfig as Record<string, unknown>)
+              ?.cardBackgroundColor as string) ||
+            ((configGallery.cardConfig as Record<string, unknown>)
+              ?.backgroundColor as string) ||
+            (appearance.cardBgColor as string) ||
+            (content.cardBgColor as string),
+        ),
+      } as GallerySettings;
+    },
+    [],
   );
 
   const loadData = useCallback(
@@ -81,30 +187,12 @@ export function GalleryPreview() {
 
       // PRIORIDADE: Modo Preview (localStorage) > Banco de Dados (studio.config)
       if (isPreviewMode) {
-        const localSettings = getGallerySettings();
-        console.log(">>> [GALLERY_PREVIEW] Loaded from localStorage:", localSettings);
-        setSettings(localSettings);
-        setPageVisibility(getPageVisibility());
-        // No preview, ainda tentamos carregar as imagens do banco para visualização
-        if (studio?.id) {
-          try {
-            const allImages = await galleryService.getPublicGallery(studio.id);
-            const homeImages = Array.isArray(allImages)
-              ? allImages.filter((img) => {
-                  const item = img as GalleryItem & {
-                    show_in_home?: boolean;
-                    showOnHome?: boolean;
-                  };
-                  return item.showInHome || item.show_in_home || item.showOnHome;
-                })
-              : [];
-            const finalImages = homeImages.slice(0, 6);
-            setImages(finalImages);
-            imagesRef.current = finalImages;
-          } catch (e) {
-            console.warn(">>> [GALLERY_PREVIEW] Erro ao carregar imagens:", e);
-          }
+        if (!settingsRef.current) {
+          setSettings(getGallerySettings());
         }
+        setPageVisibility(getPageVisibility());
+        setImages(MOCK_GALLERY);
+        imagesRef.current = MOCK_GALLERY;
         loadingRef.current = false;
         setIsLoading(false);
         return;
@@ -197,77 +285,11 @@ export function GalleryPreview() {
           home?.gallery ||
           currentConfig?.gallery ||
           layoutGlobal?.gallery) as Record<string, unknown> | undefined;
-        if (configGallery) {
-          const content =
-            (configGallery.content as Record<string, unknown>) || {};
-          const appearance =
-            (configGallery.appearance as Record<string, unknown>) || {};
-          const normalizedGallery = {
-            ...configGallery,
-            ...content,
-            ...appearance,
-            title: (content.title as string) ?? (configGallery.title as string),
-            subtitle:
-              (content.subtitle as string) ??
-              (configGallery.subtitle as string),
-            titleColor: sanitizeColor(
-              (configGallery.titleColor as string) ||
-                (appearance.titleColor as string) ||
-                (content.titleColor as string),
-            ),
-            subtitleColor: sanitizeColor(
-              (configGallery.subtitleColor as string) ||
-                (appearance.subtitleColor as string) ||
-                (content.subtitleColor as string),
-            ),
-            titleFont:
-              (configGallery.titleFont as string) ||
-              (appearance.titleFont as string) ||
-              (content.titleFont as string),
-            subtitleFont:
-              (configGallery.subtitleFont as string) ||
-              (appearance.subtitleFont as string) ||
-              (content.subtitleFont as string),
-            buttonColor: sanitizeColor(
-              (configGallery.buttonColor as string) ||
-                (appearance.buttonColor as string) ||
-                (content.buttonColor as string),
-            ),
-            buttonTextColor: sanitizeColor(
-              (configGallery.buttonTextColor as string) ||
-                (appearance.buttonTextColor as string) ||
-                (content.buttonTextColor as string),
-            ),
-            buttonLink:
-              (content.buttonLink as string) ||
-              (configGallery.buttonLink as string) ||
-              "",
-            bgImage:
-              (configGallery.bgImage as string) ||
-              (appearance.backgroundImageUrl as string) ||
-              "",
-            bgColor: sanitizeColor(
-              (configGallery.bgColor as string) ||
-                (configGallery.backgroundColor as string) ||
-                (appearance.backgroundColor as string) ||
-                "",
-            ),
-            cardBgColor: sanitizeColor(
-              (configGallery.cardBgColor as string) ||
-              (configGallery.cardBackgroundColor as string) ||
-              (configGallery.card_background_color as string) ||
-              ((configGallery.cardConfig as Record<string, unknown>)?.cardBackgroundColor as string) ||
-              ((configGallery.cardConfig as Record<string, unknown>)?.backgroundColor as string) ||
-              (appearance.cardBgColor as string) ||
-              (content.cardBgColor as string)
-            ),
-          };
-          setSettings(
-            (normalizedGallery as GallerySettings) || getGallerySettings(),
-          );
-        } else {
-          setSettings(getGallerySettings());
-        }
+        setSettings(
+          configGallery
+            ? normalizeGallerySettings(configGallery)
+            : getGallerySettings(),
+        );
 
         setPageVisibility(getPageVisibility());
       } catch (error) {
@@ -281,7 +303,7 @@ export function GalleryPreview() {
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [studio?.id, studio?.config],
+    [normalizeGallerySettings, studio?.id, studio?.config],
   );
 
   useEffect(() => {
@@ -295,32 +317,87 @@ export function GalleryPreview() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      // 1. Receber atualizações diretas de configurações (IGUAL AO HERO)
       if (event.data.type === "UPDATE_GALLERY_SETTINGS" && event.data.settings) {
-        console.log(">>> [GALLERY_PREVIEW] Updating settings from message:", event.data.settings);
-        
-        // Sanitize colors in real-time update
-        const updatedSettings = { ...event.data.settings };
-        const colorFields = [
-          "titleColor",
-          "subtitleColor",
-          "buttonColor",
-          "buttonTextColor",
-          "bgColor",
-        ];
+        const incoming = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
+        if (incoming) {
+          const incomingAppearance =
+            (incoming.appearance as Record<string, unknown>) || {};
+          const incomingContent =
+            (incoming.content as Record<string, unknown>) || {};
+          
+          const sanitized = {
+            ...incoming,
+            bgColor:
+              sanitizeColor(
+                (incoming.bgColor as string) ||
+                  (incomingAppearance.backgroundColor as string),
+              ) || "",
+            titleColor:
+              sanitizeColor(
+                (incoming.titleColor as string) ||
+                  (incomingAppearance.titleColor as string) ||
+                  (incomingContent.titleColor as string),
+              ) || "",
+            subtitleColor:
+              sanitizeColor(
+                (incoming.subtitleColor as string) ||
+                  (incomingAppearance.subtitleColor as string) ||
+                  (incomingContent.subtitleColor as string),
+              ) || "",
+            buttonColor:
+              sanitizeColor(
+                (incoming.buttonColor as string) ||
+                  (incomingAppearance.buttonColor as string) ||
+                  (incomingContent.buttonColor as string),
+              ) || "",
+            buttonTextColor:
+              sanitizeColor(
+                (incoming.buttonTextColor as string) ||
+                  (incomingAppearance.buttonTextColor as string) ||
+                  (incomingContent.buttonTextColor as string),
+              ) || "",
+            cardBgColor:
+              sanitizeColor(
+              (incoming.cardBgColor as string) ||
+              (incomingAppearance.cardBgColor as string) ||
+              (incomingAppearance.cardBackgroundColor as string) ||
+              (incomingContent.cardBgColor as string),
+            ) || "",
+          };
 
-        colorFields.forEach((field) => {
-          if (updatedSettings[field] !== undefined) {
-            updatedSettings[field] = sanitizeColor(updatedSettings[field]);
-          }
-        });
+          setSettings((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  ...sanitized,
+                }
+              : {
+                  ...(sanitized as GallerySettings),
+                },
+          );
+        }
+        return;
+      }
 
-        setSettings((prev) => {
-          const next = prev ? { ...prev, ...updatedSettings } : updatedSettings;
-          console.log(">>> [GALLERY_PREVIEW] Next settings:", next);
-          return next;
-        });
-        return; // Retornamos aqui para não chamar loadData desnecessariamente
+      if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+        const siteData = event.data.data as Record<string, unknown>;
+        const layoutGlobal =
+          (siteData.layoutGlobal ||
+            siteData.layout_global) as Record<string, unknown> | undefined;
+        const home = siteData.home as Record<string, unknown> | undefined;
+        const homeGallery =
+          (home?.galleryPreview ||
+            home?.gallerySection ||
+            home?.gallery) as Record<string, unknown> | undefined;
+        const siteGallery =
+          homeGallery ||
+          (siteData.gallery as Record<string, unknown> | undefined) ||
+          (layoutGlobal?.gallery as Record<string, unknown> | undefined);
+        if (siteGallery) {
+          setSettings(normalizeGallerySettings(siteGallery));
+        }
       }
 
       // 2. Refresh forçado apenas quando necessário
@@ -371,7 +448,7 @@ export function GalleryPreview() {
         window.removeEventListener("DataReady", refreshGallery);
       }
     };
-  }, [loadData]);
+  }, [loadData, normalizeGallerySettings]);
 
   if (!isMounted) return null;
 

@@ -131,6 +131,152 @@ export function ServicesSection() {
   const studioConfig = studio?.config;
   const isInsideIframe = typeof window !== "undefined" && window.parent !== window;
 
+  const normalizeConfigServices = useCallback(
+    (configServices: Record<string, unknown>): ServicesSettings => {
+      const content = (configServices.content as Record<string, unknown>) || {};
+      const appearance =
+        (configServices.appearance as Record<string, unknown>) || {};
+      return {
+        ...configServices,
+        ...content,
+        ...appearance,
+        title: (configServices.title as string) || (content.title as string),
+        subtitle:
+          (configServices.subtitle as string) || (content.subtitle as string),
+        titleColor: sanitizeColor(
+          (configServices.titleColor as string) ||
+            (appearance.titleColor as string) ||
+            (content.titleColor as string),
+        ),
+        subtitleColor: sanitizeColor(
+          (configServices.subtitleColor as string) ||
+            (appearance.subtitleColor as string) ||
+            (content.subtitleColor as string),
+        ),
+        titleFont:
+          (configServices.titleFont as string) ||
+          (appearance.titleFont as string) ||
+          (content.titleFont as string),
+        subtitleFont:
+          (configServices.subtitleFont as string) ||
+          (appearance.subtitleFont as string) ||
+          (content.subtitleFont as string),
+        cardBgColor: sanitizeColor(
+          (configServices.cardBgColor as string) ||
+            (configServices.cardBackgroundColor as string) ||
+            (configServices.card_background_color as string) ||
+            ((configServices.cardConfig as Record<string, unknown>)
+              ?.cardBackgroundColor as string) ||
+            ((configServices.cardConfig as Record<string, unknown>)
+              ?.backgroundColor as string) ||
+            (appearance.cardBgColor as string) ||
+            (content.cardBgColor as string) ||
+            ((configServices.cardBgColor as Record<string, unknown>)
+              ?.text as string) ||
+            ((appearance.cardBgColor as Record<string, unknown>)?.text as string) ||
+            ((content.cardBgColor as Record<string, unknown>)?.text as string),
+        ),
+        cardTitleColor: sanitizeColor(
+          (configServices.cardTitleColor as string) ||
+            (appearance.cardTitleColor as string) ||
+            (content.cardTitleColor as string) ||
+            ((configServices.cardTitleColor as Record<string, unknown>)
+              ?.text as string) ||
+            ((appearance.cardTitleColor as Record<string, unknown>)
+              ?.text as string) ||
+            ((content.cardTitleColor as Record<string, unknown>)?.text as string),
+        ),
+        cardDescriptionColor: sanitizeColor(
+          (configServices.cardDescriptionColor as string) ||
+            (appearance.cardDescriptionColor as string) ||
+            (content.cardDescriptionColor as string) ||
+            ((configServices.cardDescriptionColor as Record<string, unknown>)
+              ?.text as string) ||
+            ((appearance.cardDescriptionColor as Record<string, unknown>)
+              ?.text as string) ||
+            ((content.cardDescriptionColor as Record<string, unknown>)
+              ?.text as string),
+        ),
+        cardPriceColor: sanitizeColor(
+          (configServices.cardPriceColor as string) ||
+            (appearance.cardPriceColor as string) ||
+            (content.cardPriceColor as string) ||
+            ((configServices.cardPriceColor as Record<string, unknown>)
+              ?.text as string) ||
+            ((appearance.cardPriceColor as Record<string, unknown>)
+              ?.text as string) ||
+            ((content.cardPriceColor as Record<string, unknown>)?.text as string),
+        ),
+        cardIconColor: sanitizeColor(
+          (configServices.cardIconColor as string) ||
+            (appearance.cardIconColor as string) ||
+            (content.cardIconColor as string) ||
+            ((configServices.cardIconColor as Record<string, unknown>)
+              ?.text as string) ||
+            ((appearance.cardIconColor as Record<string, unknown>)
+              ?.text as string) ||
+            ((content.cardIconColor as Record<string, unknown>)?.text as string),
+        ),
+        cardTitleFont:
+          (configServices.cardTitleFont as string) ||
+          (appearance.cardTitleFont as string) ||
+          (content.cardTitleFont as string),
+        cardDescriptionFont:
+          (configServices.cardDescriptionFont as string) ||
+          (appearance.cardDescriptionFont as string) ||
+          (content.cardDescriptionFont as string),
+        cardPriceFont:
+          (configServices.cardPriceFont as string) ||
+          (appearance.cardPriceFont as string) ||
+          (content.cardPriceFont as string),
+        bgImage:
+          (configServices.bgImage as string) ||
+          (appearance.backgroundImageUrl as string) ||
+          "",
+        bgColor: sanitizeColor(
+          (configServices.bgColor as string) ||
+            (configServices.backgroundColor as string) ||
+            (appearance.backgroundColor as string) ||
+            "",
+        ),
+        bgType: (configServices.bgType || appearance.bgType || "color") as
+          | "color"
+          | "image",
+        imageOpacity: Number(
+          configServices.imageOpacity ?? appearance.imageOpacity ?? 1,
+        ),
+        overlayOpacity: Number(
+          configServices.overlayOpacity ??
+            appearance.overlayOpacity ??
+            (appearance.overlay as Record<string, unknown>)?.opacity ??
+            0,
+        ),
+        imageScale: Number(
+          configServices.imageScale ?? appearance.imageScale ?? 1,
+        ),
+        imageX: Number(configServices.imageX ?? appearance.imageX ?? 50),
+        imageY: Number(configServices.imageY ?? appearance.imageY ?? 50),
+        appearance: {
+          ...appearance,
+          overlay: {
+            ...((appearance.overlay as Record<string, unknown>) || {}),
+            color:
+              (configServices.overlayColor ||
+                (appearance.overlay as Record<string, unknown>)?.color ||
+                "") as string,
+            opacity: Number(
+              configServices.overlayOpacity ??
+                appearance.overlayOpacity ??
+                (appearance.overlay as Record<string, unknown>)?.opacity ??
+                0,
+            ),
+          },
+        },
+      } as ServicesSettings;
+    },
+    [],
+  );
+
   const loadData = useCallback(
     (forceRevalidate = false) => {
       // Tenta pegar do cache primeiro para ser instantâneo
@@ -143,35 +289,40 @@ export function ServicesSection() {
       // Se forceRevalidate for true, ignoramos o cache de configurações locais e usamos o context/API
       const useCache = !forceRevalidate;
 
-      // 1. Prioridade para studioSettings (onde o ServicesManager salva)
-      if (
-        useCache &&
-        settingsFromStorage &&
-        settingsFromStorage.services &&
-        settingsFromStorage.services.length > 0
-      ) {
-        currentServices = settingsFromStorage.services;
-      }
-
-      // 2. Context do studio (Dados vindos da API/Backend)
-      if (studioId) {
-        if (currentServices.length === 0) {
-          currentServices = studio?.services || [];
-        }
+      if (isInsideIframe) {
+        currentServices = MOCK_SERVICES;
         currentConfig = studioConfig as SiteConfigData;
-      }
+      } else {
+        // 1. Prioridade para studioSettings (onde o ServicesManager salva)
+        if (
+          useCache &&
+          settingsFromStorage &&
+          settingsFromStorage.services &&
+          settingsFromStorage.services.length > 0
+        ) {
+          currentServices = settingsFromStorage.services;
+        }
 
-      // 3. Se ainda não encontrou, tenta o studio_data legado (Cache do Browser)
-      if (useCache && currentServices.length === 0 && cachedStudioStr) {
-        try {
-          const parsed = JSON.parse(cachedStudioStr);
-          currentServices = parsed.services || [];
-          if (!currentConfig) currentConfig = parsed.config;
-        } catch (e) {
-          console.warn(
-            ">>> [SITE_WARN] Erro ao parsear studio_data do cache",
-            e,
-          );
+        // 2. Context do studio (Dados vindos da API/Backend)
+        if (studioId) {
+          if (currentServices.length === 0) {
+            currentServices = studio?.services || [];
+          }
+          currentConfig = studioConfig as SiteConfigData;
+        }
+
+        // 3. Se ainda não encontrou, tenta o studio_data legado (Cache do Browser)
+        if (useCache && currentServices.length === 0 && cachedStudioStr) {
+          try {
+            const parsed = JSON.parse(cachedStudioStr);
+            currentServices = parsed.services || [];
+            if (!currentConfig) currentConfig = parsed.config;
+          } catch (e) {
+            console.warn(
+              ">>> [SITE_WARN] Erro ao parsear studio_data do cache",
+              e,
+            );
+          }
         }
       }
 
@@ -195,10 +346,7 @@ export function ServicesSection() {
           (s: Service) => s?.showOnHome === true,
       );
 
-      // Se estivermos em um iframe (Editor), usamos mock data conforme sugerido pelo usuário
-      if (isInsideIframe) {
-        homeServices = MOCK_SERVICES;
-      } else if (homeServices.length === 0 && normalizedServices.length > 0) {
+      if (homeServices.length === 0 && normalizedServices.length > 0) {
         homeServices = normalizedServices;
       }
 
@@ -214,119 +362,9 @@ export function ServicesSection() {
         currentConfig?.services ||
         layoutGlobal?.services) as Record<string, unknown> | undefined;
 
-      let finalConfigServices: ServicesSettings | undefined;
-      if (configServices) {
-        const content = (configServices.content as Record<string, unknown>) || {};
-        const appearance =
-          (configServices.appearance as Record<string, unknown>) || {};
-        
-        // MAPEAMENTO PLANO: Prioriza a raiz (que vem do banco) sobre content/appearance
-        finalConfigServices = {
-          ...configServices,
-          ...content,
-          ...appearance,
-          title: (configServices.title as string) || (content.title as string),
-          subtitle: (configServices.subtitle as string) || (content.subtitle as string),
-          titleColor: sanitizeColor(
-            (configServices.titleColor as string) ||
-            (appearance.titleColor as string) ||
-            (content.titleColor as string)
-          ),
-          subtitleColor: sanitizeColor(
-            (configServices.subtitleColor as string) ||
-            (appearance.subtitleColor as string) ||
-            (content.subtitleColor as string)
-          ),
-          titleFont:
-            (configServices.titleFont as string) ||
-            (appearance.titleFont as string) ||
-            (content.titleFont as string),
-          subtitleFont:
-            (configServices.subtitleFont as string) ||
-            (appearance.subtitleFont as string) ||
-            (content.subtitleFont as string),
-          cardBgColor: sanitizeColor(
-            (configServices.cardBgColor as string) ||
-            (configServices.cardBackgroundColor as string) ||
-            (configServices.card_background_color as string) ||
-            ((configServices.cardConfig as Record<string, unknown>)?.cardBackgroundColor as string) ||
-            ((configServices.cardConfig as Record<string, unknown>)?.backgroundColor as string) ||
-            (appearance.cardBgColor as string) ||
-            (content.cardBgColor as string) ||
-            ((configServices.cardBgColor as Record<string, unknown>)?.text as string) ||
-            ((appearance.cardBgColor as Record<string, unknown>)?.text as string) ||
-            ((content.cardBgColor as Record<string, unknown>)?.text as string)
-          ),
-          cardTitleColor: sanitizeColor(
-            (configServices.cardTitleColor as string) ||
-            (appearance.cardTitleColor as string) ||
-            (content.cardTitleColor as string) ||
-            ((configServices.cardTitleColor as Record<string, unknown>)?.text as string) ||
-            ((appearance.cardTitleColor as Record<string, unknown>)?.text as string) ||
-            ((content.cardTitleColor as Record<string, unknown>)?.text as string)
-          ),
-          cardDescriptionColor: sanitizeColor(
-            (configServices.cardDescriptionColor as string) ||
-            (appearance.cardDescriptionColor as string) ||
-            (content.cardDescriptionColor as string) ||
-            ((configServices.cardDescriptionColor as Record<string, unknown>)?.text as string) ||
-            ((appearance.cardDescriptionColor as Record<string, unknown>)?.text as string) ||
-            ((content.cardDescriptionColor as Record<string, unknown>)?.text as string)
-          ),
-          cardPriceColor: sanitizeColor(
-            (configServices.cardPriceColor as string) ||
-            (appearance.cardPriceColor as string) ||
-            (content.cardPriceColor as string) ||
-            ((configServices.cardPriceColor as Record<string, unknown>)?.text as string) ||
-            ((appearance.cardPriceColor as Record<string, unknown>)?.text as string) ||
-            ((content.cardPriceColor as Record<string, unknown>)?.text as string)
-          ),
-          cardIconColor: sanitizeColor(
-            (configServices.cardIconColor as string) ||
-            (appearance.cardIconColor as string) ||
-            (content.cardIconColor as string) ||
-            ((configServices.cardIconColor as Record<string, unknown>)?.text as string) ||
-            ((appearance.cardIconColor as Record<string, unknown>)?.text as string) ||
-            ((content.cardIconColor as Record<string, unknown>)?.text as string)
-          ),
-          cardTitleFont:
-            (configServices.cardTitleFont as string) ||
-            (appearance.cardTitleFont as string) ||
-            (content.cardTitleFont as string),
-          cardDescriptionFont:
-            (configServices.cardDescriptionFont as string) ||
-            (appearance.cardDescriptionFont as string) ||
-            (content.cardDescriptionFont as string),
-          cardPriceFont:
-            (configServices.cardPriceFont as string) ||
-            (appearance.cardPriceFont as string) ||
-            (content.cardPriceFont as string),
-          bgImage:
-            (configServices.bgImage as string) ||
-            (appearance.backgroundImageUrl as string) ||
-            "",
-          bgColor: sanitizeColor(
-            (configServices.bgColor as string) ||
-            (configServices.backgroundColor as string) ||
-            (appearance.backgroundColor as string) ||
-            "",
-          ),
-          bgType: (configServices.bgType || appearance.bgType || "color") as "color" | "image",
-          imageOpacity: Number(configServices.imageOpacity ?? appearance.imageOpacity ?? 1),
-          overlayOpacity: Number(configServices.overlayOpacity ?? appearance.overlayOpacity ?? (appearance.overlay as Record<string, unknown>)?.opacity ?? 0),
-          imageScale: Number(configServices.imageScale ?? appearance.imageScale ?? 1),
-          imageX: Number(configServices.imageX ?? appearance.imageX ?? 50),
-          imageY: Number(configServices.imageY ?? appearance.imageY ?? 50),
-          appearance: {
-            ...appearance,
-            overlay: {
-              ...(appearance.overlay as Record<string, unknown> || {}),
-              color: (configServices.overlayColor || (appearance.overlay as Record<string, unknown>)?.color || "") as string,
-              opacity: Number(configServices.overlayOpacity ?? appearance.overlayOpacity ?? (appearance.overlay as Record<string, unknown>)?.opacity ?? 0),
-            },
-          },
-        } as unknown as ServicesSettings;
-      }
+      const finalConfigServices = configServices
+        ? normalizeConfigServices(configServices)
+        : undefined;
       
       setServices(homeServices);
       if (finalConfigServices) {
@@ -335,7 +373,13 @@ export function ServicesSection() {
         setSettings(getServicesSettings());
       }
     },
-    [studioId, studioConfig, studio?.services, isInsideIframe],
+    [
+      normalizeConfigServices,
+      studioId,
+      studioConfig,
+      studio?.services,
+      isInsideIframe,
+    ],
   );
 
   useEffect(() => {
@@ -346,9 +390,103 @@ export function ServicesSection() {
       if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "UPDATE_SERVICES_SETTINGS") {
-        setSettings((prev) =>
-          prev ? { ...prev, ...event.data.settings } : prev,
-        );
+        const incoming = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
+        if (incoming) {
+          const incomingAppearance =
+            (incoming.appearance as Record<string, unknown>) || {};
+          const incomingContent =
+            (incoming.content as Record<string, unknown>) || {};
+          const incomingItemsStyle =
+            (incoming.itemsStyle as Record<string, unknown>) || {};
+          
+          const sanitized = {
+            ...incoming,
+            bgColor:
+              sanitizeColor(
+                (incoming.bgColor as string) ||
+                  (incomingAppearance.backgroundColor as string),
+              ) || "",
+            titleColor:
+              sanitizeColor(
+                (incoming.titleColor as string) ||
+                  (incomingAppearance.titleColor as string) ||
+                  (incomingContent.titleColor as string),
+              ) || "",
+            subtitleColor:
+              sanitizeColor(
+                (incoming.subtitleColor as string) ||
+                  (incomingAppearance.subtitleColor as string) ||
+                  (incomingContent.subtitleColor as string),
+              ) || "",
+            cardBgColor:
+              sanitizeColor(
+              (incoming.cardBgColor as string) ||
+              (incomingAppearance.cardBgColor as string) ||
+              (incomingAppearance.cardBackgroundColor as string) ||
+              (incomingContent.cardBgColor as string) ||
+              (incomingItemsStyle.itemBackgroundColor as string),
+            ) || "",
+            cardTitleColor:
+              sanitizeColor(
+                (incoming.cardTitleColor as string) ||
+                  (incomingAppearance.cardTitleColor as string) ||
+                  (incomingContent.cardTitleColor as string),
+              ) || "",
+            cardDescriptionColor:
+              sanitizeColor(
+                (incoming.cardDescriptionColor as string) ||
+                  (incomingAppearance.cardDescriptionColor as string) ||
+                  (incomingContent.cardDescriptionColor as string),
+              ) || "",
+            cardPriceColor:
+              sanitizeColor(
+                (incoming.cardPriceColor as string) ||
+                  (incomingAppearance.cardPriceColor as string) ||
+                  (incomingContent.cardPriceColor as string),
+              ) || "",
+            cardIconColor:
+              sanitizeColor(
+                (incoming.cardIconColor as string) ||
+                  (incomingAppearance.cardIconColor as string) ||
+                  (incomingContent.cardIconColor as string),
+              ) || "",
+          };
+
+          setSettings((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  ...sanitized,
+                }
+              : {
+                  ...(sanitized as ServicesSettings),
+                },
+          );
+        }
+      }
+
+      if (
+        event.data.type === "UPDATE_SITE_DATA" &&
+        event.data.data
+      ) {
+        const siteData = event.data.data as Record<string, unknown>;
+        const layoutGlobal =
+          (siteData.layoutGlobal ||
+            siteData.layout_global) as Record<string, unknown> | undefined;
+        const home = siteData.home as Record<string, unknown> | undefined;
+        const homeServicesSection =
+          (home?.servicesSection ||
+            home?.services_section) as Record<string, unknown> | undefined;
+        const siteServices =
+          homeServicesSection ||
+          (home?.services as Record<string, unknown> | undefined) ||
+          (siteData.services as Record<string, unknown> | undefined) ||
+          (layoutGlobal?.services as Record<string, unknown> | undefined);
+        if (siteServices) {
+          setSettings(normalizeConfigServices(siteServices));
+        }
       }
 
       if (
@@ -360,18 +498,24 @@ export function ServicesSection() {
       }
     };
 
+    const handleServicesSettingsUpdated = () => loadData(true);
+    const handleDataReady = () => loadData();
     window.addEventListener("message", handleMessage);
-    window.addEventListener("servicesSettingsUpdated", () => loadData(true));
-    window.addEventListener("DataReady", () => loadData());
+    window.addEventListener(
+      "servicesSettingsUpdated",
+      handleServicesSettingsUpdated,
+    );
+    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("servicesSettingsUpdated", () =>
-        loadData(true),
+      window.removeEventListener(
+        "servicesSettingsUpdated",
+        handleServicesSettingsUpdated,
       );
-      window.removeEventListener("DataReady", () => loadData());
+      window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [loadData]);
+  }, [loadData, normalizeConfigServices]);
 
   // Fallback Skeleton enquanto carrega do banco
   if (!isMounted || (isLoading && !isInsideIframe)) {

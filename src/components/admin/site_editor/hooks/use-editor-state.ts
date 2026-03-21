@@ -1237,7 +1237,7 @@ export function useEditorState() {
       setIsDirty(true);
       setHeroSettings((prev: HeroSettings) => syncBackground(prev, updates));
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateAboutHero = useCallback(
@@ -1247,7 +1247,7 @@ export function useEditorState() {
         syncBackground(prev, updates),
       );
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateStory = useCallback(
@@ -1255,7 +1255,7 @@ export function useEditorState() {
       setIsDirty(true);
       setStorySettings((prev: StorySettings) => syncBackground(prev, updates));
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateTeam = useCallback(
@@ -1263,7 +1263,7 @@ export function useEditorState() {
       setIsDirty(true);
       setTeamSettings((prev: TeamSettings) => syncBackground(prev, updates));
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateTestimonials = useCallback(
@@ -1273,13 +1273,13 @@ export function useEditorState() {
         syncBackground(prev, updates),
       );
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateFont = useCallback((updates: Partial<FontSettings>) => {
     setIsDirty(true);
     setFontSettings((prev: FontSettings) => ({ ...prev, ...updates }));
-  }, []);
+  }, [setIsDirty]);
 
   const handleUpdateColors = useCallback((updates: Partial<ColorSettings>) => {
     setIsDirty(true);
@@ -1298,36 +1298,98 @@ export function useEditorState() {
         newState.text = sanitizeColor(updates.text) || prev.text;
       return newState;
     });
-  }, []);
+  }, [setIsDirty]);
 
   const handleUpdateServices = useCallback(
     (updates: Partial<ServicesSettings>) => {
       setIsDirty(true);
-      setServicesSettings((prev: ServicesSettings) =>
-        syncBackground(prev, updates),
-      );
+      setServicesSettings((prev: ServicesSettings) => {
+        const newState = syncBackground(prev, updates);
+        if (updates.bgColor !== undefined)
+          newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+        if (updates.titleColor !== undefined)
+          newState.titleColor =
+            sanitizeColor(updates.titleColor) || prev.titleColor;
+        if (updates.subtitleColor !== undefined)
+          newState.subtitleColor =
+            sanitizeColor(updates.subtitleColor) || prev.subtitleColor;
+        if (updates.cardBgColor !== undefined)
+          newState.cardBgColor =
+            sanitizeColor(updates.cardBgColor) || prev.cardBgColor;
+        if (updates.cardTitleColor !== undefined)
+          newState.cardTitleColor =
+            sanitizeColor(updates.cardTitleColor) || prev.cardTitleColor;
+        if (updates.cardDescriptionColor !== undefined)
+          newState.cardDescriptionColor =
+            sanitizeColor(updates.cardDescriptionColor) ||
+            prev.cardDescriptionColor;
+        if (updates.cardPriceColor !== undefined)
+          newState.cardPriceColor =
+            sanitizeColor(updates.cardPriceColor) || prev.cardPriceColor;
+        if (updates.cardIconColor !== undefined)
+          newState.cardIconColor =
+            sanitizeColor(updates.cardIconColor) || prev.cardIconColor;
+        return newState;
+      });
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
       setIsDirty(true);
-      setValuesSettings((prev: ValuesSettings) =>
-        syncBackground(prev, updates),
-      );
+      setValuesSettings((prev: ValuesSettings) => {
+        const newState = syncBackground(prev, updates);
+        if (updates.bgColor !== undefined)
+          newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+        if (updates.titleColor !== undefined)
+          newState.titleColor =
+            sanitizeColor(updates.titleColor) || prev.titleColor;
+        if (updates.subtitleColor !== undefined)
+          newState.subtitleColor =
+            sanitizeColor(updates.subtitleColor) || prev.subtitleColor;
+        if (updates.cardBgColor !== undefined)
+          newState.cardBgColor =
+            sanitizeColor(updates.cardBgColor) || prev.cardBgColor;
+        if (updates.cardTitleColor !== undefined)
+          newState.cardTitleColor =
+            sanitizeColor(updates.cardTitleColor) || prev.cardTitleColor;
+        if (updates.cardDescriptionColor !== undefined)
+          newState.cardDescriptionColor =
+            sanitizeColor(updates.cardDescriptionColor) ||
+            prev.cardDescriptionColor;
+        return newState;
+      });
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateGallery = useCallback(
     (updates: Partial<GallerySettings>) => {
       setIsDirty(true);
-      setGallerySettings((prev: GallerySettings) =>
-        syncBackground(prev, updates),
-      );
+      setGallerySettings((prev: GallerySettings) => {
+        const newState = syncBackground(prev, updates);
+        if (updates.bgColor !== undefined)
+          newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
+        if (updates.titleColor !== undefined)
+          newState.titleColor =
+            sanitizeColor(updates.titleColor) || prev.titleColor;
+        if (updates.subtitleColor !== undefined)
+          newState.subtitleColor =
+            sanitizeColor(updates.subtitleColor) || prev.subtitleColor;
+        if (updates.buttonColor !== undefined)
+          newState.buttonColor =
+            sanitizeColor(updates.buttonColor) || prev.buttonColor;
+        if (updates.buttonTextColor !== undefined)
+          newState.buttonTextColor =
+            sanitizeColor(updates.buttonTextColor) || prev.buttonTextColor;
+        if (updates.cardBgColor !== undefined)
+          newState.cardBgColor =
+            sanitizeColor(updates.cardBgColor) || prev.cardBgColor;
+        return newState;
+      });
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateCTA = useCallback(
@@ -1335,7 +1397,7 @@ export function useEditorState() {
       setIsDirty(true);
       setCTASettings((prev: CTASettings) => syncBackground(prev, updates));
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateHeader = useCallback((updates: Partial<HeaderSettings>) => {
@@ -1354,7 +1416,7 @@ export function useEditorState() {
           sanitizeColor(updates.buttonTextColor) || prev.buttonTextColor;
       return newState;
     });
-  }, []);
+  }, [setIsDirty]);
 
   const handleUpdateFooter = useCallback((updates: Partial<FooterSettings>) => {
     setIsDirty(true);
@@ -1371,7 +1433,7 @@ export function useEditorState() {
         newState.iconColor = sanitizeColor(updates.iconColor) || prev.iconColor;
       return newState;
     });
-  }, []);
+  }, [setIsDirty]);
 
   const handleUpdateBookingService = useCallback(
     (updates: Partial<BookingStepSettings>) => {
@@ -1383,7 +1445,7 @@ export function useEditorState() {
         return normalizeStepSettings(newState);
       });
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateBookingDate = useCallback(
@@ -1396,7 +1458,7 @@ export function useEditorState() {
         return normalizeStepSettings(newState);
       });
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateBookingTime = useCallback(
@@ -1409,7 +1471,7 @@ export function useEditorState() {
         return normalizeStepSettings(newState);
       });
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateBookingForm = useCallback(
@@ -1422,7 +1484,7 @@ export function useEditorState() {
         return normalizeStepSettings(newState);
       });
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handleUpdateBookingConfirmation = useCallback(
@@ -1435,7 +1497,7 @@ export function useEditorState() {
         return normalizeStepSettings(newState);
       });
     },
-    [syncBackground],
+    [syncBackground, setIsDirty],
   );
 
   const handlePageVisibilityChange = useCallback(

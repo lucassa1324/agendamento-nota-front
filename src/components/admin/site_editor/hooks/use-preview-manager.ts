@@ -130,6 +130,9 @@ export function usePreviewManager(
 
   const reloadPreview = useCallback(() => {
     setPreviewKey((prev) => prev + 1);
+    if (typeof window !== "undefined") {
+      window.postMessage({ type: "IFRAME_READY" }, "*");
+    }
   }, []);
 
   return {

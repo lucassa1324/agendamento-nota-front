@@ -231,7 +231,7 @@ export function PreviewFrame({
                     title="Preview"
                     onLoad={() => {
                       console.log(">>> [PREVIEW_FRAME] Iframe carregado, notificando editor...");
-                      iframeRef.current?.contentWindow?.postMessage({ type: "IFRAME_READY" }, "*");
+                      window.postMessage({ type: "IFRAME_READY" }, "*");
                     }}
                   />
                 </div>
