@@ -384,6 +384,57 @@ const ensureServicesCardBg = (
     : (nextRoot as unknown as SiteConfigData);
 };
 
+const ensureGalleryPreviewSettings = (
+  config: SiteConfigData,
+  gallerySettings: GallerySettings,
+): SiteConfigData => {
+  if (!gallerySettings) return config;
+
+  const rawConfig = config as Record<string, unknown>;
+  const root =
+    (rawConfig.siteCustomization as Record<string, unknown> | undefined) ||
+    rawConfig;
+  const home = root.home as Record<string, unknown> | undefined;
+  const layoutGlobal = root.layoutGlobal as Record<string, unknown> | undefined;
+
+  const existing =
+    (root.galleryPreviewSettings as Record<string, unknown> | undefined) ||
+    (home?.galleryPreview as Record<string, unknown> | undefined) ||
+    (home?.gallerySection as Record<string, unknown> | undefined) ||
+    (layoutGlobal?.galleryPreviewSettings as Record<string, unknown> | undefined) ||
+    (layoutGlobal?.gallerySection as Record<string, unknown> | undefined);
+
+  const nextSection = {
+    ...(existing || {}),
+    ...gallerySettings,
+    appearance: {
+      ...((existing?.appearance as Record<string, unknown> | undefined) || {}),
+      ...((gallerySettings.appearance as Record<string, unknown> | undefined) || {}),
+    },
+    content: {
+      ...(((existing as Record<string, unknown> | undefined)?.content as Record<
+        string,
+        unknown
+      >) || {}),
+      ...(((gallerySettings as Record<string, unknown> | undefined)?.content as Record<
+        string,
+        unknown
+      >) || {}),
+    },
+  };
+
+  const nextHome = { ...(home || {}), galleryPreview: nextSection, gallerySection: nextSection };
+  const nextRoot = {
+    ...root,
+    galleryPreviewSettings: nextSection,
+    home: nextHome,
+  };
+
+  return rawConfig.siteCustomization
+    ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
+    : (nextRoot as unknown as SiteConfigData);
+};
+
 export function useEditorApi({
   loadExternalConfig,
   settings,
@@ -761,7 +812,11 @@ export function useEditorApi({
               "aboutUs.valuesSection",
               "aboutUs.values",
             ],
-            galleryPreviewSettings: "galleryPreviewSettings",
+            galleryPreviewSettings: [
+              "galleryPreviewSettings",
+              "home.galleryPreview",
+              "home.gallerySection",
+            ],
             galleryPageSettings: "galleryPageSettings",
             cta: "home.ctaSection",
           };
@@ -1351,16 +1406,28 @@ export function useEditorApi({
             if (fresh) {
               console.log(">>> [SYNC] Salvamento bem-sucedido. Sincronizando estado com resposta do banco.");
               
-              const safeWithHomeValues = ensureValuesCardBg(fresh, settings.homeValuesSettings, "homeValuesSettings");
-              const safeWithAboutUsValues = ensureValuesCardBg(safeWithHomeValues, settings.aboutUsValuesSettings, "aboutUsValuesSettings");
-              const safeFresh = ensureServicesCardBg(safeWithAboutUsValues, settings.servicesSettings);
-              loadExternalConfig(safeFresh, true);
+              const safeWithHomeValues = ensureValuesCardBg(
+                fresh,
+                settings.homeValuesSettings,
+                "homeValuesSettings",
+              );
+              const safeWithAboutUsValues = ensureValuesCardBg(
+                safeWithHomeValues,
+                settings.aboutUsValuesSettings,
+                "aboutUsValuesSettings",
+              );
+              const safeWithServices = ensureServicesCardBg(
+                safeWithAboutUsValues,
+                settings.servicesSettings,
+              );
+              const safeFresh = ensureGalleryPreviewSettings(
+                safeWithServices,
+                settings.gallerySettings,
+              );
 
-              // 2. Limpa o localStorage para garantir que o Banco seja a única fonte da verdade.
               clearAllCustomizationCache();
               clearLocalDrafts();
-
-              // 3. Notifica o contexto global (StudioContext) para buscar dados frescos do banco
+              loadExternalConfig(safeFresh, true);
               refreshData();
               
               // 4. ATUALIZAÇÃO DO ESTADO LAST_SAVED (Sempre que o save no banco der certo)

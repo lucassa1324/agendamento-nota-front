@@ -16,6 +16,7 @@ import {
   type GallerySettings,
   getGallerySettings,
   getPageVisibility,
+  getStorageKey,
   sanitizeColor,
 } from "@/lib/booking-data";
 import { type GalleryItem, galleryService } from "@/lib/gallery-service";
@@ -160,6 +161,25 @@ export function GalleryPreview() {
     [],
   );
 
+  const getConfigGallery = useCallback(
+    (config?: Record<string, unknown> | null) => {
+      if (!config) return undefined;
+      const siteCustomization = (config.siteCustomization ||
+        config.site_customization) as Record<string, unknown> | undefined;
+      const root = siteCustomization || config;
+      const layoutGlobal = (root.layoutGlobal ||
+        root.layout_global) as Record<string, unknown> | undefined;
+      const home = root.home as Record<string, unknown> | undefined;
+      return (root.galleryPreviewSettings ||
+        home?.galleryPreview ||
+        home?.gallerySection ||
+        layoutGlobal?.galleryPreview ||
+        layoutGlobal?.gallerySection ||
+        layoutGlobal?.galleryPreviewSettings) as Record<string, unknown> | undefined;
+    },
+    [],
+  );
+
   const loadData = useCallback(
     async (force = false) => {
       const now = Date.now();
@@ -188,7 +208,17 @@ export function GalleryPreview() {
       // PRIORIDADE: Modo Preview (localStorage) > Banco de Dados (studio.config)
       if (isPreviewMode) {
         if (!settingsRef.current) {
-          setSettings(getGallerySettings());
+          const stored = localStorage.getItem(getStorageKey("gallerySettings"));
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored) as Record<string, unknown>;
+              setSettings(normalizeGallerySettings(parsed));
+            } catch {
+              setSettings(getGallerySettings());
+            }
+          } else {
+            setSettings(getGallerySettings());
+          }
         }
         setPageVisibility(getPageVisibility());
         setImages(MOCK_GALLERY);
@@ -277,10 +307,9 @@ export function GalleryPreview() {
           }
         }
 
-        const home = currentConfig?.home as Record<string, unknown> | undefined;
-        const configGallery = (currentConfig?.galleryPreviewSettings ||
-          home?.galleryPreview ||
-          home?.gallerySection) as Record<string, unknown> | undefined;
+        const configGallery = getConfigGallery(
+          currentConfig as Record<string, unknown> | null,
+        );
         setSettings(
           configGallery
             ? normalizeGallerySettings(configGallery)
@@ -299,7 +328,7 @@ export function GalleryPreview() {
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     },
-    [normalizeGallerySettings, studio?.id, studio?.config],
+    [getConfigGallery, normalizeGallerySettings, studio?.id, studio?.config],
   );
 
   useEffect(() => {
@@ -377,19 +406,24 @@ export function GalleryPreview() {
                   ...(sanitized as GallerySettings),
                 },
           );
+          try {
+            localStorage.setItem(
+              getStorageKey("gallerySettings"),
+              JSON.stringify(sanitized),
+            );
+          } catch {}
         }
         return;
       }
 
       if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+        if (isPreview && settingsRef.current) {
+          return;
+        }
         const siteData = event.data.data as Record<string, unknown>;
-        const home = siteData.home as Record<string, unknown> | undefined;
-        const homeGallery =
-          (siteData.galleryPreviewSettings ||
-            home?.galleryPreview ||
-            home?.gallerySection) as Record<string, unknown> | undefined;
-        if (homeGallery) {
-          setSettings(normalizeGallerySettings(homeGallery));
+        const configGallery = getConfigGallery(siteData);
+        if (configGallery) {
+          setSettings(normalizeGallerySettings(configGallery));
         }
       }
 
@@ -441,7 +475,7 @@ export function GalleryPreview() {
         window.removeEventListener("DataReady", refreshGallery);
       }
     };
-  }, [loadData, normalizeGallerySettings]);
+  }, [getConfigGallery, loadData, normalizeGallerySettings]);
 
   if (!isMounted) return null;
 
