@@ -306,6 +306,26 @@ export function useEditorConfigLoader({
     setLastSavedBookingConfirmation,
     setLastSavedPageVisibility,
     setLastSavedVisibleSections,
+    setLastAppliedHero,
+    setLastAppliedAboutHero,
+    setLastAppliedStory,
+    setLastAppliedTeam,
+    setLastAppliedTestimonials,
+    setLastAppliedFont,
+    setLastAppliedColor,
+    setLastAppliedServices,
+    setLastAppliedHomeValues,
+    setLastAppliedAboutUsValues,
+    setLastAppliedGallery,
+    setLastAppliedGalleryPage,
+    setLastAppliedCTA,
+    setLastAppliedHeader,
+    setLastAppliedFooter,
+    setLastAppliedBookingService,
+    setLastAppliedBookingDate,
+    setLastAppliedBookingTime,
+    setLastAppliedBookingForm,
+    setLastAppliedBookingConfirmation,
   } = state;
 
   const loadExternalConfig = useCallback(
@@ -738,9 +758,12 @@ export function useEditorConfigLoader({
         if (isUsingDraft && !isBankValueEmptyOrDefault(heroSource, defaultHeroSettings)) {
           setLastSavedHero(normalizeHeroSettings(heroSource) || defaultHeroSettings);
         } else {
-          setLastSavedHero(sanitizedHero);
+        setLastSavedHero(sanitizedHero);
         }
         setHeroSettings(sanitizedHero);
+      if (force) {
+        setLastAppliedHero(sanitizedHero);
+      }
       }
 
       // Resto das seções...
@@ -749,6 +772,7 @@ export function useEditorConfigLoader({
         dataValue: T | undefined,
         setSettings: (v: T) => void,
         setLastSaved: (v: T) => void,
+      setLastApplied: ((v: T) => void) | undefined,
         defaultValue: T,
         bankValue: T | undefined,
       ) => {
@@ -764,11 +788,17 @@ export function useEditorConfigLoader({
           } else {
             setLastSaved(dataValue);
           }
-          setSettings(dataValue);
-        } else {
-          setSettings(defaultValue);
-          setLastSaved(defaultValue);
+        setSettings(dataValue);
+        if (force && setLastApplied) {
+          setLastApplied(dataValue);
         }
+      } else {
+        setSettings(defaultValue);
+        setLastSaved(defaultValue);
+        if (force && setLastApplied) {
+          setLastApplied(defaultValue);
+        }
+      }
       };
 
       processSection(
@@ -776,6 +806,7 @@ export function useEditorConfigLoader({
         data.aboutHero as HeroSettings,
         setAboutHeroSettings,
         setLastSavedAboutHero,
+        setLastAppliedAboutHero,
         defaultAboutHeroSettings,
         (layoutGlobal?.aboutHero || baseConfig.aboutHero) as HeroSettings,
       );
@@ -784,6 +815,7 @@ export function useEditorConfigLoader({
         data.story as StorySettings,
         setStorySettings,
         setLastSavedStory,
+        setLastAppliedStory,
         defaultStorySettings,
         (layoutGlobal?.story || baseConfig.story) as StorySettings,
       );
@@ -792,6 +824,7 @@ export function useEditorConfigLoader({
         data.team as TeamSettings,
         setTeamSettings,
         setLastSavedTeam,
+        setLastAppliedTeam,
         defaultTeamSettings,
         (layoutGlobal?.team || baseConfig.team) as TeamSettings,
       );
@@ -800,6 +833,7 @@ export function useEditorConfigLoader({
         data.testimonials as TestimonialsSettings,
         setTestimonialsSettings,
         setLastSavedTestimonials,
+        setLastAppliedTestimonials,
         defaultTestimonialsSettings,
         (layoutGlobal?.testimonials ||
           baseConfig.testimonials) as TestimonialsSettings,
@@ -809,6 +843,7 @@ export function useEditorConfigLoader({
         data.services as ServicesSettings,
         setServicesSettings,
         setLastSavedServices,
+        setLastAppliedServices,
         defaultServicesSettings,
         (home?.servicesSection ||
           home?.services ||
@@ -820,6 +855,7 @@ export function useEditorConfigLoader({
         data.homeValuesSettings as ValuesSettings,
         setHomeValuesSettings,
         setLastSavedHomeValues,
+        setLastAppliedHomeValues,
         defaultValuesSettings,
         (baseConfig.homeValuesSettings ||
           layoutGlobal?.homeValuesSettings ||
@@ -832,6 +868,7 @@ export function useEditorConfigLoader({
         data.aboutUsValuesSettings as ValuesSettings,
         setAboutUsValuesSettings,
         setLastSavedAboutUsValues,
+        setLastAppliedAboutUsValues,
         defaultValuesSettings,
         (baseConfig.aboutUsValuesSettings ||
           layoutGlobal?.aboutUsValuesSettings ||
@@ -844,6 +881,7 @@ export function useEditorConfigLoader({
         data.galleryPreviewSettings as GallerySettings,
         setGallerySettings,
         setLastSavedGallery,
+        setLastAppliedGallery,
         defaultGallerySettings,
         (baseConfig.galleryPreviewSettings ||
           home?.galleryPreview ||
@@ -856,6 +894,7 @@ export function useEditorConfigLoader({
         data.galleryPageSettings as GallerySettings,
         setGalleryPageSettings,
         setLastSavedGalleryPage,
+        setLastAppliedGalleryPage,
         defaultGallerySettings,
         (baseConfig.galleryPageSettings ||
           baseConfig.gallery ||
@@ -866,6 +905,7 @@ export function useEditorConfigLoader({
         data.cta as CTASettings,
         setCTASettings,
         setLastSavedCTA,
+        setLastAppliedCTA,
         defaultCTASettings,
         (home?.ctaSection ||
           home?.cta ||
@@ -877,6 +917,7 @@ export function useEditorConfigLoader({
         data.header as HeaderSettings,
         setHeaderSettings,
         setLastSavedHeader,
+        setLastAppliedHeader,
         defaultHeaderSettings,
         (layoutGlobal?.header || baseConfig.header) as HeaderSettings,
       );
@@ -885,6 +926,7 @@ export function useEditorConfigLoader({
         data.footer as FooterSettings,
         setFooterSettings,
         setLastSavedFooter,
+        setLastAppliedFooter,
         defaultFooterSettings,
         (layoutGlobal?.footer || baseConfig.footer) as FooterSettings,
       );
@@ -893,6 +935,7 @@ export function useEditorConfigLoader({
         data.font as FontSettings,
         setFontSettings,
         setLastSavedFont,
+        setLastAppliedFont,
         defaultFontSettings,
         (layoutGlobal?.font || baseConfig.font) as FontSettings,
       );
@@ -901,6 +944,7 @@ export function useEditorConfigLoader({
         data.color as ColorSettings,
         setColorSettings,
         setLastSavedColor,
+        setLastAppliedColor,
         defaultColorSettings,
         (layoutGlobal?.color || baseConfig.color) as ColorSettings,
       );
@@ -921,6 +965,9 @@ export function useEditorConfigLoader({
             (baseConfig as Record<string, unknown>).bookingService,
           set: setBookingServiceSettings as (v: BookingStepSettings) => void,
           setLast: setLastSavedBookingService as (v: BookingStepSettings) => void,
+          setApplied: setLastAppliedBookingService as (
+            v: BookingStepSettings,
+          ) => void,
           def: defaultBookingServiceSettings,
         },
         {
@@ -937,6 +984,9 @@ export function useEditorConfigLoader({
             (baseConfig as Record<string, unknown>).bookingDate,
           set: setBookingDateSettings as (v: BookingStepSettings) => void,
           setLast: setLastSavedBookingDate as (v: BookingStepSettings) => void,
+          setApplied: setLastAppliedBookingDate as (
+            v: BookingStepSettings,
+          ) => void,
           def: defaultBookingDateSettings,
         },
         {
@@ -953,6 +1003,9 @@ export function useEditorConfigLoader({
             (baseConfig as Record<string, unknown>).bookingTime,
           set: setBookingTimeSettings as (v: BookingStepSettings) => void,
           setLast: setLastSavedBookingTime as (v: BookingStepSettings) => void,
+          setApplied: setLastAppliedBookingTime as (
+            v: BookingStepSettings,
+          ) => void,
           def: defaultBookingTimeSettings,
         },
         {
@@ -969,6 +1022,9 @@ export function useEditorConfigLoader({
             (baseConfig as Record<string, unknown>).bookingForm,
           set: setBookingFormSettings as (v: BookingStepSettings) => void,
           setLast: setLastSavedBookingForm as (v: BookingStepSettings) => void,
+          setApplied: setLastAppliedBookingForm as (
+            v: BookingStepSettings,
+          ) => void,
           def: defaultBookingFormSettings,
         },
         {
@@ -985,6 +1041,9 @@ export function useEditorConfigLoader({
             (baseConfig as Record<string, unknown>).bookingConfirmation,
           set: setBookingConfirmationSettings as (v: BookingStepSettings) => void,
           setLast: setLastSavedBookingConfirmation as (v: BookingStepSettings) => void,
+          setApplied: setLastAppliedBookingConfirmation as (
+            v: BookingStepSettings,
+          ) => void,
           def: defaultBookingConfirmationSettings,
         },
       ];
@@ -995,6 +1054,7 @@ export function useEditorConfigLoader({
           step.data,
           step.set,
           step.setLast,
+          step.setApplied,
           step.def,
           step.bank as BookingStepSettings,
         );
@@ -1160,6 +1220,26 @@ export function useEditorConfigLoader({
       setLastSavedBookingConfirmation,
       setLastSavedPageVisibility,
       setLastSavedVisibleSections,
+      setLastAppliedHero,
+      setLastAppliedAboutHero,
+      setLastAppliedStory,
+      setLastAppliedTeam,
+      setLastAppliedTestimonials,
+      setLastAppliedFont,
+      setLastAppliedColor,
+      setLastAppliedServices,
+      setLastAppliedHomeValues,
+      setLastAppliedAboutUsValues,
+      setLastAppliedGallery,
+      setLastAppliedGalleryPage,
+      setLastAppliedCTA,
+      setLastAppliedHeader,
+      setLastAppliedFooter,
+      setLastAppliedBookingService,
+      setLastAppliedBookingDate,
+      setLastAppliedBookingTime,
+      setLastAppliedBookingForm,
+      setLastAppliedBookingConfirmation,
       checkShouldRecoverDraft,
       slug,
     ],
