@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import type {
   BookingStepSettings,
@@ -23,8 +22,9 @@ import type {
   ValuesSettings,
 } from "@/lib/booking-data";
 import {
-  clearAllCustomizationCache,
+  normalizePayload as normalizePayloadData,
   normalizePersistenceData,
+  sanitizeSection,
 } from "@/lib/booking-data";
 import type { SiteConfigData } from "@/lib/site-config-types";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
@@ -159,280 +159,56 @@ type UseEditorApiParams = {
   setters: EditorStateSetters;
   setIsDirty: (value: boolean) => void;
   saveLocalDrafts: (drafts: EditorLocalDrafts) => void;
-  clearLocalDrafts: () => void;
 };
 
-const ensureValuesCardBg = (
-  config: SiteConfigData,
-  valuesSettings: ValuesSettings,
-  sectionKey: "homeValuesSettings" | "aboutUsValuesSettings" | "values" = "values",
-): SiteConfigData => {
-  const fallback = valuesSettings?.cardBgColor || "";
-  if (!fallback) return config;
+const normalizePayload = (data: SiteConfigData | null | undefined) =>
+  normalizePayloadData(data);
 
-  const rawConfig = config as Record<string, unknown>;
-  const root =
-    (rawConfig.siteCustomization as Record<string, unknown> | undefined) ||
-    rawConfig;
-  const home = root.home as Record<string, unknown> | undefined;
-  const layoutGlobal = root.layoutGlobal as Record<string, unknown> | undefined;
-
-  const homeValuesSection = home
-    ? ((home.valuesSection || home.values) as Record<string, unknown> | undefined)
-    : undefined;
+// Função de validação robusta para objetos de configuração
+const validateSectionObject = (obj: unknown, sectionName: string): boolean => {
+  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+    console.error(`>>> [API_GUARD] Objeto inválido para ${sectionName}:`, obj);
+    return false;
+  }
   
-  const valuesSection =
-    (root[sectionKey] as Record<string, unknown> | undefined) ||
-    homeValuesSection ||
-    (layoutGlobal?.values as Record<string, unknown> | undefined) ||
-    (root.values as Record<string, unknown> | undefined);
+  const keys = Object.keys(obj as Record<string, unknown>);
+  
+  // Verifica se o objeto foi corrompido (transformado em string indexada)
+  if (keys.length > 0 && keys.every(key => /^\d+$/.test(key))) {
+    console.error(`>>> [API_GUARD] Objeto corrompido detectado para ${sectionName} (string indexada):`, obj);
+    return false;
+  }
+  
+  // Verifica se há propriedades esperadas ausentes (indica corrompimento)
+  const hasValidProperties = keys.some(key => 
+    !/^\d+$/.test(key) && key.length > 1 && key !== 'length'
+  );
+  
+  if (!hasValidProperties && keys.length > 0) {
+    console.error(`>>> [API_GUARD] Objeto sem propriedades válidas para ${sectionName}:`, obj);
+    return false;
+  }
+  
+  return true;
+};
 
-  if (!valuesSection) {
-    const nextValuesSection = {
-      ...valuesSettings,
-      cardBgColor: fallback,
-      cardBackgroundColor: fallback,
-      card_background_color: fallback,
-      content: {
-        cardBgColor: fallback,
-      },
-    };
-    
-    // Se for uma das novas chaves de raiz, coloca lá
-    if (sectionKey !== "values") {
-      const nextRoot = { ...root, [sectionKey]: nextValuesSection };
-      return rawConfig.siteCustomization
-        ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
-        : (nextRoot as unknown as SiteConfigData);
+// Função para sanitizar o payload antes de enviar para o backend
+const sanitizePayload = (payload: Record<string, unknown>): Record<string, unknown> => {
+  const sanitized: Record<string, unknown> = {};
+  
+  for (const [key, value] of Object.entries(payload)) {
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      if (validateSectionObject(value, key)) {
+        sanitized[key] = value;
+      } else {
+        console.warn(`>>> [API_GUARD] Seção ${key} removida do payload por ser inválida`);
+      }
+    } else {
+      sanitized[key] = value;
     }
-
-    const nextHome = { ...(home || {}), valuesSection: nextValuesSection };
-    const nextRoot = { ...root, home: nextHome };
-    return rawConfig.siteCustomization
-      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
-      : (nextRoot as unknown as SiteConfigData);
   }
-
-  const appearance = valuesSection.appearance as
-    | Record<string, unknown>
-    | undefined;
-  const content = valuesSection.content as Record<string, unknown> | undefined;
-  const itemsStyle = valuesSection.itemsStyle as
-    | Record<string, unknown>
-    | undefined;
-  const cardConfig = valuesSection.cardConfig as
-    | Record<string, unknown>
-    | undefined;
-
-  const hasCardBg = Boolean(
-    (valuesSection.cardBgColor as string) ||
-      (valuesSection.cardBackgroundColor as string) ||
-      (valuesSection.card_background_color as string) ||
-      (cardConfig?.backgroundColor as string) ||
-      (cardConfig?.cardBackgroundColor as string) ||
-      (content?.cardBgColor as string) ||
-      (itemsStyle?.itemBackgroundColor as string) ||
-      (appearance?.cardBgColor as string),
-  );
-
-  if (hasCardBg) return config;
-
-  const nextValuesSection = {
-    ...valuesSection,
-    cardBgColor: fallback,
-    cardBackgroundColor: fallback,
-    card_background_color: fallback,
-    content: {
-      ...(content || {}),
-      cardBgColor: fallback,
-    },
-  };
-
-  // Se estiver na raiz (nova chave)
-  if (root[sectionKey]) {
-    const nextRoot = { ...root, [sectionKey]: nextValuesSection };
-    return rawConfig.siteCustomization
-      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
-      : (nextRoot as unknown as SiteConfigData);
-  }
-
-  if (homeValuesSection && home) {
-    const nextHome = {
-      ...home,
-      ...(home.valuesSection
-        ? { valuesSection: nextValuesSection }
-        : { values: nextValuesSection }),
-    };
-    const nextRoot = { ...root, home: nextHome };
-    return rawConfig.siteCustomization
-      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
-      : (nextRoot as unknown as SiteConfigData);
-  }
-
-  if (layoutGlobal?.values) {
-    const nextLayoutGlobal = { ...layoutGlobal, values: nextValuesSection };
-    const nextRoot = { ...root, layoutGlobal: nextLayoutGlobal };
-    return rawConfig.siteCustomization
-      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
-      : (nextRoot as unknown as SiteConfigData);
-  }
-
-  const nextRoot = { ...root, values: nextValuesSection };
-  return rawConfig.siteCustomization
-    ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
-    : (nextRoot as unknown as SiteConfigData);
-};
-
-const ensureServicesCardBg = (
-  config: SiteConfigData,
-  servicesSettings: ServicesSettings,
-): SiteConfigData => {
-  const fallback = servicesSettings?.cardBgColor || "";
-  if (!fallback) return config;
-
-  const rawConfig = config as Record<string, unknown>;
-  const root =
-    (rawConfig.siteCustomization as Record<string, unknown> | undefined) ||
-    rawConfig;
-  const home = root.home as Record<string, unknown> | undefined;
-  const layoutGlobal = root.layoutGlobal as Record<string, unknown> | undefined;
-
-  const homeServicesSection = home
-    ? ((home.servicesSection || home.services) as Record<string, unknown> | undefined)
-    : undefined;
-  const servicesSection =
-    homeServicesSection ||
-    (layoutGlobal?.services as Record<string, unknown> | undefined) ||
-    (root.services as Record<string, unknown> | undefined);
-
-  if (!servicesSection) {
-    const nextServicesSection = {
-      ...servicesSettings,
-      cardBgColor: fallback,
-      cardBackgroundColor: fallback,
-      card_background_color: fallback,
-      content: {
-        cardBgColor: fallback,
-      },
-    };
-    const nextHome = { ...(home || {}), servicesSection: nextServicesSection };
-    const nextRoot = { ...root, home: nextHome };
-    return rawConfig.siteCustomization
-      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
-      : (nextRoot as unknown as SiteConfigData);
-  }
-
-  const appearance = servicesSection.appearance as
-    | Record<string, unknown>
-    | undefined;
-  const content = servicesSection.content as Record<string, unknown> | undefined;
-  const itemsStyle = servicesSection.itemsStyle as
-    | Record<string, unknown>
-    | undefined;
-  const cardConfig = servicesSection.cardConfig as
-    | Record<string, unknown>
-    | undefined;
-
-  const hasCardBg = Boolean(
-    (servicesSection.cardBgColor as string) ||
-      (servicesSection.cardBackgroundColor as string) ||
-      (servicesSection.card_background_color as string) ||
-      (cardConfig?.backgroundColor as string) ||
-      (cardConfig?.cardBackgroundColor as string) ||
-      (content?.cardBgColor as string) ||
-      (itemsStyle?.itemBackgroundColor as string) ||
-      (appearance?.cardBgColor as string),
-  );
-
-  if (hasCardBg) return config;
-
-  const nextServicesSection = {
-    ...servicesSection,
-    cardBgColor: fallback,
-    cardBackgroundColor: fallback,
-    card_background_color: fallback,
-    content: {
-      ...(content || {}),
-      cardBgColor: fallback,
-    },
-  };
-
-  if (homeServicesSection && home) {
-    const nextHome = {
-      ...home,
-      ...(home.servicesSection
-        ? { servicesSection: nextServicesSection }
-        : { services: nextServicesSection }),
-    };
-    const nextRoot = { ...root, home: nextHome };
-    return rawConfig.siteCustomization
-      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
-      : (nextRoot as unknown as SiteConfigData);
-  }
-
-  if (layoutGlobal?.services) {
-    const nextLayoutGlobal = { ...layoutGlobal, services: nextServicesSection };
-    const nextRoot = { ...root, layoutGlobal: nextLayoutGlobal };
-    return rawConfig.siteCustomization
-      ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
-      : (nextRoot as unknown as SiteConfigData);
-  }
-
-  const nextRoot = { ...root, services: nextServicesSection };
-  return rawConfig.siteCustomization
-    ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
-    : (nextRoot as unknown as SiteConfigData);
-};
-
-const ensureGalleryPreviewSettings = (
-  config: SiteConfigData,
-  gallerySettings: GallerySettings,
-): SiteConfigData => {
-  if (!gallerySettings) return config;
-
-  const rawConfig = config as Record<string, unknown>;
-  const root =
-    (rawConfig.siteCustomization as Record<string, unknown> | undefined) ||
-    rawConfig;
-  const home = root.home as Record<string, unknown> | undefined;
-  const layoutGlobal = root.layoutGlobal as Record<string, unknown> | undefined;
-
-  const existing =
-    (root.galleryPreviewSettings as Record<string, unknown> | undefined) ||
-    (home?.galleryPreview as Record<string, unknown> | undefined) ||
-    (home?.gallerySection as Record<string, unknown> | undefined) ||
-    (layoutGlobal?.galleryPreviewSettings as Record<string, unknown> | undefined) ||
-    (layoutGlobal?.gallerySection as Record<string, unknown> | undefined);
-
-  const nextSection = {
-    ...(existing || {}),
-    ...gallerySettings,
-    appearance: {
-      ...((existing?.appearance as Record<string, unknown> | undefined) || {}),
-      ...((gallerySettings.appearance as Record<string, unknown> | undefined) || {}),
-    },
-    content: {
-      ...(((existing as Record<string, unknown> | undefined)?.content as Record<
-        string,
-        unknown
-      >) || {}),
-      ...(((gallerySettings as Record<string, unknown> | undefined)?.content as Record<
-        string,
-        unknown
-      >) || {}),
-    },
-  };
-
-  const nextHome = { ...(home || {}), galleryPreview: nextSection, gallerySection: nextSection };
-  const nextRoot = {
-    ...root,
-    galleryPreviewSettings: nextSection,
-    home: nextHome,
-  };
-
-  return rawConfig.siteCustomization
-    ? ({ ...rawConfig, siteCustomization: nextRoot } as unknown as SiteConfigData)
-    : (nextRoot as unknown as SiteConfigData);
+  
+  return sanitized;
 };
 
 export function useEditorApi({
@@ -443,10 +219,8 @@ export function useEditorApi({
   setters,
   setIsDirty,
   saveLocalDrafts,
-  clearLocalDrafts,
 }: UseEditorApiParams) {
   const { toast } = useToast();
-  const { refreshData } = useStudio();
   const [companyId, setCompanyId] = useState<string | null>(null);
   const fetchAbortControllerRef = useRef<AbortController | null>(null);
   const [isFetching, setIsFetching] = useState(false);
@@ -494,7 +268,20 @@ export function useEditorApi({
       changes.services = settings.servicesSettings;
     }
     if (hasChanged(settings.homeValuesSettings, lastSaved.lastSavedHomeValues)) {
-      changes.homeValuesSettings = settings.homeValuesSettings;
+      changes.homeValuesSettings = {
+        ...settings.homeValuesSettings,
+        appearance: {
+          ...settings.homeValuesSettings.appearance,
+          backgroundColor:
+            settings.homeValuesSettings.appearance?.backgroundColor ||
+            settings.homeValuesSettings.bgColor ||
+            "",
+        },
+      };
+      (changes.homeValuesSettings as Record<string, unknown>).values_bg =
+        settings.homeValuesSettings.appearance?.backgroundColor ||
+        settings.homeValuesSettings.bgColor ||
+        "";
     }
     if (
       hasChanged(settings.aboutUsValuesSettings, lastSaved.lastSavedAboutUsValues)
@@ -736,8 +523,9 @@ export function useEditorApi({
           controller.signal,
         );
         if (data) {
-          loadExternalConfig(data);
-          return data;
+          const normalized = normalizePayload(data);
+          loadExternalConfig(normalized);
+          return normalized;
         }
         return null;
       } catch (err) {
@@ -768,21 +556,145 @@ export function useEditorApi({
       }
       console.log(">>> [useEditorApi] Iniciando salvamento global...");
 
+      const sanitizeSectionData = <T,>(current: T, fallback: T) =>
+        sanitizeSection(current, fallback) as T;
+
+      const sanitizedHero = sanitizeSectionData(
+        settings.heroSettings,
+        lastSaved.lastSavedHero,
+      );
+      const sanitizedAboutHero = sanitizeSectionData(
+        settings.aboutHeroSettings,
+        lastSaved.lastSavedAboutHero,
+      );
+      const sanitizedStory = sanitizeSectionData(
+        settings.storySettings,
+        lastSaved.lastSavedStory,
+      );
+      const sanitizedTeam = sanitizeSectionData(
+        settings.teamSettings,
+        lastSaved.lastSavedTeam,
+      );
+      const sanitizedTestimonials = sanitizeSectionData(
+        settings.testimonialsSettings,
+        lastSaved.lastSavedTestimonials,
+      );
+      const sanitizedServices = sanitizeSectionData(
+        settings.servicesSettings,
+        lastSaved.lastSavedServices,
+      );
+      const sanitizedHomeValues = sanitizeSectionData(
+        settings.homeValuesSettings,
+        lastSaved.lastSavedHomeValues,
+      );
+      const sanitizedAboutUsValues = sanitizeSectionData(
+        settings.aboutUsValuesSettings,
+        lastSaved.lastSavedAboutUsValues,
+      );
+      const normalizeValuesAppearance = (section: Record<string, unknown>) => {
+        const appearance =
+          (section.appearance as Record<string, unknown> | undefined) || {};
+        const backgroundColor =
+          (section.bgColor as string) ||
+          (appearance.backgroundColor as string) ||
+          "";
+        return {
+          ...section,
+          appearance: {
+            ...appearance,
+            backgroundColor,
+          },
+        };
+      };
+      const normalizedHomeValues = normalizeValuesAppearance(
+        sanitizedHomeValues,
+      );
+      const normalizedAboutUsValues = normalizeValuesAppearance(
+        sanitizedAboutUsValues,
+      );
+      const sanitizedGalleryPreview = sanitizeSectionData(
+        settings.gallerySettings,
+        lastSaved.lastSavedGallery,
+      );
+      const sanitizedGalleryPage = sanitizeSectionData(
+        settings.galleryPageSettings,
+        lastSaved.lastSavedGalleryPage,
+      );
+      const sanitizedCta = sanitizeSectionData(
+        settings.ctaSettings,
+        lastSaved.lastSavedCTA,
+      );
+      const sanitizedHeader = sanitizeSectionData(
+        settings.headerSettings,
+        lastSaved.lastSavedHeader,
+      );
+      const sanitizedFooter = sanitizeSectionData(
+        settings.footerSettings,
+        lastSaved.lastSavedFooter,
+      );
+
+      const sanitizedBookingSteps = {
+        service: sanitizeSectionData(
+          settings.bookingServiceSettings,
+          lastSaved.lastSavedBookingService,
+        ),
+        date: sanitizeSectionData(
+          settings.bookingDateSettings,
+          lastSaved.lastSavedBookingDate,
+        ),
+        time: sanitizeSectionData(
+          settings.bookingTimeSettings,
+          lastSaved.lastSavedBookingTime,
+        ),
+        form: sanitizeSectionData(
+          settings.bookingFormSettings,
+          lastSaved.lastSavedBookingForm,
+        ),
+        confirmation: sanitizeSectionData(
+          settings.bookingConfirmationSettings,
+          lastSaved.lastSavedBookingConfirmation,
+        ),
+      };
+
+      const cleanBookingSteps = normalizePersistenceData(
+        sanitizedBookingSteps,
+      ) as Record<string, BookingStepSettings>;
+
+      // ABANDONA O DIFF: Agora enviamos o payload completo para garantir integridade.
+      // O backend usará as seções presentes no layoutGlobal e appointmentFlow.
+      const payload: Record<string, unknown> = {
+        gallery_bg:
+          sanitizedGalleryPreview.appearance?.backgroundColor ||
+          sanitizedGalleryPreview.bgColor ||
+          "",
+        sections: {
+          hero: sanitizedHero,
+          aboutHero: sanitizedAboutHero,
+          story: sanitizedStory,
+          team: sanitizedTeam,
+          testimonials: sanitizedTestimonials,
+          services: sanitizedServices,
+          homeValuesSettings: normalizedHomeValues,
+          aboutUsValuesSettings: normalizedAboutUsValues,
+          galleryPreviewSettings: sanitizedGalleryPreview,
+          galleryPageSettings: sanitizedGalleryPage,
+          cta: sanitizedCta,
+          header: sanitizedHeader,
+          footer: sanitizedFooter,
+          fontSettings: settings.fontSettings,
+          colorSettings: settings.colorSettings,
+          pageVisibility: settings.pageVisibility,
+          visibleSections: settings.visibleSections,
+          bookingSteps: cleanBookingSteps,
+        },
+        homeValuesSettings: normalizedHomeValues,
+        aboutUsValuesSettings: normalizedAboutUsValues,
+      };
+
       if (companyId) {
         setIsSaving(true);
         try {
-          const changes = getChangedSettings();
-          console.log(">>> [useEditorApi] Alterações detectadas:", changes);
-
-          if (Object.keys(changes).length === 0) {
-            console.log(
-              ">>> [useEditorApi] Nenhuma alteração detectada. Pulando salvamento.",
-            );
-            return;
-          }
-
-          const payload: Record<string, unknown> = {};
-
+          // Mapeamento explícito para compatibilidade com o backend (Snake Case e Estrutura de Pastas)
           const sectionsToGlobal = [
             "hero",
             "aboutHero",
@@ -798,6 +710,26 @@ export function useEditorApi({
             "header",
             "footer",
           ];
+          const sectionDataMap: Record<string, unknown> = {
+            hero: sanitizedHero,
+            aboutHero: sanitizedAboutHero,
+            story: sanitizedStory,
+            team: sanitizedTeam,
+            testimonials: sanitizedTestimonials,
+            services: sanitizedServices,
+            homeValuesSettings: normalizedHomeValues,
+            aboutUsValuesSettings: normalizedAboutUsValues,
+            galleryPreviewSettings: sanitizedGalleryPreview,
+            galleryPageSettings: sanitizedGalleryPage,
+            cta: sanitizedCta,
+            header: sanitizedHeader,
+            footer: sanitizedFooter,
+          };
+          const isRecord = (value: unknown): value is Record<string, unknown> =>
+            !!value && typeof value === "object" && !Array.isArray(value);
+          const toSafeRecord = (
+            value: unknown,
+          ): Record<string, unknown> | undefined => (isRecord(value) ? value : undefined);
 
           const sectionToDatabasePath: Record<string, string | string[]> = {
             hero: "home.heroBanner",
@@ -806,7 +738,7 @@ export function useEditorApi({
             team: "home.teamSection",
             testimonials: "home.testimonialsSection",
             services: "home.servicesSection",
-            homeValuesSettings: "homeValuesSettings",
+            homeValuesSettings: ["homeValuesSettings", "home.homeValuesSettings"],
             aboutUsValuesSettings: [
               "aboutUsValuesSettings",
               "aboutUs.valuesSection",
@@ -819,640 +751,651 @@ export function useEditorApi({
             ],
             galleryPageSettings: "galleryPageSettings",
             cta: "home.ctaSection",
+            header: "layoutGlobal.header",
+            footer: "layoutGlobal.footer",
           };
 
           for (const section of sectionsToGlobal) {
-            const sectionKey = section as keyof typeof changes;
-            if (changes[sectionKey]) {
-              const sectionData = {
-                ...(changes[sectionKey] as Record<string, unknown>),
-              };
+            const rawSectionData = sectionDataMap[section];
+            if (!isRecord(rawSectionData)) {
+              console.warn(">>> [SAVE_GUARD] Seção inválida, ignorando:", {
+                section,
+                rawSectionData,
+              });
+              continue;
+            }
+            const sectionData = { ...rawSectionData };
 
-              const dbPaths = sectionToDatabasePath[section];
-              const resolvedPaths = Array.isArray(dbPaths)
-                ? dbPaths
-                : dbPaths
-                  ? [dbPaths]
-                  : [];
-              if (resolvedPaths.length > 0) {
-                for (const dbPath of resolvedPaths) {
-                  const pathParts = dbPath.split(".");
-                  let subObj: Record<string, unknown>;
-                  if (pathParts.length === 1) {
-                    if (!payload[dbPath]) payload[dbPath] = {};
-                    subObj = payload[dbPath] as Record<string, unknown>;
-                  } else {
-                    const [root, sub] = pathParts;
-                    if (!payload[root]) payload[root] = {};
-                    const rootObj = payload[root] as Record<string, unknown>;
+            const dbPaths = sectionToDatabasePath[section];
+            const resolvedPaths = Array.isArray(dbPaths)
+              ? dbPaths
+              : dbPaths
+                ? [dbPaths]
+                : [];
+            if (resolvedPaths.length > 0) {
+              for (const dbPath of resolvedPaths) {
+                const pathParts = dbPath.split(".");
+                let subObj: Record<string, unknown>;
+                if (pathParts.length === 1) {
+                  if (!payload[dbPath]) payload[dbPath] = {};
+                  subObj = payload[dbPath] as Record<string, unknown>;
+                } else {
+                  const [root, sub] = pathParts;
+                  if (!payload[root]) payload[root] = {};
+                  const rootObj = payload[root] as Record<string, unknown>;
 
-                    if (!rootObj[sub]) rootObj[sub] = {};
-                    subObj = rootObj[sub] as Record<string, unknown>;
-                  }
+                  if (!rootObj[sub]) rootObj[sub] = {};
+                  subObj = rootObj[sub] as Record<string, unknown>;
+                }
 
-                  const appearance = (sectionData.appearance as
-                    | Record<string, unknown>
-                    | undefined) || {};
+                const appearance = toSafeRecord(sectionData.appearance) || {};
+                const overlay = toSafeRecord(
+                  (appearance as Record<string, unknown>).overlay,
+                ) || {};
 
-                  // Mapeia TODOS os campos de aparência para garantir sincronização total
-                  subObj.appearance = {
-                    ...appearance,
-                    backgroundImageUrl:
-                      sectionData.bgImage || appearance.backgroundImageUrl || "",
-                    showBackgroundImage: sectionData.bgType === "image",
-                    backgroundColor:
-                      (sectionData.bgColor as string) ||
-                      (appearance.backgroundColor as string) ||
-                      "",
-                    overlayOpacity:
-                      typeof sectionData.overlayOpacity === "number"
-                        ? sectionData.overlayOpacity
-                        : appearance.overlayOpacity ?? 0,
-                    overlay: {
-                      ...(appearance.overlay || {}),
-                      color:
-                        ((sectionData.appearance as Record<string, unknown>)
-                          ?.overlay as Record<string, unknown>)?.color as string ||
-                        ((appearance.overlay as Record<string, unknown>)?.color as string) ||
-                        "",
-                      opacity:
-                        typeof sectionData.overlayOpacity === "number"
-                          ? sectionData.overlayOpacity
-                          : (appearance.overlay as Record<string, unknown>)?.opacity as number ?? 0,
-                    },
-                    imageOpacity:
-                      typeof sectionData.imageOpacity === "number"
-                        ? sectionData.imageOpacity
-                        : appearance.imageOpacity ?? 1,
-                    imageScale:
-                      typeof sectionData.imageScale === "number"
-                        ? sectionData.imageScale
-                        : appearance.imageScale ?? 1,
-                    imageX:
-                      typeof sectionData.imageX === "number"
-                        ? sectionData.imageX
-                        : appearance.imageX ?? 50,
-                    imageY:
-                      typeof sectionData.imageY === "number"
-                        ? sectionData.imageY
-                        : appearance.imageY ?? 50,
-                    // Garante campos de cores e fontes na aparência também
-                    titleColor: sectionData.titleColor || appearance.titleColor || "",
-                    subtitleColor: sectionData.subtitleColor || appearance.subtitleColor || "",
-                    titleFont: sectionData.titleFont || appearance.titleFont || "",
-                    subtitleFont: sectionData.subtitleFont || appearance.subtitleFont || "",
-                  };
-
-                  // Se for Hero, adiciona campos de botões e badge na aparência
-                  if (section === "hero" || section === "aboutHero") {
-                    const heroApp = subObj.appearance as Record<string, unknown>;
-                    heroApp.badgeColor =
-                      sectionData.badgeColor || appearance.badgeColor || "";
-                    heroApp.badgeTextColor =
-                      sectionData.badgeTextColor ||
-                      appearance.badgeTextColor ||
-                      "";
-                    heroApp.badgeFont = sectionData.badgeFont || appearance.badgeFont || "";
-                    heroApp.primaryButtonColor =
-                      sectionData.primaryButtonColor ||
-                      appearance.primaryButtonColor ||
-                      "";
-                    heroApp.primaryButtonTextColor =
-                      sectionData.primaryButtonTextColor ||
-                      appearance.primaryButtonTextColor ||
-                      "";
-                    heroApp.primaryButtonFont =
-                      sectionData.primaryButtonFont || appearance.primaryButtonFont || "";
-                    heroApp.secondaryButtonColor =
-                      sectionData.secondaryButtonColor ||
-                      appearance.secondaryButtonColor ||
-                      "";
-                    heroApp.secondaryButtonTextColor =
-                      sectionData.secondaryButtonTextColor ||
-                      appearance.secondaryButtonTextColor ||
-                      "";
-                    heroApp.secondaryButtonFont =
-                      sectionData.secondaryButtonFont ||
-                      appearance.secondaryButtonFont ||
-                      "";
-                  }
-
-                  subObj.bgType = sectionData.bgType || "color";
-                  subObj.bgColor =
+                // Mapeia TODOS os campos de aparência para garantir sincronização total
+                subObj.appearance = {
+                  ...appearance,
+                  backgroundImageUrl:
+                    sectionData.bgImage || appearance.backgroundImageUrl || "",
+                  showBackgroundImage: sectionData.bgType === "image",
+                  backgroundColor:
                     (sectionData.bgColor as string) ||
                     (appearance.backgroundColor as string) ||
-                    "";
-                  subObj.bgImage =
-                    sectionData.bgImage || appearance.backgroundImageUrl || "";
+                    "",
+                  overlayOpacity:
+                    typeof sectionData.overlayOpacity === "number"
+                      ? sectionData.overlayOpacity
+                      : appearance.overlayOpacity ?? 0,
+                  overlay: {
+                    ...overlay,
+                    color: (overlay.color as string) || "",
+                    opacity:
+                      typeof sectionData.overlayOpacity === "number"
+                        ? sectionData.overlayOpacity
+                        : typeof overlay.opacity === "number"
+                          ? overlay.opacity
+                          : 0,
+                  },
+                  imageOpacity:
+                    typeof sectionData.imageOpacity === "number"
+                      ? sectionData.imageOpacity
+                      : appearance.imageOpacity ?? 1,
+                  imageScale:
+                    typeof sectionData.imageScale === "number"
+                      ? sectionData.imageScale
+                      : appearance.imageScale ?? 1,
+                  imageX:
+                    typeof sectionData.imageX === "number"
+                      ? sectionData.imageX
+                      : appearance.imageX ?? 50,
+                  imageY:
+                    typeof sectionData.imageY === "number"
+                      ? sectionData.imageY
+                      : appearance.imageY ?? 50,
+                  // Garante campos de cores e fontes na aparência também
+                  titleColor: sectionData.titleColor || appearance.titleColor || "",
+                  subtitleColor: sectionData.subtitleColor || appearance.subtitleColor || "",
+                  titleFont: sectionData.titleFont || appearance.titleFont || "",
+                  subtitleFont: sectionData.subtitleFont || appearance.subtitleFont || "",
+                };
 
-                  // Mapeamento de conteúdo completo para persistência
-                  const content: Record<string, unknown> = {
+                // Se for Hero, adiciona campos de botões e badge na aparência
+                if (section === "hero" || section === "aboutHero") {
+                  const heroApp = subObj.appearance as Record<string, unknown>;
+                  heroApp.badgeColor =
+                    sectionData.badgeColor || appearance.badgeColor || "";
+                  heroApp.badgeTextColor =
+                    sectionData.badgeTextColor ||
+                    appearance.badgeTextColor ||
+                    "";
+                  heroApp.badgeFont = sectionData.badgeFont || appearance.badgeFont || "";
+                  heroApp.primaryButtonColor =
+                    sectionData.primaryButtonColor ||
+                    appearance.primaryButtonColor ||
+                    "";
+                  heroApp.primaryButtonTextColor =
+                    sectionData.primaryButtonTextColor ||
+                    appearance.primaryButtonTextColor ||
+                    "";
+                  heroApp.primaryButtonFont =
+                    sectionData.primaryButtonFont || appearance.primaryButtonFont || "";
+                  heroApp.secondaryButtonColor =
+                    sectionData.secondaryButtonColor ||
+                    appearance.secondaryButtonColor ||
+                    "";
+                  heroApp.secondaryButtonTextColor =
+                    sectionData.secondaryButtonTextColor ||
+                    appearance.secondaryButtonTextColor ||
+                    "";
+                  heroApp.secondaryButtonFont =
+                    sectionData.secondaryButtonFont ||
+                    appearance.secondaryButtonFont ||
+                    "";
+                }
+
+                subObj.bgType = sectionData.bgType || "color";
+                subObj.bgColor =
+                  (sectionData.bgColor as string) ||
+                  (appearance.backgroundColor as string) ||
+                  "";
+                subObj.bgImage =
+                  sectionData.bgImage || appearance.backgroundImageUrl || "";
+
+                // Mapeamento de conteúdo completo para persistência
+                const content: Record<string, unknown> = {
+                  title: sectionData.title || "",
+                  subtitle: sectionData.subtitle || "",
+                  titleFont: sectionData.titleFont || "",
+                  titleColor: sectionData.titleColor || "",
+                  subtitleFont: sectionData.subtitleFont || "",
+                  subtitleColor: sectionData.subtitleColor || "",
+                };
+
+                const genericColor =
+                  section === "homeValuesSettings" ||
+                  section === "aboutUsValuesSettings"
+                    ? (sectionData.bgColor as string) || ""
+                    : sectionData.primaryButtonColor ||
+                      sectionData.cardBgColor ||
+                      sectionData.bgColor ||
+                      "";
+                Object.assign(subObj, {
+                  ...sectionData, // Joga todas as propriedades (incluindo camelCase) na raiz
+                  // Compatibilidade Snake Case para o Banco de Dados
+                  primary_button_color:
+                    sectionData.primaryButtonColor || sectionData.primary_button_color,
+                  secondary_button_color:
+                    sectionData.secondaryButtonColor || sectionData.secondary_button_color,
+                  button_text: sectionData.buttonText || sectionData.button_text,
+                  button_color: sectionData.buttonColor || sectionData.button_color,
+                  button_text_color:
+                    sectionData.buttonTextColor || sectionData.button_text_color,
+                  button_font: sectionData.buttonFont || sectionData.button_font,
+                  button_link: sectionData.buttonLink || sectionData.button_link,
+                  title_font: sectionData.titleFont || sectionData.title_font,
+                  subtitle_font: sectionData.subtitleFont || sectionData.subtitle_font,
+                  card_bg_color: sectionData.cardBgColor || sectionData.card_bg_color,
+                  card_background_color:
+                    sectionData.cardBgColor || sectionData.card_background_color,
+                  cardBackgroundColor:
+                    sectionData.cardBgColor || sectionData.cardBackgroundColor,
+                  bg_color: sectionData.bgColor || sectionData.bg_color,
+                  title_color: sectionData.titleColor || sectionData.title_color,
+                  subtitle_color: sectionData.subtitleColor || sectionData.subtitle_color,
+                  badge_color: sectionData.badgeColor || sectionData.badge_color,
+                  badge_text_color:
+                    sectionData.badgeTextColor || sectionData.badge_text_color,
+                  color: genericColor,
+                  // Adicionado: Chaves específicas que o backend espera converter internamente
+                  ...(section === "homeValuesSettings" ? { 
+                    values_bg: genericColor,
+                    // Garante que o appearance.backgroundColor seja preservado no objeto final
+                    appearance: {
+                      ...(subObj.appearance as Record<string, unknown>),
+                      backgroundColor: genericColor
+                    }
+                  } : {}),
+                  ...(section === "aboutUsValuesSettings" ? { about_values_bg: genericColor } : {}),
+                });
+
+                if (section === "hero" || section === "aboutHero") {
+                  subObj.content = {
                     title: sectionData.title || "",
                     subtitle: sectionData.subtitle || "",
-                    titleFont: sectionData.titleFont || "",
-                    titleColor: sectionData.titleColor || "",
-                    subtitleFont: sectionData.subtitleFont || "",
-                    subtitleColor: sectionData.subtitleColor || "",
                   };
+                } else {
+                  // Campos específicos para outras seções (mantendo compatibilidade)
+                  if (section === "story") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.content = sectionData.content || "";
+                    content.image = sectionData.image || "";
+                  }
 
-                  const genericColor =
+                  if (section === "testimonials") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.testimonials = sectionData.testimonials || [];
+                    content.starColor = sectionData.starColor || "";
+                    content.cardBgColor = sectionData.cardBgColor || "";
+                    content.cardNameFont = sectionData.cardNameFont || "";
+                    content.cardNameColor = sectionData.cardNameColor || "";
+                    content.cardTextFont = sectionData.cardTextFont || "";
+                    content.cardTextColor = sectionData.cardTextColor || "";
+                    content.cardRatingColor = sectionData.cardRatingColor || "";
+                    content.cardBorderRadius = sectionData.cardBorderRadius || "";
+
+                    // Suporte para cardConfig exigido pelo backend
+                    const cardConfig = {
+                      backgroundColor: sectionData.cardBgColor || "",
+                      cardBackgroundColor: sectionData.cardBgColor || "",
+                      background_color: sectionData.cardBgColor || "",
+                      card_background_color: sectionData.cardBgColor || "",
+                    };
+                    subObj.cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                  }
+
+                  if (
+                    section === "galleryPreviewSettings" ||
+                    section === "galleryPageSettings"
+                  ) {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.buttonText = sectionData.buttonText || "";
+                    content.buttonFont = sectionData.buttonFont || "";
+                    content.buttonColor = sectionData.buttonColor || "";
+                    content.buttonTextColor = sectionData.buttonTextColor || "";
+                    content.layout = sectionData.layout || "grid";
+                    content.columns = sectionData.columns || 3;
+                    content.gap = sectionData.gap || 16;
+                    content.aspectRatio = sectionData.aspectRatio || "square";
+                    content.cardBgColor =
+                      (sectionData as Record<string, unknown>).cardBgColor as string || "";
+
+                    // Suporte para cardConfig exigido pelo backend
+                    const cardConfig = {
+                      backgroundColor:
+                        (sectionData as Record<string, unknown>).cardBgColor as string ||
+                        "",
+                      cardBackgroundColor:
+                        (sectionData as Record<string, unknown>).cardBgColor as string ||
+                        "",
+                      background_color:
+                        (sectionData as Record<string, unknown>).cardBgColor as string ||
+                        "",
+                      card_background_color:
+                        (sectionData as Record<string, unknown>).cardBgColor as string ||
+                        "",
+                    };
+                    subObj.cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                  }
+
+                  if (section === "cta") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.buttonText = sectionData.buttonText || "";
+                    content.buttonFont = sectionData.buttonFont || "";
+                    content.buttonColor = sectionData.buttonColor || "";
+                    content.buttonTextColor = sectionData.buttonTextColor || "";
+                    content.alignment = sectionData.alignment || "center";
+                  }
+
+                  if (
                     section === "homeValuesSettings" ||
                     section === "aboutUsValuesSettings"
-                      ? (sectionData.bgColor as string) || ""
-                      : sectionData.primaryButtonColor ||
-                        sectionData.cardBgColor ||
-                        sectionData.bgColor ||
-                        "";
-                  Object.assign(subObj, {
-                    ...sectionData, // Joga todas as propriedades (incluindo camelCase) na raiz
-                    // Compatibilidade Snake Case para o Banco de Dados
-                    primary_button_color:
-                      sectionData.primaryButtonColor || sectionData.primary_button_color,
-                    secondary_button_color:
-                      sectionData.secondaryButtonColor || sectionData.secondary_button_color,
-                    button_text: sectionData.buttonText || sectionData.button_text,
-                    button_color: sectionData.buttonColor || sectionData.button_color,
-                    button_text_color:
-                      sectionData.buttonTextColor || sectionData.button_text_color,
-                    button_font: sectionData.buttonFont || sectionData.button_font,
-                    button_link: sectionData.buttonLink || sectionData.button_link,
-                    title_font: sectionData.titleFont || sectionData.title_font,
-                    subtitle_font: sectionData.subtitleFont || sectionData.subtitle_font,
-                    card_bg_color: sectionData.cardBgColor || sectionData.card_bg_color,
-                    card_background_color:
-                      sectionData.cardBgColor || sectionData.card_background_color,
-                    cardBackgroundColor:
-                      sectionData.cardBgColor || sectionData.cardBackgroundColor,
-                    bg_color: sectionData.bgColor || sectionData.bg_color,
-                    title_color: sectionData.titleColor || sectionData.title_color,
-                    subtitle_color: sectionData.subtitleColor || sectionData.subtitle_color,
-                    badge_color: sectionData.badgeColor || sectionData.badge_color,
-                    badge_text_color:
-                      sectionData.badgeTextColor || sectionData.badge_text_color,
-                    color: genericColor,
-                  });
+                  ) {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.items = sectionData.items || [];
+                    content.cardBgColor = sectionData.cardBgColor || "";
+                    content.cardTitleFont = sectionData.cardTitleFont || "";
+                    content.cardTitleColor = sectionData.cardTitleColor || "";
+                    content.cardDescriptionFont =
+                      sectionData.cardDescriptionFont || "";
+                    content.cardDescriptionColor =
+                      sectionData.cardDescriptionColor || "";
+                    content.cardIconColor = sectionData.cardIconColor || "";
+                    content.showTitle = sectionData.showTitle ?? true;
+                    content.showSubtitle = sectionData.showSubtitle ?? true;
 
-                  if (section === "hero" || section === "aboutHero") {
-                    subObj.content = {
-                      title: sectionData.title || "",
-                      subtitle: sectionData.subtitle || "",
+                    // Suporte para cardConfig exigido pelo backend
+                    const cardConfig = {
+                      backgroundColor: sectionData.cardBgColor || "",
+                      cardBackgroundColor: sectionData.cardBgColor || "",
+                      background_color: sectionData.cardBgColor || "",
+                      card_background_color: sectionData.cardBgColor || "",
                     };
-                  } else {
-                    // Campos específicos para outras seções (mantendo compatibilidade)
-                    if (section === "story") {
-                      content.title = sectionData.title || "";
-                      content.subtitle = sectionData.subtitle || "";
-                      content.content = sectionData.content || "";
-                      content.image = sectionData.image || "";
-                    }
-
-                    if (section === "testimonials") {
-                      content.title = sectionData.title || "";
-                      content.subtitle = sectionData.subtitle || "";
-                      content.testimonials = sectionData.testimonials || [];
-                      content.starColor = sectionData.starColor || "";
-                      content.cardBgColor = sectionData.cardBgColor || "";
-                      content.cardNameFont = sectionData.cardNameFont || "";
-                      content.cardNameColor = sectionData.cardNameColor || "";
-                      content.cardTextFont = sectionData.cardTextFont || "";
-                      content.cardTextColor = sectionData.cardTextColor || "";
-                      content.cardRatingColor = sectionData.cardRatingColor || "";
-                      content.cardBorderRadius = sectionData.cardBorderRadius || "";
-
-                      // Suporte para cardConfig exigido pelo backend
-                      const cardConfig = {
-                        backgroundColor: sectionData.cardBgColor || "",
-                        cardBackgroundColor: sectionData.cardBgColor || "",
-                        background_color: sectionData.cardBgColor || "",
-                        card_background_color: sectionData.cardBgColor || "",
-                      };
-                      subObj.cardConfig = cardConfig;
-                      (sectionData as Record<string, unknown>).cardConfig = cardConfig;
-                    }
-
-                    if (
-                      section === "galleryPreviewSettings" ||
-                      section === "galleryPageSettings"
-                    ) {
-                      content.title = sectionData.title || "";
-                      content.subtitle = sectionData.subtitle || "";
-                      content.buttonText = sectionData.buttonText || "";
-                      content.buttonFont = sectionData.buttonFont || "";
-                      content.buttonColor = sectionData.buttonColor || "";
-                      content.buttonTextColor = sectionData.buttonTextColor || "";
-                      content.layout = sectionData.layout || "grid";
-                      content.columns = sectionData.columns || 3;
-                      content.gap = sectionData.gap || 16;
-                      content.aspectRatio = sectionData.aspectRatio || "square";
-                      content.cardBgColor =
-                        (sectionData as Record<string, unknown>).cardBgColor as string || "";
-
-                      // Suporte para cardConfig exigido pelo backend
-                      const cardConfig = {
-                        backgroundColor:
-                          (sectionData as Record<string, unknown>).cardBgColor as string ||
-                          "",
-                        cardBackgroundColor:
-                          (sectionData as Record<string, unknown>).cardBgColor as string ||
-                          "",
-                        background_color:
-                          (sectionData as Record<string, unknown>).cardBgColor as string ||
-                          "",
-                        card_background_color:
-                          (sectionData as Record<string, unknown>).cardBgColor as string ||
-                          "",
-                      };
-                      subObj.cardConfig = cardConfig;
-                      (sectionData as Record<string, unknown>).cardConfig = cardConfig;
-                    }
-
-                    if (section === "cta") {
-                      content.title = sectionData.title || "";
-                      content.subtitle = sectionData.subtitle || "";
-                      content.buttonText = sectionData.buttonText || "";
-                      content.buttonFont = sectionData.buttonFont || "";
-                      content.buttonColor = sectionData.buttonColor || "";
-                      content.buttonTextColor = sectionData.buttonTextColor || "";
-                      content.alignment = sectionData.alignment || "center";
-                    }
-
-                    if (
-                      section === "homeValuesSettings" ||
-                      section === "aboutUsValuesSettings"
-                    ) {
-                      content.title = sectionData.title || "";
-                      content.subtitle = sectionData.subtitle || "";
-                      content.items = sectionData.items || [];
-                      content.cardBgColor = sectionData.cardBgColor || "";
-                      content.cardTitleFont = sectionData.cardTitleFont || "";
-                      content.cardTitleColor = sectionData.cardTitleColor || "";
-                      content.cardDescriptionFont =
-                        sectionData.cardDescriptionFont || "";
-                      content.cardDescriptionColor =
-                        sectionData.cardDescriptionColor || "";
-                      content.cardIconColor = sectionData.cardIconColor || "";
-                      content.showTitle = sectionData.showTitle ?? true;
-                      content.showSubtitle = sectionData.showSubtitle ?? true;
-
-                      // Suporte para cardConfig exigido pelo backend
-                      const cardConfig = {
-                        backgroundColor: sectionData.cardBgColor || "",
-                        cardBackgroundColor: sectionData.cardBgColor || "",
-                        background_color: sectionData.cardBgColor || "",
-                        card_background_color: sectionData.cardBgColor || "",
-                      };
-                      subObj.cardConfig = cardConfig;
-                      (sectionData as Record<string, unknown>).cardConfig = cardConfig;
-                    }
-
-                    if (section === "services") {
-                      content.title = sectionData.title || "";
-                      content.subtitle = sectionData.subtitle || "";
-                      content.cardBgColor = sectionData.cardBgColor || "";
-                      content.cardTitleFont = sectionData.cardTitleFont || "";
-                      content.cardTitleColor = sectionData.cardTitleColor || "";
-                      content.cardDescriptionFont =
-                        sectionData.cardDescriptionFont || "";
-                      content.cardDescriptionColor =
-                        sectionData.cardDescriptionColor || "";
-                      content.cardPriceFont = sectionData.cardPriceFont || "";
-                      content.cardPriceColor = sectionData.cardPriceColor || "";
-                      content.cardIconColor = sectionData.cardIconColor || "";
-                      content.cardBorderRadius = sectionData.cardBorderRadius || "";
-                      content.cardBorderWidth = sectionData.cardBorderWidth || "";
-                      content.cardBorderColor = sectionData.cardBorderColor || "";
-                      content.showTitle = sectionData.showTitle ?? true;
-                      content.showSubtitle = sectionData.showSubtitle ?? true;
-
-                      // Novo: Suporte para cardConfig exigido pelo backend
-                      const cardConfig = {
-                        backgroundColor: sectionData.cardBgColor || "",
-                        cardBackgroundColor: sectionData.cardBgColor || "",
-                        background_color: sectionData.cardBgColor || "",
-                        card_background_color: sectionData.cardBgColor || "",
-                      };
-
-                      subObj.cardConfig = cardConfig;
-                      // Garantir que o cardConfig também vá para o layoutGlobal.services
-                      (sectionData as Record<string, unknown>).cardConfig = cardConfig;
-                    }
-
-                    if (section === "team") {
-                      content.title = sectionData.title || "";
-                      content.subtitle = sectionData.subtitle || "";
-                      content.members = sectionData.members || [];
-                      content.cardBgColor = sectionData.cardBgColor || "";
-                      content.cardTitleFont = sectionData.cardTitleFont || "";
-                      content.cardTitleColor = sectionData.cardTitleColor || "";
-                      content.cardRoleFont = sectionData.cardRoleFont || "";
-                      content.cardRoleColor = sectionData.cardRoleColor || "";
-                      content.cardDescriptionFont =
-                        sectionData.cardDescriptionFont || "";
-                      content.cardDescriptionColor =
-                        sectionData.cardDescriptionColor || "";
-
-                      // Suporte para cardConfig exigido pelo backend
-                      const cardConfig = {
-                        backgroundColor: sectionData.cardBgColor || "",
-                        cardBackgroundColor: sectionData.cardBgColor || "",
-                        background_color: sectionData.cardBgColor || "",
-                        card_background_color: sectionData.cardBgColor || "",
-                      };
-                      subObj.cardConfig = cardConfig;
-                      (sectionData as Record<string, unknown>).cardConfig = cardConfig;
-                    }
-
-                    subObj.content = content;
+                    subObj.cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
                   }
 
-                  sectionData.appearance = subObj.appearance;
-                  if (subObj.content) {
-                    sectionData.content = subObj.content;
+                  if (section === "services") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.cardBgColor = sectionData.cardBgColor || "";
+                    content.cardTitleFont = sectionData.cardTitleFont || "";
+                    content.cardTitleColor = sectionData.cardTitleColor || "";
+                    content.cardDescriptionFont =
+                      sectionData.cardDescriptionFont || "";
+                    content.cardDescriptionColor =
+                      sectionData.cardDescriptionColor || "";
+                    content.cardPriceFont = sectionData.cardPriceFont || "";
+                    content.cardPriceColor = sectionData.cardPriceColor || "";
+                    content.cardIconColor = sectionData.cardIconColor || "";
+                    content.cardBorderRadius = sectionData.cardBorderRadius || "";
+                    content.cardBorderWidth = sectionData.cardBorderWidth || "";
+                    content.cardBorderColor = sectionData.cardBorderColor || "";
+                    content.showTitle = sectionData.showTitle ?? true;
+                    content.showSubtitle = sectionData.showSubtitle ?? true;
+
+                    // Novo: Suporte para cardConfig exigido pelo backend
+                    const cardConfig = {
+                      backgroundColor: sectionData.cardBgColor || "",
+                      cardBackgroundColor: sectionData.cardBgColor || "",
+                      background_color: sectionData.cardBgColor || "",
+                      card_background_color: sectionData.cardBgColor || "",
+                    };
+
+                    subObj.cardConfig = cardConfig;
+                    // Garantir que o cardConfig também vá para o layoutGlobal.services
+                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
                   }
+
+                  if (section === "team") {
+                    content.title = sectionData.title || "";
+                    content.subtitle = sectionData.subtitle || "";
+                    content.members = sectionData.members || [];
+                    content.cardBgColor = sectionData.cardBgColor || "";
+                    content.cardTitleFont = sectionData.cardTitleFont || "";
+                    content.cardTitleColor = sectionData.cardTitleColor || "";
+                    content.cardRoleFont = sectionData.cardRoleFont || "";
+                    content.cardRoleColor = sectionData.cardRoleColor || "";
+                    content.cardDescriptionFont =
+                      sectionData.cardDescriptionFont || "";
+                    content.cardDescriptionColor =
+                      sectionData.cardDescriptionColor || "";
+
+                    // Suporte para cardConfig exigido pelo backend
+                    const cardConfig = {
+                      backgroundColor: sectionData.cardBgColor || "",
+                      cardBackgroundColor: sectionData.cardBgColor || "",
+                      background_color: sectionData.cardBgColor || "",
+                      card_background_color: sectionData.cardBgColor || "",
+                    };
+                    subObj.cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                  }
+
+                  subObj.content = content;
+                }
+
+                sectionData.appearance = subObj.appearance;
+                if (subObj.content) {
+                  sectionData.content = subObj.content;
                 }
               }
-
-              if (!payload.layoutGlobal) payload.layoutGlobal = {};
-              const layoutKey = section === "hero" ? "heroBanner" : section;
-              (payload.layoutGlobal as Record<string, unknown>)[layoutKey] =
-                sectionData;
             }
+
+            if (!payload.layoutGlobal) payload.layoutGlobal = {};
+            const layoutKey = section === "hero" ? "heroBanner" : section;
+            (payload.layoutGlobal as Record<string, unknown>)[layoutKey] =
+              sectionData;
           }
 
           // Tratamento especial para fontes e cores globais (Theme)
-          if (changes.theme) {
-            const fontData = changes.theme as Record<string, unknown>;
-            const normalizedFonts = {
-              headingFont:
-                (fontData.headingFont as string) ||
-                (fontData.primaryFont as string) ||
-                "",
-              subtitleFont:
-                (fontData.subtitleFont as string) ||
-                (fontData.secondaryFont as string) ||
-                "",
-              bodyFont:
-                (fontData.bodyFont as string) ||
-                (fontData.accentFont as string) ||
-                "",
-            };
-            if (!payload.layoutGlobal) payload.layoutGlobal = {};
-            const layoutGlobal = payload.layoutGlobal as Record<string, unknown>;
-            layoutGlobal.typography = normalizedFonts;
-            layoutGlobal.fontes = normalizedFonts;
-            layoutGlobal.font = normalizedFonts;
-          }
+          const fontData = settings.fontSettings as Record<string, unknown>;
+          const normalizedFonts = {
+            headingFont:
+              (fontData.headingFont as string) ||
+              (fontData.primaryFont as string) ||
+              "",
+            subtitleFont:
+              (fontData.subtitleFont as string) ||
+              (fontData.secondaryFont as string) ||
+              "",
+            bodyFont:
+              (fontData.bodyFont as string) ||
+              (fontData.accentFont as string) ||
+              "",
+          };
+          if (!payload.layoutGlobal) payload.layoutGlobal = {};
+          const layoutGlobal = payload.layoutGlobal as Record<string, unknown>;
+          layoutGlobal.typography = normalizedFonts;
+          layoutGlobal.fontes = normalizedFonts;
+          layoutGlobal.font = normalizedFonts;
 
-          if (changes.colors) {
-            const colorData = changes.colors as Record<string, unknown>;
-            const normalizedColors = {
-              primary:
-                (colorData.primary as string) ||
-                (colorData.primaryColor as string) ||
-                "",
-              secondary:
-                (colorData.secondary as string) ||
-                (colorData.secondaryColor as string) ||
-                "",
-              accent:
-                (colorData.accent as string) ||
-                (colorData.accentColor as string) ||
-                "",
-              background:
-                (colorData.background as string) ||
-                (colorData.backgroundColor as string) ||
-                "",
-              text:
-                (colorData.text as string) ||
-                (colorData.textColor as string) ||
-                "",
-              buttonText:
-                (colorData.buttonText as string) ||
-                (colorData.buttonTextColor as string) ||
-                "",
-            };
-            if (!payload.layoutGlobal) payload.layoutGlobal = {};
-            const layoutGlobal = payload.layoutGlobal as Record<string, unknown>;
-            layoutGlobal.siteColors = normalizedColors;
-            layoutGlobal.cores_base = normalizedColors;
-            layoutGlobal.color = normalizedColors;
-          }
+          const colorData = settings.colorSettings as Record<string, unknown>;
+          const normalizedColors = {
+            primary:
+              (colorData.primary as string) ||
+              (colorData.primaryColor as string) ||
+              "",
+            secondary:
+              (colorData.secondary as string) ||
+              (colorData.secondaryColor as string) ||
+              "",
+            accent:
+              (colorData.accent as string) ||
+              (colorData.accentColor as string) ||
+              "",
+            background:
+              (colorData.background as string) ||
+              (colorData.backgroundColor as string) ||
+              "",
+            text:
+              (colorData.text as string) ||
+              (colorData.textColor as string) ||
+              "",
+            buttonText:
+              (colorData.buttonText as string) ||
+              (colorData.buttonTextColor as string) ||
+              "",
+          };
+          layoutGlobal.siteColors = normalizedColors;
+          layoutGlobal.cores_base = normalizedColors;
+          layoutGlobal.color = normalizedColors;
 
           // Tratar Header/Footer (se não estiverem no loop acima)
-          if (changes.header) {
-            if (!payload.layoutGlobal) payload.layoutGlobal = {};
-            (payload.layoutGlobal as Record<string, unknown>).header =
-              changes.header;
-          }
-          if (changes.footer) {
-            if (!payload.layoutGlobal) payload.layoutGlobal = {};
-            (payload.layoutGlobal as Record<string, unknown>).footer =
-              changes.footer;
-          }
+          if (!payload.layoutGlobal) payload.layoutGlobal = {};
 
           // Tratar Visibilidade
-          if (changes.pageVisibility) {
-            if (!payload.layoutGlobal) payload.layoutGlobal = {};
-            (payload.layoutGlobal as Record<string, unknown>).pageVisibility =
-              changes.pageVisibility;
-          }
-          if (changes.visibleSections) {
-            if (!payload.layoutGlobal) payload.layoutGlobal = {};
-            (payload.layoutGlobal as Record<string, unknown>).visibleSections =
-              changes.visibleSections;
-          }
+          (payload.layoutGlobal as Record<string, unknown>).pageVisibility =
+            settings.pageVisibility;
+          (payload.layoutGlobal as Record<string, unknown>).visibleSections =
+            settings.visibleSections;
 
           // Tratar Passos de Agendamento
-          if (changes.bookingSteps) {
-            console.log(">>> [API_SAVE] Mapeando bookingSteps para appointmentFlow:", changes.bookingSteps);
-            
-            // 1. Normalização Recursiva antes de mapear
-            const cleanBookingSteps = normalizePersistenceData(changes.bookingSteps) as Record<string, BookingStepSettings>;
-            const serviceCardBg =
-              cleanBookingSteps.service?.cardBgColor ||
-              (cleanBookingSteps.service?.appearance as Record<string, unknown> | undefined)
-                ?.cardBgColor;
+          console.log(
+            ">>> [API_SAVE] Mapeando bookingSteps para appointmentFlow:",
+            sanitizedBookingSteps,
+          );
 
-            payload.appointmentFlow = {
-              steps: {
-                ...(cleanBookingSteps.service ? { 
-                  service: {
-                    ...cleanBookingSteps.service,
-                    // Mapeamento de Dualidade (camelCase -> snake_case)
-                    card_bg_color: cleanBookingSteps.service.cardBgColor,
-                    card_background_color: cleanBookingSteps.service.cardBgColor,
-                    cardBackgroundColor: cleanBookingSteps.service.cardBgColor,
-                    button_color: cleanBookingSteps.service.buttonColor,
-                    title_color: cleanBookingSteps.service.titleColor,
-                    subtitle_color: cleanBookingSteps.service.subtitleColor,
-                    accent_color: cleanBookingSteps.service.accentColor,
-                    bg_color: cleanBookingSteps.service.bgColor,
-                    // Suporte para cardConfig exigido pelo backend no fluxo de agendamento
-                    cardConfig: {
-                      backgroundColor: cleanBookingSteps.service.cardBgColor || "",
-                      cardBackgroundColor: cleanBookingSteps.service.cardBgColor || "",
-                      background_color: cleanBookingSteps.service.cardBgColor || "",
-                      card_background_color: cleanBookingSteps.service.cardBgColor || "",
-                    }
-                  } 
-                } : {}),
-                ...(cleanBookingSteps.date ? { 
-                  date: {
-                    ...cleanBookingSteps.date,
-                    // Mapeamento de Dualidade
-                    card_bg_color: cleanBookingSteps.date.cardBgColor,
-                    card_background_color: cleanBookingSteps.date.cardBgColor,
-                    cardBackgroundColor: cleanBookingSteps.date.cardBgColor,
-                    title_color: cleanBookingSteps.date.titleColor,
-                    subtitle_color: cleanBookingSteps.date.subtitleColor,
-                    accent_color: cleanBookingSteps.date.accentColor,
-                    bg_color: cleanBookingSteps.date.bgColor,
-                    // Suporte para cardConfig
-                    cardConfig: {
-                      backgroundColor: cleanBookingSteps.date.cardBgColor || "",
-                      cardBackgroundColor: cleanBookingSteps.date.cardBgColor || "",
-                      background_color: cleanBookingSteps.date.cardBgColor || "",
-                      card_background_color: cleanBookingSteps.date.cardBgColor || "",
-                    }
-                  } 
-                } : {}),
-                ...(cleanBookingSteps.time ? { 
-                  time: {
-                    ...cleanBookingSteps.time,
-                    // Mapeamento de Dualidade
-                    card_bg_color: cleanBookingSteps.time.cardBgColor,
-                    card_background_color: cleanBookingSteps.time.cardBgColor,
-                    cardBackgroundColor: cleanBookingSteps.time.cardBgColor,
-                    title_color: cleanBookingSteps.time.titleColor,
-                    subtitle_color: cleanBookingSteps.time.subtitleColor,
-                    accent_color: cleanBookingSteps.time.accentColor,
-                    bg_color: cleanBookingSteps.time.bgColor,
-                    // Suporte para cardConfig
-                    cardConfig: {
-                      backgroundColor: cleanBookingSteps.time.cardBgColor || "",
-                      cardBackgroundColor: cleanBookingSteps.time.cardBgColor || "",
-                      background_color: cleanBookingSteps.time.cardBgColor || "",
-                      card_background_color: cleanBookingSteps.time.cardBgColor || "",
-                    }
-                  } 
-                } : {}),
-                ...(cleanBookingSteps.form ? { 
-                  form: {
-                    ...cleanBookingSteps.form,
-                    // Mapeamento de Dualidade
-                    card_bg_color: cleanBookingSteps.form.cardBgColor,
-                    card_background_color: cleanBookingSteps.form.cardBgColor,
-                    cardBackgroundColor: cleanBookingSteps.form.cardBgColor,
-                    title_color: cleanBookingSteps.form.titleColor,
-                    subtitle_color: cleanBookingSteps.form.subtitleColor,
-                    accent_color: cleanBookingSteps.form.accentColor,
-                    bg_color: cleanBookingSteps.form.bgColor,
-                    // Suporte para cardConfig
-                    cardConfig: {
-                      backgroundColor: cleanBookingSteps.form.cardBgColor || "",
-                      cardBackgroundColor: cleanBookingSteps.form.cardBgColor || "",
-                      background_color: cleanBookingSteps.form.cardBgColor || "",
-                      card_background_color: cleanBookingSteps.form.cardBgColor || "",
-                    }
-                  } 
-                } : {}),
-                ...(cleanBookingSteps.confirmation ? { 
-                  confirmation: {
-                    ...cleanBookingSteps.confirmation,
-                    // Mapeamento de Dualidade
-                    card_bg_color: cleanBookingSteps.confirmation.cardBgColor,
-                    card_background_color: cleanBookingSteps.confirmation.cardBgColor,
-                    cardBackgroundColor: cleanBookingSteps.confirmation.cardBgColor,
-                    title_color: cleanBookingSteps.confirmation.titleColor,
-                    subtitle_color: cleanBookingSteps.confirmation.subtitleColor,
-                    accent_color: cleanBookingSteps.confirmation.accentColor,
-                    bg_color: cleanBookingSteps.confirmation.bgColor,
-                    // Suporte para cardConfig
-                    cardConfig: {
-                      backgroundColor: cleanBookingSteps.confirmation.cardBgColor || "",
-                      cardBackgroundColor: cleanBookingSteps.confirmation.cardBgColor || "",
-                      background_color: cleanBookingSteps.confirmation.cardBgColor || "",
-                      card_background_color: cleanBookingSteps.confirmation.cardBgColor || "",
-                    }
-                  } 
-                } : {}),
-              }
+          // 1. Normalização Recursiva antes de mapear
+          const serviceCardBg =
+            cleanBookingSteps.service?.cardBgColor ||
+            (cleanBookingSteps.service?.appearance as Record<string, unknown> | undefined)
+              ?.cardBgColor;
+
+          payload.appointmentFlow = {
+            steps: {
+              ...(cleanBookingSteps.service
+                ? {
+                    service: {
+                      ...cleanBookingSteps.service,
+                      // Mapeamento de Dualidade (camelCase -> snake_case)
+                      card_bg_color: cleanBookingSteps.service.cardBgColor,
+                      card_background_color: cleanBookingSteps.service.cardBgColor,
+                      cardBackgroundColor: cleanBookingSteps.service.cardBgColor,
+                      button_color: cleanBookingSteps.service.buttonColor,
+                      title_color: cleanBookingSteps.service.titleColor,
+                      subtitle_color: cleanBookingSteps.service.subtitleColor,
+                      accent_color: cleanBookingSteps.service.accentColor,
+                      bg_color: cleanBookingSteps.service.bgColor,
+                      // Suporte para cardConfig exigido pelo backend no fluxo de agendamento
+                      cardConfig: {
+                        backgroundColor: cleanBookingSteps.service.cardBgColor || "",
+                        cardBackgroundColor: cleanBookingSteps.service.cardBgColor || "",
+                        background_color: cleanBookingSteps.service.cardBgColor || "",
+                        card_background_color: cleanBookingSteps.service.cardBgColor || "",
+                      },
+                    },
+                  }
+                : {}),
+              ...(cleanBookingSteps.date
+                ? {
+                    date: {
+                      ...cleanBookingSteps.date,
+                      // Mapeamento de Dualidade
+                      card_bg_color: cleanBookingSteps.date.cardBgColor,
+                      card_background_color: cleanBookingSteps.date.cardBgColor,
+                      cardBackgroundColor: cleanBookingSteps.date.cardBgColor,
+                      title_color: cleanBookingSteps.date.titleColor,
+                      subtitle_color: cleanBookingSteps.date.subtitleColor,
+                      accent_color: cleanBookingSteps.date.accentColor,
+                      bg_color: cleanBookingSteps.date.bgColor,
+                      // Suporte para cardConfig
+                      cardConfig: {
+                        backgroundColor: cleanBookingSteps.date.cardBgColor || "",
+                        cardBackgroundColor: cleanBookingSteps.date.cardBgColor || "",
+                        background_color: cleanBookingSteps.date.cardBgColor || "",
+                        card_background_color: cleanBookingSteps.date.cardBgColor || "",
+                      },
+                    },
+                  }
+                : {}),
+              ...(cleanBookingSteps.time
+                ? {
+                    time: {
+                      ...cleanBookingSteps.time,
+                      // Mapeamento de Dualidade
+                      card_bg_color: cleanBookingSteps.time.cardBgColor,
+                      card_background_color: cleanBookingSteps.time.cardBgColor,
+                      cardBackgroundColor: cleanBookingSteps.time.cardBgColor,
+                      title_color: cleanBookingSteps.time.titleColor,
+                      subtitle_color: cleanBookingSteps.time.subtitleColor,
+                      accent_color: cleanBookingSteps.time.accentColor,
+                      bg_color: cleanBookingSteps.time.bgColor,
+                      // Suporte para cardConfig
+                      cardConfig: {
+                        backgroundColor: cleanBookingSteps.time.cardBgColor || "",
+                        cardBackgroundColor: cleanBookingSteps.time.cardBgColor || "",
+                        background_color: cleanBookingSteps.time.cardBgColor || "",
+                        card_background_color: cleanBookingSteps.time.cardBgColor || "",
+                      },
+                    },
+                  }
+                : {}),
+              ...(cleanBookingSteps.form
+                ? {
+                    form: {
+                      ...cleanBookingSteps.form,
+                      // Mapeamento de Dualidade
+                      card_bg_color: cleanBookingSteps.form.cardBgColor,
+                      card_background_color: cleanBookingSteps.form.cardBgColor,
+                      cardBackgroundColor: cleanBookingSteps.form.cardBgColor,
+                      title_color: cleanBookingSteps.form.titleColor,
+                      subtitle_color: cleanBookingSteps.form.subtitleColor,
+                      accent_color: cleanBookingSteps.form.accentColor,
+                      bg_color: cleanBookingSteps.form.bgColor,
+                      // Suporte para cardConfig
+                      cardConfig: {
+                        backgroundColor: cleanBookingSteps.form.cardBgColor || "",
+                        cardBackgroundColor: cleanBookingSteps.form.cardBgColor || "",
+                        background_color: cleanBookingSteps.form.cardBgColor || "",
+                        card_background_color: cleanBookingSteps.form.cardBgColor || "",
+                      },
+                    },
+                  }
+                : {}),
+              ...(cleanBookingSteps.confirmation
+                ? {
+                    confirmation: {
+                      ...cleanBookingSteps.confirmation,
+                      // Mapeamento de Dualidade
+                      card_bg_color: cleanBookingSteps.confirmation.cardBgColor,
+                      card_background_color:
+                        cleanBookingSteps.confirmation.cardBgColor,
+                      cardBackgroundColor:
+                        cleanBookingSteps.confirmation.cardBgColor,
+                      title_color: cleanBookingSteps.confirmation.titleColor,
+                      subtitle_color: cleanBookingSteps.confirmation.subtitleColor,
+                      accent_color: cleanBookingSteps.confirmation.accentColor,
+                      bg_color: cleanBookingSteps.confirmation.bgColor,
+                      // Suporte para cardConfig
+                      cardConfig: {
+                        backgroundColor:
+                          cleanBookingSteps.confirmation.cardBgColor || "",
+                        cardBackgroundColor:
+                          cleanBookingSteps.confirmation.cardBgColor || "",
+                        background_color:
+                          cleanBookingSteps.confirmation.cardBgColor || "",
+                        card_background_color:
+                          cleanBookingSteps.confirmation.cardBgColor || "",
+                      },
+                    },
+                  }
+                : {}),
+            },
+          };
+          if (cleanBookingSteps.service) {
+            const appointmentFlow = payload.appointmentFlow as Record<
+              string,
+              unknown
+            >;
+            appointmentFlow.step1Services = {
+              cardConfig: {
+                backgroundColor: (serviceCardBg as string) || "#ffffff",
+                cardBackgroundColor: (serviceCardBg as string) || "#ffffff",
+                background_color: (serviceCardBg as string) || "#ffffff",
+                card_background_color: (serviceCardBg as string) || "#ffffff",
+              },
             };
-            if (cleanBookingSteps.service) {
-              const appointmentFlow = payload.appointmentFlow as Record<string, unknown>;
-              appointmentFlow.step1Services = {
-                cardConfig: {
-                  backgroundColor: (serviceCardBg as string) || "#ffffff",
-                  cardBackgroundColor: (serviceCardBg as string) || "#ffffff",
-                  background_color: (serviceCardBg as string) || "#ffffff",
-                  card_background_color: (serviceCardBg as string) || "#ffffff",
-                },
-              };
-            }
-            
-            // Adicionalmente, enviamos como bookingSteps para garantir compatibilidade
-            payload.bookingSteps = cleanBookingSteps;
           }
+
+          // Adicionalmente, enviamos como bookingSteps para garantir compatibilidade
+          payload.bookingSteps = cleanBookingSteps;
 
           // Limpar o payload de campos undefined para não quebrar o deepMerge do back
           const cleanPayload = JSON.parse(JSON.stringify(payload));
 
+          // Sanitiza o payload antes de enviar para o backend
+          const sanitizedPayload = sanitizePayload(cleanPayload);
+          console.log("PAYLOAD_READY", sanitizedPayload);
+          console.log(
+            ">>> [PAYLOAD FINAL]",
+            JSON.stringify(sanitizedPayload, null, 2),
+          );
+
+          // 12. LOG DE AUDITORIA (Solicitado pelo usuário: Detalhado antes da chamada API)
+          console.log(">>> [AUDIT_LOG] Iniciando persistência de Full Sync no Backend", {
+            companyId,
+            timestamp: new Date().toISOString(),
+            payloadSections: Object.keys(sanitizedPayload.sections || {}),
+            payloadLayout: Object.keys(sanitizedPayload.layoutGlobal || {}),
+            payloadAppointment: Object.keys(sanitizedPayload.appointmentFlow || {}),
+            fullPayload: sanitizedPayload
+          });
+
           const fresh = await siteCustomizerService.saveDraftCustomization(
             companyId,
-            cleanPayload,
+            sanitizedPayload,
           );
 
           if (typeof window !== "undefined") {
             if (fresh) {
-              console.log(">>> [SYNC] Salvamento bem-sucedido. Sincronizando estado com resposta do banco.");
-              
-              const safeWithHomeValues = ensureValuesCardBg(
-                fresh,
-                settings.homeValuesSettings,
-                "homeValuesSettings",
-              );
-              const safeWithAboutUsValues = ensureValuesCardBg(
-                safeWithHomeValues,
-                settings.aboutUsValuesSettings,
-                "aboutUsValuesSettings",
-              );
-              const safeWithServices = ensureServicesCardBg(
-                safeWithAboutUsValues,
-                settings.servicesSettings,
-              );
-              const safeFresh = ensureGalleryPreviewSettings(
-                safeWithServices,
-                settings.gallerySettings,
-              );
-
-              clearAllCustomizationCache();
-              clearLocalDrafts();
-              loadExternalConfig(safeFresh, true);
-              refreshData();
+              // REMOVIDO: clearLocalDrafts(); 
+              // Mantemos o localStorage para evitar que o preview resete para o padrão (rosa) 
+              // enquanto o studio.config do banco não é atualizado no frontend.
+              // O estado isDirty=false já garante que não haverá aviso de alterações não salvas.
               
               // 4. ATUALIZAÇÃO DO ESTADO LAST_SAVED (Sempre que o save no banco der certo)
-              setters.setLastSavedHero(settings.heroSettings);
-              setters.setLastSavedAboutHero(settings.aboutHeroSettings);
-              setters.setLastSavedStory(settings.storySettings);
-              setters.setLastSavedTeam(settings.teamSettings);
-              setters.setLastSavedTestimonials(settings.testimonialsSettings);
+              setters.setLastSavedHero(sanitizedHero);
+              setters.setLastSavedAboutHero(sanitizedAboutHero);
+              setters.setLastSavedStory(sanitizedStory);
+              setters.setLastSavedTeam(sanitizedTeam);
+              setters.setLastSavedTestimonials(sanitizedTestimonials);
               setters.setLastSavedFont(settings.fontSettings);
               setters.setLastSavedColor(settings.colorSettings);
-              setters.setLastSavedServices(settings.servicesSettings);
-              setters.setLastSavedHomeValues(settings.homeValuesSettings);
-              setters.setLastSavedAboutUsValues(settings.aboutUsValuesSettings);
-              setters.setLastSavedGallery(settings.gallerySettings);
-              setters.setLastSavedGalleryPage(settings.galleryPageSettings);
-              setters.setLastSavedCTA(settings.ctaSettings);
-              setters.setLastSavedHeader(settings.headerSettings);
-              setters.setLastSavedFooter(settings.footerSettings);
+              setters.setLastSavedServices(sanitizedServices);
+              setters.setLastSavedHomeValues(sanitizedHomeValues);
+              setters.setLastSavedAboutUsValues(sanitizedAboutUsValues);
+              setters.setLastSavedGallery(sanitizedGalleryPreview);
+              setters.setLastSavedGalleryPage(sanitizedGalleryPage);
+              setters.setLastSavedCTA(sanitizedCta);
+              setters.setLastSavedHeader(sanitizedHeader);
+              setters.setLastSavedFooter(sanitizedFooter);
               setters.setLastSavedPageVisibility(settings.pageVisibility);
               setters.setLastSavedVisibleSections(settings.visibleSections);
-              setters.setLastSavedBookingService(settings.bookingServiceSettings);
-              setters.setLastSavedBookingDate(settings.bookingDateSettings);
-              setters.setLastSavedBookingTime(settings.bookingTimeSettings);
-              setters.setLastSavedBookingForm(settings.bookingFormSettings);
-              setters.setLastSavedBookingConfirmation(settings.bookingConfirmationSettings);
+              setters.setLastSavedBookingService(cleanBookingSteps.service);
+              setters.setLastSavedBookingDate(cleanBookingSteps.date);
+              setters.setLastSavedBookingTime(cleanBookingSteps.time);
+              setters.setLastSavedBookingForm(cleanBookingSteps.form);
+              setters.setLastSavedBookingConfirmation(
+                cleanBookingSteps.confirmation,
+              );
               
               setIsDirty(false);
 
@@ -1492,28 +1435,28 @@ export function useEditorApi({
         );
         
         // Em modo local, atualizamos o lastSaved para refletir o que foi salvo no localStorage
-        setters.setLastSavedHero(settings.heroSettings);
-        setters.setLastSavedAboutHero(settings.aboutHeroSettings);
-        setters.setLastSavedStory(settings.storySettings);
-        setters.setLastSavedTeam(settings.teamSettings);
-        setters.setLastSavedTestimonials(settings.testimonialsSettings);
+        setters.setLastSavedHero(sanitizedHero);
+        setters.setLastSavedAboutHero(sanitizedAboutHero);
+        setters.setLastSavedStory(sanitizedStory);
+        setters.setLastSavedTeam(sanitizedTeam);
+        setters.setLastSavedTestimonials(sanitizedTestimonials);
         setters.setLastSavedFont(settings.fontSettings);
         setters.setLastSavedColor(settings.colorSettings);
-        setters.setLastSavedServices(settings.servicesSettings);
-        setters.setLastSavedHomeValues(settings.homeValuesSettings);
-        setters.setLastSavedAboutUsValues(settings.aboutUsValuesSettings);
-        setters.setLastSavedGallery(settings.gallerySettings);
-        setters.setLastSavedGalleryPage(settings.galleryPageSettings);
-        setters.setLastSavedCTA(settings.ctaSettings);
-        setters.setLastSavedHeader(settings.headerSettings);
-        setters.setLastSavedFooter(settings.footerSettings);
+        setters.setLastSavedServices(sanitizedServices);
+        setters.setLastSavedHomeValues(sanitizedHomeValues);
+        setters.setLastSavedAboutUsValues(sanitizedAboutUsValues);
+        setters.setLastSavedGallery(sanitizedGalleryPreview);
+        setters.setLastSavedGalleryPage(sanitizedGalleryPage);
+        setters.setLastSavedCTA(sanitizedCta);
+        setters.setLastSavedHeader(sanitizedHeader);
+        setters.setLastSavedFooter(sanitizedFooter);
         setters.setLastSavedPageVisibility(settings.pageVisibility);
         setters.setLastSavedVisibleSections(settings.visibleSections);
-        setters.setLastSavedBookingService(settings.bookingServiceSettings);
-        setters.setLastSavedBookingDate(settings.bookingDateSettings);
-        setters.setLastSavedBookingTime(settings.bookingTimeSettings);
-        setters.setLastSavedBookingForm(settings.bookingFormSettings);
-        setters.setLastSavedBookingConfirmation(settings.bookingConfirmationSettings);
+        setters.setLastSavedBookingService(cleanBookingSteps.service);
+        setters.setLastSavedBookingDate(cleanBookingSteps.date);
+        setters.setLastSavedBookingTime(cleanBookingSteps.time);
+        setters.setLastSavedBookingForm(cleanBookingSteps.form);
+        setters.setLastSavedBookingConfirmation(cleanBookingSteps.confirmation);
 
         toast({
           title: "Site salvo localmente!",
@@ -1529,14 +1472,11 @@ export function useEditorApi({
     [
       companyId,
       isPublishing,
-      getChangedSettings,
-      clearLocalDrafts,
       setters,
       settings,
+      lastSaved,
       toast,
       hasUnsavedGlobalChanges,
-      refreshData,
-      loadExternalConfig,
       setIsDirty,
     ],
   );

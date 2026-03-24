@@ -2,19 +2,21 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import {
-  SectionBackground,
-  type SectionBackgroundSettings,
-} from "@/components/admin/site_editor/components/SectionBackground";
-import { SessionWrapper } from "@/components/admin/site_editor/components/SessionWrapper";
-import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { useStudio } from "@/context/studio-context";
 import {
+  getStorageKey,
   getStorySettings,
   type StorySettings,
   sanitizeColor,
+  sanitizeSection,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
+import {
+  SectionBackground,
+  type SectionBackgroundSettings,
+} from "./admin/site_editor/components/SectionBackground";
+import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
+import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 const safeString = (val: unknown, defaultStr: string = ""): string => {
   if (typeof val === "string") return val;
@@ -39,7 +41,7 @@ const safeString = (val: unknown, defaultStr: string = ""): string => {
     
     try {
       return JSON.stringify(val);
-    } catch (e) {
+    } catch (_e) {
       return defaultStr;
     }
   }
@@ -164,7 +166,20 @@ export function StorySection() {
     };
 
     const handleUpdate = () => {
-      setSettings(getStorySettings());
+      if (typeof window === "undefined") return;
+      const raw = localStorage.getItem(getStorageKey("storySettings"));
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          setSettings((prev) => {
+            const merged = prev
+              ? sanitizeSection(parsed, prev)
+              : sanitizeSection(parsed, {});
+            return merged as StorySettings;
+          });
+        }
+      } catch (_e) {}
     };
     const handleDataReady = () => {
       const cfg = studioConfig as SiteConfigData | undefined;

@@ -15,6 +15,7 @@ import type {
 } from "@/lib/booking-data";
 
 export interface LayoutGlobalSettings {
+  sections?: Record<string, Record<string, unknown>>;
   siteColors?: ColorSettings;
   cores_base?: ColorSettings;
   fontes?: FontSettings;
@@ -48,6 +49,7 @@ export interface LayoutGlobalSettings {
 export interface SiteConfigData {
   [key: string]: unknown;
   home?: Record<string, unknown>;
+  sections?: Record<string, Record<string, unknown>>;
   hero?: HeroSettings;
   aboutHero?: HeroSettings;
   story?: StorySettings;
@@ -69,10 +71,12 @@ export interface SiteConfigData {
   siteCustomization?: {
     layoutGlobal?: LayoutGlobalSettings;
     layout_global?: LayoutGlobalSettings;
+    sections?: Record<string, Record<string, unknown>>;
   };
   site_customization?: {
     layoutGlobal?: LayoutGlobalSettings;
     layout_global?: LayoutGlobalSettings;
+    sections?: Record<string, Record<string, unknown>>;
   };
   bookingSteps?: {
     service?: BookingStepSettings;

@@ -60,3 +60,11 @@ Ao alterar a cor de fundo de uma seção, a cor é aplicada a todos os elementos
 
 ### Soluções
 - [ ] Corrigir dependências do linter no `use-editor-api.ts`.
+
+---
+
+## 5. Validações recentes (2026-03-23)
+
+- [x] Validada a proteção isDirty na sincronização do studio.config em `use-editor-state.ts`.
+- [x] Confirmado o mapeamento hero_bg e values_bg nos editores e no `use-editor-sync.ts`.
+- [x] Script `scripts/bundle-context.js` executado e `gemini-context.md` gerado.

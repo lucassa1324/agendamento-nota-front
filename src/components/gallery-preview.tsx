@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Carousel,
@@ -13,10 +13,11 @@ import {
 } from "@/components/ui/carousel";
 import { useStudio } from "@/context/studio-context";
 import {
+  defaultGallerySettings,
   type GallerySettings,
-  getGallerySettings,
   getPageVisibility,
-  getStorageKey,
+  normalizePayload,
+  SECTION_IDS,
   sanitizeColor,
 } from "@/lib/booking-data";
 import { type GalleryItem, galleryService } from "@/lib/gallery-service";
@@ -90,6 +91,22 @@ export function GalleryPreview() {
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
   );
+  const settingsKey = useMemo(() => {
+    if (!settings) return "gallery-preview";
+    return JSON.stringify({
+      title: settings.title,
+      subtitle: settings.subtitle,
+      bgType: settings.bgType,
+      bgColor: settings.bgColor,
+      bgImage: settings.bgImage,
+      layout: settings.layout,
+      titleColor: settings.titleColor,
+      subtitleColor: settings.subtitleColor,
+      buttonColor: settings.buttonColor,
+      buttonTextColor: settings.buttonTextColor,
+      cardBgColor: settings.cardBgColor,
+    });
+  }, [settings]);
 
   const normalizeGallerySettings = useCallback(
     (configGallery: Record<string, unknown>): GallerySettings => {
@@ -164,18 +181,10 @@ export function GalleryPreview() {
   const getConfigGallery = useCallback(
     (config?: Record<string, unknown> | null) => {
       if (!config) return undefined;
-      const siteCustomization = (config.siteCustomization ||
-        config.site_customization) as Record<string, unknown> | undefined;
-      const root = siteCustomization || config;
-      const layoutGlobal = (root.layoutGlobal ||
-        root.layout_global) as Record<string, unknown> | undefined;
-      const home = root.home as Record<string, unknown> | undefined;
-      return (root.galleryPreviewSettings ||
-        home?.galleryPreview ||
-        home?.gallerySection ||
-        layoutGlobal?.galleryPreview ||
-        layoutGlobal?.gallerySection ||
-        layoutGlobal?.galleryPreviewSettings) as Record<string, unknown> | undefined;
+      const normalized = normalizePayload(config as SiteConfigData);
+      return normalized.sections?.[SECTION_IDS.homeGallery] as
+        | Record<string, unknown>
+        | undefined;
     },
     [],
   );
@@ -205,19 +214,16 @@ export function GalleryPreview() {
         setIsLoading(true);
       }
 
-      // PRIORIDADE: Modo Preview (localStorage) > Banco de Dados (studio.config)
+      // PRIORIDADE: Modo Preview (estado injetado pelo editor) > Banco de Dados
       if (isPreviewMode) {
         if (!settingsRef.current) {
-          const stored = localStorage.getItem(getStorageKey("gallerySettings"));
-          if (stored) {
-            try {
-              const parsed = JSON.parse(stored) as Record<string, unknown>;
-              setSettings(normalizeGallerySettings(parsed));
-            } catch {
-              setSettings(getGallerySettings());
-            }
+          const configGallery = getConfigGallery(
+            studio?.config as Record<string, unknown> | null,
+          );
+          if (configGallery) {
+            setSettings(normalizeGallerySettings(configGallery));
           } else {
-            setSettings(getGallerySettings());
+            setSettings(normalizeGallerySettings(defaultGallerySettings));
           }
         }
         setPageVisibility(getPageVisibility());
@@ -251,7 +257,9 @@ export function GalleryPreview() {
                     show_in_home?: boolean;
                     showOnHome?: boolean;
                   };
-                  return item.showInHome || item.show_in_home || item.showOnHome;
+                  return (
+                    item.showInHome || item.show_in_home || item.showOnHome
+                  );
                 })
               : [];
 
@@ -313,7 +321,7 @@ export function GalleryPreview() {
         setSettings(
           configGallery
             ? normalizeGallerySettings(configGallery)
-            : getGallerySettings(),
+            : normalizeGallerySettings(defaultGallerySettings),
         );
 
         setPageVisibility(getPageVisibility());
@@ -355,7 +363,7 @@ export function GalleryPreview() {
             (incoming.appearance as Record<string, unknown>) || {};
           const incomingContent =
             (incoming.content as Record<string, unknown>) || {};
-          
+
           const sanitized = {
             ...incoming,
             bgColor:
@@ -389,11 +397,11 @@ export function GalleryPreview() {
               ) || "",
             cardBgColor:
               sanitizeColor(
-              (incoming.cardBgColor as string) ||
-              (incomingAppearance.cardBgColor as string) ||
-              (incomingAppearance.cardBackgroundColor as string) ||
-              (incomingContent.cardBgColor as string),
-            ) || "",
+                (incoming.cardBgColor as string) ||
+                  (incomingAppearance.cardBgColor as string) ||
+                  (incomingAppearance.cardBackgroundColor as string) ||
+                  (incomingContent.cardBgColor as string),
+              ) || "",
           };
 
           setSettings((prev) =>
@@ -406,12 +414,6 @@ export function GalleryPreview() {
                   ...(sanitized as GallerySettings),
                 },
           );
-          try {
-            localStorage.setItem(
-              getStorageKey("gallerySettings"),
-              JSON.stringify(sanitized),
-            );
-          } catch {}
         }
         return;
       }
@@ -420,7 +422,9 @@ export function GalleryPreview() {
         if (isPreview && settingsRef.current) {
           return;
         }
-        const siteData = event.data.data as Record<string, unknown>;
+        const siteData = normalizePayload(
+          event.data.data as Record<string, unknown>,
+        ) as Record<string, unknown>;
         const configGallery = getConfigGallery(siteData);
         if (configGallery) {
           setSettings(normalizeGallerySettings(configGallery));
@@ -432,12 +436,17 @@ export function GalleryPreview() {
         event.data.type === "REFRESH_GALLERY" ||
         (isPreview && event.data.type === "DataReady")
       ) {
-        console.log(">>> [GALLERY_PREVIEW] Refresh requested via:", event.data.type);
+        console.log(
+          ">>> [GALLERY_PREVIEW] Refresh requested via:",
+          event.data.type,
+        );
         if (isPreview) {
           // Se for DataReady no preview, NÃO chamamos loadData se já temos configurações,
           // pois isso causaria o reset/flicker. O HeroSection bloqueia isso.
           if (event.data.type === "DataReady" && settingsRef.current) {
-            console.log("[GALLERY_SYNC] Modo Preview detectado. Bloqueando sobreposição pelo banco.");
+            console.log(
+              "[GALLERY_SYNC] Modo Preview detectado. Bloqueando sobreposição pelo banco.",
+            );
             return;
           }
           loadData(true);
@@ -528,6 +537,7 @@ export function GalleryPreview() {
 
   return (
     <section
+      key={settingsKey}
       id="gallery-preview"
       className={cn(
         "py-20 md:py-32 relative overflow-hidden transition-all duration-500",
@@ -597,7 +607,8 @@ export function GalleryPreview() {
                       <div
                         className="aspect-square rounded-lg overflow-hidden relative group"
                         style={{
-                          backgroundColor: settings.cardBgColor || "transparent",
+                          backgroundColor:
+                            settings.cardBgColor || "transparent",
                         }}
                       >
                         <Image

@@ -46,11 +46,14 @@ interface UseEditorConfigLoaderProps {
   slug?: string | null;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
 const normalizeSection = <T extends Record<string, unknown>>(
   value: T | undefined,
   defaultValue?: T,
 ): T | undefined => {
-  if (!value) return defaultValue;
+  if (!value || !isRecord(value)) return defaultValue;
 
   // Deep merge com o valor padrão para garantir que todos os campos existam
   const merged = defaultValue 
@@ -73,10 +76,10 @@ const normalizeSection = <T extends Record<string, unknown>>(
     return val ? String(val) : defaultStr;
   };
 
-  const content = (merged.content as Record<string, unknown>) || {};
-  const appearance = (merged.appearance as Record<string, unknown>) || {};
-  const cardConfig = (merged.cardConfig as Record<string, unknown>) || {};
-  const itemsStyle = (merged.itemsStyle as Record<string, unknown>) || {};
+  const content = isRecord(merged.content) ? merged.content : {};
+  const appearance = isRecord(merged.appearance) ? merged.appearance : {};
+  const cardConfig = isRecord(merged.cardConfig) ? merged.cardConfig : {};
+  const itemsStyle = isRecord(merged.itemsStyle) ? merged.itemsStyle : {};
 
   const bgImage = safeString(appearance.backgroundImageUrl || merged.bgImage || "");
 
@@ -133,8 +136,11 @@ const normalizeSection = <T extends Record<string, unknown>>(
   return flattened as T;
 };
 
-const normalizeHeroSettings = (value?: HeroSettings, defaultValue: HeroSettings = defaultHeroSettings) => {
-  if (!value) return defaultValue;
+const normalizeHeroSettings = (
+  value?: HeroSettings,
+  defaultValue: HeroSettings = defaultHeroSettings,
+) => {
+  if (!value || !isRecord(value)) return defaultValue;
 
   const base = normalizeSection(value, defaultValue) || value;
 
@@ -167,14 +173,16 @@ const normalizeValuesSettings = (
   sectionKey: string,
   slug?: string | null,
 ) => {
-  const itemsStyle = (valuesSource as Record<string, unknown>)
-    ?.itemsStyle as Record<string, unknown> | undefined;
+  const valuesRecord = isRecord(valuesSource)
+    ? (valuesSource as Record<string, unknown>)
+    : undefined;
+  const itemsStyle = valuesRecord?.itemsStyle as Record<string, unknown> | undefined;
   const itemsStyleCardBg =
     (itemsStyle?.itemBackgroundColor as string) || "";
     
-  const content = (valuesSource as Record<string, unknown>)?.content as Record<string, unknown> | undefined;
+  const content = valuesRecord?.content as Record<string, unknown> | undefined;
   const contentCardBg = content?.cardBgColor as string || "";
-  const appearance = (valuesSource as Record<string, unknown>)?.appearance as Record<string, unknown> | undefined;
+  const appearance = valuesRecord?.appearance as Record<string, unknown> | undefined;
   const appearanceCardBg =
     (appearance?.cardBgColor as string) ||
     (appearance?.cardBackgroundColor as string) ||
@@ -182,17 +190,16 @@ const normalizeValuesSettings = (
 
   const valuesSourceWithCardBg = (itemsStyleCardBg || contentCardBg || appearanceCardBg)
     ? {
-        ...valuesSource,
-        cardBgColor:
-          (valuesSource as Record<string, unknown>).cardBgColor as
-            | string
-            | undefined || contentCardBg || appearanceCardBg || itemsStyleCardBg,
+        ...valuesRecord,
+        cardBgColor: (valuesRecord?.cardBgColor as string | undefined) ||
+          contentCardBg ||
+          appearanceCardBg ||
+          itemsStyleCardBg,
         cardBackgroundColor:
-          (valuesSource as Record<string, unknown>)
-            .cardBackgroundColor as string | undefined ||
+          (valuesRecord?.cardBackgroundColor as string | undefined) ||
           contentCardBg || appearanceCardBg || itemsStyleCardBg,
       }
-    : (valuesSource || defaultValue);
+    : (valuesRecord || defaultValue);
 
   const base = normalizeSection(
     getSectionValue(
@@ -205,21 +212,16 @@ const normalizeValuesSettings = (
   );
 
   const sourceBgColor =
-    (valuesSource as Record<string, unknown>)?.bgColor ||
-    (valuesSource as Record<string, unknown>)?.backgroundColor ||
-    ((valuesSource as Record<string, unknown>)?.appearance as Record<
-      string,
-      unknown
-    >)?.backgroundColor;
+    (valuesRecord?.bgColor as string | undefined) ||
+    (valuesRecord?.backgroundColor as string | undefined) ||
+    (valuesRecord?.appearance as Record<string, unknown>)?.backgroundColor;
 
   const sourceCardBgColor =
-    (valuesSource as Record<string, unknown>)?.cardBgColor ||
-    (valuesSource as Record<string, unknown>)?.cardBackgroundColor ||
-    (valuesSource as Record<string, unknown>)?.card_background_color ||
-    ((valuesSource as Record<string, unknown>)
-      ?.cardConfig as Record<string, unknown>)?.backgroundColor ||
-    ((valuesSource as Record<string, unknown>)
-      ?.cardConfig as Record<string, unknown>)?.cardBackgroundColor ||
+    (valuesRecord?.cardBgColor as string | undefined) ||
+    (valuesRecord?.cardBackgroundColor as string | undefined) ||
+    (valuesRecord as Record<string, unknown> | undefined)?.card_background_color ||
+    (valuesRecord?.cardConfig as Record<string, unknown>)?.backgroundColor ||
+    (valuesRecord?.cardConfig as Record<string, unknown>)?.cardBackgroundColor ||
     appearanceCardBg ||
     contentCardBg ||
     itemsStyleCardBg;
@@ -228,19 +230,21 @@ const normalizeValuesSettings = (
     sourceBgColor && sourceBgColor !== sourceCardBgColor,
   );
 
+  const baseAppearance = base && isRecord(base.appearance) ? base.appearance : {};
   if (!hasExplicitBg && base?.cardBgColor && base.bgColor === base.cardBgColor) {
     return {
       ...base,
       bgColor: "",
-      appearance: { ...base.appearance, backgroundColor: "" },
+      appearance: { ...baseAppearance, backgroundColor: "" },
     };
   }
 
-  if (slug === "aura.teste" && (!base?.items || base.items.length < 5)) {
+  const baseItems = base && Array.isArray(base.items) ? base.items : undefined;
+  if (slug === "aura.teste" && (!baseItems || baseItems.length < 5)) {
     return {
       ...defaultValue,
       ...base,
-      items: defaultValue.items,
+      items: defaultValue?.items,
     };
   }
 

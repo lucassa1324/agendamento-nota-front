@@ -1,21 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useStudio } from "@/context/studio-context";
-import type {
-  BookingStepSettings,
-  ColorSettings,
-  CTASettings,
-  FontSettings,
-  FooterSettings,
-  GallerySettings,
-  HeaderSettings,
-  HeroSettings,
-  ServicesSettings,
-  StorySettings,
-  TeamSettings,
-  TestimonialsSettings,
-  ValuesSettings,
-} from "@/lib/booking-data";
 import {
+  type BookingStepSettings,
+  type ColorSettings,
+  type CTASettings,
   defaultAboutHeroSettings,
   defaultBookingConfirmationSettings,
   defaultBookingDateSettings,
@@ -34,8 +22,42 @@ import {
   defaultTeamSettings,
   defaultTestimonialsSettings,
   defaultValuesSettings,
+  type FontSettings,
+  type FooterSettings,
+  type GallerySettings,
+  getAboutHeroSettings,
+  getAboutUsValuesSettings,
+  getBookingConfirmationSettings,
+  getBookingDateSettings,
+  getBookingFormSettings,
+  getBookingServiceSettings,
+  getBookingTimeSettings,
+  getColorSettings,
+  getCTASettings,
+  getFontSettings,
+  getFooterSettings,
+  getGalleryPageSettings,
+  getGallerySettings,
+  getHeaderSettings,
+  getHeroSettings,
+  getHomeValuesSettings,
+  getServicesSettings,
+  getStorySettings,
+  getTeamSettings,
+  getTestimonialsSettings,
+  type HeaderSettings,
+  type HeroSettings,
+  normalizePayload,
   normalizeStepSettings,
+  SECTION_IDS,
+  type SectionConfig,
+  type SectionsMap,
+  type ServicesSettings,
+  type StorySettings,
   sanitizeColor,
+  type TeamSettings,
+  type TestimonialsSettings,
+  type ValuesSettings,
 } from "@/lib/booking-data";
 import type { SiteConfigData } from "@/lib/site-config-types";
 import type { BackgroundSettings } from "../components/BackgroundEditor";
@@ -52,9 +74,41 @@ const resolveBgType = (
 
 export function useEditorState() {
   const { studio } = useStudio();
+  const createDefaultSections = useCallback(
+    (): SectionsMap => ({
+      [SECTION_IDS.homeHero]: defaultHeroSettings as SectionConfig,
+      [SECTION_IDS.aboutHero]: defaultAboutHeroSettings as SectionConfig,
+      [SECTION_IDS.homeStory]: defaultStorySettings as SectionConfig,
+      [SECTION_IDS.homeTeam]: defaultTeamSettings as SectionConfig,
+      [SECTION_IDS.homeTestimonials]:
+        defaultTestimonialsSettings as SectionConfig,
+      [SECTION_IDS.homeServices]: defaultServicesSettings as SectionConfig,
+      [SECTION_IDS.homeValues]: defaultValuesSettings as SectionConfig,
+      [SECTION_IDS.aboutValues]: defaultValuesSettings as SectionConfig,
+      [SECTION_IDS.homeGallery]: defaultGallerySettings as SectionConfig,
+      [SECTION_IDS.pageGallery]: defaultGallerySettings as SectionConfig,
+      [SECTION_IDS.homeCta]: defaultCTASettings as SectionConfig,
+      [SECTION_IDS.layoutHeader]: defaultHeaderSettings as SectionConfig,
+      [SECTION_IDS.layoutFooter]: defaultFooterSettings as SectionConfig,
+      [SECTION_IDS.bookingService]:
+        defaultBookingServiceSettings as SectionConfig,
+      [SECTION_IDS.bookingDate]: defaultBookingDateSettings as SectionConfig,
+      [SECTION_IDS.bookingTime]: defaultBookingTimeSettings as SectionConfig,
+      [SECTION_IDS.bookingForm]: defaultBookingFormSettings as SectionConfig,
+      [SECTION_IDS.bookingConfirmation]:
+        defaultBookingConfirmationSettings as SectionConfig,
+    }),
+    [],
+  );
   // Helper para sincronizar bgImage com appearance.backgroundImageUrl
   const syncBackground = useCallback(
     <T extends object>(prev: T, updates: Partial<T>): T => {
+      // Validação: aborta se updates não for um objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [SYNC_BACKGROUND] Updates inválido recebido:', updates);
+        return prev;
+      }
+      
       const state = { ...prev, ...updates } as Record<string, unknown>;
       const upds = updates as Record<string, unknown>;
       const prvs = prev as Record<string, unknown>;
@@ -920,52 +974,53 @@ export function useEditorState() {
   );
 
   const [heroSettings, setHeroSettings] =
-    useState<HeroSettings>(defaultHeroSettings);
+    useState<HeroSettings>(getHeroSettings());
   const [aboutHeroSettings, setAboutHeroSettings] = useState<HeroSettings>(
-    defaultAboutHeroSettings,
+    getAboutHeroSettings(),
   );
   const [storySettings, setStorySettings] =
-    useState<StorySettings>(defaultStorySettings);
+    useState<StorySettings>(getStorySettings());
   const [teamSettings, setTeamSettings] =
-    useState<TeamSettings>(defaultTeamSettings);
+    useState<TeamSettings>(getTeamSettings());
   const [testimonialsSettings, setTestimonialsSettings] =
-    useState<TestimonialsSettings>(defaultTestimonialsSettings);
+    useState<TestimonialsSettings>(getTestimonialsSettings());
   const [fontSettings, setFontSettings] =
-    useState<FontSettings>(defaultFontSettings);
+    useState<FontSettings>(getFontSettings());
   const [colorSettings, setColorSettings] =
-    useState<ColorSettings>(defaultColorSettings);
+    useState<ColorSettings>(getColorSettings());
   const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(
-    defaultServicesSettings,
+    getServicesSettings(),
   );
   const [homeValuesSettings, setHomeValuesSettings] = useState<ValuesSettings>(
-    defaultValuesSettings,
+    getHomeValuesSettings(),
   );
   const [aboutUsValuesSettings, setAboutUsValuesSettings] =
-    useState<ValuesSettings>(defaultValuesSettings);
+    useState<ValuesSettings>(getAboutUsValuesSettings());
   const [gallerySettings, setGallerySettings] = useState<GallerySettings>(
-    defaultGallerySettings,
+    getGallerySettings(),
   );
   const [galleryPageSettings, setGalleryPageSettings] =
-    useState<GallerySettings>(defaultGallerySettings);
+    useState<GallerySettings>(getGalleryPageSettings());
   const [ctaSettings, setCTASettings] =
-    useState<CTASettings>(defaultCTASettings);
+    useState<CTASettings>(getCTASettings());
   const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(
-    defaultHeaderSettings,
+    getHeaderSettings(),
   );
   const [footerSettings, setFooterSettings] = useState<FooterSettings>(
-    defaultFooterSettings,
+    getFooterSettings(),
   );
 
   const [bookingServiceSettings, setBookingServiceSettings] =
-    useState<BookingStepSettings>(defaultBookingServiceSettings);
+    useState<BookingStepSettings>(getBookingServiceSettings());
   const [bookingDateSettings, setBookingDateSettings] =
-    useState<BookingStepSettings>(defaultBookingDateSettings);
+    useState<BookingStepSettings>(getBookingDateSettings());
   const [bookingTimeSettings, setBookingTimeSettings] =
-    useState<BookingStepSettings>(defaultBookingTimeSettings);
+    useState<BookingStepSettings>(getBookingTimeSettings());
   const [bookingFormSettings, setBookingFormSettings] =
-    useState<BookingStepSettings>(defaultBookingFormSettings);
+    useState<BookingStepSettings>(getBookingFormSettings());
   const [bookingConfirmationSettings, setBookingConfirmationSettings] =
-    useState<BookingStepSettings>(defaultBookingConfirmationSettings);
+    useState<BookingStepSettings>(getBookingConfirmationSettings());
+  const [sections, setSections] = useState<SectionsMap>(createDefaultSections);
 
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
     {},
@@ -1037,9 +1092,8 @@ export function useEditorState() {
   const [lastSavedServices, setLastSavedServices] = useState<ServicesSettings>(
     defaultServicesSettings,
   );
-  const [lastSavedHomeValues, setLastSavedHomeValues] = useState<ValuesSettings>(
-    defaultValuesSettings,
-  );
+  const [lastSavedHomeValues, setLastSavedHomeValues] =
+    useState<ValuesSettings>(defaultValuesSettings);
   const [lastSavedAboutUsValues, setLastSavedAboutUsValues] =
     useState<ValuesSettings>(defaultValuesSettings);
   const [lastSavedGallery, setLastSavedGallery] = useState<GallerySettings>(
@@ -1080,26 +1134,139 @@ export function useEditorState() {
   const [isDirty, setIsDirty] = useState(false);
   const [isInitialSyncDone, setIsInitialSyncDone] = useState(false);
 
+  useEffect(() => {
+    setSections((prev) => ({
+      ...prev,
+      [SECTION_IDS.homeHero]: heroSettings as SectionConfig,
+      [SECTION_IDS.aboutHero]: aboutHeroSettings as SectionConfig,
+      [SECTION_IDS.homeStory]: storySettings as SectionConfig,
+      [SECTION_IDS.homeTeam]: teamSettings as SectionConfig,
+      [SECTION_IDS.homeTestimonials]: testimonialsSettings as SectionConfig,
+      [SECTION_IDS.homeServices]: servicesSettings as SectionConfig,
+      [SECTION_IDS.homeValues]: homeValuesSettings as SectionConfig,
+      [SECTION_IDS.aboutValues]: aboutUsValuesSettings as SectionConfig,
+      [SECTION_IDS.homeGallery]: gallerySettings as SectionConfig,
+      [SECTION_IDS.pageGallery]: galleryPageSettings as SectionConfig,
+      [SECTION_IDS.homeCta]: ctaSettings as SectionConfig,
+      [SECTION_IDS.layoutHeader]: headerSettings as SectionConfig,
+      [SECTION_IDS.layoutFooter]: footerSettings as SectionConfig,
+      [SECTION_IDS.bookingService]: bookingServiceSettings as SectionConfig,
+      [SECTION_IDS.bookingDate]: bookingDateSettings as SectionConfig,
+      [SECTION_IDS.bookingTime]: bookingTimeSettings as SectionConfig,
+      [SECTION_IDS.bookingForm]: bookingFormSettings as SectionConfig,
+      [SECTION_IDS.bookingConfirmation]:
+        bookingConfirmationSettings as SectionConfig,
+    }));
+  }, [
+    heroSettings,
+    aboutHeroSettings,
+    storySettings,
+    teamSettings,
+    testimonialsSettings,
+    servicesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
+    gallerySettings,
+    galleryPageSettings,
+    ctaSettings,
+    headerSettings,
+    footerSettings,
+    bookingServiceSettings,
+    bookingDateSettings,
+    bookingTimeSettings,
+    bookingFormSettings,
+    bookingConfirmationSettings,
+  ]);
+
   // 1. Adicionar um efeito que observa o studio.config para sincronização inicial reativa
   useEffect(() => {
     // Só sincronizamos se os dados do banco existirem e se o utilizador ainda não fez alterações manuais (isDirty)
     if (studio?.config && !isDirty) {
-      const config = studio.config as SiteConfigData;
-      console.log(
-        ">>> [SYNC] Sincronizando estado do editor com studio.config (isDirty=false)",
-      );
-
+      const config = normalizePayload(studio.config as SiteConfigData);
+      const sections = (config.sections || {}) as SectionsMap;
       const siteCustomization =
         config.siteCustomization || config.site_customization;
       const layoutGlobal = (siteCustomization?.layoutGlobal ||
         siteCustomization?.layout_global ||
         {}) as Record<string, unknown>;
-
       const siteColors =
         (layoutGlobal.siteColors as Record<string, unknown> | undefined) ||
         (layoutGlobal.color as Record<string, unknown> | undefined) ||
         (layoutGlobal.site_colors as Record<string, unknown> | undefined) ||
         (layoutGlobal.cores_base as Record<string, unknown> | undefined);
+      const resolvedColors: ColorSettings = {
+        primary:
+          (siteColors?.primary as string) ||
+          config.colors?.primary ||
+          defaultColorSettings.primary,
+        secondary:
+          (siteColors?.secondary as string) ||
+          config.colors?.secondary ||
+          defaultColorSettings.secondary,
+        background:
+          (siteColors?.background as string) ||
+          config.colors?.background ||
+          defaultColorSettings.background,
+        text:
+          (siteColors?.text as string) ||
+          config.colors?.text ||
+          defaultColorSettings.text,
+        accent:
+          (siteColors?.accent as string) ||
+          config.colors?.accent ||
+          defaultColorSettings.primary,
+        buttonText:
+          (siteColors?.buttonText as string) || config.colors?.buttonText || "",
+      };
+      const hasLastSavedColors =
+        lastSavedColor.primary !== defaultColorSettings.primary ||
+        lastSavedColor.secondary !== defaultColorSettings.secondary ||
+        lastSavedColor.background !== defaultColorSettings.background ||
+        lastSavedColor.text !== defaultColorSettings.text;
+      const normalizeColor = (value?: string) => sanitizeColor(value || "") || "";
+      const isConfigAlignedWithLastSaved =
+        !hasLastSavedColors ||
+        (normalizeColor(resolvedColors.primary) ===
+          normalizeColor(lastSavedColor.primary) &&
+          normalizeColor(resolvedColors.secondary) ===
+            normalizeColor(lastSavedColor.secondary) &&
+          normalizeColor(resolvedColors.background) ===
+            normalizeColor(lastSavedColor.background) &&
+          normalizeColor(resolvedColors.text) ===
+            normalizeColor(lastSavedColor.text) &&
+          normalizeColor(resolvedColors.accent || "") ===
+            normalizeColor(lastSavedColor.accent || ""));
+      if (!isConfigAlignedWithLastSaved) {
+        console.log(
+          ">>> [SYNC] studio.config desatualizado em relação ao lastSaved. Ignorando sync.",
+        );
+        return;
+      }
+
+      const heroSection =
+        sections[SECTION_IDS.homeHero] || (config.hero as SectionConfig);
+      const normalizedHero = normalizeHeroFromConfig(heroSection);
+      const hasLastSavedHero =
+        lastSavedHero.title !== defaultHeroSettings.title ||
+        lastSavedHero.bgImage !== "" ||
+        lastSavedHero.bgColor !== defaultHeroSettings.bgColor;
+      const isHeroAlignedWithLastSaved =
+        !hasLastSavedHero ||
+        (normalizeColor(normalizedHero.bgColor) ===
+          normalizeColor(lastSavedHero.bgColor) &&
+          (normalizedHero.bgType || "") === (lastSavedHero.bgType || "") &&
+          (normalizedHero.bgImage || "") === (lastSavedHero.bgImage || ""));
+      if (!isHeroAlignedWithLastSaved) {
+        console.log(
+          ">>> [SYNC] studio.config desatualizado para HERO em relação ao lastSaved. Ignorando sync.",
+        );
+        return;
+      }
+
+      console.log(
+        ">>> [SYNC] Sincronizando estado do editor com studio.config (isDirty=false)",
+      );
+
       const siteFonts =
         (layoutGlobal.fontes as Record<string, unknown> | undefined) ||
         (layoutGlobal.typography as Record<string, unknown> | undefined);
@@ -1131,66 +1298,124 @@ export function useEditorState() {
         }));
       }
 
-      if (config.hero) setHeroSettings(normalizeHeroFromConfig(config.hero));
-      if (config.about)
-        setAboutHeroSettings(normalizeHeroFromConfig(config.about));
-      if (config.story)
-        setStorySettings(normalizeStoryFromConfig(config.story));
-      if (config.team) setTeamSettings(normalizeTeamFromConfig(config.team));
-      if (config.testimonials)
-        setTestimonialsSettings(
-          normalizeTestimonialsFromConfig(config.testimonials),
-        );
-      if (config.services)
-        setServicesSettings(normalizeServicesFromConfig(config.services));
-      if (config.homeValuesSettings)
-        setHomeValuesSettings(normalizeValuesFromConfig(config.homeValuesSettings));
-      else if (config.values)
-        setHomeValuesSettings(normalizeValuesFromConfig(config.values));
-      
-      if (config.aboutUsValuesSettings)
-        setAboutUsValuesSettings(normalizeValuesFromConfig(config.aboutUsValuesSettings));
-      else if (config.values)
-        setAboutUsValuesSettings(normalizeValuesFromConfig(config.values));
+      if (heroSection) setHeroSettings(normalizeHeroFromConfig(heroSection));
 
-      if (config.galleryPreviewSettings)
-        setGallerySettings(
-          normalizeGalleryFromConfig(config.galleryPreviewSettings),
+      const aboutHeroSection =
+        sections[SECTION_IDS.aboutHero] ||
+        (config.aboutHero as SectionConfig) ||
+        (config.about as SectionConfig);
+      if (aboutHeroSection)
+        setAboutHeroSettings(normalizeHeroFromConfig(aboutHeroSection));
+
+      const storySection =
+        sections[SECTION_IDS.homeStory] || (config.story as SectionConfig);
+      if (storySection)
+        setStorySettings(normalizeStoryFromConfig(storySection));
+
+      const teamSection =
+        sections[SECTION_IDS.homeTeam] || (config.team as SectionConfig);
+      if (teamSection) setTeamSettings(normalizeTeamFromConfig(teamSection));
+
+      const testimonialsSection =
+        sections[SECTION_IDS.homeTestimonials] ||
+        (config.testimonials as SectionConfig);
+      if (testimonialsSection)
+        setTestimonialsSettings(
+          normalizeTestimonialsFromConfig(testimonialsSection),
         );
-      if (config.galleryPageSettings)
-        setGalleryPageSettings(
-          normalizeGalleryFromConfig(
-            config.galleryPageSettings,
-          ),
-        );
-      if (config.cta) setCTASettings(normalizeCTAFromConfig(config.cta));
-      if (config.header)
-        setHeaderSettings(normalizeHeaderFromConfig(config.header));
-      if (config.footer)
-        setFooterSettings(normalizeFooterFromConfig(config.footer));
+
+      const servicesSection =
+        sections[SECTION_IDS.homeServices] ||
+        (config.services as SectionConfig);
+      if (servicesSection)
+        setServicesSettings(normalizeServicesFromConfig(servicesSection));
+
+      const homeValuesSection =
+        sections[SECTION_IDS.homeValues] ||
+        (config.homeValuesSettings as SectionConfig) ||
+        (config.values as SectionConfig);
+      if (homeValuesSection)
+        setHomeValuesSettings(normalizeValuesFromConfig(homeValuesSection));
+
+      const aboutValuesSection =
+        sections[SECTION_IDS.aboutValues] ||
+        (config.aboutUsValuesSettings as SectionConfig) ||
+        (config.values as SectionConfig);
+      if (aboutValuesSection)
+        setAboutUsValuesSettings(normalizeValuesFromConfig(aboutValuesSection));
+
+      const galleryPreviewSection =
+        sections[SECTION_IDS.homeGallery] ||
+        (config.galleryPreviewSettings as SectionConfig);
+      if (galleryPreviewSection)
+        setGallerySettings(normalizeGalleryFromConfig(galleryPreviewSection));
+
+      const galleryPageSection =
+        sections[SECTION_IDS.pageGallery] ||
+        (config.galleryPageSettings as SectionConfig);
+      if (galleryPageSection)
+        setGalleryPageSettings(normalizeGalleryFromConfig(galleryPageSection));
+
+      const ctaSection =
+        sections[SECTION_IDS.homeCta] || (config.cta as SectionConfig);
+      if (ctaSection) setCTASettings(normalizeCTAFromConfig(ctaSection));
+
+      const headerSection =
+        sections[SECTION_IDS.layoutHeader] || (config.header as SectionConfig);
+      if (headerSection)
+        setHeaderSettings(normalizeHeaderFromConfig(headerSection));
+
+      const footerSection =
+        sections[SECTION_IDS.layoutFooter] || (config.footer as SectionConfig);
+      if (footerSection)
+        setFooterSettings(normalizeFooterFromConfig(footerSection));
 
       // Sincronizar bookingSteps se houver
       const bookingSteps = (config.appointmentFlow || config.bookingSteps) as
         | Record<string, BookingStepSettings | undefined>
         | undefined;
 
-      if (bookingSteps) {
-        if (bookingSteps.service) {
-          setBookingServiceSettings(
-            normalizeStepSettings(bookingSteps.service),
-          );
-        }
-        if (bookingSteps.date)
-          setBookingDateSettings(normalizeStepSettings(bookingSteps.date));
-        if (bookingSteps.time)
-          setBookingTimeSettings(normalizeStepSettings(bookingSteps.time));
-        if (bookingSteps.form)
-          setBookingFormSettings(normalizeStepSettings(bookingSteps.form));
-        if (bookingSteps.confirmation) {
-          setBookingConfirmationSettings(
-            normalizeStepSettings(bookingSteps.confirmation),
-          );
-        }
+      const bookingServiceSection =
+        sections[SECTION_IDS.bookingService] ||
+        (bookingSteps?.service as SectionConfig | undefined);
+      if (bookingServiceSection) {
+        setBookingServiceSettings(
+          normalizeStepSettings(bookingServiceSection as BookingStepSettings),
+        );
+      }
+      const bookingDateSection =
+        sections[SECTION_IDS.bookingDate] ||
+        (bookingSteps?.date as SectionConfig | undefined);
+      if (bookingDateSection) {
+        setBookingDateSettings(
+          normalizeStepSettings(bookingDateSection as BookingStepSettings),
+        );
+      }
+      const bookingTimeSection =
+        sections[SECTION_IDS.bookingTime] ||
+        (bookingSteps?.time as SectionConfig | undefined);
+      if (bookingTimeSection) {
+        setBookingTimeSettings(
+          normalizeStepSettings(bookingTimeSection as BookingStepSettings),
+        );
+      }
+      const bookingFormSection =
+        sections[SECTION_IDS.bookingForm] ||
+        (bookingSteps?.form as SectionConfig | undefined);
+      if (bookingFormSection) {
+        setBookingFormSettings(
+          normalizeStepSettings(bookingFormSection as BookingStepSettings),
+        );
+      }
+      const bookingConfirmationSection =
+        sections[SECTION_IDS.bookingConfirmation] ||
+        (bookingSteps?.confirmation as SectionConfig | undefined);
+      if (bookingConfirmationSection) {
+        setBookingConfirmationSettings(
+          normalizeStepSettings(
+            bookingConfirmationSection as BookingStepSettings,
+          ),
+        );
       }
 
       // Seções e Visibilidade
@@ -1216,6 +1441,15 @@ export function useEditorState() {
     normalizeTestimonialsFromConfig,
     normalizeHeaderFromConfig,
     normalizeFooterFromConfig,
+    lastSavedColor.primary,
+    lastSavedColor.secondary,
+    lastSavedColor.background,
+    lastSavedColor.text,
+    lastSavedColor.accent,
+    lastSavedHero.title,
+    lastSavedHero.bgImage,
+    lastSavedHero.bgColor,
+    lastSavedHero.bgType,
   ]);
 
   // --- Efeito de Inicialização (TASK 1 & 4) ---
@@ -1262,6 +1496,11 @@ export function useEditorState() {
 
   const handleUpdateHero = useCallback(
     (updates: Partial<HeroSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateHero recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setHeroSettings((prev: HeroSettings) => syncBackground(prev, updates));
     },
@@ -1270,6 +1509,11 @@ export function useEditorState() {
 
   const handleUpdateAboutHero = useCallback(
     (updates: Partial<HeroSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateAboutHero recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setAboutHeroSettings((prev: HeroSettings) =>
         syncBackground(prev, updates),
@@ -1280,6 +1524,11 @@ export function useEditorState() {
 
   const handleUpdateStory = useCallback(
     (updates: Partial<StorySettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateStory recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setStorySettings((prev: StorySettings) => syncBackground(prev, updates));
     },
@@ -1288,6 +1537,11 @@ export function useEditorState() {
 
   const handleUpdateTeam = useCallback(
     (updates: Partial<TeamSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateTeam recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setTeamSettings((prev: TeamSettings) => syncBackground(prev, updates));
     },
@@ -1296,6 +1550,11 @@ export function useEditorState() {
 
   const handleUpdateTestimonials = useCallback(
     (updates: Partial<TestimonialsSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateTestimonials recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setTestimonialsSettings((prev: TestimonialsSettings) =>
         syncBackground(prev, updates),
@@ -1305,11 +1564,21 @@ export function useEditorState() {
   );
 
   const handleUpdateFont = useCallback((updates: Partial<FontSettings>) => {
+    // Type guard: aborta se updates não for objeto válido
+    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+      console.error('>>> [EDITOR_STATE] handleUpdateFont recebeu updates inválido:', updates);
+      return;
+    }
     setIsDirty(true);
     setFontSettings((prev: FontSettings) => ({ ...prev, ...updates }));
   }, []);
 
   const handleUpdateColors = useCallback((updates: Partial<ColorSettings>) => {
+    // Type guard: aborta se updates não for objeto válido
+    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+      console.error('>>> [EDITOR_STATE] handleUpdateColors recebeu updates inválido:', updates);
+      return;
+    }
     setIsDirty(true);
     setColorSettings((prev: ColorSettings) => {
       const newState = { ...prev };
@@ -1330,6 +1599,11 @@ export function useEditorState() {
 
   const handleUpdateServices = useCallback(
     (updates: Partial<ServicesSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateServices recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setServicesSettings((prev: ServicesSettings) => {
         const newState = syncBackground(prev, updates);
@@ -1365,6 +1639,11 @@ export function useEditorState() {
 
   const handleUpdateHomeValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateHomeValues recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setHomeValuesSettings((prev: ValuesSettings) => {
         const newState = syncBackground(prev, updates);
@@ -1391,9 +1670,14 @@ export function useEditorState() {
     },
     [syncBackground],
   );
-  
+
   const handleUpdateAboutUsValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateAboutUsValues recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setAboutUsValuesSettings((prev: ValuesSettings) => {
         const newState = syncBackground(prev, updates);
@@ -1423,6 +1707,11 @@ export function useEditorState() {
 
   const handleUpdateGalleryPreview = useCallback(
     (updates: Partial<GallerySettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateGalleryPreview recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setGallerySettings((prev: GallerySettings) => {
         const newState = syncBackground(prev, updates);
@@ -1451,6 +1740,11 @@ export function useEditorState() {
 
   const handleUpdateGalleryPage = useCallback(
     (updates: Partial<GallerySettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateGalleryPage recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setGalleryPageSettings((prev: GallerySettings) => {
         const newState = syncBackground(prev, updates);
@@ -1479,6 +1773,11 @@ export function useEditorState() {
 
   const handleUpdateCTA = useCallback(
     (updates: Partial<CTASettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateCTA recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setCTASettings((prev: CTASettings) => syncBackground(prev, updates));
     },
@@ -1486,6 +1785,11 @@ export function useEditorState() {
   );
 
   const handleUpdateHeader = useCallback((updates: Partial<HeaderSettings>) => {
+    // Type guard: aborta se updates não for objeto válido
+    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+      console.error('>>> [EDITOR_STATE] handleUpdateHeader recebeu updates inválido:', updates);
+      return;
+    }
     setIsDirty(true);
     setHeaderSettings((prev: HeaderSettings) => {
       const newState = { ...prev, ...updates };
@@ -1504,6 +1808,11 @@ export function useEditorState() {
   }, []);
 
   const handleUpdateFooter = useCallback((updates: Partial<FooterSettings>) => {
+    // Type guard: aborta se updates não for objeto válido
+    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+      console.error('>>> [EDITOR_STATE] handleUpdateFooter recebeu updates inválido:', updates);
+      return;
+    }
     setIsDirty(true);
     setFooterSettings((prev: FooterSettings) => {
       const newState = { ...prev, ...updates };
@@ -1522,6 +1831,11 @@ export function useEditorState() {
 
   const handleUpdateBookingService = useCallback(
     (updates: Partial<BookingStepSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateBookingService recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setBookingServiceSettings((prev: BookingStepSettings) => {
         const newState = syncBackground(prev, updates);
@@ -1535,6 +1849,11 @@ export function useEditorState() {
 
   const handleUpdateBookingDate = useCallback(
     (updates: Partial<BookingStepSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateBookingDate recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setBookingDateSettings((prev: BookingStepSettings) => {
         const newState = syncBackground(prev, updates);
@@ -1548,6 +1867,11 @@ export function useEditorState() {
 
   const handleUpdateBookingTime = useCallback(
     (updates: Partial<BookingStepSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateBookingTime recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setBookingTimeSettings((prev: BookingStepSettings) => {
         const newState = syncBackground(prev, updates);
@@ -1561,6 +1885,11 @@ export function useEditorState() {
 
   const handleUpdateBookingForm = useCallback(
     (updates: Partial<BookingStepSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateBookingForm recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setBookingFormSettings((prev: BookingStepSettings) => {
         const newState = syncBackground(prev, updates);
@@ -1574,6 +1903,11 @@ export function useEditorState() {
 
   const handleUpdateBookingConfirmation = useCallback(
     (updates: Partial<BookingStepSettings>) => {
+      // Type guard: aborta se updates não for objeto válido
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        console.error('>>> [EDITOR_STATE] handleUpdateBookingConfirmation recebeu updates inválido:', updates);
+        return;
+      }
       setIsDirty(true);
       setBookingConfirmationSettings((prev: BookingStepSettings) => {
         const newState = syncBackground(prev, updates);
@@ -1736,6 +2070,8 @@ export function useEditorState() {
     setBookingFormSettings,
     bookingConfirmationSettings,
     setBookingConfirmationSettings,
+    sections,
+    setSections,
     pageVisibility,
     setPageVisibility,
     visibleSections,

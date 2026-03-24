@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import {
   getAboutHeroSettings,
+  getStorageKey,
   type HeroSettings,
   sanitizeColor,
+  sanitizeSection,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import {
@@ -132,6 +134,12 @@ export function AboutHero() {
       if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "UPDATE_ABOUT_HERO_SETTINGS") {
+        // Validação: só processa se settings for um objeto válido
+        if (!event.data.settings || typeof event.data.settings !== 'object' || Array.isArray(event.data.settings)) {
+          console.error(">>> [ABOUT_HERO] Settings inválidos recebidos via postMessage:", event.data.settings);
+          return;
+        }
+        
         // Sanitize colors in real-time update
         const updatedSettings = { ...event.data.settings };
         const colorFields = [
@@ -162,7 +170,20 @@ export function AboutHero() {
     };
 
     const handleUpdate = () => {
-      setSettings(getAboutHeroSettings());
+      if (typeof window === "undefined") return;
+      const raw = localStorage.getItem(getStorageKey("aboutHeroSettings"));
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          setSettings((prev) => {
+            const merged = prev
+              ? sanitizeSection(parsed, prev)
+              : sanitizeSection(parsed, {});
+            return merged as HeroSettings;
+          });
+        }
+      } catch (_e) {}
     };
 
     window.addEventListener("message", handleMessage);

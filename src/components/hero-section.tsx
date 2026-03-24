@@ -21,9 +21,11 @@ import {
   getHeroSettings,
   getPageVisibility,
   getSiteProfile,
+  getStorageKey,
   type HeroSettings,
   type SiteProfile,
   sanitizeColor,
+  sanitizeSection,
 } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
 import {
@@ -142,18 +144,43 @@ export function HeroSection() {
         }, 2000);
       } else if (event.data.type === "UPDATE_HERO_SETTINGS") {
         console.log(">>> [HERO] Recebido update via postMessage", event.data.settings);
-        setCustomStyles((prev) => ({ ...prev, ...event.data.settings }));
+        
+        // Validação: só aplica o update se for um objeto válido
+        if (
+          event.data.settings &&
+          ((typeof event.data.settings === "object" &&
+            !Array.isArray(event.data.settings)) ||
+            typeof event.data.settings === "string")
+        ) {
+          setCustomStyles((prev) =>
+            sanitizeSection(event.data.settings, prev),
+          );
+        } else {
+          console.error(">>> [HERO] Settings inválidos recebidos via postMessage:", event.data.settings);
+        }
       }
     };
 
+    const handleHeroSettingsUpdate = () => {
+      if (typeof window === "undefined") return;
+      const raw = localStorage.getItem(getStorageKey("heroSettings"));
+      if (!raw) return;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          setCustomStyles((prev) => sanitizeSection(parsed, prev));
+        }
+      } catch (_e) {}
+    };
+
     window.addEventListener("message", handleMessage);
-    window.addEventListener("heroSettingsUpdated", () => setCustomStyles(getHeroSettings()));
+    window.addEventListener("heroSettingsUpdated", handleHeroSettingsUpdate);
     window.addEventListener("pageVisibilityUpdated", () => setPageVisibility(getPageVisibility()));
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("heroSettingsUpdated", () => setCustomStyles(getHeroSettings()));
+      window.removeEventListener("heroSettingsUpdated", handleHeroSettingsUpdate);
       window.removeEventListener("pageVisibilityUpdated", () => setPageVisibility(getPageVisibility()));
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
     };

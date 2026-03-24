@@ -54,6 +54,12 @@ export function LayoutClientWrapper({
   }, [pathname]);
 
   useEffect(() => {
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: "IFRAME_READY" }, "*");
+    }
+  }, []);
+
+  useEffect(() => {
     // Inicializa visibilidade local
     setVisibleSections(getVisibleSections());
 

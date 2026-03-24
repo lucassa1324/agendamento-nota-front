@@ -229,10 +229,6 @@ export function PreviewFrame({
                     src={previewUrl || undefined}
                     className="absolute inset-0 w-full h-full border-none overflow-hidden"
                     title="Preview"
-                    onLoad={() => {
-                      console.log(">>> [PREVIEW_FRAME] Iframe carregado, notificando editor...");
-                      window.postMessage({ type: "IFRAME_READY" }, "*");
-                    }}
                   />
                 </div>
               </div>

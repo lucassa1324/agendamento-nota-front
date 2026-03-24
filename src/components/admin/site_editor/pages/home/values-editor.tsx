@@ -499,6 +499,7 @@ export function ValuesEditor({
                 imageY: settings.imageY,
                 appearance: settings.appearance,
               }}
+              sectionId="home-values"
               onUpdate={(updates) => {
                 if (onUpdateBackground) {
                   onUpdateBackground(updates, "home-values");

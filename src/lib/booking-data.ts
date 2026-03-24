@@ -203,6 +203,362 @@ export const normalizePersistenceData = (data: unknown): unknown => {
   return cleanData;
 };
 
+export const sanitizeSection = (
+  currentData: unknown,
+  fallbackData: unknown,
+): Record<string, unknown> => {
+  const fallback =
+    fallbackData && typeof fallbackData === "object" && !Array.isArray(fallbackData)
+      ? (fallbackData as Record<string, unknown>)
+      : {};
+
+  if (typeof currentData === "string") {
+    const trimmed = currentData.trim();
+    if (
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          return { ...fallback, ...(parsed as Record<string, unknown>) };
+        }
+      } catch (_e) {
+        return { ...fallback, title: currentData };
+      }
+    }
+    return { ...fallback, title: currentData };
+  }
+
+  if (!currentData || typeof currentData !== "object" || Array.isArray(currentData)) {
+    return { ...fallback };
+  }
+
+  const record = currentData as Record<string, unknown>;
+  const keys = Object.keys(record);
+  if (keys.length > 0 && keys.every((key) => /^\d+$/.test(key))) {
+    return { ...fallback };
+  }
+
+  return { ...fallback, ...record };
+};
+
+export type SectionConfig = Record<string, unknown>;
+export type SectionsMap = Record<string, SectionConfig>;
+
+export const SECTION_IDS = {
+  homeHero: "home-hero",
+  aboutHero: "about-hero",
+  homeStory: "home-story",
+  homeTeam: "home-team",
+  homeTestimonials: "home-testimonials",
+  homeServices: "home-services",
+  homeValues: "home-values",
+  aboutValues: "about-values",
+  homeGallery: "home-gallery",
+  pageGallery: "page-gallery",
+  homeCta: "home-cta",
+  layoutHeader: "layout-header",
+  layoutFooter: "layout-footer",
+  bookingService: "booking-service",
+  bookingDate: "booking-date",
+  bookingTime: "booking-time",
+  bookingForm: "booking-form",
+  bookingConfirmation: "booking-confirmation",
+} as const;
+
+export type SectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
+
+const normalizeSectionConfig = <T extends Record<string, unknown>>(
+  raw: T | undefined,
+  defaults: T,
+) => {
+  const merged = {
+    ...defaults,
+    ...(raw || {}),
+    appearance: {
+      ...(defaults.appearance as Record<string, unknown> | undefined),
+      ...(raw?.appearance as Record<string, unknown> | undefined),
+    },
+    content: {
+      ...(defaults.content as Record<string, unknown> | undefined),
+      ...(raw?.content as Record<string, unknown> | undefined),
+    },
+  };
+
+  return normalizePersistenceData(merged) as T;
+};
+
+const getPayloadRoot = (config: SiteConfigData | null | undefined) => {
+  if (!config || typeof config !== "object") return {};
+  return (config.siteCustomization ||
+    config.site_customization ||
+    config) as SiteConfigData;
+};
+
+export const normalizePayload = (
+  config: SiteConfigData | null | undefined,
+) => {
+  const safeConfig = (config || {}) as SiteConfigData;
+  const root = getPayloadRoot(safeConfig);
+
+  const layoutGlobal = (root.layoutGlobal ||
+    root.layout_global) as Record<string, unknown> | undefined;
+  const home = root.home as Record<string, unknown> | undefined;
+  const about = root.about as Record<string, unknown> | undefined;
+
+  const sections: SectionsMap = {
+    [SECTION_IDS.homeHero]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeHero] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeHero
+        ] ||
+        (root.hero as SectionConfig | undefined) ||
+        (layoutGlobal?.hero as SectionConfig | undefined) ||
+        (home?.heroSection as SectionConfig | undefined) ||
+        (home?.hero as SectionConfig | undefined),
+      defaultHeroSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.aboutHero]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.aboutHero] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.aboutHero
+        ] ||
+        (root.aboutHero as SectionConfig | undefined) ||
+        (layoutGlobal?.aboutHero as SectionConfig | undefined) ||
+        (about?.heroSection as SectionConfig | undefined) ||
+        (about?.hero as SectionConfig | undefined),
+      defaultAboutHeroSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeStory]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeStory] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeStory
+        ] ||
+        (root.story as SectionConfig | undefined) ||
+        (layoutGlobal?.story as SectionConfig | undefined) ||
+        (home?.storySection as SectionConfig | undefined) ||
+        (home?.story as SectionConfig | undefined),
+      defaultStorySettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeTeam]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeTeam] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeTeam
+        ] ||
+        (root.team as SectionConfig | undefined) ||
+        (layoutGlobal?.team as SectionConfig | undefined) ||
+        (home?.teamSection as SectionConfig | undefined) ||
+        (home?.team as SectionConfig | undefined),
+      defaultTeamSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeTestimonials]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[
+        SECTION_IDS.homeTestimonials
+      ] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeTestimonials
+        ] ||
+        (root.testimonials as SectionConfig | undefined) ||
+        (layoutGlobal?.testimonials as SectionConfig | undefined) ||
+        (home?.testimonialsSection as SectionConfig | undefined) ||
+        (home?.testimonials as SectionConfig | undefined),
+      defaultTestimonialsSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeServices]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeServices] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeServices
+        ] ||
+        (root.services as SectionConfig | undefined) ||
+        (layoutGlobal?.services as SectionConfig | undefined) ||
+        (home?.servicesSection as SectionConfig | undefined) ||
+        (home?.services as SectionConfig | undefined),
+      defaultServicesSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeValues]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeValues] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeValues
+        ] ||
+        (root.homeValuesSettings as SectionConfig | undefined) ||
+        (layoutGlobal?.homeValuesSettings as SectionConfig | undefined) ||
+        (home?.valuesSection as SectionConfig | undefined) ||
+        (home?.values as SectionConfig | undefined) ||
+        (root.values as SectionConfig | undefined),
+      defaultValuesSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.aboutValues]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.aboutValues] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.aboutValues
+        ] ||
+        (root.aboutUsValuesSettings as SectionConfig | undefined) ||
+        (layoutGlobal?.aboutUsValuesSettings as SectionConfig | undefined) ||
+        (about?.valuesSection as SectionConfig | undefined) ||
+        (about?.values as SectionConfig | undefined) ||
+        (root.values as SectionConfig | undefined),
+      defaultValuesSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeGallery]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeGallery] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeGallery
+        ] ||
+        (root.galleryPreviewSettings as SectionConfig | undefined) ||
+        (layoutGlobal?.galleryPreview as SectionConfig | undefined) ||
+        (layoutGlobal?.gallerySection as SectionConfig | undefined) ||
+        (home?.galleryPreview as SectionConfig | undefined) ||
+        (home?.gallerySection as SectionConfig | undefined),
+      defaultGallerySettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.pageGallery]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.pageGallery] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.pageGallery
+        ] ||
+        (root.galleryPageSettings as SectionConfig | undefined) ||
+        (root.gallery as SectionConfig | undefined) ||
+        (layoutGlobal?.gallery as SectionConfig | undefined),
+      defaultGallerySettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeCta]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeCta] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeCta
+        ] ||
+        (root.cta as SectionConfig | undefined) ||
+        (layoutGlobal?.cta as SectionConfig | undefined) ||
+        (home?.ctaSection as SectionConfig | undefined) ||
+        (home?.cta as SectionConfig | undefined),
+      defaultCTASettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.layoutHeader]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.layoutHeader] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.layoutHeader
+        ] ||
+        (root.header as SectionConfig | undefined) ||
+        (layoutGlobal?.header as SectionConfig | undefined),
+      defaultHeaderSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.layoutFooter]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.layoutFooter] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.layoutFooter
+        ] ||
+        (root.footer as SectionConfig | undefined) ||
+        (layoutGlobal?.footer as SectionConfig | undefined),
+      defaultFooterSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.bookingService]: normalizeSectionConfig(
+      ((root.sections as SectionsMap | undefined)?.[
+        SECTION_IDS.bookingService
+      ] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.bookingService
+        ] ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)
+          ?.service as SectionConfig | undefined) ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
+          | Record<string, unknown>
+          | undefined)?.service ||
+        ((root.bookingSteps as Record<string, unknown> | undefined)?.service as
+          | SectionConfig
+          | undefined) ||
+        (root.bookingService as SectionConfig | undefined)) as
+        | SectionConfig
+        | undefined,
+      defaultBookingServiceSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.bookingDate]: normalizeSectionConfig(
+      ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingDate] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.bookingDate
+        ] ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)
+          ?.date as SectionConfig | undefined) ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
+          | Record<string, unknown>
+          | undefined)?.date ||
+        ((root.bookingSteps as Record<string, unknown> | undefined)?.date as
+          | SectionConfig
+          | undefined) ||
+        (root.bookingDate as SectionConfig | undefined)) as
+        | SectionConfig
+        | undefined,
+      defaultBookingDateSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.bookingTime]: normalizeSectionConfig(
+      ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingTime] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.bookingTime
+        ] ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)
+          ?.time as SectionConfig | undefined) ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
+          | Record<string, unknown>
+          | undefined)?.time ||
+        ((root.bookingSteps as Record<string, unknown> | undefined)?.time as
+          | SectionConfig
+          | undefined) ||
+        (root.bookingTime as SectionConfig | undefined)) as
+        | SectionConfig
+        | undefined,
+      defaultBookingTimeSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.bookingForm]: normalizeSectionConfig(
+      ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingForm] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.bookingForm
+        ] ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)
+          ?.form as SectionConfig | undefined) ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
+          | Record<string, unknown>
+          | undefined)?.form ||
+        ((root.bookingSteps as Record<string, unknown> | undefined)?.form as
+          | SectionConfig
+          | undefined) ||
+        (root.bookingForm as SectionConfig | undefined)) as
+        | SectionConfig
+        | undefined,
+      defaultBookingFormSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.bookingConfirmation]: normalizeSectionConfig(
+      ((root.sections as SectionsMap | undefined)?.[
+        SECTION_IDS.bookingConfirmation
+      ] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.bookingConfirmation
+        ] ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)
+          ?.confirmation as SectionConfig | undefined) ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
+          | Record<string, unknown>
+          | undefined)?.confirmation ||
+        ((root.bookingSteps as Record<string, unknown> | undefined)
+          ?.confirmation as SectionConfig | undefined) ||
+        (root.bookingConfirmation as SectionConfig | undefined)) as
+        | SectionConfig
+        | undefined,
+      defaultBookingConfirmationSettings as unknown as SectionConfig,
+    ),
+  };
+
+  const normalizedRoot = {
+    ...root,
+    sections,
+  };
+
+  return {
+    ...safeConfig,
+    siteCustomization: normalizedRoot,
+    site_customization: normalizedRoot,
+    sections,
+  } as SiteConfigData;
+};
+
 export function getStorageKey(key: string): string {
   if (typeof window === "undefined") return key;
   const userId = localStorage.getItem("current_admin_id");
@@ -213,7 +569,7 @@ export function getStorageKey(key: string): string {
 export function updateDraftTimestamp(): void {
   if (typeof window === "undefined") return;
   const timestamp = new Date().toISOString();
-  // localStorage.setItem(getStorageKey("last_draft_update"), timestamp);
+  localStorage.setItem(getStorageKey("last_draft_update"), timestamp);
   console.log(`>>> [booking-data] Draft timestamp atualizado: ${timestamp}`);
 
   // Dispara evento para o editor saber que houve mudança e salvar no banco
@@ -223,8 +579,8 @@ export function updateDraftTimestamp(): void {
 }
 
 export function getDraftTimestamp(): string | null {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return null;
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(getStorageKey("last_draft_update"));
 }
 
 export type NotificationSettings = {
@@ -873,6 +1229,26 @@ export function getBookingServiceSettings(config?: SiteConfigData): BookingStepS
     };
   }
 
+  // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingServiceSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = {
+          ...base,
+          ...saved,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(saved.appearance || {}),
+          },
+        };
+      } catch (e) {
+        console.error("Erro ao parsear bookingServiceSettings:", e);
+      }
+    }
+  }
+
   // 4. Sanitização Final: Garante que os campos de topo reflitam o appearance se existirem e estejam sanitizados
   return {
     ...base,
@@ -887,12 +1263,12 @@ export function getBookingServiceSettings(config?: SiteConfigData): BookingStepS
 }
 
 export function saveBookingServiceSettings(
-  _settings: BookingStepSettings,
+  settings: BookingStepSettings,
 ): void {
-  // localStorage.setItem(
-  //   getStorageKey("bookingServiceSettings"),
-  //   JSON.stringify(settings),
-  // );
+  localStorage.setItem(
+    getStorageKey("bookingServiceSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingServiceSettingsUpdated"));
@@ -916,25 +1292,25 @@ export function getBookingDateSettings(config?: BookingConfig): BookingStepSetti
       },
     };
   }
-  // O Banco de Dados é a única fonte da verdade no F5.
-  // else if (typeof window !== "undefined") {
-  //   const settings = localStorage.getItem(getStorageKey("bookingDateSettings"));
-  //   if (settings) {
-  //     try {
-  //       const saved = JSON.parse(settings);
-  //       base = {
-  //         ...base,
-  //         ...saved,
-  //         appearance: {
-  //           ...(base.appearance || {}),
-  //           ...(saved.appearance || {}),
-  //         },
-  //       };
-  //     } catch (e) {
-  //       console.error("Erro ao parsear bookingDateSettings:", e);
-  //     }
-  //   }
-  // }
+  // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingDateSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = {
+          ...base,
+          ...saved,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(saved.appearance || {}),
+          },
+        };
+      } catch (e) {
+        console.error("Erro ao parsear bookingDateSettings:", e);
+      }
+    }
+  }
 
   return {
     ...base,
@@ -948,11 +1324,11 @@ export function getBookingDateSettings(config?: BookingConfig): BookingStepSetti
   };
 }
 
-export function saveBookingDateSettings(_settings: BookingStepSettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("bookingDateSettings"),
-  //   JSON.stringify(settings),
-  // );
+export function saveBookingDateSettings(settings: BookingStepSettings): void {
+  localStorage.setItem(
+    getStorageKey("bookingDateSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingDateSettingsUpdated"));
@@ -976,25 +1352,25 @@ export function getBookingTimeSettings(config?: BookingConfig): BookingStepSetti
       },
     };
   }
-  // O Banco de Dados é a única fonte da verdade no F5.
-  // else if (typeof window !== "undefined") {
-  //   const settings = localStorage.getItem(getStorageKey("bookingTimeSettings"));
-  //   if (settings) {
-  //     try {
-  //       const saved = JSON.parse(settings);
-  //       base = {
-  //         ...base,
-  //         ...saved,
-  //         appearance: {
-  //           ...(base.appearance || {}),
-  //           ...(saved.appearance || {}),
-  //         },
-  //       };
-  //     } catch (e) {
-  //       console.error("Erro ao parsear bookingTimeSettings:", e);
-  //     }
-  //   }
-  // }
+  // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingTimeSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = {
+          ...base,
+          ...saved,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(saved.appearance || {}),
+          },
+        };
+      } catch (e) {
+        console.error("Erro ao parsear bookingTimeSettings:", e);
+      }
+    }
+  }
 
   return {
     ...base,
@@ -1008,11 +1384,11 @@ export function getBookingTimeSettings(config?: BookingConfig): BookingStepSetti
   };
 }
 
-export function saveBookingTimeSettings(_settings: BookingStepSettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("bookingTimeSettings"),
-  //   JSON.stringify(settings),
-  // );
+export function saveBookingTimeSettings(settings: BookingStepSettings): void {
+  localStorage.setItem(
+    getStorageKey("bookingTimeSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingTimeSettingsUpdated"));
@@ -1036,25 +1412,25 @@ export function getBookingFormSettings(config?: BookingConfig): BookingStepSetti
       },
     };
   }
-  // O Banco de Dados é a única fonte da verdade no F5.
-  // else if (typeof window !== "undefined") {
-  //   const settings = localStorage.getItem(getStorageKey("bookingFormSettings"));
-  //   if (settings) {
-  //     try {
-  //       const saved = JSON.parse(settings);
-  //       base = {
-  //         ...base,
-  //         ...saved,
-  //         appearance: {
-  //           ...(base.appearance || {}),
-  //           ...(saved.appearance || {}),
-  //         },
-  //       };
-  //     } catch (e) {
-  //       console.error("Erro ao parsear bookingFormSettings:", e);
-  //     }
-  //   }
-  // }
+  // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingFormSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = {
+          ...base,
+          ...saved,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(saved.appearance || {}),
+          },
+        };
+      } catch (e) {
+        console.error("Erro ao parsear bookingFormSettings:", e);
+      }
+    }
+  }
 
   return {
     ...base,
@@ -1068,11 +1444,11 @@ export function getBookingFormSettings(config?: BookingConfig): BookingStepSetti
   };
 }
 
-export function saveBookingFormSettings(_settings: BookingStepSettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("bookingFormSettings"),
-  //   JSON.stringify(settings),
-  // );
+export function saveBookingFormSettings(settings: BookingStepSettings): void {
+  localStorage.setItem(
+    getStorageKey("bookingFormSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingFormSettingsUpdated"));
@@ -1096,25 +1472,25 @@ export function getBookingConfirmationSettings(config?: BookingConfig): BookingS
       },
     };
   }
-  // O Banco de Dados é a única fonte da verdade no F5.
-  // else if (typeof window !== "undefined") {
-  //   const settings = localStorage.getItem(getStorageKey("bookingConfirmationSettings"));
-  //   if (settings) {
-  //     try {
-  //       const saved = JSON.parse(settings);
-  //       base = {
-  //         ...base,
-  //         ...saved,
-  //         appearance: {
-  //           ...(base.appearance || {}),
-  //           ...(saved.appearance || {}),
-  //         },
-  //       };
-  //     } catch (e) {
-  //       console.error("Erro ao parsear bookingConfirmationSettings:", e);
-  //     }
-  //   }
-  // }
+  // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingConfirmationSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = {
+          ...base,
+          ...saved,
+          appearance: {
+            ...(base.appearance || {}),
+            ...(saved.appearance || {}),
+          },
+        };
+      } catch (e) {
+        console.error("Erro ao parsear bookingConfirmationSettings:", e);
+      }
+    }
+  }
 
   return {
     ...base,
@@ -1129,12 +1505,12 @@ export function getBookingConfirmationSettings(config?: BookingConfig): BookingS
 }
 
 export function saveBookingConfirmationSettings(
-  _settings: BookingStepSettings,
+  settings: BookingStepSettings,
 ): void {
-  // localStorage.setItem(
-  //   getStorageKey("bookingConfirmationSettings"),
-  //   JSON.stringify(settings),
-  // );
+  localStorage.setItem(
+    getStorageKey("bookingConfirmationSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingConfirmationSettingsUpdated"));
@@ -1605,14 +1981,16 @@ export const defaultColorSettings: ColorSettings = {
 };
 
 export function getColorSettings(): ColorSettings {
-  return defaultColorSettings;
+  if (typeof window === "undefined") return defaultColorSettings;
+  const settings = localStorage.getItem(getStorageKey("colorSettings"));
+  return settings ? JSON.parse(settings) : defaultColorSettings;
 }
 
-export function saveColorSettings(_settings: ColorSettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("colorSettings"),
-  //   JSON.stringify(settings),
-  // );
+export function saveColorSettings(settings: ColorSettings): void {
+  localStorage.setItem(
+    getStorageKey("colorSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("colorSettingsUpdated"));
@@ -2331,9 +2709,6 @@ export function saveSiteProfile(_profile: SiteProfile): void {
 }
 
 export function getHeroSettings(): HeroSettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultHeroSettings;
-  /*
   if (typeof window === "undefined") return defaultHeroSettings;
   const storageKey = getStorageKey("heroSettings");
   const settings = localStorage.getItem(storageKey);
@@ -2343,16 +2718,15 @@ export function getHeroSettings(): HeroSettings {
     );
   }
   return settings ? JSON.parse(settings) : defaultHeroSettings;
-  */
 }
 
-export function saveHeroSettings(_settings: HeroSettings): void {
-  // const storageKey = getStorageKey("heroSettings");
-  // console.log(
-  //   `>>> [booking-data] Salvando heroSettings em ${storageKey}:`,
-  //   settings,
-  // );
-  // localStorage.setItem(storageKey, JSON.stringify(settings));
+export function saveHeroSettings(settings: HeroSettings): void {
+  const storageKey = getStorageKey("heroSettings");
+  console.log(
+    `>>> [booking-data] Salvando heroSettings em ${storageKey}:`,
+    settings,
+  );
+  localStorage.setItem(storageKey, JSON.stringify(settings));
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("heroSettingsUpdated"));
@@ -2370,20 +2744,16 @@ export const defaultAboutHeroSettings: HeroSettings = {
 };
 
 export function getAboutHeroSettings(): HeroSettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultAboutHeroSettings;
-  /*
   if (typeof window === "undefined") return defaultAboutHeroSettings;
   const settings = localStorage.getItem(getStorageKey("aboutHeroSettings"));
   return settings ? JSON.parse(settings) : defaultAboutHeroSettings;
-  */
 }
 
-export function saveAboutHeroSettings(_settings: HeroSettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("aboutHeroSettings"),
-  //   JSON.stringify(settings),
-  // );
+export function saveAboutHeroSettings(settings: HeroSettings): void {
+  localStorage.setItem(
+    getStorageKey("aboutHeroSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("aboutHeroSettingsUpdated"));
@@ -2391,20 +2761,16 @@ export function saveAboutHeroSettings(_settings: HeroSettings): void {
 }
 
 export function getStorySettings(): StorySettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultStorySettings;
-  /*
   if (typeof window === "undefined") return defaultStorySettings;
   const settings = localStorage.getItem(getStorageKey("storySettings"));
   return settings ? JSON.parse(settings) : defaultStorySettings;
-  */
 }
 
-export function saveStorySettings(_settings: StorySettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("storySettings"),
-  //   JSON.stringify(settings),
-  // );
+export function saveStorySettings(settings: StorySettings): void {
+  localStorage.setItem(
+    getStorageKey("storySettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("storySettingsUpdated"));
@@ -2463,20 +2829,16 @@ export function saveValuesSettings(settings: ValuesSettings): void {
 }
 
 export function getServicesSettings(): ServicesSettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultServicesSettings;
-  /*
   if (typeof window === "undefined") return defaultServicesSettings;
   const settings = localStorage.getItem(getStorageKey("servicesSettings"));
   return settings ? JSON.parse(settings) : defaultServicesSettings;
-  */
 }
 
-export function saveServicesSettings(_settings: ServicesSettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("servicesSettings"),
-  //   JSON.stringify(settings),
-  // );
+export function saveServicesSettings(settings: ServicesSettings): void {
+  localStorage.setItem(
+    getStorageKey("servicesSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("servicesSettingsUpdated"));
@@ -2484,17 +2846,13 @@ export function saveServicesSettings(_settings: ServicesSettings): void {
 }
 
 export function getFontSettings(): FontSettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultFontSettings;
-  /*
   if (typeof window === "undefined") return defaultFontSettings;
   const settings = localStorage.getItem(getStorageKey("fontSettings"));
   return settings ? JSON.parse(settings) : defaultFontSettings;
-  */
 }
 
-export function saveFontSettings(_settings: FontSettings): void {
-  // localStorage.setItem(getStorageKey("fontSettings"), JSON.stringify(settings));
+export function saveFontSettings(settings: FontSettings): void {
+  localStorage.setItem(getStorageKey("fontSettings"), JSON.stringify(settings));
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("fontSettingsUpdated"));
@@ -2502,20 +2860,16 @@ export function saveFontSettings(_settings: FontSettings): void {
 }
 
 export function getGallerySettings(): GallerySettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultGallerySettings;
-  /*
   if (typeof window === "undefined") return defaultGallerySettings;
   const settings = localStorage.getItem(getStorageKey("gallerySettings"));
   return settings ? JSON.parse(settings) : defaultGallerySettings;
-  */
 }
 
-export function saveGallerySettings(_settings: GallerySettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("gallerySettings"),
-  //   JSON.stringify(settings),
-  // );
+export function saveGallerySettings(settings: GallerySettings): void {
+  localStorage.setItem(
+    getStorageKey("gallerySettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("gallerySettingsUpdated"));
@@ -2523,10 +2877,16 @@ export function saveGallerySettings(_settings: GallerySettings): void {
 }
 
 export function getGalleryPageSettings(): GallerySettings {
-  return defaultGallerySettings;
+  if (typeof window === "undefined") return defaultGallerySettings;
+  const settings = localStorage.getItem(getStorageKey("galleryPageSettings"));
+  return settings ? JSON.parse(settings) : defaultGallerySettings;
 }
 
-export function saveGalleryPageSettings(_settings: GallerySettings): void {
+export function saveGalleryPageSettings(settings: GallerySettings): void {
+  localStorage.setItem(
+    getStorageKey("galleryPageSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("galleryPageSettingsUpdated"));
@@ -2534,17 +2894,13 @@ export function saveGalleryPageSettings(_settings: GallerySettings): void {
 }
 
 export function getCTASettings(): CTASettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultCTASettings;
-  /*
   if (typeof window === "undefined") return defaultCTASettings;
   const settings = localStorage.getItem(getStorageKey("ctaSettings"));
   return settings ? JSON.parse(settings) : defaultCTASettings;
-  */
 }
 
-export function saveCTASettings(_settings: CTASettings): void {
-  // localStorage.setItem(getStorageKey("ctaSettings"), JSON.stringify(settings));
+export function saveCTASettings(settings: CTASettings): void {
+  localStorage.setItem(getStorageKey("ctaSettings"), JSON.stringify(settings));
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("ctaSettingsUpdated"));
@@ -2552,17 +2908,13 @@ export function saveCTASettings(_settings: CTASettings): void {
 }
 
 export function getTeamSettings(): TeamSettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultTeamSettings;
-  /*
   if (typeof window === "undefined") return defaultTeamSettings;
   const settings = localStorage.getItem(getStorageKey("teamSettings"));
   return settings ? JSON.parse(settings) : defaultTeamSettings;
-  */
 }
 
-export function saveTeamSettings(_settings: TeamSettings): void {
-  // localStorage.setItem(getStorageKey("teamSettings"), JSON.stringify(settings));
+export function saveTeamSettings(settings: TeamSettings): void {
+  localStorage.setItem(getStorageKey("teamSettings"), JSON.stringify(settings));
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("teamSettingsUpdated"));
@@ -2570,20 +2922,16 @@ export function saveTeamSettings(_settings: TeamSettings): void {
 }
 
 export function getTestimonialsSettings(): TestimonialsSettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultTestimonialsSettings;
-  /*
   if (typeof window === "undefined") return defaultTestimonialsSettings;
   const settings = localStorage.getItem(getStorageKey("testimonialsSettings"));
   return settings ? JSON.parse(settings) : defaultTestimonialsSettings;
-  */
 }
 
-export function saveTestimonialsSettings(_settings: TestimonialsSettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("testimonialsSettings"),
-  //   JSON.stringify(settings),
-  // );
+export function saveTestimonialsSettings(settings: TestimonialsSettings): void {
+  localStorage.setItem(
+    getStorageKey("testimonialsSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("testimonialsSettingsUpdated"));
@@ -2591,20 +2939,16 @@ export function saveTestimonialsSettings(_settings: TestimonialsSettings): void 
 }
 
 export function getHeaderSettings(): HeaderSettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultHeaderSettings;
-  /*
   if (typeof window === "undefined") return defaultHeaderSettings;
   const settings = localStorage.getItem(getStorageKey("headerSettings"));
   return settings ? JSON.parse(settings) : defaultHeaderSettings;
-  */
 }
 
-export function saveHeaderSettings(_settings: HeaderSettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("headerSettings"),
-  //   JSON.stringify(settings),
-  // );
+export function saveHeaderSettings(settings: HeaderSettings): void {
+  localStorage.setItem(
+    getStorageKey("headerSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("headerSettingsUpdated"));
@@ -2612,20 +2956,16 @@ export function saveHeaderSettings(_settings: HeaderSettings): void {
 }
 
 export function getFooterSettings(): FooterSettings {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultFooterSettings;
-  /*
   if (typeof window === "undefined") return defaultFooterSettings;
   const settings = localStorage.getItem(getStorageKey("footerSettings"));
   return settings ? JSON.parse(settings) : defaultFooterSettings;
-  */
 }
 
-export function saveFooterSettings(_settings: FooterSettings): void {
-  // localStorage.setItem(
-  //   getStorageKey("footerSettings"),
-  //   JSON.stringify(settings),
-  // );
+export function saveFooterSettings(settings: FooterSettings): void {
+  localStorage.setItem(
+    getStorageKey("footerSettings"),
+    JSON.stringify(settings),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("footerSettingsUpdated"));
@@ -2640,10 +2980,6 @@ export function getPageVisibility(): Record<string, boolean> {
     agendar: true,
   };
 
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultVisibility;
-
-  /*
   if (typeof window === "undefined") {
     return defaultVisibility;
   }
@@ -2651,14 +2987,13 @@ export function getPageVisibility(): Record<string, boolean> {
   if (visibility) return JSON.parse(visibility);
 
   return defaultVisibility;
-  */
 }
 
-export function savePageVisibility(_visibility: Record<string, boolean>): void {
-  // localStorage.setItem(
-  //   getStorageKey("pageVisibility"),
-  //   JSON.stringify(visibility),
-  // );
+export function savePageVisibility(visibility: Record<string, boolean>): void {
+  localStorage.setItem(
+    getStorageKey("pageVisibility"),
+    JSON.stringify(visibility),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("pageVisibilityUpdated"));
@@ -2680,10 +3015,6 @@ export function getVisibleSections(): Record<string, boolean> {
     booking: true,
   };
 
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultSections;
-
-  /*
   if (typeof window === "undefined") {
     return defaultSections;
   }
@@ -2691,14 +3022,13 @@ export function getVisibleSections(): Record<string, boolean> {
   if (sections) return JSON.parse(sections);
 
   return defaultSections;
-  */
 }
 
-export function saveVisibleSections(_sections: Record<string, boolean>): void {
-  // localStorage.setItem(
-  //   getStorageKey("visibleSections"),
-  //   JSON.stringify(sections),
-  // );
+export function saveVisibleSections(sections: Record<string, boolean>): void {
+  localStorage.setItem(
+    getStorageKey("visibleSections"),
+    JSON.stringify(sections),
+  );
   updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("visibleSectionsUpdated"));

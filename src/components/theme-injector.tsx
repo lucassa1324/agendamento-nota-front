@@ -1,23 +1,42 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useStudio } from "@/context/studio-context";
-import type { ColorSettings, FontSettings } from "@/lib/booking-data";
 import {
+  type ColorSettings,
   defaultColorSettings,
   defaultFontSettings,
+  type FontSettings,
+  getAboutUsValuesSettings,
+  getBookingConfirmationSettings,
+  getBookingDateSettings,
+  getBookingFormSettings,
+  getBookingServiceSettings,
+  getBookingTimeSettings,
+  getColorSettings,
+  getCTASettings,
+  getFontSettings,
+  getFooterSettings,
+  getGalleryPageSettings,
+  getGallerySettings,
+  getHeaderSettings,
+  getHeroSettings,
+  getHomeValuesSettings,
+  getServicesSettings,
+  getStorySettings,
+  getTeamSettings,
+  getTestimonialsSettings,
   sanitizeColor,
 } from "@/lib/booking-data";
-
-// Extender FontSettings para incluir extraFonts
-type ExtendedFontSettings = FontSettings & { extraFonts?: string[] };
-
 import type {
   LayoutGlobalSettings,
   SiteConfigData,
 } from "@/lib/site-config-types";
 import { useEditorState } from "./admin/site_editor/hooks/use-editor-state";
+
+// Extender FontSettings para incluir extraFonts
+type ExtendedFontSettings = FontSettings & { extraFonts?: string[] };
 
 export interface ThemeInjectorProps {
   iframeRef?: React.RefObject<HTMLIFrameElement | null>;
@@ -25,16 +44,241 @@ export interface ThemeInjectorProps {
 
 export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { studio, isLoading } = useStudio();
-  const { isInitialized, setIsInitialized } = useEditorState();
+  const {
+    isInitialized,
+    setIsInitialized,
+    colorSettings,
+    fontSettings,
+    heroSettings,
+    servicesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
+    teamSettings,
+    testimonialsSettings,
+    ctaSettings,
+    headerSettings,
+    footerSettings,
+    gallerySettings,
+    galleryPageSettings,
+    storySettings,
+    bookingServiceSettings,
+    bookingDateSettings,
+    bookingTimeSettings,
+    bookingFormSettings,
+    bookingConfirmationSettings,
+  } = useEditorState();
+  const isEditorPreview = !!iframeRef;
+  const isPreviewPage = !!searchParams?.get("preview");
 
   const loadSettings = useCallback((): {
     colors: ColorSettings;
     fonts: ExtendedFontSettings;
     sectionStyles: Record<string, string>;
   } => {
-    // REQUISITO: Banco de Dados como única fonte da verdade.
-    // Removemos fallbacks para localStorage aqui para evitar loops e inconsistências no F5.
+    if (isEditorPreview) {
+      const resolvedColors: ColorSettings = {
+        ...defaultColorSettings,
+        ...colorSettings,
+      };
+      const resolvedFonts: FontSettings = {
+        ...defaultFontSettings,
+        ...fontSettings,
+      };
+
+      const extraFonts = new Set<string>();
+      if (heroSettings?.titleFont) extraFonts.add(heroSettings.titleFont);
+      if (heroSettings?.subtitleFont) extraFonts.add(heroSettings.subtitleFont);
+      if (servicesSettings?.titleFont) extraFonts.add(servicesSettings.titleFont);
+      if (servicesSettings?.subtitleFont)
+        extraFonts.add(servicesSettings.subtitleFont);
+      if (servicesSettings?.cardTitleFont)
+        extraFonts.add(servicesSettings.cardTitleFont);
+      if (servicesSettings?.cardDescriptionFont)
+        extraFonts.add(servicesSettings.cardDescriptionFont);
+      if (servicesSettings?.cardPriceFont)
+        extraFonts.add(servicesSettings.cardPriceFont);
+      if (homeValuesSettings?.titleFont)
+        extraFonts.add(homeValuesSettings.titleFont);
+      if (homeValuesSettings?.subtitleFont)
+        extraFonts.add(homeValuesSettings.subtitleFont);
+      if (homeValuesSettings?.cardTitleFont)
+        extraFonts.add(homeValuesSettings.cardTitleFont);
+      if (homeValuesSettings?.cardDescriptionFont)
+        extraFonts.add(homeValuesSettings.cardDescriptionFont);
+      if (aboutUsValuesSettings?.titleFont)
+        extraFonts.add(aboutUsValuesSettings.titleFont);
+      if (aboutUsValuesSettings?.subtitleFont)
+        extraFonts.add(aboutUsValuesSettings.subtitleFont);
+      if (aboutUsValuesSettings?.cardTitleFont)
+        extraFonts.add(aboutUsValuesSettings.cardTitleFont);
+      if (aboutUsValuesSettings?.cardDescriptionFont)
+        extraFonts.add(aboutUsValuesSettings.cardDescriptionFont);
+      if (teamSettings?.titleFont) extraFonts.add(teamSettings.titleFont);
+      if (teamSettings?.subtitleFont)
+        extraFonts.add(teamSettings.subtitleFont);
+      if (testimonialsSettings?.titleFont)
+        extraFonts.add(testimonialsSettings.titleFont);
+      if (testimonialsSettings?.subtitleFont)
+        extraFonts.add(testimonialsSettings.subtitleFont);
+      if (ctaSettings?.titleFont) extraFonts.add(ctaSettings.titleFont);
+      if (ctaSettings?.subtitleFont) extraFonts.add(ctaSettings.subtitleFont);
+      if (headerSettings?.titleFont) extraFonts.add(headerSettings.titleFont);
+      if (headerSettings?.linksFont) extraFonts.add(headerSettings.linksFont);
+      if (footerSettings?.titleFont) extraFonts.add(footerSettings.titleFont);
+      if (gallerySettings?.titleFont) extraFonts.add(gallerySettings.titleFont);
+      if (gallerySettings?.subtitleFont)
+        extraFonts.add(gallerySettings.subtitleFont);
+      if (gallerySettings?.buttonFont)
+        extraFonts.add(gallerySettings.buttonFont);
+      if (galleryPageSettings?.titleFont)
+        extraFonts.add(galleryPageSettings.titleFont);
+      if (galleryPageSettings?.subtitleFont)
+        extraFonts.add(galleryPageSettings.subtitleFont);
+      if (storySettings?.titleFont) extraFonts.add(storySettings.titleFont);
+      if (storySettings?.contentFont) extraFonts.add(storySettings.contentFont);
+
+      const sectionStyles: Record<string, string> = {};
+      if (heroSettings?.titleColor)
+        sectionStyles["--hero-title"] = heroSettings.titleColor;
+      if (heroSettings?.subtitleColor)
+        sectionStyles["--hero-subtitle"] = heroSettings.subtitleColor;
+
+      const bookingBg =
+        sanitizeColor(bookingServiceSettings?.bgColor) ||
+        sanitizeColor(bookingDateSettings?.bgColor) ||
+        sanitizeColor(bookingTimeSettings?.bgColor) ||
+        sanitizeColor(bookingFormSettings?.bgColor) ||
+        sanitizeColor(bookingConfirmationSettings?.bgColor) ||
+        resolvedColors.background;
+      if (bookingBg) sectionStyles["--booking-background"] = bookingBg;
+
+      const cardBg =
+        sanitizeColor(bookingServiceSettings?.cardBgColor) ||
+        sanitizeColor(bookingDateSettings?.cardBgColor) ||
+        sanitizeColor(bookingTimeSettings?.cardBgColor) ||
+        sanitizeColor(bookingFormSettings?.cardBgColor) ||
+        sanitizeColor(bookingConfirmationSettings?.cardBgColor);
+      if (cardBg) sectionStyles["--card-background"] = cardBg;
+
+      return {
+        colors: resolvedColors,
+        fonts: { ...resolvedFonts, extraFonts: Array.from(extraFonts) },
+        sectionStyles,
+      };
+    }
+
+    if (isPreviewPage) {
+      const resolvedColors: ColorSettings = {
+        ...defaultColorSettings,
+        ...getColorSettings(),
+      };
+      const resolvedFonts: FontSettings = {
+        ...defaultFontSettings,
+        ...getFontSettings(),
+      };
+
+      const heroSettings = getHeroSettings();
+      const servicesSettings = getServicesSettings();
+      const homeValuesSettings = getHomeValuesSettings();
+      const aboutUsValuesSettings = getAboutUsValuesSettings();
+      const teamSettings = getTeamSettings();
+      const testimonialsSettings = getTestimonialsSettings();
+      const ctaSettings = getCTASettings();
+      const headerSettings = getHeaderSettings();
+      const footerSettings = getFooterSettings();
+      const gallerySettings = getGallerySettings();
+      const galleryPageSettings = getGalleryPageSettings();
+      const storySettings = getStorySettings();
+
+      const bookingServiceSettings = getBookingServiceSettings();
+      const bookingDateSettings = getBookingDateSettings();
+      const bookingTimeSettings = getBookingTimeSettings();
+      const bookingFormSettings = getBookingFormSettings();
+      const bookingConfirmationSettings = getBookingConfirmationSettings();
+
+      const extraFonts = new Set<string>();
+      if (heroSettings?.titleFont) extraFonts.add(heroSettings.titleFont);
+      if (heroSettings?.subtitleFont) extraFonts.add(heroSettings.subtitleFont);
+      if (servicesSettings?.titleFont) extraFonts.add(servicesSettings.titleFont);
+      if (servicesSettings?.subtitleFont)
+        extraFonts.add(servicesSettings.subtitleFont);
+      if (servicesSettings?.cardTitleFont)
+        extraFonts.add(servicesSettings.cardTitleFont);
+      if (servicesSettings?.cardDescriptionFont)
+        extraFonts.add(servicesSettings.cardDescriptionFont);
+      if (servicesSettings?.cardPriceFont)
+        extraFonts.add(servicesSettings.cardPriceFont);
+      if (homeValuesSettings?.titleFont)
+        extraFonts.add(homeValuesSettings.titleFont);
+      if (homeValuesSettings?.subtitleFont)
+        extraFonts.add(homeValuesSettings.subtitleFont);
+      if (homeValuesSettings?.cardTitleFont)
+        extraFonts.add(homeValuesSettings.cardTitleFont);
+      if (homeValuesSettings?.cardDescriptionFont)
+        extraFonts.add(homeValuesSettings.cardDescriptionFont);
+      if (aboutUsValuesSettings?.titleFont)
+        extraFonts.add(aboutUsValuesSettings.titleFont);
+      if (aboutUsValuesSettings?.subtitleFont)
+        extraFonts.add(aboutUsValuesSettings.subtitleFont);
+      if (aboutUsValuesSettings?.cardTitleFont)
+        extraFonts.add(aboutUsValuesSettings.cardTitleFont);
+      if (aboutUsValuesSettings?.cardDescriptionFont)
+        extraFonts.add(aboutUsValuesSettings.cardDescriptionFont);
+      if (teamSettings?.titleFont) extraFonts.add(teamSettings.titleFont);
+      if (teamSettings?.subtitleFont)
+        extraFonts.add(teamSettings.subtitleFont);
+      if (testimonialsSettings?.titleFont)
+        extraFonts.add(testimonialsSettings.titleFont);
+      if (testimonialsSettings?.subtitleFont)
+        extraFonts.add(testimonialsSettings.subtitleFont);
+      if (ctaSettings?.titleFont) extraFonts.add(ctaSettings.titleFont);
+      if (ctaSettings?.subtitleFont) extraFonts.add(ctaSettings.subtitleFont);
+      if (headerSettings?.titleFont) extraFonts.add(headerSettings.titleFont);
+      if (headerSettings?.linksFont) extraFonts.add(headerSettings.linksFont);
+      if (footerSettings?.titleFont) extraFonts.add(footerSettings.titleFont);
+      if (gallerySettings?.titleFont) extraFonts.add(gallerySettings.titleFont);
+      if (gallerySettings?.subtitleFont)
+        extraFonts.add(gallerySettings.subtitleFont);
+      if (gallerySettings?.buttonFont)
+        extraFonts.add(gallerySettings.buttonFont);
+      if (galleryPageSettings?.titleFont)
+        extraFonts.add(galleryPageSettings.titleFont);
+      if (galleryPageSettings?.subtitleFont)
+        extraFonts.add(galleryPageSettings.subtitleFont);
+      if (storySettings?.titleFont) extraFonts.add(storySettings.titleFont);
+      if (storySettings?.contentFont) extraFonts.add(storySettings.contentFont);
+
+      const sectionStyles: Record<string, string> = {};
+      if (heroSettings?.titleColor)
+        sectionStyles["--hero-title"] = heroSettings.titleColor;
+      if (heroSettings?.subtitleColor)
+        sectionStyles["--hero-subtitle"] = heroSettings.subtitleColor;
+
+      const bookingBg =
+        sanitizeColor(bookingServiceSettings?.bgColor) ||
+        sanitizeColor(bookingDateSettings?.bgColor) ||
+        sanitizeColor(bookingTimeSettings?.bgColor) ||
+        sanitizeColor(bookingFormSettings?.bgColor) ||
+        sanitizeColor(bookingConfirmationSettings?.bgColor) ||
+        resolvedColors.background;
+      if (bookingBg) sectionStyles["--booking-background"] = bookingBg;
+
+      const cardBg =
+        sanitizeColor(bookingServiceSettings?.cardBgColor) ||
+        sanitizeColor(bookingDateSettings?.cardBgColor) ||
+        sanitizeColor(bookingTimeSettings?.cardBgColor) ||
+        sanitizeColor(bookingFormSettings?.cardBgColor) ||
+        sanitizeColor(bookingConfirmationSettings?.cardBgColor);
+      if (cardBg) sectionStyles["--card-background"] = cardBg;
+
+      return {
+        colors: resolvedColors,
+        fonts: { ...resolvedFonts, extraFonts: Array.from(extraFonts) },
+        sectionStyles,
+      };
+    }
 
     if (studio?.config) {
       console.log(">>> [THEME] Carregando tema a partir do Banco de Dados");
@@ -194,7 +438,30 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
       fonts: { ...defaultFontSettings, extraFonts: [] },
       sectionStyles: {} as Record<string, string>,
     };
-  }, [studio?.config]);
+  }, [
+    isEditorPreview,
+    isPreviewPage,
+    colorSettings,
+    fontSettings,
+    heroSettings,
+    servicesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
+    teamSettings,
+    testimonialsSettings,
+    ctaSettings,
+    headerSettings,
+    footerSettings,
+    gallerySettings,
+    galleryPageSettings,
+    storySettings,
+    bookingServiceSettings,
+    bookingDateSettings,
+    bookingTimeSettings,
+    bookingFormSettings,
+    bookingConfirmationSettings,
+    studio?.config,
+  ]);
 
   const {
     colors: initialColors,

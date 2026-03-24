@@ -146,6 +146,12 @@ export function TestimonialsSection() {
       if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "UPDATE_TESTIMONIALS_SETTINGS") {
+        // Validação: só processa se settings for um objeto válido
+        if (!event.data.settings || typeof event.data.settings !== 'object' || Array.isArray(event.data.settings)) {
+          console.error(">>> [TESTIMONIALS] Settings inválidos recebidos via postMessage:", event.data.settings);
+          return;
+        }
+
         setSettings((prev) =>
           prev ? { ...prev, ...event.data.settings } : prev,
         );

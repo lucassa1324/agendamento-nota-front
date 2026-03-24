@@ -160,9 +160,9 @@ export function SiteCustomizer() {
     fetchCustomizationRef.current = fetchCustomization;
   }, [fetchCustomization]);
 
-  const applyAndSave = (applyFn: () => void) => () => {
+  const applyAndSave = (applyFn: () => void) => async () => {
     applyFn();
-    handleSaveGlobal();
+    await handleSaveGlobal();
   };
 
   const handleToggleStatus = async () => {
