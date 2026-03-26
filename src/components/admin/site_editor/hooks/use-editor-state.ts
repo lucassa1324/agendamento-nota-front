@@ -1217,12 +1217,32 @@ export function useEditorState() {
           defaultColorSettings.primary,
         buttonText:
           (siteColors?.buttonText as string) || config.colors?.buttonText || "",
+        specialtyBadge: {
+          background:
+            ((siteColors?.specialtyBadge as Record<string, string>)?.background) ||
+            ((siteColors?.specialty_badge as Record<string, string>)?.background) ||
+            defaultColorSettings.specialtyBadge.background,
+          text:
+            ((siteColors?.specialtyBadge as Record<string, string>)?.text) ||
+            ((siteColors?.specialty_badge as Record<string, string>)?.text) ||
+            defaultColorSettings.specialtyBadge.text,
+          borderRadius:
+            ((siteColors?.specialtyBadge as Record<string, string>)?.borderRadius) ||
+            ((siteColors?.specialty_badge as Record<string, string>)?.borderRadius) ||
+            ((siteColors?.specialty_badge as Record<string, string>)?.border_radius) ||
+            defaultColorSettings.specialtyBadge.borderRadius,
+        },
       };
+      const lastSavedSpecialtyBadge =
+        lastSavedColor.specialtyBadge || defaultColorSettings.specialtyBadge;
       const hasLastSavedColors =
         lastSavedColor.primary !== defaultColorSettings.primary ||
         lastSavedColor.secondary !== defaultColorSettings.secondary ||
         lastSavedColor.background !== defaultColorSettings.background ||
-        lastSavedColor.text !== defaultColorSettings.text;
+        lastSavedColor.text !== defaultColorSettings.text ||
+        lastSavedColor.accent !== defaultColorSettings.accent ||
+        lastSavedSpecialtyBadge.borderRadius !==
+          defaultColorSettings.specialtyBadge.borderRadius;
       const normalizeColor = (value?: string) => sanitizeColor(value || "") || "";
       const isConfigAlignedWithLastSaved =
         !hasLastSavedColors ||
@@ -1235,7 +1255,9 @@ export function useEditorState() {
           normalizeColor(resolvedColors.text) ===
             normalizeColor(lastSavedColor.text) &&
           normalizeColor(resolvedColors.accent || "") ===
-            normalizeColor(lastSavedColor.accent || ""));
+            normalizeColor(lastSavedColor.accent || "") &&
+          resolvedColors.specialtyBadge.borderRadius ===
+            lastSavedSpecialtyBadge.borderRadius);
       if (!isConfigAlignedWithLastSaved) {
         console.log(
           ">>> [SYNC] studio.config desatualizado em relação ao lastSaved. Ignorando sync.",
@@ -1450,6 +1472,7 @@ export function useEditorState() {
     lastSavedHero.bgImage,
     lastSavedHero.bgColor,
     lastSavedHero.bgType,
+    lastSavedColor.specialtyBadge,
   ]);
 
   // --- Efeito de Inicialização (TASK 1 & 4) ---

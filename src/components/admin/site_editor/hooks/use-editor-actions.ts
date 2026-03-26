@@ -14,6 +14,26 @@ import type {
   TestimonialsSettings,
   ValuesSettings,
 } from "@/lib/booking-data";
+import {
+  defaultAboutHeroSettings,
+  defaultBookingConfirmationSettings,
+  defaultBookingDateSettings,
+  defaultBookingFormSettings,
+  defaultBookingServiceSettings,
+  defaultBookingTimeSettings,
+  defaultColorSettings,
+  defaultCTASettings,
+  defaultFontSettings,
+  defaultFooterSettings,
+  defaultGallerySettings,
+  defaultHeaderSettings,
+  defaultHeroSettings,
+  defaultServicesSettings,
+  defaultStorySettings,
+  defaultTeamSettings,
+  defaultTestimonialsSettings,
+  defaultValuesSettings,
+} from "@/lib/booking-data";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
 import type { BackgroundSettings } from "../components/BackgroundEditor";
 import type { useEditorLocal } from "./use-editor-local";
@@ -29,6 +49,43 @@ interface UseEditorActionsProps {
   }) => void;
   businessId: string;
 }
+
+const isVisualKey = (key: string) => {
+  const k = key.toLowerCase();
+  return (
+    k.includes("color") ||
+    k.includes("font") ||
+    k.includes("bg") ||
+    k.includes("opacity") ||
+    k.includes("scale") ||
+    k.includes("image") ||
+    k.includes("icon") ||
+    k.includes("shadow") ||
+    k.includes("radius") ||
+    k === "appearance"
+  );
+};
+
+const applyDefaultVisuals = <T extends Record<string, unknown>>(
+  current: T,
+  defaults: T,
+): T => {
+  const next = { ...current } as Record<string, unknown>;
+  for (const [key, value] of Object.entries(defaults)) {
+    if (isVisualKey(key)) {
+      if (key === "appearance" && value && typeof value === "object") {
+        next[key] = {
+          ...(next[key] as Record<string, unknown> || {}),
+          ...(value as Record<string, unknown>),
+        };
+      } else {
+        next[key] = value;
+      }
+    }
+  }
+
+  return next as T;
+};
 
 export function useEditorActions({
   state,
@@ -92,6 +149,8 @@ export function useEditorActions({
     setCTASettings,
     setHeaderSettings,
     setFooterSettings,
+    setColorSettings,
+    setFontSettings,
     setBookingServiceSettings,
     setBookingDateSettings,
     setBookingTimeSettings,
@@ -147,6 +206,9 @@ export function useEditorActions({
   );
 
   const {
+    clearLocalDrafts,
+    saveColorSettings,
+    saveFontSettings,
     saveHeroSettings,
     saveAboutHeroSettings,
     saveStorySettings,
@@ -160,14 +222,11 @@ export function useEditorActions({
     saveCTASettings,
     saveHeaderSettings,
     saveFooterSettings,
-    saveFontSettings,
-    saveColorSettings,
     saveBookingServiceSettings,
     saveBookingDateSettings,
     saveBookingTimeSettings,
     saveBookingFormSettings,
     saveBookingConfirmationSettings,
-    clearLocalDrafts,
   } = local;
 
   const handleApplyHero = useCallback(() => {
@@ -365,10 +424,190 @@ export function useEditorActions({
     });
   }, [bookingConfirmationSettings, setLastAppliedBookingConfirmation, toast]);
 
-  const resetSettings = useCallback(() => {
+  const resetSettings = useCallback(async () => {
+    // 1. Limpar drafts do localStorage (Source of Truth do Editor Local)
     clearLocalDrafts();
-    window.location.reload();
-  }, [clearLocalDrafts]);
+
+    // 2. Resetar todos os estados para os defaults definidos em booking-data.ts
+    // Usamos applyDefaultVisuals para manter o conteúdo (textos) e resetar apenas o visual
+    setHeroSettings(applyDefaultVisuals(heroSettings, defaultHeroSettings));
+    setAboutHeroSettings(
+      applyDefaultVisuals(aboutHeroSettings, defaultAboutHeroSettings),
+    );
+    setStorySettings(applyDefaultVisuals(storySettings, defaultStorySettings));
+    setTeamSettings(applyDefaultVisuals(teamSettings, defaultTeamSettings));
+    setTestimonialsSettings(
+      applyDefaultVisuals(testimonialsSettings, defaultTestimonialsSettings),
+    );
+    setServicesSettings(
+      applyDefaultVisuals(servicesSettings, defaultServicesSettings),
+    );
+    setHomeValuesSettings(
+      applyDefaultVisuals(homeValuesSettings, defaultValuesSettings),
+    );
+    setAboutUsValuesSettings(
+      applyDefaultVisuals(aboutUsValuesSettings, defaultValuesSettings),
+    );
+    setGallerySettings(
+      applyDefaultVisuals(gallerySettings, defaultGallerySettings),
+    );
+    setGalleryPageSettings(
+      applyDefaultVisuals(galleryPageSettings, defaultGallerySettings),
+    );
+    setCTASettings(applyDefaultVisuals(ctaSettings, defaultCTASettings));
+    setHeaderSettings(applyDefaultVisuals(headerSettings, defaultHeaderSettings));
+    setFooterSettings(applyDefaultVisuals(footerSettings, defaultFooterSettings));
+    setBookingServiceSettings(
+      applyDefaultVisuals(bookingServiceSettings, defaultBookingServiceSettings),
+    );
+    setBookingDateSettings(
+      applyDefaultVisuals(bookingDateSettings, defaultBookingDateSettings),
+    );
+    setBookingTimeSettings(
+      applyDefaultVisuals(bookingTimeSettings, defaultBookingTimeSettings),
+    );
+    setBookingFormSettings(
+      applyDefaultVisuals(bookingFormSettings, defaultBookingFormSettings),
+    );
+    setBookingConfirmationSettings(
+      applyDefaultVisuals(
+        bookingConfirmationSettings,
+        defaultBookingConfirmationSettings,
+      ),
+    );
+
+    // 3. Resetar cores globais e fontes
+    setColorSettings(defaultColorSettings);
+    setFontSettings(defaultFontSettings);
+
+    // 4. Salvar os novos estados resetados no localStorage para garantir que o reload os pegue
+    saveColorSettings(defaultColorSettings);
+    saveFontSettings(defaultFontSettings);
+    saveHeroSettings(applyDefaultVisuals(heroSettings, defaultHeroSettings));
+    saveAboutHeroSettings(
+      applyDefaultVisuals(aboutHeroSettings, defaultAboutHeroSettings),
+    );
+    saveStorySettings(applyDefaultVisuals(storySettings, defaultStorySettings));
+    saveTeamSettings(applyDefaultVisuals(teamSettings, defaultTeamSettings));
+    saveTestimonialsSettings(
+      applyDefaultVisuals(testimonialsSettings, defaultTestimonialsSettings),
+    );
+    saveServicesSettings(
+      applyDefaultVisuals(servicesSettings, defaultServicesSettings),
+    );
+    saveHomeValuesSettings(
+      applyDefaultVisuals(homeValuesSettings, defaultValuesSettings),
+    );
+    saveAboutUsValuesSettings(
+      applyDefaultVisuals(aboutUsValuesSettings, defaultValuesSettings),
+    );
+    saveGallerySettings(
+      applyDefaultVisuals(gallerySettings, defaultGallerySettings),
+    );
+    saveGalleryPageSettings(
+      applyDefaultVisuals(galleryPageSettings, defaultGallerySettings),
+    );
+    saveCTASettings(applyDefaultVisuals(ctaSettings, defaultCTASettings));
+    saveHeaderSettings(
+      applyDefaultVisuals(headerSettings, defaultHeaderSettings),
+    );
+    saveFooterSettings(
+      applyDefaultVisuals(footerSettings, defaultFooterSettings),
+    );
+    saveBookingServiceSettings(
+      applyDefaultVisuals(
+        bookingServiceSettings,
+        defaultBookingServiceSettings,
+      ),
+    );
+    saveBookingDateSettings(
+      applyDefaultVisuals(bookingDateSettings, defaultBookingDateSettings),
+    );
+    saveBookingTimeSettings(
+      applyDefaultVisuals(bookingTimeSettings, defaultBookingTimeSettings),
+    );
+    saveBookingFormSettings(
+      applyDefaultVisuals(bookingFormSettings, defaultBookingFormSettings),
+    );
+    saveBookingConfirmationSettings(
+      applyDefaultVisuals(
+        bookingConfirmationSettings,
+        defaultBookingConfirmationSettings,
+      ),
+    );
+
+    toast({
+      title: "Site Resetado",
+      description: "Visual do site restaurado para o design de referência.",
+    });
+
+    // 5. Reload para limpar qualquer cache de estado e garantir que o theme-injector pegue os novos defaults
+    if (typeof window !== "undefined") {
+      await new Promise((resolve) => setTimeout(resolve, 150));
+      window.location.reload();
+    }
+  }, [
+    clearLocalDrafts,
+    saveBookingConfirmationSettings,
+    saveBookingDateSettings,
+    saveBookingFormSettings,
+    saveBookingServiceSettings,
+    saveBookingTimeSettings,
+    saveCTASettings,
+    saveFooterSettings,
+    saveGalleryPageSettings,
+    saveGallerySettings,
+    saveHeaderSettings,
+    saveHeroSettings,
+    saveAboutHeroSettings,
+    saveStorySettings,
+    saveTeamSettings,
+    saveTestimonialsSettings,
+    saveServicesSettings,
+    saveHomeValuesSettings,
+    saveAboutUsValuesSettings,
+    saveColorSettings,
+    saveFontSettings,
+    heroSettings,
+    aboutHeroSettings,
+    storySettings,
+    teamSettings,
+    testimonialsSettings,
+    servicesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
+    gallerySettings,
+    galleryPageSettings,
+    ctaSettings,
+    headerSettings,
+    footerSettings,
+    bookingServiceSettings,
+    bookingDateSettings,
+    bookingTimeSettings,
+    bookingFormSettings,
+    bookingConfirmationSettings,
+    setHeroSettings,
+    setAboutHeroSettings,
+    setStorySettings,
+    setTeamSettings,
+    setTestimonialsSettings,
+    setServicesSettings,
+    setHomeValuesSettings,
+    setAboutUsValuesSettings,
+    setGallerySettings,
+    setGalleryPageSettings,
+    setCTASettings,
+    setHeaderSettings,
+    setFooterSettings,
+    setBookingServiceSettings,
+    setBookingDateSettings,
+    setBookingTimeSettings,
+    setBookingFormSettings,
+    setBookingConfirmationSettings,
+    setColorSettings,
+    setFontSettings,
+    toast,
+  ]);
 
   const handleUpdateBackground = useCallback(
     async (updates: Partial<BackgroundSettings>, sectionId?: string) => {
@@ -891,33 +1130,94 @@ export function useEditorActions({
     (sectionId?: string) => {
       const targetSectionId = sectionId || activeSectionId;
       const resetMap: Record<string, () => void> = {
-        hero: () => setHeroSettings(state.lastSavedHero),
-        "about-hero": () => setAboutHeroSettings(state.lastSavedAboutHero),
-        story: () => setStorySettings(state.lastSavedStory),
-        team: () => setTeamSettings(state.lastSavedTeam),
+        hero: () =>
+          setHeroSettings(applyDefaultVisuals(heroSettings, defaultHeroSettings)),
+        "about-hero": () =>
+          setAboutHeroSettings(
+            applyDefaultVisuals(aboutHeroSettings, defaultAboutHeroSettings),
+          ),
+        story: () =>
+          setStorySettings(
+            applyDefaultVisuals(storySettings, defaultStorySettings),
+          ),
+        team: () =>
+          setTeamSettings(applyDefaultVisuals(teamSettings, defaultTeamSettings)),
         testimonials: () =>
-          setTestimonialsSettings(state.lastSavedTestimonials),
-        services: () => setServicesSettings(state.lastSavedServices),
-        "home-values": () => setHomeValuesSettings(state.lastSavedHomeValues),
+          setTestimonialsSettings(
+            applyDefaultVisuals(
+              testimonialsSettings,
+              defaultTestimonialsSettings,
+            ),
+          ),
+        services: () =>
+          setServicesSettings(
+            applyDefaultVisuals(servicesSettings, defaultServicesSettings),
+          ),
+        "home-values": () =>
+          setHomeValuesSettings(
+            applyDefaultVisuals(homeValuesSettings, defaultValuesSettings),
+          ),
         "about-us-values": () =>
-          setAboutUsValuesSettings(state.lastSavedAboutUsValues),
-        gallery: () => setGallerySettings(state.lastSavedGallery),
-        "gallery-preview": () => setGallerySettings(state.lastSavedGallery),
+          setAboutUsValuesSettings(
+            applyDefaultVisuals(aboutUsValuesSettings, defaultValuesSettings),
+          ),
+        gallery: () =>
+          setGallerySettings(
+            applyDefaultVisuals(gallerySettings, defaultGallerySettings),
+          ),
+        "gallery-preview": () =>
+          setGallerySettings(
+            applyDefaultVisuals(gallerySettings, defaultGallerySettings),
+          ),
         "gallery-grid": () =>
-          setGalleryPageSettings(state.lastSavedGalleryPage),
-        cta: () => setCTASettings(state.lastSavedCTA),
-        header: () => setHeaderSettings(state.lastSavedHeader),
-        footer: () => setFooterSettings(state.lastSavedFooter),
+          setGalleryPageSettings(
+            applyDefaultVisuals(galleryPageSettings, defaultGallerySettings),
+          ),
+        cta: () =>
+          setCTASettings(applyDefaultVisuals(ctaSettings, defaultCTASettings)),
+        header: () =>
+          setHeaderSettings(
+            applyDefaultVisuals(headerSettings, defaultHeaderSettings),
+          ),
+        footer: () =>
+          setFooterSettings(
+            applyDefaultVisuals(footerSettings, defaultFooterSettings),
+          ),
         "booking-service": () =>
-          setBookingServiceSettings(state.lastSavedBookingService),
+          setBookingServiceSettings(
+            applyDefaultVisuals(
+              bookingServiceSettings,
+              defaultBookingServiceSettings,
+            ),
+          ),
         "booking-date": () =>
-          setBookingDateSettings(state.lastSavedBookingDate),
+          setBookingDateSettings(
+            applyDefaultVisuals(
+              bookingDateSettings,
+              defaultBookingDateSettings,
+            ),
+          ),
         "booking-time": () =>
-          setBookingTimeSettings(state.lastSavedBookingTime),
+          setBookingTimeSettings(
+            applyDefaultVisuals(
+              bookingTimeSettings,
+              defaultBookingTimeSettings,
+            ),
+          ),
         "booking-form": () =>
-          setBookingFormSettings(state.lastSavedBookingForm),
+          setBookingFormSettings(
+            applyDefaultVisuals(
+              bookingFormSettings,
+              defaultBookingFormSettings,
+            ),
+          ),
         "booking-confirmation": () =>
-          setBookingConfirmationSettings(state.lastSavedBookingConfirmation),
+          setBookingConfirmationSettings(
+            applyDefaultVisuals(
+              bookingConfirmationSettings,
+              defaultBookingConfirmationSettings,
+            ),
+          ),
       };
 
       const resetFn = resetMap[targetSectionId];
@@ -925,30 +1225,30 @@ export function useEditorActions({
         resetFn();
         toast({
           title: "Resetado",
-          description: `Seção ${targetSectionId} voltou ao estado salvo.`,
+          description: `Seção ${targetSectionId} voltou às cores padrão.`,
         });
       }
     },
     [
       activeSectionId,
-      state.lastSavedHero,
-      state.lastSavedAboutHero,
-      state.lastSavedStory,
-      state.lastSavedTeam,
-      state.lastSavedTestimonials,
-      state.lastSavedServices,
-      state.lastSavedHomeValues,
-      state.lastSavedAboutUsValues,
-      state.lastSavedGallery,
-      state.lastSavedGalleryPage,
-      state.lastSavedCTA,
-      state.lastSavedHeader,
-      state.lastSavedFooter,
-      state.lastSavedBookingService,
-      state.lastSavedBookingDate,
-      state.lastSavedBookingTime,
-      state.lastSavedBookingForm,
-      state.lastSavedBookingConfirmation,
+      heroSettings,
+      aboutHeroSettings,
+      storySettings,
+      teamSettings,
+      testimonialsSettings,
+      servicesSettings,
+      homeValuesSettings,
+      aboutUsValuesSettings,
+      gallerySettings,
+      galleryPageSettings,
+      ctaSettings,
+      headerSettings,
+      footerSettings,
+      bookingServiceSettings,
+      bookingDateSettings,
+      bookingTimeSettings,
+      bookingFormSettings,
+      bookingConfirmationSettings,
       setHeroSettings,
       setAboutHeroSettings,
       setStorySettings,

@@ -846,23 +846,23 @@ export const defaultServicesSettings: ServicesSettings = {
   subtitle: "Tratamentos especializados para realçar seu olhar",
   showTitle: true,
   showSubtitle: true,
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.5,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  cardBgColor: "",
-  cardTitleColor: "",
-  cardDescriptionColor: "",
-  cardPriceColor: "",
-  cardIconColor: "",
+  cardBgColor: "#FFFFFF",
+  cardTitleColor: "#000000",
+  cardDescriptionColor: "#000000",
+  cardPriceColor: "#FF6B81",
+  cardIconColor: "#FF6B81",
   cardTitleFont: "",
   cardDescriptionFont: "",
   cardPriceFont: "",
@@ -870,15 +870,15 @@ export const defaultServicesSettings: ServicesSettings = {
 
 export const defaultStorySettings: StorySettings = {
   title: "Nossa História",
-  titleColor: "",
+  titleColor: "#000000",
   titleFont: "",
   content:
-    "O Brow Studio nasceu da paixão por realçar a beleza natural de cada pessoa através do design de sobrancelhas. Com mais de 10 anos de experiência no mercado, nos especializamos em técnicas avançadas que valorizam a individualidade de cada cliente.\n\nNossa missão é proporcionar não apenas um serviço de qualidade, mas uma experiência transformadora. Acreditamos que sobrancelhas bem feitas têm o poder de elevar a autoestima e destacar a beleza única de cada pessoa.\n\nInvestimos constantemente em capacitação e nas melhores técnicas do mercado para garantir resultados excepcionais e a satisfação total de nossas clientes.",
-  contentColor: "",
+    "O Brow Studio nasceu da paixão por realçar a beauty natural de cada pessoa através do design de sobrancelhas. Com mais de 10 anos de experiência no mercado, nos especializamos em técnicas avançadas que valorizam a individualidade de cada cliente.\n\nNossa missão é proporcionar não apenas um serviço de qualidade, mas uma experiência transformadora. Acreditamos que sobrancelhas bem feitas têm o poder de elevar a autoestima e destacar a beleza única de cada pessoa.\n\nInvestimos constantemente em capacitação e nas melhores técnicas do mercado para garantir resultados excepcionais e a satisfação total de nossas clientes.",
+  contentColor: "#000000",
   contentFont: "",
   image: "/professional-eyebrow-artist-at-work.jpg",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
@@ -886,7 +886,7 @@ export const defaultStorySettings: StorySettings = {
   imageX: 50,
   imageY: 50,
   appearance: {
-    backgroundColor: "",
+    backgroundColor: "#FFFFFF",
     backgroundImageUrl: "",
   },
 };
@@ -897,28 +897,28 @@ export const defaultValuesSettings: ValuesSettings = {
     "Os princípios que guiam nosso trabalho e relacionamento com cada cliente",
   showTitle: true,
   showSubtitle: true,
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.5,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  cardBgColor: "",
-  cardTitleColor: "",
-  cardDescriptionColor: "",
-  cardIconColor: "",
+  cardBgColor: "#FFFFFF",
+  cardTitleColor: "#000000",
+  cardDescriptionColor: "#000000",
+  cardIconColor: "#FF6B81",
   cardTitleFont: "",
   cardDescriptionFont: "",
-  cardTextColor: "",
-  iconColor: "",
-  borderRadius: "",
-  backgroundColor: "",
+  cardTextColor: "#000000",
+  iconColor: "#FF6B81",
+  borderRadius: "8px",
+  backgroundColor: "#FFFFFF",
   items: [
     {
       id: "1",
@@ -1066,20 +1066,20 @@ export type BookingStepSettings = {
 export const defaultBookingServiceSettings: BookingStepSettings = {
   title: "Escolha seus Serviços",
   subtitle: "Selecione um ou mais serviços para o seu agendamento",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "",
-  cardBgColor: "",
+  accentColor: "#FF6B81",
+  cardBgColor: "#FFFFFF",
   appearance: {
     backgroundImageUrl: "",
   },
@@ -1088,20 +1088,20 @@ export const defaultBookingServiceSettings: BookingStepSettings = {
 export const defaultBookingDateSettings: BookingStepSettings = {
   title: "Escolha a Data",
   subtitle: "Selecione o dia de sua preferência",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "",
-  cardBgColor: "",
+  accentColor: "#FF6B81",
+  cardBgColor: "#FFFFFF",
   appearance: {
     backgroundImageUrl: "",
   },
@@ -1110,20 +1110,20 @@ export const defaultBookingDateSettings: BookingStepSettings = {
 export const defaultBookingTimeSettings: BookingStepSettings = {
   title: "Escolha o Horário",
   subtitle: "Selecione o melhor horário disponível",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "",
-  cardBgColor: "",
+  accentColor: "#FF6B81",
+  cardBgColor: "#FFFFFF",
   appearance: {
     backgroundImageUrl: "",
   },
@@ -1132,20 +1132,20 @@ export const defaultBookingTimeSettings: BookingStepSettings = {
 export const defaultBookingFormSettings: BookingStepSettings = {
   title: "Seus Dados",
   subtitle: "Preencha suas informações para finalizar o agendamento",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "",
-  cardBgColor: "",
+  accentColor: "#FF6B81",
+  cardBgColor: "#FFFFFF",
   appearance: {
     backgroundImageUrl: "",
   },
@@ -1154,20 +1154,20 @@ export const defaultBookingFormSettings: BookingStepSettings = {
 export const defaultBookingConfirmationSettings: BookingStepSettings = {
   title: "Agendamento Confirmado!",
   subtitle: "Tudo pronto! Você receberá um e-mail com os detalhes.",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "",
-  cardBgColor: "",
+  accentColor: "#FF6B81",
+  cardBgColor: "#FFFFFF",
   appearance: {
     backgroundImageUrl: "",
   },
@@ -1608,15 +1608,15 @@ export const defaultCTASettings: CTASettings = {
   subtitle:
     "Agende seu horário agora e descubra como sobrancelhas bem feitas podem realçar toda sua beleza",
   buttonText: "Agendar Agora",
-  titleColor: "",
-  subtitleColor: "",
-  buttonColor: "",
-  buttonTextColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
+  buttonColor: "#FF6B81",
+  buttonTextColor: "#FFFFFF",
   titleFont: "",
   subtitleFont: "",
   buttonFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.1,
@@ -1628,22 +1628,22 @@ export const defaultCTASettings: CTASettings = {
 export const defaultTeamSettings: TeamSettings = {
   title: "Nossa Equipe",
   subtitle: "Conheça as profissionais especialistas que cuidarão do seu olhar",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.5,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  cardBgColor: "",
-  cardTitleColor: "",
-  cardRoleColor: "",
-  cardDescriptionColor: "",
+  cardBgColor: "#FFFFFF",
+  cardTitleColor: "#000000",
+  cardRoleColor: "#FF6B81",
+  cardDescriptionColor: "#000000",
   cardTitleFont: "",
   cardRoleFont: "",
   cardDescriptionFont: "",
@@ -1668,24 +1668,24 @@ export const defaultTeamSettings: TeamSettings = {
 };
 
 export const defaultTestimonialsSettings: TestimonialsSettings = {
-  starColor: "",
+  starColor: "#FF6B81",
   title: "O Que Dizem Nossas Clientes",
   subtitle: "A satisfação de nossas clientes é nossa maior conquista",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.5,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  cardBgColor: "",
-  cardNameColor: "",
-  cardTextColor: "",
+  cardBgColor: "#FFFFFF",
+  cardNameColor: "#000000",
+  cardTextColor: "#000000",
   cardNameFont: "",
   cardTextFont: "",
   testimonials: [
@@ -1719,14 +1719,35 @@ export type Expense = {
   isFixed: boolean;
 };
 
-export type ColorSettings = {
+export type GlobalColors = {
   primary: string;
   secondary: string;
   background: string;
   text: string;
-  accent?: string;
-  buttonText?: string;
+  accent: string;
+  buttonText: string;
+  specialtyBadge: {
+    background: string;
+    text: string;
+    borderRadius: string;
+  };
 };
+
+export const defaultGlobalColors: GlobalColors = {
+  primary: "#FF6B81",
+  secondary: "#FF6B81",
+  background: "#FFFFFF",
+  text: "#000000",
+  accent: "#FF6B81",
+  buttonText: "#FFFFFF",
+  specialtyBadge: {
+    background: "#FF6B81",
+    text: "#FFFFFF",
+    borderRadius: "8px",
+  },
+};
+
+export type ColorSettings = GlobalColors;
 
 export const services: Service[] = [];
 
@@ -1912,8 +1933,8 @@ export const defaultHeroSettings: HeroSettings = {
   badge: "Especialistas em Design de Sobrancelhas",
   showBadge: true,
   badgeIcon: "Sparkles",
-  badgeColor: "",
-  badgeTextColor: "",
+  badgeColor: "#FF6B81",
+  badgeTextColor: "#FFFFFF",
   title: "Realce Sua Beleza Natural",
   subtitle:
     "Especialistas em design de sobrancelhas, dedicados a realçar sua beleza natural.",
@@ -1930,12 +1951,12 @@ export const defaultHeroSettings: HeroSettings = {
   titleFont: "",
   subtitleFont: "",
   badgeFont: "",
-  primaryButtonColor: "",
+  primaryButtonColor: "#FF6B81",
   secondaryButtonColor: "",
-  primaryButtonTextColor: "",
+  primaryButtonTextColor: "#FFFFFF",
   secondaryButtonTextColor: "",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   primaryButtonFont: "",
   secondaryButtonFont: "",
 };
@@ -1946,12 +1967,7 @@ export const defaultFontSettings: FontSettings = {
   bodyFont: "Inter",
 };
 
-export const defaultColorSettings: ColorSettings = {
-  primary: "#111827", // slate-900
-  secondary: "#4b5563", // slate-600
-  background: "#ffffff",
-  text: "#111827",
-};
+export const defaultColorSettings: ColorSettings = defaultGlobalColors;
 
 export function getColorSettings(): ColorSettings {
   if (typeof window === "undefined") return defaultColorSettings;

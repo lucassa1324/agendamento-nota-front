@@ -5,8 +5,19 @@
  */
 
 import { ArrowLeft, Loader2, RotateCcw, Settings2 } from "lucide-react";
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type {
   BookingStepSettings,
   ColorSettings,
@@ -290,6 +301,8 @@ export const SidebarContent = memo(
     const isHomeValuesSection = activeSection === "values";
     const isAboutValuesSection = activeSection === "about-values";
 
+    const [isResetOpen, setIsResetOpen] = useState(false);
+
     return (
       <div className="flex flex-col h-full text-[clamp(0.7rem,1vw,0.875rem)]">
         <div className="p-2 sm:p-3 xl:p-6 pb-2 sm:pb-3 border-b border-border/50 shrink-0">
@@ -300,15 +313,41 @@ export const SidebarContent = memo(
                 Editor
               </span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={resetSettings}
-              className="h-6 sm:h-7 xl:h-8 px-2 sm:px-2.5 xl:px-3 gap-1 xl:gap-1.5 text-[8px] sm:text-[9px] xl:text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors shrink-0"
-            >
-              <RotateCcw className="w-2 sm:w-2.5 h-2 sm:h-2.5 xl:w-3 xl:h-3" />
-              <span>Resetar</span>
-            </Button>
+            <AlertDialog open={isResetOpen} onOpenChange={setIsResetOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 sm:h-7 xl:h-8 px-2 sm:px-2.5 xl:px-3 gap-1 xl:gap-1.5 text-[8px] sm:text-[9px] xl:text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors shrink-0"
+                >
+                  <RotateCcw className="w-2 sm:w-2.5 h-2 sm:h-2.5 xl:w-3 xl:h-3" />
+                  <span>Resetar</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Resetar todas as cores do site?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Essa ação restaura as cores padrão de todas as seções. Isso
+                    não remove conteúdos, mas sobrescreve as cores atuais.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => {
+                      void resetSettings();
+                      setIsResetOpen(false);
+                    }}
+                  >
+                    Resetar cores
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 

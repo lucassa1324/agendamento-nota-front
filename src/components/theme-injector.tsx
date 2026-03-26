@@ -287,44 +287,68 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
       const layoutGlobal = (siteCustomization?.layoutGlobal ||
         siteCustomization?.layout_global) as LayoutGlobalSettings | undefined;
 
-      const siteColors = layoutGlobal?.siteColors || layoutGlobal?.cores_base;
-      const siteFonts = layoutGlobal?.fontes || layoutGlobal?.typography;
+      const siteColors = (layoutGlobal?.siteColors ||
+        layoutGlobal?.cores_base) as Record<string, unknown> | undefined;
+      const siteFonts = (layoutGlobal?.fontes ||
+        layoutGlobal?.typography) as Record<string, unknown> | undefined;
+      const badgeRecord =
+        (siteColors?.specialtyBadge as Record<string, unknown>) ||
+        (siteColors?.specialty_badge as Record<string, unknown>) ||
+        {};
 
       const colorSettings = {
         primary:
-          siteColors?.primary ||
+          (siteColors?.primary as string) ||
           config.colors?.primary ||
           defaultColorSettings.primary,
         background:
-          siteColors?.background ||
+          (siteColors?.background as string) ||
           config.colors?.background ||
           defaultColorSettings.background,
         text:
-          siteColors?.text || config.colors?.text || defaultColorSettings.text,
+          (siteColors?.text as string) ||
+          config.colors?.text ||
+          defaultColorSettings.text,
         accent:
-          siteColors?.accent ||
-          siteColors?.primary ||
+          (siteColors?.accent as string) ||
+          (siteColors?.primary as string) ||
           config.colors?.accent ||
           defaultColorSettings.primary,
         secondary:
-          siteColors?.secondary ||
+          (siteColors?.secondary as string) ||
           config.colors?.secondary ||
           defaultColorSettings.secondary,
+        buttonText:
+          (siteColors?.buttonText as string) ||
+          config.colors?.buttonText ||
+          defaultColorSettings.buttonText,
+        specialtyBadge: {
+          background:
+            (badgeRecord.background as string) ||
+            defaultColorSettings.specialtyBadge.background,
+          text:
+            (badgeRecord.text as string) ||
+            defaultColorSettings.specialtyBadge.text,
+          borderRadius:
+            (badgeRecord.borderRadius as string) ||
+            (badgeRecord.border_radius as string) ||
+            defaultColorSettings.specialtyBadge.borderRadius,
+        },
       };
 
       const fontSettings = {
         bodyFont:
-          siteFonts?.bodyFont ||
+          (siteFonts?.bodyFont as string) ||
           config.typography?.bodyFont ||
           config.theme?.bodyFont ||
           defaultFontSettings.bodyFont,
         headingFont:
-          siteFonts?.headingFont ||
+          (siteFonts?.headingFont as string) ||
           config.typography?.headingFont ||
           config.theme?.headingFont ||
           defaultFontSettings.headingFont,
         subtitleFont:
-          siteFonts?.subtitleFont ||
+          (siteFonts?.subtitleFont as string) ||
           config.typography?.subtitleFont ||
           config.theme?.subtitleFont ||
           defaultFontSettings.subtitleFont,
@@ -364,11 +388,12 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
       // 1. Fundo do Agendamento: appointmentFlow.colors.background
       const appointmentFlowColors = (appointmentFlow?.colors ||
         appointmentFlow?.cores) as Record<string, string> | undefined;
-      const bookingBg =
-        appointmentFlowColors?.background ||
-        siteColors?.background ||
-        config.colors?.background ||
-        defaultColorSettings.background;
+      const bookingBg = sanitizeColor(
+        (appointmentFlowColors?.background as string) ||
+          (siteColors?.background as string) ||
+          (config.colors?.background as string) ||
+          defaultColorSettings.background,
+      );
       if (bookingBg) {
         sectionStyles["--booking-background"] = bookingBg;
       }

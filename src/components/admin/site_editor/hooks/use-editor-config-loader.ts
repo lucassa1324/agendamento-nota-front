@@ -813,6 +813,31 @@ export function useEditorConfigLoader({
       }
       };
 
+      const normalizeColorSettings = (value?: ColorSettings): ColorSettings => {
+        const record = (value || {}) as Record<string, unknown>;
+        const badgeRecord =
+          (record.specialtyBadge as Record<string, unknown>) ||
+          (record.specialty_badge as Record<string, unknown>) ||
+          {};
+        return {
+          ...defaultColorSettings,
+          ...value,
+          specialtyBadge: {
+            ...defaultColorSettings.specialtyBadge,
+            background:
+              (badgeRecord.background as string) ||
+              defaultColorSettings.specialtyBadge.background,
+            text:
+              (badgeRecord.text as string) ||
+              defaultColorSettings.specialtyBadge.text,
+            borderRadius:
+              (badgeRecord.borderRadius as string) ||
+              (badgeRecord.border_radius as string) ||
+              defaultColorSettings.specialtyBadge.borderRadius,
+          },
+        };
+      };
+
       processSection(
         "aboutHeroSettings",
         data.aboutHero as HeroSettings,
@@ -951,14 +976,20 @@ export function useEditorConfigLoader({
         defaultFontSettings,
         (layoutGlobal?.font || baseConfig.font) as FontSettings,
       );
+      const normalizedColorData = normalizeColorSettings(
+        data.color as ColorSettings,
+      );
+      const normalizedColorBank = normalizeColorSettings(
+        (layoutGlobal?.color || baseConfig.color) as ColorSettings,
+      );
       processSection(
         "colorSettings",
-        data.color as ColorSettings,
+        normalizedColorData,
         setColorSettings,
         setLastSavedColor,
         setLastAppliedColor,
         defaultColorSettings,
-        (layoutGlobal?.color || baseConfig.color) as ColorSettings,
+        normalizedColorBank,
       );
 
       // Booking steps...

@@ -400,6 +400,21 @@ export function StudioProvider({
           (layoutColors?.buttonText as string) ||
           (config.colors?.buttonText as string) ||
           "#ffffff",
+        specialtyBadge: {
+          background:
+            ((layoutColors?.specialtyBadge as Record<string, string>)?.background) ||
+            ((layoutColors?.specialty_badge as Record<string, string>)?.background) ||
+            defaultColorSettings.specialtyBadge.background,
+          text:
+            ((layoutColors?.specialtyBadge as Record<string, string>)?.text) ||
+            ((layoutColors?.specialty_badge as Record<string, string>)?.text) ||
+            defaultColorSettings.specialtyBadge.text,
+          borderRadius:
+            ((layoutColors?.specialtyBadge as Record<string, string>)?.borderRadius) ||
+            ((layoutColors?.specialty_badge as Record<string, string>)?.borderRadius) ||
+            ((layoutColors?.specialty_badge as Record<string, string>)?.border_radius) ||
+            defaultColorSettings.specialtyBadge.borderRadius,
+        },
       };
 
       const bookingFromLayoutRaw = (layoutGlobal?.bookingSteps ||
