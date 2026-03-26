@@ -29,6 +29,8 @@ export interface SectionBackgroundProps {
   className?: string;
   gradientClassName?: string;
   defaultImage?: string;
+  hideColorLayer?: boolean;
+  color?: string;
 }
 
 export function SectionBackground({
@@ -36,6 +38,8 @@ export function SectionBackground({
   className,
   gradientClassName,
   defaultImage,
+  hideColorLayer = false,
+  color,
 }: SectionBackgroundProps) {
   const [imageError, setImageError] = useState(false);
 
@@ -88,20 +92,26 @@ export function SectionBackground({
     <div
       key={`${effectiveBgType}-${bgImage}`}
       className={cn(
-        "absolute inset-0 overflow-hidden pointer-events-none min-h-100",
+        "absolute inset-0 overflow-hidden pointer-events-none min-h-100 -z-10",
+        hideColorLayer ? "bg-transparent" : "bg-white",
         className,
       )}
+      style={{
+        backgroundColor: !hideColorLayer ? color || effectiveBackgroundColor : undefined,
+      }}
     >
       {/* CAMADA DE COR: Sempre visível se o tipo for 'color' OU se não tiver imagem para mostrar */}
-      <div
-        className="absolute inset-0 z-0 transition-colors duration-500"
-        style={{
-          backgroundColor: effectiveBackgroundColor,
-          backgroundImage: effectiveBgType === "color" ? "none" : undefined,
-          display:
-            effectiveBgType === "color" || !shouldShowImage ? "block" : "none",
-        }}
-      />
+      {!hideColorLayer && (
+        <div
+          className="absolute inset-0 z-0 transition-colors duration-500"
+          style={{
+            backgroundColor: effectiveBackgroundColor,
+            backgroundImage: effectiveBgType === "color" ? "none" : undefined,
+            display:
+              effectiveBgType === "color" || !shouldShowImage ? "block" : "none",
+          }}
+        />
+      )}
 
       {/* CAMADA DE IMAGEM: Só renderiza se o tipo for 'image' */}
       {shouldShowImage && bgImage && (

@@ -1665,6 +1665,14 @@ export function useEditorState() {
           newState.cardDescriptionColor =
             sanitizeColor(updates.cardDescriptionColor) ||
             prev.cardDescriptionColor;
+        if (updates.cardTextColor !== undefined)
+          newState.cardTextColor =
+            sanitizeColor(updates.cardTextColor) || prev.cardTextColor;
+        if (updates.iconColor !== undefined)
+          newState.iconColor =
+            sanitizeColor(updates.iconColor) || prev.iconColor;
+        if (updates.borderRadius !== undefined)
+          newState.borderRadius = updates.borderRadius || prev.borderRadius;
         return newState;
       });
     },
@@ -1699,6 +1707,14 @@ export function useEditorState() {
           newState.cardDescriptionColor =
             sanitizeColor(updates.cardDescriptionColor) ||
             prev.cardDescriptionColor;
+        if (updates.cardTextColor !== undefined)
+          newState.cardTextColor =
+            sanitizeColor(updates.cardTextColor) || prev.cardTextColor;
+        if (updates.iconColor !== undefined)
+          newState.iconColor =
+            sanitizeColor(updates.iconColor) || prev.iconColor;
+        if (updates.borderRadius !== undefined)
+          newState.borderRadius = updates.borderRadius || prev.borderRadius;
         return newState;
       });
     },
@@ -1967,6 +1983,9 @@ export function useEditorState() {
           u: Partial<BackgroundSettings>,
         ) => void,
         "home-values": handleUpdateHomeValues as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        "about-values": handleUpdateAboutUsValues as (
           u: Partial<BackgroundSettings>,
         ) => void,
         "about-us-values": handleUpdateAboutUsValues as (

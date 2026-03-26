@@ -158,7 +158,8 @@ type UseEditorApiParams = {
   lastApplied: EditorAppliedState;
   setters: EditorStateSetters;
   setIsDirty: (value: boolean) => void;
-  saveLocalDrafts: (drafts: EditorLocalDrafts) => void;
+  saveLocalDrafts: (data: EditorLocalDrafts) => void;
+  updateStudioInfo?: (updates: Record<string, unknown>) => void;
 };
 
 const normalizePayload = (data: SiteConfigData | null | undefined) =>
@@ -219,6 +220,7 @@ export function useEditorApi({
   setters,
   setIsDirty,
   saveLocalDrafts,
+  updateStudioInfo,
 }: UseEditorApiParams) {
   const { toast } = useToast();
   const [companyId, setCompanyId] = useState<string | null>(null);
@@ -595,11 +597,13 @@ export function useEditorApi({
         const appearance =
           (section.appearance as Record<string, unknown> | undefined) || {};
         const backgroundColor =
+          (section.backgroundColor as string) ||
           (section.bgColor as string) ||
           (appearance.backgroundColor as string) ||
           "";
         return {
           ...section,
+          backgroundColor,
           appearance: {
             ...appearance,
             backgroundColor,
@@ -936,7 +940,14 @@ export function useEditorApi({
                       backgroundColor: genericColor
                     }
                   } : {}),
-                  ...(section === "aboutUsValuesSettings" ? { about_values_bg: genericColor } : {}),
+                  ...(section === "aboutUsValuesSettings" ? { 
+                    about_values_bg: genericColor,
+                    // Garante que o appearance.backgroundColor seja preservado no objeto final
+                    appearance: {
+                      ...(subObj.appearance as Record<string, unknown>),
+                      backgroundColor: genericColor
+                    }
+                  } : {}),
                 });
 
                 if (section === "hero" || section === "aboutHero") {
@@ -1193,12 +1204,6 @@ export function useEditorApi({
             sanitizedBookingSteps,
           );
 
-          // 1. Normalização Recursiva antes de mapear
-          const serviceCardBg =
-            cleanBookingSteps.service?.cardBgColor ||
-            (cleanBookingSteps.service?.appearance as Record<string, unknown> | undefined)
-              ?.cardBgColor;
-
           payload.appointmentFlow = {
             steps: {
               ...(cleanBookingSteps.service
@@ -1325,12 +1330,21 @@ export function useEditorApi({
               string,
               unknown
             >;
+            const serviceCardBg = cleanBookingSteps.service.cardBgColor || "#ffffff";
+            const existingStep1 =
+              (appointmentFlow.step1Services as Record<string, unknown>) || {};
             appointmentFlow.step1Services = {
+              ...existingStep1,
+              ...cleanBookingSteps.service,
+              card_bg_color: serviceCardBg,
+              cardBackgroundColor: serviceCardBg,
+              bg_color: cleanBookingSteps.service.bgColor,
+              accent_color: cleanBookingSteps.service.accentColor,
               cardConfig: {
-                backgroundColor: (serviceCardBg as string) || "#ffffff",
-                cardBackgroundColor: (serviceCardBg as string) || "#ffffff",
-                background_color: (serviceCardBg as string) || "#ffffff",
-                card_background_color: (serviceCardBg as string) || "#ffffff",
+                backgroundColor: serviceCardBg,
+                cardBackgroundColor: serviceCardBg,
+                background_color: serviceCardBg,
+                card_background_color: serviceCardBg,
               },
             };
           }
@@ -1343,6 +1357,7 @@ export function useEditorApi({
 
           // Sanitiza o payload antes de enviar para o backend
           const sanitizedPayload = sanitizePayload(cleanPayload);
+          console.log("PAYLOAD SENDING TO API:", sanitizedPayload);
           console.log("PAYLOAD_READY", sanitizedPayload);
           console.log(
             ">>> [PAYLOAD FINAL]",
@@ -1398,6 +1413,20 @@ export function useEditorApi({
               );
               
               setIsDirty(false);
+
+              // 5. ATUALIZAÇÃO DO CONTEXTO GLOBAL (Força re-render do site no editor)
+              if (updateStudioInfo && fresh) {
+                console.log(">>> [SYNC] Atualizando studio.config com os dados salvos.");
+                updateStudioInfo({ config: fresh });
+              }
+
+              // 6. LIMPEZA DE CACHE DE PREVIEW
+              if (typeof localStorage !== "undefined") {
+                console.log(">>> [CACHE] Limpando studio-preview-cache...");
+                localStorage.removeItem("studio-preview-cache");
+                // Limpa também o draft local para garantir sincronia com o banco
+                localStorage.removeItem("studio-local-draft");
+              }
 
               console.log(">>> [SYNC] Estado LAST_SAVED atualizado.");
             }
@@ -1478,6 +1507,7 @@ export function useEditorApi({
       toast,
       hasUnsavedGlobalChanges,
       setIsDirty,
+      updateStudioInfo,
     ],
   );
 

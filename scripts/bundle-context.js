@@ -2,11 +2,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const filesToBundle = [
-  "src/components/admin/site_editor/hooks/use-editor-state.ts",
+  "src/components/values-section.tsx",
   "src/components/admin/site_editor/hooks/use-editor-sync.ts",
-  "src/components/admin/site_editor/pages/home/values-editor.tsx",
-  "src/lib/site-customizer-service.ts",
+  "src/lib/booking-data.ts",
   "src/lib/site-config-types.ts",
+  "src/components/admin/site_editor/hooks/use-editor-actions.ts",
 ];
 
 const outputPath = path.resolve(

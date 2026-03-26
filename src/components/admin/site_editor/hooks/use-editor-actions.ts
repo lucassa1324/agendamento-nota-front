@@ -383,6 +383,7 @@ export function useEditorActions({
         testimonials: testimonialsSettings,
         services: servicesSettings,
         "home-values": homeValuesSettings,
+        "about-values": aboutUsValuesSettings,
         "about-us-values": aboutUsValuesSettings,
         gallery: gallerySettings,
         "gallery-preview": gallerySettings,
@@ -461,6 +462,7 @@ export function useEditorActions({
           testimonials: testimonialsSettings,
           services: servicesSettings,
           "home-values": homeValuesSettings,
+          "about-values": aboutUsValuesSettings,
           "about-us-values": aboutUsValuesSettings,
           gallery: gallerySettings,
           "gallery-preview": gallerySettings,
@@ -487,6 +489,8 @@ export function useEditorActions({
         services: (u) => saveServicesSettings({ ...servicesSettings, ...u }),
         "home-values": (u) =>
           saveHomeValuesSettings({ ...homeValuesSettings, ...u }),
+        "about-values": (u) =>
+          saveAboutUsValuesSettings({ ...aboutUsValuesSettings, ...u }),
         "about-us-values": (u) =>
           saveAboutUsValuesSettings({ ...aboutUsValuesSettings, ...u }),
         gallery: (u) => saveGallerySettings({ ...gallerySettings, ...u }),
@@ -518,6 +522,7 @@ export function useEditorActions({
         testimonials: "testimonialsSettings",
         services: "servicesSettings",
         "home-values": "homeValuesSettings",
+        "about-values": "aboutUsValuesSettings",
         "about-us-values": "aboutUsValuesSettings",
         gallery: "gallerySettings",
         "gallery-preview": "gallerySettings",

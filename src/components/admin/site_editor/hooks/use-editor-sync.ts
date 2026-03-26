@@ -232,6 +232,7 @@ export function useEditorSync({
           (mergedAppearance?.backgroundColor as string | undefined),
       ) || "";
     merged.bgColor = resolvedValuesBg;
+    mergedRecord.backgroundColor = resolvedValuesBg;
     mergedRecord.values_bg = resolvedValuesBg;
     if (merged.appearance) {
       merged.appearance = {
@@ -252,6 +253,20 @@ export function useEditorSync({
         merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
     }
     const mergedRecord = merged as Record<string, unknown>;
+    const lastSavedRecord =
+      lastSavedAboutUsValues as Record<string, unknown> | undefined;
+    const resolvedItems = Array.isArray(merged.items)
+      ? merged.items
+      : Array.isArray(mergedRecord.values)
+        ? mergedRecord.values
+        : Array.isArray(lastSavedRecord?.items)
+          ? (lastSavedRecord?.items as unknown[])
+          : Array.isArray(defaultValuesSettings.items)
+            ? defaultValuesSettings.items
+            : [];
+    if (!Array.isArray(merged.items) && resolvedItems.length > 0) {
+      merged.items = resolvedItems as typeof merged.items;
+    }
     const mergedCardConfig = mergedRecord.cardConfig as Record<string, unknown> | undefined;
     const mergedContent = mergedRecord.content as Record<string, unknown> | undefined;
     const mergedItemsStyle = mergedRecord.itemsStyle as Record<string, unknown> | undefined;
@@ -268,24 +283,29 @@ export function useEditorSync({
           (mergedAppearance?.cardBgColor as string | undefined) ||
           (mergedAppearance?.cardBackgroundColor as string | undefined),
       ) || "";
-    if (!merged.cardBgColor && resolvedCardBgColor) {
+
+    // Forçar a atualização das chaves de preview se houver uma cor resolvida
+    if (resolvedCardBgColor) {
       merged.cardBgColor = resolvedCardBgColor;
-    }
-    if (!mergedRecord.cardBackgroundColor && resolvedCardBgColor) {
       mergedRecord.cardBackgroundColor = resolvedCardBgColor;
     }
+
     const resolvedValuesBg =
       sanitizeColor(
         (merged.bgColor as string | undefined) ||
           (mergedAppearance?.backgroundColor as string | undefined),
       ) || "";
-    merged.bgColor = resolvedValuesBg;
-    mergedRecord.about_values_bg = resolvedValuesBg;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...(merged.appearance as Record<string, unknown>),
-        backgroundColor: resolvedValuesBg,
-      };
+
+    if (resolvedValuesBg) {
+      merged.bgColor = resolvedValuesBg;
+      mergedRecord.backgroundColor = resolvedValuesBg;
+      mergedRecord.about_values_bg = resolvedValuesBg;
+      if (merged.appearance) {
+        merged.appearance = {
+          ...(merged.appearance as Record<string, unknown>),
+          backgroundColor: resolvedValuesBg,
+        };
+      }
     }
     return merged;
   }, [lastSavedAboutUsValues, aboutUsValuesSettings, sanitizeSectionData]);
@@ -313,6 +333,19 @@ export function useEditorSync({
         merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
     }
     return normalizeStepSettings(merged);
+  }, [lastSavedBookingService, bookingServiceSettings, sanitizeSectionData]);
+
+  const previewBookingServiceRaw = useMemo(() => {
+    const merged = sanitizeSectionData(
+      bookingServiceSettings,
+      lastSavedBookingService,
+    ) as Record<string, unknown>;
+    if (bookingServiceSettings.bgType === "color") {
+      merged.bgImage = "";
+      if (merged.appearance)
+        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
+    }
+    return merged;
   }, [lastSavedBookingService, bookingServiceSettings, sanitizeSectionData]);
 
   const previewBookingDateSettings = useMemo(() => {
@@ -725,6 +758,47 @@ export function useEditorSync({
     [previewBookingConfirmationSettings, syncToIframe],
   );
 
+  useEffect(() => {
+    // Notificar passos de agendamento sobre mudanças de estilo
+    if (iframeRef.current?.contentWindow) {
+      const step1Styles = {
+        bgColor: previewBookingServiceSettings.bgColor,
+        bg_color: previewBookingServiceSettings.bgColor,
+        backgroundColor: previewBookingServiceSettings.bgColor,
+        cardBgColor: previewBookingServiceSettings.cardBgColor,
+        card_bg_color: previewBookingServiceSettings.cardBgColor,
+        cardBackgroundColor: previewBookingServiceSettings.cardBgColor,
+        accentColor: previewBookingServiceSettings.accentColor,
+        accent_color: previewBookingServiceSettings.accentColor,
+        titleColor: previewBookingServiceSettings.titleColor,
+        subtitleColor: previewBookingServiceSettings.subtitleColor,
+      };
+
+      console.log(
+        "[EDITOR_SYNC] Enviando UPDATE_BOOKING_STYLE para step1Services:",
+        step1Styles,
+      );
+
+      iframeRef.current.contentWindow.postMessage(
+        {
+          type: "UPDATE_BOOKING_STYLE",
+          payload: {
+            section: "step1Services",
+            styles: step1Styles,
+          },
+        },
+        "*",
+      );
+    }
+  }, [
+    iframeRef,
+    previewBookingServiceSettings,
+    previewBookingDateSettings,
+    previewBookingTimeSettings,
+    previewBookingFormSettings,
+    previewBookingConfirmationSettings,
+  ]);
+
   // Função para sanitizar o objeto siteCustomization completo
   const sanitizeSiteCustomization = useCallback(
     (customization: Record<string, unknown>) => {
@@ -959,6 +1033,16 @@ export function useEditorSync({
           );
           win.postMessage(
             {
+              type: "UPDATE_BOOKING_STYLE",
+              payload: {
+                section: "step1Services",
+                styles: previewBookingServiceRaw,
+              },
+            },
+            "*",
+          );
+          win.postMessage(
+            {
               type: "UPDATE_BOOKING_DATE_SETTINGS",
               settings: previewBookingDateSettings,
             },
@@ -1012,6 +1096,7 @@ export function useEditorSync({
     previewHeaderSettings,
     previewFooterSettings,
     previewBookingServiceSettings,
+    previewBookingServiceRaw,
     previewBookingDateSettings,
     previewBookingTimeSettings,
     previewBookingFormSettings,

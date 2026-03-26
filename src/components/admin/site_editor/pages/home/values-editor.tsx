@@ -56,7 +56,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import type { ValueItem, ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
+import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
@@ -96,7 +96,6 @@ const icons = [
 interface ValuesEditorProps {
   settings: ValuesSettings;
   onUpdate: (updates: Partial<ValuesSettings>) => void;
-  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSave?: () => void;
   hasChanges?: boolean;
 }
@@ -104,7 +103,6 @@ interface ValuesEditorProps {
 export function ValuesEditor({
   settings,
   onUpdate,
-  onUpdateBackground,
   onSave: externalOnSave,
   hasChanges,
 }: ValuesEditorProps) {
@@ -245,7 +243,9 @@ export function ValuesEditor({
                       value={settings.cardBgColor || "#ffffff"}
                       className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
                       onChange={(e) =>
-                        onUpdate({ cardBgColor: e.target.value })
+                        onUpdate({
+                          cardBgColor: e.target.value,
+                        })
                       }
                     />
                     <Input
@@ -253,7 +253,9 @@ export function ValuesEditor({
                       placeholder="Transparente"
                       className="h-8 text-[10px] flex-1 uppercase"
                       onChange={(e) =>
-                        onUpdate({ cardBgColor: e.target.value })
+                        onUpdate({
+                          cardBgColor: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -501,11 +503,7 @@ export function ValuesEditor({
               }}
               sectionId="home-values"
               onUpdate={(updates) => {
-                if (onUpdateBackground) {
-                  onUpdateBackground(updates, "home-values");
-                } else {
-                  onUpdate(updates);
-                }
+                onUpdate(updates as Partial<ValuesSettings>);
               }}
               section="values"
             />

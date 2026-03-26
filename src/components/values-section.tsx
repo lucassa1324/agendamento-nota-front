@@ -85,18 +85,34 @@ const iconMap: Record<string, LucideIcon> = {
 
 export function ValuesSection({
   source = "home",
+  settings: propSettings,
 }: {
   source?: "home" | "about";
+  settings?: ValuesSettings | null;
 }) {
   const { studio, isLoading } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
-  const [settings, setSettings] = useState<ValuesSettings | null>(null);
+  const [settings, setSettings] = useState<ValuesSettings | null>(
+    propSettings || null,
+  );
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
   );
+  const [isolatedSection, setIsolatedSection] = useState<string | null>(null);
+  const [visibleSections, setVisibleSections] = useState<
+    Record<string, boolean>
+  >({});
+  const sectionId = source === "about" ? "about-values" : "values";
 
   const studioId = studio?.id;
   const studioConfig = studio?.config;
+
+  // Atualiza o estado interno se a prop settings mudar
+  useEffect(() => {
+    if (propSettings) {
+      setSettings(propSettings);
+    }
+  }, [propSettings]);
 
   // Debug log para ver a estrutura do config que chega no site público
   useEffect(() => {
@@ -106,15 +122,22 @@ export function ValuesSection({
   }, [studioConfig]);
 
   const normalizeValues = useCallback((rawValues: Record<string, unknown>) => {
+    console.log(">>> [VALUES_SECTION] RAW VALUES RECEIVED:", rawValues);
     const content = (rawValues.content as Record<string, unknown>) || {};
     const appearance = (rawValues.appearance as AppearanceSettings) || {};
+    const header = (rawValues.header as Record<string, unknown>) || {};
+    const headerTitle = (header.title as Record<string, unknown>) || {};
+    const headerSubtitle = (header.subtitle as Record<string, unknown>) || {};
     const itemsStyle =
       (rawValues.itemsStyle as Record<string, unknown>) ||
       (content.itemsStyle as Record<string, unknown>) ||
       {};
+
+    // PADRONIZAÇÃO DE CHAVES (Solicitado pelo usuário)
+    // Garantir que backgroundColor e cardBackgroundColor sejam as chaves principais
     const resolvedCardBgColor = sanitizeColor(
-      (rawValues.cardBgColor as string) ||
-        (rawValues.cardBackgroundColor as string) ||
+      (rawValues.cardBackgroundColor as string) ||
+        (rawValues.cardBgColor as string) ||
         (rawValues.card_background_color as string) ||
         ((rawValues.cardConfig as Record<string, unknown>)
           ?.cardBackgroundColor as string) ||
@@ -125,34 +148,74 @@ export function ValuesSection({
         (appearance.cardBgColor as string) ||
         ((appearance as Record<string, unknown>).cardBackgroundColor as string),
     );
-    const fallbackSectionBgColor = rawValues.backgroundColor as
-      | string
-      | undefined;
+
     const resolvedSectionBgColor = sanitizeColor(
-      (rawValues.bgColor as string) ||
+      (rawValues.about_values_bg as string) ||
+        (rawValues.values_bg as string) ||
+        (rawValues.backgroundColor as string) ||
+        (rawValues.bgColor as string) ||
+        ((rawValues.appearance as Record<string, unknown>)?.backgroundColor as
+          | string
+          | undefined) ||
+        (rawValues.about_us_bg as string) ||
+        (rawValues.about_us_values_bg as string) ||
+        (rawValues.about_values_background as string) ||
         (appearance.backgroundColor as string) ||
-        (fallbackSectionBgColor &&
-        fallbackSectionBgColor !== resolvedCardBgColor
-          ? fallbackSectionBgColor
-          : "") ||
-        "",
+        "transparent",
     );
 
-    return {
+    if (rawValues.about_values_bg || rawValues.values_bg) {
+      console.log(
+        ">>> [VALUES_SECTION] Cor de fundo encontrada em chave específica:",
+        {
+          values_bg: rawValues.values_bg,
+          about_values_bg: rawValues.about_values_bg,
+        },
+      );
+    }
+
+    const resolvedShowTitle =
+      typeof rawValues.showTitle === "boolean"
+        ? rawValues.showTitle
+        : typeof content.showTitle === "boolean"
+          ? content.showTitle
+          : typeof appearance.showTitle === "boolean"
+            ? appearance.showTitle
+            : true;
+    const resolvedShowSubtitle =
+      typeof rawValues.showSubtitle === "boolean"
+        ? rawValues.showSubtitle
+        : typeof content.showSubtitle === "boolean"
+          ? content.showSubtitle
+          : typeof appearance.showSubtitle === "boolean"
+            ? appearance.showSubtitle
+            : true;
+
+    const normalized = {
       ...rawValues,
       ...content,
       ...appearance,
-      title: (rawValues.title as string) || (content.title as string),
-      subtitle: (rawValues.subtitle as string) || (content.subtitle as string),
-      items:
-        (rawValues.items as ValueItem[]) || (content.items as ValueItem[]) || [],
-      showTitle:
-        rawValues.showTitle ?? content.showTitle ?? appearance.showTitle ?? true,
-      showSubtitle:
-        rawValues.showSubtitle ??
-        content.showSubtitle ??
-        appearance.showSubtitle ??
-        true,
+      // EXTRAÇÃO DE HEADER E FALLBACKS (Solicitado pelo usuário)
+      title:
+        (rawValues.title as string) ||
+        (content.title as string) ||
+        (headerTitle.text as string) ||
+        "",
+      subtitle:
+        (rawValues.subtitle as string) ||
+        (content.subtitle as string) ||
+        (headerSubtitle.text as string) ||
+        "",
+      // MAPEAMENTO DE ITENS (Suporte para .items ou .values)
+      items: Array.isArray(rawValues.items)
+        ? (rawValues.items as ValueItem[])
+        : Array.isArray(content.items)
+          ? (content.items as ValueItem[])
+          : Array.isArray(rawValues.values)
+            ? (rawValues.values as ValueItem[])
+            : [],
+      showTitle: resolvedShowTitle,
+      showSubtitle: resolvedShowSubtitle,
       titleColor: sanitizeColor(
         (rawValues.titleColor as string) ||
           (appearance.titleColor as string) ||
@@ -171,7 +234,9 @@ export function ValuesSection({
         (rawValues.subtitleFont as string) ||
         (appearance.subtitleFont as string) ||
         (content.subtitleFont as string),
+      // PADRONIZAÇÃO FINAL DAS CHAVES DE COR
       cardBgColor: resolvedCardBgColor,
+      cardBackgroundColor: resolvedCardBgColor,
       cardTitleColor: sanitizeColor(
         (rawValues.cardTitleColor as string) ||
           (appearance.cardTitleColor as string) ||
@@ -184,9 +249,20 @@ export function ValuesSection({
       ),
       cardIconColor: sanitizeColor(
         (rawValues.cardIconColor as string) ||
+          (rawValues.iconColor as string) ||
+          (itemsStyle.itemIconColor as string) ||
           (appearance.cardIconColor as string) ||
           (content.cardIconColor as string),
       ),
+      cardTextColor: sanitizeColor(
+        (rawValues.cardTextColor as string) ||
+          (content.cardTextColor as string),
+      ),
+      borderRadius:
+        (rawValues.borderRadius as string) ||
+        (appearance.cardBorderRadius !== undefined ? `${appearance.cardBorderRadius}px` : "") ||
+        (content.borderRadius as string) ||
+        "0.5rem",
       cardTitleFont:
         (rawValues.cardTitleFont as string) ||
         (appearance.cardTitleFont as string) ||
@@ -198,6 +274,7 @@ export function ValuesSection({
       bgImage:
         (rawValues.bgImage as string) || appearance.backgroundImageUrl || "",
       bgColor: resolvedSectionBgColor,
+      backgroundColor: resolvedSectionBgColor,
       bgType:
         (rawValues.bgType as string) ||
         (appearance.bgType as string) ||
@@ -243,36 +320,54 @@ export function ValuesSection({
           (appearance.imageScale as number) ??
           1,
         imageX:
-          (rawValues.imageX as number) ??
-          (appearance.imageX as number) ??
-          50,
+          (rawValues.imageX as number) ?? (appearance.imageX as number) ?? 50,
         imageY:
-          (rawValues.imageY as number) ??
-          (appearance.imageY as number) ??
-          50,
+          (rawValues.imageY as number) ?? (appearance.imageY as number) ?? 50,
       },
     } as ValuesSettings;
+
+    console.log(">>> [VALUES_SECTION] NORMALIZED SETTINGS:", normalized);
+    return normalized;
   }, []);
 
   const loadData = useCallback(() => {
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studioId) {
       const config = studioConfig as SiteConfigData | undefined;
+
+      // Sincroniza o array de visibilidade
+      const rawVisible = config?.visibleSections || (config as Record<string, unknown>)?.visible_sections;
+      if (rawVisible) {
+        if (Array.isArray(rawVisible)) {
+          const mapped: Record<string, boolean> = {};
+          (rawVisible as string[]).forEach((id: string) => {
+            mapped[id] = true;
+          });
+          setVisibleSections(mapped);
+        } else {
+          setVisibleSections(rawVisible as Record<string, boolean>);
+        }
+      }
+
       const layoutGlobal = (config?.layoutGlobal || config?.layout_global) as
         | Record<string, unknown>
         | undefined;
-      const home = config?.home as Record<string, unknown> | undefined;
-      const aboutUs = (config as Record<string, unknown>)?.aboutUs as
+      const home = (config?.home || (config as Record<string, unknown>)?.home_page) as Record<string, unknown> | undefined;
+      const aboutUs = ((config as Record<string, unknown>)?.aboutUs || (config as Record<string, unknown>)?.about_us) as
         | Record<string, unknown>
         | undefined;
       const rawValues =
         source === "home"
           ? ((config?.homeValuesSettings ||
+              config?.homeValues ||
+              config?.home_values ||
               home?.valuesSection ||
               home?.values ||
               config?.values ||
               layoutGlobal?.values) as Record<string, unknown> | undefined)
           : ((config?.aboutUsValuesSettings ||
+              config?.aboutUsValues ||
+              config?.about_us_values ||
               aboutUs?.valuesSection ||
               aboutUs?.values ||
               config?.values ||
@@ -281,16 +376,31 @@ export function ValuesSection({
       if (rawValues) {
         setSettings(normalizeValues(rawValues));
       } else {
-        setSettings(
-          source === "home" ? getHomeValuesSettings() : getAboutUsValuesSettings(),
-        );
+        // PASSE O CONFIG PARA A FUNÇÃO LER OS DADOS! (Solicitado pelo usuário)
+        const fallback = source === "home"
+          ? getHomeValuesSettings(config)
+          : getAboutUsValuesSettings(config);
+        
+        // Se já temos um objeto ValuesSettings pronto do fallback, usamos ele diretamente
+        // ou normalizamos se necessário para garantir que as chaves de aparência existam.
+        setSettings(normalizeValues(fallback as unknown as Record<string, unknown>));
       }
     } else {
-      setSettings(
-        source === "home" ? getHomeValuesSettings() : getAboutUsValuesSettings(),
-      );
+      const defaultSettings = source === "home"
+        ? getHomeValuesSettings()
+        : getAboutUsValuesSettings();
+      setSettings(normalizeValues(defaultSettings as unknown as Record<string, unknown>));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [normalizeValues, source, studioId, studioConfig]);
+
+  // Efeito para sincronizar com mudanças no contexto global (Hydration/Post-Save)
+  useEffect(() => {
+    if (isMounted) {
+      console.log(">>> [VALUES_SECTION] Syncing with studioConfig change...");
+      loadData();
+    }
+  }, [isMounted, loadData]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -307,32 +417,24 @@ export function ValuesSection({
           ">>> [VALUES_SECTION] Mensagem UPDATE_HOME_VALUES_SETTINGS recebida:",
           event.data.settings,
         );
-        const incoming = event.data.settings as Record<string, unknown> | undefined;
+        const incoming = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
         if (incoming) {
-          const incomingAppearance =
-            incoming.appearance as Record<string, unknown> | undefined;
-          const incomingContent =
-            incoming.content as Record<string, unknown> | undefined;
-          const incomingItemsStyle =
-            incoming.itemsStyle as Record<string, unknown> | undefined;
-          const incomingCardBg =
-            (incoming.cardBgColor as string) ||
-            (incomingAppearance?.cardBgColor as string) ||
-            (incomingAppearance?.cardBackgroundColor as string) ||
-            (incomingContent?.cardBgColor as string) ||
-            (incomingItemsStyle?.itemBackgroundColor as string);
-          setSettings((prev) =>
-            prev
+          const normalized = normalizeValues(incoming);
+          setSettings((prev) => {
+            const hasIncomingItems =
+              Array.isArray(normalized.items) && normalized.items.length > 0;
+
+            return prev
               ? {
                   ...prev,
-                  ...incoming,
-                  ...(incomingCardBg ? { cardBgColor: incomingCardBg } : {}),
+                  ...normalized,
+                  // Trava: se o payload não trouxer itens válidos, preservamos os atuais
+                  items: hasIncomingItems ? normalized.items : prev.items,
                 }
-              : {
-                  ...(incoming as ValuesSettings),
-                  ...(incomingCardBg ? { cardBgColor: incomingCardBg } : {}),
-                },
-          );
+              : normalized;
+          });
         }
       }
 
@@ -344,32 +446,23 @@ export function ValuesSection({
           ">>> [VALUES_SECTION] Mensagem UPDATE_ABOUT_US_VALUES_SETTINGS recebida:",
           event.data.settings,
         );
-        const incoming = event.data.settings as Record<string, unknown> | undefined;
+        const incoming = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
         if (incoming) {
-          const incomingAppearance =
-            incoming.appearance as Record<string, unknown> | undefined;
-          const incomingContent =
-            incoming.content as Record<string, unknown> | undefined;
-          const incomingItemsStyle =
-            incoming.itemsStyle as Record<string, unknown> | undefined;
-          const incomingCardBg =
-            (incoming.cardBgColor as string) ||
-            (incomingAppearance?.cardBgColor as string) ||
-            (incomingAppearance?.cardBackgroundColor as string) ||
-            (incomingContent?.cardBgColor as string) ||
-            (incomingItemsStyle?.itemBackgroundColor as string);
-          setSettings((prev) =>
-            prev
+          const normalized = normalizeValues(incoming);
+          setSettings((prev) => {
+            const hasIncomingItems =
+              Array.isArray(normalized.items) && normalized.items.length > 0;
+            return prev
               ? {
                   ...prev,
-                  ...incoming,
-                  ...(incomingCardBg ? { cardBgColor: incomingCardBg } : {}),
+                  ...normalized,
+                  // Trava: se o payload não trouxer itens válidos, preservamos os atuais
+                  items: hasIncomingItems ? normalized.items : prev.items,
                 }
-              : {
-                  ...(incoming as ValuesSettings),
-                  ...(incomingCardBg ? { cardBgColor: incomingCardBg } : {}),
-                },
-          );
+              : normalized;
+          });
         }
       }
 
@@ -381,24 +474,37 @@ export function ValuesSection({
                 event.data.data?.values) as Record<string, unknown> | undefined)
             : ((event.data.data?.aboutUsValuesSettings ||
                 event.data.data?.valuesSection ||
-                event.data.data?.values) as Record<string, unknown> | undefined);
+                event.data.data?.values) as
+                | Record<string, unknown>
+                | undefined);
         if (siteValues) {
           setSettings(normalizeValues(siteValues));
         }
       }
 
+      if (event.data.type === "SET_ISOLATED_SECTION") {
+        setIsolatedSection(event.data.sectionId);
+      }
+
+      if (event.data.type === "UPDATE_VISIBLE_SECTIONS") {
+        setVisibleSections(event.data.settings || {});
+      }
+
       if (
         event.data.type === "HIGHLIGHT_SECTION" &&
-        event.data.sectionId === "values"
+        (event.data.sectionId === "values" ||
+          event.data.sectionId === "about-values")
       ) {
-        setHighlightedElement("values");
+        setHighlightedElement(event.data.sectionId);
         setTimeout(() => setHighlightedElement(null), 2000);
       }
     };
 
     window.addEventListener("message", handleMessage);
     const updateEvent =
-      source === "home" ? "homeValuesSettingsUpdated" : "aboutUsValuesSettingsUpdated";
+      source === "home"
+        ? "homeValuesSettingsUpdated"
+        : "aboutUsValuesSettingsUpdated";
     window.addEventListener(updateEvent, loadData);
     window.addEventListener("DataReady", loadData);
 
@@ -409,10 +515,30 @@ export function ValuesSection({
     };
   }, [loadData, normalizeValues, source]);
 
+  // Lógica interna de visibilidade para sincronizar com o que o Editor manda via PostMessage
+  const isSectionVisible = (id: string) => {
+    // Se estivermos no modo isolado (foco em uma única seção no editor)
+    if (
+      isolatedSection &&
+      isolatedSection !== "typography" &&
+      isolatedSection !== "colors"
+    ) {
+      return isolatedSection === id;
+    }
+
+    // Caso contrário, checa se a seção está ativa no array de visibilidade
+    return visibleSections[id] !== false;
+  };
+
+  const isVisible =
+    source === "about"
+      ? isSectionVisible("about-values")
+      : isSectionVisible("values");
+
   // Fallback Skeleton enquanto carrega do banco
   if (!isMounted || isLoading) {
     return (
-      <section id="values" className="py-20 bg-background">
+      <section id={sectionId} className="py-20 bg-background">
         <div className="container mx-auto px-4">
           <div className="h-10 w-64 bg-gray-200 animate-pulse mx-auto mb-4 rounded"></div>
           <div className="h-6 w-96 bg-gray-200 animate-pulse mx-auto mb-12 rounded"></div>
@@ -429,19 +555,26 @@ export function ValuesSection({
     );
   }
 
-  if (!settings) return null;
+  if (!settings || !isVisible) return null;
 
   return (
     <SessionWrapper appearance={settings?.appearance}>
       <section
-        id="values"
+        id={sectionId}
         className={cn(
           "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
-          highlightedElement === "values" &&
+          highlightedElement === sectionId &&
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
+        style={{
+          backgroundColor: settings?.backgroundColor || "transparent",
+        }}
       >
-        <SectionBackground settings={settings as SectionBackgroundSettings} />
+        <SectionBackground
+          settings={settings as SectionBackgroundSettings}
+          color={settings?.bgColor}
+          hideColorLayer={true}
+        />
 
         <div className="container relative z-10 mx-auto px-4">
           {(settings?.showTitle !== false ||
@@ -482,6 +615,7 @@ export function ValuesSection({
                   className="border-border hover:border-accent transition-all overflow-hidden text-center backdrop-blur-sm"
                   style={{
                     backgroundColor: settings?.cardBgColor || "var(--card)",
+                    borderRadius: settings?.borderRadius || "0.5rem",
                   }}
                 >
                   <CardContent className="p-6">
@@ -492,6 +626,7 @@ export function ValuesSection({
                           ? `${settings.cardIconColor}1a`
                           : "var(--muted)",
                         opacity: settings?.cardIconColor ? 1 : 1,
+                        borderRadius: "100%", // Force circle regardless of card radius
                       }}
                     >
                       <Icon
@@ -504,7 +639,10 @@ export function ValuesSection({
                     <h3
                       className="text-xl font-semibold mb-3 transition-all duration-300"
                       style={{
-                        color: settings?.cardTitleColor || "var(--primary)",
+                        color:
+                          settings?.cardTitleColor ||
+                          settings?.cardTextColor ||
+                          "var(--primary)",
                         fontFamily:
                           settings?.cardTitleFont || "var(--font-title)",
                       }}
@@ -515,9 +653,12 @@ export function ValuesSection({
                       className="text-sm leading-relaxed transition-all duration-300"
                       style={{
                         color:
-                          settings?.cardDescriptionColor || "var(--foreground)",
+                          settings?.cardDescriptionColor ||
+                          settings?.cardTextColor ||
+                          "var(--foreground)",
                         fontFamily:
-                          settings?.cardDescriptionFont || "var(--font-body)",
+                          settings?.cardDescriptionFont ||
+                          "var(--font-subtitle)",
                       }}
                     >
                       {renderSafeText(value?.description)}

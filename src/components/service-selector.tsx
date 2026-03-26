@@ -214,10 +214,17 @@ export function ServiceSelector({
   );
 
   const appearance = settings?.appearance || {};
+  const settingsRecord = settings as Record<string, unknown> | undefined;
 
   // Prioridade: Custom Setting > Global Appearance > Default Fallback
-  const accentColor = settings?.accentColor || appearance.accentColor || "var(--primary)";
-  const cardBgColor = settings?.cardBgColor || appearance.cardBgColor || "#ffffff";
+  const accentColor =
+    settings?.accentColor || appearance.accentColor || "var(--primary)";
+  const cardBgColor =
+    (settings?.cardBgColor as string) ||
+    (settingsRecord?.cardBackgroundColor as string) ||
+    (appearance.cardBgColor as string) ||
+    ((appearance as Record<string, unknown>)?.cardBackgroundColor as string) ||
+    "#ffffff";
   const titleColor = settings?.titleColor || appearance.titleColor || "var(--foreground)";
   const subtitleColor = settings?.subtitleColor || appearance.subtitleColor || "var(--muted-foreground)";
   const titleFont = settings?.titleFont || appearance.titleFont || "var(--font-title)";
@@ -227,10 +234,13 @@ export function ServiceSelector({
     title: settings?.title,
     cardBgColor,
     accentColor,
+    bgColor: settings?.bgColor,
+    fullSettings: settings,
   });
 
   return (
-    <div className="space-y-6">
+    <div className="w-full bg-transparent">
+      <div className="space-y-6 p-4 transition-colors duration-300">
       <div className="text-center">
         <h2
           className="text-2xl font-bold mb-2 transition-all duration-300"
@@ -296,33 +306,30 @@ export function ServiceSelector({
                   : `service-select-${index}`
               }
               className={cn(
-                "border-border cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden shadow-none",
+                "border-border cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden shadow-none bg-transparent",
                 isSelected && "ring-1",
                 isConflicting &&
                   "opacity-40 grayscale cursor-not-allowed border-dashed pointer-events-none",
               )}
-              style={{
-                borderColor:
-                  isSelected && accentColor
-                    ? accentColor
-                    : isConflicting
-                      ? "var(--muted)"
-                      : undefined,
-                backgroundColor: cardBgColor,
-              }}
+              style={
+                {
+                  borderColor: isSelected ? accentColor : undefined,
+                  backgroundColor: cardBgColor,
+                } as React.CSSProperties
+              }
               onClick={() => !isConflicting && toggleService(service)}
             >
-              {isSelected && (
-                <div
-                  className="absolute top-0 right-0 p-1"
-                  style={{
-                    backgroundColor: accentColor,
-                    color: "#fff",
-                  }}
-                >
-                  <Check className="w-3 h-3" />
-                </div>
-              )}
+              <div
+                style={{
+                  backgroundColor: isSelected ? accentColor : "transparent",
+                }}
+                className={cn(
+                  "absolute top-0 right-0 p-1 rounded-full",
+                  isSelected ? "text-white" : "border",
+                )}
+              >
+                <Check className="w-4 h-4" />
+              </div>
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-2">
                   <h3
@@ -396,18 +403,19 @@ export function ServiceSelector({
               </div>
             </div>
             <Button
-              onClick={() => (onConfirm ? onConfirm() : onSelect(selected))}
-              className="px-8 font-bold shadow-md transition-all hover:scale-105 active:scale-95"
-              style={{
-                backgroundColor: accentColor,
-                color: "#fff",
-              }}
+              onClick={onConfirm}
+              style={{ backgroundColor: accentColor }}
+              className={cn(
+                "w-full h-12 text-base font-bold",
+                !accentColor && "bg-primary",
+              )}
             >
-              Confirmar
+              Confirmar Seleção
             </Button>
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }

@@ -100,7 +100,8 @@ export default function SobrePage({
   }, [router, isPreview]);
 
   const isSectionVisible = (sectionId: string) => {
-    // Exceção: 'typography' e 'colors' mostram a página inteira
+    // Se houver uma seção isolada (modo preview de seção específica), 
+    // apenas essa seção deve ser visível.
     if (
       isolatedSection &&
       isolatedSection !== "typography" &&
@@ -108,6 +109,8 @@ export default function SobrePage({
     ) {
       return isolatedSection === sectionId;
     }
+
+    // Caso contrário, usamos o array de visibilidade vindo do banco ou do editor.
     return visibleSections[sectionId] !== false;
   };
 
@@ -118,7 +121,15 @@ export default function SobrePage({
     <main>
       {isSectionVisible("about-hero") && <AboutHero />}
       {isSectionVisible("story") && <StorySection />}
-      {isSectionVisible("values") && <ValuesSection source="about" />}
+      {isSectionVisible("about-values") && (
+        <ValuesSection
+          source="about"
+          settings={
+            (studio?.config as unknown as SiteConfigData)
+              ?.aboutUsValuesSettings
+          }
+        />
+      )}
       {isSectionVisible("team") && <TeamSection />}
       {isSectionVisible("testimonials") && <TestimonialsSection />}
     </main>

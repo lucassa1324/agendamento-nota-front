@@ -83,6 +83,13 @@ export function BookingFlow() {
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(
     null,
   );
+  const [step1Styles, setStep1Styles] = useState<{
+    background: string;
+    cardBackground: string;
+    accent: string;
+    title: string;
+    subtitle: string;
+  } | null>(null);
   const [previewOverrides, setPreviewOverrides] = useState<
     Partial<Record<BookingStep, BookingStepSettings>>
   >({});
@@ -100,6 +107,52 @@ export function BookingFlow() {
       agendarVisible: pageVisibility.agendar !== false
     });
   }, [isLoading, studio, only, currentStep, selectedServices.length]);
+
+  const resolveStep1Styles = useCallback((styles?: Record<string, unknown>) => {
+    const safeStyles = styles || {};
+    return {
+      background:
+        sanitizeColor(
+          (safeStyles.bgColor as string) ||
+            (safeStyles.bg_color as string) ||
+            (safeStyles.backgroundColor as string),
+        ) || "transparent",
+      cardBackground:
+        sanitizeColor(
+          (safeStyles.cardBgColor as string) ||
+            (safeStyles.cardBackgroundColor as string) ||
+            (safeStyles.card_bg_color as string),
+        ) || "transparent",
+      accent:
+        sanitizeColor(
+          (safeStyles.accentColor as string) ||
+            (safeStyles.accent_color as string),
+        ) || "#000000",
+      title:
+        sanitizeColor(
+          (safeStyles.titleColor as string) ||
+            (safeStyles.title_color as string),
+        ) || "#000000",
+      subtitle:
+        sanitizeColor(
+          (safeStyles.subtitleColor as string) ||
+            (safeStyles.subtitle_color as string),
+        ) || "#666666",
+    };
+  }, []);
+
+  useEffect(() => {
+    const config = studio?.config as SiteConfigData | undefined;
+    const appointmentFlow = (config?.appointmentFlow ||
+      config?.appointment_flow) as Record<string, unknown> | undefined;
+    const step1Services =
+      (appointmentFlow?.step1Services as Record<string, unknown>) ||
+      (appointmentFlow?.step1_services as Record<string, unknown>) ||
+      (appointmentFlow?.step1_service as Record<string, unknown>);
+    if (step1Services) {
+      setStep1Styles(resolveStep1Styles(step1Services));
+    }
+  }, [resolveStep1Styles, studio?.config]);
 
   // Force re-render on storage or specific events
   const [tick, setTick] = useState(0);
@@ -232,6 +285,7 @@ export function BookingFlow() {
       } | undefined)?.steps;
 
       const stepConfig =
+        (stepKey === "service" ? step1Services : undefined) ||
         config?.bookingSteps?.[stepKey] ||
         appointmentFlowSteps?.[stepKey] ||
         appointmentFlowSnakeSteps?.[stepKey] ||
@@ -322,6 +376,24 @@ export function BookingFlow() {
     normalizeBookingStep,
     previewOverrides.service,
   ]);
+
+  const effectiveServiceSettings = useMemo(() => {
+    if (!step1Styles) return serviceSettings;
+    return {
+      ...serviceSettings,
+      bgColor:
+        sanitizeColor(step1Styles.background) || serviceSettings.bgColor,
+      cardBgColor:
+        sanitizeColor(step1Styles.cardBackground) ||
+        serviceSettings.cardBgColor,
+      accentColor:
+        sanitizeColor(step1Styles.accent) || serviceSettings.accentColor,
+      titleColor:
+        sanitizeColor(step1Styles.title) || serviceSettings.titleColor,
+      subtitleColor:
+        sanitizeColor(step1Styles.subtitle) || serviceSettings.subtitleColor,
+    };
+  }, [serviceSettings, step1Styles]);
 
   const dateSettings = useMemo(() => {
     void tick;
@@ -593,20 +665,43 @@ export function BookingFlow() {
   // Listen for real-time updates from editor
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      console.log("[IFRAME_RECEIVER] Mensagem recebida:", event.data);
       if (event.data?.type === "UPDATE_BOOKING_SERVICE_SETTINGS") {
         const settings = event.data.settings as Record<string, unknown> | undefined;
         if (settings) {
-          const normalized = normalizeStepSettings(settings);
-          setPreviewOverrides((prev) => ({
-            ...prev,
-            service: {
+          setPreviewOverrides((prev) => {
+            const mergedService: BookingStepSettings = {
+              ...defaultBookingServiceSettings,
               ...(prev.service || {}),
-              ...normalized,
+              ...(settings as Partial<BookingStepSettings>),
               appearance: {
-                ...(prev.service?.appearance || {}),
-                ...(normalized.appearance || {}),
+                ...(defaultBookingServiceSettings.appearance || {}),
+                ...((prev.service?.appearance || {}) as BookingStepSettings["appearance"]),
+                ...((settings.appearance as BookingStepSettings["appearance"]) || {}),
               },
-            },
+            };
+            return {
+              ...prev,
+              service: mergedService,
+            };
+          });
+        }
+        handleRefresh();
+      }
+      if (event.data?.type === "UPDATE_BOOKING_STYLE") {
+        const payload = event.data?.payload as
+          | { section?: string; styles?: Record<string, unknown> }
+          | undefined;
+        if (payload?.section === "step1Services" && payload.styles) {
+          setStep1Styles((prev) => ({
+            ...(prev || {
+              background: "transparent",
+              cardBackground: "transparent",
+              accent: "#000000",
+              title: "#000000",
+              subtitle: "#666666",
+            }),
+            ...resolveStep1Styles(payload.styles),
           }));
         }
         handleRefresh();
@@ -738,7 +833,7 @@ export function BookingFlow() {
         handleRefresh,
       );
     };
-  }, [handleRefresh]);
+  }, [handleRefresh, resolveStep1Styles]);
 
   const steps = [
     { id: "service", label: "Serviço", completed: selectedServices.length > 0 },
@@ -890,18 +985,32 @@ export function BookingFlow() {
     );
   };
 
+  const flowAccent = effectiveServiceSettings?.accentColor || "var(--primary)";
+  const flowCardBg = effectiveServiceSettings?.cardBgColor || "transparent";
+  const showServiceSectionBackground = !(
+    effectiveServiceSettings?.bgType === "color" &&
+    effectiveServiceSettings?.bgColor
+  );
+
   return (
     <div
       id="booking"
-      className="w-full mx-auto"
+      key={step1Styles?.background || effectiveServiceSettings?.bgColor || "booking"}
+      className="min-h-screen w-full mx-auto transition-colors duration-300"
       style={{
-        backgroundColor: "var(--booking-background, transparent)",
+        backgroundColor:
+          step1Styles?.background ||
+          effectiveServiceSettings?.bgColor ||
+          "transparent",
       }}
     >
       {/* Progress Steps */}
       {currentStep !== "confirmation" && (
         <div className="max-w-4xl mx-auto px-4">
-          <Card className="p-6 mb-8 bg-card/50 backdrop-blur-sm border-border/50">
+          <Card
+            className="p-6 mb-8 border-border/50"
+            style={{ backgroundColor: flowCardBg }}
+          >
             <div className="flex items-center justify-between">
               {steps.map((step, index) => (
                 <div key={step.id} className="flex items-center flex-1">
@@ -915,17 +1024,9 @@ export function BookingFlow() {
                             steps.findIndex(
                               (s) => s.id === only.replace("booking-", ""),
                             ) > index)
-                            ? "var(--primary)"
+                            ? flowAccent
                             : "transparent",
-                        borderColor:
-                          step.completed ||
-                          (only &&
-                            steps.findIndex(
-                              (s) => s.id === only.replace("booking-", ""),
-                            ) > index) ||
-                          currentStep === step.id
-                            ? "var(--primary)"
-                            : "var(--border)",
+                        borderColor: flowAccent,
                         color:
                           step.completed ||
                           (only &&
@@ -933,9 +1034,16 @@ export function BookingFlow() {
                               (s) => s.id === only.replace("booking-", ""),
                             ) > index)
                             ? "white"
-                            : currentStep === step.id
-                              ? "var(--primary)"
-                              : "var(--muted-foreground)",
+                            : flowAccent,
+                        opacity:
+                          step.completed ||
+                          (only &&
+                            steps.findIndex(
+                              (s) => s.id === only.replace("booking-", ""),
+                            ) > index) ||
+                          currentStep === step.id
+                            ? 1
+                            : 0.6,
                       }}
                     >
                       {step.completed ||
@@ -951,10 +1059,9 @@ export function BookingFlow() {
                     <span
                       className="text-xs mt-2 font-medium"
                       style={{
-                        color:
-                          currentStep === step.id || step.completed
-                            ? "var(--primary)"
-                            : "var(--muted-foreground)",
+                        color: flowAccent,
+                        opacity:
+                          currentStep === step.id || step.completed ? 1 : 0.6,
                       }}
                     >
                       {step.label}
@@ -964,14 +1071,15 @@ export function BookingFlow() {
                     <div
                       className="h-0.5 flex-1 mx-2 transition-all duration-300"
                       style={{
-                        backgroundColor:
+                        backgroundColor: flowAccent,
+                        opacity:
                           step.completed ||
                           (only &&
                             steps.findIndex(
                               (s) => s.id === only.replace("booking-", ""),
                             ) > index)
-                            ? "var(--primary)"
-                            : "var(--border)",
+                            ? 1
+                            : 0.4,
                       }}
                     />
                   )}
@@ -987,17 +1095,21 @@ export function BookingFlow() {
         {currentStep === "service" && (
           <section
             id="booking-service"
-            className="relative py-12 md:py-20 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
+            className="relative py-12 md:py-20 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4 bg-transparent"
           >
-            <SectionBackground settings={serviceSettings as SectionBackgroundSettings} />
+            {showServiceSectionBackground && (
+              <SectionBackground
+                settings={effectiveServiceSettings as SectionBackgroundSettings}
+              />
+            )}
             <div className="container mx-auto px-4 relative z-10">
-              {renderStepHeader(serviceSettings)}
+              {renderStepHeader(effectiveServiceSettings)}
               <div className="max-w-4xl mx-auto">
                 <ServiceSelector
                   onSelect={handleServiceSelect}
                   onConfirm={handleServiceConfirm}
                   selectedServices={selectedServices}
-                  settings={serviceSettings}
+                  settings={effectiveServiceSettings}
                 />
               </div>
             </div>

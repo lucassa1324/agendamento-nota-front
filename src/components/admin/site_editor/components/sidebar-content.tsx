@@ -287,6 +287,8 @@ export const SidebarContent = memo(
     const currentHasGalleryChanges = isGalleryPage
       ? hasGalleryPageChanges
       : hasGalleryChanges;
+    const isHomeValuesSection = activeSection === "values";
+    const isAboutValuesSection = activeSection === "about-values";
 
     return (
       <div className="flex flex-col h-full text-[clamp(0.7rem,1vw,0.875rem)]">
@@ -421,12 +423,11 @@ export const SidebarContent = memo(
                     onSave={onSaveServices}
                   />
                 )}
-                {activeSection === "values" &&
-                  (activePage === "sobre" ? (
+                {(isHomeValuesSection || isAboutValuesSection) &&
+                  (activePage === "sobre" || isAboutValuesSection ? (
                     <AboutValuesEditor
                       settings={aboutUsValuesSettings}
                       onUpdate={onUpdateAboutUsValues}
-                      onUpdateBackground={onUpdateBackground}
                       onSave={onSaveAboutUsValues}
                       hasChanges={hasAboutUsValuesChanges}
                     />
@@ -434,7 +435,6 @@ export const SidebarContent = memo(
                     <ValuesEditor
                       settings={homeValuesSettings}
                       onUpdate={onUpdateHomeValues}
-                      onUpdateBackground={onUpdateBackground}
                       onSave={onSaveHomeValues}
                       hasChanges={hasHomeValuesChanges}
                     />
@@ -552,6 +552,7 @@ export const SidebarContent = memo(
                   "testimonials",
                   "services",
                   "values",
+                  "about-values",
                   "gallery-preview",
                   "gallery-grid",
                   "cta",

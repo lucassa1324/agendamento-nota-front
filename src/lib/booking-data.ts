@@ -394,10 +394,12 @@ export const normalizePayload = (
           SECTION_IDS.aboutValues
         ] ||
         (root.aboutUsValuesSettings as SectionConfig | undefined) ||
+        (root.aboutUsValues as SectionConfig | undefined) ||
         (layoutGlobal?.aboutUsValuesSettings as SectionConfig | undefined) ||
+        (layoutGlobal?.aboutUsValues as SectionConfig | undefined) ||
         (about?.valuesSection as SectionConfig | undefined) ||
         (about?.values as SectionConfig | undefined) ||
-        (root.values as SectionConfig | undefined),
+        (root.about_us_values as SectionConfig | undefined),
       defaultValuesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeGallery]: normalizeSectionConfig(
@@ -672,6 +674,7 @@ export const defaultFooterSettings: FooterSettings = {
 
 export type AppearanceSettings = {
   backgroundColor?: string;
+  bgColor?: string;
   backgroundImageUrl?: string;
   primaryColor?: string;
   accentColor?: string;
@@ -680,6 +683,7 @@ export type AppearanceSettings = {
   titleFont?: string;
   subtitleFont?: string;
   cardBgColor?: string;
+  cardBackgroundColor?: string;
   cardTitleColor?: string;
   cardDescriptionColor?: string;
   cardPriceColor?: string;
@@ -798,6 +802,10 @@ export type ValuesSettings = {
   cardIconColor: string;
   cardTitleFont: string;
   cardDescriptionFont: string;
+  cardTextColor?: string;
+  iconColor?: string;
+  borderRadius?: string;
+  backgroundColor?: string;
   items: ValueItem[];
 };
 
@@ -907,6 +915,10 @@ export const defaultValuesSettings: ValuesSettings = {
   cardIconColor: "",
   cardTitleFont: "",
   cardDescriptionFont: "",
+  cardTextColor: "",
+  iconColor: "",
+  borderRadius: "",
+  backgroundColor: "",
   items: [
     {
       id: "1",
@@ -1185,80 +1197,41 @@ export interface BookingConfig {
   };
 }
 
-export function getBookingServiceSettings(config?: SiteConfigData): BookingStepSettings {
-  // 1. Inicia com o default imutável
-  let base = { ...defaultBookingServiceSettings };
+export function getBookingServiceSettings(
+  studio?: Record<string, unknown>,
+): BookingStepSettings {
+  const flow = (studio?.appointmentFlow || studio?.appointment_flow) as
+    | Record<string, unknown>
+    | undefined;
+  const step1 = (flow?.step1Services || {}) as Record<string, unknown>;
 
-  // Extrai as cores globais do site a partir da configuração
-  const siteCustomization = config?.siteCustomization || config?.site_customization;
-  const layoutGlobal = siteCustomization?.layoutGlobal || siteCustomization?.layout_global;
-  const siteColors = (layoutGlobal as Record<string, unknown>)?.siteColors as Record<string, string> | undefined;
-  const globalCardBgColor = siteColors?.cardBackground;
-  const globalAccentColor = siteColors?.accent;
-  const globalBgColor = siteColors?.background;
-  const appointmentFlow = (config as Record<string, unknown> | undefined)
-    ?.appointmentFlow as Record<string, unknown> | undefined;
-  const step1Services =
-    (appointmentFlow?.step1Services as Record<string, unknown>) ||
-    (appointmentFlow?.step1_services as Record<string, unknown>) ||
-    (appointmentFlow?.step1_service as Record<string, unknown>);
-  const step1CardConfig =
-    (step1Services?.cardConfig as Record<string, unknown>) ||
-    (step1Services?.card_config as Record<string, unknown>);
-  const step1CardBg = sanitizeColor(
-    (step1CardConfig?.backgroundColor as string) ||
-      (step1CardConfig?.cardBackgroundColor as string) ||
-      (step1CardConfig?.background_color as string) ||
-      (step1CardConfig?.card_background_color as string),
-  );
-
-  // 2. Tenta carregar do config (seja appointmentFlow ou bookingSteps)
-  const stepConfig =
-    config?.bookingSteps?.service ||
-    config?.appointmentFlow?.steps?.service ||
-    config?.appointmentFlow?.service;
-
-  if (stepConfig) {
-    base = {
-      ...base,
-      ...(stepConfig as BookingStepSettings),
-      appearance: {
-        ...(base.appearance || {}),
-        ...((stepConfig as BookingStepSettings).appearance || {}),
-      },
-    };
-  }
-
-  // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
-  if (typeof window !== "undefined") {
-    const settings = localStorage.getItem(getStorageKey("bookingServiceSettings"));
-    if (settings) {
-      try {
-        const saved = JSON.parse(settings);
-        base = {
-          ...base,
-          ...saved,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(saved.appearance || {}),
-          },
-        };
-      } catch (e) {
-        console.error("Erro ao parsear bookingServiceSettings:", e);
-      }
-    }
-  }
-
-  // 4. Sanitização Final: Garante que os campos de topo reflitam o appearance se existirem e estejam sanitizados
   return {
-    ...base,
-    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingServiceSettings.titleColor) || "",
-    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingServiceSettings.subtitleColor) || "",
-    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingServiceSettings.titleFont,
-    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingServiceSettings.subtitleFont,
-    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || step1CardBg || globalCardBgColor || defaultBookingServiceSettings.cardBgColor) || "",
-    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || globalAccentColor || defaultBookingServiceSettings.accentColor) || "",
-    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || globalBgColor || defaultBookingServiceSettings.bgColor) || "",
+    ...((step1 as unknown) as BookingStepSettings),
+    title: (step1.title as string) || "Escolha seus Serviços",
+    subtitle:
+      (step1.subtitle as string) ||
+      "Selecione um ou mais serviços para o seu agendamento",
+    bgColor:
+      sanitizeColor(
+        (step1.bgColor as string) ||
+          (step1.bg_color as string) ||
+          (step1.backgroundColor as string) ||
+          (studio?.bgColor as string) ||
+          (studio?.backgroundColor as string) ||
+          "#ffffff",
+      ) || "#ffffff",
+    cardBgColor: sanitizeColor(
+      (step1.cardBgColor as string) ||
+        (step1.cardBackgroundColor as string) ||
+        (step1.card_bg_color as string) ||
+        (step1.backgroundColor as string) ||
+        "rgba(255,255,255,0.6)",
+    ),
+    accentColor: sanitizeColor(
+      (step1.accentColor as string) ||
+        (step1.accent_color as string) ||
+        "#000000",
+    ),
   };
 }
 
@@ -2777,10 +2750,54 @@ export function saveStorySettings(settings: StorySettings): void {
   }
 }
 
-export function getHomeValuesSettings(): ValuesSettings {
-  if (typeof window === "undefined") return defaultValuesSettings;
-  const settings = localStorage.getItem(getStorageKey("homeValuesSettings"));
-  return settings ? JSON.parse(settings) : defaultValuesSettings;
+export function getHomeValuesSettings(data?: unknown): ValuesSettings {
+  const root =
+    data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const values =
+    (root.homeValues as Record<string, unknown> | undefined) ||
+    (root.home_values as Record<string, unknown> | undefined) ||
+    {};
+  const appearance = values.appearance as Record<string, unknown> | undefined;
+  const title = typeof values.title === "string" ? values.title : "Nossos Valores";
+  const subtitle = typeof values.subtitle === "string" ? values.subtitle : "";
+  const items = Array.isArray(values.items)
+    ? values.items
+    : defaultValuesSettings.items || [];
+  const backgroundColor =
+    (typeof values.backgroundColor === "string" && values.backgroundColor) ||
+    (typeof values.bgColor === "string" && values.bgColor) ||
+    (typeof appearance?.backgroundColor === "string" && appearance.backgroundColor) ||
+    "transparent";
+  const bgColor =
+    (typeof values.bgColor === "string" && values.bgColor) ||
+    (typeof values.backgroundColor === "string" && values.backgroundColor) ||
+    "transparent";
+  const cardBgColor =
+    (typeof values.cardBgColor === "string" && values.cardBgColor) ||
+    (typeof values.cardBackgroundColor === "string" &&
+      values.cardBackgroundColor) ||
+    "#ffffff";
+  const cardTextColor =
+    (typeof values.cardTextColor === "string" && values.cardTextColor) ||
+    "#000000";
+  const iconColor =
+    (typeof values.iconColor === "string" && values.iconColor) || "#000000";
+  const borderRadius =
+    (typeof values.borderRadius === "string" && values.borderRadius) ||
+    "0.5rem";
+
+  return {
+    ...defaultValuesSettings,
+    title,
+    subtitle,
+    items,
+    backgroundColor,
+    bgColor,
+    cardBgColor,
+    cardTextColor,
+    iconColor,
+    borderRadius,
+  };
 }
 
 export function saveHomeValuesSettings(settings: ValuesSettings): void {
@@ -2794,10 +2811,52 @@ export function saveHomeValuesSettings(settings: ValuesSettings): void {
   }
 }
 
-export function getAboutUsValuesSettings(): ValuesSettings {
-  if (typeof window === "undefined") return defaultValuesSettings;
-  const settings = localStorage.getItem(getStorageKey("aboutUsValuesSettings"));
-  return settings ? JSON.parse(settings) : defaultValuesSettings;
+export function getAboutUsValuesSettings(data?: unknown): ValuesSettings {
+  const root =
+    data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const values =
+    (root.aboutUsValues as Record<string, unknown> | undefined) ||
+    (root.about_us_values as Record<string, unknown> | undefined) ||
+    {};
+  const title = typeof values.title === "string" ? values.title : "Nossos Valores";
+  const subtitle = typeof values.subtitle === "string" ? values.subtitle : "";
+  const items = Array.isArray(values.items)
+    ? values.items
+    : defaultValuesSettings.items || [];
+  const backgroundColor =
+    (typeof values.backgroundColor === "string" && values.backgroundColor) ||
+    (typeof values.bgColor === "string" && values.bgColor) ||
+    "transparent";
+  const bgColor =
+    (typeof values.bgColor === "string" && values.bgColor) ||
+    (typeof values.backgroundColor === "string" && values.backgroundColor) ||
+    "transparent";
+  const cardBgColor =
+    (typeof values.cardBgColor === "string" && values.cardBgColor) ||
+    (typeof values.cardBackgroundColor === "string" &&
+      values.cardBackgroundColor) ||
+    "#ffffff";
+  const cardTextColor =
+    (typeof values.cardTextColor === "string" && values.cardTextColor) ||
+    "#000000";
+  const iconColor =
+    (typeof values.iconColor === "string" && values.iconColor) || "#000000";
+  const borderRadius =
+    (typeof values.borderRadius === "string" && values.borderRadius) ||
+    "0.5rem";
+
+  return {
+    ...defaultValuesSettings,
+    title,
+    subtitle,
+    items,
+    backgroundColor,
+    bgColor,
+    cardBgColor,
+    cardTextColor,
+    iconColor,
+    borderRadius,
+  };
 }
 
 export function saveAboutUsValuesSettings(settings: ValuesSettings): void {
@@ -3008,6 +3067,7 @@ export function getVisibleSections(): Record<string, boolean> {
     story: true,
     services: true,
     values: true,
+    "about-values": true,
     "gallery-preview": true,
     cta: true,
     "gallery-grid": true,

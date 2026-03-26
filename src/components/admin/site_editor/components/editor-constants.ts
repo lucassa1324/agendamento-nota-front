@@ -107,7 +107,11 @@ export const sections: Record<string, SectionItem[]> = {
       name: "Nossa História",
       description: "Trajetória detalhada",
     },
-    { id: "values", name: "Nossos Valores", description: "Pilares do studio" },
+    {
+      id: "about-values",
+      name: "Nossos Valores",
+      description: "Pilares do studio",
+    },
     {
       id: "team",
       name: "Nossa Equipe",

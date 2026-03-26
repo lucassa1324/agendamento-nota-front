@@ -600,6 +600,8 @@ export function useEditorConfigLoader({
             baseConfig.visibleSections || 
             baseConfig.visible_sections || 
             {};
+          const resolvedAboutValues =
+            base["about-values"] ?? base.values ?? true;
           
           // Forçar visibilidade para aura.teste se estiverem faltando
           if (slug === "aura.teste") {
@@ -611,12 +613,18 @@ export function useEditorConfigLoader({
               cta: true,
               footer: true,
               values: true,
+              "about-values": true,
               story: true,
               testimonials: true,
               team: true,
             };
           }
-          return base;
+          return base["about-values"] === undefined
+            ? {
+                ...base,
+                "about-values": resolvedAboutValues,
+              }
+            : base;
         })(),
         galleryPreviewSettings: normalizeSection(
           getSectionValue(

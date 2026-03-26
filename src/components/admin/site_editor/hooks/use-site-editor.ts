@@ -17,7 +17,7 @@ export type { SiteConfigData };
 
 export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const { toast } = useToast();
-  const { studio } = useStudio();
+  const { studio, updateStudioInfo } = useStudio();
   const local = useEditorLocal();
   const state = useEditorState();
   
@@ -246,6 +246,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setters,
     setIsDirty: state.setIsDirty,
     saveLocalDrafts: local.saveLocalDrafts,
+    updateStudioInfo,
   });
 
   return {
