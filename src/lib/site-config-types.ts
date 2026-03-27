@@ -48,7 +48,12 @@ export interface LayoutGlobalSettings {
 
 export interface SiteConfigData {
   [key: string]: unknown;
-  home?: Record<string, unknown>;
+  home?: {
+    heroBanner?: HeroSettings;
+    galleryPreview?: GallerySettings;
+    valuesSection?: ValuesSettings;
+    [key: string]: unknown;
+  };
   sections?: Record<string, Record<string, unknown>>;
   hero?: HeroSettings;
   aboutHero?: HeroSettings;

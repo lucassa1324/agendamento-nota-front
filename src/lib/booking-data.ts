@@ -306,6 +306,30 @@ export const normalizePayload = (
     root.layout_global) as Record<string, unknown> | undefined;
   const home = root.home as Record<string, unknown> | undefined;
   const about = root.about as Record<string, unknown> | undefined;
+  const rootSections = root.sections as Record<string, unknown> | undefined;
+  const gallerySection = rootSections?.gallery as
+    | Record<string, unknown>
+    | undefined;
+  const galleryStyles = gallerySection?.styles as
+    | Record<string, unknown>
+    | undefined;
+  const galleryBackgroundColor =
+    typeof galleryStyles?.backgroundColor === "string"
+      ? galleryStyles.backgroundColor
+      : undefined;
+  const gallerySectionWithAppearance = gallerySection
+    ? {
+        ...gallerySection,
+        bgColor:
+          (gallerySection.bgColor as string | undefined) || galleryBackgroundColor,
+        appearance: {
+          ...((gallerySection.appearance as Record<string, unknown>) || {}),
+          backgroundColor:
+            (gallerySection.appearance as Record<string, unknown> | undefined)
+              ?.backgroundColor || galleryBackgroundColor,
+        },
+      }
+    : undefined;
 
   const sections: SectionsMap = {
     [SECTION_IDS.homeHero]: normalizeSectionConfig(
@@ -403,24 +427,35 @@ export const normalizePayload = (
       defaultValuesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeGallery]: normalizeSectionConfig(
-      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeGallery] ||
+      (home?.galleryPreview as SectionConfig | undefined) ||
+        (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeGallery] ||
+        (gallerySectionWithAppearance as SectionConfig | undefined) ||
+        ((root.sections as Record<string, unknown> | undefined)
+          ?.galleryPreview as SectionConfig | undefined) ||
+        ((root.sections as Record<string, unknown> | undefined)
+          ?.galleryPreviewSettings as SectionConfig | undefined) ||
+        ((root.sections as Record<string, unknown> | undefined)
+          ?.gallerySection as SectionConfig | undefined) ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
           SECTION_IDS.homeGallery
         ] ||
         (root.galleryPreviewSettings as SectionConfig | undefined) ||
         (layoutGlobal?.galleryPreview as SectionConfig | undefined) ||
         (layoutGlobal?.gallerySection as SectionConfig | undefined) ||
-        (home?.galleryPreview as SectionConfig | undefined) ||
         (home?.gallerySection as SectionConfig | undefined),
       defaultGallerySettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.pageGallery]: normalizeSectionConfig(
-      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.pageGallery] ||
+      (root.gallery as SectionConfig | undefined) ||
+        (root.sections as SectionsMap | undefined)?.[SECTION_IDS.pageGallery] ||
+        ((root.sections as Record<string, unknown> | undefined)
+          ?.galleryPageSettings as SectionConfig | undefined) ||
+        ((root.sections as Record<string, unknown> | undefined)
+          ?.gallery as SectionConfig | undefined) ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
           SECTION_IDS.pageGallery
         ] ||
         (root.galleryPageSettings as SectionConfig | undefined) ||
-        (root.gallery as SectionConfig | undefined) ||
         (layoutGlobal?.gallery as SectionConfig | undefined),
       defaultGallerySettings as unknown as SectionConfig,
     ),
@@ -982,6 +1017,17 @@ export type GallerySettings = {
   imageX: number;
   imageY: number;
   appearance?: AppearanceSettings;
+  // Estruturas conforme contrato
+  gridConfig?: {
+    columns: number;
+    gap: string;
+  };
+  displayLogic?: {
+    photoCount: number;
+  };
+  photoStyle?: {
+    borderRadius: string;
+  };
   // Card specific styles
   cardBgColor?: string;
 };
@@ -991,23 +1037,33 @@ export const defaultGallerySettings: GallerySettings = {
   subtitle:
     "Veja alguns dos resultados incríveis que alcançamos com nossas clientes",
   buttonText: "Ver Galeria Completa",
-  titleColor: "",
-  subtitleColor: "",
-  buttonColor: "",
-  buttonTextColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#666666",
+  buttonColor: "#000000",
+  buttonTextColor: "#FFFFFF",
   titleFont: "",
   subtitleFont: "",
   buttonFont: "",
   layout: "grid",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.5,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  cardBgColor: "",
+  cardBgColor: "transparent",
+  gridConfig: {
+    columns: 3,
+    gap: "16px",
+  },
+  displayLogic: {
+    photoCount: 6,
+  },
+  photoStyle: {
+    borderRadius: "8px",
+  },
 };
 
 export type CTASettings = {

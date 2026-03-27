@@ -425,6 +425,9 @@ export function useEditorActions({
   }, [bookingConfirmationSettings, setLastAppliedBookingConfirmation, toast]);
 
   const resetSettings = useCallback(async () => {
+    if (businessId) {
+      await siteCustomizerService.resetCustomization(businessId);
+    }
     // 1. Limpar drafts do localStorage (Source of Truth do Editor Local)
     clearLocalDrafts();
 
@@ -541,12 +544,11 @@ export function useEditorActions({
       description: "Visual do site restaurado para o design de referência.",
     });
 
-    // 5. Reload para limpar qualquer cache de estado e garantir que o theme-injector pegue os novos defaults
     if (typeof window !== "undefined") {
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      window.location.reload();
+      window.postMessage({ type: "SYNC_RESET" }, "*");
     }
   }, [
+    businessId,
     clearLocalDrafts,
     saveBookingConfirmationSettings,
     saveBookingDateSettings,
@@ -1139,6 +1141,7 @@ export function useEditorActions({
         testimonials: defaultTestimonialsSettings,
         services: defaultServicesSettings,
         "home-values": defaultValuesSettings,
+        "about-values": defaultValuesSettings,
         "about-us-values": defaultValuesSettings,
         gallery: defaultGallerySettings,
         "gallery-preview": defaultGallerySettings,
@@ -1162,6 +1165,7 @@ export function useEditorActions({
         testimonials: setTestimonialsSettings as (u: unknown) => void,
         services: setServicesSettings as (u: unknown) => void,
         "home-values": setHomeValuesSettings as (u: unknown) => void,
+        "about-values": setAboutUsValuesSettings as (u: unknown) => void,
         "about-us-values": setAboutUsValuesSettings as (u: unknown) => void,
         gallery: setGallerySettings as (u: unknown) => void,
         "gallery-preview": setGallerySettings as (u: unknown) => void,
@@ -1185,6 +1189,7 @@ export function useEditorActions({
         testimonials: saveTestimonialsSettings as (u: unknown) => void,
         services: saveServicesSettings as (u: unknown) => void,
         "home-values": saveHomeValuesSettings as (u: unknown) => void,
+        "about-values": saveAboutUsValuesSettings as (u: unknown) => void,
         "about-us-values": saveAboutUsValuesSettings as (u: unknown) => void,
         gallery: saveGallerySettings as (u: unknown) => void,
         "gallery-preview": saveGallerySettings as (u: unknown) => void,
@@ -1208,6 +1213,7 @@ export function useEditorActions({
         testimonials: "testimonialsSettings",
         services: "servicesSettings",
         "home-values": "homeValuesSettings",
+        "about-values": "aboutUsValuesSettings",
         "about-us-values": "aboutUsValuesSettings",
         gallery: "gallerySettings",
         "gallery-preview": "gallerySettings",
@@ -1231,6 +1237,7 @@ export function useEditorActions({
         testimonials: testimonialsSettings,
         services: servicesSettings,
         "home-values": homeValuesSettings,
+        "about-values": aboutUsValuesSettings,
         "about-us-values": aboutUsValuesSettings,
         gallery: gallerySettings,
         "gallery-preview": gallerySettings,
@@ -1283,6 +1290,14 @@ export function useEditorActions({
           secondaryButtonTextColor: "#000000",
           cardBgColor: "#ffffff",
           card_bg_color: "#ffffff",
+          cardTitleColor: "#000000",
+          card_title_color: "#000000",
+          cardDescriptionColor: "#000000",
+          card_description_color: "#000000",
+          cardIconColor: "#000000",
+          card_icon_color: "#000000",
+          iconColor: "#000000",
+          icon_color: "#000000",
           borderColor: "#e4e4e7",
           // Resetar o objeto appearance também, que costuma ter o backgroundColor real do banco
           appearance: {

@@ -307,6 +307,14 @@ export function useEditorState() {
       // Background Color Sync (bgColor -> appearance.backgroundColor)
       syncColor("bgColor", upds.bgColor, prvs.bgColor, "backgroundColor");
 
+      // Card Background Color Sync (cardBgColor -> appearance.cardBgColor)
+      syncColor(
+        "cardBgColor",
+        upds.cardBgColor,
+        prvs.cardBgColor,
+        "cardBgColor",
+      );
+
       // Background Image Sync (bgImage -> appearance.backgroundImageUrl)
       if (upds.bgImage !== undefined) {
         nextAppearance.backgroundImageUrl = upds.bgImage;
@@ -695,9 +703,28 @@ export function useEditorState() {
           appearance.cardBgColor,
       );
 
+      const resolvedBgColor =
+        sanitizeColor(
+          appearance.backgroundColor ||
+            galleryData.bgColor ||
+            galleryData.backgroundColor,
+        ) || defaultGallerySettings.bgColor;
+
       return {
         ...defaultGallerySettings,
         ...(gallery as Partial<GallerySettings>),
+        gridConfig: {
+          ...defaultGallerySettings.gridConfig,
+          ...(galleryData.gridConfig as any || {}),
+        },
+        displayLogic: {
+          ...defaultGallerySettings.displayLogic,
+          ...(galleryData.displayLogic as any || {}),
+        },
+        photoStyle: {
+          ...defaultGallerySettings.photoStyle,
+          ...(galleryData.photoStyle as any || {}),
+        },
         titleColor:
           sanitizeColor(galleryData.titleColor || appearance.titleColor) ||
           defaultGallerySettings.titleColor,
@@ -713,9 +740,7 @@ export function useEditorState() {
             galleryData.buttonTextColor || appearance.buttonTextColor,
           ) || defaultGallerySettings.buttonTextColor,
         cardBgColor: cardBg || defaultGallerySettings.cardBgColor,
-        bgColor:
-          sanitizeColor(galleryData.bgColor || appearance.backgroundColor) ||
-          defaultGallerySettings.bgColor,
+        bgColor: resolvedBgColor,
         bgImage: galleryImage,
         bgType: galleryBgType,
         appearance: {
@@ -734,9 +759,7 @@ export function useEditorState() {
             galleryData.buttonTextColor || appearance.buttonTextColor,
           ),
           cardBgColor: cardBg,
-          backgroundColor: sanitizeColor(
-            galleryData.bgColor || appearance.backgroundColor,
-          ),
+          backgroundColor: resolvedBgColor,
           backgroundImageUrl: galleryImage,
           bgType: galleryBgType,
         },

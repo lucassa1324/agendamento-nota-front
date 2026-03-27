@@ -507,6 +507,7 @@ export const SidebarContent = memo(
                     onUpdate={currentGalleryUpdater}
                     onUpdateBackground={onUpdateBackground}
                     onSave={onSaveGallery}
+                    onReset={() => onSectionReset(activeSection!)}
                     hasChanges={currentHasGalleryChanges}
                     sectionId={activeSection || undefined}
                   />

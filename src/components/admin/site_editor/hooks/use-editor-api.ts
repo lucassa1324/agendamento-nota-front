@@ -664,13 +664,23 @@ export function useEditorApi({
         sanitizedBookingSteps,
       ) as Record<string, BookingStepSettings>;
 
-      // ABANDONA O DIFF: Agora enviamos o payload completo para garantir integridade.
-      // O backend usará as seções presentes no layoutGlobal e appointmentFlow.
+      const galleryBackgroundColor =
+        sanitizedGalleryPreview.appearance?.backgroundColor ||
+        sanitizedGalleryPreview.bgColor ||
+        "";
+      const rawGalleryStyles = (sanitizedGalleryPreview as Record<string, unknown>)
+        .styles as Record<string, unknown> | undefined;
+      const gallerySectionPayload = {
+        ...sanitizedGalleryPreview,
+        styles: {
+          ...(rawGalleryStyles && typeof rawGalleryStyles === "object"
+            ? rawGalleryStyles
+            : {}),
+          backgroundColor: galleryBackgroundColor,
+        },
+      };
+
       const payload: Record<string, unknown> = {
-        gallery_bg:
-          sanitizedGalleryPreview.appearance?.backgroundColor ||
-          sanitizedGalleryPreview.bgColor ||
-          "",
         sections: {
           hero: sanitizedHero,
           aboutHero: sanitizedAboutHero,
@@ -680,7 +690,7 @@ export function useEditorApi({
           services: sanitizedServices,
           homeValuesSettings: normalizedHomeValues,
           aboutUsValuesSettings: normalizedAboutUsValues,
-          galleryPreviewSettings: sanitizedGalleryPreview,
+          gallery: gallerySectionPayload,
           galleryPageSettings: sanitizedGalleryPage,
           cta: sanitizedCta,
           header: sanitizedHeader,
@@ -708,7 +718,7 @@ export function useEditorApi({
             "services",
             "homeValuesSettings",
             "aboutUsValuesSettings",
-            "galleryPreviewSettings",
+            "gallery",
             "galleryPageSettings",
             "cta",
             "header",
@@ -723,7 +733,7 @@ export function useEditorApi({
             services: sanitizedServices,
             homeValuesSettings: normalizedHomeValues,
             aboutUsValuesSettings: normalizedAboutUsValues,
-            galleryPreviewSettings: sanitizedGalleryPreview,
+            gallery: gallerySectionPayload,
             galleryPageSettings: sanitizedGalleryPage,
             cta: sanitizedCta,
             header: sanitizedHeader,
@@ -748,12 +758,8 @@ export function useEditorApi({
               "aboutUs.valuesSection",
               "aboutUs.values",
             ],
-            galleryPreviewSettings: [
-              "galleryPreviewSettings",
-              "home.galleryPreview",
-              "home.gallerySection",
-            ],
-            galleryPageSettings: "galleryPageSettings",
+            gallery: ["home.galleryPreview", "sections.gallery"],
+            galleryPageSettings: ["gallery", "galleryPageSettings"],
             cta: "home.ctaSection",
             header: "layoutGlobal.header",
             footer: "layoutGlobal.footer",

@@ -126,9 +126,10 @@ export default function GaleriaPage({
   }, [studio, isPreview, router, sanitizeGallerySettings]);
 
   useEffect(() => {
-    // Carregar configurações iniciais
-    setGallerySettings(getGalleryPageSettings());
-  }, []);
+    if (!studio?.config) {
+      setGallerySettings(getGalleryPageSettings());
+    }
+  }, [studio?.config]);
 
   useEffect(() => {
     setIsolatedSection(initialOnly || null);
@@ -214,10 +215,20 @@ export default function GaleriaPage({
     return visibleSections[id] !== false;
   };
 
+  const background =
+    gallerySettings?.appearance?.backgroundColor ||
+    gallerySettings?.bgColor ||
+    "transparent";
+
   return (
     <main>
       {isSectionVisible("gallery-grid") && (
-        <section className="relative py-20 md:py-32 overflow-hidden">
+        <section 
+          className="relative py-20 md:py-32 overflow-hidden"
+          style={{
+            backgroundColor: background,
+          }}
+        >
           <SectionBackground settings={gallerySettings as SectionBackgroundSettings} />
 
           <div className="container mx-auto px-4 relative z-10">
@@ -244,7 +255,7 @@ export default function GaleriaPage({
               </p>
             </div>
 
-            <GalleryGrid />
+            <GalleryGrid settings={gallerySettings} />
           </div>
         </section>
       )}

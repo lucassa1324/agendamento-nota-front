@@ -48,6 +48,7 @@ import {
   defaultValuesSettings,
   getStorageKey,
   normalizeStepSettings,
+  sanitizeColor,
   saveAboutHeroSettings,
   saveAboutUsValuesSettings,
   saveBookingConfirmationSettings,
@@ -372,33 +373,33 @@ export function StudioProvider({
 
       const finalColors: ColorSettings = {
         primary:
-          (layoutColors?.primary as string) ||
-          (config.colors?.primary as string) ||
+          sanitizeColor(layoutColors?.primary) ||
+          sanitizeColor(config.colors?.primary) ||
           defaultColorSettings.primary ||
-          "#e4b4b4",
+          "#000000",
         secondary:
-          (layoutColors?.secondary as string) ||
-          (config.colors?.secondary as string) ||
+          sanitizeColor(layoutColors?.secondary) ||
+          sanitizeColor(config.colors?.secondary) ||
           defaultColorSettings.secondary ||
           "#1a1a1a",
         background:
-          (layoutColors?.background as string) ||
-          (config.colors?.background as string) ||
+          sanitizeColor(layoutColors?.background) ||
+          sanitizeColor(config.colors?.background) ||
           defaultColorSettings.background ||
           "#ffffff",
         text:
-          (layoutColors?.text as string) ||
-          (config.colors?.text as string) ||
+          sanitizeColor(layoutColors?.text) ||
+          sanitizeColor(config.colors?.text) ||
           defaultColorSettings.text ||
           "#1a1a1a",
         accent:
-          (layoutColors?.accent as string) ||
-          (config.colors?.accent as string) ||
+          sanitizeColor(layoutColors?.accent) ||
+          sanitizeColor(config.colors?.accent) ||
           defaultColorSettings.primary ||
-          "#e4b4b4",
+          "#000000",
         buttonText:
-          (layoutColors?.buttonText as string) ||
-          (config.colors?.buttonText as string) ||
+          sanitizeColor(layoutColors?.buttonText) ||
+          sanitizeColor(config.colors?.buttonText) ||
           "#ffffff",
         specialtyBadge: {
           background:

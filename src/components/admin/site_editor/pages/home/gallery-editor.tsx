@@ -37,6 +37,7 @@ interface GalleryEditorProps {
   onSave?: () => void;
   hasChanges?: boolean;
   sectionId?: string;
+  onReset?: () => void;
 }
 
 export function GalleryEditor({
@@ -46,6 +47,7 @@ export function GalleryEditor({
   onSave: externalOnSave,
   hasChanges,
   sectionId,
+  onReset,
 }: GalleryEditorProps) {
   if (!settings) return null;
 
@@ -251,6 +253,39 @@ export function GalleryEditor({
                     />
                   </div>
                 </fieldset>
+
+                <fieldset
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+                    Cor do Card
+                    {settings.cardBgColor && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4 hover:text-primary"
+                        onClick={() => onUpdate({ cardBgColor: "" })}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </legend>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={settings.cardBgColor || "#FFFFFF"}
+                      className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
+                      onChange={(e) => onUpdate({ cardBgColor: e.target.value })}
+                    />
+                    <Input
+                      value={settings.cardBgColor || ""}
+                      placeholder="Padrão"
+                      className="h-8 text-[10px] flex-1 uppercase"
+                      onChange={(e) => onUpdate({ cardBgColor: e.target.value })}
+                    />
+                  </div>
+                </fieldset>
               </div>
             </div>
           </AccordionContent>
@@ -340,7 +375,20 @@ export function GalleryEditor({
         </AccordionItem>
       </Accordion>
 
-      <div className="pt-2">
+      <div className="pt-2 flex flex-col gap-3">
+        {onReset && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onReset}
+            className="w-full h-9 text-[10px] uppercase font-bold border-dashed hover:border-destructive hover:text-destructive transition-all"
+          >
+            <RotateCcw className="w-3 h-3 mr-2" />
+            Resetar Estilo da Seção
+          </Button>
+        )}
+
         <Button
           type="button"
           disabled={!hasChanges}

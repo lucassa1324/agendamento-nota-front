@@ -6,12 +6,17 @@ import { ImageModal } from "@/components/image-modal";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import { type GalleryItem, galleryService } from "@/lib/gallery-service";
+import { defaultGallerySettings, SECTION_IDS, normalizePayload, type GallerySettings, sanitizeColor } from "@/lib/booking-data";
 
 interface Service {
   name: string;
 }
 
-export function GalleryGrid() {
+interface GalleryGridProps {
+  settings?: GallerySettings;
+}
+
+export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
   const { studio } = useStudio();
   const [images, setImages] = useState<GalleryItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; label: string }[]>(
@@ -21,6 +26,15 @@ export function GalleryGrid() {
   const [selectedCategory, setSelectedCategory] = useState("todos");
   const [isLoading, setIsLoading] = useState(false);
   const loadingRef = useRef(false);
+
+  const [settings, setSettings] = useState<GallerySettings>(propsSettings || defaultGallerySettings);
+  
+  // Atualiza settings locais quando as props mudarem
+  useEffect(() => {
+    if (propsSettings) {
+      setSettings(propsSettings);
+    }
+  }, [propsSettings]);
 
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
@@ -51,6 +65,22 @@ export function GalleryGrid() {
             ...servicesWithImages.map((s) => ({ id: s.name, label: s.name })),
           ];
           setCategories(dynamicCategories);
+
+          // Atualizar settings do studio se não foram passadas via props
+          if (!propsSettings && studio.config) {
+            const normalized = normalizePayload(studio.config as any);
+            const pageGallery = normalized.sections?.[SECTION_IDS.pageGallery] || normalized.sections?.[SECTION_IDS.homeGallery];
+            if (pageGallery) {
+              const appearance = (pageGallery.appearance as any) || {};
+              setSettings({
+                ...defaultGallerySettings,
+                ...(pageGallery as any),
+                bgColor: sanitizeColor((pageGallery as any).bgColor || appearance.backgroundColor) || "",
+                buttonColor: sanitizeColor((pageGallery as any).buttonColor || appearance.buttonColor) || "",
+                buttonTextColor: sanitizeColor((pageGallery as any).buttonTextColor || appearance.buttonTextColor) || "",
+              });
+            }
+          }
           return;
         }
 
@@ -88,15 +118,22 @@ export function GalleryGrid() {
       window.removeEventListener("studioSettingsUpdated", loadData);
       window.removeEventListener("servicesUpdated", loadData);
     };
-  }, [studio?.id, studio?.services]); // Dependência apenas do ID e serviços, não do objeto completo
+  }, [studio?.id, studio?.services, studio?.config, propsSettings]); // Dependência apenas do ID e serviços, não do objeto completo
 
   const filteredImages =
     selectedCategory === "todos"
       ? images
       : images.filter((img) => img.category === selectedCategory);
 
+  const background = settings.bgColor || (settings as any).appearance?.backgroundColor || "transparent";
+
   return (
-    <div id="gallery-grid">
+    <div 
+      id="gallery-grid"
+      style={{
+        backgroundColor: background,
+      }}
+    >
       {/* Category Filter */}
       <div className="flex flex-wrap justify-center gap-2 mb-12">
         {categories.map((category) => (
@@ -107,15 +144,15 @@ export function GalleryGrid() {
             style={{
               backgroundColor:
                 selectedCategory === category.id
-                  ? "var(--primary)"
+                  ? (settings.buttonColor || "var(--primary)")
                   : "transparent",
               color:
                 selectedCategory === category.id
-                  ? "white"
+                  ? (settings.buttonTextColor || "white")
                   : "var(--foreground)",
               borderColor:
                 selectedCategory === category.id
-                  ? "var(--primary)"
+                  ? (settings.buttonColor || "var(--primary)")
                   : "var(--border)",
               fontFamily: "var(--font-body)",
             }}

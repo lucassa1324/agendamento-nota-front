@@ -157,9 +157,9 @@ export function GalleryPreview() {
           (appearance.backgroundImageUrl as string) ||
           "",
         bgColor: sanitizeColor(
-          (configGallery.bgColor as string) ||
+          (appearance.backgroundColor as string) ||
+            (configGallery.bgColor as string) ||
             (configGallery.backgroundColor as string) ||
-            (appearance.backgroundColor as string) ||
             "",
         ),
         cardBgColor: sanitizeColor(
@@ -535,6 +535,11 @@ export function GalleryPreview() {
     return null;
   }
 
+  const background =
+    settings?.appearance?.backgroundColor ||
+    settings?.bgColor ||
+    "transparent";
+
   return (
     <section
       key={settingsKey}
@@ -544,6 +549,9 @@ export function GalleryPreview() {
         highlightedElement === "gallery-preview" &&
           "ring-4 ring-primary ring-inset z-50",
       )}
+      style={{
+        backgroundColor: background,
+      }}
     >
       <SectionBackground settings={settings as SectionBackgroundSettings} />
 

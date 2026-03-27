@@ -207,6 +207,22 @@ class SiteCustomizerService {
     return this.saveDraftCustomization(companyId, data);
   }
 
+  async resetCustomization(companyId: string): Promise<boolean> {
+    const rawResponse = await customFetch(
+      `${this.buildUrl("/api/settings/reset")}/${companyId}`,
+      { method: "POST", credentials: "include" },
+    );
+    if (!rawResponse.ok) {
+      await this.handleResponse<void>(rawResponse);
+      return false;
+    }
+    await rawResponse.text().catch(() => "");
+    if (typeof window !== "undefined") {
+      clearAllCustomizationCache();
+    }
+    return true;
+  }
+
   async saveDraftCustomization(
     companyId: string,
     data: Partial<SiteConfigData>,
