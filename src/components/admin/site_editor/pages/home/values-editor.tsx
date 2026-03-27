@@ -54,10 +54,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { ValueItem, ValuesSettings } from "@/lib/booking-data";
+import { defaultValuesSettings, type ValueItem, type ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { ResetSectionVisuals } from "../../components/ResetSectionVisuals";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -93,6 +94,22 @@ const icons = [
   { name: "Wind", icon: Wind },
 ];
 
+const isVisualKey = (key: string) => {
+  const value = key.toLowerCase();
+  return (
+    value.includes("color") ||
+    value.includes("font") ||
+    value.includes("bg") ||
+    value.includes("opacity") ||
+    value.includes("scale") ||
+    value.includes("image") ||
+    value.includes("icon") ||
+    value.includes("shadow") ||
+    value.includes("radius") ||
+    value === "appearance"
+  );
+};
+
 interface ValuesEditorProps {
   settings: ValuesSettings;
   onUpdate: (updates: Partial<ValuesSettings>) => void;
@@ -107,6 +124,22 @@ export function ValuesEditor({
   hasChanges,
 }: ValuesEditorProps) {
   if (!settings) return null;
+
+  const handleResetVisuals = () => {
+    const updates: Partial<ValuesSettings> = {};
+    for (const [key, value] of Object.entries(defaultValuesSettings)) {
+      if (isVisualKey(key)) {
+        (updates as Record<string, unknown>)[key] = value;
+      }
+    }
+
+    updates.appearance = {
+      backgroundColor: defaultValuesSettings.bgColor,
+      backgroundImageUrl: "",
+    };
+
+    onUpdate(updates);
+  };
 
   const addItem = () => {
     const newItem: ValueItem = {
@@ -136,6 +169,11 @@ export function ValuesEditor({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+      <ResetSectionVisuals
+        label="Resetar Estilo dos Valores"
+        description="Restaura cores, fontes, fundo e estilo dos cards sem alterar os textos."
+        onReset={handleResetVisuals}
+      />
       <Accordion
         type="multiple"
         defaultValue={["title"]}
