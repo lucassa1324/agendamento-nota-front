@@ -419,7 +419,6 @@ export function SiteCustomizer() {
     hasBookingConfirmationChanges,
     onHighlight: handleHighlight,
     activePage,
-    activePageData: activePageData || null,
     expandedPages,
     visibleSections,
     onPageToggle: togglePageExpansion,

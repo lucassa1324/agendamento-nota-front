@@ -793,10 +793,6 @@ export function useEditorSync({
   }, [
     iframeRef,
     previewBookingServiceSettings,
-    previewBookingDateSettings,
-    previewBookingTimeSettings,
-    previewBookingFormSettings,
-    previewBookingConfirmationSettings,
   ]);
 
   // Função para sanitizar o objeto siteCustomization completo

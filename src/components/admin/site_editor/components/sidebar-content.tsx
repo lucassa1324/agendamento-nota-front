@@ -6,7 +6,6 @@
 
 import { ArrowLeft, Loader2, RotateCcw, Settings2 } from "lucide-react";
 import { memo, useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import type {
   BookingStepSettings,
   ColorSettings,
@@ -55,7 +55,6 @@ import type { PageItem, SectionItem } from "./editor-constants";
 interface SidebarContentProps {
   activeSection: string | null;
   activeSectionData: SectionItem | null;
-  activePageData?: PageItem | null;
   setActiveSection: (id: string | null) => void;
   resetSettings: () => void;
   fontSettings: FontSettings;
@@ -162,7 +161,6 @@ export const SidebarContent = memo(
   ({
     activeSection,
     activeSectionData,
-    activePageData,
     setActiveSection,
     resetSettings,
     fontSettings,
@@ -372,19 +370,20 @@ export const SidebarContent = memo(
                 >
                   <ArrowLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5 xl:w-4 xl:h-4" />
                 </Button>
-                <div>
+                <div className="flex items-center gap-2">
                   <h3 className="text-[11px] sm:text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
                     {activeSectionData?.name || "Seção"}
                   </h3>
-                  <p className="text-[8px] sm:text-[9px] xl:text-[10px] text-muted-foreground flex items-center gap-1">
-                    {activePageData?.label && (
-                      <>
-                        <span className="truncate max-w-15 sm:max-w-none">{activePageData.label}</span>
-                        <span className="opacity-50">/</span>
-                      </>
-                    )}
-                    <span>Editando</span>
-                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onSectionReset(activeSection)}
+                    className="h-5 w-5 sm:h-6 sm:w-6 xl:h-7 xl:w-7 rounded-lg transition-all text-muted-foreground hover:bg-background/80"
+                    title="Resetar seção"
+                  >
+                    <RotateCcw className="w-3 sm:w-3.5 h-3 sm:h-3.5 xl:w-4 xl:h-4" />
+                  </Button>
                 </div>
               </div>
 
@@ -428,8 +427,9 @@ export const SidebarContent = memo(
                   <HeroEditor
                     settings={heroSettings}
                     onUpdate={onUpdateHero}
-                    onUpdateBackground={onUpdateBackground}
+                    onUpdateBackground={(updates) => onUpdateBackground(updates, "hero")}
                     onHighlight={onHighlight}
+                    onReset={() => onSectionReset("hero")}
                     hasChanges={hasHeroChanges}
                     onSave={onSaveHero}
                   />
@@ -440,6 +440,7 @@ export const SidebarContent = memo(
                     onUpdate={onUpdateAboutHero}
                     onUpdateBackground={(updates) => onUpdateBackground(updates, "about-hero")}
                     onHighlight={onHighlight}
+                    onReset={() => onSectionReset("about-hero")}
                     hasChanges={hasAboutHeroChanges}
                     onSave={onSaveAboutHero}
                   />
@@ -458,6 +459,7 @@ export const SidebarContent = memo(
                     settings={servicesSettings}
                     onUpdate={onUpdateServices}
                     onUpdateBackground={onUpdateBackground}
+                    onReset={() => onSectionReset("services")}
                     hasChanges={hasServicesChanges}
                     onSave={onSaveServices}
                   />

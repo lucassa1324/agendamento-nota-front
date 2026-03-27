@@ -82,6 +82,7 @@ export interface HeroEditorProps {
   onUpdate: (updates: Partial<HeroEditorProps["settings"]>) => void;
   onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onHighlight?: (sectionId: string) => void;
+  onReset?: () => void;
   hasChanges?: boolean;
   onSave?: () => void;
 }
@@ -90,6 +91,7 @@ export function HeroEditor({
   settings,
   onUpdate,
   onUpdateBackground,
+  onReset,
   hasChanges,
   onSave: externalOnSave,
 }: HeroEditorProps) {

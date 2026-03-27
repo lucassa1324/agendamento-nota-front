@@ -1129,103 +1129,200 @@ export function useEditorActions({
   const handleSectionReset = useCallback(
     (sectionId?: string) => {
       const targetSectionId = sectionId || activeSectionId;
-      const resetMap: Record<string, () => void> = {
-        hero: () =>
-          setHeroSettings(applyDefaultVisuals(heroSettings, defaultHeroSettings)),
-        "about-hero": () =>
-          setAboutHeroSettings(
-            applyDefaultVisuals(aboutHeroSettings, defaultAboutHeroSettings),
-          ),
-        story: () =>
-          setStorySettings(
-            applyDefaultVisuals(storySettings, defaultStorySettings),
-          ),
-        team: () =>
-          setTeamSettings(applyDefaultVisuals(teamSettings, defaultTeamSettings)),
-        testimonials: () =>
-          setTestimonialsSettings(
-            applyDefaultVisuals(
-              testimonialsSettings,
-              defaultTestimonialsSettings,
-            ),
-          ),
-        services: () =>
-          setServicesSettings(
-            applyDefaultVisuals(servicesSettings, defaultServicesSettings),
-          ),
-        "home-values": () =>
-          setHomeValuesSettings(
-            applyDefaultVisuals(homeValuesSettings, defaultValuesSettings),
-          ),
-        "about-us-values": () =>
-          setAboutUsValuesSettings(
-            applyDefaultVisuals(aboutUsValuesSettings, defaultValuesSettings),
-          ),
-        gallery: () =>
-          setGallerySettings(
-            applyDefaultVisuals(gallerySettings, defaultGallerySettings),
-          ),
-        "gallery-preview": () =>
-          setGallerySettings(
-            applyDefaultVisuals(gallerySettings, defaultGallerySettings),
-          ),
-        "gallery-grid": () =>
-          setGalleryPageSettings(
-            applyDefaultVisuals(galleryPageSettings, defaultGallerySettings),
-          ),
-        cta: () =>
-          setCTASettings(applyDefaultVisuals(ctaSettings, defaultCTASettings)),
-        header: () =>
-          setHeaderSettings(
-            applyDefaultVisuals(headerSettings, defaultHeaderSettings),
-          ),
-        footer: () =>
-          setFooterSettings(
-            applyDefaultVisuals(footerSettings, defaultFooterSettings),
-          ),
-        "booking-service": () =>
-          setBookingServiceSettings(
-            applyDefaultVisuals(
-              bookingServiceSettings,
-              defaultBookingServiceSettings,
-            ),
-          ),
-        "booking-date": () =>
-          setBookingDateSettings(
-            applyDefaultVisuals(
-              bookingDateSettings,
-              defaultBookingDateSettings,
-            ),
-          ),
-        "booking-time": () =>
-          setBookingTimeSettings(
-            applyDefaultVisuals(
-              bookingTimeSettings,
-              defaultBookingTimeSettings,
-            ),
-          ),
-        "booking-form": () =>
-          setBookingFormSettings(
-            applyDefaultVisuals(
-              bookingFormSettings,
-              defaultBookingFormSettings,
-            ),
-          ),
-        "booking-confirmation": () =>
-          setBookingConfirmationSettings(
-            applyDefaultVisuals(
-              bookingConfirmationSettings,
-              defaultBookingConfirmationSettings,
-            ),
-          ),
+
+      // Mapa de defaults por seção
+      const defaultsMap: Record<string, unknown> = {
+        hero: defaultHeroSettings,
+        "about-hero": defaultAboutHeroSettings,
+        story: defaultStorySettings,
+        team: defaultTeamSettings,
+        testimonials: defaultTestimonialsSettings,
+        services: defaultServicesSettings,
+        "home-values": defaultValuesSettings,
+        "about-us-values": defaultValuesSettings,
+        gallery: defaultGallerySettings,
+        "gallery-preview": defaultGallerySettings,
+        "gallery-grid": defaultGallerySettings,
+        cta: defaultCTASettings,
+        header: defaultHeaderSettings,
+        footer: defaultFooterSettings,
+        "booking-service": defaultBookingServiceSettings,
+        "booking-date": defaultBookingDateSettings,
+        "booking-time": defaultBookingTimeSettings,
+        "booking-form": defaultBookingFormSettings,
+        "booking-confirmation": defaultBookingConfirmationSettings,
       };
 
-      const resetFn = resetMap[targetSectionId];
-      if (resetFn) {
-        resetFn();
+      // Mapa de setters de estado
+      const setterMap: Record<string, (u: unknown) => void> = {
+        hero: setHeroSettings as (u: unknown) => void,
+        "about-hero": setAboutHeroSettings as (u: unknown) => void,
+        story: setStorySettings as (u: unknown) => void,
+        team: setTeamSettings as (u: unknown) => void,
+        testimonials: setTestimonialsSettings as (u: unknown) => void,
+        services: setServicesSettings as (u: unknown) => void,
+        "home-values": setHomeValuesSettings as (u: unknown) => void,
+        "about-us-values": setAboutUsValuesSettings as (u: unknown) => void,
+        gallery: setGallerySettings as (u: unknown) => void,
+        "gallery-preview": setGallerySettings as (u: unknown) => void,
+        "gallery-grid": setGalleryPageSettings as (u: unknown) => void,
+        cta: setCTASettings as (u: unknown) => void,
+        header: setHeaderSettings as (u: unknown) => void,
+        footer: setFooterSettings as (u: unknown) => void,
+        "booking-service": setBookingServiceSettings as (u: unknown) => void,
+        "booking-date": setBookingDateSettings as (u: unknown) => void,
+        "booking-time": setBookingTimeSettings as (u: unknown) => void,
+        "booking-form": setBookingFormSettings as (u: unknown) => void,
+        "booking-confirmation": setBookingConfirmationSettings as (u: unknown) => void,
+      };
+
+      // Mapa de funções de salvamento (localStorage)
+      const saveFnMap: Record<string, (u: unknown) => void> = {
+        hero: saveHeroSettings as (u: unknown) => void,
+        "about-hero": saveAboutHeroSettings as (u: unknown) => void,
+        story: saveStorySettings as (u: unknown) => void,
+        team: saveTeamSettings as (u: unknown) => void,
+        testimonials: saveTestimonialsSettings as (u: unknown) => void,
+        services: saveServicesSettings as (u: unknown) => void,
+        "home-values": saveHomeValuesSettings as (u: unknown) => void,
+        "about-us-values": saveAboutUsValuesSettings as (u: unknown) => void,
+        gallery: saveGallerySettings as (u: unknown) => void,
+        "gallery-preview": saveGallerySettings as (u: unknown) => void,
+        "gallery-grid": saveGalleryPageSettings as (u: unknown) => void,
+        cta: saveCTASettings as (u: unknown) => void,
+        header: saveHeaderSettings as (u: unknown) => void,
+        footer: saveFooterSettings as (u: unknown) => void,
+        "booking-service": saveBookingServiceSettings as (u: unknown) => void,
+        "booking-date": saveBookingDateSettings as (u: unknown) => void,
+        "booking-time": saveBookingTimeSettings as (u: unknown) => void,
+        "booking-form": saveBookingFormSettings as (u: unknown) => void,
+        "booking-confirmation": saveBookingConfirmationSettings as (u: unknown) => void,
+      };
+
+      // Mapa de chaves para o draft
+      const saveKeyMap: Record<string, string> = {
+        hero: "heroSettings",
+        "about-hero": "aboutHeroSettings",
+        story: "storySettings",
+        team: "teamSettings",
+        testimonials: "testimonialsSettings",
+        services: "servicesSettings",
+        "home-values": "homeValuesSettings",
+        "about-us-values": "aboutUsValuesSettings",
+        gallery: "gallerySettings",
+        "gallery-preview": "gallerySettings",
+        "gallery-grid": "galleryPageSettings",
+        cta: "ctaSettings",
+        header: "headerSettings",
+        footer: "footerSettings",
+        "booking-service": "bookingServiceSettings",
+        "booking-date": "bookingDateSettings",
+        "booking-time": "bookingTimeSettings",
+        "booking-form": "bookingFormSettings",
+        "booking-confirmation": "bookingConfirmationSettings",
+      };
+
+      // Mapa de configurações atuais
+      const currentSettingsMap: Record<string, unknown> = {
+        hero: heroSettings,
+        "about-hero": aboutHeroSettings,
+        story: storySettings,
+        team: teamSettings,
+        testimonials: testimonialsSettings,
+        services: servicesSettings,
+        "home-values": homeValuesSettings,
+        "about-us-values": aboutUsValuesSettings,
+        gallery: gallerySettings,
+        "gallery-preview": gallerySettings,
+        "gallery-grid": galleryPageSettings,
+        cta: ctaSettings,
+        header: headerSettings,
+        footer: footerSettings,
+        "booking-service": bookingServiceSettings,
+        "booking-date": bookingDateSettings,
+        "booking-time": bookingTimeSettings,
+        "booking-form": bookingFormSettings,
+        "booking-confirmation": bookingConfirmationSettings,
+      };
+
+      const defaults = defaultsMap[targetSectionId];
+      const setter = setterMap[targetSectionId];
+      const saveFn = saveFnMap[targetSectionId];
+      const saveKey = saveKeyMap[targetSectionId];
+      const current = currentSettingsMap[targetSectionId];
+
+      if (defaults && setter && saveFn && saveKey && current) {
+        // Resetar para um estado "Limpo": Fundo Branco e Texto Preto
+        // Conforme pedido: "o background vai ficar branco, e todos os nomes ficam preto"
+        const reseted = { ...(current as Record<string, unknown>) };
+
+        // Aplicar visual "Limpo" (Clean Reset) - Hardcoded para Branco e Preto
+        const cleanVisuals: Record<string, unknown> = {
+          bgColor: "#ffffff",
+          bg_color: "#ffffff",
+          backgroundColor: "#ffffff",
+          bgType: "color",
+          bg_type: "color",
+          imageOpacity: 1,
+          overlayOpacity: 0,
+          titleColor: "#000000",
+          title_color: "#000000",
+          subtitleColor: "#000000",
+          subtitle_color: "#000000",
+          textColor: "#000000",
+          text_color: "#000000",
+          badgeColor: "#f4f4f5", 
+          badgeTextColor: "#000000",
+          accentColor: "#000000",
+          accent_color: "#000000",
+          buttonColor: "#000000",
+          buttonTextColor: "#ffffff",
+          primaryButtonColor: "#000000",
+          primaryButtonTextColor: "#ffffff",
+          secondaryButtonColor: "#ffffff",
+          secondaryButtonTextColor: "#000000",
+          cardBgColor: "#ffffff",
+          card_bg_color: "#ffffff",
+          borderColor: "#e4e4e7",
+          // Resetar o objeto appearance também, que costuma ter o backgroundColor real do banco
+          appearance: {
+            backgroundColor: "#ffffff",
+            backgroundImageUrl: "",
+            imageOpacity: 1,
+            overlayOpacity: 0,
+            overlay: {
+              color: "#000000",
+              opacity: 0
+            }
+          }
+        };
+
+        // Mesclar as configurações atuais com o visual limpo, preservando conteúdos (textos/imagens)
+        Object.keys(cleanVisuals).forEach((key) => {
+          if (key === "appearance") {
+            reseted[key] = {
+              ...((reseted[key] as Record<string, unknown>) || {}),
+              ...(cleanVisuals[key] as Record<string, unknown>)
+            };
+          } else {
+            reseted[key] = cleanVisuals[key];
+          }
+        });
+
+        // Garantir que não haja imagem de fundo se o reset for para cor
+        if (reseted.bgImage) reseted.bgImage = "";
+        if (reseted.bg_image) reseted.bg_image = "";
+
+        // 1. Atualizar o estado global
+        setter(reseted);
+
+        // 2. Salvar no localStorage (sync com preview)
+        saveFn(reseted);
+        scheduleDraftSave(saveKey, () => saveFn(reseted));
+
         toast({
-          title: "Resetado",
-          description: `Seção ${targetSectionId} voltou às cores padrão.`,
+          title: "Seção Resetada",
+          description: `Visual da seção ${targetSectionId} foi limpo (Preto e Branco).`,
         });
       }
     },
@@ -1267,6 +1364,25 @@ export function useEditorActions({
       setBookingTimeSettings,
       setBookingFormSettings,
       setBookingConfirmationSettings,
+      saveHeroSettings,
+      saveAboutHeroSettings,
+      saveStorySettings,
+      saveTeamSettings,
+      saveTestimonialsSettings,
+      saveServicesSettings,
+      saveHomeValuesSettings,
+      saveAboutUsValuesSettings,
+      saveGallerySettings,
+      saveGalleryPageSettings,
+      saveCTASettings,
+      saveHeaderSettings,
+      saveFooterSettings,
+      saveBookingServiceSettings,
+      saveBookingDateSettings,
+      saveBookingTimeSettings,
+      saveBookingFormSettings,
+      saveBookingConfirmationSettings,
+      scheduleDraftSave,
       toast,
     ],
   );

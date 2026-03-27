@@ -28,6 +28,7 @@ interface ServicesEditorProps {
   settings: ServicesSettings;
   onUpdate: (updates: Partial<ServicesSettings>) => void;
   onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
+  onReset?: () => void;
   onSave?: () => void;
   hasChanges?: boolean;
 }
@@ -36,6 +37,7 @@ export function ServicesEditor({
   settings,
   onUpdate,
   onUpdateBackground,
+  onReset,
   onSave: externalOnSave,
   hasChanges,
 }: ServicesEditorProps) {

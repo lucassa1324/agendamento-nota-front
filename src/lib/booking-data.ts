@@ -861,8 +861,8 @@ export const defaultServicesSettings: ServicesSettings = {
   cardBgColor: "#FFFFFF",
   cardTitleColor: "#000000",
   cardDescriptionColor: "#000000",
-  cardPriceColor: "#FF6B81",
-  cardIconColor: "#FF6B81",
+  cardPriceColor: "#000000",
+  cardIconColor: "#000000",
   cardTitleFont: "",
   cardDescriptionFont: "",
   cardPriceFont: "",
@@ -912,11 +912,11 @@ export const defaultValuesSettings: ValuesSettings = {
   cardBgColor: "#FFFFFF",
   cardTitleColor: "#000000",
   cardDescriptionColor: "#000000",
-  cardIconColor: "#FF6B81",
+  cardIconColor: "#000000",
   cardTitleFont: "",
   cardDescriptionFont: "",
   cardTextColor: "#000000",
-  iconColor: "#FF6B81",
+  iconColor: "#000000",
   borderRadius: "8px",
   backgroundColor: "#FFFFFF",
   items: [
@@ -1078,7 +1078,7 @@ export const defaultBookingServiceSettings: BookingStepSettings = {
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "#FF6B81",
+  accentColor: "#000000",
   cardBgColor: "#FFFFFF",
   appearance: {
     backgroundImageUrl: "",
@@ -1100,7 +1100,7 @@ export const defaultBookingDateSettings: BookingStepSettings = {
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "#FF6B81",
+  accentColor: "#000000",
   cardBgColor: "#FFFFFF",
   appearance: {
     backgroundImageUrl: "",
@@ -1122,7 +1122,7 @@ export const defaultBookingTimeSettings: BookingStepSettings = {
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "#FF6B81",
+  accentColor: "#000000",
   cardBgColor: "#FFFFFF",
   appearance: {
     backgroundImageUrl: "",
@@ -1144,7 +1144,7 @@ export const defaultBookingFormSettings: BookingStepSettings = {
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "#FF6B81",
+  accentColor: "#000000",
   cardBgColor: "#FFFFFF",
   appearance: {
     backgroundImageUrl: "",
@@ -1166,7 +1166,7 @@ export const defaultBookingConfirmationSettings: BookingStepSettings = {
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "#FF6B81",
+  accentColor: "#000000",
   cardBgColor: "#FFFFFF",
   appearance: {
     backgroundImageUrl: "",
@@ -1610,7 +1610,7 @@ export const defaultCTASettings: CTASettings = {
   buttonText: "Agendar Agora",
   titleColor: "#000000",
   subtitleColor: "#000000",
-  buttonColor: "#FF6B81",
+  buttonColor: "#000000",
   buttonTextColor: "#FFFFFF",
   titleFont: "",
   subtitleFont: "",
@@ -1642,7 +1642,7 @@ export const defaultTeamSettings: TeamSettings = {
   imageY: 50,
   cardBgColor: "#FFFFFF",
   cardTitleColor: "#000000",
-  cardRoleColor: "#FF6B81",
+  cardRoleColor: "#000000",
   cardDescriptionColor: "#000000",
   cardTitleFont: "",
   cardRoleFont: "",
@@ -1668,7 +1668,7 @@ export const defaultTeamSettings: TeamSettings = {
 };
 
 export const defaultTestimonialsSettings: TestimonialsSettings = {
-  starColor: "#FF6B81",
+  starColor: "#000000",
   title: "O Que Dizem Nossas Clientes",
   subtitle: "A satisfação de nossas clientes é nossa maior conquista",
   titleColor: "#000000",
@@ -1734,14 +1734,14 @@ export type GlobalColors = {
 };
 
 export const defaultGlobalColors: GlobalColors = {
-  primary: "#FF6B81",
-  secondary: "#FF6B81",
+  primary: "#000000",
+  secondary: "#000000",
   background: "#FFFFFF",
   text: "#000000",
-  accent: "#FF6B81",
+  accent: "#000000",
   buttonText: "#FFFFFF",
   specialtyBadge: {
-    background: "#FF6B81",
+    background: "#000000",
     text: "#FFFFFF",
     borderRadius: "8px",
   },
@@ -1933,7 +1933,7 @@ export const defaultHeroSettings: HeroSettings = {
   badge: "Especialistas em Design de Sobrancelhas",
   showBadge: true,
   badgeIcon: "Sparkles",
-  badgeColor: "#FF6B81",
+  badgeColor: "#000000",
   badgeTextColor: "#FFFFFF",
   title: "Realce Sua Beleza Natural",
   subtitle:
@@ -1951,7 +1951,7 @@ export const defaultHeroSettings: HeroSettings = {
   titleFont: "",
   subtitleFont: "",
   badgeFont: "",
-  primaryButtonColor: "#FF6B81",
+  primaryButtonColor: "#000000",
   secondaryButtonColor: "",
   primaryButtonTextColor: "#FFFFFF",
   secondaryButtonTextColor: "",

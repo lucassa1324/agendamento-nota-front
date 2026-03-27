@@ -125,7 +125,7 @@ export function TimeSlotSelector({
         const localDate = new Date(`${date}T00:00:00`);
         const dayOfWeek = localDate.getDay();
         const apiDay = settings.weekly.find(
-          (w) => parseInt(w.dayOfWeek, 10) === dayOfWeek,
+          (w: { dayOfWeek: string }) => parseInt(w.dayOfWeek, 10) === dayOfWeek,
         );
 
         if (apiDay) {
@@ -159,7 +159,7 @@ export function TimeSlotSelector({
       }
 
       // 2. Processar Agendamentos
-      const dayAppointments = appointments.filter((app) => {
+      const dayAppointments = appointments.filter((app: { scheduledAt: string; status: string; customerName: string }) => {
         // Garantir que estamos comparando a data no fuso local, já que o input 'date' (YYYY-MM-DD) é local
         // Se app.scheduledAt for "2024-01-01T03:00:00Z" e estivermos no GTM-3, vira "2024-01-01T00:00:00" local
         const dateObj = new Date(app.scheduledAt);
@@ -172,7 +172,19 @@ export function TimeSlotSelector({
         return appDate === date && app.status !== "CANCELLED";
       });
 
-      const convertedBookings: Booking[] = dayAppointments.map((app) => {
+      const convertedBookings: Booking[] = dayAppointments.map((app: {
+        id: string;
+        serviceId: string;
+        serviceNameSnapshot: string;
+        serviceDurationSnapshot: string;
+        servicePriceSnapshot: string;
+        scheduledAt: string;
+        customerName: string;
+        customerEmail: string;
+        customerPhone: string;
+        status: string;
+        createdAt: string;
+      }) => {
         let status: BookingStatus = "pending";
         const apiStatus = app.status.toLowerCase();
         if (apiStatus === "confirmed") status = "confirmado";
