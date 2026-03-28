@@ -715,16 +715,16 @@ export function useEditorState() {
         ...(gallery as Partial<GallerySettings>),
         gridConfig: {
           ...defaultGallerySettings.gridConfig,
-          ...(galleryData.gridConfig as any || {}),
-        },
+          ...(galleryData.gridConfig as Record<string, unknown> || {}),
+        } as NonNullable<GallerySettings["gridConfig"]>,
         displayLogic: {
           ...defaultGallerySettings.displayLogic,
-          ...(galleryData.displayLogic as any || {}),
-        },
+          ...(galleryData.displayLogic as Record<string, unknown> || {}),
+        } as NonNullable<GallerySettings["displayLogic"]>,
         photoStyle: {
           ...defaultGallerySettings.photoStyle,
-          ...(galleryData.photoStyle as any || {}),
-        },
+          ...(galleryData.photoStyle as Record<string, unknown> || {}),
+        } as NonNullable<GallerySettings["photoStyle"]>,
         titleColor:
           sanitizeColor(galleryData.titleColor || appearance.titleColor) ||
           defaultGallerySettings.titleColor,

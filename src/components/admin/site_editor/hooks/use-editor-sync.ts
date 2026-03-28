@@ -128,8 +128,8 @@ export function useEditorSync({
     // Log para conferir se, após o F5, o valor lastSavedAboutHero contém a cor correta
     console.log("[useEditorSync] Post-F5 lastSavedAboutHero:", {
       bgColor: lastSavedAboutHero?.bgColor,
-      appearanceBg: (lastSavedAboutHero as any)?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || (merged.appearance as any)?.backgroundColor
+      appearanceBg: lastSavedAboutHero?.appearance?.backgroundColor,
+      mergedBg: merged.bgColor || merged.appearance?.backgroundColor
     });
 
     // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
@@ -140,11 +140,11 @@ export function useEditorSync({
     }
 
     // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor = sanitizeColor(merged.bgColor || (merged.appearance as any)?.backgroundColor) || "";
+    const resolvedBgColor = sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
     merged.bgColor = resolvedBgColor;
     if (merged.appearance) {
       merged.appearance = {
-        ...(merged.appearance as any),
+        ...merged.appearance,
         backgroundColor: resolvedBgColor,
       };
     }
@@ -161,8 +161,8 @@ export function useEditorSync({
     // Log para conferir se, após o F5, o valor lastSavedStory contém a cor correta
     console.log("[useEditorSync] Post-F5 lastSavedStory:", {
       bgColor: lastSavedStory?.bgColor,
-      appearanceBg: (lastSavedStory as any)?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || (merged.appearance as any)?.backgroundColor
+      appearanceBg: lastSavedStory?.appearance?.backgroundColor,
+      mergedBg: merged.bgColor || merged.appearance?.backgroundColor
     });
 
     // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
@@ -173,11 +173,11 @@ export function useEditorSync({
     }
 
     // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor = sanitizeColor(merged.bgColor || (merged.appearance as any)?.backgroundColor) || "";
+    const resolvedBgColor = sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
     merged.bgColor = resolvedBgColor;
     if (merged.appearance) {
       merged.appearance = {
-        ...(merged.appearance as any),
+        ...merged.appearance,
         backgroundColor: resolvedBgColor,
       };
     }
@@ -192,8 +192,8 @@ export function useEditorSync({
     // Log para conferir se, após o F5, o valor lastSavedTeam contém a cor correta
     console.log("[useEditorSync] Post-F5 lastSavedTeam:", {
       bgColor: lastSavedTeam?.bgColor,
-      appearanceBg: (lastSavedTeam as any)?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || (merged.appearance as any)?.backgroundColor
+      appearanceBg: lastSavedTeam?.appearance?.backgroundColor,
+      mergedBg: merged.bgColor || merged.appearance?.backgroundColor
     });
 
     // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
@@ -204,11 +204,11 @@ export function useEditorSync({
     }
 
     // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor = sanitizeColor(merged.bgColor || (merged.appearance as any)?.backgroundColor) || "";
+    const resolvedBgColor = sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
     merged.bgColor = resolvedBgColor;
     if (merged.appearance) {
       merged.appearance = {
-        ...(merged.appearance as any),
+        ...merged.appearance,
         backgroundColor: resolvedBgColor,
       };
     }
@@ -225,8 +225,8 @@ export function useEditorSync({
     // Log para conferir se, após o F5, o valor lastSavedTestimonials contém a cor correta
     console.log("[useEditorSync] Post-F5 lastSavedTestimonials:", {
       bgColor: lastSavedTestimonials?.bgColor,
-      appearanceBg: (lastSavedTestimonials as any)?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || (merged.appearance as any)?.backgroundColor
+      appearanceBg: lastSavedTestimonials?.appearance?.backgroundColor,
+      mergedBg: merged.bgColor || merged.appearance?.backgroundColor
     });
 
     // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
@@ -237,11 +237,11 @@ export function useEditorSync({
     }
 
     // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor = sanitizeColor(merged.bgColor || (merged.appearance as any)?.backgroundColor) || "";
+    const resolvedBgColor = sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
     merged.bgColor = resolvedBgColor;
     if (merged.appearance) {
       merged.appearance = {
-        ...(merged.appearance as any),
+        ...merged.appearance,
         backgroundColor: resolvedBgColor,
       };
     }
@@ -258,8 +258,8 @@ export function useEditorSync({
     // Log para conferir se, após o F5, o valor lastSavedServices contém a cor correta
     console.log("[useEditorSync] Post-F5 lastSavedServices:", {
       bgColor: lastSavedServices?.bgColor,
-      appearanceBg: (lastSavedServices as any)?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || (merged.appearance as any)?.backgroundColor
+      appearanceBg: lastSavedServices?.appearance?.backgroundColor,
+      mergedBg: merged.bgColor || merged.appearance?.backgroundColor
     });
 
     // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
@@ -270,17 +270,17 @@ export function useEditorSync({
     }
 
     // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor = sanitizeColor(merged.bgColor || (merged.appearance as any)?.backgroundColor) || "";
+    const resolvedBgColor = sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
     merged.bgColor = resolvedBgColor;
     if (merged.appearance) {
       merged.appearance = {
-        ...(merged.appearance as any),
+        ...merged.appearance,
         backgroundColor: resolvedBgColor,
       };
     }
     merged.titleColor = sanitizeColor(merged.titleColor) || "";
     merged.subtitleColor = sanitizeColor(merged.subtitleColor) || "";
-    merged.cardBgColor = sanitizeColor(merged.cardBgColor || (merged.appearance as any)?.cardBgColor) || "";
+    merged.cardBgColor = sanitizeColor(merged.cardBgColor || merged.appearance?.cardBgColor) || "";
     merged.cardTitleColor = sanitizeColor(merged.cardTitleColor) || "";
     merged.cardDescriptionColor = sanitizeColor(merged.cardDescriptionColor) || "";
     merged.cardPriceColor = sanitizeColor(merged.cardPriceColor) || "";
@@ -288,7 +288,7 @@ export function useEditorSync({
 
     if (merged.appearance) {
       merged.appearance = {
-        ...(merged.appearance as any),
+        ...merged.appearance,
         backgroundColor: merged.bgColor,
         cardBgColor: merged.cardBgColor,
       };
@@ -522,8 +522,8 @@ export function useEditorSync({
     // Log para conferir se, após o F5, o valor lastSavedGallery contém a cor correta
     console.log("[useEditorSync] Post-F5 lastSavedGallery:", {
       bgColor: lastSavedGallery?.bgColor,
-      appearanceBg: (lastSavedGallery as any)?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || (merged.appearance as any)?.backgroundColor
+      appearanceBg: lastSavedGallery?.appearance?.backgroundColor,
+      mergedBg: merged.bgColor || merged.appearance?.backgroundColor
     });
 
     // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
@@ -537,7 +537,7 @@ export function useEditorSync({
     const mergedRecord = merged as Record<string, unknown>;
     const resolvedBgColor =
       sanitizeColor(
-        ((merged.appearance as any)?.backgroundColor as string | undefined) ||
+        (merged.appearance?.backgroundColor as string | undefined) ||
           (merged.bgColor as string | undefined) ||
           (mergedRecord.backgroundColor as string | undefined),
       ) || "";
@@ -546,11 +546,11 @@ export function useEditorSync({
     merged.subtitleColor = sanitizeColor(merged.subtitleColor) || "";
     merged.buttonColor = sanitizeColor(merged.buttonColor) || "";
     merged.buttonTextColor = sanitizeColor(merged.buttonTextColor) || "";
-    merged.cardBgColor = sanitizeColor(merged.cardBgColor || (merged.appearance as any)?.cardBgColor) || "";
+    merged.cardBgColor = sanitizeColor(merged.cardBgColor || merged.appearance?.cardBgColor) || "";
 
     if (merged.appearance) {
       merged.appearance = {
-        ...(merged.appearance as any),
+        ...merged.appearance,
         backgroundColor: resolvedBgColor,
         cardBgColor: merged.cardBgColor,
       };
@@ -567,8 +567,8 @@ export function useEditorSync({
     // Log para conferir se, após o F5, o valor lastSavedGalleryPage contém a cor correta
     console.log("[useEditorSync] Post-F5 lastSavedGalleryPage:", {
       bgColor: lastSavedGalleryPage?.bgColor,
-      appearanceBg: (lastSavedGalleryPage as any)?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || (merged.appearance as any)?.backgroundColor
+      appearanceBg: lastSavedGalleryPage?.appearance?.backgroundColor,
+      mergedBg: merged.bgColor || merged.appearance?.backgroundColor
     });
 
     if (galleryPageSettings.bgType === "color") {
@@ -579,7 +579,7 @@ export function useEditorSync({
     const mergedRecord = merged as Record<string, unknown>;
     const resolvedBgColor =
       sanitizeColor(
-        ((merged.appearance as any)?.backgroundColor as string | undefined) ||
+        (merged.appearance?.backgroundColor as string | undefined) ||
           (merged.bgColor as string | undefined) ||
           (mergedRecord.backgroundColor as string | undefined),
       ) || "";
@@ -588,11 +588,11 @@ export function useEditorSync({
     merged.subtitleColor = sanitizeColor(merged.subtitleColor) || "";
     merged.buttonColor = sanitizeColor(merged.buttonColor) || "";
     merged.buttonTextColor = sanitizeColor(merged.buttonTextColor) || "";
-    merged.cardBgColor = sanitizeColor(merged.cardBgColor || (merged.appearance as any)?.cardBgColor) || "";
+    merged.cardBgColor = sanitizeColor(merged.cardBgColor || merged.appearance?.cardBgColor) || "";
 
     if (merged.appearance) {
       merged.appearance = {
-        ...(merged.appearance as any),
+        ...merged.appearance,
         backgroundColor: resolvedBgColor,
         cardBgColor: merged.cardBgColor,
       };
