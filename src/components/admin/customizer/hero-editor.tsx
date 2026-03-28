@@ -91,7 +91,7 @@ export function HeroEditor({
   settings,
   onUpdate,
   onUpdateBackground,
-  onReset,
+  onReset: _onReset,
   hasChanges,
   onSave: externalOnSave,
 }: HeroEditorProps) {

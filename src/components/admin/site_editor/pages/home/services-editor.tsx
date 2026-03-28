@@ -37,7 +37,7 @@ export function ServicesEditor({
   settings,
   onUpdate,
   onUpdateBackground,
-  onReset,
+  onReset: _onReset,
   onSave: externalOnSave,
   hasChanges,
 }: ServicesEditorProps) {

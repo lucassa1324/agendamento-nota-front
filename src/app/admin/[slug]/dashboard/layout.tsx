@@ -267,7 +267,7 @@ function AdminLayoutContent({
         >
           <BackendTrigger />
           <VerificationBanner />
-          {!isPersonalizacao && <TrialBanner />}
+          <TrialBanner />
           {children}
           {!isPersonalizacao && <FeedbackWidget />}
         </main>

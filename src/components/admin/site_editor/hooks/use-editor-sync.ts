@@ -95,8 +95,8 @@ export function useEditorSync({
     // Log para conferir se, após o F5, o valor lastSavedHero contém a cor correta
     console.log("[useEditorSync] Post-F5 lastSavedHero:", {
       bgColor: lastSavedHero?.bgColor,
-      appearanceBg: (lastSavedHero as any)?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || (merged.appearance as any)?.backgroundColor
+      appearanceBg: lastSavedHero?.appearance?.backgroundColor,
+      mergedBg: merged.bgColor || merged.appearance?.backgroundColor
     });
 
     // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
@@ -107,11 +107,11 @@ export function useEditorSync({
     }
 
     // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor = sanitizeColor(merged.bgColor || (merged.appearance as any)?.backgroundColor) || "";
+    const resolvedBgColor = sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
     merged.bgColor = resolvedBgColor;
     if (merged.appearance) {
       merged.appearance = {
-        ...(merged.appearance as any),
+        ...merged.appearance,
         backgroundColor: resolvedBgColor,
       };
     }
