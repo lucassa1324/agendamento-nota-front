@@ -78,13 +78,14 @@ function AdminLayoutContent({
   const slug = propSlug;
 
   const { data: session, isPending: isLoadingSession } = useSession();
-  const { isLoading: isLoadingStudio, error: studioError } = useStudio();
+  const { studio, isLoading: isLoadingStudio, error: studioError } = useStudio();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [adminUser, setAdminUser] = useState<{
     username: string;
     name: string;
   } | null>(null);
+  const [billingRequiredDetected, setBillingRequiredDetected] = useState(false);
 
   useEffect(() => {
     // Só age quando o loading inicial do better-auth terminar
@@ -186,9 +187,45 @@ function AdminLayoutContent({
 
   const isPersonalizacao = pathname?.includes("/personalizacao");
   const isMaster = pathname?.startsWith("/admin/master");
+  const isMinhaConta = pathname?.includes("/dashboard/minha-conta");
 
   // Tratamento de erro de carregamento do estúdio
-  if (studioError && !isMaster) {
+  // EXCEÇÃO: Se for erro 402 (Pagamento Necessário), deixamos o layout renderizar para mostrar a tela de bloqueio com link de pagamento
+  const isBillingError = studioError?.includes("(402)");
+
+  const user = session?.user as AuthUser | undefined;
+  const subscriptionStatus =
+    user?.business?.subscriptionStatus ||
+    studio?.subscriptionStatus ||
+    (isBillingError ? "past_due" : undefined);
+
+  const isSubscriptionBlocked =
+    subscriptionStatus === "past_due" ||
+    subscriptionStatus === "unpaid" ||
+    subscriptionStatus === "canceled";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleBillingRequired = () => {
+      setBillingRequiredDetected(true);
+    };
+    window.addEventListener("billing-required", handleBillingRequired);
+    return () => {
+      window.removeEventListener("billing-required", handleBillingRequired);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isMinhaConta || !isSubscriptionBlocked) {
+      setBillingRequiredDetected(false);
+    }
+  }, [isMinhaConta, isSubscriptionBlocked]);
+
+  const shouldBlockAccess =
+    !isMinhaConta && (isSubscriptionBlocked || billingRequiredDetected);
+  const blockStatus = subscriptionStatus || "past_due";
+
+  if (studioError && !isMaster && !isBillingError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">
         <h2 className="text-2xl font-bold text-destructive mb-2">Erro ao carregar estúdio</h2>
@@ -228,17 +265,6 @@ function AdminLayoutContent({
     );
   }
 
-  const user = session?.user as AuthUser | undefined;
-  const subscriptionStatus = user?.business?.subscriptionStatus;
-
-  if (
-    subscriptionStatus === "past_due" ||
-    subscriptionStatus === "unpaid" ||
-    subscriptionStatus === "canceled"
-  ) {
-    return <SubscriptionBlockScreen status={subscriptionStatus} />;
-  }
-
   return (
     <div className="min-h-screen bg-background flex flex-col lg:flex-row">
       {!isPersonalizacao && (
@@ -268,7 +294,11 @@ function AdminLayoutContent({
           <BackendTrigger />
           <VerificationBanner />
           <TrialBanner />
-          {children}
+          {shouldBlockAccess ? (
+            <SubscriptionBlockScreen status={blockStatus} />
+          ) : (
+            children
+          )}
           {!isPersonalizacao && <FeedbackWidget />}
         </main>
       </div>

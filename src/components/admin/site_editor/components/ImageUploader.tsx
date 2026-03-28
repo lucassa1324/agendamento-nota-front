@@ -85,6 +85,11 @@ export function ImageUploader({
         ok: response.ok,
       });
 
+      if (response.status === 402) {
+        alert("Pagamento pendente. Regularize a assinatura para enviar imagens.");
+        return;
+      }
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error(">>> [ImageUploader] Erro na resposta do servidor:", errorText);

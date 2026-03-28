@@ -13,7 +13,7 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     // Se a URL já começar com o prefixo do proxy (ex: /api-proxy/...), não adiciona API_BASE_URL novamente
     const proxyPrefix = "/api-proxy";
     const relativeProxyPrefix = "api-proxy";
-    
+
     if (API_BASE_URL && !url.startsWith(API_BASE_URL) && !url.startsWith(proxyPrefix) && !url.startsWith(relativeProxyPrefix)) {
       // Garantir que não duplique a barra
       const baseUrl = API_BASE_URL.endsWith("/")
@@ -117,15 +117,17 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     throw error;
   }
 
-  // Interceptar erro 403 (Acesso Negado / Suspensão) ou 402 (Pagamento Necessário)
-  if (response.status === 403 || response.status === 402) {
+  // Interceptar erro 403 (Acesso Negado / Suspensão)
+  if (response.status === 403) {
     // Se for uma rota de API e não estivermos no Master Admin, redirecionar imediatamente
+    // EXCEÇÃO: Não redirecionar se o usuário estiver tentando acessar a página de pagamento/conta
     if (
       typeof window !== "undefined" &&
-      !window.location.pathname.startsWith("/admin/master")
+      !window.location.pathname.startsWith("/admin/master") &&
+      !window.location.pathname.includes("/dashboard/minha-conta")
     ) {
       console.error(
-        `>>> [FRONT_API] ${response.status} detectado. Redirecionando via window.location para quebrar loop...`,
+        `>>> [FRONT_API] 403 detectado em ${window.location.pathname}. Redirecionando via window.location para quebrar loop...`,
       );
 
       // Força o redirecionamento total para a página de suspensão
@@ -133,8 +135,24 @@ export async function customFetch(url: string, options: RequestInit = {}) {
 
       // Retorna uma promessa que nunca resolve para "congelar" a execução atual
       // e impedir que o restante do código (como .then ou try/catch da UI) execute
-      return new Promise<Response>(() => {});
+      return new Promise<Response>(() => { });
     }
+  }
+
+  // Erro 402 (Pagamento Necessário) não redireciona para /acesso-suspenso.
+  // Deixamos o erro passar para que os componentes (como o dashboard layout)
+  // possam tratar exibindo a tela de bloqueio com opção de pagamento.
+  if (response.status === 402) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("billing-required", {
+          detail: { url: fullUrl },
+        }),
+      );
+    }
+    console.warn(
+      `>>> [FRONT_API] 402 detectado em ${url}. Deixando componente tratar.`,
+    );
   }
 
   // Interceptar erro 401 para fallback de cache

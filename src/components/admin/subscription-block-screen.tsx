@@ -1,6 +1,7 @@
 "use client";
 
-import { AlertTriangle, CreditCard, Loader2, LogOut } from "lucide-react";
+import { AlertTriangle, CreditCard, Loader2, LogOut, User } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,19 @@ export function SubscriptionBlockScreen({
   status,
 }: SubscriptionBlockScreenProps) {
   const { data: session } = useSession();
+  const params = useParams();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+
+  const slug = params?.slug as string;
+
+  const handleGoToMinhaConta = () => {
+    if (slug) {
+      router.push(`/admin/${slug}/dashboard/minha-conta`);
+    } else {
+      router.push("/admin");
+    }
+  };
 
   const handleSubscribe = async () => {
     if (!session?.user?.email) {
@@ -117,54 +130,67 @@ export function SubscriptionBlockScreen({
   const Icon = info.icon;
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md shadow-lg border-destructive/20">
-        <CardHeader className="text-center space-y-4 pb-2">
-          <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center mb-2">
-            <Icon className={`w-8 h-8 ${info.color}`} />
+    <div className="w-full flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm p-4 rounded-xl border border-dashed border-destructive/30 my-4 py-8">
+      <Card className="w-full max-w-md shadow-lg border-destructive/20 bg-card/80">
+        <CardHeader className="text-center space-y-3 pb-2">
+          <div className="mx-auto w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center mb-1">
+            <Icon className={`w-7 h-7 ${info.color}`} />
           </div>
-          <CardTitle className="text-2xl font-bold">{info.title}</CardTitle>
-          <CardDescription className="text-base">
+          <CardTitle className="text-xl font-bold">{info.title}</CardTitle>
+          <CardDescription className="text-sm">
             {info.description}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 pt-4">
-          <div className="bg-muted/50 p-4 rounded-lg text-sm text-center">
-            <p className="font-medium mb-1">Valor da Assinatura</p>
-            <p className="text-2xl font-bold text-primary">
+        <CardContent className="space-y-3 pt-2">
+          <div className="bg-muted/50 p-3 rounded-lg text-sm text-center">
+            <p className="font-medium mb-0.5 text-xs text-muted-foreground uppercase tracking-wider">Valor da Assinatura</p>
+            <p className="text-xl font-bold text-primary">
               R$ 49,90
-              <span className="text-sm font-normal text-muted-foreground">
+              <span className="text-xs font-normal text-muted-foreground ml-1">
                 /mês
               </span>
             </p>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col gap-3">
+        <CardFooter className="flex flex-col gap-2">
           <Button
-            className="w-full h-12 text-base font-semibold shadow-md"
-            size="lg"
+            className="w-full h-11 text-sm font-semibold shadow-md"
+            size="default"
             onClick={handleSubscribe}
             disabled={isLoading}
           >
             {isLoading ? (
               <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Gerando Pagamento...
               </>
             ) : (
               <>
-                <CreditCard className="mr-2 h-5 w-5" />
+                <CreditCard className="mr-2 h-4 w-4" />
                 Regularizar Assinatura Agora
               </>
             )}
           </Button>
-          <Button
-            variant="ghost"
-            className="w-full text-muted-foreground hover:text-foreground"
-            onClick={handleLogout}
-          >
-            Sair da conta
-          </Button>
+          <div className="flex w-full gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGoToMinhaConta}
+              className="flex-1 text-xs"
+            >
+              <User className="mr-1.5 h-3.5 w-3.5" />
+              Minha Conta
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="flex-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="mr-1.5 h-3.5 w-3.5" />
+              Sair
+            </Button>
+          </div>
         </CardFooter>
       </Card>
     </div>

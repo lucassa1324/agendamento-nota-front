@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   Calendar,
   Check,
+  CreditCard,
   Eye,
   EyeOff,
   KeyRound,
@@ -39,8 +40,66 @@ export function AdminProfileManager() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { data: session } = useSession();
-  const { studio } = useStudio();
+  const { studio, isLoading: isLoadingStudio, error: studioError } = useStudio();
   const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (!session?.user?.email) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível identificar seu e-mail de usuário.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubscribing(true);
+    try {
+      // 1. Obter IP (Opcional, mas Asaas costuma pedir se for cartão)
+      let clientIp = "127.0.0.1";
+      try {
+        const ipResponse = await fetch("https://api.ipify.org?format=json");
+        const ipData = await ipResponse.json();
+        clientIp = ipData.ip;
+      } catch (e) {
+        console.warn("Falha ao obter IP público:", e);
+      }
+
+      const response = await fetch("/api/asaas/create-payment-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-client-ip": clientIp,
+        },
+        body: JSON.stringify({
+          customerEmail: session.user.email,
+          customerName: session.user.name,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.url) {
+        window.open(data.url, "_blank");
+        toast({
+          title: "Link de Pagamento",
+          description: "O link de pagamento foi aberto em uma nova aba.",
+        });
+      } else {
+        throw new Error(data.error || "Erro ao gerar link de pagamento");
+      }
+    } catch (error: unknown) {
+      console.error("Erro ao gerar pagamento:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível gerar o link de pagamento. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
 
   const [profile, setProfile] = useState({
     name: "",
@@ -253,57 +312,6 @@ export function AdminProfileManager() {
               </p>
             </div>
 
-            {studio?.createdAt && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="payment-date">
-                    Data de Pagamento da Plataforma
-                  </Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="payment-date"
-                      className="pl-10 bg-muted"
-                      value={new Date(studio.createdAt).toLocaleDateString(
-                        "pt-BR",
-                        {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric",
-                        },
-                      )}
-                      disabled
-                    />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Data de início da sua assinatura.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="next-invoice">Data da Próxima Fatura</Label>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="next-invoice"
-                      className="pl-10 bg-muted"
-                      value={getNextInvoiceDate(
-                        studio.createdAt,
-                      ).toLocaleDateString("pt-BR", {
-                        day: "2-digit",
-                        month: "long",
-                        year: "numeric",
-                      })}
-                      disabled
-                    />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Previsão da sua próxima cobrança.
-                  </p>
-                </div>
-              </div>
-            )}
-
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <>
@@ -453,6 +461,103 @@ export function AdminProfileManager() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Seção de Status da Assinatura e Pagamento */}
+      {session?.user && (
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Assinatura e Faturamento
+            </CardTitle>
+            <CardDescription>
+              Acompanhe o status do seu plano e realize pagamentos
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 p-6 border rounded-xl bg-muted/30">
+              <div className="space-y-4 w-full">
+                <div className="flex flex-wrap gap-8">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Status Atual
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {studioError?.includes("(402)") || (session.user as any).business?.subscriptionStatus === "past_due" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                          Pagamento Pendente
+                        </span>
+                      ) : (session.user as any).business?.subscriptionStatus === "active" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                          Ativa
+                        </span>
+                      ) : (session.user as any).business?.subscriptionStatus === "trialing" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                          Período de Teste
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 border border-zinc-200">
+                          {(session.user as any).business?.subscriptionStatus || "Desconhecido"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {studio?.createdAt && (
+                    <>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Início do Plano
+                        </p>
+                        <p className="text-sm font-semibold">
+                          {new Date(studio.createdAt).toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Próxima Fatura
+                        </p>
+                        <p className="text-sm font-semibold">
+                          {getNextInvoiceDate(studio.createdAt).toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {(studioError?.includes("(402)") || (session.user as any).business?.subscriptionStatus === "past_due" || (session.user as any).business?.subscriptionStatus === "trialing") && (
+                  <div className="flex flex-col sm:flex-row items-center gap-4 pt-2 border-t border-border mt-4">
+                    <div className="flex-1">
+                      <p className="text-sm text-muted-foreground">
+                        {studioError?.includes("(402)") || (session.user as any).business?.subscriptionStatus === "past_due"
+                          ? "Sua assinatura está com pagamento pendente. Regularize agora para evitar interrupções no serviço."
+                          : "Seu período de teste está ativo. Você pode assinar agora para garantir a continuidade do seu acesso."}
+                      </p>
+                    </div>
+                    <Button 
+                      onClick={handleSubscribe} 
+                      disabled={isSubscribing}
+                      className="w-full sm:w-auto bg-primary hover:bg-primary/90"
+                    >
+                      {isSubscribing ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Processando...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          {studioError?.includes("(402)") || (session.user as any).business?.subscriptionStatus === "past_due" ? "Pagar Agora" : "Assinar Agora"}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Seção de Cancelamento de Assinatura */}
       <Card className="md:col-span-2 border-red-200 bg-red-50/30">

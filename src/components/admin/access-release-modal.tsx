@@ -89,10 +89,13 @@ export function AccessReleaseModal({
   const today = new Date();
 
   // Cálculos de datas dinâmicos baseados nos inputs
-  const dateManualDays = addDays(today, manualDays || 0);
+  const dateManualDays = addDays(today, Number.isFinite(manualDays) ? manualDays : 0);
 
   // No novo modelo, "Adiar Teste" define o novo vencimento a partir de HOJE + dias inputados
-  const dateExtendTrialDays = addDays(today, trialDays || 0);
+  const dateExtendTrialDays = addDays(
+    today,
+    Number.isFinite(trialDays) ? trialDays : 0,
+  );
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -135,9 +138,13 @@ export function AccessReleaseModal({
         },
       );
 
-      // Tratamento específico para erro 402 (Pagamento Obrigatório / Bloqueio)
       if (response.status === 402) {
-        window.location.href = "/acesso-suspenso";
+        toast({
+          title: "Pagamento pendente",
+          description:
+            "Não foi possível liberar o acesso porque o status da assinatura exige regularização.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -281,10 +288,10 @@ export function AccessReleaseModal({
                   <Input
                     id="trial_days_input"
                     type="number"
-                    min={1}
+                    min={0}
                     value={trialDays}
                     onChange={(e) =>
-                      setTrialDays(parseInt(e.target.value, 10) || 0)
+                      setTrialDays(Number(e.target.value) || 0)
                     }
                     className="h-8 w-24 text-sm bg-background text-foreground"
                   />

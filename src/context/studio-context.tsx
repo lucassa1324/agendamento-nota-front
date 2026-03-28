@@ -1213,11 +1213,12 @@ export function StudioProvider({
 
             setStudio(initialStudio);
 
-            // 6. Guarda de Rota: Se o estúdio estiver inativo, redirecionar (Exceto para Master Admin)
+            // 6. Guarda de Rota: Se o estúdio estiver inativo, redirecionar (Exceto para Master Admin e Minha Conta)
             if (initialStudio.active === false) {
               if (
                 typeof window !== "undefined" &&
-                !window.location.pathname.startsWith("/admin/master")
+                !window.location.pathname.startsWith("/admin/master") &&
+                !window.location.pathname.includes("/dashboard/minha-conta")
               ) {
                 console.error(
                   ">>> [STUDIO_GUARD] Estúdio inativo detectado no carregamento inicial. Redirecionando...",
@@ -1443,6 +1444,7 @@ export function StudioProvider({
       if (
         typeof window !== "undefined" &&
         !window.location.pathname.startsWith("/admin/master") &&
+        !window.location.pathname.includes("/dashboard/minha-conta") &&
         !window.location.pathname.startsWith("/acesso-suspenso")
       ) {
         console.error(

@@ -166,8 +166,10 @@ export function BookingsManager() {
     try {
       const items = await inventoryService.list(studio.id, true);
       setInventory(items);
-    } catch (error) {
-      console.error("Erro ao carregar estoque:", error);
+    } catch (error: any) {
+      if (error?.status !== 402) {
+        console.error("Erro ao carregar estoque:", error);
+      }
     }
   };
 
@@ -192,15 +194,20 @@ export function BookingsManager() {
       );
       const mappedBookings = apiAppointments.map(mapApiToBooking);
       setBookings(mappedBookings);
-    } catch (error) {
-      console.error("Erro ao carregar agendamentos:", error);
-      toast({
-        title: "Erro ao carregar",
-        description: "Não foi possível buscar os agendamentos no servidor.",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Silenciar se for erro de faturamento (402)
+      if (error?.status === 402) {
+        console.warn("BookingsManager: Acesso bloqueado por faturamento.");
+      } else {
+        console.error("Erro ao carregar agendamentos:", error);
+        toast({
+          title: "Erro ao carregar",
+          description: "Não foi possível buscar os agendamentos no servidor.",
+          variant: "destructive",
+        });
+      }
 
-      // Fallback para storage se necessário durante transição
+      // Fallback para storage se necessário durante transição ou bloqueio
       const storageBookings = getBookingsFromStorage();
       if (storageBookings.length > 0) {
         setBookings(storageBookings);

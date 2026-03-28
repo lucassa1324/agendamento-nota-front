@@ -104,11 +104,13 @@ export function AdminCalendar({
               }
             }
           }
-        } catch (error) {
-          console.error(
-            "Erro ao carregar configurações no calendário admin:",
-            error,
-          );
+        } catch (error: any) {
+          if (error?.status !== 402) {
+            console.error(
+              "Erro ao carregar configurações no calendário admin:",
+              error,
+            );
+          }
         }
 
         // Fallback para o que temos no localStorage
@@ -184,6 +186,8 @@ export function AdminCalendar({
           duration: parseDuration(s.duration),
         }));
         setServices(formattedServices);
+      } else if (response.status === 402) {
+        console.warn("AdminCalendar: Serviços bloqueados por faturamento.");
       }
     } catch (error) {
       console.error("Erro ao carregar serviços no calendário:", error);
@@ -239,23 +243,28 @@ export function AdminCalendar({
         };
       });
       setBookings(mappedBookings);
-    } catch (error) {
-      console.error("Erro ao carregar agendamentos no calendário:", error);
+    } catch (error: any) {
+      // Silenciar se for erro de faturamento (402)
+      if (error?.status === 402) {
+        console.warn("AdminCalendar: Agendamentos bloqueados por faturamento.");
+      } else {
+        console.error("Erro ao carregar agendamentos no calendário:", error);
+        // Opcional: mostrar toast apenas se não for um erro de "não autorizado" comum (silencioso)
+        if (
+          error instanceof Object &&
+          "status" in error &&
+          error.status !== 401
+        ) {
+          toast({
+            title: "Aviso",
+            description: "Não foi possível carregar os agendamentos existentes.",
+            variant: "destructive",
+          });
+        }
+      }
+      
       // Tratamento gracioso: inicializa com lista vazia para não travar o componente
       setBookings([]);
-
-      // Opcional: mostrar toast apenas se não for um erro de "não autorizado" comum (silencioso)
-      if (
-        error instanceof Object &&
-        "status" in error &&
-        error.status !== 401
-      ) {
-        toast({
-          title: "Aviso",
-          description: "Não foi possível carregar os agendamentos existentes.",
-          variant: "destructive",
-        });
-      }
     }
   }, [studio?.id, toast, currentDate]);
 

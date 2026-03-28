@@ -108,13 +108,18 @@ export function GalleryManager() {
       }
 
       setServices(loadedServices);
-    } catch (error) {
-      console.error("Erro ao carregar galeria:", error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar as imagens da galeria.",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Silenciar se for erro de faturamento (402)
+      if (error?.status === 402) {
+        console.warn("GalleryManager: Galeria bloqueada por faturamento.");
+      } else {
+        console.error("Erro ao carregar galeria:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar as imagens da galeria.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

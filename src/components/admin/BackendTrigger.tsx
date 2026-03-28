@@ -89,8 +89,21 @@ export function BackendTrigger() {
 
         console.log(">>> [BackendTrigger] Todas as ações foram disparadas com sucesso!");
       } catch (error: unknown) {
+        const isBillingRequired =
+          (error instanceof Error &&
+            error.message.includes("BILLING_REQUIRED")) ||
+          (typeof error === "object" &&
+            error !== null &&
+            "status" in error &&
+            (error as { status?: number }).status === 402);
+        if (isBillingRequired) {
+          return;
+        }
         console.error(">>> [BackendTrigger] Erro ao disparar ações:", error);
-        const errorMessage = error instanceof Error ? error.message : "Erro desconhecido ao disparar ações.";
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Erro desconhecido ao disparar ações.";
         toast({
           title: "Erro no Trigger",
           description: errorMessage,

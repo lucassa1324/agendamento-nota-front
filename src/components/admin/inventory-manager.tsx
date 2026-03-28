@@ -110,7 +110,16 @@ export function InventoryManager() {
         console.log(">>> [INVENTORY] Dados recebidos do Back-end:", data);
         setInventory(data);
       } catch (error) {
-        console.error("Erro ao buscar estoque:", error);
+        const isBillingRequired =
+          (error instanceof Error &&
+            error.message.includes("BILLING_REQUIRED")) ||
+          (typeof error === "object" &&
+            error !== null &&
+            "status" in error &&
+            (error as { status?: number }).status === 402);
+        if (!isBillingRequired) {
+          console.error("Erro ao buscar estoque:", error);
+        }
         // Limpa a lista em caso de erro 500 ou outros erros de busca para evitar dados inconsistentes
         setInventory([]);
       } finally {

@@ -130,9 +130,15 @@ export function ScheduleManager() {
       const finalBlocks = blocks || getBlockedPeriods();
       setBlockedPeriods(finalBlocks);
       setInitialBlocked(JSON.stringify(finalBlocks));
-    } catch (error) {
-      console.error("Erro ao carregar dados do servidor:", error);
-      // Fallback total para LocalStorage em caso de erro de conexão
+    } catch (error: any) {
+      // Se for erro de faturamento, silenciamos logs de erro
+      if (error?.status === 402) {
+        console.warn("ScheduleManager: Acesso bloqueado por faturamento.");
+      } else {
+        console.error("Erro ao carregar dados do servidor:", error);
+      }
+      
+      // Fallback total para LocalStorage em caso de erro de conexão ou faturamento
       const schedule = getWeekSchedule();
       const blocked = getBlockedPeriods();
       setWeekSchedule(schedule);

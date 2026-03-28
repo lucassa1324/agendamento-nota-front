@@ -49,6 +49,31 @@ export function DashboardStats() {
         appointmentService.listByCompanyAdmin(studio.id, firstDay, lastDay),
         businessService.getSettings(studio.id),
       ]);
+      const isBillingRequired = (reason: unknown) => {
+        if (!reason) return false;
+        if (typeof reason === "object" && reason !== null) {
+          const status = (reason as { status?: number }).status;
+          const code = (reason as { code?: string }).code;
+          const message = (reason as { message?: string }).message;
+          if (status === 402 || code === "BILLING_REQUIRED") return true;
+          if (typeof message === "string" && message.includes("BILLING_REQUIRED")) {
+            return true;
+          }
+        }
+        if (reason instanceof Error && reason.message.includes("BILLING_REQUIRED")) {
+          return true;
+        }
+        return false;
+      };
+      const hasBillingBlock =
+        (appointmentsResult.status === "rejected" &&
+          isBillingRequired(appointmentsResult.reason)) ||
+        (settingsResult.status === "rejected" &&
+          isBillingRequired(settingsResult.reason));
+      if (hasBillingBlock) {
+        setBillingError(true);
+        return;
+      }
       const appointments =
         appointmentsResult.status === "fulfilled"
           ? appointmentsResult.value

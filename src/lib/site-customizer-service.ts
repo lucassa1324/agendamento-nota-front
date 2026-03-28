@@ -73,7 +73,7 @@ class SiteCustomizerService {
       );
       return null;
     }
-    
+
     const data = await response.json();
 
     if (!data || typeof data !== 'object') {
@@ -296,6 +296,10 @@ class SiteCustomizerService {
         body: formData,
       },
     );
+
+    if (response.status === 402) {
+      throw new Error("BILLING_REQUIRED");
+    }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
