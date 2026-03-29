@@ -491,7 +491,9 @@ export function AdminProfileManager() {
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
                           Ativa
                         </span>
-                      ) : (session.user as any).business?.subscriptionStatus === "trialing" ? (
+                      ) : ["trial", "trialing"].includes(
+                          (session.user as any).business?.subscriptionStatus,
+                        ) ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
                           Período de Teste
                         </span>

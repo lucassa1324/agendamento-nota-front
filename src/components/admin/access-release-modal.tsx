@@ -71,11 +71,15 @@ export function AccessReleaseModal({
         remainingDays = diff > 0 ? diff : 0;
       }
 
+      const isTrialStatus =
+        company.subscriptionStatus === "trial" ||
+        company.subscriptionStatus === "trialing";
+
       // Lógica de Pré-seleção Baseada no Estado Atual
       if (company.accessType === "manual") {
         setSelectedOption("manual_custom_days");
         setManualDays(remainingDays > 0 ? remainingDays : 30);
-      } else if (company.accessType === "extended_trial") {
+      } else if (company.accessType === "extended_trial" || isTrialStatus) {
         setSelectedOption("extend_trial_custom");
         setTrialDays(remainingDays > 0 ? remainingDays : 14);
       } else {

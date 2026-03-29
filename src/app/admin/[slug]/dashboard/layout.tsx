@@ -7,7 +7,6 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { BackendTrigger } from "@/components/admin/BackendTrigger";
 import { SubscriptionBlockScreen } from "@/components/admin/subscription-block-screen";
 import { TrialBanner } from "@/components/admin/trial-banner";
-import { VerificationBanner } from "@/components/admin/verification-banner";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { Button } from "@/components/ui/button";
 import {
@@ -292,7 +291,6 @@ function AdminLayoutContent({
           )}
         >
           <BackendTrigger />
-          <VerificationBanner />
           <TrialBanner />
           {shouldBlockAccess ? (
             <SubscriptionBlockScreen status={blockStatus} />
