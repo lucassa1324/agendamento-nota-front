@@ -86,6 +86,7 @@ interface StudioContextType {
   businessId: string | null;
   updateStudioInfo: (updates: Partial<Business>) => void;
   refreshData: () => void;
+  refreshTrigger: number;
 }
 
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
@@ -1626,8 +1627,18 @@ export function StudioProvider({
       businessId,
       updateStudioInfo,
       refreshData,
+      refreshTrigger,
     }),
-    [studio, isLoading, error, slug, businessId, updateStudioInfo, refreshData],
+    [
+      studio,
+      isLoading,
+      error,
+      slug,
+      businessId,
+      updateStudioInfo,
+      refreshData,
+      refreshTrigger,
+    ],
   );
 
   // Tratamento visual para erro 404 (Studio não encontrado)

@@ -408,6 +408,12 @@ export function useEditorConfigLoader({
         draftValue: T | undefined,
         defaultValue?: T,
       ): T | undefined => {
+        // Se force for true, o banco sempre vence o rascunho local
+        if (force && bankValue && !isBankValueEmptyOrDefault(bankValue, defaultValue)) {
+          console.log(`>>> [LOADER] Force detectado para ${sectionKey}. Usando dados do banco.`);
+          return bankValue;
+        }
+
         const apiTime = baseConfig.updatedAt
           ? new Date(baseConfig.updatedAt).getTime()
           : config.updatedAt

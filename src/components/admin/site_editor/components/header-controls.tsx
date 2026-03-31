@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useStudio } from "@/context/studio-context";
 
 interface HeaderControlsProps {
   previewMode: "desktop" | "mobile";
@@ -59,6 +60,19 @@ export function HeaderControls({
     setManualScale(value / 100);
     setIsAutoZoom(false);
     setZoomInputValue(value.toString());
+  };
+
+  const { businessId: studioId, refreshData } = useStudio();
+
+  const handleReload = async () => {
+    // 1. Recarregar dados do Studio (lateral/dashboard)
+    if (refreshData) {
+      console.log(">>> [HEADER_CONTROLS] Recarregando dados do Studio...");
+      refreshData();
+    }
+
+    // 2. Recarregar o iframe (preview)
+    reloadPreview();
   };
 
   return (
@@ -175,7 +189,7 @@ export function HeaderControls({
         variant="ghost"
         size="icon"
         className="rounded-full w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8"
-        onClick={reloadPreview}
+        onClick={handleReload}
         title="Recarregar Preview"
       >
         <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />

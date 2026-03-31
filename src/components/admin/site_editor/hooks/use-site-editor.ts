@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useEffect, type RefObject } from "react";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import type {
@@ -17,19 +17,29 @@ export type { SiteConfigData };
 
 export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const { toast } = useToast();
-  const { studio, updateStudioInfo } = useStudio();
+  const { studio, updateStudioInfo, refreshTrigger } = useStudio();
   const local = useEditorLocal();
   const state = useEditorState();
-  
+
   const { checkShouldRecoverDraft } = useDraftRecovery();
-  
+
   const { loadExternalConfig } = useEditorConfigLoader({
     local,
     state,
     checkShouldRecoverDraft,
     slug: studio?.slug,
   });
-  
+
+  // Sincroniza o estado do editor quando o studio no contexto mudar (ex: após refreshData)
+  useEffect(() => {
+    if (studio?.config) {
+      console.log(`>>> [useSiteEditor] Studio config ou trigger (${refreshTrigger}) mudou, sincronizando editor...`);
+      // Passamos force: true para garantir que o sidebar reflita exatamente o banco/preview
+      // após o clique no botão de recarregar.
+      loadExternalConfig(studio.config as unknown as SiteConfigData, true);
+    }
+  }, [studio?.config, refreshTrigger, loadExternalConfig]);
+
   const {
     previewHeroSettings,
     previewAboutHeroSettings,
@@ -51,11 +61,11 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     previewBookingTimeSettings,
     previewBookingFormSettings,
     previewBookingConfirmationSettings,
-  } = useEditorSync({ 
-    iframeRef, 
-    state, 
-    pageVisibility: state.pageVisibility, 
-    visibleSections: state.visibleSections 
+  } = useEditorSync({
+    iframeRef,
+    state,
+    pageVisibility: state.pageVisibility,
+    visibleSections: state.visibleSections
   });
 
   const {
