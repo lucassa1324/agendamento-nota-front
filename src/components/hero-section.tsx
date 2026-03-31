@@ -22,6 +22,7 @@ import {
   getPageVisibility,
   getSiteProfile,
   getStorageKey,
+  defaultHeroSettings,
   type HeroSettings,
   type SiteProfile,
   sanitizeColor,
@@ -236,6 +237,31 @@ export function HeroSection() {
   const description =
     profile?.description ||
     "Transforme seu olhar com técnicas profissionais de design de sobrancelhas. Atendimento personalizado para destacar sua beleza única.";
+  const badgeValue = customStyles.badge;
+  const badgeText =
+    badgeValue === undefined || badgeValue === null
+      ? defaultHeroSettings.badge
+      : renderSafeText(badgeValue);
+  const titleValue = customStyles.title;
+  const titleText =
+    titleValue === undefined || titleValue === null
+      ? defaultHeroSettings.title
+      : renderSafeText(titleValue);
+  const subtitleValue = customStyles.subtitle;
+  const subtitleText =
+    subtitleValue === undefined || subtitleValue === null
+      ? description || defaultHeroSettings.subtitle
+      : renderSafeText(subtitleValue);
+  const primaryValue = customStyles.primaryButton;
+  const primaryText =
+    primaryValue === undefined || primaryValue === null
+      ? defaultHeroSettings.primaryButton
+      : renderSafeText(primaryValue);
+  const secondaryValue = customStyles.secondaryButton;
+  const secondaryText =
+    secondaryValue === undefined || secondaryValue === null
+      ? defaultHeroSettings.secondaryButton
+      : renderSafeText(secondaryValue);
 
   return (
     <SessionWrapper appearance={customStyles?.appearance}>
@@ -250,7 +276,7 @@ export function HeroSection() {
 
         <div className="container relative z-10 mx-auto px-4 py-20">
           <div className="max-w-3xl mx-auto text-center">
-            {customStyles.showBadge !== false && (
+            {customStyles.showBadge !== false && badgeText.trim().length > 0 && (
               <div
                 className={cn(
                   "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6 animate-in fade-in zoom-in duration-500",
@@ -285,13 +311,12 @@ export function HeroSection() {
                       "var(--accent)",
                   }}
                 >
-                  {renderSafeText(customStyles.badge) ||
-                    "Especialistas em Design de Sobrancelhas"}
+                  {badgeText}
                 </span>
               </div>
             )}
 
-            {customStyles.showTitle !== false && (
+            {customStyles.showTitle !== false && titleText.trim().length > 0 && (
               <h1
                 className={cn(
                   "font-serif text-5xl md:text-7xl font-bold mb-6 text-balance leading-tight transition-all duration-300",
@@ -304,12 +329,12 @@ export function HeroSection() {
                   color: customStyles.titleColor || "var(--foreground)",
                 }}
               >
-                {renderSafeText(customStyles.title) ||
-                  "Realce Sua Beleza Natural"}
+                {titleText}
               </h1>
             )}
 
-            {customStyles.showSubtitle !== false && (
+            {customStyles.showSubtitle !== false &&
+              subtitleText.trim().length > 0 && (
               <p
                 className={cn(
                   "text-lg md:text-xl mb-8 text-pretty leading-relaxed max-w-2xl mx-auto transition-all duration-300",
@@ -323,7 +348,7 @@ export function HeroSection() {
                   color: customStyles.subtitleColor || "var(--foreground)",
                 }}
               >
-                {renderSafeText(customStyles.subtitle) || description}
+                {subtitleText}
               </p>
             )}
 
@@ -333,7 +358,8 @@ export function HeroSection() {
                 getHighlightClass("hero-buttons"),
               )}
             >
-              {pageVisibility.agendar !== false && (
+            {pageVisibility.agendar !== false &&
+              primaryText.trim().length > 0 && (
                 <Button
                   asChild
                   size="lg"
@@ -351,12 +377,12 @@ export function HeroSection() {
                   }}
                 >
                   <Link href={customStyles.primaryButtonLink || "/agendamento"}>
-                    {renderSafeText(customStyles.primaryButton) ||
-                      "Agendar Agora"}
+                    {primaryText}
                   </Link>
                 </Button>
               )}
-              {pageVisibility.galeria !== false && (
+              {pageVisibility.galeria !== false &&
+                secondaryText.trim().length > 0 && (
                 <Button
                   asChild
                   variant="outline"
@@ -366,19 +392,19 @@ export function HeroSection() {
                     getHighlightClass("hero-secondary-button"),
                   )}
                   style={{
-                  color:
-                    customStyles.secondaryButtonTextColor ||
-                    (customStyles.secondaryButtonColor || "var(--primary)"),
-                  borderColor:
-                    customStyles.secondaryButtonColor ||
-                    "var(--primary)",
-                  backgroundColor: "transparent",
-                  fontFamily:
-                    customStyles.secondaryButtonFont || "var(--font-body)",
-                }}
+                    color:
+                      customStyles.secondaryButtonTextColor ||
+                      (customStyles.secondaryButtonColor || "var(--primary)"),
+                    borderColor:
+                      customStyles.secondaryButtonColor ||
+                      "var(--primary)",
+                    backgroundColor: "transparent",
+                    fontFamily:
+                      customStyles.secondaryButtonFont || "var(--font-body)",
+                  }}
                 >
                   <Link href={customStyles.secondaryButtonLink || "/servicos"}>
-                    {renderSafeText(customStyles.secondaryButton)}
+                    {secondaryText}
                   </Link>
                 </Button>
               )}

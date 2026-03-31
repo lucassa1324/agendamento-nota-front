@@ -1,6 +1,57 @@
 import { inventoryService } from "./inventory-service";
 import type { SiteConfigData } from "./site-config-types";
 
+// --- Sincronização Global entre Abas via LocalStorage ---
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (!event.key) return;
+
+    // Mapa de chaves para eventos customizados correspondentes
+    const keyToEvent: Record<string, string> = {
+      heroSettings: "heroSettingsUpdated",
+      aboutHeroSettings: "aboutHeroSettingsUpdated",
+      storySettings: "storySettingsUpdated",
+      homeValuesSettings: "homeValuesSettingsUpdated",
+      aboutUsValuesSettings: "aboutUsValuesSettingsUpdated",
+      valuesSettings: "valuesSettingsUpdated",
+      servicesSettings: "servicesSettingsUpdated",
+      fontSettings: "fontSettingsUpdated",
+      gallerySettings: "gallerySettingsUpdated",
+      galleryPageSettings: "galleryPageSettingsUpdated",
+      ctaSettings: "ctaSettingsUpdated",
+      teamSettings: "teamSettingsUpdated",
+      testimonialsSettings: "testimonialsSettingsUpdated",
+      headerSettings: "headerSettingsUpdated",
+      footerSettings: "footerSettingsUpdated",
+      colorSettings: "colorSettingsUpdated",
+      pageVisibility: "pageVisibilityUpdated",
+      visibleSections: "visibleSectionsUpdated",
+      siteProfile: "siteProfileUpdated",
+      services: "servicesUpdated",
+      bookingServiceSettings: "bookingServiceSettingsUpdated",
+      bookingDateSettings: "bookingDateSettingsUpdated",
+      bookingTimeSettings: "bookingTimeSettingsUpdated",
+      bookingFormSettings: "bookingFormSettingsUpdated",
+      bookingConfirmationSettings: "bookingConfirmationSettingsUpdated",
+    };
+
+    // Remove o prefixo do adminId se existir
+    const currentAdminId = localStorage.getItem("current_admin_id");
+    let baseKey = event.key;
+    if (currentAdminId && event.key.startsWith(`${currentAdminId}_`)) {
+      baseKey = event.key.substring(currentAdminId.length + 1);
+    }
+
+    const eventToDispatch = keyToEvent[baseKey];
+    if (eventToDispatch) {
+      console.log(
+        `>>> [STORAGE_SYNC] Disparando ${eventToDispatch} devido a mudança em ${event.key}`,
+      );
+      window.dispatchEvent(new Event(eventToDispatch));
+    }
+  });
+}
+
 export type ServiceResource = {
   inventoryId: string;
   quantity: number;
@@ -130,11 +181,9 @@ export type DaySchedule = {
 export type WeekSchedule = DaySchedule[];
 
 // Helper para isolamento de dados por usuário
-export const sanitizeColor = (
-  color: unknown,
-): string | undefined => {
+export const sanitizeColor = (color: unknown): string | undefined => {
   if (!color) return undefined;
-  
+
   // Se for um objeto, tenta extrair a string de cor (caso comum em alguns componentes de UI)
   if (typeof color === "object" && color !== null) {
     const colorObj = color as Record<string, unknown>;
@@ -170,7 +219,7 @@ export const sanitizeColor = (
 };
 
 /**
- * Função de utilidade que limpa o objeto de configurações antes de qualquer operação 
+ * Função de utilidade que limpa o objeto de configurações antes de qualquer operação
  * de persistência ou renderização, garantindo que "lixo" de UI não chegue ao estado global.
  * Implementa normalização recursiva para chaves de cores.
  */
@@ -179,10 +228,12 @@ export const normalizePersistenceData = (data: unknown): unknown => {
 
   // Se for um array, processa cada item
   if (Array.isArray(data)) {
-    return data.map(item => normalizePersistenceData(item));
+    return data.map((item) => normalizePersistenceData(item));
   }
 
-  const cleanData: Record<string, unknown> = { ...(data as Record<string, unknown>) };
+  const cleanData: Record<string, unknown> = {
+    ...(data as Record<string, unknown>),
+  };
 
   Object.keys(cleanData).forEach((key) => {
     const value = cleanData[key];
@@ -192,7 +243,7 @@ export const normalizePersistenceData = (data: unknown): unknown => {
       const v = value as Record<string, unknown>;
       if (v.hex || v.color || v.rgb) {
         cleanData[key] = sanitizeColor(value);
-      } 
+      }
       // 2. Se for um objeto aninhado (não nulo), limpa recursivamente
       else if (!(value instanceof Date)) {
         cleanData[key] = normalizePersistenceData(value);
@@ -208,7 +259,9 @@ export const sanitizeSection = (
   fallbackData: unknown,
 ): Record<string, unknown> => {
   const fallback =
-    fallbackData && typeof fallbackData === "object" && !Array.isArray(fallbackData)
+    fallbackData &&
+    typeof fallbackData === "object" &&
+    !Array.isArray(fallbackData)
       ? (fallbackData as Record<string, unknown>)
       : {};
 
@@ -230,7 +283,11 @@ export const sanitizeSection = (
     return { ...fallback, title: currentData };
   }
 
-  if (!currentData || typeof currentData !== "object" || Array.isArray(currentData)) {
+  if (
+    !currentData ||
+    typeof currentData !== "object" ||
+    Array.isArray(currentData)
+  ) {
     return { ...fallback };
   }
 
@@ -296,14 +353,13 @@ const getPayloadRoot = (config: SiteConfigData | null | undefined) => {
     config) as SiteConfigData;
 };
 
-export const normalizePayload = (
-  config: SiteConfigData | null | undefined,
-) => {
+export const normalizePayload = (config: SiteConfigData | null | undefined) => {
   const safeConfig = (config || {}) as SiteConfigData;
   const root = getPayloadRoot(safeConfig);
 
-  const layoutGlobal = (root.layoutGlobal ||
-    root.layout_global) as Record<string, unknown> | undefined;
+  const layoutGlobal = (root.layoutGlobal || root.layout_global) as
+    | Record<string, unknown>
+    | undefined;
   const home = root.home as Record<string, unknown> | undefined;
   const about = root.about as Record<string, unknown> | undefined;
   const rootSections = root.sections as Record<string, unknown> | undefined;
@@ -321,7 +377,8 @@ export const normalizePayload = (
     ? {
         ...gallerySection,
         bgColor:
-          (gallerySection.bgColor as string | undefined) || galleryBackgroundColor,
+          (gallerySection.bgColor as string | undefined) ||
+          galleryBackgroundColor,
         appearance: {
           ...((gallerySection.appearance as Record<string, unknown>) || {}),
           backgroundColor:
@@ -450,8 +507,9 @@ export const normalizePayload = (
         (root.sections as SectionsMap | undefined)?.[SECTION_IDS.pageGallery] ||
         ((root.sections as Record<string, unknown> | undefined)
           ?.galleryPageSettings as SectionConfig | undefined) ||
-        ((root.sections as Record<string, unknown> | undefined)
-          ?.gallery as SectionConfig | undefined) ||
+        ((root.sections as Record<string, unknown> | undefined)?.gallery as
+          | SectionConfig
+          | undefined) ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
           SECTION_IDS.pageGallery
         ] ||
@@ -497,9 +555,10 @@ export const normalizePayload = (
         ] ||
         ((root.appointmentFlow as Record<string, unknown> | undefined)
           ?.service as SectionConfig | undefined) ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
-          | Record<string, unknown>
-          | undefined)?.service ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.service ||
         ((root.bookingSteps as Record<string, unknown> | undefined)?.service as
           | SectionConfig
           | undefined) ||
@@ -513,11 +572,13 @@ export const normalizePayload = (
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
           SECTION_IDS.bookingDate
         ] ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)
-          ?.date as SectionConfig | undefined) ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
-          | Record<string, unknown>
-          | undefined)?.date ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.date as
+          | SectionConfig
+          | undefined) ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.date ||
         ((root.bookingSteps as Record<string, unknown> | undefined)?.date as
           | SectionConfig
           | undefined) ||
@@ -531,11 +592,13 @@ export const normalizePayload = (
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
           SECTION_IDS.bookingTime
         ] ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)
-          ?.time as SectionConfig | undefined) ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
-          | Record<string, unknown>
-          | undefined)?.time ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.time as
+          | SectionConfig
+          | undefined) ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.time ||
         ((root.bookingSteps as Record<string, unknown> | undefined)?.time as
           | SectionConfig
           | undefined) ||
@@ -549,11 +612,13 @@ export const normalizePayload = (
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
           SECTION_IDS.bookingForm
         ] ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)
-          ?.form as SectionConfig | undefined) ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
-          | Record<string, unknown>
-          | undefined)?.form ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.form as
+          | SectionConfig
+          | undefined) ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.form ||
         ((root.bookingSteps as Record<string, unknown> | undefined)?.form as
           | SectionConfig
           | undefined) ||
@@ -571,9 +636,10 @@ export const normalizePayload = (
         ] ||
         ((root.appointmentFlow as Record<string, unknown> | undefined)
           ?.confirmation as SectionConfig | undefined) ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
-          | Record<string, unknown>
-          | undefined)?.confirmation ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.confirmation ||
         ((root.bookingSteps as Record<string, unknown> | undefined)
           ?.confirmation as SectionConfig | undefined) ||
         (root.bookingConfirmation as SectionConfig | undefined)) as
@@ -1262,7 +1328,7 @@ export function getBookingServiceSettings(
   const step1 = (flow?.step1Services || {}) as Record<string, unknown>;
 
   return {
-    ...((step1 as unknown) as BookingStepSettings),
+    ...(step1 as unknown as BookingStepSettings),
     title: (step1.title as string) || "Escolha seus Serviços",
     subtitle:
       (step1.subtitle as string) ||
@@ -1304,13 +1370,15 @@ export function saveBookingServiceSettings(
   }
 }
 
-export function getBookingDateSettings(config?: BookingConfig): BookingStepSettings {
+export function getBookingDateSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
   let base = { ...defaultBookingDateSettings };
-  const stepConfig = 
+  const stepConfig =
     config?.bookingSteps?.date ||
-    config?.appointmentFlow?.steps?.date || 
+    config?.appointmentFlow?.steps?.date ||
     config?.appointmentFlow?.date;
-  
+
   if (stepConfig) {
     base = {
       ...base,
@@ -1343,13 +1411,44 @@ export function getBookingDateSettings(config?: BookingConfig): BookingStepSetti
 
   return {
     ...base,
-    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingDateSettings.titleColor) || "",
-    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingDateSettings.subtitleColor) || "",
-    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingDateSettings.titleFont,
-    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingDateSettings.subtitleFont,
-    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingDateSettings.cardBgColor) || "",
-    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingDateSettings.accentColor) || "",
-    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingDateSettings.bgColor) || "",
+    titleColor:
+      sanitizeColor(
+        base.titleColor ||
+          base.appearance?.titleColor ||
+          defaultBookingDateSettings.titleColor,
+      ) || "",
+    subtitleColor:
+      sanitizeColor(
+        base.subtitleColor ||
+          base.appearance?.subtitleColor ||
+          defaultBookingDateSettings.subtitleColor,
+      ) || "",
+    titleFont:
+      base.titleFont ||
+      base.appearance?.titleFont ||
+      defaultBookingDateSettings.titleFont,
+    subtitleFont:
+      base.subtitleFont ||
+      base.appearance?.subtitleFont ||
+      defaultBookingDateSettings.subtitleFont,
+    cardBgColor:
+      sanitizeColor(
+        base.cardBgColor ||
+          base.appearance?.cardBgColor ||
+          defaultBookingDateSettings.cardBgColor,
+      ) || "",
+    accentColor:
+      sanitizeColor(
+        base.accentColor ||
+          base.appearance?.accentColor ||
+          defaultBookingDateSettings.accentColor,
+      ) || "",
+    bgColor:
+      sanitizeColor(
+        base.bgColor ||
+          base.appearance?.backgroundColor ||
+          defaultBookingDateSettings.bgColor,
+      ) || "",
   };
 }
 
@@ -1364,13 +1463,15 @@ export function saveBookingDateSettings(settings: BookingStepSettings): void {
   }
 }
 
-export function getBookingTimeSettings(config?: BookingConfig): BookingStepSettings {
+export function getBookingTimeSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
   let base = { ...defaultBookingTimeSettings };
-  const stepConfig = 
+  const stepConfig =
     config?.bookingSteps?.time ||
-    config?.appointmentFlow?.steps?.time || 
+    config?.appointmentFlow?.steps?.time ||
     config?.appointmentFlow?.time;
-  
+
   if (stepConfig) {
     base = {
       ...base,
@@ -1403,13 +1504,44 @@ export function getBookingTimeSettings(config?: BookingConfig): BookingStepSetti
 
   return {
     ...base,
-    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingTimeSettings.titleColor) || "",
-    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingTimeSettings.subtitleColor) || "",
-    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingTimeSettings.titleFont,
-    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingTimeSettings.subtitleFont,
-    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingTimeSettings.cardBgColor) || "",
-    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingTimeSettings.accentColor) || "",
-    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingTimeSettings.bgColor) || "",
+    titleColor:
+      sanitizeColor(
+        base.titleColor ||
+          base.appearance?.titleColor ||
+          defaultBookingTimeSettings.titleColor,
+      ) || "",
+    subtitleColor:
+      sanitizeColor(
+        base.subtitleColor ||
+          base.appearance?.subtitleColor ||
+          defaultBookingTimeSettings.subtitleColor,
+      ) || "",
+    titleFont:
+      base.titleFont ||
+      base.appearance?.titleFont ||
+      defaultBookingTimeSettings.titleFont,
+    subtitleFont:
+      base.subtitleFont ||
+      base.appearance?.subtitleFont ||
+      defaultBookingTimeSettings.subtitleFont,
+    cardBgColor:
+      sanitizeColor(
+        base.cardBgColor ||
+          base.appearance?.cardBgColor ||
+          defaultBookingTimeSettings.cardBgColor,
+      ) || "",
+    accentColor:
+      sanitizeColor(
+        base.accentColor ||
+          base.appearance?.accentColor ||
+          defaultBookingTimeSettings.accentColor,
+      ) || "",
+    bgColor:
+      sanitizeColor(
+        base.bgColor ||
+          base.appearance?.backgroundColor ||
+          defaultBookingTimeSettings.bgColor,
+      ) || "",
   };
 }
 
@@ -1424,13 +1556,15 @@ export function saveBookingTimeSettings(settings: BookingStepSettings): void {
   }
 }
 
-export function getBookingFormSettings(config?: BookingConfig): BookingStepSettings {
+export function getBookingFormSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
   let base = { ...defaultBookingFormSettings };
-  const stepConfig = 
+  const stepConfig =
     config?.bookingSteps?.form ||
-    config?.appointmentFlow?.steps?.form || 
+    config?.appointmentFlow?.steps?.form ||
     config?.appointmentFlow?.form;
-  
+
   if (stepConfig) {
     base = {
       ...base,
@@ -1463,13 +1597,44 @@ export function getBookingFormSettings(config?: BookingConfig): BookingStepSetti
 
   return {
     ...base,
-    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingFormSettings.titleColor) || "",
-    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingFormSettings.subtitleColor) || "",
-    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingFormSettings.titleFont,
-    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingFormSettings.subtitleFont,
-    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingFormSettings.cardBgColor) || "",
-    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingFormSettings.accentColor) || "",
-    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingFormSettings.bgColor) || "",
+    titleColor:
+      sanitizeColor(
+        base.titleColor ||
+          base.appearance?.titleColor ||
+          defaultBookingFormSettings.titleColor,
+      ) || "",
+    subtitleColor:
+      sanitizeColor(
+        base.subtitleColor ||
+          base.appearance?.subtitleColor ||
+          defaultBookingFormSettings.subtitleColor,
+      ) || "",
+    titleFont:
+      base.titleFont ||
+      base.appearance?.titleFont ||
+      defaultBookingFormSettings.titleFont,
+    subtitleFont:
+      base.subtitleFont ||
+      base.appearance?.subtitleFont ||
+      defaultBookingFormSettings.subtitleFont,
+    cardBgColor:
+      sanitizeColor(
+        base.cardBgColor ||
+          base.appearance?.cardBgColor ||
+          defaultBookingFormSettings.cardBgColor,
+      ) || "",
+    accentColor:
+      sanitizeColor(
+        base.accentColor ||
+          base.appearance?.accentColor ||
+          defaultBookingFormSettings.accentColor,
+      ) || "",
+    bgColor:
+      sanitizeColor(
+        base.bgColor ||
+          base.appearance?.backgroundColor ||
+          defaultBookingFormSettings.bgColor,
+      ) || "",
   };
 }
 
@@ -1484,13 +1649,15 @@ export function saveBookingFormSettings(settings: BookingStepSettings): void {
   }
 }
 
-export function getBookingConfirmationSettings(config?: BookingConfig): BookingStepSettings {
+export function getBookingConfirmationSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
   let base = { ...defaultBookingConfirmationSettings };
-  const stepConfig = 
+  const stepConfig =
     config?.bookingSteps?.confirmation ||
-    config?.appointmentFlow?.steps?.confirmation || 
+    config?.appointmentFlow?.steps?.confirmation ||
     config?.appointmentFlow?.confirmation;
-  
+
   if (stepConfig) {
     base = {
       ...base,
@@ -1503,7 +1670,9 @@ export function getBookingConfirmationSettings(config?: BookingConfig): BookingS
   }
   // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
-    const settings = localStorage.getItem(getStorageKey("bookingConfirmationSettings"));
+    const settings = localStorage.getItem(
+      getStorageKey("bookingConfirmationSettings"),
+    );
     if (settings) {
       try {
         const saved = JSON.parse(settings);
@@ -1523,13 +1692,44 @@ export function getBookingConfirmationSettings(config?: BookingConfig): BookingS
 
   return {
     ...base,
-    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingConfirmationSettings.titleColor) || "",
-    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingConfirmationSettings.subtitleColor) || "",
-    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingConfirmationSettings.titleFont,
-    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingConfirmationSettings.subtitleFont,
-    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingConfirmationSettings.cardBgColor) || "",
-    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingConfirmationSettings.accentColor) || "",
-    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingConfirmationSettings.bgColor) || "",
+    titleColor:
+      sanitizeColor(
+        base.titleColor ||
+          base.appearance?.titleColor ||
+          defaultBookingConfirmationSettings.titleColor,
+      ) || "",
+    subtitleColor:
+      sanitizeColor(
+        base.subtitleColor ||
+          base.appearance?.subtitleColor ||
+          defaultBookingConfirmationSettings.subtitleColor,
+      ) || "",
+    titleFont:
+      base.titleFont ||
+      base.appearance?.titleFont ||
+      defaultBookingConfirmationSettings.titleFont,
+    subtitleFont:
+      base.subtitleFont ||
+      base.appearance?.subtitleFont ||
+      defaultBookingConfirmationSettings.subtitleFont,
+    cardBgColor:
+      sanitizeColor(
+        base.cardBgColor ||
+          base.appearance?.cardBgColor ||
+          defaultBookingConfirmationSettings.cardBgColor,
+      ) || "",
+    accentColor:
+      sanitizeColor(
+        base.accentColor ||
+          base.appearance?.accentColor ||
+          defaultBookingConfirmationSettings.accentColor,
+      ) || "",
+    bgColor:
+      sanitizeColor(
+        base.bgColor ||
+          base.appearance?.backgroundColor ||
+          defaultBookingConfirmationSettings.bgColor,
+      ) || "",
   };
 }
 
@@ -1815,10 +2015,14 @@ export const normalizeStepSettings = (
 
   // 1. Resolver cor do CARD
   // Prioridade para configurações específicas de card, com fallback para backgroundColor legado
-  const cardConfig = (stepData.cardConfig || stepData.card_config || {}) as Record<string, unknown>;
+  const cardConfig = (stepData.cardConfig ||
+    stepData.card_config ||
+    {}) as Record<string, unknown>;
   const appearanceRaw = (stepData.appearance || {}) as Record<string, unknown>;
   const content = (stepData.content || {}) as Record<string, unknown>;
-  const itemsStyle = (stepData.itemsStyle || stepData.items_style || {}) as Record<string, unknown>;
+  const itemsStyle = (stepData.itemsStyle ||
+    stepData.items_style ||
+    {}) as Record<string, unknown>;
 
   const rawCardColor =
     (stepData.cardBgColor as string) ||
@@ -1844,7 +2048,11 @@ export const normalizeStepSettings = (
   // 2. Resolver cor do FUNDO DA SEÇÃO
   // NÃO usar rawCardColor como fallback para evitar que a cor do card pinte o fundo
   const rawBgColor =
-    (stepData.bgColor as string) || (stepData.bg_color as string);
+    (stepData.bgColor as string) ||
+    (stepData.bg_color as string) ||
+    (appearanceRaw.backgroundColor as string) ||
+    (appearanceRaw.background_color as string) ||
+    (stepData.backgroundColor as string);
   const finalBgColor = sanitizeColor(rawBgColor);
 
   // 3. Resolver Appearance (Source of Truth do banco)
@@ -1857,6 +2065,12 @@ export const normalizeStepSettings = (
     cardBgColor: finalCardColor || "",
     bgColor: finalBgColor || "transparent",
     appearance: {
+      ...appearance,
+      backgroundColor:
+        (appearance.backgroundColor as string) ||
+        (appearance.background_color as string) ||
+        finalBgColor ||
+        "",
       backgroundImageUrl:
         (appearance.backgroundImageUrl as string) ||
         (stepData.bgImage as string) ||
@@ -2700,7 +2914,9 @@ export function getNotificationSettings(): NotificationSettings {
   */
 }
 
-export function saveNotificationSettings(_settings: NotificationSettings): void {
+export function saveNotificationSettings(
+  _settings: NotificationSettings,
+): void {
   // localStorage.setItem(
   //   getStorageKey("notificationSettings"),
   //   JSON.stringify(settings),
@@ -2830,7 +3046,8 @@ export function getHomeValuesSettings(data?: unknown): ValuesSettings {
     (root.home_values as Record<string, unknown> | undefined) ||
     {};
   const appearance = values.appearance as Record<string, unknown> | undefined;
-  const title = typeof values.title === "string" ? values.title : "Nossos Valores";
+  const title =
+    typeof values.title === "string" ? values.title : "Nossos Valores";
   const subtitle = typeof values.subtitle === "string" ? values.subtitle : "";
   const items = Array.isArray(values.items)
     ? values.items
@@ -2838,7 +3055,8 @@ export function getHomeValuesSettings(data?: unknown): ValuesSettings {
   const backgroundColor =
     (typeof values.backgroundColor === "string" && values.backgroundColor) ||
     (typeof values.bgColor === "string" && values.bgColor) ||
-    (typeof appearance?.backgroundColor === "string" && appearance.backgroundColor) ||
+    (typeof appearance?.backgroundColor === "string" &&
+      appearance.backgroundColor) ||
     "transparent";
   const bgColor =
     (typeof values.bgColor === "string" && values.bgColor) ||
@@ -2890,7 +3108,8 @@ export function getAboutUsValuesSettings(data?: unknown): ValuesSettings {
     (root.aboutUsValues as Record<string, unknown> | undefined) ||
     (root.about_us_values as Record<string, unknown> | undefined) ||
     {};
-  const title = typeof values.title === "string" ? values.title : "Nossos Valores";
+  const title =
+    typeof values.title === "string" ? values.title : "Nossos Valores";
   const subtitle = typeof values.subtitle === "string" ? values.subtitle : "";
   const items = Array.isArray(values.items)
     ? values.items

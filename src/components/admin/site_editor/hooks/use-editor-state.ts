@@ -108,7 +108,7 @@ export function useEditorState() {
         console.error('>>> [SYNC_BACKGROUND] Updates inválido recebido:', updates);
         return prev;
       }
-      
+
       const state = { ...prev, ...updates } as Record<string, unknown>;
       const upds = updates as Record<string, unknown>;
       const prvs = prev as Record<string, unknown>;
@@ -319,27 +319,9 @@ export function useEditorState() {
       if (upds.bgImage !== undefined) {
         nextAppearance.backgroundImageUrl = upds.bgImage;
         state.bgImage = upds.bgImage;
-        // Se a imagem for definida e não for vazia, garantimos que o tipo seja 'image'
-        if (upds.bgImage && upds.bgImage !== "" && !upds.bgType) {
-          nextAppearance.bgType = "image";
-          state.bgType = "image";
-        } else if ((upds.bgImage === "" || !upds.bgImage) && !upds.bgType) {
-          // Se a imagem for limpa e não houver tipo definido, voltamos para 'color'
-          nextAppearance.bgType = "color";
-          state.bgType = "color";
-        }
       } else if (appearanceUpdate?.backgroundImageUrl !== undefined) {
         state.bgImage = appearanceUpdate.backgroundImageUrl;
         nextAppearance.backgroundImageUrl = appearanceUpdate.backgroundImageUrl;
-        if (
-          appearanceUpdate.backgroundImageUrl &&
-          appearanceUpdate.backgroundImageUrl !== "" &&
-          !upds.bgType &&
-          !appearanceUpdate.bgType
-        ) {
-          nextAppearance.bgType = "image";
-          state.bgType = "image";
-        }
       } else if (prvs.bgImage !== undefined) {
         state.bgImage = prvs.bgImage;
         nextAppearance.backgroundImageUrl = prvs.bgImage;
@@ -355,6 +337,12 @@ export function useEditorState() {
       } else if (prvs.bgType !== undefined) {
         state.bgType = prvs.bgType;
         nextAppearance.bgType = prvs.bgType;
+      } else {
+        // Fallback robusto usando resolveBgType
+        const currentImg = (state.bgImage || nextAppearance.backgroundImageUrl) as string | undefined;
+        const resolvedType = resolveBgType(undefined, currentImg);
+        state.bgType = resolvedType;
+        nextAppearance.bgType = resolvedType;
       }
 
       // Overlay Sync
@@ -366,6 +354,10 @@ export function useEditorState() {
         state.overlayOpacity = upds.overlayOpacity;
       } else if (prvs.overlayOpacity !== undefined) {
         state.overlayOpacity = prvs.overlayOpacity;
+        nextAppearance.overlay = {
+          ...(nextAppearance.overlay || { color: "" }),
+          opacity: prvs.overlayOpacity,
+        };
       }
 
       const overlayUpdate = appearanceUpdate?.overlay as
@@ -373,8 +365,13 @@ export function useEditorState() {
         | undefined;
       if (overlayUpdate?.color !== undefined) {
         nextAppearance.overlay = {
-          ...(nextAppearance.overlay || { opacity: state.overlayOpacity || 0 }),
+          ...(nextAppearance.overlay || { opacity: state.overlayOpacity ?? 0 }),
           color: overlayUpdate.color,
+        };
+      } else if ((prvs.appearance as any)?.overlay?.color !== undefined) {
+        nextAppearance.overlay = {
+          ...(nextAppearance.overlay || { opacity: state.overlayOpacity ?? 0 }),
+          color: (prvs.appearance as any).overlay.color,
         };
       }
 
@@ -480,13 +477,13 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         valuesData.cardBgColor ||
-          valuesData.cardBackgroundColor ||
-          valuesData.card_background_color ||
-          cardConfig.backgroundColor ||
-          cardConfig.cardBackgroundColor ||
-          content.cardBgColor ||
-          itemsStyle.itemBackgroundColor ||
-          appearance.cardBgColor,
+        valuesData.cardBackgroundColor ||
+        valuesData.card_background_color ||
+        cardConfig.backgroundColor ||
+        cardConfig.cardBackgroundColor ||
+        content.cardBgColor ||
+        itemsStyle.itemBackgroundColor ||
+        appearance.cardBgColor,
       );
 
       return {
@@ -502,20 +499,20 @@ export function useEditorState() {
         cardTitleColor:
           sanitizeColor(
             valuesData.cardTitleColor ||
-              appearance.cardTitleColor ||
-              content.cardTitleColor,
+            appearance.cardTitleColor ||
+            content.cardTitleColor,
           ) || defaultValuesSettings.cardTitleColor,
         cardDescriptionColor:
           sanitizeColor(
             valuesData.cardDescriptionColor ||
-              appearance.cardDescriptionColor ||
-              content.cardDescriptionColor,
+            appearance.cardDescriptionColor ||
+            content.cardDescriptionColor,
           ) || defaultValuesSettings.cardDescriptionColor,
         cardIconColor:
           sanitizeColor(
             valuesData.cardIconColor ||
-              appearance.cardIconColor ||
-              content.cardIconColor,
+            appearance.cardIconColor ||
+            content.cardIconColor,
           ) || defaultValuesSettings.cardIconColor,
         bgColor:
           sanitizeColor(valuesData.bgColor || appearance.backgroundColor) ||
@@ -534,18 +531,18 @@ export function useEditorState() {
           cardBgColor: cardBg,
           cardTitleColor: sanitizeColor(
             valuesData.cardTitleColor ||
-              appearance.cardTitleColor ||
-              content.cardTitleColor,
+            appearance.cardTitleColor ||
+            content.cardTitleColor,
           ),
           cardDescriptionColor: sanitizeColor(
             valuesData.cardDescriptionColor ||
-              appearance.cardDescriptionColor ||
-              content.cardDescriptionColor,
+            appearance.cardDescriptionColor ||
+            content.cardDescriptionColor,
           ),
           cardIconColor: sanitizeColor(
             valuesData.cardIconColor ||
-              appearance.cardIconColor ||
-              content.cardIconColor,
+            appearance.cardIconColor ||
+            content.cardIconColor,
           ),
           backgroundColor: sanitizeColor(
             valuesData.bgColor || appearance.backgroundColor,
@@ -581,13 +578,13 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         servicesData.cardBgColor ||
-          servicesData.cardBackgroundColor ||
-          servicesData.card_background_color ||
-          cardConfig.backgroundColor ||
-          cardConfig.cardBackgroundColor ||
-          content.cardBgColor ||
-          itemsStyle.itemBackgroundColor ||
-          appearance.cardBgColor,
+        servicesData.cardBackgroundColor ||
+        servicesData.card_background_color ||
+        cardConfig.backgroundColor ||
+        cardConfig.cardBackgroundColor ||
+        content.cardBgColor ||
+        itemsStyle.itemBackgroundColor ||
+        appearance.cardBgColor,
       );
 
       return {
@@ -604,26 +601,26 @@ export function useEditorState() {
         cardTitleColor:
           sanitizeColor(
             servicesData.cardTitleColor ||
-              appearance.cardTitleColor ||
-              content.cardTitleColor,
+            appearance.cardTitleColor ||
+            content.cardTitleColor,
           ) || defaultServicesSettings.cardTitleColor,
         cardDescriptionColor:
           sanitizeColor(
             servicesData.cardDescriptionColor ||
-              appearance.cardDescriptionColor ||
-              content.cardDescriptionColor,
+            appearance.cardDescriptionColor ||
+            content.cardDescriptionColor,
           ) || defaultServicesSettings.cardDescriptionColor,
         cardPriceColor:
           sanitizeColor(
             servicesData.cardPriceColor ||
-              appearance.cardPriceColor ||
-              content.cardPriceColor,
+            appearance.cardPriceColor ||
+            content.cardPriceColor,
           ) || defaultServicesSettings.cardPriceColor,
         cardIconColor:
           sanitizeColor(
             servicesData.cardIconColor ||
-              appearance.cardIconColor ||
-              content.cardIconColor,
+            appearance.cardIconColor ||
+            content.cardIconColor,
           ) || defaultServicesSettings.cardIconColor,
         bgColor:
           sanitizeColor(servicesData.bgColor || appearance.backgroundColor) ||
@@ -642,23 +639,23 @@ export function useEditorState() {
           cardBgColor: cardBg,
           cardTitleColor: sanitizeColor(
             servicesData.cardTitleColor ||
-              appearance.cardTitleColor ||
-              content.cardTitleColor,
+            appearance.cardTitleColor ||
+            content.cardTitleColor,
           ),
           cardDescriptionColor: sanitizeColor(
             servicesData.cardDescriptionColor ||
-              appearance.cardDescriptionColor ||
-              content.cardDescriptionColor,
+            appearance.cardDescriptionColor ||
+            content.cardDescriptionColor,
           ),
           cardPriceColor: sanitizeColor(
             servicesData.cardPriceColor ||
-              appearance.cardPriceColor ||
-              content.cardPriceColor,
+            appearance.cardPriceColor ||
+            content.cardPriceColor,
           ),
           cardIconColor: sanitizeColor(
             servicesData.cardIconColor ||
-              appearance.cardIconColor ||
-              content.cardIconColor,
+            appearance.cardIconColor ||
+            content.cardIconColor,
           ),
           backgroundColor: sanitizeColor(
             servicesData.bgColor || appearance.backgroundColor,
@@ -694,20 +691,20 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         galleryData.cardBgColor ||
-          galleryData.cardBackgroundColor ||
-          galleryData.card_background_color ||
-          cardConfig.backgroundColor ||
-          cardConfig.cardBackgroundColor ||
-          content.cardBgColor ||
-          itemsStyle.itemBackgroundColor ||
-          appearance.cardBgColor,
+        galleryData.cardBackgroundColor ||
+        galleryData.card_background_color ||
+        cardConfig.backgroundColor ||
+        cardConfig.cardBackgroundColor ||
+        content.cardBgColor ||
+        itemsStyle.itemBackgroundColor ||
+        appearance.cardBgColor,
       );
 
       const resolvedBgColor =
         sanitizeColor(
           appearance.backgroundColor ||
-            galleryData.bgColor ||
-            galleryData.backgroundColor,
+          galleryData.bgColor ||
+          galleryData.backgroundColor,
         ) || defaultGallerySettings.bgColor;
 
       return {
@@ -1265,22 +1262,22 @@ export function useEditorState() {
         lastSavedColor.text !== defaultColorSettings.text ||
         lastSavedColor.accent !== defaultColorSettings.accent ||
         lastSavedSpecialtyBadge.borderRadius !==
-          defaultColorSettings.specialtyBadge.borderRadius;
+        defaultColorSettings.specialtyBadge.borderRadius;
       const normalizeColor = (value?: string) => sanitizeColor(value || "") || "";
       const isConfigAlignedWithLastSaved =
         !hasLastSavedColors ||
         (normalizeColor(resolvedColors.primary) ===
           normalizeColor(lastSavedColor.primary) &&
           normalizeColor(resolvedColors.secondary) ===
-            normalizeColor(lastSavedColor.secondary) &&
+          normalizeColor(lastSavedColor.secondary) &&
           normalizeColor(resolvedColors.background) ===
-            normalizeColor(lastSavedColor.background) &&
+          normalizeColor(lastSavedColor.background) &&
           normalizeColor(resolvedColors.text) ===
-            normalizeColor(lastSavedColor.text) &&
+          normalizeColor(lastSavedColor.text) &&
           normalizeColor(resolvedColors.accent || "") ===
-            normalizeColor(lastSavedColor.accent || "") &&
+          normalizeColor(lastSavedColor.accent || "") &&
           resolvedColors.specialtyBadge.borderRadius ===
-            lastSavedSpecialtyBadge.borderRadius);
+          lastSavedSpecialtyBadge.borderRadius);
       if (!isConfigAlignedWithLastSaved) {
         console.log(
           ">>> [SYNC] studio.config desatualizado em relação ao lastSaved. Ignorando sync.",

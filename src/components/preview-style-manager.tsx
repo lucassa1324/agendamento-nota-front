@@ -62,7 +62,8 @@ export function PreviewStyleManager() {
         extras.add(servicesSettings.cardDescriptionFont);
       if (servicesSettings.cardPriceFont)
         extras.add(servicesSettings.cardPriceFont);
-      if (homeValuesSettings.titleFont) extras.add(homeValuesSettings.titleFont);
+      if (homeValuesSettings.titleFont)
+        extras.add(homeValuesSettings.titleFont);
       if (homeValuesSettings.subtitleFont)
         extras.add(homeValuesSettings.subtitleFont);
       if (homeValuesSettings.cardTitleFont)
@@ -300,12 +301,16 @@ export function PreviewStyleManager() {
     };
 
     window.addEventListener("message", handleMessage);
+    window.addEventListener("storage", handleSettingsUpdate);
     window.addEventListener("fontSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("colorSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("heroSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("servicesSettingsUpdated", handleSettingsUpdate);
     window.addEventListener("homeValuesSettingsUpdated", handleSettingsUpdate);
-    window.addEventListener("aboutUsValuesSettingsUpdated", handleSettingsUpdate);
+    window.addEventListener(
+      "aboutUsValuesSettingsUpdated",
+      handleSettingsUpdate,
+    );
     window.addEventListener("teamSettingsUpdated", handleSettingsUpdate);
     window.addEventListener(
       "testimonialsSettingsUpdated",
@@ -320,6 +325,7 @@ export function PreviewStyleManager() {
 
     return () => {
       window.removeEventListener("message", handleMessage);
+      window.removeEventListener("storage", handleSettingsUpdate);
       window.removeEventListener("fontSettingsUpdated", handleSettingsUpdate);
       window.removeEventListener("colorSettingsUpdated", handleSettingsUpdate);
       window.removeEventListener("heroSettingsUpdated", handleSettingsUpdate);
@@ -327,8 +333,14 @@ export function PreviewStyleManager() {
         "servicesSettingsUpdated",
         handleSettingsUpdate,
       );
-      window.removeEventListener("homeValuesSettingsUpdated", handleSettingsUpdate);
-      window.removeEventListener("aboutUsValuesSettingsUpdated", handleSettingsUpdate);
+      window.removeEventListener(
+        "homeValuesSettingsUpdated",
+        handleSettingsUpdate,
+      );
+      window.removeEventListener(
+        "aboutUsValuesSettingsUpdated",
+        handleSettingsUpdate,
+      );
       window.removeEventListener("teamSettingsUpdated", handleSettingsUpdate);
       window.removeEventListener(
         "testimonialsSettingsUpdated",

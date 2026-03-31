@@ -331,14 +331,31 @@ export default function LeadsPage() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
     if (fileExtension === 'csv') {
-      Papa.parse(file, {
+      const scoreText = (value: string) => {
+        const replacement = (value.match(/�/g) || []).length;
+        const mojibake = (value.match(/[ÃÂ]/g) || []).length;
+        const accents = (value.match(/[áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]/g) || []).length;
+        return accents * 2 - replacement - mojibake;
+      };
+
+      const decodeCsv = async () => {
+        const buffer = await file.arrayBuffer();
+        const utf8Text = new TextDecoder("utf-8").decode(buffer);
+        const win1252Text = new TextDecoder("windows-1252").decode(buffer);
+        return scoreText(win1252Text) > scoreText(utf8Text)
+          ? win1252Text
+          : utf8Text;
+      };
+
+      const csvText = await decodeCsv();
+      Papa.parse<Record<string, string>>(csvText, {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
@@ -377,7 +394,7 @@ export default function LeadsPage() {
           setIsImportModalOpen(true);
           e.target.value = "";
         },
-        error: (error) => {
+        error: (error: Error) => {
           console.error("Erro ao processar CSV:", error);
           toast({
             title: "Erro no arquivo",

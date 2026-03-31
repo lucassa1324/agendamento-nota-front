@@ -695,26 +695,26 @@ export function useEditorActions({
       handleUpdateBackgroundState(normalizedUpdates, targetSectionId);
 
       const currentSettingsMap: Record<string, BackgroundSettings | undefined> =
-        {
-          hero: heroSettings,
-          "about-hero": aboutHeroSettings,
-          story: storySettings,
-          team: teamSettings,
-          testimonials: testimonialsSettings,
-          services: servicesSettings,
-          "home-values": homeValuesSettings,
-          "about-values": aboutUsValuesSettings,
-          "about-us-values": aboutUsValuesSettings,
-          gallery: gallerySettings,
-          "gallery-preview": gallerySettings,
-          "gallery-grid": galleryPageSettings,
-          cta: ctaSettings,
-          "booking-service": bookingServiceSettings,
-          "booking-date": bookingDateSettings,
-          "booking-time": bookingTimeSettings,
-          "booking-form": bookingFormSettings,
-          "booking-confirmation": bookingConfirmationSettings,
-        };
+      {
+        hero: heroSettings,
+        "about-hero": aboutHeroSettings,
+        story: storySettings,
+        team: teamSettings,
+        testimonials: testimonialsSettings,
+        services: servicesSettings,
+        "home-values": homeValuesSettings,
+        "about-values": aboutUsValuesSettings,
+        "about-us-values": aboutUsValuesSettings,
+        gallery: gallerySettings,
+        "gallery-preview": gallerySettings,
+        "gallery-grid": galleryPageSettings,
+        cta: ctaSettings,
+        "booking-service": bookingServiceSettings,
+        "booking-date": bookingDateSettings,
+        "booking-time": bookingTimeSettings,
+        "booking-form": bookingFormSettings,
+        "booking-confirmation": bookingConfirmationSettings,
+      };
 
       const saveFnMap: Record<
         string,
@@ -1140,6 +1140,7 @@ export function useEditorActions({
         team: defaultTeamSettings,
         testimonials: defaultTestimonialsSettings,
         services: defaultServicesSettings,
+        values: defaultValuesSettings,
         "home-values": defaultValuesSettings,
         "about-values": defaultValuesSettings,
         "about-us-values": defaultValuesSettings,
@@ -1149,6 +1150,8 @@ export function useEditorActions({
         cta: defaultCTASettings,
         header: defaultHeaderSettings,
         footer: defaultFooterSettings,
+        typography: defaultFontSettings,
+        colors: defaultColorSettings,
         "booking-service": defaultBookingServiceSettings,
         "booking-date": defaultBookingDateSettings,
         "booking-time": defaultBookingTimeSettings,
@@ -1164,6 +1167,7 @@ export function useEditorActions({
         team: setTeamSettings as (u: unknown) => void,
         testimonials: setTestimonialsSettings as (u: unknown) => void,
         services: setServicesSettings as (u: unknown) => void,
+        values: setHomeValuesSettings as (u: unknown) => void,
         "home-values": setHomeValuesSettings as (u: unknown) => void,
         "about-values": setAboutUsValuesSettings as (u: unknown) => void,
         "about-us-values": setAboutUsValuesSettings as (u: unknown) => void,
@@ -1173,6 +1177,8 @@ export function useEditorActions({
         cta: setCTASettings as (u: unknown) => void,
         header: setHeaderSettings as (u: unknown) => void,
         footer: setFooterSettings as (u: unknown) => void,
+        typography: setFontSettings as (u: unknown) => void,
+        colors: setColorSettings as (u: unknown) => void,
         "booking-service": setBookingServiceSettings as (u: unknown) => void,
         "booking-date": setBookingDateSettings as (u: unknown) => void,
         "booking-time": setBookingTimeSettings as (u: unknown) => void,
@@ -1188,6 +1194,7 @@ export function useEditorActions({
         team: saveTeamSettings as (u: unknown) => void,
         testimonials: saveTestimonialsSettings as (u: unknown) => void,
         services: saveServicesSettings as (u: unknown) => void,
+        values: saveHomeValuesSettings as (u: unknown) => void,
         "home-values": saveHomeValuesSettings as (u: unknown) => void,
         "about-values": saveAboutUsValuesSettings as (u: unknown) => void,
         "about-us-values": saveAboutUsValuesSettings as (u: unknown) => void,
@@ -1197,6 +1204,8 @@ export function useEditorActions({
         cta: saveCTASettings as (u: unknown) => void,
         header: saveHeaderSettings as (u: unknown) => void,
         footer: saveFooterSettings as (u: unknown) => void,
+        typography: saveFontSettings as (u: unknown) => void,
+        colors: saveColorSettings as (u: unknown) => void,
         "booking-service": saveBookingServiceSettings as (u: unknown) => void,
         "booking-date": saveBookingDateSettings as (u: unknown) => void,
         "booking-time": saveBookingTimeSettings as (u: unknown) => void,
@@ -1212,6 +1221,7 @@ export function useEditorActions({
         team: "teamSettings",
         testimonials: "testimonialsSettings",
         services: "servicesSettings",
+        values: "homeValuesSettings",
         "home-values": "homeValuesSettings",
         "about-values": "aboutUsValuesSettings",
         "about-us-values": "aboutUsValuesSettings",
@@ -1221,6 +1231,8 @@ export function useEditorActions({
         cta: "ctaSettings",
         header: "headerSettings",
         footer: "footerSettings",
+        typography: "fontSettings",
+        colors: "colorSettings",
         "booking-service": "bookingServiceSettings",
         "booking-date": "bookingDateSettings",
         "booking-time": "bookingTimeSettings",
@@ -1236,6 +1248,7 @@ export function useEditorActions({
         team: teamSettings,
         testimonials: testimonialsSettings,
         services: servicesSettings,
+        values: homeValuesSettings,
         "home-values": homeValuesSettings,
         "about-values": aboutUsValuesSettings,
         "about-us-values": aboutUsValuesSettings,
@@ -1245,6 +1258,8 @@ export function useEditorActions({
         cta: ctaSettings,
         header: headerSettings,
         footer: footerSettings,
+        typography: fontSettings,
+        colors: colorSettings,
         "booking-service": bookingServiceSettings,
         "booking-date": bookingDateSettings,
         "booking-time": bookingTimeSettings,
@@ -1259,85 +1274,18 @@ export function useEditorActions({
       const current = currentSettingsMap[targetSectionId];
 
       if (defaults && setter && saveFn && saveKey && current) {
-        // Resetar para um estado "Limpo": Fundo Branco e Texto Preto
-        // Conforme pedido: "o background vai ficar branco, e todos os nomes ficam preto"
-        const reseted = { ...(current as Record<string, unknown>) };
+        const reseted =
+          typeof structuredClone === "function"
+            ? structuredClone(defaults)
+            : JSON.parse(JSON.stringify(defaults));
 
-        // Aplicar visual "Limpo" (Clean Reset) - Hardcoded para Branco e Preto
-        const cleanVisuals: Record<string, unknown> = {
-          bgColor: "#ffffff",
-          bg_color: "#ffffff",
-          backgroundColor: "#ffffff",
-          bgType: "color",
-          bg_type: "color",
-          imageOpacity: 1,
-          overlayOpacity: 0,
-          titleColor: "#000000",
-          title_color: "#000000",
-          subtitleColor: "#000000",
-          subtitle_color: "#000000",
-          textColor: "#000000",
-          text_color: "#000000",
-          badgeColor: "#f4f4f5", 
-          badgeTextColor: "#000000",
-          accentColor: "#000000",
-          accent_color: "#000000",
-          buttonColor: "#000000",
-          buttonTextColor: "#ffffff",
-          primaryButtonColor: "#000000",
-          primaryButtonTextColor: "#ffffff",
-          secondaryButtonColor: "#ffffff",
-          secondaryButtonTextColor: "#000000",
-          cardBgColor: "#ffffff",
-          card_bg_color: "#ffffff",
-          cardTitleColor: "#000000",
-          card_title_color: "#000000",
-          cardDescriptionColor: "#000000",
-          card_description_color: "#000000",
-          cardIconColor: "#000000",
-          card_icon_color: "#000000",
-          iconColor: "#000000",
-          icon_color: "#000000",
-          borderColor: "#e4e4e7",
-          // Resetar o objeto appearance também, que costuma ter o backgroundColor real do banco
-          appearance: {
-            backgroundColor: "#ffffff",
-            backgroundImageUrl: "",
-            imageOpacity: 1,
-            overlayOpacity: 0,
-            overlay: {
-              color: "#000000",
-              opacity: 0
-            }
-          }
-        };
-
-        // Mesclar as configurações atuais com o visual limpo, preservando conteúdos (textos/imagens)
-        Object.keys(cleanVisuals).forEach((key) => {
-          if (key === "appearance") {
-            reseted[key] = {
-              ...((reseted[key] as Record<string, unknown>) || {}),
-              ...(cleanVisuals[key] as Record<string, unknown>)
-            };
-          } else {
-            reseted[key] = cleanVisuals[key];
-          }
-        });
-
-        // Garantir que não haja imagem de fundo se o reset for para cor
-        if (reseted.bgImage) reseted.bgImage = "";
-        if (reseted.bg_image) reseted.bg_image = "";
-
-        // 1. Atualizar o estado global
         setter(reseted);
-
-        // 2. Salvar no localStorage (sync com preview)
         saveFn(reseted);
         scheduleDraftSave(saveKey, () => saveFn(reseted));
 
         toast({
           title: "Seção Resetada",
-          description: `Visual da seção ${targetSectionId} foi limpo (Preto e Branco).`,
+          description: `Seção ${targetSectionId} voltou para o padrão do site base.`,
         });
       }
     },

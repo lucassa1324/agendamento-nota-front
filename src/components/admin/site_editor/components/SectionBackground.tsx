@@ -79,7 +79,7 @@ export function SectionBackground({
   const effectiveBackgroundColor = 
     settings.appearance?.backgroundColor || 
     settings.bgColor || 
-    "transparent";
+    "var(--background, white)";
 
   const effectiveImageScale = settings.imageScale ?? 1;
   const effectiveImageX = settings.imageX ?? 50;
@@ -93,7 +93,7 @@ export function SectionBackground({
       key={`${effectiveBgType}-${bgImage}`}
       className={cn(
         "absolute inset-0 overflow-hidden pointer-events-none min-h-100 -z-10",
-        hideColorLayer ? "bg-transparent" : "bg-white",
+        hideColorLayer ? "bg-transparent" : "bg-background",
         className,
       )}
       style={{
@@ -146,7 +146,7 @@ export function SectionBackground({
       <div
         className={cn(
           "absolute inset-0 z-1 transition-opacity duration-500",
-          !effectiveOverlayColor && !gradientClassName && "bg-linear-to-b from-black/20 via-black/50 to-black",
+          !effectiveOverlayColor && !gradientClassName && "bg-black/20",
           !effectiveOverlayColor && gradientClassName
         )}
         style={{
