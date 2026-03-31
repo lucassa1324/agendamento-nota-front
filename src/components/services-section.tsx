@@ -44,6 +44,7 @@ import {
   type Service,
   type ServicesSettings,
   sanitizeColor,
+  SECTION_IDS,
 } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
 
@@ -491,9 +492,9 @@ export function ServicesSection() {
 
       if (
         event.data.type === "HIGHLIGHT_SECTION" &&
-        event.data.sectionId === "services"
+        event.data.sectionId === SECTION_IDS.homeServices
       ) {
-        setHighlightedElement("services");
+        setHighlightedElement(SECTION_IDS.homeServices);
         setTimeout(() => setHighlightedElement(null), 2000);
       }
     };
@@ -520,7 +521,7 @@ export function ServicesSection() {
   // Fallback Skeleton enquanto carrega do banco
   if (!isMounted || (isLoading && !isInsideIframe)) {
     return (
-      <section id="services" className="py-20 bg-background">
+      <section id={SECTION_IDS.homeServices} className="py-20 bg-background">
         <div className="container mx-auto px-4">
           <div className="h-10 w-64 bg-gray-200 animate-pulse mx-auto mb-4 rounded"></div>
           <div className="h-6 w-96 bg-gray-200 animate-pulse mx-auto mb-12 rounded"></div>
@@ -539,10 +540,10 @@ export function ServicesSection() {
   return (
     <SessionWrapper appearance={settings?.appearance}>
       <section
-        id="services"
+        id={SECTION_IDS.homeServices}
         className={cn(
           "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
-          highlightedElement === "services" &&
+          highlightedElement === SECTION_IDS.homeServices &&
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >

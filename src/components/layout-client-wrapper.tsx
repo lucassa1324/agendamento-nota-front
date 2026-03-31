@@ -102,14 +102,14 @@ export function LayoutClientWrapper({
 
   // REGRAS ESTRITAS PARA OCULTAR HEADER/FOOTER
   const showHeader =
-    isSectionVisible("header") &&
+    isSectionVisible("layout-header") &&
     !isAdminRoute &&
     !isLandingPage &&
     pathname !== "/acesso-suspenso" &&
     pathname !== "/admin/master"; // Garantia extra para a rota master
 
   const showFooter =
-    isSectionVisible("footer") &&
+    isSectionVisible("layout-footer") &&
     !isAdminRoute &&
     !isLandingPage &&
     pathname !== "/acesso-suspenso" &&

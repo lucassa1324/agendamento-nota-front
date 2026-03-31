@@ -49,6 +49,8 @@ import {
   type HeroSettings,
   normalizePayload,
   normalizeStepSettings,
+  savePageVisibility,
+  saveVisibleSections,
   SECTION_IDS,
   type SectionConfig,
   type SectionsMap,
@@ -1980,21 +1982,29 @@ export function useEditorState() {
 
   const handlePageVisibilityChange = useCallback(
     (pageId: string, isVisible: boolean) => {
-      setPageVisibility((prev: Record<string, boolean>) => ({
-        ...prev,
-        [pageId]: isVisible,
-      }));
+      setIsDirty(true);
+      setPageVisibility((prev: Record<string, boolean>) => {
+        const next = {
+          ...prev,
+          [pageId]: isVisible,
+        };
+        savePageVisibility(next);
+        return next;
+      });
     },
     [],
   );
 
   const handleSectionVisibilityToggle = useCallback((sectionId: string) => {
+    setIsDirty(true);
     setVisibleSections((prev: Record<string, boolean>) => {
       const isCurrentlyVisible = prev[sectionId] !== false;
-      return {
+      const next = {
         ...prev,
         [sectionId]: !isCurrentlyVisible,
       };
+      saveVisibleSections(next);
+      return next;
     });
   }, []);
 

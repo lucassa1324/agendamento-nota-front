@@ -171,32 +171,32 @@ const validateSectionObject = (obj: unknown, sectionName: string): boolean => {
     console.error(`>>> [API_GUARD] Objeto inválido para ${sectionName}:`, obj);
     return false;
   }
-  
+
   const keys = Object.keys(obj as Record<string, unknown>);
-  
+
   // Verifica se o objeto foi corrompido (transformado em string indexada)
   if (keys.length > 0 && keys.every(key => /^\d+$/.test(key))) {
     console.error(`>>> [API_GUARD] Objeto corrompido detectado para ${sectionName} (string indexada):`, obj);
     return false;
   }
-  
+
   // Verifica se há propriedades esperadas ausentes (indica corrompimento)
-  const hasValidProperties = keys.some(key => 
+  const hasValidProperties = keys.some(key =>
     !/^\d+$/.test(key) && key.length > 1 && key !== 'length'
   );
-  
+
   if (!hasValidProperties && keys.length > 0) {
     console.error(`>>> [API_GUARD] Objeto sem propriedades válidas para ${sectionName}:`, obj);
     return false;
   }
-  
+
   return true;
 };
 
 // Função para sanitizar o payload antes de enviar para o backend
 const sanitizePayload = (payload: Record<string, unknown>): Record<string, unknown> => {
   const sanitized: Record<string, unknown> = {};
-  
+
   for (const [key, value] of Object.entries(payload)) {
     if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
       if (validateSectionObject(value, key)) {
@@ -208,7 +208,7 @@ const sanitizePayload = (payload: Record<string, unknown>): Record<string, unkno
       sanitized[key] = value;
     }
   }
-  
+
   return sanitized;
 };
 
@@ -391,7 +391,7 @@ export function useEditorApi({
       pageVisibility: settings.pageVisibility,
       visibleSections: settings.visibleSections,
     });
-    
+
     // Dispara um evento para notificar outros hooks que o localStorage mudou
     if (!skipEvent && typeof window !== 'undefined') {
       window.dispatchEvent(new Event('local_draft_changed'));
@@ -904,12 +904,12 @@ export function useEditorApi({
 
                 const genericColor =
                   section === "homeValuesSettings" ||
-                  section === "aboutUsValuesSettings"
+                    section === "aboutUsValuesSettings"
                     ? (sectionData.bgColor as string) || ""
                     : sectionData.primaryButtonColor ||
-                      sectionData.cardBgColor ||
-                      sectionData.bgColor ||
-                      "";
+                    sectionData.cardBgColor ||
+                    sectionData.bgColor ||
+                    "";
                 Object.assign(subObj, {
                   ...sectionData, // Joga todas as propriedades (incluindo camelCase) na raiz
                   // Compatibilidade Snake Case para o Banco de Dados
@@ -938,7 +938,7 @@ export function useEditorApi({
                     sectionData.badgeTextColor || sectionData.badge_text_color,
                   color: genericColor,
                   // Adicionado: Chaves específicas que o backend espera converter internamente
-                  ...(section === "homeValuesSettings" ? { 
+                  ...(section === "homeValuesSettings" ? {
                     values_bg: genericColor,
                     // Garante que o appearance.backgroundColor seja preservado no objeto final
                     appearance: {
@@ -946,7 +946,7 @@ export function useEditorApi({
                       backgroundColor: genericColor
                     }
                   } : {}),
-                  ...(section === "aboutUsValuesSettings" ? { 
+                  ...(section === "aboutUsValuesSettings" ? {
                     about_values_bg: genericColor,
                     // Garante que o appearance.backgroundColor seja preservado no objeto final
                     appearance: {
@@ -1201,7 +1201,11 @@ export function useEditorApi({
           // Tratar Visibilidade
           (payload.layoutGlobal as Record<string, unknown>).pageVisibility =
             settings.pageVisibility;
+          (payload.layoutGlobal as Record<string, unknown>).page_visibility =
+            settings.pageVisibility;
           (payload.layoutGlobal as Record<string, unknown>).visibleSections =
+            settings.visibleSections;
+          (payload.layoutGlobal as Record<string, unknown>).visible_sections =
             settings.visibleSections;
 
           // Tratar Passos de Agendamento
@@ -1214,120 +1218,120 @@ export function useEditorApi({
             steps: {
               ...(cleanBookingSteps.service
                 ? {
-                    service: {
-                      ...cleanBookingSteps.service,
-                      // Mapeamento de Dualidade (camelCase -> snake_case)
-                      card_bg_color: cleanBookingSteps.service.cardBgColor,
-                      card_background_color: cleanBookingSteps.service.cardBgColor,
-                      cardBackgroundColor: cleanBookingSteps.service.cardBgColor,
-                      button_color: cleanBookingSteps.service.buttonColor,
-                      title_color: cleanBookingSteps.service.titleColor,
-                      subtitle_color: cleanBookingSteps.service.subtitleColor,
-                      accent_color: cleanBookingSteps.service.accentColor,
-                      bg_color: cleanBookingSteps.service.bgColor,
-                      // Suporte para cardConfig exigido pelo backend no fluxo de agendamento
-                      cardConfig: {
-                        backgroundColor: cleanBookingSteps.service.cardBgColor || "",
-                        cardBackgroundColor: cleanBookingSteps.service.cardBgColor || "",
-                        background_color: cleanBookingSteps.service.cardBgColor || "",
-                        card_background_color: cleanBookingSteps.service.cardBgColor || "",
-                      },
+                  service: {
+                    ...cleanBookingSteps.service,
+                    // Mapeamento de Dualidade (camelCase -> snake_case)
+                    card_bg_color: cleanBookingSteps.service.cardBgColor,
+                    card_background_color: cleanBookingSteps.service.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.service.cardBgColor,
+                    button_color: cleanBookingSteps.service.buttonColor,
+                    title_color: cleanBookingSteps.service.titleColor,
+                    subtitle_color: cleanBookingSteps.service.subtitleColor,
+                    accent_color: cleanBookingSteps.service.accentColor,
+                    bg_color: cleanBookingSteps.service.bgColor,
+                    // Suporte para cardConfig exigido pelo backend no fluxo de agendamento
+                    cardConfig: {
+                      backgroundColor: cleanBookingSteps.service.cardBgColor || "",
+                      cardBackgroundColor: cleanBookingSteps.service.cardBgColor || "",
+                      background_color: cleanBookingSteps.service.cardBgColor || "",
+                      card_background_color: cleanBookingSteps.service.cardBgColor || "",
                     },
-                  }
+                  },
+                }
                 : {}),
               ...(cleanBookingSteps.date
                 ? {
-                    date: {
-                      ...cleanBookingSteps.date,
-                      // Mapeamento de Dualidade
-                      card_bg_color: cleanBookingSteps.date.cardBgColor,
-                      card_background_color: cleanBookingSteps.date.cardBgColor,
-                      cardBackgroundColor: cleanBookingSteps.date.cardBgColor,
-                      title_color: cleanBookingSteps.date.titleColor,
-                      subtitle_color: cleanBookingSteps.date.subtitleColor,
-                      accent_color: cleanBookingSteps.date.accentColor,
-                      bg_color: cleanBookingSteps.date.bgColor,
-                      // Suporte para cardConfig
-                      cardConfig: {
-                        backgroundColor: cleanBookingSteps.date.cardBgColor || "",
-                        cardBackgroundColor: cleanBookingSteps.date.cardBgColor || "",
-                        background_color: cleanBookingSteps.date.cardBgColor || "",
-                        card_background_color: cleanBookingSteps.date.cardBgColor || "",
-                      },
+                  date: {
+                    ...cleanBookingSteps.date,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.date.cardBgColor,
+                    card_background_color: cleanBookingSteps.date.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.date.cardBgColor,
+                    title_color: cleanBookingSteps.date.titleColor,
+                    subtitle_color: cleanBookingSteps.date.subtitleColor,
+                    accent_color: cleanBookingSteps.date.accentColor,
+                    bg_color: cleanBookingSteps.date.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor: cleanBookingSteps.date.cardBgColor || "",
+                      cardBackgroundColor: cleanBookingSteps.date.cardBgColor || "",
+                      background_color: cleanBookingSteps.date.cardBgColor || "",
+                      card_background_color: cleanBookingSteps.date.cardBgColor || "",
                     },
-                  }
+                  },
+                }
                 : {}),
               ...(cleanBookingSteps.time
                 ? {
-                    time: {
-                      ...cleanBookingSteps.time,
-                      // Mapeamento de Dualidade
-                      card_bg_color: cleanBookingSteps.time.cardBgColor,
-                      card_background_color: cleanBookingSteps.time.cardBgColor,
-                      cardBackgroundColor: cleanBookingSteps.time.cardBgColor,
-                      title_color: cleanBookingSteps.time.titleColor,
-                      subtitle_color: cleanBookingSteps.time.subtitleColor,
-                      accent_color: cleanBookingSteps.time.accentColor,
-                      bg_color: cleanBookingSteps.time.bgColor,
-                      // Suporte para cardConfig
-                      cardConfig: {
-                        backgroundColor: cleanBookingSteps.time.cardBgColor || "",
-                        cardBackgroundColor: cleanBookingSteps.time.cardBgColor || "",
-                        background_color: cleanBookingSteps.time.cardBgColor || "",
-                        card_background_color: cleanBookingSteps.time.cardBgColor || "",
-                      },
+                  time: {
+                    ...cleanBookingSteps.time,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.time.cardBgColor,
+                    card_background_color: cleanBookingSteps.time.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.time.cardBgColor,
+                    title_color: cleanBookingSteps.time.titleColor,
+                    subtitle_color: cleanBookingSteps.time.subtitleColor,
+                    accent_color: cleanBookingSteps.time.accentColor,
+                    bg_color: cleanBookingSteps.time.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor: cleanBookingSteps.time.cardBgColor || "",
+                      cardBackgroundColor: cleanBookingSteps.time.cardBgColor || "",
+                      background_color: cleanBookingSteps.time.cardBgColor || "",
+                      card_background_color: cleanBookingSteps.time.cardBgColor || "",
                     },
-                  }
+                  },
+                }
                 : {}),
               ...(cleanBookingSteps.form
                 ? {
-                    form: {
-                      ...cleanBookingSteps.form,
-                      // Mapeamento de Dualidade
-                      card_bg_color: cleanBookingSteps.form.cardBgColor,
-                      card_background_color: cleanBookingSteps.form.cardBgColor,
-                      cardBackgroundColor: cleanBookingSteps.form.cardBgColor,
-                      title_color: cleanBookingSteps.form.titleColor,
-                      subtitle_color: cleanBookingSteps.form.subtitleColor,
-                      accent_color: cleanBookingSteps.form.accentColor,
-                      bg_color: cleanBookingSteps.form.bgColor,
-                      // Suporte para cardConfig
-                      cardConfig: {
-                        backgroundColor: cleanBookingSteps.form.cardBgColor || "",
-                        cardBackgroundColor: cleanBookingSteps.form.cardBgColor || "",
-                        background_color: cleanBookingSteps.form.cardBgColor || "",
-                        card_background_color: cleanBookingSteps.form.cardBgColor || "",
-                      },
+                  form: {
+                    ...cleanBookingSteps.form,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.form.cardBgColor,
+                    card_background_color: cleanBookingSteps.form.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.form.cardBgColor,
+                    title_color: cleanBookingSteps.form.titleColor,
+                    subtitle_color: cleanBookingSteps.form.subtitleColor,
+                    accent_color: cleanBookingSteps.form.accentColor,
+                    bg_color: cleanBookingSteps.form.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor: cleanBookingSteps.form.cardBgColor || "",
+                      cardBackgroundColor: cleanBookingSteps.form.cardBgColor || "",
+                      background_color: cleanBookingSteps.form.cardBgColor || "",
+                      card_background_color: cleanBookingSteps.form.cardBgColor || "",
                     },
-                  }
+                  },
+                }
                 : {}),
               ...(cleanBookingSteps.confirmation
                 ? {
-                    confirmation: {
-                      ...cleanBookingSteps.confirmation,
-                      // Mapeamento de Dualidade
-                      card_bg_color: cleanBookingSteps.confirmation.cardBgColor,
-                      card_background_color:
-                        cleanBookingSteps.confirmation.cardBgColor,
+                  confirmation: {
+                    ...cleanBookingSteps.confirmation,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.confirmation.cardBgColor,
+                    card_background_color:
+                      cleanBookingSteps.confirmation.cardBgColor,
+                    cardBackgroundColor:
+                      cleanBookingSteps.confirmation.cardBgColor,
+                    title_color: cleanBookingSteps.confirmation.titleColor,
+                    subtitle_color: cleanBookingSteps.confirmation.subtitleColor,
+                    accent_color: cleanBookingSteps.confirmation.accentColor,
+                    bg_color: cleanBookingSteps.confirmation.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor:
+                        cleanBookingSteps.confirmation.cardBgColor || "",
                       cardBackgroundColor:
-                        cleanBookingSteps.confirmation.cardBgColor,
-                      title_color: cleanBookingSteps.confirmation.titleColor,
-                      subtitle_color: cleanBookingSteps.confirmation.subtitleColor,
-                      accent_color: cleanBookingSteps.confirmation.accentColor,
-                      bg_color: cleanBookingSteps.confirmation.bgColor,
-                      // Suporte para cardConfig
-                      cardConfig: {
-                        backgroundColor:
-                          cleanBookingSteps.confirmation.cardBgColor || "",
-                        cardBackgroundColor:
-                          cleanBookingSteps.confirmation.cardBgColor || "",
-                        background_color:
-                          cleanBookingSteps.confirmation.cardBgColor || "",
-                        card_background_color:
-                          cleanBookingSteps.confirmation.cardBgColor || "",
-                      },
+                        cleanBookingSteps.confirmation.cardBgColor || "",
+                      background_color:
+                        cleanBookingSteps.confirmation.cardBgColor || "",
+                      card_background_color:
+                        cleanBookingSteps.confirmation.cardBgColor || "",
                     },
-                  }
+                  },
+                }
                 : {}),
             },
           };
@@ -1391,7 +1395,7 @@ export function useEditorApi({
               // Mantemos o localStorage para evitar que o preview resete para o padrão (rosa) 
               // enquanto o studio.config do banco não é atualizado no frontend.
               // O estado isDirty=false já garante que não haverá aviso de alterações não salvas.
-              
+
               // 4. ATUALIZAÇÃO DO ESTADO LAST_SAVED (Sempre que o save no banco der certo)
               setters.setLastSavedHero(sanitizedHero);
               setters.setLastSavedAboutHero(sanitizedAboutHero);
@@ -1417,7 +1421,7 @@ export function useEditorApi({
               setters.setLastSavedBookingConfirmation(
                 cleanBookingSteps.confirmation,
               );
-              
+
               setIsDirty(false);
 
               // 5. ATUALIZAÇÃO DO CONTEXTO GLOBAL (Força re-render do site no editor)
@@ -1438,19 +1442,19 @@ export function useEditorApi({
             }
           }
 
-          setIsSaving(false); 
-      
-      // REMOVIDO DISPARO RECURSIVO: O estado lastSaved já foi atualizado, 
-      // o que forçará a reavaliação de hasUnsavedGlobalChanges naturalmente.
+          setIsSaving(false);
 
-      try { 
-        toast({ 
-          title: "Salvo com sucesso!", 
-          description: "As alterações foram salvas no rascunho.", 
-          duration: 2000, 
-        }); 
-      } catch(_e) {} 
-    } catch (err) {
+          // REMOVIDO DISPARO RECURSIVO: O estado lastSaved já foi atualizado, 
+          // o que forçará a reavaliação de hasUnsavedGlobalChanges naturalmente.
+
+          try {
+            toast({
+              title: "Salvo com sucesso!",
+              description: "As alterações foram salvas no rascunho.",
+              duration: 2000,
+            });
+          } catch (_e) { }
+        } catch (err) {
           console.error(
             ">>> [useEditorApi] Erro fatal ao salvar no backend:",
             err,
@@ -1468,7 +1472,7 @@ export function useEditorApi({
         console.warn(
           ">>> [useEditorApi] companyId não encontrado, salvando apenas localmente.",
         );
-        
+
         // Em modo local, atualizamos o lastSaved para refletir o que foi salvo no localStorage
         setters.setLastSavedHero(sanitizedHero);
         setters.setLastSavedAboutHero(sanitizedAboutHero);
@@ -1500,7 +1504,7 @@ export function useEditorApi({
       }
 
       window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
-      
+
       // LOGS DE DEPURAÇÃO PARA IDENTIFICAR POR QUE O BOTÃO DE PUBLICAR PODE ESTAR DESABILITADO
       console.log(">>> [useEditorApi] Fim de handleSaveGlobal. hasUnsavedGlobalChanges:", hasUnsavedGlobalChanges);
     },
@@ -1542,34 +1546,34 @@ export function useEditorApi({
         });
 
         // 3. Recarregar do banco para garantir sincronia total
-      await fetchCustomization(companyId);
+        await fetchCustomization(companyId);
 
-      // 4. ATUALIZAR ESTADOS LAST_APPLIED PARA REFLETIR QUE O RASCUNHO FOI PUBLICADO
-      // Isso fará com que hasUnsavedGlobalChanges se torne FALSE após a publicação
-      setters.setLastAppliedHero(settings.heroSettings);
-      setters.setLastAppliedAboutHero(settings.aboutHeroSettings);
-      setters.setLastAppliedStory(settings.storySettings);
-      setters.setLastAppliedTeam(settings.teamSettings);
-      setters.setLastAppliedTestimonials(settings.testimonialsSettings);
-      setters.setLastAppliedFont(settings.fontSettings);
-      setters.setLastAppliedColor(settings.colorSettings);
-      setters.setLastAppliedServices(settings.servicesSettings);
-      setters.setLastAppliedHomeValues(settings.homeValuesSettings);
-      setters.setLastAppliedAboutUsValues(settings.aboutUsValuesSettings);
-      setters.setLastAppliedGallery(settings.gallerySettings);
-      setters.setLastAppliedGalleryPage(settings.galleryPageSettings);
-      setters.setLastAppliedCTA(settings.ctaSettings);
-      setters.setLastAppliedHeader(settings.headerSettings);
-      setters.setLastAppliedFooter(settings.footerSettings);
+        // 4. ATUALIZAR ESTADOS LAST_APPLIED PARA REFLETIR QUE O RASCUNHO FOI PUBLICADO
+        // Isso fará com que hasUnsavedGlobalChanges se torne FALSE após a publicação
+        setters.setLastAppliedHero(settings.heroSettings);
+        setters.setLastAppliedAboutHero(settings.aboutHeroSettings);
+        setters.setLastAppliedStory(settings.storySettings);
+        setters.setLastAppliedTeam(settings.teamSettings);
+        setters.setLastAppliedTestimonials(settings.testimonialsSettings);
+        setters.setLastAppliedFont(settings.fontSettings);
+        setters.setLastAppliedColor(settings.colorSettings);
+        setters.setLastAppliedServices(settings.servicesSettings);
+        setters.setLastAppliedHomeValues(settings.homeValuesSettings);
+        setters.setLastAppliedAboutUsValues(settings.aboutUsValuesSettings);
+        setters.setLastAppliedGallery(settings.gallerySettings);
+        setters.setLastAppliedGalleryPage(settings.galleryPageSettings);
+        setters.setLastAppliedCTA(settings.ctaSettings);
+        setters.setLastAppliedHeader(settings.headerSettings);
+        setters.setLastAppliedFooter(settings.footerSettings);
 
-      setters.setLastAppliedBookingService(settings.bookingServiceSettings);
-      setters.setLastAppliedBookingDate(settings.bookingDateSettings);
-      setters.setLastAppliedBookingTime(settings.bookingTimeSettings);
-      setters.setLastAppliedBookingForm(settings.bookingFormSettings);
-      setters.setLastAppliedBookingConfirmation(
-        settings.bookingConfirmationSettings,
-      );
-    } else {
+        setters.setLastAppliedBookingService(settings.bookingServiceSettings);
+        setters.setLastAppliedBookingDate(settings.bookingDateSettings);
+        setters.setLastAppliedBookingTime(settings.bookingTimeSettings);
+        setters.setLastAppliedBookingForm(settings.bookingFormSettings);
+        setters.setLastAppliedBookingConfirmation(
+          settings.bookingConfirmationSettings,
+        );
+      } else {
         toast({
           title: "Erro ao publicar",
           description: "Não foi possível publicar as alterações. Tente novamente.",

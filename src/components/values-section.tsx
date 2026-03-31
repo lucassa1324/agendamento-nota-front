@@ -102,7 +102,7 @@ export function ValuesSection({
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
   >({});
-  const sectionId = source === "about" ? "about-values" : "values";
+  const sectionId = source === "about" ? "about-values" : "home-values";
 
   const studioId = studio?.id;
   const studioConfig = studio?.config;
@@ -492,7 +492,7 @@ export function ValuesSection({
 
       if (
         event.data.type === "HIGHLIGHT_SECTION" &&
-        (event.data.sectionId === "values" ||
+        (event.data.sectionId === "home-values" ||
           event.data.sectionId === "about-values")
       ) {
         setHighlightedElement(event.data.sectionId);
@@ -533,7 +533,7 @@ export function ValuesSection({
   const isVisible =
     source === "about"
       ? isSectionVisible("about-values")
-      : isSectionVisible("values");
+      : isSectionVisible("home-values");
 
   // Fallback Skeleton enquanto carrega do banco
   if (!isMounted || isLoading) {

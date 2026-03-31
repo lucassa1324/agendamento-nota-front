@@ -9,6 +9,7 @@ import {
   type StorySettings,
   sanitizeColor,
   sanitizeSection,
+  SECTION_IDS,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import {
@@ -158,9 +159,9 @@ export function StorySection() {
 
       if (
         event.data.type === "HIGHLIGHT_SECTION" &&
-        event.data.sectionId === "story"
+        event.data.sectionId === SECTION_IDS.homeStory
       ) {
-        setHighlightedElement("story");
+        setHighlightedElement(SECTION_IDS.homeStory);
         setTimeout(() => setHighlightedElement(null), 2000);
       }
     };
@@ -246,10 +247,10 @@ export function StorySection() {
   return (
     <SessionWrapper appearance={settings?.appearance}>
       <section
-        id="historia"
+        id={SECTION_IDS.homeStory}
         className={cn(
           "relative py-20 md:py-32 overflow-hidden transition-all duration-500",
-          highlightedElement === "historia" &&
+          highlightedElement === SECTION_IDS.homeStory &&
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >

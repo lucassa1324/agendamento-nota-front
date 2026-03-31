@@ -285,8 +285,8 @@ export const SidebarContent = memo(
       hasBookingConfirmationChanges;
 
     const isGallerySection =
-      activeSection === "gallery-preview" || activeSection === "gallery-grid";
-    const isGalleryPage = activeSection === "gallery-grid";
+      activeSection === "home-gallery" || activeSection === "page-gallery";
+    const isGalleryPage = activeSection === "page-gallery";
     const currentGallerySettings = isGalleryPage
       ? galleryPageSettings
       : gallerySettings;
@@ -296,7 +296,7 @@ export const SidebarContent = memo(
     const currentHasGalleryChanges = isGalleryPage
       ? hasGalleryPageChanges
       : hasGalleryChanges;
-    const isHomeValuesSection = activeSection === "values";
+    const isHomeValuesSection = activeSection === "home-values";
     const isAboutValuesSection = activeSection === "about-values";
 
     const [isResetOpen, setIsResetOpen] = useState(false);
@@ -388,7 +388,7 @@ export const SidebarContent = memo(
               </div>
 
               <div className="space-y-2 sm:space-y-3 xl:space-y-4 p-2 sm:p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
-                {activeSection === "header" && (
+                {activeSection === "layout-header" && (
           <HeaderEditor
             settings={headerSettings}
             onUpdate={onUpdateHeader}
@@ -397,7 +397,7 @@ export const SidebarContent = memo(
           />
         )}
 
-        {activeSection === "footer" && (
+        {activeSection === "layout-footer" && (
           <FooterEditor
             settings={footerSettings}
             onUpdate={onUpdateFooter}
@@ -423,13 +423,13 @@ export const SidebarContent = memo(
                     />
                   )}
 
-                {activeSection === "hero" && (
+                {activeSection === "home-hero" && (
                   <HeroEditor
                     settings={heroSettings}
                     onUpdate={onUpdateHero}
-                    onUpdateBackground={(updates) => onUpdateBackground(updates, "hero")}
+                    onUpdateBackground={(updates) => onUpdateBackground(updates, "home-hero")}
                     onHighlight={onHighlight}
-                    onReset={() => onSectionReset("hero")}
+                    onReset={() => onSectionReset("home-hero")}
                     hasChanges={hasHeroChanges}
                     onSave={onSaveHero}
                   />
@@ -445,7 +445,7 @@ export const SidebarContent = memo(
                     onSave={onSaveAboutHero}
                   />
                 )}
-                {activeSection === "story" && (
+                {activeSection === "home-story" && (
                   <HistoryEditor
                     settings={storySettings}
                     onUpdate={onUpdateStory}
@@ -454,12 +454,12 @@ export const SidebarContent = memo(
                     onSave={onSaveStory}
                   />
                 )}
-                {activeSection === "services" && (
+                {activeSection === "home-services" && (
                   <ServicesEditor
                     settings={servicesSettings}
                     onUpdate={onUpdateServices}
                     onUpdateBackground={onUpdateBackground}
-                    onReset={() => onSectionReset("services")}
+                    onReset={() => onSectionReset("home-services")}
                     hasChanges={hasServicesChanges}
                     onSave={onSaveServices}
                   />
@@ -481,7 +481,7 @@ export const SidebarContent = memo(
                     />
                   ))}
 
-                {activeSection === "team" && (
+                {activeSection === "home-team" && (
                   <TeamEditor
                     settings={teamSettings}
                     onUpdate={onUpdateTeam}
@@ -491,7 +491,7 @@ export const SidebarContent = memo(
                   />
                 )}
 
-                {activeSection === "testimonials" && (
+                {activeSection === "home-testimonials" && (
                   <TestimonialsEditor
                     settings={testimonialsSettings}
                     onUpdate={onUpdateTestimonials}
@@ -513,7 +513,7 @@ export const SidebarContent = memo(
                   />
                 )}
 
-                {activeSection === "cta" && (
+                {activeSection === "home-cta" && (
                   <CTAEditor
                     settings={ctaSettings}
                     onUpdate={onUpdateCTA}
@@ -584,20 +584,20 @@ export const SidebarContent = memo(
                 )}
 
                 {![
-                  "header",
-                  "footer",
+                  "layout-header",
+                  "layout-footer",
                   "typography",
-                  "hero",
+                  "home-hero",
                   "about-hero",
-                  "story",
-                  "team",
-                  "testimonials",
-                  "services",
-                  "values",
+                  "home-story",
+                  "home-team",
+                  "home-testimonials",
+                  "home-services",
+                  "home-values",
                   "about-values",
-                  "gallery-preview",
-                  "gallery-grid",
-                  "cta",
+                  "home-gallery",
+                  "page-gallery",
+                  "home-cta",
                   "booking-service",
                   "booking-date",
                   "booking-time",

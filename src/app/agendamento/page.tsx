@@ -5,7 +5,7 @@ import { Suspense, use, useEffect, useState } from "react";
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { BookingFlow } from "@/components/booking-flow";
 import { useStudio } from "@/context/studio-context";
-import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
+import { getPageVisibility, getVisibleSections, SECTION_IDS } from "@/lib/booking-data";
 
 export default function AgendamentoPage({
   searchParams: searchParamsPromise,
@@ -97,22 +97,29 @@ export default function AgendamentoPage({
   if (isVisible === null) return null;
 
   const isSectionVisible = (id: string) => {
+    // Se a seção estiver explicitamente escondida, ela NUNCA deve aparecer
+    if (visibleSections[id] === false) {
+      return false;
+    }
+
     if (isolatedSection) {
       // Se for o componente de booking, permitimos que ele apareça se qualquer um de seus passos estiver isolado
-      if (id === "booking") {
+      if (id === SECTION_IDS.booking) {
         return (
-          isolatedSection === "booking" ||
+          isolatedSection === SECTION_IDS.booking ||
           isolatedSection.startsWith("booking-")
         );
       }
       return isolatedSection === id;
     }
-    return visibleSections[id] !== false;
+
+    // Caso contrário, a seção é visível por padrão
+    return true;
   };
 
   return (
     <main>
-      {isSectionVisible("booking") && (
+      {isSectionVisible(SECTION_IDS.booking) && (
         <Suspense fallback={<div className="min-h-screen bg-background" />}>
           <BookingFlow />
         </Suspense>

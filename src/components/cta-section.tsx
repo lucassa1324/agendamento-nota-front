@@ -10,6 +10,7 @@ import {
   getCTASettings,
   getPageVisibility,
   sanitizeColor,
+  SECTION_IDS,
 } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
 import {
@@ -171,9 +172,9 @@ export function CTASection() {
 
       if (
         event.data.type === "HIGHLIGHT_SECTION" &&
-        event.data.sectionId === "cta"
+        event.data.sectionId === SECTION_IDS.homeCta
       ) {
-        setHighlightedElement("cta");
+        setHighlightedElement(SECTION_IDS.homeCta);
         setTimeout(() => setHighlightedElement(null), 2000);
       }
     };
@@ -195,10 +196,11 @@ export function CTASection() {
   return (
     <SessionWrapper appearance={settings?.appearance}>
       <section
-        id="cta"
+        id={SECTION_IDS.homeCta}
         className={cn(
           "py-20 md:py-32 relative overflow-hidden transition-all duration-500",
-          highlightedElement === "cta" && "ring-4 ring-primary ring-inset z-50",
+          highlightedElement === SECTION_IDS.homeCta &&
+            "ring-4 ring-primary ring-inset z-50",
         )}
       >
       <SectionBackground settings={settings as SectionBackgroundSettings} />

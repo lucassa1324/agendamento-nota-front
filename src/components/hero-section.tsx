@@ -27,6 +27,7 @@ import {
   type SiteProfile,
   sanitizeColor,
   sanitizeSection,
+  SECTION_IDS,
 } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
 import {
@@ -211,7 +212,7 @@ export function HeroSection() {
   if (!isMounted || isLoading) {
     return (
       <section
-        id="inicio"
+        id={SECTION_IDS.homeHero}
         className="relative min-h-[90vh] flex items-center justify-center bg-background"
       >
         <div className="container mx-auto px-4 text-center">
@@ -266,10 +267,10 @@ export function HeroSection() {
   return (
     <SessionWrapper appearance={customStyles?.appearance}>
       <section
-        id="inicio"
+        id={SECTION_IDS.homeHero}
         className={cn(
           "relative min-h-[80vh] md:min-h-screen flex items-center transition-all duration-500 pt-16 md:pt-0 overflow-hidden",
-          getHighlightClass("inicio"),
+          getHighlightClass(SECTION_IDS.homeHero),
         )}
       >
         <SectionBackground settings={customStyles as SectionBackgroundSettings} />

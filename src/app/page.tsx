@@ -150,8 +150,14 @@ export default function Home({
   }, []);
 
   const isVisible = (id: string) => {
-    // Se houver uma seção isolada, apenas ela deve aparecer
-    // Exceção: 'typography' e 'colors' mostram a página inteira
+    // Se a seção estiver explicitamente escondida, ela NUNCA deve aparecer
+    // Isso garante que o botão 'Ocultar seção' funcione mesmo durante o isolamento (edição)
+    if (visibleSections[id] === false) {
+      return false;
+    }
+
+    // Se houver uma seção isolada (modo de edição focada), apenas ela deve aparecer
+    // Exceção: 'typography' e 'colors' mostram a página inteira para visualização global
     if (
       isolatedSection &&
       isolatedSection !== "typography" &&
@@ -159,8 +165,9 @@ export default function Home({
     ) {
       return isolatedSection === id;
     }
-    // Caso contrário, verificamos se a seção está marcada como visível (default é true)
-    return visibleSections[id] !== false;
+
+    // Caso contrário, a seção é visível por padrão
+    return true;
   };
 
   // Se estiver carregando o studio ou redirecionando, mostramos um estado neutro
@@ -181,11 +188,11 @@ export default function Home({
 
   return (
     <main key={publishVersion}>
-      {isVisible("hero") && <HeroSection />}
-      {isVisible("services") && <ServicesSection />}
-      {isVisible("values") && <ValuesSection source="home" />}
-      {isVisible("gallery-preview") && <GalleryPreview />}
-      {isVisible("cta") && <CTASection />}
+      {isVisible("home-hero") && <HeroSection />}
+      {isVisible("home-services") && <ServicesSection />}
+      {isVisible("home-values") && <ValuesSection source="home" />}
+      {isVisible("home-gallery") && <GalleryPreview />}
+      {isVisible("home-cta") && <CTASection />}
     </main>
   );
 }

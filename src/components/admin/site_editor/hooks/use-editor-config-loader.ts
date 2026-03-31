@@ -56,8 +56,8 @@ const normalizeSection = <T extends Record<string, unknown>>(
   if (!value || !isRecord(value)) return defaultValue;
 
   // Deep merge com o valor padrão para garantir que todos os campos existam
-  const merged = defaultValue 
-    ? { ...defaultValue, ...value } 
+  const merged = defaultValue
+    ? { ...defaultValue, ...value }
     : { ...value };
 
   // Tratamento de segurança contra o Object Object Bug
@@ -69,7 +69,7 @@ const normalizeSection = <T extends Record<string, unknown>>(
       // Tenta pegar o texto de várias formas comuns que o CMS pode enviar
       const extracted = (obj.text as string) || (obj.value as string) || (obj.content as string) || (obj.title as string);
       if (typeof extracted === 'string') return extracted;
-      
+
       // Se ainda for objeto e tiver um toString personalizado, usa, senão retorna o default
       return defaultStr;
     }
@@ -84,15 +84,15 @@ const normalizeSection = <T extends Record<string, unknown>>(
   const bgImage = safeString(appearance.backgroundImageUrl || merged.bgImage || "");
 
   let bgType: "color" | "image" = merged.bgType as "color" | "image";
-    if (merged.bgType === "color" || merged.bgType === "image") {
-      bgType = merged.bgType as "color" | "image";
-    } 
-    else if (typeof appearance.showBackgroundImage === "boolean") {
-      bgType = appearance.showBackgroundImage ? "image" : "color";
-    } 
-    else {
-      bgType = bgImage ? "image" : "color";
-    }
+  if (merged.bgType === "color" || merged.bgType === "image") {
+    bgType = merged.bgType as "color" | "image";
+  }
+  else if (typeof appearance.showBackgroundImage === "boolean") {
+    bgType = appearance.showBackgroundImage ? "image" : "color";
+  }
+  else {
+    bgType = bgImage ? "image" : "color";
+  }
 
   const bgColor = safeString(
     appearance.backgroundColor ||
@@ -105,15 +105,15 @@ const normalizeSection = <T extends Record<string, unknown>>(
 
   const cardBgColor = safeString(
     merged.cardBgColor ||
-      (merged as Record<string, unknown>).cardBackgroundColor ||
-      (merged as Record<string, unknown>).card_background_color ||
-      content.cardBgColor ||
-      appearance.cardBgColor ||
-      appearance.cardBackgroundColor ||
-      cardConfig.cardBackgroundColor ||
-      cardConfig.backgroundColor ||
-      itemsStyle.itemBackgroundColor ||
-      ""
+    (merged as Record<string, unknown>).cardBackgroundColor ||
+    (merged as Record<string, unknown>).card_background_color ||
+    content.cardBgColor ||
+    appearance.cardBgColor ||
+    appearance.cardBackgroundColor ||
+    cardConfig.cardBackgroundColor ||
+    cardConfig.backgroundColor ||
+    itemsStyle.itemBackgroundColor ||
+    ""
   );
 
   const flattened = {
@@ -179,7 +179,7 @@ const normalizeValuesSettings = (
   const itemsStyle = valuesRecord?.itemsStyle as Record<string, unknown> | undefined;
   const itemsStyleCardBg =
     (itemsStyle?.itemBackgroundColor as string) || "";
-    
+
   const content = valuesRecord?.content as Record<string, unknown> | undefined;
   const contentCardBg = content?.cardBgColor as string || "";
   const appearance = valuesRecord?.appearance as Record<string, unknown> | undefined;
@@ -190,15 +190,15 @@ const normalizeValuesSettings = (
 
   const valuesSourceWithCardBg = (itemsStyleCardBg || contentCardBg || appearanceCardBg)
     ? {
-        ...valuesRecord,
-        cardBgColor: (valuesRecord?.cardBgColor as string | undefined) ||
-          contentCardBg ||
-          appearanceCardBg ||
-          itemsStyleCardBg,
-        cardBackgroundColor:
-          (valuesRecord?.cardBackgroundColor as string | undefined) ||
-          contentCardBg || appearanceCardBg || itemsStyleCardBg,
-      }
+      ...valuesRecord,
+      cardBgColor: (valuesRecord?.cardBgColor as string | undefined) ||
+        contentCardBg ||
+        appearanceCardBg ||
+        itemsStyleCardBg,
+      cardBackgroundColor:
+        (valuesRecord?.cardBackgroundColor as string | undefined) ||
+        contentCardBg || appearanceCardBg || itemsStyleCardBg,
+    }
     : (valuesRecord || defaultValue);
 
   const base = normalizeSection(
@@ -359,7 +359,7 @@ export function useEditorConfigLoader({
       const apiTime = baseConfig.updatedAt ? new Date(baseConfig.updatedAt).getTime() : 0;
       const localTime = Number(drafts.draftTimestamp) || 0;
       const isFallback = (config as Record<string, unknown>).isFallback || (baseConfig as Record<string, unknown>).isFallback;
-      
+
       console.log(`>>> [SYNC_CHECK] Server: ${apiTime} | Local: ${localTime} | Fallback: ${isFallback}`);
 
       // REMOVIDO: Sincronização automática para o LocalStorage. 
@@ -432,10 +432,10 @@ export function useEditorConfigLoader({
             .replace("booking", "")
             .replace("Settings", "")
             .toLowerCase();
-          
+
           const appointmentFlow = (baseConfig as Record<string, unknown>).appointmentFlow as Record<string, unknown> | undefined;
-          const nestedValue = 
-            (appointmentFlow?.[stepKey] as Record<string, unknown>) || 
+          const nestedValue =
+            (appointmentFlow?.[stepKey] as Record<string, unknown>) ||
             (appointmentFlow?.steps as Record<string, unknown>)?.[stepKey] ||
             (appointmentFlow?.steps as Record<string, unknown>)?.step1Services || // Mapeamento profundo para step1Services
             ((baseConfig as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.[stepKey];
@@ -560,7 +560,7 @@ export function useEditorConfigLoader({
                 home?.services ||
                 layoutGlobal?.services ||
                 baseConfig.services) as ServicesSettings;
-              
+
               const cardConfig = (servicesSource as Record<string, unknown>)?.cardConfig as Record<string, unknown>;
               if (cardConfig) {
                 return {
@@ -600,15 +600,21 @@ export function useEditorConfigLoader({
           slug,
         ),
         visibleSections: (() => {
-          const base = (drafts.visibleSections as Record<string, boolean>) || 
-            layoutGlobal?.visibleSections || 
+          const bankValue =
+            layoutGlobal?.visibleSections ||
             layoutGlobal?.visible_sections ||
-            baseConfig.visibleSections || 
-            baseConfig.visible_sections || 
+            baseConfig.visibleSections ||
+            baseConfig.visible_sections;
+
+          const base = (force && bankValue)
+            ? (bankValue as Record<string, boolean>)
+            : (drafts.visibleSections as Record<string, boolean>) ||
+            (bankValue as Record<string, boolean>) ||
             {};
+
           const resolvedAboutValues =
             base["about-values"] ?? base.values ?? true;
-          
+
           // Forçar visibilidade para aura.teste se estiverem faltando
           if (slug === "aura.teste") {
             return {
@@ -627,10 +633,23 @@ export function useEditorConfigLoader({
           }
           return base["about-values"] === undefined
             ? {
-                ...base,
-                "about-values": resolvedAboutValues,
-              }
+              ...base,
+              "about-values": resolvedAboutValues,
+            }
             : base;
+        })(),
+        pageVisibility: (() => {
+          const bankValue =
+            layoutGlobal?.pageVisibility ||
+            layoutGlobal?.page_visibility ||
+            baseConfig.pageVisibility ||
+            baseConfig.page_visibility;
+
+          return (force && bankValue)
+            ? (bankValue as Record<string, boolean>)
+            : (drafts.pageVisibility as Record<string, boolean>) ||
+            (bankValue as Record<string, boolean>) ||
+            {};
         })(),
         galleryPreviewSettings: normalizeSection(
           getSectionValue(
@@ -772,16 +791,16 @@ export function useEditorConfigLoader({
         // Se o valor carregado for igual ao rascunho e o rascunho for mais recente, 
         // mantemos o lastSaved como o valor do banco para permitir salvar.
         const isUsingDraft = JSON.stringify(sanitizedHero) === JSON.stringify(drafts.heroSettings);
-        
+
         if (isUsingDraft && !isBankValueEmptyOrDefault(heroSource, defaultHeroSettings)) {
           setLastSavedHero(normalizeHeroSettings(heroSource) || defaultHeroSettings);
         } else {
-        setLastSavedHero(sanitizedHero);
+          setLastSavedHero(sanitizedHero);
         }
         setHeroSettings(sanitizedHero);
-      if (force) {
-        setLastAppliedHero(sanitizedHero);
-      }
+        if (force) {
+          setLastAppliedHero(sanitizedHero);
+        }
       }
 
       // Resto das seções...
@@ -790,7 +809,7 @@ export function useEditorConfigLoader({
         dataValue: T | undefined,
         setSettings: (v: T) => void,
         setLastSaved: (v: T) => void,
-      setLastApplied: ((v: T) => void) | undefined,
+        setLastApplied: ((v: T) => void) | undefined,
         defaultValue: T,
         bankValue: T | undefined,
       ) => {
@@ -806,17 +825,17 @@ export function useEditorConfigLoader({
           } else {
             setLastSaved(dataValue);
           }
-        setSettings(dataValue);
-        if (force && setLastApplied) {
-          setLastApplied(dataValue);
+          setSettings(dataValue);
+          if (force && setLastApplied) {
+            setLastApplied(dataValue);
+          }
+        } else {
+          setSettings(defaultValue);
+          setLastSaved(defaultValue);
+          if (force && setLastApplied) {
+            setLastApplied(defaultValue);
+          }
         }
-      } else {
-        setSettings(defaultValue);
-        setLastSaved(defaultValue);
-        if (force && setLastApplied) {
-          setLastApplied(defaultValue);
-        }
-      }
       };
 
       const normalizeColorSettings = (value?: ColorSettings): ColorSettings => {
@@ -1128,22 +1147,22 @@ export function useEditorConfigLoader({
         testimonialsSettings: data.testimonials || defaultTestimonialsSettings,
         fontSettings:
           (data as Record<string, unknown>).theme &&
-          typeof (data as Record<string, unknown>).theme === "object" &&
-          Object.keys((data as Record<string, unknown>).theme as object).length > 0
+            typeof (data as Record<string, unknown>).theme === "object" &&
+            Object.keys((data as Record<string, unknown>).theme as object).length > 0
             ? ((data as Record<string, unknown>).theme as FontSettings)
             : data.font &&
-                typeof data.font === "object" &&
-                Object.keys(data.font).length > 0
+              typeof data.font === "object" &&
+              Object.keys(data.font).length > 0
               ? (data.font as FontSettings)
               : defaultFontSettings,
         colorSettings:
           (data as Record<string, unknown>).colors &&
-          typeof (data as Record<string, unknown>).colors === "object" &&
-          Object.keys((data as Record<string, unknown>).colors as object).length > 0
+            typeof (data as Record<string, unknown>).colors === "object" &&
+            Object.keys((data as Record<string, unknown>).colors as object).length > 0
             ? ((data as Record<string, unknown>).colors as ColorSettings)
             : data.color &&
-                typeof data.color === "object" &&
-                Object.keys(data.color).length > 0
+              typeof data.color === "object" &&
+              Object.keys(data.color).length > 0
               ? (data.color as ColorSettings)
               : defaultColorSettings,
         servicesSettings: data.services || defaultServicesSettings,
@@ -1160,52 +1179,52 @@ export function useEditorConfigLoader({
         footerSettings: data.footer || defaultFooterSettings,
         bookingServiceSettings:
           ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.service &&
-          typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).service === "object" &&
-          Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).service as object).length > 0
+            typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).service === "object" &&
+            Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).service as object).length > 0
             ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).service as BookingStepSettings)
             : data.bookingService &&
-                typeof data.bookingService === "object" &&
-                Object.keys(data.bookingService).length > 0
+              typeof data.bookingService === "object" &&
+              Object.keys(data.bookingService).length > 0
               ? (data.bookingService as BookingStepSettings)
               : defaultBookingServiceSettings,
         bookingDateSettings:
           ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.date &&
-          typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).date === "object" &&
-          Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).date as object).length > 0
+            typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).date === "object" &&
+            Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).date as object).length > 0
             ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).date as BookingStepSettings)
             : data.bookingDate &&
-                typeof data.bookingDate === "object" &&
-                Object.keys(data.bookingDate).length > 0
+              typeof data.bookingDate === "object" &&
+              Object.keys(data.bookingDate).length > 0
               ? (data.bookingDate as BookingStepSettings)
               : defaultBookingDateSettings,
         bookingTimeSettings:
           ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.time &&
-          typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).time === "object" &&
-          Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).time as object).length > 0
+            typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).time === "object" &&
+            Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).time as object).length > 0
             ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).time as BookingStepSettings)
             : data.bookingTime &&
-                typeof data.bookingTime === "object" &&
-                Object.keys(data.bookingTime).length > 0
+              typeof data.bookingTime === "object" &&
+              Object.keys(data.bookingTime).length > 0
               ? (data.bookingTime as BookingStepSettings)
               : defaultBookingTimeSettings,
         bookingFormSettings:
           ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.form &&
-          typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).form === "object" &&
-          Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).form as object).length > 0
+            typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).form === "object" &&
+            Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).form as object).length > 0
             ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).form as BookingStepSettings)
             : data.bookingForm &&
-                typeof data.bookingForm === "object" &&
-                Object.keys(data.bookingForm).length > 0
+              typeof data.bookingForm === "object" &&
+              Object.keys(data.bookingForm).length > 0
               ? (data.bookingForm as BookingStepSettings)
               : defaultBookingFormSettings,
         bookingConfirmationSettings:
           ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.confirmation &&
-          typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).confirmation === "object" &&
-          Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).confirmation as object).length > 0
+            typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).confirmation === "object" &&
+            Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).confirmation as object).length > 0
             ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).confirmation as BookingStepSettings)
             : data.bookingConfirmation &&
-                typeof data.bookingConfirmation === "object" &&
-                Object.keys(data.bookingConfirmation).length > 0
+              typeof data.bookingConfirmation === "object" &&
+              Object.keys(data.bookingConfirmation).length > 0
               ? (data.bookingConfirmation as BookingStepSettings)
               : defaultBookingConfirmationSettings,
         pageVisibility: data.pageVisibility || {},

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
-import { getTeamSettings, sanitizeColor, type TeamSettings } from "@/lib/booking-data";
+import { getTeamSettings, sanitizeColor, type TeamSettings, SECTION_IDS } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import {
   SectionBackground,
@@ -143,9 +143,9 @@ export function TeamSection() {
 
       if (
         event.data.type === "HIGHLIGHT_SECTION" &&
-        event.data.sectionId === "team"
+        event.data.sectionId === SECTION_IDS.homeTeam
       ) {
-        setHighlightedElement("team");
+        setHighlightedElement(SECTION_IDS.homeTeam);
         setTimeout(() => setHighlightedElement(null), 2000);
       }
     };
@@ -164,7 +164,7 @@ export function TeamSection() {
   // Fallback Skeleton enquanto carrega do banco
   if (!isMounted || isLoading) {
     return (
-      <section id="team" className="py-20 bg-background">
+      <section id={SECTION_IDS.homeTeam} className="py-20 bg-background">
         <div className="container mx-auto px-4">
           <div className="h-10 w-64 bg-gray-200 animate-pulse mx-auto mb-4 rounded"></div>
           <div className="h-6 w-96 bg-gray-200 animate-pulse mx-auto mb-12 rounded"></div>
@@ -183,10 +183,10 @@ export function TeamSection() {
   return (
     <SessionWrapper appearance={settings?.appearance}>
       <section
-        id="equipe"
+        id={SECTION_IDS.homeTeam}
         className={cn(
           "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
-          highlightedElement === "equipe" &&
+          highlightedElement === SECTION_IDS.homeTeam &&
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >

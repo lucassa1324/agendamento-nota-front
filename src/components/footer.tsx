@@ -23,6 +23,7 @@ import {
   getSiteProfile,
   getVisibleSections,
   type SiteProfile,
+  SECTION_IDS,
 } from "@/lib/booking-data";
 import { getFullImageUrl } from "@/lib/utils";
 
@@ -49,7 +50,7 @@ export function Footer({
   );
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
-  >({ footer: true });
+  >({ [SECTION_IDS.layoutFooter]: true });
   const [mounted, setMounted] = useState(false);
 
   const only = searchParams.get("only");
@@ -157,7 +158,7 @@ export function Footer({
     setPageVisibility(getPageVisibility());
     // Forçar visibilidade do footer para teste
     const currentVisible = getVisibleSections();
-    setVisibleSections({ ...currentVisible, footer: true });
+    setVisibleSections({ ...currentVisible, [SECTION_IDS.layoutFooter]: true });
 
     if (!externalFooterSettings) {
       if (studioFooterConfig) {
@@ -237,10 +238,10 @@ export function Footer({
   }, [studioId, studioName, studioSiteName, studioDescription, studioPhone, studioEmail, studioAddress, studioContact, studioFooterConfig, studioInstagram, studioFacebook, studioWhatsapp, studioTiktok, studioLinkedin, studioX, studioLogoUrl, studioTitleSuffix, studioShowInstagram, studioShowFacebook, studioShowWhatsapp, studioShowTiktok, studioShowLinkedin, studioShowX, pathname, externalFooterSettings]);
 
   // Se estivermos isolando algo que não seja o footer, escondemos o footer
-  if (only && only !== "footer") return null;
+  if (only && only !== SECTION_IDS.layoutFooter) return null;
 
   // TRAVAS DE RENDERIZAÇÃO
-  if (!only && visibleSections.footer === false) return null;
+  if (!only && visibleSections[SECTION_IDS.layoutFooter] === false) return null;
 
   // Para evitar erro de hidratação, no primeiro render (SSR e primeira batida do client)
   // usamos o defaultSiteProfile. Após o mount, usamos o profile real.
@@ -335,7 +336,7 @@ export function Footer({
 
   return (
     <footer
-      id="footer"
+      id={SECTION_IDS.layoutFooter}
       className={`relative z-50 border-t border-border transition-colors duration-300 ${!footerSettings.bgColor ? "bg-secondary/30" : ""}`}
       style={footerStyle}
     >

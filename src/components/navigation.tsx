@@ -16,6 +16,7 @@ import {
   getVisibleSections,
   type HeaderSettings,
   type SiteProfile,
+  SECTION_IDS,
 } from "@/lib/booking-data";
 import { getFullImageUrl } from "@/lib/utils";
 
@@ -157,10 +158,10 @@ export function Navigation({
   ]);
 
   // Se estivermos isolando algo que não seja o header, escondemos o navigation
-  if (only && only !== "header") return null;
+  if (only && only !== SECTION_IDS.layoutHeader) return null;
 
   // Se o header estiver desativado nas seções visíveis, e não estivermos isolando ele
-  if (!only && visibleSections.header === false) return null;
+  if (!only && visibleSections[SECTION_IDS.layoutHeader] === false) return null;
 
   const isActive = (path: string) => pathname === path;
 
@@ -211,7 +212,7 @@ export function Navigation({
 
   return (
     <nav
-      id="header"
+      id={SECTION_IDS.layoutHeader}
       className="sticky top-0 z-50 border-b border-border/50 transition-all duration-300"
       style={headerStyle}
     >

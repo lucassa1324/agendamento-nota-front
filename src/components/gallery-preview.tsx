@@ -92,7 +92,7 @@ export function GalleryPreview() {
     null,
   );
   const settingsKey = useMemo(() => {
-    if (!settings) return "gallery-preview";
+    if (!settings) return SECTION_IDS.homeGallery;
     return JSON.stringify({
       title: settings.title,
       subtitle: settings.subtitle,
@@ -455,9 +455,9 @@ export function GalleryPreview() {
 
       if (
         event.data.type === "HIGHLIGHT_SECTION" &&
-        event.data.sectionId === "gallery-preview"
+        event.data.sectionId === SECTION_IDS.homeGallery
       ) {
-        setHighlightedElement("gallery-preview");
+        setHighlightedElement(SECTION_IDS.homeGallery);
         setTimeout(() => setHighlightedElement(null), 2000);
       }
     };
@@ -543,10 +543,10 @@ export function GalleryPreview() {
   return (
     <section
       key={settingsKey}
-      id="gallery-preview"
+      id={SECTION_IDS.homeGallery}
       className={cn(
         "py-20 md:py-32 relative overflow-hidden transition-all duration-500",
-        highlightedElement === "gallery-preview" &&
+        highlightedElement === SECTION_IDS.homeGallery &&
           "ring-4 ring-primary ring-inset z-50",
       )}
       style={{

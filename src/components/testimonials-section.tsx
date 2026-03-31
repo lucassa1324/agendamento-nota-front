@@ -9,6 +9,7 @@ import {
   getTestimonialsSettings,
   sanitizeColor,
   type TestimonialsSettings,
+  SECTION_IDS,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import {
@@ -159,9 +160,9 @@ export function TestimonialsSection() {
 
       if (
         event.data.type === "HIGHLIGHT_SECTION" &&
-        event.data.sectionId === "testimonials"
+        event.data.sectionId === SECTION_IDS.homeTestimonials
       ) {
-        setHighlightedElement("testimonials");
+        setHighlightedElement(SECTION_IDS.homeTestimonials);
         setTimeout(() => setHighlightedElement(null), 2000);
       }
     };
@@ -180,7 +181,7 @@ export function TestimonialsSection() {
   // Fallback Skeleton enquanto carrega do banco
   if (!isMounted || isLoading) {
     return (
-      <section id="testimonials" className="py-20 bg-background">
+      <section id={SECTION_IDS.homeTestimonials} className="py-20 bg-background">
         <div className="container mx-auto px-4">
           <div className="h-10 w-64 bg-gray-200 animate-pulse mx-auto mb-4 rounded"></div>
           <div className="h-6 w-96 bg-gray-200 animate-pulse mx-auto mb-12 rounded"></div>
@@ -199,10 +200,10 @@ export function TestimonialsSection() {
   return (
     <SessionWrapper appearance={settings?.appearance}>
       <section
-        id="testimonials"
+        id={SECTION_IDS.homeTestimonials}
         className={cn(
           "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
-          highlightedElement === "testimonials" &&
+          highlightedElement === SECTION_IDS.homeTestimonials &&
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >
