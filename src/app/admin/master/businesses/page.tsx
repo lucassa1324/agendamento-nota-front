@@ -167,11 +167,17 @@ export default function MasterBusinessesPage() {
           : c.accessType !== "manual",
     );
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
+  const getStatusBadge = (company: CompanyMasterData) => {
+    // Prioridade 1: Se o acesso está inativo manualmente, mostrar como pendente
+    if (!company.active) {
+      return <Badge variant="destructive">Pagamento Pendente</Badge>;
+    }
+
+    switch (company.subscriptionStatus) {
       case "active":
         return <Badge className="bg-green-500 hover:bg-green-600">Ativo</Badge>;
       case "trialing":
+      case "trial":
         return <Badge className="bg-blue-500 hover:bg-blue-600">Trial</Badge>;
       case "past_due":
         return <Badge variant="destructive">Pagamento Pendente</Badge>;
@@ -180,7 +186,7 @@ export default function MasterBusinessesPage() {
       case "canceled":
         return <Badge variant="secondary">Cancelado</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline">{company.subscriptionStatus}</Badge>;
     }
   };
 
@@ -282,7 +288,7 @@ export default function MasterBusinessesPage() {
                       </TableCell>
                       <TableCell>{company.slug}</TableCell>
                       <TableCell>
-                        {getStatusBadge(company.subscriptionStatus)}
+                        {getStatusBadge(company)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -309,7 +315,7 @@ export default function MasterBusinessesPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {company.subscriptionStatus !== "active" ? (
+                          {company.subscriptionStatus !== "active" || !company.active ? (
                             <Button
                               size="sm"
                               variant="default"

@@ -107,7 +107,8 @@ export function SubscriptionBlockScreen({
       const data = await response.json();
 
       if (data.url) {
-        window.open(data.url, "_blank");
+        // Redireciona na mesma aba para evitar bloqueio de popup e garantir que o usuário veja a cobrança
+        window.location.href = data.url;
       } else {
         throw new Error(data.error || "Erro ao gerar link de pagamento");
       }
