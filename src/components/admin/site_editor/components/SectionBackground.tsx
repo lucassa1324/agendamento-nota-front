@@ -43,42 +43,34 @@ export function SectionBackground({
 }: SectionBackgroundProps) {
   const [imageError, setImageError] = useState(false);
 
-  // Se o tipo for 'color', a URL da imagem DEVE ser anulada, ignorando o banco.
+  // MANTEMOS a URL da imagem mesmo se o tipo for 'color' para permitir testes sem perda de dados.
+  // A visibilidade é controlada por shouldShowImage abaixo.
   // TASK 2: Se a URL começar com #, tratamos como nulo (bug do banco enviando hex como imagem)
   let bgImage =
-    settings.bgType === "image"
-      ? settings.appearance?.backgroundImageUrl ||
-        settings.bgImage ||
-        defaultImage
-      : null;
+    settings.appearance?.backgroundImageUrl || settings.bgImage || defaultImage;
 
   if (bgImage?.startsWith("#")) {
     console.warn(`[IMAGE_BUG_FIX] Ignorando hex ${bgImage} como URL de imagem`);
-    bgImage = null;
+    bgImage = undefined;
   }
 
   const hasValidImage = !!bgImage;
 
   // Calculamos valores efetivos com fallbacks robustos
-  const effectiveBgType = settings.bgType || (hasValidImage ? "image" : "color");
-  
-  const effectiveImageOpacity = 
-    settings.imageOpacity ?? 
-    settings.appearance?.imageOpacity ?? 
-    1;
+  const effectiveBgType =
+    settings.bgType || (hasValidImage ? "image" : "color");
 
-  const effectiveOverlayOpacity = 
-    settings.overlayOpacity ?? 
-    settings.appearance?.overlay?.opacity ?? 
-    0;
+  const effectiveImageOpacity =
+    settings.imageOpacity ?? settings.appearance?.imageOpacity ?? 1;
 
-  const effectiveOverlayColor = 
-    settings.appearance?.overlay?.color || 
-    "";
+  const effectiveOverlayOpacity =
+    settings.overlayOpacity ?? settings.appearance?.overlay?.opacity ?? 0;
 
-  const effectiveBackgroundColor = 
-    settings.appearance?.backgroundColor || 
-    settings.bgColor || 
+  const effectiveOverlayColor = settings.appearance?.overlay?.color || "";
+
+  const effectiveBackgroundColor =
+    settings.appearance?.backgroundColor ||
+    settings.bgColor ||
     "var(--background, white)";
 
   const effectiveImageScale = settings.imageScale ?? 1;
@@ -86,7 +78,8 @@ export function SectionBackground({
   const effectiveImageY = settings.imageY ?? 50;
 
   // Só mostramos imagem se o TIPO selecionado for 'image' E existir uma URL e não houver erro
-  const shouldShowImage = effectiveBgType === "image" && hasValidImage && !imageError;
+  const shouldShowImage =
+    effectiveBgType === "image" && hasValidImage && !imageError;
 
   return (
     <div
@@ -97,7 +90,9 @@ export function SectionBackground({
         className,
       )}
       style={{
-        backgroundColor: !hideColorLayer ? color || effectiveBackgroundColor : undefined,
+        backgroundColor: !hideColorLayer
+          ? color || effectiveBackgroundColor
+          : undefined,
       }}
     >
       {/* CAMADA DE COR: Sempre visível se o tipo for 'color' OU se não tiver imagem para mostrar */}
@@ -108,7 +103,9 @@ export function SectionBackground({
             backgroundColor: effectiveBackgroundColor,
             backgroundImage: effectiveBgType === "color" ? "none" : undefined,
             display:
-              effectiveBgType === "color" || !shouldShowImage ? "block" : "none",
+              effectiveBgType === "color" || !shouldShowImage
+                ? "block"
+                : "none",
           }}
         />
       )}
@@ -147,7 +144,7 @@ export function SectionBackground({
         className={cn(
           "absolute inset-0 z-1 transition-opacity duration-500",
           !effectiveOverlayColor && !gradientClassName && "bg-black/20",
-          !effectiveOverlayColor && gradientClassName
+          !effectiveOverlayColor && gradientClassName,
         )}
         style={{
           opacity: effectiveOverlayOpacity,

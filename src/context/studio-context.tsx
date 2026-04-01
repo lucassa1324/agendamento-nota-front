@@ -1369,12 +1369,15 @@ export function StudioProvider({
 
             setStudio(initialStudio);
 
-            // 6. Guarda de Rota: Se o estúdio estiver inativo, redirecionar (Exceto para Master Admin e Minha Conta)
+            // 6. Guarda de Rota: Se o estúdio estiver inativo, redirecionar (Exceto para Editor, Master Admin e Minha Conta)
             if (initialStudio.active === false) {
               if (
                 typeof window !== "undefined" &&
+                !isAdminPath &&
+                !isPreview &&
                 !window.location.pathname.startsWith("/admin/master") &&
-                !window.location.pathname.includes("/dashboard/minha-conta")
+                !window.location.pathname.includes("/dashboard/minha-conta") &&
+                !window.location.pathname.startsWith("/acesso-suspenso")
               ) {
                 console.error(
                   ">>> [STUDIO_GUARD] Estúdio inativo detectado no carregamento inicial. Redirecionando...",
@@ -1606,6 +1609,8 @@ export function StudioProvider({
     if (studio && studio.active === false) {
       if (
         typeof window !== "undefined" &&
+        !isAdminPath &&
+        !isPreview &&
         !window.location.pathname.startsWith("/admin/master") &&
         !window.location.pathname.includes("/dashboard/minha-conta") &&
         !window.location.pathname.startsWith("/acesso-suspenso")
@@ -1616,7 +1621,7 @@ export function StudioProvider({
         window.location.href = "/acesso-suspenso";
       }
     }
-  }, [studio]);
+  }, [studio, isAdminPath, isPreview]);
 
   const value = useMemo(
     () => ({

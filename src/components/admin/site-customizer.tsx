@@ -173,10 +173,9 @@ export function SiteCustomizer() {
     setIsUpdatingStatus(true);
 
     try {
-      // Usa o endpoint de status do usuário (que controla o acesso do estúdio)
-      // Buscamos o ID do usuário através do business ou usamos o business.id se for o mesmo
+      // Usa o endpoint de status da empresa (que controla o acesso do estúdio)
       const response = await customFetch(
-        `${API_BASE_URL}/api/admin/master/users/${business.id}/status`,
+        `${API_BASE_URL}/api/business/${business.id}/status`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -240,9 +239,13 @@ export function SiteCustomizer() {
       let fetchUrl = `${API_BASE_URL}/api/business/slug/${slug}`;
       if (studioId) {
         fetchUrl = `${API_BASE_URL}/api/business/${studioId}`;
-        console.log(`>>> [CUSTOMIZER_FETCH] Buscando estúdio via ID: ${studioId}`);
+        console.log(
+          `>>> [CUSTOMIZER_FETCH] Buscando estúdio via ID: ${studioId}`,
+        );
       } else {
-        console.log(`>>> [CUSTOMIZER_FETCH] Buscando estúdio via SLUG: ${slug}`);
+        console.log(
+          `>>> [CUSTOMIZER_FETCH] Buscando estúdio via SLUG: ${slug}`,
+        );
       }
 
       const response = await customFetch(fetchUrl, {

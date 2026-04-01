@@ -49,14 +49,14 @@ import {
   type HeroSettings,
   normalizePayload,
   normalizeStepSettings,
-  savePageVisibility,
-  saveVisibleSections,
   SECTION_IDS,
   type SectionConfig,
   type SectionsMap,
   type ServicesSettings,
   type StorySettings,
   sanitizeColor,
+  savePageVisibility,
+  saveVisibleSections,
   type TeamSettings,
   type TestimonialsSettings,
   type ValuesSettings,
@@ -370,10 +370,10 @@ export function useEditorState() {
           ...(nextAppearance.overlay || { opacity: state.overlayOpacity ?? 0 }),
           color: overlayUpdate.color,
         };
-      } else if ((prvs.appearance as any)?.overlay?.color !== undefined) {
+      } else if ((appearancePrev?.overlay as Record<string, unknown>)?.color !== undefined) {
         nextAppearance.overlay = {
           ...(nextAppearance.overlay || { opacity: state.overlayOpacity ?? 0 }),
-          color: (prvs.appearance as any).overlay.color,
+          color: (appearancePrev?.overlay as Record<string, unknown>).color,
         };
       }
 
@@ -2021,6 +2021,9 @@ export function useEditorState() {
         (u: Partial<BackgroundSettings>) => void
       > = {
         hero: handleUpdateHero as (u: Partial<BackgroundSettings>) => void,
+        "home-hero": handleUpdateHero as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
         "about-hero": handleUpdateAboutHero as (
           u: Partial<BackgroundSettings>,
         ) => void,

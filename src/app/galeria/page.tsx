@@ -15,8 +15,8 @@ import {
   getGalleryPageSettings,
   getPageVisibility,
   getVisibleSections,
-  sanitizeColor,
   SECTION_IDS,
+  sanitizeColor,
 } from "@/lib/booking-data";
 
 export default function GaleriaPage({

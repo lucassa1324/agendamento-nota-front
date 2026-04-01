@@ -682,14 +682,22 @@ export function useEditorActions({
         currentBgType === "image" &&
         currentImageUrl
       ) {
-        await deleteOrphanImage(currentImageUrl);
+        // REMOVIDO: Não deletar automaticamente a imagem ao trocar para cor sólida.
+        // Isso permite que o usuário teste cores sem perder a imagem já enviada.
+        // A imagem só deve ser deletada se o usuário clicar explicitamente no botão de remover (X).
 
-        normalizedUpdates.bgImage = "";
-        normalizedUpdates.appearance = {
-          ...(currentSettings?.appearance || {}),
-          ...(normalizedUpdates.appearance || {}),
-          backgroundImageUrl: "",
-        };
+        // Apenas limpamos a URL da imagem para que a cor sólida apareça
+        // mas mantemos a referência no banco se o usuário não quiser deletar.
+        // Se o usuário quiser realmente deletar, ele usará o botão (X) no BackgroundEditor.
+      }
+
+      // Scenario 3: Deleção Explícita da Imagem (bgImage set to empty)
+      if (
+        normalizedUpdates.bgImage === "" &&
+        currentImageUrl?.includes("/api/storage/")
+      ) {
+        // Aqui sim deletamos do servidor, pois o usuário clicou no (X) ou limpou o campo manualmente
+        deleteOrphanImage(currentImageUrl);
       }
 
       handleUpdateBackgroundState(normalizedUpdates, targetSectionId);
@@ -790,7 +798,8 @@ export function useEditorActions({
           appearance: merged.appearance
         });
 
-        // Garante limpeza de bgImage se for cor
+        /* REMOVIDO: Não limpamos a URL da imagem ao salvar se for cor sólida.
+           Isso permite que o usuário alterne de volta para 'imagem' sem perder o upload anterior.
         if (merged.bgType === "color") {
           merged.bgImage = "";
           merged.appearance = {
@@ -798,6 +807,7 @@ export function useEditorActions({
             backgroundImageUrl: "",
           };
         }
+        */
 
         const saveKey = saveKeyMap[targetSectionId] || targetSectionId;
         scheduleDraftSave(saveKey, () => saveFn(merged));
@@ -1309,6 +1319,8 @@ export function useEditorActions({
       bookingTimeSettings,
       bookingFormSettings,
       bookingConfirmationSettings,
+      colorSettings,
+      fontSettings,
       setHeroSettings,
       setAboutHeroSettings,
       setStorySettings,
@@ -1322,6 +1334,8 @@ export function useEditorActions({
       setCTASettings,
       setHeaderSettings,
       setFooterSettings,
+      setFontSettings,
+      setColorSettings,
       setBookingServiceSettings,
       setBookingDateSettings,
       setBookingTimeSettings,
@@ -1340,6 +1354,8 @@ export function useEditorActions({
       saveCTASettings,
       saveHeaderSettings,
       saveFooterSettings,
+      saveFontSettings,
+      saveColorSettings,
       saveBookingServiceSettings,
       saveBookingDateSettings,
       saveBookingTimeSettings,

@@ -4,7 +4,6 @@ import { RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { useStudio } from "@/context/studio-context";
 import { cn } from "@/lib/utils";
@@ -23,14 +22,18 @@ export interface BackgroundEditorProps {
 export function BackgroundEditor({
   settings,
   onUpdate,
-  sectionId = "section",
   section = "general",
 }: BackgroundEditorProps) {
   const { studio } = useStudio();
+
   // Normalização local: se bgImage estiver vazio mas appearance tiver a URL, usamos ela.
   // Isso resolve o problema da imagem sumir no editor se os campos estiverem dessincronizados.
   const currentBgImage =
     settings.appearance?.backgroundImageUrl || settings.bgImage || "";
+
+  const hasValidImage = !!currentBgImage;
+  const effectiveBgType =
+    settings.bgType || (hasValidImage ? "image" : "color");
 
   if (section === "services") {
     console.log(`[BackgroundEditor] Debug para 'services':`, {
@@ -41,56 +44,47 @@ export function BackgroundEditor({
   }
 
   return (
-    <fieldset
-      className="space-y-6 pt-2 border-none p-0 m-0"
-      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-      onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
-    >
-      <div>
-        <RadioGroup
-          value={settings.bgType || "color"}
-          onValueChange={(v: string) =>
-            onUpdate({ bgType: v as "color" | "image" })
-          }
-          className="grid grid-cols-2 gap-2 bg-muted/50 p-1 rounded-md"
-        >
-          <div className="flex items-center justify-center">
-            <RadioGroupItem
-              value="color"
-              id={`${sectionId}-bg-color`}
-              className="sr-only"
-            />
-            <Label
-              htmlFor={`${sectionId}-bg-color`}
-              className={cn(
-                "flex-1 text-center py-1.5 rounded-sm text-[10px] font-bold uppercase cursor-pointer transition-all",
-                settings.bgType === "color"
-                  ? "bg-background shadow-sm text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Cor Sólida
-            </Label>
-          </div>
-          <div className="flex items-center justify-center">
-            <RadioGroupItem
-              value="image"
-              id={`${sectionId}-bg-image`}
-              className="sr-only"
-            />
-            <Label
-              htmlFor={`${sectionId}-bg-image`}
-              className={cn(
-                "flex-1 text-center py-1.5 rounded-sm text-[10px] font-bold uppercase cursor-pointer transition-all",
-                settings.bgType === "image"
-                  ? "bg-background shadow-sm text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Imagem
-            </Label>
-          </div>
-        </RadioGroup>
+    <div className="space-y-6 pt-2">
+      <div className="space-y-2">
+        <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+          Tipo de Fundo
+        </Label>
+        <div className="grid grid-cols-2 gap-2 bg-muted/50 p-1 rounded-md">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log(">>> [BackgroundEditor] Clique em 'Cor Sólida'");
+              onUpdate({ bgType: "color" });
+            }}
+            className={cn(
+              "relative z-9999 text-center py-2 rounded-sm text-[10px] font-bold uppercase transition-all outline-none cursor-pointer",
+              effectiveBgType === "color"
+                ? "bg-background shadow-sm text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/20",
+            )}
+          >
+            Cor Sólida
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log(">>> [BackgroundEditor] Clique em 'Imagem'");
+              onUpdate({ bgType: "image" });
+            }}
+            className={cn(
+              "relative z-9999 text-center py-2 rounded-sm text-[10px] font-bold uppercase transition-all outline-none cursor-pointer",
+              effectiveBgType === "image"
+                ? "bg-background shadow-sm text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/20",
+            )}
+          >
+            Imagem
+          </button>
+        </div>
       </div>
 
       {settings.bgType === "color" ? (
@@ -335,19 +329,21 @@ export function BackgroundEditor({
           min={0}
           max={100}
           step={1}
-          onValueChange={([v]) => onUpdate({ 
-            overlayOpacity: v / 100,
-            appearance: {
-              ...settings.appearance,
-              overlay: {
-                ...settings.appearance?.overlay,
-                opacity: v / 100,
-                color: settings.appearance?.overlay?.color || ""
-              }
-            }
-          })}
+          onValueChange={([v]) =>
+            onUpdate({
+              overlayOpacity: v / 100,
+              appearance: {
+                ...settings.appearance,
+                overlay: {
+                  ...settings.appearance?.overlay,
+                  opacity: v / 100,
+                  color: settings.appearance?.overlay?.color || "",
+                },
+              },
+            })
+          }
         />
-        
+
         {/* Color Picker para Sobreposição - Só mostra se opacidade > 0 */}
         {(settings.overlayOpacity || 0) > 0 && (
           <div className="pt-3 space-y-1.5 animate-in fade-in slide-in-from-top-1">
@@ -365,7 +361,7 @@ export function BackgroundEditor({
                         overlay: {
                           ...settings.appearance?.overlay,
                           color: "",
-                              opacity: settings.overlayOpacity ?? 0
+                          opacity: settings.overlayOpacity ?? 0,
                         },
                       },
                     })
@@ -388,7 +384,7 @@ export function BackgroundEditor({
                       overlay: {
                         ...settings.appearance?.overlay,
                         color: value,
-                        opacity: settings.overlayOpacity ?? 0
+                        opacity: settings.overlayOpacity ?? 0,
                       },
                     },
                   });
@@ -406,7 +402,7 @@ export function BackgroundEditor({
                       overlay: {
                         ...settings.appearance?.overlay,
                         color: value,
-                        opacity: settings.overlayOpacity ?? 0
+                        opacity: settings.overlayOpacity ?? 0,
                       },
                     },
                   });
@@ -422,6 +418,6 @@ export function BackgroundEditor({
             : "Aplica uma camada de cor extra sobre o fundo escolhido."}
         </p>
       </fieldset>
-    </fieldset>
+    </div>
   );
 }

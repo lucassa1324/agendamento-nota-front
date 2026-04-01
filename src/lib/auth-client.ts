@@ -203,9 +203,16 @@ export const getSessionToken = async (): Promise<string | null> => {
   }
 
   // Iniciamos uma nova requisição
-  sessionPromise = (async () => {
+  const currentPromise = (async () => {
     try {
-      const resp = await fetch(`${AUTH_BASE_URL}/api-proxy/api/auth/session`, {
+      // No client-side, usamos URL relativa para evitar problemas de CORS em subdomínios
+      const fetchUrl = typeof window !== "undefined"
+        ? "/api-proxy/api/auth/session"
+        : `${AUTH_BASE_URL}/api-proxy/api/auth/session`;
+
+      console.log(`>>> [AUTH_CLIENT] Buscando sessão em: ${fetchUrl}`);
+
+      const resp = await fetch(fetchUrl, {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
@@ -233,12 +240,13 @@ export const getSessionToken = async (): Promise<string | null> => {
       }
       return null;
     } catch (error) {
-      console.error("Erro ao obter sessão:", error);
+      console.error(">>> [AUTH_CLIENT] Erro CRÍTICO ao obter sessão:", error);
       return null;
     } finally {
       sessionPromise = null;
     }
   })();
 
-  return sessionPromise;
+  sessionPromise = currentPromise;
+  return currentPromise;
 };

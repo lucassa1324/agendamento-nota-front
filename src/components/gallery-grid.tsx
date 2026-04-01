@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { ImageModal } from "@/components/image-modal";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
+import { defaultGallerySettings, type GallerySettings, normalizePayload, SECTION_IDS, sanitizeColor } from "@/lib/booking-data";
 import { type GalleryItem, galleryService } from "@/lib/gallery-service";
-import { defaultGallerySettings, SECTION_IDS, normalizePayload, type GallerySettings, sanitizeColor } from "@/lib/booking-data";
 
 interface Service {
   name: string;
@@ -68,16 +68,16 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
 
           // Atualizar settings do studio se não foram passadas via props
           if (!propsSettings && studio.config) {
-            const normalized = normalizePayload(studio.config as any);
-            const pageGallery = normalized.sections?.[SECTION_IDS.pageGallery] || normalized.sections?.[SECTION_IDS.homeGallery];
+            const normalized = normalizePayload(studio.config as Record<string, unknown>);
+            const pageGallery = (normalized.sections?.[SECTION_IDS.pageGallery] || normalized.sections?.[SECTION_IDS.homeGallery]) as Record<string, unknown>;
             if (pageGallery) {
-              const appearance = (pageGallery.appearance as any) || {};
+              const appearance = (pageGallery.appearance as Record<string, unknown>) || {};
               setSettings({
                 ...defaultGallerySettings,
-                ...(pageGallery as any),
-                bgColor: sanitizeColor((pageGallery as any).bgColor || appearance.backgroundColor) || "",
-                buttonColor: sanitizeColor((pageGallery as any).buttonColor || appearance.buttonColor) || "",
-                buttonTextColor: sanitizeColor((pageGallery as any).buttonTextColor || appearance.buttonTextColor) || "",
+                ...(pageGallery as unknown as GallerySettings),
+                bgColor: sanitizeColor((pageGallery.bgColor as string) || (appearance.backgroundColor as string)) || "",
+                buttonColor: sanitizeColor((pageGallery.buttonColor as string) || (appearance.buttonColor as string)) || "",
+                buttonTextColor: sanitizeColor((pageGallery.buttonTextColor as string) || (appearance.buttonTextColor as string)) || "",
               });
             }
           }
@@ -125,7 +125,7 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
       ? images
       : images.filter((img) => img.category === selectedCategory);
 
-  const background = settings.bgColor || (settings as any).appearance?.backgroundColor || "transparent";
+  const background = settings.bgColor || (settings as unknown as Record<string, { backgroundColor: string }>).appearance?.backgroundColor || "transparent";
 
   return (
     <div 

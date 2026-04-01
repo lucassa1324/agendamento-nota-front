@@ -202,6 +202,7 @@ function AdminLayoutContent({
     subscriptionStatus === "past_due" ||
     subscriptionStatus === "unpaid" ||
     subscriptionStatus === "canceled";
+  const isAdminUser = user?.role === "ADMIN";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -221,7 +222,9 @@ function AdminLayoutContent({
   }, [isMinhaConta, isSubscriptionBlocked]);
 
   const shouldBlockAccess =
-    !isMinhaConta && (isSubscriptionBlocked || billingRequiredDetected);
+    !isMinhaConta &&
+    !isAdminUser &&
+    (isSubscriptionBlocked || billingRequiredDetected);
   const blockStatus = subscriptionStatus || "past_due";
 
   if (studioError && !isMaster && !isBillingError) {

@@ -75,7 +75,7 @@ export function SystemNotifications() {
           )}
         </div>
         <Separator />
-        <ScrollArea className="h-[300px]">
+        <ScrollArea className="h-75">
           <div className="p-2">
             {!hasNotifications ? (
               <div className="py-8 text-center text-muted-foreground text-sm">
