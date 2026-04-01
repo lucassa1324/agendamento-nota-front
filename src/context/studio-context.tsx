@@ -401,6 +401,7 @@ export function StudioProvider({
       if (event.key && (isUserSpecific || isGlobalKey)) {
         // Se mudou o admin_id, precisamos recarregar tudo do zero pois as chaves do localStorage mudaram
         if (event.key === "current_admin_id") {
+          if (event.newValue === event.oldValue) return;
           console.log(
             ">>> [STUDIO_CONTEXT] Mudança no admin_id detectada. Recarregando...",
           );
@@ -800,14 +801,6 @@ export function StudioProvider({
           `>>> [STUDIO_CONTEXT] Definindo current_admin_id: ${adminId}`,
         );
         localStorage.setItem("current_admin_id", adminId);
-        // Dispara evento storage manualmente para a aba atual também reagir se necessário
-        window.dispatchEvent(
-          new StorageEvent("storage", {
-            key: "current_admin_id",
-            newValue: adminId,
-            oldValue: current,
-          }),
-        );
       }
     }
 

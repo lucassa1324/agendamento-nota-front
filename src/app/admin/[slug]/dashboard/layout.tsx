@@ -77,7 +77,11 @@ function AdminLayoutContent({
   const slug = propSlug;
 
   const { data: session, isPending: isLoadingSession } = useSession();
-  const { studio, isLoading: isLoadingStudio, error: studioError } = useStudio();
+  const {
+    studio,
+    isLoading: isLoadingStudio,
+    error: studioError,
+  } = useStudio();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [adminUser, setAdminUser] = useState<{
@@ -202,7 +206,6 @@ function AdminLayoutContent({
     subscriptionStatus === "past_due" ||
     subscriptionStatus === "unpaid" ||
     subscriptionStatus === "canceled";
-  const isAdminUser = user?.role === "ADMIN";
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -222,18 +225,18 @@ function AdminLayoutContent({
   }, [isMinhaConta, isSubscriptionBlocked]);
 
   const shouldBlockAccess =
-    !isMinhaConta &&
-    !isAdminUser &&
-    (isSubscriptionBlocked || billingRequiredDetected);
+    !isMinhaConta && (isSubscriptionBlocked || billingRequiredDetected);
   const blockStatus = subscriptionStatus || "past_due";
 
   if (studioError && !isMaster && !isBillingError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">
-        <h2 className="text-2xl font-bold text-destructive mb-2">Erro ao carregar estúdio</h2>
+        <h2 className="text-2xl font-bold text-destructive mb-2">
+          Erro ao carregar estúdio
+        </h2>
         <p className="text-muted-foreground mb-6">
-          {studioError === "Studio não encontrado" 
-            ? "O estúdio especificado na URL não foi encontrado." 
+          {studioError === "Studio não encontrado"
+            ? "O estúdio especificado na URL não foi encontrado."
             : `Houve um problema ao carregar os dados: ${studioError}`}
         </p>
         <button
