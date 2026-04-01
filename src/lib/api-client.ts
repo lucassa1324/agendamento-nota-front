@@ -213,6 +213,23 @@ export async function customFetch(url: string, options: RequestInit = {}) {
   // Interceptar erro 401 para fallback de cache
   if (response.status === 401) {
     if (typeof window !== "undefined") {
+      const isDashboardRoute = window.location.pathname.includes("/dashboard");
+      const isMinhaContaRoute = window.location.pathname.includes(
+        "/dashboard/minha-conta",
+      );
+
+      if (isDashboardRoute && !isMinhaContaRoute) {
+        if (!billingGuardActive) {
+          billingGuardActive = true;
+          window.dispatchEvent(
+            new CustomEvent("billing-required", {
+              detail: { url: fullUrl, sourceStatus: 401 },
+            }),
+          );
+        }
+        return createBillingRequiredResponse();
+      }
+
       const cachedStudio = localStorage.getItem("studio_data");
       if (cachedStudio && url.includes("/studio/")) {
         return new Response(cachedStudio, {

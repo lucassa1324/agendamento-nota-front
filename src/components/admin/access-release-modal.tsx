@@ -166,7 +166,7 @@ export function AccessReleaseModal({
           description: isStillPending 
             ? "A empresa foi movida para o modo automático, mas ainda não foi identificado um pagamento confirmado no Asaas."
             : "Acesso da empresa atualizado e pagamento confirmado com sucesso.",
-          variant: isStillPending ? "warning" : "default",
+          variant: isStillPending ? "destructive" : "default",
         });
       } else {
         toast({
