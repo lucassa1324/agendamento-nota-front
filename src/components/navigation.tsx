@@ -176,7 +176,7 @@ export function Navigation({
     (link) => pageVisibility[link.id] !== false,
   );
 
-  const siteName = profile?.name || "Brow Studio";
+  const siteName = profile?.name || "Aura Sistema";
 
   // Estilos dinâmicos para o Glassmorphism
   const headerStyle = {

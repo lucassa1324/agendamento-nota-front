@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, ExternalLink, Search, ShieldCheck } from "lucide-react";
+import { CheckCircle2, ExternalLink, Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AccessReleaseModal } from "@/components/admin/access-release-modal";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +54,7 @@ export default function MasterBusinessesPage() {
   const [selectedCompany, setSelectedCompany] =
     useState<CompanyMasterData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchCompanies = useCallback(async () => {
@@ -103,6 +104,42 @@ export default function MasterBusinessesPage() {
   const handleOpenModal = (company: CompanyMasterData) => {
     setSelectedCompany(company);
     setIsModalOpen(true);
+  };
+
+  const handleSync = async (companyId: string) => {
+    setSyncingId(companyId);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/companies/${companyId}/sync`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Falha ao sincronizar");
+      }
+
+      toast({
+        title: data.status === "active" ? "Pagamento Confirmado" : "Sincronização Concluída",
+        description: data.message,
+        variant: data.status === "active" ? "default" : "destructive",
+      });
+
+      fetchCompanies();
+    } catch (error) {
+      console.error("Erro ao sincronizar:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível sincronizar com o Asaas.",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncingId(null);
+    }
   };
 
   const handleCloseModal = () => {
@@ -248,9 +285,27 @@ export default function MasterBusinessesPage() {
                         {getStatusBadge(company.subscriptionStatus)}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {company.accessType || "Padrão"}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="capitalize">
+                            {company.accessType || "Padrão"}
+                          </Badge>
+                          {company.accessType === "automatic" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleSync(company.id)}
+                              disabled={syncingId === company.id}
+                              title="Sincronizar com Asaas"
+                            >
+                              {syncingId === company.id ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-3 w-3" />
+                              )}
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

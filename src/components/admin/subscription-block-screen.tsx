@@ -2,7 +2,7 @@
 
 import { AlertTriangle, CreditCard, Loader2, LogOut, User } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { signOut, useSession } from "@/lib/auth-client";
+import { API_BASE_URL, signOut, useSession } from "@/lib/auth-client";
 
 interface SubscriptionBlockScreenProps {
   status: string;
@@ -26,8 +26,39 @@ export function SubscriptionBlockScreen({
   const params = useParams();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [price, setPrice] = useState<number>(49.9);
 
   const slug = params?.slug as string;
+
+  useEffect(() => {
+    const fetchPrice = async () => {
+      try {
+        console.log(">>> [SUBSCRIPTION_BLOCK] Buscando preço dinâmico...");
+        const response = await fetch(
+          `${API_BASE_URL}/api/business/settings/pricing?t=${Date.now()}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          },
+        );
+        if (response.ok) {
+          const data = await response.json();
+          console.log(">>> [SUBSCRIPTION_BLOCK] Preço recebido:", data.price);
+          if (data.price) {
+            setPrice(data.price);
+          }
+        } else {
+          console.error(
+            ">>> [SUBSCRIPTION_BLOCK] Erro ao buscar preço (status):",
+            response.status,
+          );
+        }
+      } catch (error) {
+        console.error(">>> [SUBSCRIPTION_BLOCK] Erro ao buscar preço:", error);
+      }
+    };
+    fetchPrice();
+  }, []);
 
   const handleGoToMinhaConta = () => {
     if (slug) {
@@ -55,6 +86,10 @@ export function SubscriptionBlockScreen({
         console.warn("Falha ao obter IP público:", e);
       }
 
+      const customerCpfCnpj = (
+        (session.user as { cpfCnpj?: string }).cpfCnpj || ""
+      ).replace(/\D/g, "");
+
       const response = await fetch("/api/asaas/create-payment-link", {
         method: "POST",
         headers: {
@@ -64,6 +99,8 @@ export function SubscriptionBlockScreen({
         body: JSON.stringify({
           customerEmail: session.user.email,
           customerName: session.user.name,
+          customerCpfCnpj,
+          businessId: (session.user as { businessId?: string }).businessId,
         }),
       });
 
@@ -143,9 +180,14 @@ export function SubscriptionBlockScreen({
         </CardHeader>
         <CardContent className="space-y-3 pt-2">
           <div className="bg-muted/50 p-3 rounded-lg text-sm text-center">
-            <p className="font-medium mb-0.5 text-xs text-muted-foreground uppercase tracking-wider">Valor da Assinatura</p>
+            <p className="font-medium mb-0.5 text-xs text-muted-foreground uppercase tracking-wider">
+              Valor da Assinatura
+            </p>
             <p className="text-xl font-bold text-primary">
-              R$ 49,90
+              {new Intl.NumberFormat("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              }).format(price)}
               <span className="text-xs font-normal text-muted-foreground ml-1">
                 /mês
               </span>

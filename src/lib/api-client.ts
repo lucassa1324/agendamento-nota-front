@@ -179,7 +179,7 @@ export async function customFetch(url: string, options: RequestInit = {}) {
 
       // Retorna uma promessa que nunca resolve para "congelar" a execução atual
       // e impedir que o restante do código (como .then ou try/catch da UI) execute
-      return new Promise<Response>(() => {});
+      return new Promise<Response>(() => { });
     }
   }
 

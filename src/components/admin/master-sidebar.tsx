@@ -73,7 +73,7 @@ export function MasterSidebar({
           <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
             <span className="text-lg">B</span>
           </div>
-          <span>Brow Studio</span>
+          <span>Aura Sistema</span>
         </div>
       </div> */}
       <div className="h-16 border-b border-border bg-sidebar-accent/10"></div>
