@@ -1,7 +1,7 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, LogOut, Store, User, Users } from "lucide-react";
+import { BarChart3, Code2, LogOut, Store, User, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,11 @@ const MASTER_NAVIGATION: MasterNavGroup[] = [
         title: "Possíveis Clientes",
         href: "/admin/master/leads",
         icon: Users,
+      },
+      {
+        title: "Área do Desenvolvedor",
+        href: "/admin/master/dev",
+        icon: Code2,
       },
     ],
   },
