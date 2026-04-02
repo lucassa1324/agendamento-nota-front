@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, ExternalLink, Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AccessReleaseModal } from "@/components/admin/access-release-modal";
 import { Badge } from "@/components/ui/badge";
@@ -55,6 +55,7 @@ export default function MasterBusinessesPage() {
     useState<CompanyMasterData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [simulatingId, setSimulatingId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchCompanies = useCallback(async () => {
@@ -139,6 +140,41 @@ export default function MasterBusinessesPage() {
       });
     } finally {
       setSyncingId(null);
+    }
+  };
+
+  const handleSimulateBlock = async (companyId: string) => {
+    setSimulatingId(companyId);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/companies/${companyId}/simulate-block`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Falha na simulação");
+      }
+
+      toast({
+        title: "Bloqueio Simulado",
+        description: data.message,
+      });
+
+      fetchCompanies();
+    } catch (error) {
+      console.error("Erro na simulação:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível simular o bloqueio.",
+        variant: "destructive",
+      });
+    } finally {
+      setSimulatingId(null);
     }
   };
 
@@ -296,20 +332,36 @@ export default function MasterBusinessesPage() {
                             {company.accessType || "Padrão"}
                           </Badge>
                           {company.accessType === "automatic" && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => handleSync(company.id)}
-                              disabled={syncingId === company.id}
-                              title="Sincronizar com Asaas"
-                            >
-                              {syncingId === company.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <RefreshCw className="h-3 w-3" />
-                              )}
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleSync(company.id)}
+                                disabled={syncingId === company.id}
+                                title="Sincronizar com Asaas"
+                              >
+                                {syncingId === company.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-3 w-3" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-orange-500 hover:text-orange-600 hover:bg-orange-50"
+                                onClick={() => handleSimulateBlock(company.id)}
+                                disabled={simulatingId === company.id}
+                                title="Simular Bloqueio (Teste)"
+                              >
+                                {simulatingId === company.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <AlertTriangle className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </div>
                           )}
                         </div>
                       </TableCell>

@@ -60,8 +60,7 @@ export async function POST(req: Request) {
       normalizeEnvValue(ASAAS_API_URL) ||
       (await readEnvFallback("ASAAS_API_URL")) ||
       "https://api-sandbox.asaas.com/v3";
-    const targetUrl =
-      process.env.API_PROXY_TARGET_URL || "http://localhost:3001";
+    const targetUrl = process.env.API_PROXY_TARGET_URL || "http://127.0.0.1:3001";
     const normalizedCustomerCpfCnpj = String(customerCpfCnpj || "").replace(
       /\D/g,
       "",

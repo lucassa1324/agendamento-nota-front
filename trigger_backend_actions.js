@@ -2,7 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const businessId = "0b76ae1b-1ac6-49ff-ad85-4dff848b1e5b";
-const backendUrl = "http://localhost:3001";
+const backendUrl = "http://127.0.0.1:3001";
 const heroFileName = "professional-eyebrow-artist-at-work.jpg";
 const heroFilePath = path.join(
   "c:",

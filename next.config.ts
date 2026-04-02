@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   // reactCompiler: true,
   async rewrites() {
     const targetUrl =
-      process.env.API_PROXY_TARGET_URL || "http://localhost:3001";
+      process.env.API_PROXY_TARGET_URL || "http://127.0.0.1:3001";
     return [
       // 1. Rota para Autenticação (Better Auth) - Mantém /api/auth no destino
       {
