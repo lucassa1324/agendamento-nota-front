@@ -3,13 +3,16 @@
 import {
   Activity,
   ArrowLeft,
+  LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
   Save,
+  Settings2,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { ThemeInjectorClient } from "@/components/theme-injector-client";
 
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +30,7 @@ import { useStudio } from "@/context/studio-context";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@/lib/api-client";
-import { API_BASE_URL } from "@/lib/auth-client";
+import { API_BASE_URL, signOut, useSession } from "@/lib/auth-client";
 import type { Business } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
@@ -41,10 +44,22 @@ import { useSiteEditor } from "./site_editor/hooks/use-site-editor";
 
 export function SiteCustomizer() {
   const { isSidebarOpen, setIsSidebarOpen: onToggleSidebar } = useSidebar();
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const isMobile = useIsMobile();
   const { toast } = useToast();
   const params = useParams();
+  const router = useRouter();
   const slug = params?.slug as string;
+
+  const { data: session } = useSession();
+  const adminUser = session?.user 
+    ? { name: session.user.name, username: session.user.email } 
+    : null;
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push("/admin");
+  };
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -494,109 +509,119 @@ export function SiteCustomizer() {
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden overflow-x-hidden bg-background">
       {/* Top Header */}
-      <header className="h-12 sm:h-14 border-b border-border bg-card flex items-center justify-between flex-wrap sm:flex-nowrap px-2 sm:px-4 shrink-0 z-30 shadow-sm gap-2 gap-y-1">
-        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-          <Link href={`/admin/${slug}/dashboard/overview`}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  sessionStorage.setItem("personalizacao_skip_bank", "1");
-                  if (businesses[0]) {
-                    sessionStorage.setItem(
-                      "personalizacao_business",
-                      JSON.stringify(businesses[0]),
-                    );
-                  }
-                }
-                if (shouldSaveLocal) {
-                  handleSaveLocal();
-                }
-              }}
-              className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground shrink-0"
-              title="Voltar ao Dashboard"
-            >
-              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            </Button>
-          </Link>
-
+      <header className="h-14 border-b border-border bg-card flex items-center justify-between px-2 sm:px-4 shrink-0 z-30 shadow-sm gap-2 overflow-hidden">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onToggleSidebar(!isSidebarOpen)}
-            className="h-8 w-8 sm:h-10 sm:w-10 bg-[#1e293b] text-white hover:bg-[#334155] hover:text-white rounded-lg shadow-md transition-all active:scale-95 shrink-0"
-            title="Alternar barra lateral"
+            className={cn(
+              "h-9 w-9 text-muted-foreground hover:text-foreground md:w-auto md:px-3 md:gap-1.5 transition-colors",
+              isNavOpen && "bg-accent text-accent-foreground"
+            )}
+            title={isNavOpen ? "Fechar Menu de Navegação" : "Abrir Menu de Navegação"}
+            onClick={() => setIsNavOpen(!isNavOpen)}
+          >
+            <LayoutDashboard className="w-5 h-5" />
+            <span className="hidden md:inline text-xs font-medium uppercase tracking-tight">Navegação</span>
+          </Button>
+
+          <Button
+            variant="default"
+            size="default"
+            onClick={() => {
+              onToggleSidebar(!isSidebarOpen);
+              if (!isSidebarOpen) {
+                setActiveSectionId("hero");
+              }
+            }}
+            className={cn(
+              "h-9 px-2 sm:px-4 rounded-lg shadow-md transition-all active:scale-95 shrink-0 flex items-center gap-2 border border-slate-700",
+              isSidebarOpen 
+                ? "bg-slate-100 text-slate-900 hover:bg-slate-200" 
+                : "bg-indigo-600 text-white hover:bg-indigo-700 ring-2 ring-indigo-500/20"
+            )}
+            title={isSidebarOpen ? "Fechar ferramentas de edição" : "Abrir ferramentas de edição"}
           >
             {isSidebarOpen ? (
               <PanelLeftClose className="w-4 h-4 sm:w-5 sm:h-5" />
             ) : (
-              <PanelLeftOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+              <Settings2 className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce" />
             )}
+            <span className="text-xs sm:text-sm font-bold uppercase tracking-wide">
+              {isSidebarOpen ? "Fechar" : "Ferramentas"}
+            </span>
           </Button>
 
-          <div className="flex items-center gap-2 sm:gap-6 shrink-0">
-            <div className="flex items-center gap-2 sm:gap-3 bg-muted/50 px-2 sm:px-3 py-1.5 rounded-lg border max-w-30 sm:max-w-none overflow-hidden">
-              <span className="hidden sm:inline text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">
-                Estúdio:
-              </span>
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs sm:text-sm font-semibold text-primary truncate">
-                  {businesses[0]?.name || slug}
-                </span>
-              </div>
-            </div>
-
-            <HeaderControls
-              previewMode={previewMode}
-              setPreviewMode={setPreviewMode}
-              setManualScale={setManualScale}
-              setIsAutoZoom={setIsAutoZoom}
-              isAutoZoom={isAutoZoom}
-              setManualWidth={setManualWidth}
-              reloadPreview={reloadPreview}
-              desktopScale={desktopScale}
-              mobileScale={mobileScale}
-              isMobile={isMobile}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-6 w-full sm:w-auto justify-end">
-          <div className="flex items-center gap-2 sm:gap-3 bg-muted/30 px-2 sm:px-3 py-1.5 rounded-lg border border-border/50">
-            <div className="flex flex-col items-end mr-1">
-              <Label
-                htmlFor="access-switch"
-                className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-1"
-              >
-                Acesso ao Site
-              </Label>
-              <div className="flex items-center gap-1.5">
-                {isUpdatingStatus ? (
-                  <Activity className="w-3 h-3 animate-spin text-primary" />
-                ) : (
-                  <Badge
-                    variant={businesses[0]?.active ? "default" : "destructive"}
-                    className="h-4 px-1.5 text-[9px] uppercase font-bold"
-                  >
-                    {businesses[0]?.active ? "Ativo" : "Off"}
-                  </Badge>
-                )}
-              </div>
-            </div>
+          {/* Botão de Status movido para perto dos botões principais */}
+          <div className="flex items-center gap-1.5 bg-muted/30 px-2 py-1 rounded-lg border border-border/50 shrink-0">
+            <span className="hidden sm:inline text-[10px] font-bold uppercase text-muted-foreground/70 ml-1">
+              Acesso ao site
+            </span>
+            <Badge
+              variant={businesses[0]?.active ? "default" : "destructive"}
+              className="h-4 px-1 text-[8px] uppercase font-bold"
+            >
+              {businesses[0]?.active ? "Ativo" : "Off"}
+            </Badge>
             <Switch
               id="access-switch"
               checked={businesses[0]?.active ?? true}
               onCheckedChange={handleToggleStatus}
               disabled={isUpdatingStatus || !businesses[0]}
-              className="scale-75 sm:scale-100 data-[state=checked]:bg-primary data-[state=unchecked]:bg-destructive origin-right"
+              className="scale-75 data-[state=checked]:bg-indigo-600"
             />
           </div>
+        </div>
+
+        {/* Centralizado os controles de preview */}
+        <div className="flex-1 flex justify-center min-w-0">
+          <HeaderControls
+            previewMode={previewMode}
+            setPreviewMode={setPreviewMode}
+            setManualScale={setManualScale}
+            setIsAutoZoom={setIsAutoZoom}
+            isAutoZoom={isAutoZoom}
+            setManualWidth={setManualWidth}
+            reloadPreview={reloadPreview}
+            desktopScale={desktopScale}
+            mobileScale={mobileScale}
+            isMobile={isMobile}
+          />
+        </div>
+
+        {/* Lado direito agora mais limpo, apenas com info do estúdio se houver espaço */}
+        <div className="hidden xl:flex items-center gap-3 bg-muted/50 px-3 py-1.5 rounded-lg border overflow-hidden shrink-0">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Estúdio:
+          </span>
+          <span className="text-sm font-semibold text-primary truncate max-w-[150px]">
+            {businesses[0]?.name || slug}
+          </span>
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Mobile Sidebar */}
+        {/* Dashboard Navigation Sidebar (Mobile Drawer) */}
+        <Sheet open={isMobile && isNavOpen} onOpenChange={setIsNavOpen}>
+          <SheetContent side="left" className="p-0 w-64 border-r-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Menu de Navegação</SheetTitle>
+            </SheetHeader>
+            <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
+          </SheetContent>
+        </Sheet>
+
+        {/* Dashboard Navigation Sidebar (Desktop Persistent) */}
+        <div
+          className={cn(
+            "hidden lg:flex flex-col h-full border-r border-border bg-card transition-all duration-300 ease-in-out overflow-hidden shrink-0 z-20 shadow-lg",
+            isNavOpen ? "w-64" : "w-0 border-r-0",
+          )}
+        >
+          <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
+        </div>
+
+        {/* Mobile Sidebar (Editor Tools) */}
         <Sheet open={isMobile && isSidebarOpen} onOpenChange={onToggleSidebar}>
           <SheetContent side="left" className="p-0 w-[85%] sm:w-80 lg:hidden">
             <SheetHeader className="sr-only">

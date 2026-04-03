@@ -300,9 +300,11 @@ function AdminLayoutContent({
       )}
 
       {/* Sidebar Desktop */}
-      <div className="hidden lg:block">
-        <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
-      </div>
+      {!isPersonalizacao && (
+        <div className="hidden lg:block shrink-0">
+          <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
