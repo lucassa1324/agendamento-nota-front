@@ -1223,12 +1223,12 @@ export default function MasterDashboardPage() {
                       <div className="flex items-center gap-2">
                         <span
                           className={`px-2 py-0.5 rounded text-xs font-bold ${
-                            userDetails?.financial?.status === "Ativo"
+                            userDetails?.financial?.status === "Ativo" || userDetails?.financial?.status === "Teste"
                               ? "bg-green-100 text-green-700"
                               : userDetails?.financial?.status === "Vencido"
                                 ? "bg-red-100 text-red-700"
                                 : "bg-slate-100 text-slate-700"
-                          }`}
+                          } font-medium`}
                         >
                           {userDetails?.financial?.status || "Não identificado"}
                         </span>
