@@ -1105,8 +1105,9 @@ export default function MasterDashboardPage() {
                       <div className="flex items-center gap-2">
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                            userDetails?.business?.subscriptionStatus === "ACTIVE" ||
-                            userDetails?.business?.subscriptionStatus === "TRIALING"
+                            userDetails?.business?.subscriptionStatus === "active" ||
+                            userDetails?.business?.subscriptionStatus === "trial" ||
+                            userDetails?.business?.subscriptionStatus === "trialing"
                               ? "bg-green-100 text-green-700"
                               : "bg-slate-100 text-slate-700"
                           }`}
