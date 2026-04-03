@@ -95,6 +95,8 @@ interface UserDetails {
     name: string;
     slug: string;
     active: boolean;
+    subscriptionStatus?: string;
+    trialEndsAt?: string | null;
   } | null;
   stats: {
     totalAppointments: number;
@@ -1096,6 +1098,33 @@ export default function MasterDashboardPage() {
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground uppercase">
+                        Status Interno
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            userDetails?.business?.subscriptionStatus === "ACTIVE" ||
+                            userDetails?.business?.subscriptionStatus === "TRIALING"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {userDetails?.business?.subscriptionStatus || "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                    {userDetails?.business?.trialEndsAt && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase">
+                          Fim do Trial
+                        </Label>
+                        <p className="text-xs font-medium">
+                          {new Date(userDetails.business.trialEndsAt).toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-300 text-center">
