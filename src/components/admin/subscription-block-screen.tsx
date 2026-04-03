@@ -2,7 +2,7 @@
 
 import { AlertTriangle, CreditCard, Loader2, LogOut, User } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { API_BASE_URL, signOut, useSession } from "@/lib/auth-client";
+import {
+  API_BASE_URL,
+  authClient,
+  signOut,
+  useSession,
+} from "@/lib/auth-client";
 
 interface SubscriptionBlockScreenProps {
   status: string;
@@ -26,11 +31,72 @@ export function SubscriptionBlockScreen({
   const params = useParams();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [price, setPrice] = useState<number>(49.9);
 
   const slug = params?.slug as string;
 
+  const handleAccessReleased = useCallback(
+    async (message: string) => {
+      toast.success(message);
+      try {
+        await authClient.getSession();
+      } catch (error) {
+        console.error("Erro ao atualizar sessão:", error);
+      }
+      
+      // Pequeno delay para garantir que o toast seja lido e a sessão atualizada
+      setTimeout(() => {
+        if (slug) {
+          // Usa window.location.href para forçar um recarregamento completo da dashboard
+          // Isso limpa qualquer cache do middleware ou do Next.js
+          window.location.href = `/admin/${slug}/dashboard`;
+          return;
+        }
+        window.location.reload();
+      }, 1500);
+    },
+    [slug],
+  );
+
   useEffect(() => {
+    // Tenta sincronizar automaticamente ao abrir a tela de bloqueio
+    const autoSync = async () => {
+      console.log(
+        ">>> [SUBSCRIPTION_BLOCK] Tentando sincronização automática...",
+      );
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/business/sync`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("better-auth.session_token")}`,
+          },
+        });
+        const data = await response.json();
+        if (data.success) {
+          await handleAccessReleased(
+            "Pagamento identificado! Liberando acesso...",
+          );
+          return true;
+        }
+      } catch (err) {
+        console.error("Erro no auto-sync:", err);
+      }
+      return false;
+    };
+
+    autoSync();
+
+    // Configura polling para verificar o pagamento periodicamente (a cada 10 segundos)
+    // Isso evita que o usuário precise apertar F5 manualmente
+    const pollInterval = setInterval(async () => {
+      console.log(">>> [SUBSCRIPTION_BLOCK] Polling de verificação...");
+      const success = await autoSync();
+      if (success) {
+        clearInterval(pollInterval);
+      }
+    }, 10000); // 10 segundos
+
     const fetchPrice = async () => {
       try {
         console.log(">>> [SUBSCRIPTION_BLOCK] Buscando preço dinâmico...");
@@ -58,7 +124,9 @@ export function SubscriptionBlockScreen({
       }
     };
     fetchPrice();
-  }, []);
+
+    return () => clearInterval(pollInterval);
+  }, [handleAccessReleased]);
 
   const handleGoToMinhaConta = () => {
     if (slug) {
@@ -119,6 +187,32 @@ export function SubscriptionBlockScreen({
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/business/sync`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("better-auth.session_token")}`,
+        },
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        await handleAccessReleased(
+          data.message || "Pagamento identificado! Liberando acesso...",
+        );
+      } else {
+        toast.error(data.message || "Nenhum pagamento identificado.");
+      }
+    } catch (error) {
+      console.error("Erro ao sincronizar:", error);
+      toast.error("Erro ao verificar pagamento. Tente novamente mais tarde.");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -198,23 +292,39 @@ export function SubscriptionBlockScreen({
         <CardFooter className="flex flex-col gap-2">
           <Button
             className="w-full h-11 text-sm font-semibold shadow-md"
-            size="default"
             onClick={handleSubscribe}
-            disabled={isLoading}
+            disabled={isLoading || isSyncing}
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Gerando Pagamento...
+                Gerando link...
               </>
             ) : (
               <>
                 <CreditCard className="mr-2 h-4 w-4" />
-                Regularizar Assinatura Agora
+                Pagar Agora
               </>
             )}
           </Button>
-          <div className="flex w-full gap-2">
+
+          <Button
+            variant="outline"
+            className="w-full h-11 text-sm font-semibold"
+            onClick={handleSync}
+            disabled={isLoading || isSyncing}
+          >
+            {isSyncing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verificando...
+              </>
+            ) : (
+              "Já paguei, liberar meu acesso"
+            )}
+          </Button>
+
+          <div className="grid grid-cols-2 gap-2 w-full mt-2">
             <Button
               variant="outline"
               size="sm"

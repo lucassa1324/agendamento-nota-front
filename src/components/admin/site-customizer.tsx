@@ -17,7 +17,6 @@ import { ThemeInjectorClient } from "@/components/theme-injector-client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
@@ -52,8 +51,8 @@ export function SiteCustomizer() {
   const slug = params?.slug as string;
 
   const { data: session } = useSession();
-  const adminUser = session?.user 
-    ? { name: session.user.name, username: session.user.email } 
+  const adminUser = session?.user
+    ? { name: session.user.name, username: session.user.email }
     : null;
 
   const handleLogout = async () => {
@@ -455,29 +454,6 @@ export function SiteCustomizer() {
     sections,
   };
 
-  const shouldSaveLocal =
-    hasUnsavedGlobalChanges ||
-    hasHeroChanges ||
-    hasAboutHeroChanges ||
-    hasStoryChanges ||
-    hasTeamChanges ||
-    hasTestimonialsChanges ||
-    hasFontChanges ||
-    hasColorChanges ||
-    hasServicesChanges ||
-    hasHomeValuesChanges ||
-    hasAboutUsValuesChanges ||
-    hasGalleryChanges ||
-    hasGalleryPageChanges ||
-    hasCTAChanges ||
-    hasHeaderChanges ||
-    hasFooterChanges ||
-    hasBookingServiceChanges ||
-    hasBookingDateChanges ||
-    hasBookingTimeChanges ||
-    hasBookingFormChanges ||
-    hasBookingConfirmationChanges;
-
   if (isLoading || isConfigFetching) {
     return (
       <div className="flex flex-col items-center justify-center h-screen w-full bg-background gap-4">
@@ -515,14 +491,20 @@ export function SiteCustomizer() {
             variant="ghost"
             size="icon"
             className={cn(
-              "h-9 w-9 text-muted-foreground hover:text-foreground md:w-auto md:px-3 md:gap-1.5 transition-colors",
-              isNavOpen && "bg-accent text-accent-foreground"
+              "h-9 w-9 text-muted-foreground hover:text-foreground md:w-auto md:px-3 md:gap-1.5 transition-colors lg:hidden",
+              isNavOpen && "bg-accent text-accent-foreground",
             )}
-            title={isNavOpen ? "Fechar Menu de Navegação" : "Abrir Menu de Navegação"}
+            title={
+              isNavOpen
+                ? "Fechar Menu de Navegação"
+                : "Abrir Menu de Navegação"
+            }
             onClick={() => setIsNavOpen(!isNavOpen)}
           >
             <LayoutDashboard className="w-5 h-5" />
-            <span className="hidden md:inline text-xs font-medium uppercase tracking-tight">Navegação</span>
+            <span className="hidden md:inline text-xs font-medium uppercase tracking-tight">
+              Navegação
+            </span>
           </Button>
 
           <Button
@@ -536,11 +518,15 @@ export function SiteCustomizer() {
             }}
             className={cn(
               "h-9 px-2 sm:px-4 rounded-lg shadow-md transition-all active:scale-95 shrink-0 flex items-center gap-2 border border-slate-700",
-              isSidebarOpen 
-                ? "bg-slate-100 text-slate-900 hover:bg-slate-200" 
-                : "bg-indigo-600 text-white hover:bg-indigo-700 ring-2 ring-indigo-500/20"
+              isSidebarOpen
+                ? "bg-slate-100 text-slate-900 hover:bg-slate-200"
+                : "bg-indigo-600 text-white hover:bg-indigo-700 ring-2 ring-indigo-500/20",
             )}
-            title={isSidebarOpen ? "Fechar ferramentas de edição" : "Abrir ferramentas de edição"}
+            title={
+              isSidebarOpen
+                ? "Fechar ferramentas de edição"
+                : "Abrir ferramentas de edição"
+            }
           >
             {isSidebarOpen ? (
               <PanelLeftClose className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -611,13 +597,7 @@ export function SiteCustomizer() {
           </SheetContent>
         </Sheet>
 
-        {/* Dashboard Navigation Sidebar (Desktop Persistent) */}
-        <div
-          className={cn(
-            "hidden lg:flex flex-col h-full border-r border-border bg-card transition-all duration-300 ease-in-out overflow-hidden shrink-0 z-20 shadow-lg",
-            isNavOpen ? "w-64" : "w-0 border-r-0",
-          )}
-        >
+        <div className="hidden lg:block shrink-0 border-r border-border bg-card shadow-lg">
           <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
         </div>
 

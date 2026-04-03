@@ -97,7 +97,6 @@ import {
         content = content.replace(importPattern, replacement);
     }
 
-    // Replace return null with default object
     if (content.includes('if (!result) return null;')) {
         const returnReplacement = `if (!result) {
         return {
@@ -109,7 +108,45 @@ import {
         } as SiteCustomization;
       }`;
         content = content.replace('if (!result) return null;', returnReplacement);
-        fs.writeFileSync(repositoryPath, content);
-        log('Updated settings.drizzle.repository.ts with default customization fallback.');
+    }
+    fs.writeFileSync(repositoryPath, content);
+    log('Updated settings.drizzle.repository.ts with default customization fallback.');
+}
+
+// 5. Add /businesses route to master-admin.controller.ts
+const masterAdminControllerPath = path.join(BACKEND_DIR, 'src/modules/business/adapters/in/http/master-admin.controller.ts');
+if (fs.existsSync(masterAdminControllerPath)) {
+    let content = fs.readFileSync(masterAdminControllerPath, 'utf-8');
+    if (!content.includes('.get("/businesses"')) {
+        const statsRoutePattern = /\.get\("\/stats", async \(\) => \{[\s\S]*?\}\)/;
+        const businessesRoute = `\n  .get("/businesses", async () => {
+    try {
+      const companies = await db.select({
+        id: schema.companies.id,
+        name: schema.companies.name,
+        slug: schema.companies.slug,
+        active: schema.companies.active,
+        subscriptionStatus: schema.companies.subscriptionStatus,
+        accessType: schema.companies.accessType,
+        ownerEmail: schema.user.email,
+      }).from(schema.companies)
+        .leftJoin(schema.user, eq(schema.companies.ownerId, schema.user.id));
+      return companies;
+    } catch (error: any) {
+      console.error("[MASTER_ADMIN_BUSINESSES_ERROR]:", error);
+      throw new Error("Erro ao carregar empresas: " + error.message);
+    }
+  })`;
+        
+        // Encontrar a rota /stats para inserir depois
+        const match = content.match(statsRoutePattern);
+        if (match) {
+            const statsRoute = match[0];
+            content = content.replace(statsRoute, statsRoute + businessesRoute);
+            fs.writeFileSync(masterAdminControllerPath, content);
+            log('Updated master-admin.controller.ts with /businesses route.');
+        } else {
+            log('Could not find /stats route in master-admin.controller.ts');
+        }
     }
 }
