@@ -68,15 +68,14 @@ export default function Home({
   }, [studio, isPreview]);
 
   useEffect(() => {
-    // Se não houver slug e não estiver carregando, redireciona para a landing page externa
-    // EXCETO se estivermos no modo preview do editor
-    if (!studioLoading && !slug && LANDING_PAGE_URL && !isPreview) {
-      if (typeof window !== "undefined") {
-        console.log("Redirecting to landing page:", LANDING_PAGE_URL);
-        window.location.replace(LANDING_PAGE_URL);
-      }
+    if (studioLoading || slug || isPreview) return;
+    if (LANDING_PAGE_URL && typeof window !== "undefined") {
+      console.log("Redirecting to landing page:", LANDING_PAGE_URL);
+      window.location.replace(LANDING_PAGE_URL);
+      return;
     }
-  }, [slug, studioLoading, isPreview]);
+    router.replace("/admin");
+  }, [slug, studioLoading, isPreview, router]);
 
   useEffect(() => {
     // Se a página inicial estiver desativada, redireciona para agendamento
@@ -172,7 +171,7 @@ export default function Home({
 
   // Se estiver carregando o studio ou redirecionando, mostramos um estado neutro
   // No modo preview, permitimos renderizar mesmo sem slug para evitar o loading infinito no editor
-  if ((studioLoading || !slug) && !isPreview) {
+  if ((studioLoading || (!slug && !!LANDING_PAGE_URL)) && !isPreview) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />

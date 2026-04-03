@@ -89,6 +89,7 @@ function AdminLayoutContent({
     name: string;
   } | null>(null);
   const [billingRequiredDetected, setBillingRequiredDetected] = useState(false);
+  const isOnboarding = pathname?.includes("/dashboard/onboarding");
 
   useEffect(() => {
     // Só age quando o loading inicial do better-auth terminar
@@ -165,6 +166,21 @@ function AdminLayoutContent({
 
       const businessSlug = user?.business?.slug || user?.slug;
 
+      const hasCompletedOnboarding = Boolean(
+        (session.user as { hasCompletedOnboarding?: boolean })
+          ?.hasCompletedOnboarding,
+      );
+
+      if (!hasCompletedOnboarding && !isOnboarding && businessSlug) {
+        router.push(`/admin/${businessSlug}/dashboard/onboarding`);
+        return;
+      }
+
+      if (hasCompletedOnboarding && isOnboarding && businessSlug) {
+        router.push(`/admin/${businessSlug}/dashboard/overview`);
+        return;
+      }
+
       if (businessSlug && businessSlug !== slug) {
         console.warn(
           `>>> [DASHBOARD_LAYOUT] Acesso negado. Redirecionando para o slug correto: ${businessSlug}`,
@@ -181,7 +197,7 @@ function AdminLayoutContent({
       });
       setIsCheckingSession(false);
     }
-  }, [session, isLoadingSession, slug, router]);
+  }, [session, isLoadingSession, slug, router, isOnboarding]);
 
   const handleLogout = async () => {
     await signOut();

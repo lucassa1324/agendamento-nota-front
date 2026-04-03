@@ -41,11 +41,17 @@ const wait = (ms: number) =>
 
 export async function POST(req: Request) {
   try {
-    const { customerEmail, customerName, customerCpfCnpj, businessId } =
-      await req.json();
+    const {
+      customerEmail,
+      customerName,
+      customerCpfCnpj,
+      businessId,
+      planPrice,
+      planName,
+    } = await req.json();
 
     console.log(
-      `>>> [ASAAS_CREATE_LINK] Iniciando para businessId: ${businessId}, Email: ${customerEmail}`,
+      `>>> [ASAAS_CREATE_LINK] Iniciando para businessId: ${businessId}, Email: ${customerEmail}, Plano: ${planName || "Pro"}`,
     );
 
     // Capturar IP do cliente do header x-client-ip
@@ -60,7 +66,8 @@ export async function POST(req: Request) {
       normalizeEnvValue(ASAAS_API_URL) ||
       (await readEnvFallback("ASAAS_API_URL")) ||
       "https://api-sandbox.asaas.com/v3";
-    const targetUrl = process.env.API_PROXY_TARGET_URL || "http://127.0.0.1:3001";
+    const targetUrl =
+      process.env.API_PROXY_TARGET_URL || "http://127.0.0.1:3001";
     const normalizedCustomerCpfCnpj = String(customerCpfCnpj || "").replace(
       /\D/g,
       "",
@@ -167,20 +174,22 @@ export async function POST(req: Request) {
       customerId = newCustomer.id;
     }
 
-    // 3. Buscar preço dinâmico do backend
-    let subscriptionValue = 49.9; // Valor padrão
-    try {
-      const pricingResponse = await fetch(
-        `${targetUrl}/api/business/settings/pricing`,
-      );
-      if (pricingResponse.ok) {
-        const pricingData = await pricingResponse.json();
-        if (pricingData.price) {
-          subscriptionValue = pricingData.price;
+    // 3. Buscar preço dinâmico do backend se não for informado pelo front
+    let subscriptionValue = planPrice || 49.9; // Valor informado ou padrão
+    if (!planPrice) {
+      try {
+        const pricingResponse = await fetch(
+          `${targetUrl}/api/business/settings/pricing`,
+        );
+        if (pricingResponse.ok) {
+          const pricingData = await pricingResponse.json();
+          if (pricingData.price) {
+            subscriptionValue = pricingData.price;
+          }
         }
+      } catch (error) {
+        console.error("Erro ao buscar preço dinâmico para Asaas:", error);
       }
-    } catch (error) {
-      console.error("Erro ao buscar preço dinâmico para Asaas:", error);
     }
 
     // 4. Criar Assinatura (Subscription)
@@ -213,7 +222,9 @@ export async function POST(req: Request) {
               .toISOString()
               .split("T")[0], // Vence amanhã
             cycle: "MONTHLY",
-            description: "Assinatura Plano Pro - Aura Sistema",
+            description: planName
+              ? `Assinatura Plano ${planName} - Aura Sistema`
+              : "Assinatura Plano Pro - Aura Sistema",
             externalReference: businessId,
             remoteIp: clientIp,
           }),

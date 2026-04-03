@@ -1,4 +1,6 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Launch Checklist
+/LAUNCH_CHECKLIST.md
+../LAUNCH_CHECKLIST.md
 
 # dependencies
 /node_modules

@@ -67,6 +67,8 @@ interface SystemLog {
 
 interface HealthCheckSetupResponse {
   companyId: string;
+  companyName: string;
+  companySlug: string;
   serviceId: string;
   serviceName: string;
   servicePrice: string;
@@ -102,6 +104,8 @@ const isHealthCheckSetupResponse = (
   const parsed = value as Record<string, unknown>;
   return (
     typeof parsed.companyId === "string" &&
+    typeof parsed.companyName === "string" &&
+    typeof parsed.companySlug === "string" &&
     typeof parsed.serviceId === "string" &&
     typeof parsed.serviceName === "string" &&
     typeof parsed.servicePrice === "string" &&
@@ -120,14 +124,35 @@ export default function MasterDeveloperAreaPage() {
   const [diagnostics, setDiagnostics] = useState<RouteDiagnostic[]>([]);
   const [isRunningDiagnostics, setIsRunningDiagnostics] = useState(false);
   const [autoDiagnostics, setAutoDiagnostics] = useState(false);
+  const [autoDiagnosticsInterval, setAutoDiagnosticsInterval] = useState(5); // em minutos
   const [lastDiagnosticsRunAt, setLastDiagnosticsRunAt] = useState<
     string | null
   >(null);
+
+  // Carregar configurações do localStorage
+  useEffect(() => {
+    const savedAuto = localStorage.getItem("master_auto_diag");
+    const savedInterval = localStorage.getItem("master_auto_diag_interval");
+    if (savedAuto !== null) setAutoDiagnostics(savedAuto === "true");
+    if (savedInterval !== null)
+      setAutoDiagnosticsInterval(Number(savedInterval));
+  }, []);
+
+  // Salvar configurações no localStorage
+  useEffect(() => {
+    localStorage.setItem("master_auto_diag", String(autoDiagnostics));
+    localStorage.setItem(
+      "master_auto_diag_interval",
+      String(autoDiagnosticsInterval),
+    );
+  }, [autoDiagnostics, autoDiagnosticsInterval]);
+
   const [searchTerm, setSearchTerm] = useState("");
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [simulatingId, setSimulatingId] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
   const [expiringId, setExpiringId] = useState<string | null>(null);
+  const [vencendoId, setVencendoId] = useState<string | null>(null);
 
   // Estados para o diálogo de reset
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -351,6 +376,42 @@ export default function MasterDeveloperAreaPage() {
     }
   };
 
+  const handleSimulatePastDue = async (companyId: string) => {
+    setVencendoId(companyId);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/companies/${companyId}/simulate-past-due`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Falha ao simular vencimento");
+      }
+
+      toast({
+        title: "Vencimento simulado",
+        description: data.message,
+      });
+
+      fetchCompanies();
+      fetchLogs();
+    } catch (error) {
+      console.error("Erro ao simular vencimento:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível simular o vencimento da empresa.",
+        variant: "destructive",
+      });
+    } finally {
+      setVencendoId(null);
+    }
+  };
+
   const resolveErrorLocation = useCallback(
     (route: string, httpStatus: number | null, errorMessage: string) => {
       const routeLower = route.toLowerCase();
@@ -529,6 +590,27 @@ export default function MasterDeveloperAreaPage() {
         route: "/api/admin/master/logs",
       });
 
+      await runCheck({
+        id: "api-health",
+        checkName: "Verificar Saúde da API",
+        method: "GET",
+        route: "/api/health",
+      });
+
+      await runCheck({
+        id: "pricing-public",
+        checkName: "Ler Preço Público",
+        method: "GET",
+        route: "/api/business/settings/pricing",
+      });
+
+      await runCheck({
+        id: "auth-session",
+        checkName: "Validar Sessão Master",
+        method: "GET",
+        route: "/api/auth/get-session",
+      });
+
       let createdAppointmentId: string | null = null;
       let setupPayload: HealthCheckSetupResponse | null = null;
 
@@ -565,6 +647,69 @@ export default function MasterDeveloperAreaPage() {
         dateRangeStart.setDate(dateRangeStart.getDate() - 1);
         const dateRangeEnd = new Date();
         dateRangeEnd.setDate(dateRangeEnd.getDate() + 7);
+
+        await runCheck({
+          id: "service-list-public",
+          checkName: "Listar Serviços (Público)",
+          method: "GET",
+          route: `/api/services/company/${setupPayload.companyId}`,
+        });
+
+        await runCheck({
+          id: "agenda-blocks-public",
+          checkName: "Listar Bloqueios de Agenda (Público)",
+          method: "GET",
+          route: `/api/business/settings/${setupPayload.companyId}/blocks`,
+        });
+
+        await runCheck({
+          id: "appointment-list-public",
+          checkName: "Listar Agendamentos (Público)",
+          method: "GET",
+          route: `/api/appointments/company/${setupPayload.companyId}?startDate=${dateRangeStart.toISOString()}&endDate=${dateRangeEnd.toISOString()}`,
+        });
+
+        await runCheck({
+          id: "business-slug-public",
+          checkName: "Buscar Empresa por Slug (Público)",
+          method: "GET",
+          route: `/api/business/slug/${setupPayload.companySlug}`,
+        });
+
+        await runCheck({
+          id: "business-id-public",
+          checkName: "Buscar Empresa por ID (Público)",
+          method: "GET",
+          route: `/api/business/${setupPayload.companyId}`,
+        });
+
+        await runCheck({
+          id: "business-settings-public",
+          checkName: "Ler Horários de Funcionamento (Público)",
+          method: "GET",
+          route: `/api/business/settings/${setupPayload.companyId}`,
+        });
+
+        await runCheck({
+          id: "business-profile-public",
+          checkName: "Ler Perfil Público (Público)",
+          method: "GET",
+          route: `/api/settings/profile/${setupPayload.companyId}`,
+        });
+
+        await runCheck({
+          id: "business-published-public",
+          checkName: "Ler Customização Publicada (Público)",
+          method: "GET",
+          route: `/api/settings/published/${setupPayload.companyId}`,
+        });
+
+        await runCheck({
+          id: "gallery-list-public",
+          checkName: "Listar Galeria (Público)",
+          method: "GET",
+          route: `/api/gallery/public/${setupPayload.companyId}`,
+        });
 
         await runCheck({
           id: "appointment-list-admin",
@@ -657,14 +802,29 @@ export default function MasterDeveloperAreaPage() {
       return;
     }
 
-    const timer = setInterval(() => {
-      if (!isRunningDiagnostics) {
-        runRouteDiagnostics();
-      }
-    }, 300000);
+    const timer = setInterval(
+      () => {
+        if (!isRunningDiagnostics) {
+          runRouteDiagnostics();
+        }
+      },
+      autoDiagnosticsInterval * 60 * 1000,
+    );
 
     return () => clearInterval(timer);
-  }, [autoDiagnostics, isRunningDiagnostics, runRouteDiagnostics]);
+  }, [
+    autoDiagnostics,
+    autoDiagnosticsInterval,
+    isRunningDiagnostics,
+    runRouteDiagnostics,
+  ]);
+
+  const handleIntervalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = Number(e.target.value);
+    if (val >= 1) {
+      setAutoDiagnosticsInterval(val);
+    }
+  };
 
   const filteredCompanies = useMemo(
     () =>
@@ -826,7 +986,8 @@ export default function MasterDeveloperAreaPage() {
                                 disabled={
                                   syncingId === company.id ||
                                   simulatingId === company.id ||
-                                  expiringId === company.id
+                                  expiringId === company.id ||
+                                  vencendoId === company.id
                                 }
                               >
                                 {syncingId === company.id ? (
@@ -840,12 +1001,37 @@ export default function MasterDeveloperAreaPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
+                                className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                                title="Simular Vencimento (Automático)"
+                                onClick={() =>
+                                  handleSimulatePastDue(company.id)
+                                }
+                                disabled={
+                                  vencendoId === company.id ||
+                                  syncingId === company.id ||
+                                  simulatingId === company.id ||
+                                  expiringId === company.id
+                                }
+                              >
+                                {vencendoId === company.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <AlertTriangle className="w-4 h-4 mr-1" />
+                                )}
+                                Vencer
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
                                 title="Testar Expiração (Manual -> Automático)"
                                 onClick={() => handleTestExpiration(company.id)}
                                 disabled={
                                   expiringId === company.id ||
                                   syncingId === company.id ||
-                                  simulatingId === company.id
+                                  simulatingId === company.id ||
+                                  vencendoId === company.id
                                 }
                               >
                                 {expiringId === company.id ? (
@@ -853,13 +1039,13 @@ export default function MasterDeveloperAreaPage() {
                                 ) : (
                                   <Clock className="w-4 h-4 mr-1" />
                                 )}
-                                Expirar
+                                Transição
                               </Button>
 
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                className="text-amber-600 border-amber-200 hover:bg-amber-50"
                                 title="Resetar Dados Específicos"
                                 onClick={() => {
                                   setSelectedCompanyForReset(company);
@@ -878,7 +1064,8 @@ export default function MasterDeveloperAreaPage() {
                                 disabled={
                                   simulatingId === company.id ||
                                   syncingId === company.id ||
-                                  expiringId === company.id
+                                  expiringId === company.id ||
+                                  vencendoId === company.id
                                 }
                               >
                                 {simulatingId === company.id ? (
@@ -897,19 +1084,26 @@ export default function MasterDeveloperAreaPage() {
                 </Table>
               </div>
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-3 rounded-md border border-amber-200 bg-amber-50 text-amber-900 text-sm flex items-start gap-2">
+                <div className="p-3 rounded-md border border-orange-200 bg-orange-50 text-orange-900 text-sm flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                   <div>
-                    <strong>Bloqueio Simulado:</strong> Desativa empresa/dono e
-                    mata sessões.
+                    <strong>Simular Vencimento:</strong> Define como Automático
+                    com status Vencido. Útil para testar bloqueios leves.
                   </div>
                 </div>
                 <div className="p-3 rounded-md border border-blue-200 bg-blue-50 text-blue-900 text-sm flex items-start gap-2">
                   <Clock className="w-4 h-4 mt-0.5 shrink-0" />
                   <div>
-                    <strong>Teste de Expiração:</strong> Define acesso manual
+                    <strong>Teste de Transição:</strong> Define acesso manual
                     expirado. Valida se o sistema volta para automático ao
                     acessar.
+                  </div>
+                </div>
+                <div className="p-3 rounded-md border border-red-200 bg-red-50 text-red-900 text-sm flex items-start gap-2">
+                  <ShieldBan className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    <strong>Bloqueio Completo:</strong> Desativa empresa/dono e
+                    mata sessões.
                   </div>
                 </div>
               </div>
@@ -928,13 +1122,34 @@ export default function MasterDeveloperAreaPage() {
                     as rotas principais estão funcionando.
                   </CardDescription>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 border rounded-md px-3 py-1 bg-background shadow-sm">
+                    <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                      Intervalo (min):
+                    </span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="60"
+                      value={autoDiagnosticsInterval}
+                      onChange={handleIntervalChange}
+                      className="w-10 bg-transparent text-sm font-bold focus:outline-none text-center"
+                      title="Intervalo em minutos para o diagnóstico automático"
+                    />
+                  </div>
+
                   <Button
                     variant="outline"
                     onClick={() => setAutoDiagnostics((prev) => !prev)}
                     disabled={isRunningDiagnostics}
+                    className={`transition-colors ${
+                      autoDiagnostics
+                        ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100 hover:text-green-800"
+                        : "bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:text-red-800"
+                    }`}
                   >
-                    {autoDiagnostics ? "Auto 5min: ON" : "Auto 5min: OFF"}
+                    Auto {autoDiagnosticsInterval}min:{" "}
+                    {autoDiagnostics ? "ON" : "OFF"}
                   </Button>
                   <Button
                     onClick={runRouteDiagnostics}
@@ -1047,11 +1262,11 @@ export default function MasterDeveloperAreaPage() {
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead className="w-[180px]">Data/Hora</TableHead>
-                  <TableHead className="w-[120px]">Ação</TableHead>
+                  <TableHead className="w-45">Data/Hora</TableHead>
+                  <TableHead className="w-30">Ação</TableHead>
                   <TableHead>Detalhes</TableHead>
                   <TableHead>Empresa</TableHead>
-                  <TableHead className="w-[120px]">Usuário</TableHead>
+                  <TableHead className="w-30">Usuário</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -111,6 +111,12 @@ export function TrialBanner() {
 
     setIsLoading(true);
     try {
+      const customerCpfCnpj = (
+        (session.user as { cpfCnpj?: string }).cpfCnpj || ""
+      ).replace(/\D/g, "");
+      const businessId =
+        (session.user as { businessId?: string }).businessId || studio?.id;
+
       // 1. Obter IP
       let clientIp = "127.0.0.1";
       try {
@@ -130,6 +136,8 @@ export function TrialBanner() {
         body: JSON.stringify({
           customerEmail: session.user.email,
           customerName: session.user.name,
+          customerCpfCnpj,
+          businessId,
         }),
       });
 

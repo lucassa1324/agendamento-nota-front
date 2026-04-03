@@ -1,7 +1,14 @@
 "use client";
 
 import { differenceInDays } from "date-fns";
-import { Calendar, Clock, DollarSign, TrendingUp, Users } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  DollarSign,
+  Loader2,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
@@ -20,6 +27,7 @@ export function DashboardStats() {
     typeof authClient.$Infer.Session | null
   >(null);
   const [billingError, setBillingError] = useState(false);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [stats, setStats] = useState({
     totalBookings: 0,
     todayBookings: 0,
@@ -29,6 +37,7 @@ export function DashboardStats() {
 
   const loadStats = useCallback(async () => {
     if (!studio?.id) return;
+    setIsLoadingStats(true);
     try {
       setBillingError(false);
       const now = new Date();
@@ -56,11 +65,17 @@ export function DashboardStats() {
           const code = (reason as { code?: string }).code;
           const message = (reason as { message?: string }).message;
           if (status === 402 || code === "BILLING_REQUIRED") return true;
-          if (typeof message === "string" && message.includes("BILLING_REQUIRED")) {
+          if (
+            typeof message === "string" &&
+            message.includes("BILLING_REQUIRED")
+          ) {
             return true;
           }
         }
-        if (reason instanceof Error && reason.message.includes("BILLING_REQUIRED")) {
+        if (
+          reason instanceof Error &&
+          reason.message.includes("BILLING_REQUIRED")
+        ) {
           return true;
         }
         return false;
@@ -150,6 +165,8 @@ export function DashboardStats() {
         monthRevenue: 0,
         agendaStatus: settings.agendaAberta,
       });
+    } finally {
+      setIsLoadingStats(false);
     }
   }, [studio?.id]);
 
@@ -250,24 +267,40 @@ export function DashboardStats() {
     });
   }
 
+  if (isLoadingStats) {
+    return (
+      <div className="rounded-lg border bg-card p-8 flex items-center justify-center gap-2 text-muted-foreground">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        Carregando indicadores...
+      </div>
+    );
+  }
+
   return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {statCards.map((stat) => {
-        const Icon = stat.icon;
-        return (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <Icon className={`w-5 h-5 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
-        );
-      })}
+    <div className="space-y-4">
+      {stats.totalBookings === 0 && !billingError && (
+        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          Você ainda não tem agendamentos neste período.
+        </div>
+      )}
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {statCards.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.title}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {stat.title}
+                </CardTitle>
+                <Icon className={`w-5 h-5 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }
