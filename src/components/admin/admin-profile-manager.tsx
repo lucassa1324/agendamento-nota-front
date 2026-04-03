@@ -46,41 +46,8 @@ export function AdminProfileManager() {
   } = useStudio();
   const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<{
-    id: string;
-    name: string;
-    price: number;
-  } | null>(null);
 
-  const PLANS = [
-    {
-      id: "pro",
-      name: "Pro",
-      price: 49.9,
-      description: "Ideal para profissionais liberais e pequenos estúdios.",
-      features: [
-        "Agendamentos ilimitados",
-        "Financeiro básico",
-        "Suporte via chat",
-      ],
-    },
-    {
-      id: "premium",
-      name: "Premium",
-      price: 97.0,
-      description: "Para negócios em crescimento com mais profissionais.",
-      features: ["Tudo do Pro", "Relatórios avançados", "Gestão de estoque"],
-    },
-    {
-      id: "vip",
-      name: "VIP",
-      price: 197.0,
-      description: "Experiência completa com suporte prioritário.",
-      features: ["Tudo do Premium", "Suporte 24/7", "Consultoria de negócio"],
-    },
-  ];
-
-  const handleSubscribe = async (plan?: (typeof PLANS)[0]) => {
+  const handleSubscribe = async () => {
     if (!session?.user?.email) {
       toast({
         title: "Erro",
@@ -90,7 +57,11 @@ export function AdminProfileManager() {
       return;
     }
 
-    const planToUse = plan || selectedPlan || PLANS[0];
+    const planToUse = {
+      id: "pro",
+      name: "Pro",
+      price: 49.9,
+    };
 
     setIsSubscribing(true);
     try {
@@ -591,62 +562,20 @@ export function AdminProfileManager() {
                     (session.user as any).business?.subscriptionStatus,
                   )) && (
                   <div className="space-y-6 pt-4 border-t border-border mt-4 w-full">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      {PLANS.map((plan) => (
-                        <button
-                          type="button"
-                          key={plan.id}
-                          className={`relative flex flex-col p-4 border rounded-lg cursor-pointer transition-all text-left ${
-                            (selectedPlan?.id || "pro") === plan.id
-                              ? "border-primary bg-primary/5 ring-1 ring-primary"
-                              : "border-border hover:border-primary/50"
-                          }`}
-                          onClick={() => setSelectedPlan(plan)}
-                        >
-                          <div className="flex justify-between items-start mb-2">
-                            <h4 className="font-bold text-lg">{plan.name}</h4>
-                            {(selectedPlan?.id || "pro") === plan.id && (
-                              <Check className="w-4 h-4 text-primary" />
-                            )}
-                          </div>
-                          <p className="text-2xl font-bold text-primary mb-2">
-                            R$ {plan.price.toFixed(2).replace(".", ",")}
-                            <span className="text-xs font-normal text-muted-foreground ml-1">
-                              /mês
-                            </span>
-                          </p>
-                          <p className="text-xs text-muted-foreground mb-4">
-                            {plan.description}
-                          </p>
-                          <ul className="space-y-1.5 mt-auto">
-                            {plan.features.map((feature) => (
-                              <li
-                                key={`${plan.id}-${feature}`}
-                                className="text-[10px] flex items-center gap-1.5"
-                              >
-                                <Check className="w-3 h-3 text-green-600 shrink-0" />
-                                {feature}
-                              </li>
-                            ))}
-                          </ul>
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 bg-primary/5 p-4 rounded-lg border border-primary/20">
                       <div className="flex-1">
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-zinc-700 font-medium">
                           {studioError?.includes("(402)") ||
                           (session.user as any).business?.subscriptionStatus ===
                             "past_due"
-                            ? "Sua assinatura está com pagamento pendente. Selecione um plano e regularize agora para evitar interrupções no serviço."
-                            : "Seu período de teste está ativo. Selecione o melhor plano para o seu negócio e assine agora para garantir a continuidade do seu acesso."}
+                            ? "Sua assinatura está com pagamento pendente. Regularize agora para evitar interrupções no serviço."
+                            : "Seu período de teste está ativo. Assine agora para garantir a continuidade do seu acesso e aproveitar todos os recursos."}
                         </p>
                       </div>
                       <Button
                         onClick={() => handleSubscribe()}
                         disabled={isSubscribing}
-                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 min-w-50"
+                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 min-w-50 shadow-sm"
                       >
                         {isSubscribing ? (
                           <>
@@ -659,8 +588,8 @@ export function AdminProfileManager() {
                             {studioError?.includes("(402)") ||
                             (session.user as any).business
                               ?.subscriptionStatus === "past_due"
-                              ? "Regularizar Agora"
-                              : `Assinar Plano ${selectedPlan?.name || "Pro"}`}
+                              ? "Pagar Agora"
+                              : "Assinar Plano Pro"}
                           </>
                         )}
                       </Button>

@@ -580,7 +580,7 @@ export function SiteCustomizer() {
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Estúdio:
           </span>
-          <span className="text-sm font-semibold text-primary truncate max-w-[150px]">
+          <span className="text-sm font-semibold text-primary truncate max-w-37.5">
             {businesses[0]?.name || slug}
           </span>
         </div>
