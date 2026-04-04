@@ -1,5 +1,9 @@
 import { inventoryService } from "./inventory-service";
 import type { SiteConfigData } from "./site-config-types";
+import {
+  BookingStepSchema,
+  SectionSchema,
+} from "./schemas/site-customization-schema";
 
 // --- Sincronização Global entre Abas via LocalStorage ---
 if (typeof window !== "undefined") {
@@ -331,9 +335,14 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
   raw: T | undefined,
   defaults: T,
 ) => {
+  // Se não tem dados brutos, retorna o padrão
+  if (!raw) return defaults;
+
+  // Se o raw parece ser um objeto vazio (mas não undefined), ainda assim tentamos mesclar
+  // para garantir que não percamos configurações parciais.
   const merged = {
     ...defaults,
-    ...(raw || {}),
+    ...raw,
     appearance: {
       ...(defaults.appearance as Record<string, unknown> | undefined),
       ...(raw?.appearance as Record<string, unknown> | undefined),
@@ -344,7 +353,30 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
     },
   };
 
-  return normalizePersistenceData(merged) as T;
+  // 1. Blindagem: Preservar campos que não estão no defaults mas estão no raw
+  // Isso é crucial para evitar regressões quando novos campos são adicionados em um setor
+  // e o outro setor (que ainda usa o defaults antigo) tenta normalizar.
+  Object.keys(raw).forEach(key => {
+    if (!(key in merged)) {
+      (merged as any)[key] = raw[key];
+    }
+  });
+
+  // 2. PILAR 1: Validar e Limpar via Schema (Zod)
+  // Isso garante que cores em formatos estranhos sejam convertidas e campos obrigatórios existam.
+  try {
+    // Verificação de segurança: Se o SectionSchema por algum motivo for undefined ou inválido,
+    // não chamamos o parse para evitar que o erro interno do Zod pare o editor.
+    if (SectionSchema && typeof SectionSchema.parse === "function") {
+      const validated = SectionSchema.parse(merged);
+      return normalizePersistenceData(validated) as T;
+    }
+    console.warn(">>> [SCHEMA_WARNING] SectionSchema não disponível para validação.");
+    return normalizePersistenceData(merged) as T;
+  } catch (e) {
+    console.error(">>> [SCHEMA_VALIDATION_ERROR] Erro ao validar seção:", e);
+    return normalizePersistenceData(merged) as T;
+  }
 };
 
 const getPayloadRoot = (config: SiteConfigData | null | undefined) => {
@@ -390,6 +422,8 @@ export const normalizePayload = (config: SiteConfigData | null | undefined) => {
     : undefined;
 
   const sections: SectionsMap = {
+    // 1. Preservar seções existentes para não perder nada novo
+    ...(rootSections || {}),
     [SECTION_IDS.homeHero]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeHero] ||
       (layoutGlobal?.sections as SectionsMap | undefined)?.[
@@ -2058,13 +2092,15 @@ export const normalizeStepSettings = (
 
   // 3. Resolver Appearance (Source of Truth do banco)
   const appearance = (stepData.appearance as Record<string, unknown>) || {
-    backgroundImageUrl: (stepData.bgImage as string) || "",
+    backgroundImageUrl: (stepData.bgImage as string) || (stepData.bg_image as string) || "",
   };
 
-  return {
-    ...stepData,
-    cardBgColor: finalCardColor || "",
-    bgColor: finalBgColor || "transparent",
+  // 4. Blindagem: Se o stepData já tiver propriedades que o normalizeStepSettings não conhece, preserve-as!
+  // Isso evita regressões quando novas funcionalidades são adicionadas em outros setores.
+  const final = {
+    ...stepData, // Spread do original PRIMEIRO
+    cardBgColor: finalCardColor || (stepData.cardBgColor as string) || (stepData.card_bg_color as string) || "",
+    bgColor: finalBgColor || (stepData.bgColor as string) || (stepData.bg_color as string) || "transparent",
     appearance: {
       ...appearance,
       backgroundColor:
@@ -2075,9 +2111,24 @@ export const normalizeStepSettings = (
       backgroundImageUrl:
         (appearance.backgroundImageUrl as string) ||
         (stepData.bgImage as string) ||
+        (stepData.bg_image as string) ||
         "",
     },
-  } as BookingStepSettings;
+  };
+
+  // 5. PILAR 1: Validar e Limpar via Schema (Zod)
+  // Isso converte objetos de cor do Picker para strings e garante tipos mínimos.
+  try {
+    if (BookingStepSchema && typeof BookingStepSchema.parse === "function") {
+      const validated = BookingStepSchema.parse(final);
+      return validated as BookingStepSettings;
+    }
+    console.warn(">>> [SCHEMA_WARNING] BookingStepSchema não disponível.");
+    return final as BookingStepSettings;
+  } catch (e) {
+    console.error(">>> [SCHEMA_VALIDATION_ERROR] Erro ao validar Step:", e);
+    return final as BookingStepSettings;
+  }
 };
 
 export const defaultScheduleSettings: ScheduleSettings = {

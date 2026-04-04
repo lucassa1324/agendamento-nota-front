@@ -77,6 +77,7 @@ import {
 } from "@/lib/booking-data";
 import type { SiteConfigData } from "@/lib/site-config-types";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
+import { deepMerge } from "@/lib/utils/deep-merge";
 
 interface StudioContextType {
   studio: Business | null;
@@ -185,9 +186,13 @@ export function StudioProvider({
     const handleSyncMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      const { type, settings } = event.data;
+      const { type, settings, path } = event.data;
 
-      if (typeof type === "string" && type.startsWith("UPDATE_") && settings) {
+      if (
+        typeof type === "string" &&
+        (type.startsWith("UPDATE_") || type === "SYNC_UPDATE") &&
+        settings
+      ) {
         console.log(
           `>>> [STUDIO_CONTEXT] Recebendo sincronização via postMessage: ${type}`,
         );
@@ -195,6 +200,13 @@ export function StudioProvider({
         // 1. Efeitos Colaterais (Salvamento e Disparo de Eventos)
         // Devem ocorrer fora do setStudio para evitar o erro de "Cannot update a component while rendering a different component"
         switch (type) {
+          case "SYNC_UPDATE":
+            // Novo Protocolo Unificado (Pilar 3)
+            // Se o editor enviar path="hero" e settings={...}, salvamos o hero
+            if (path === "hero") saveHeroSettings(settings as HeroSettings);
+            if (path === "colors") saveColorSettings(settings as ColorSettings);
+            if (path === "fonts") saveFontSettings(settings as FontSettings);
+            break;
           case "UPDATE_HERO_SETTINGS":
             saveHeroSettings(settings as HeroSettings);
             break;
@@ -273,87 +285,127 @@ export function StudioProvider({
           const updatedConfig = { ...currentConfig };
 
           switch (type) {
+            case "SYNC_UPDATE":
+              // Protocolo Unificado (Pilar 3) + Blindagem Deep Merge (Pilar 2)
+              if (path && typeof path === "string") {
+                const currentVal = (updatedConfig as any)[path];
+                (updatedConfig as any)[path] = deepMerge(currentVal, settings);
+              }
+              break;
             case "UPDATE_HERO_SETTINGS":
-              updatedConfig.hero = settings;
+              updatedConfig.hero = deepMerge(updatedConfig.hero, settings);
               break;
             case "UPDATE_ABOUT_HERO_SETTINGS":
-              updatedConfig.aboutHero = settings;
+              updatedConfig.aboutHero = deepMerge(
+                updatedConfig.aboutHero,
+                settings,
+              );
               break;
             case "UPDATE_SERVICES_SETTINGS":
-              updatedConfig.services = settings;
+              updatedConfig.services = deepMerge(
+                updatedConfig.services,
+                settings,
+              );
               break;
             case "UPDATE_COLOR_SETTINGS":
-              updatedConfig.colors = settings;
+              updatedConfig.colors = deepMerge(updatedConfig.colors, settings);
               break;
             case "UPDATE_FONT_SETTINGS":
-              updatedConfig.theme = settings;
+              updatedConfig.theme = deepMerge(updatedConfig.theme, settings);
               break;
             case "UPDATE_GALLERY_PREVIEW":
             case "UPDATE_GALLERY_SETTINGS":
-              updatedConfig.galleryPreviewSettings = settings;
+              updatedConfig.galleryPreviewSettings = deepMerge(
+                updatedConfig.galleryPreviewSettings,
+                settings,
+              );
               break;
             case "UPDATE_GALLERY_PAGE":
             case "UPDATE_GALLERY_PAGE_SETTINGS":
-              updatedConfig.galleryPageSettings = settings;
+              updatedConfig.galleryPageSettings = deepMerge(
+                updatedConfig.galleryPageSettings,
+                settings,
+              );
               break;
             case "UPDATE_STORY_SETTINGS":
-              updatedConfig.story = settings;
+              updatedConfig.story = deepMerge(updatedConfig.story, settings);
               break;
             case "UPDATE_TEAM_SETTINGS":
-              updatedConfig.team = settings;
+              updatedConfig.team = deepMerge(updatedConfig.team, settings);
               break;
             case "UPDATE_TESTIMONIALS_SETTINGS":
-              updatedConfig.testimonials = settings;
+              updatedConfig.testimonials = deepMerge(
+                updatedConfig.testimonials,
+                settings,
+              );
               break;
             case "UPDATE_HOME_VALUES_SETTINGS":
-              updatedConfig.homeValuesSettings = settings;
+              updatedConfig.homeValuesSettings = deepMerge(
+                updatedConfig.homeValuesSettings,
+                settings,
+              );
               break;
             case "UPDATE_ABOUT_US_VALUES_SETTINGS":
-              updatedConfig.aboutUsValuesSettings = settings;
+              updatedConfig.aboutUsValuesSettings = deepMerge(
+                updatedConfig.aboutUsValuesSettings,
+                settings,
+              );
               break;
             case "UPDATE_CTA_SETTINGS":
-              updatedConfig.cta = settings;
+              updatedConfig.cta = deepMerge(updatedConfig.cta, settings);
               break;
             case "UPDATE_HEADER_SETTINGS":
-              updatedConfig.header = settings;
+              updatedConfig.header = deepMerge(updatedConfig.header, settings);
               break;
             case "UPDATE_FOOTER_SETTINGS":
-              updatedConfig.footer = settings;
+              updatedConfig.footer = deepMerge(updatedConfig.footer, settings);
               break;
             case "UPDATE_PAGE_VISIBILITY":
-              updatedConfig.pageVisibility = settings;
+              updatedConfig.pageVisibility = deepMerge(
+                updatedConfig.pageVisibility,
+                settings,
+              );
               break;
             case "UPDATE_VISIBLE_SECTIONS":
-              updatedConfig.visibleSections = settings;
+              updatedConfig.visibleSections = deepMerge(
+                updatedConfig.visibleSections,
+                settings,
+              );
               break;
             case "UPDATE_BOOKING_SERVICE_SETTINGS":
               updatedConfig.bookingSteps = {
                 ...updatedConfig.bookingSteps,
-                service: settings,
+                service: deepMerge(
+                  updatedConfig.bookingSteps?.service,
+                  settings,
+                ),
               };
               break;
             case "UPDATE_BOOKING_DATE_SETTINGS":
               updatedConfig.bookingSteps = {
                 ...updatedConfig.bookingSteps,
-                date: settings,
+                date: deepMerge(updatedConfig.bookingSteps?.date, settings),
               };
               break;
             case "UPDATE_BOOKING_TIME_SETTINGS":
               updatedConfig.bookingSteps = {
                 ...updatedConfig.bookingSteps,
-                time: settings,
+                time: deepMerge(updatedConfig.bookingSteps?.time, settings),
               };
               break;
             case "UPDATE_BOOKING_FORM_SETTINGS":
               updatedConfig.bookingSteps = {
                 ...updatedConfig.bookingSteps,
-                form: settings,
+                form: deepMerge(updatedConfig.bookingSteps?.form, settings),
               };
               break;
             case "UPDATE_BOOKING_CONFIRMATION_SETTINGS":
               updatedConfig.bookingSteps = {
                 ...updatedConfig.bookingSteps,
-                confirmation: settings,
+                confirmation: deepMerge(
+                  updatedConfig.bookingSteps?.confirmation,
+                  settings,
+                ),
               };
               break;
           }
@@ -542,11 +594,24 @@ export function StudioProvider({
         | SiteConfigData["bookingSteps"]
         | undefined;
 
-      // Normalização profunda para garantir que o cardBgColor seja capturado de qualquer fonte (snake_case, cardConfig, etc.)
+      // Normalização profunda para garantir que o cardBgColor e outros campos críticos sejam capturados de qualquer fonte
       const normalizeDeepStep = (step: unknown) => {
         if (!step) return undefined;
         // normalizeStepSettings em booking-data.ts já é robusto o suficiente para capturar cardBgColor de múltiplas fontes
-        return normalizeStepSettings(step as Record<string, unknown>);
+        const normalized = normalizeStepSettings(
+          step as Record<string, unknown>,
+        );
+
+        // Blindagem adicional: Garantir que se o step original tinha dados, o normalizado não venha vazio
+        if (
+          typeof step === "object" &&
+          step !== null &&
+          Object.keys(step).length > 0 &&
+          Object.keys(normalized).length === 0
+        ) {
+          return step as BookingStepSettings;
+        }
+        return normalized;
       };
 
       const normalizedBookingFromLayout = bookingFromLayoutRaw
@@ -993,26 +1058,6 @@ export function StudioProvider({
       setBusinessId(initialId);
     }
   }, [initialSlug, initialId]);
-
-  // --- NOVO: Listener para publicação bem sucedida ---
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handlePublishSuccess = () => {
-      console.log(
-        ">>> [StudioContext] Sinal de publicação recebido. Forçando atualização dos dados...",
-      );
-      // Incrementa o trigger para disparar o fetchStudio no useEffect principal
-      setRefreshTrigger((prev) => prev + 1);
-    };
-
-    window.addEventListener("site-published-success", handlePublishSuccess);
-    return () =>
-      window.removeEventListener(
-        "site-published-success",
-        handlePublishSuccess,
-      );
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
