@@ -31,14 +31,24 @@ export function VerificationBanner() {
         description:
           "Verifique sua caixa de entrada (e spam) para validar sua conta.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao enviar e-mail de verificação:", error);
-      toast({
-        title: "Erro ao enviar",
-        description:
-          "Não foi possível enviar o e-mail. Tente novamente mais tarde.",
-        variant: "destructive",
-      });
+      
+      // Se o erro for 400 ou 403, pode ser que o usuário já esteja verificado ou atingiu o limite
+      if (error?.status === 400 || error?.status === 403) {
+        toast({
+          title: "Aguarde um momento",
+          description: "Você já deve ter recebido um e-mail ou sua conta já foi verificada. Tente atualizar a página.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro ao enviar",
+          description:
+            "Não foi possível enviar o e-mail. Tente novamente mais tarde.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }

@@ -5,6 +5,7 @@ import {
   Clock,
   History,
   Loader2,
+  Mail,
   RefreshCw,
   Search,
   ShieldBan,
@@ -52,6 +53,7 @@ interface CompanyMasterData {
   active: boolean;
   subscriptionStatus: string;
   accessType: string;
+  ownerId: string;
   ownerEmail: string;
 }
 
@@ -151,6 +153,7 @@ export default function MasterDeveloperAreaPage() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [simulatingId, setSimulatingId] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
+  const [resettingEmailId, setResettingEmailId] = useState<string | null>(null);
   const [expiringId, setExpiringId] = useState<string | null>(null);
   const [vencendoId, setVencendoId] = useState<string | null>(null);
 
@@ -337,6 +340,41 @@ export default function MasterDeveloperAreaPage() {
       });
     } finally {
       setResettingId(null);
+    }
+  };
+
+  const handleResetEmailVerification = async (userId: string, companyId: string) => {
+    setResettingEmailId(companyId);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/users/${userId}/reset-email-verification`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Falha ao resetar verificação de e-mail");
+      }
+
+      toast({
+        title: "Verificação resetada",
+        description: data.message,
+      });
+
+      fetchLogs();
+    } catch (error: any) {
+      console.error("Erro ao resetar verificação de e-mail:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível resetar a verificação de e-mail.",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingEmailId(null);
     }
   };
 
@@ -977,23 +1015,25 @@ export default function MasterDeveloperAreaPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end gap-2 flex-wrap">
+                            <div className="flex justify-end gap-1.5 flex-wrap max-w-100 ml-auto">
                               <Button
                                 size="sm"
                                 variant="outline"
+                                className="h-8 px-2"
                                 title="Sincronizar com Asaas"
                                 onClick={() => handleSync(company.id)}
                                 disabled={
                                   syncingId === company.id ||
                                   simulatingId === company.id ||
                                   expiringId === company.id ||
-                                  vencendoId === company.id
+                                  vencendoId === company.id ||
+                                  resettingEmailId === company.id
                                 }
                               >
                                 {syncingId === company.id ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
-                                  <RefreshCw className="w-4 h-4 mr-1" />
+                                  <RefreshCw className="w-3.5 h-3.5 mr-1" />
                                 )}
                                 Sync
                               </Button>
@@ -1001,7 +1041,7 @@ export default function MasterDeveloperAreaPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                                className="h-8 px-2 text-orange-600 border-orange-200 hover:bg-orange-50"
                                 title="Simular Vencimento (Automático)"
                                 onClick={() =>
                                   handleSimulatePastDue(company.id)
@@ -1010,13 +1050,14 @@ export default function MasterDeveloperAreaPage() {
                                   vencendoId === company.id ||
                                   syncingId === company.id ||
                                   simulatingId === company.id ||
-                                  expiringId === company.id
+                                  expiringId === company.id ||
+                                  resettingEmailId === company.id
                                 }
                               >
                                 {vencendoId === company.id ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
-                                  <AlertTriangle className="w-4 h-4 mr-1" />
+                                  <AlertTriangle className="w-3.5 h-3.5 mr-1" />
                                 )}
                                 Vencer
                               </Button>
@@ -1024,20 +1065,21 @@ export default function MasterDeveloperAreaPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                className="h-8 px-2 text-blue-600 border-blue-200 hover:bg-blue-50"
                                 title="Testar Expiração (Manual -> Automático)"
                                 onClick={() => handleTestExpiration(company.id)}
                                 disabled={
                                   expiringId === company.id ||
                                   syncingId === company.id ||
                                   simulatingId === company.id ||
-                                  vencendoId === company.id
+                                  vencendoId === company.id ||
+                                  resettingEmailId === company.id
                                 }
                               >
                                 {expiringId === company.id ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
-                                  <Clock className="w-4 h-4 mr-1" />
+                                  <Clock className="w-3.5 h-3.5 mr-1" />
                                 )}
                                 Transição
                               </Button>
@@ -1045,33 +1087,59 @@ export default function MasterDeveloperAreaPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                                className="h-8 px-2 text-cyan-600 border-cyan-200 hover:bg-cyan-50"
+                                title="Resetar Verificação de E-mail"
+                                onClick={() =>
+                                  handleResetEmailVerification(company.ownerId, company.id)
+                                }
+                                disabled={
+                                  resettingEmailId === company.id ||
+                                  syncingId === company.id ||
+                                  simulatingId === company.id ||
+                                  vencendoId === company.id ||
+                                  expiringId === company.id
+                                }
+                              >
+                                {resettingEmailId === company.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Mail className="w-3.5 h-3.5 mr-1" />
+                                )}
+                                E-mail
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 px-2 text-amber-600 border-amber-200 hover:bg-amber-50"
                                 title="Resetar Dados Específicos"
                                 onClick={() => {
                                   setSelectedCompanyForReset(company);
                                   setIsResetDialogOpen(true);
                                 }}
                               >
-                                <Trash2 className="w-4 h-4 mr-1" />
-                                Reset
+                                <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                Dados
                               </Button>
 
                               <Button
                                 size="sm"
                                 variant="destructive"
+                                className="h-8 px-2"
                                 title="Simular Bloqueio Completo"
                                 onClick={() => handleSimulateBlock(company.id)}
                                 disabled={
                                   simulatingId === company.id ||
                                   syncingId === company.id ||
                                   expiringId === company.id ||
-                                  vencendoId === company.id
+                                  vencendoId === company.id ||
+                                  resettingEmailId === company.id
                                 }
                               >
                                 {simulatingId === company.id ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
                                 ) : (
-                                  <ShieldBan className="w-4 h-4 mr-1" />
+                                  <ShieldBan className="w-3.5 h-3.5 mr-1" />
                                 )}
                                 Bloquear
                               </Button>
@@ -1097,6 +1165,12 @@ export default function MasterDeveloperAreaPage() {
                     <strong>Teste de Transição:</strong> Define acesso manual
                     expirado. Valida se o sistema volta para automático ao
                     acessar.
+                  </div>
+                </div>
+                <div className="p-3 rounded-md border border-cyan-200 bg-cyan-50 text-cyan-900 text-sm flex items-start gap-2">
+                  <Mail className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    <strong>Reset E-mail:</strong> Define a verificação de e-mail do proprietário como pendente. Útil para testar o fluxo de onboarding.
                   </div>
                 </div>
                 <div className="p-3 rounded-md border border-red-200 bg-red-50 text-red-900 text-sm flex items-start gap-2">

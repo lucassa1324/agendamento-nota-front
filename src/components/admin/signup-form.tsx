@@ -58,7 +58,7 @@ export function SignUpForm() {
         // @ts-expect-error - studioName e phone são campos customizados suportados pelo nosso backend
         studioName,
         phone,
-        callbackURL: "/admin",
+        callbackURL: "/email-verified",
       });
 
       if (authError) {
@@ -70,11 +70,11 @@ export function SignUpForm() {
 
       if (data) {
         console.log(
-          ">>> [SIGNUP] Cadastro bem-sucedido, redirecionando para login...",
+          ">>> [SIGNUP] Cadastro bem-sucedido, salvando e-mail e redirecionando para verificação...",
         );
-        // Redireciona para a tela de login administrativa usando a URL absoluta do ambiente conforme solicitado
-        const adminLoginUrl = `${process.env.NEXT_PUBLIC_ADMIN_URL}/admin`;
-        window.location.href = adminLoginUrl;
+        // Salva o e-mail para a tela de pendência de verificação usar
+        localStorage.setItem("pending_verification_email", email);
+        router.push("/admin/pending-verification");
       }
     } catch (err) {
       console.warn(">>> [ADMIN_WARN] Erro inesperado durante o cadastro:", err);

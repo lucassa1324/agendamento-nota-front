@@ -57,6 +57,7 @@ interface AuthUser {
   email: string;
   slug?: string;
   role?: string;
+  emailVerified?: boolean;
   business?: {
     id?: string;
     slug?: string;
@@ -151,6 +152,22 @@ function AdminLayoutContent({
         console.warn(
           ">>> [DASHBOARD_LAYOUT] Sessão existe mas usuário é undefined.",
         );
+        return;
+      }
+
+      // NOVO: BLOQUEIO DE E-MAIL NÃO VERIFICADO
+      // Bloqueamos acesso ao dashboard se o e-mail não estiver verificado
+      // Exceção: Super Admin ou e-mail do proprietário
+      if (
+        user.emailVerified === false &&
+        user.role !== "SUPER_ADMIN" &&
+        user.email !== "lucassa1324@gmail.com"
+      ) {
+        console.warn(
+          ">>> [DASHBOARD_LAYOUT] E-mail não verificado. Bloqueando acesso ao dashboard.",
+        );
+        localStorage.setItem("pending_verification_email", user.email || "");
+        router.push("/admin/pending-verification");
         return;
       }
 

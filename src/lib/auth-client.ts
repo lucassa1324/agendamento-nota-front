@@ -124,13 +124,15 @@ export const authClient = createAuthClient({
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onResponse: async (context: any) => {
-      // try {
-      //   const clonedResponse = context.response.clone();
-      //   const text = await clonedResponse.text();
-      //   console.log(">>> [AUTH_CLIENT] RAW BACKEND RESPONSE:", text);
-      // } catch (e) {
-      //   console.error(">>> [AUTH_CLIENT] Erro ao ler resposta raw:", e);
-      // }
+      if (context.response.status >= 400) {
+        try {
+          const clonedResponse = context.response.clone();
+          const text = await clonedResponse.text();
+          console.error(`>>> [AUTH_CLIENT] ERROR RESPONSE (${context.response.status}):`, text);
+        } catch (e) {
+          console.error(">>> [AUTH_CLIENT] Erro ao ler resposta de erro:", e);
+        }
+      }
 
       console.log(">>> [AUTH_CLIENT] RESPONSE INTERCEPTOR:", {
         status: context?.response?.status,
@@ -141,8 +143,8 @@ export const authClient = createAuthClient({
   // O Better-Auth gerencia os cookies automaticamente
   session: {
     cookieCache: {
-      enabled: true, // Reabilitado para reduzir chamadas ao network e evitar ERR_ABORTED em paralelo
-      maxAge: 60, // Cache de 1 minuto
+      enabled: false, // Desabilitado para evitar que o usuário veja "não verificado" após clicar no link
+      maxAge: 0,
     },
   },
   // Tipagem para os campos customizados do usuário (slug, businessId, role)
