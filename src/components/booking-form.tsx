@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, Loader2 } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,7 @@ export function BookingForm({
 
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const submitLockRef = useRef(false);
   const [formData, setFormData] = useState({
     name: initialBooking?.clientName || "",
     email: initialBooking?.clientEmail || "",
@@ -74,14 +75,25 @@ export function BookingForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!studio?.id) return;
+    if (!studio?.id || isLoading || submitLockRef.current) return;
 
+    submitLockRef.current = true;
     setIsLoading(true);
 
     try {
-      const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
+      const [year, month, day] = date.split("-").map(Number);
+      const [hours, minutes] = time.split(":").map(Number);
+      const localDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
 
-      // Cálculo de snapshots individuais e agregados
+      if (Number.isNaN(localDate.getTime())) {
+        throw {
+          status: 400,
+          message: "Data ou horário inválido para agendamento.",
+        } as ApiError;
+      }
+
+      const scheduledAt = localDate.toISOString();
+
       const items = services.map((s) => ({
         serviceId: s.id,
         serviceNameSnapshot: s.name,
@@ -105,21 +117,19 @@ export function BookingForm({
 
       const appointmentData = {
         companyId: studio.id,
-        serviceId: serviceIds, // String de IDs separados por vírgula
+        serviceId: serviceIds,
         scheduledAt,
         customerName: formData.name,
         customerEmail: formData.email,
         customerPhone: formData.phone,
-        serviceNameSnapshot: serviceNames, // Nomes concatenados
-        servicePriceSnapshot: priceSnapshot, // Soma dos preços
-        serviceDurationSnapshot: durationHHmm, // Soma das durações
+        serviceNameSnapshot: serviceNames,
+        servicePriceSnapshot: priceSnapshot,
+        serviceDurationSnapshot: durationHHmm,
         customerId: null,
         notes: "",
         studioId: studio.id,
-        items, // Nova tabela appointment_items
+        items,
       };
-
-      console.log(">>> [SITE_DEBUG] Enviando agendamento:", appointmentData);
 
       const result = await appointmentService.create(appointmentData);
 
@@ -144,7 +154,6 @@ export function BookingForm({
 
       saveBookingToStorage(booking);
       
-      // Enviar notificações de forma assíncrona sem travar a UI
       sendBookingNotifications(booking).catch(err => 
         console.error(">>> [SITE_ERROR] Falha ao enviar notificações:", err)
       );
@@ -166,6 +175,9 @@ export function BookingForm({
       ) {
         errorMessage =
           "O horário selecionado e a duração total dos serviços ultrapassam o horário de fechamento. Por favor, escolha um horário mais cedo ou selecione menos serviços.";
+      } else if (apiError.status === 408 || apiError.code === "TIMEOUT") {
+        errorMessage =
+          "A conexão demorou para responder. Verifique sua internet e tente novamente.";
       } else if (apiError.status === 401) {
         errorMessage =
           "O sistema não permitiu o agendamento (Não Autorizado). Por favor, entre em contato com o estúdio.";
@@ -177,6 +189,7 @@ export function BookingForm({
         variant: "destructive",
       });
     } finally {
+      submitLockRef.current = false;
       setIsLoading(false);
     }
   };

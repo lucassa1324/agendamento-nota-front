@@ -154,31 +154,14 @@ export function LoginForm() {
         email: normalizedEmail,
       });
 
-      console.log(">>> [LOGIN_PAYLOAD] Enviando para Back-end (DETALHADO):", {
-        url: "/api/auth/sign-in/email",
-        method: "POST",
-        body: {
-          email: normalizedEmail,
-          password: normalizedPassword, // SENHA EXPOSTA PARA DEBUG - REMOVER EM PRODUÇÃO
-        },
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      });
-
       const result = await signIn.email({
         email: normalizedEmail,
         password: normalizedPassword,
       });
 
-      console.log(">>> [LOGIN_FLOW] Resposta do signIn recebida:", result);
-      console.dir(result); // Debug profundo para ver campos ocultos
-
       const { data, error: authError } = result;
 
       if (authError) {
-        console.warn(">>> [ADMIN_WARN] Erro no signIn:", authError);
         setError(authError.message || "Email ou senha incorretos.");
         setIsLoading(false);
         return;

@@ -59,34 +59,26 @@ export const authClient = createAuthClient({
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onRequest: async (context: any) => {
-      console.log(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR START", {
-        hasContext: !!context,
-        hasOptions: !!context?.options,
-        url: context?.request?.url,
-      });
-
-      // PROTEÇÃO TOTAL CONTRA UNDEFINED - Solicitado pelo usuário
+      // PROTEÇÃO CONTRA UNDEFINED - Solicitado pelo usuário
+      // Mas se não houver context ou options, apenas retornamos para deixar o better-fetch seguir seu curso padrão
       if (!context || !context.options) {
-        console.warn(
-          ">>> [AUTH_CLIENT] REQUEST INTERCEPTOR ABORTED: Missing context or options",
-        );
         return;
       }
 
       // DEBUG CRÍTICO: Verificar se o body já foi stringify
-      const bodyIsString = typeof context?.options?.body === "string";
+      const bodyIsString = typeof context.options.body === "string";
 
       console.log(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR BODY CHECK:", {
         url: context?.request?.url,
         method: context?.request?.method,
-        bodyType: typeof context?.options?.body,
+        bodyType: typeof context.options.body,
         bodyIsString,
         bodyContentSnippet: bodyIsString
-          ? context.options.body.substring(0, 50)
+          ? (context.options.body as string).substring(0, 50)
           : context.options.body
             ? "Object"
             : "Empty/Null",
-        hasJsonProp: !!(context?.options as { json?: unknown })?.json,
+        hasJsonProp: !!(context.options as { json?: unknown })?.json,
       });
 
       // Se tiver propriedade 'json', o better-fetch vai serializar automaticamente depois deste interceptor

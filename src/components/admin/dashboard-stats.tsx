@@ -9,7 +9,9 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import Joyride, { type CallBackProps, STATUS, type Step } from "react-joyride";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import { appointmentService } from "@/lib/api-appointments";
@@ -21,8 +23,10 @@ import {
 import { businessService } from "@/lib/business-service";
 
 export function DashboardStats() {
+  const pathname = usePathname();
   const { studio } = useStudio();
   const { data: session } = useSession();
+  const [isTourRunning, setIsTourRunning] = useState(false);
   const [sessionData, setSessionData] = useState<
     typeof authClient.$Infer.Session | null
   >(null);
@@ -174,6 +178,23 @@ export function DashboardStats() {
     loadStats();
   }, [loadStats]);
 
+  useEffect(() => {
+    if (!pathname?.includes("/dashboard/overview")) return;
+    const hasSeenOverviewTour = localStorage.getItem("tour_overview_v1");
+    if (hasSeenOverviewTour === "true") return;
+    const timer = window.setTimeout(() => {
+      setIsTourRunning(true);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
+
+  const handleTourCallback = (data: CallBackProps) => {
+    if (data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED) {
+      localStorage.setItem("tour_overview_v1", "true");
+      setIsTourRunning(false);
+    }
+  };
+
   // Busca dados atualizados da sessão para garantir que temos o status mais recente (Igual ao TrialBanner)
   useEffect(() => {
     const fetchSession = async () => {
@@ -195,18 +216,21 @@ export function DashboardStats() {
       value: billingError ? "---" : stats.todayBookings,
       icon: Calendar,
       color: billingError ? "text-muted-foreground" : "text-blue-500",
+      tourTarget: "overview-card-today",
     },
     {
       title: "Total de Agendamentos",
       value: billingError ? "---" : stats.totalBookings,
       icon: Users,
       color: billingError ? "text-muted-foreground" : "text-green-500",
+      tourTarget: "overview-card-total",
     },
     {
       title: "Faturamento do Mês",
       value: billingError ? "---" : `R$ ${stats.monthRevenue.toFixed(2)}`,
       icon: DollarSign,
       color: billingError ? "text-muted-foreground" : "text-accent",
+      tourTarget: "overview-card-revenue",
     },
     {
       title: "Status da Agenda",
@@ -217,6 +241,7 @@ export function DashboardStats() {
         : stats.agendaStatus
           ? "text-green-500"
           : "text-red-500",
+      tourTarget: "overview-card-status",
     },
   ];
 
@@ -264,6 +289,7 @@ export function DashboardStats() {
       value: `${daysLeft} dias`,
       icon: Clock,
       color: daysLeft <= 3 ? "text-red-500" : "text-blue-500",
+      tourTarget: "overview-card-trial",
     });
   }
 
@@ -278,16 +304,64 @@ export function DashboardStats() {
 
   return (
     <div className="space-y-4">
+      <Joyride
+        run={isTourRunning}
+        continuous
+        showProgress
+        showSkipButton
+        disableOverlayClose
+        callback={handleTourCallback}
+        locale={{
+          back: "Voltar",
+          close: "Fechar",
+          last: "Concluir",
+          next: "Próximo",
+          skip: "Pular",
+        }}
+        steps={
+          [
+            {
+              target: '[data-tour="overview-title"]',
+              content:
+                "Aqui você acompanha o resumo geral do seu negócio em tempo real.",
+              placement: "bottom",
+            },
+            {
+              target: '[data-tour="overview-card-today"]',
+              content:
+                "Este card mostra quantos agendamentos você tem hoje para organizar sua operação.",
+            },
+            {
+              target: '[data-tour="overview-card-revenue"]',
+              content:
+                "Aqui você vê o faturamento do mês com base nos atendimentos concluídos.",
+            },
+            {
+              target: '[data-tour="overview-card-status"]',
+              content:
+                "Use este indicador para conferir se a agenda está aberta ou fechada.",
+            },
+          ] satisfies Step[]
+        }
+        styles={{
+          options: {
+            zIndex: 10000,
+          },
+        }}
+      />
       {stats.totalBookings === 0 && !billingError && (
         <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
           Você ainda não tem agendamentos neste período.
         </div>
       )}
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div
+        className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
+        data-tour="overview-grid"
+      >
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.title}>
+            <Card key={stat.title} data-tour={stat.tourTarget}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {stat.title}

@@ -2429,7 +2429,6 @@ function isTimeSlotAvailable(
   const lunchStartMinutes = timeToMinutes(daySchedule.lunchStart);
   const lunchEndMinutes = timeToMinutes(daySchedule.lunchEnd);
 
-  // Se lunchStart === lunchEnd, não há almoço
   if (lunchStartMinutes !== lunchEndMinutes) {
     if (startMinutes < lunchEndMinutes && endMinutes > lunchStartMinutes) {
       console.log(

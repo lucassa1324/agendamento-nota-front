@@ -49,8 +49,6 @@ export function SignUpForm() {
     setIsLoading(true);
 
     try {
-      console.log(">>> [SIGNUP] Iniciando cadastro para:", email);
-
       const { data, error: authError } = await signUp.email({
         email,
         password,
@@ -62,7 +60,6 @@ export function SignUpForm() {
       });
 
       if (authError) {
-        console.warn(">>> [ADMIN_WARN] Erro no cadastro:", authError);
         setError(authError.message || "Erro ao criar conta.");
         setIsLoading(false);
         return;

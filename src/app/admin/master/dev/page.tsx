@@ -6,8 +6,10 @@ import {
   History,
   Loader2,
   Mail,
+  Plus,
   RefreshCw,
   Search,
+  Settings,
   ShieldBan,
   Trash2,
   Wrench,
@@ -31,6 +33,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -44,7 +52,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@/lib/api-client";
-import { API_BASE_URL } from "@/lib/auth-client";
+import { API_BASE_URL, useSession } from "@/lib/auth-client";
 
 interface CompanyMasterData {
   id: string;
@@ -119,6 +127,7 @@ const isHealthCheckSetupResponse = (
 };
 
 export default function MasterDeveloperAreaPage() {
+  const { refetch } = useSession();
   const [companies, setCompanies] = useState<CompanyMasterData[]>([]);
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -131,13 +140,70 @@ export default function MasterDeveloperAreaPage() {
     string | null
   >(null);
 
+  // Ações que ficam fora do menu "+"
+  const [pinnedActions, setPinnedActions] = useState<string[]>([
+    "sync",
+    "vencer",
+  ]);
+  const [isActionsConfigOpen, setIsActionsConfigOpen] = useState(false);
+
+  // Lista de todas as ações possíveis
+  const ALL_ACTIONS = [
+    {
+      id: "sync",
+      label: "Sync (Asaas)",
+      icon: RefreshCw,
+      color: "text-slate-600",
+    },
+    {
+      id: "vencer",
+      label: "Vencer (Auto)",
+      icon: AlertTriangle,
+      color: "text-orange-600",
+    },
+    {
+      id: "transicao",
+      label: "Transição (Expira)",
+      icon: Clock,
+      color: "text-blue-600",
+    },
+    { id: "email", label: "Reset E-mail", icon: Mail, color: "text-cyan-600" },
+    {
+      id: "onboarding",
+      label: "Reset 1º Acesso",
+      icon: Wrench,
+      color: "text-violet-600",
+    },
+    {
+      id: "dados",
+      label: "Reset Dados",
+      icon: Trash2,
+      color: "text-amber-600",
+    },
+    {
+      id: "bloquear",
+      label: "Bloquear",
+      icon: ShieldBan,
+      color: "text-red-600",
+    },
+  ];
+
   // Carregar configurações do localStorage
   useEffect(() => {
     const savedAuto = localStorage.getItem("master_auto_diag");
     const savedInterval = localStorage.getItem("master_auto_diag_interval");
+    const savedPinned = localStorage.getItem("master_pinned_actions");
+
     if (savedAuto !== null) setAutoDiagnostics(savedAuto === "true");
     if (savedInterval !== null)
       setAutoDiagnosticsInterval(Number(savedInterval));
+    if (savedPinned !== null) {
+      try {
+        setPinnedActions(JSON.parse(savedPinned));
+      } catch (e) {
+        console.error("Erro ao carregar pinned actions:", e);
+      }
+    }
   }, []);
 
   // Salvar configurações no localStorage
@@ -147,13 +213,20 @@ export default function MasterDeveloperAreaPage() {
       "master_auto_diag_interval",
       String(autoDiagnosticsInterval),
     );
-  }, [autoDiagnostics, autoDiagnosticsInterval]);
+    localStorage.setItem(
+      "master_pinned_actions",
+      JSON.stringify(pinnedActions),
+    );
+  }, [autoDiagnostics, autoDiagnosticsInterval, pinnedActions]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [simulatingId, setSimulatingId] = useState<string | null>(null);
   const [resettingId, setResettingId] = useState<string | null>(null);
   const [resettingEmailId, setResettingEmailId] = useState<string | null>(null);
+  const [resettingOnboardingId, setResettingOnboardingId] = useState<
+    string | null
+  >(null);
   const [expiringId, setExpiringId] = useState<string | null>(null);
   const [vencendoId, setVencendoId] = useState<string | null>(null);
 
@@ -343,7 +416,10 @@ export default function MasterDeveloperAreaPage() {
     }
   };
 
-  const handleResetEmailVerification = async (userId: string, companyId: string) => {
+  const handleResetEmailVerification = async (
+    userId: string,
+    companyId: string,
+  ) => {
     setResettingEmailId(companyId);
     try {
       const response = await customFetch(
@@ -366,7 +442,7 @@ export default function MasterDeveloperAreaPage() {
       });
 
       fetchLogs();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao resetar verificação de e-mail:", error);
       toast({
         title: "Erro",
@@ -375,6 +451,49 @@ export default function MasterDeveloperAreaPage() {
       });
     } finally {
       setResettingEmailId(null);
+    }
+  };
+
+  const handleResetOnboarding = async (companyId: string) => {
+    setResettingOnboardingId(companyId);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/companies/${companyId}/reset-onboarding`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Falha ao resetar primeiro acesso");
+      }
+
+      toast({
+        title: "Primeiro acesso resetado",
+        description: data.message,
+      });
+
+      // Atualiza a sessão local caso o admin esteja resetando sua própria conta de teste
+      await refetch();
+
+      // Limpa os flags de tour para permitir re-testar o tutorial interativo
+      localStorage.removeItem("tour_overview_v1");
+      localStorage.removeItem("tour_customizer_v1");
+
+      fetchCompanies();
+      fetchLogs();
+    } catch (error) {
+      console.error("Erro ao resetar primeiro acesso:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível resetar o primeiro acesso da empresa.",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingOnboardingId(null);
     }
   };
 
@@ -942,6 +1061,14 @@ export default function MasterDeveloperAreaPage() {
                 </div>
                 <Button
                   variant="outline"
+                  size="icon"
+                  title="Configurar botões visíveis"
+                  onClick={() => setIsActionsConfigOpen(true)}
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={fetchCompanies}
                   disabled={isLoading}
                 >
@@ -1016,133 +1143,354 @@ export default function MasterDeveloperAreaPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1.5 flex-wrap max-w-100 ml-auto">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 px-2"
-                                title="Sincronizar com Asaas"
-                                onClick={() => handleSync(company.id)}
-                                disabled={
-                                  syncingId === company.id ||
-                                  simulatingId === company.id ||
-                                  expiringId === company.id ||
-                                  vencendoId === company.id ||
-                                  resettingEmailId === company.id
-                                }
-                              >
-                                {syncingId === company.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <RefreshCw className="w-3.5 h-3.5 mr-1" />
-                                )}
-                                Sync
-                              </Button>
+                              {/* Botões Pinned (Fora do +) */}
+                              {pinnedActions.includes("sync") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2"
+                                  title="Sincronizar com Asaas"
+                                  onClick={() => handleSync(company.id)}
+                                  disabled={
+                                    syncingId === company.id ||
+                                    simulatingId === company.id ||
+                                    expiringId === company.id ||
+                                    vencendoId === company.id ||
+                                    resettingEmailId === company.id
+                                  }
+                                >
+                                  {syncingId === company.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                                  )}
+                                  Sync
+                                </Button>
+                              )}
 
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 px-2 text-orange-600 border-orange-200 hover:bg-orange-50"
-                                title="Simular Vencimento (Automático)"
-                                onClick={() =>
-                                  handleSimulatePastDue(company.id)
-                                }
-                                disabled={
-                                  vencendoId === company.id ||
-                                  syncingId === company.id ||
-                                  simulatingId === company.id ||
-                                  expiringId === company.id ||
-                                  resettingEmailId === company.id
-                                }
-                              >
-                                {vencendoId === company.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <AlertTriangle className="w-3.5 h-3.5 mr-1" />
-                                )}
-                                Vencer
-                              </Button>
+                              {pinnedActions.includes("vencer") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-orange-600 border-orange-200 hover:bg-orange-50"
+                                  title="Simular Vencimento (Automático)"
+                                  onClick={() =>
+                                    handleSimulatePastDue(company.id)
+                                  }
+                                  disabled={
+                                    vencendoId === company.id ||
+                                    syncingId === company.id ||
+                                    simulatingId === company.id ||
+                                    expiringId === company.id ||
+                                    resettingEmailId === company.id
+                                  }
+                                >
+                                  {vencendoId === company.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <AlertTriangle className="w-3.5 h-3.5 mr-1" />
+                                  )}
+                                  Vencer
+                                </Button>
+                              )}
 
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 px-2 text-blue-600 border-blue-200 hover:bg-blue-50"
-                                title="Testar Expiração (Manual -> Automático)"
-                                onClick={() => handleTestExpiration(company.id)}
-                                disabled={
-                                  expiringId === company.id ||
-                                  syncingId === company.id ||
-                                  simulatingId === company.id ||
-                                  vencendoId === company.id ||
-                                  resettingEmailId === company.id
-                                }
-                              >
-                                {expiringId === company.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Clock className="w-3.5 h-3.5 mr-1" />
-                                )}
-                                Transição
-                              </Button>
+                              {pinnedActions.includes("transicao") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+                                  title="Transição (Manual → Auto)"
+                                  onClick={() =>
+                                    handleTestExpiration(company.id)
+                                  }
+                                  disabled={
+                                    expiringId === company.id ||
+                                    syncingId === company.id ||
+                                    simulatingId === company.id ||
+                                    vencendoId === company.id ||
+                                    resettingEmailId === company.id
+                                  }
+                                >
+                                  {expiringId === company.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Clock className="w-3.5 h-3.5 mr-1" />
+                                  )}
+                                  Transição
+                                </Button>
+                              )}
 
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 px-2 text-cyan-600 border-cyan-200 hover:bg-cyan-50"
-                                title="Resetar Verificação de E-mail"
-                                onClick={() =>
-                                  handleResetEmailVerification(company.ownerId, company.id)
-                                }
-                                disabled={
-                                  resettingEmailId === company.id ||
-                                  syncingId === company.id ||
-                                  simulatingId === company.id ||
-                                  vencendoId === company.id ||
-                                  expiringId === company.id
-                                }
-                              >
-                                {resettingEmailId === company.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Mail className="w-3.5 h-3.5 mr-1" />
-                                )}
-                                E-mail
-                              </Button>
+                              {pinnedActions.includes("email") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-cyan-600 border-cyan-200 hover:bg-cyan-50"
+                                  title="Resetar Verificação E-mail"
+                                  onClick={() =>
+                                    handleResetEmailVerification(
+                                      company.ownerId,
+                                      company.id,
+                                    )
+                                  }
+                                  disabled={
+                                    resettingEmailId === company.id ||
+                                    syncingId === company.id ||
+                                    simulatingId === company.id ||
+                                    vencendoId === company.id ||
+                                    expiringId === company.id
+                                  }
+                                >
+                                  {resettingEmailId === company.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Mail className="w-3.5 h-3.5 mr-1" />
+                                  )}
+                                  Email
+                                </Button>
+                              )}
 
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 px-2 text-amber-600 border-amber-200 hover:bg-amber-50"
-                                title="Resetar Dados Específicos"
-                                onClick={() => {
-                                  setSelectedCompanyForReset(company);
-                                  setIsResetDialogOpen(true);
-                                }}
-                              >
-                                <Trash2 className="w-3.5 h-3.5 mr-1" />
-                                Dados
-                              </Button>
+                              {pinnedActions.includes("onboarding") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-violet-600 border-violet-200 hover:bg-violet-50"
+                                  title="Resetar Primeiro Acesso"
+                                  onClick={() =>
+                                    handleResetOnboarding(company.id)
+                                  }
+                                  disabled={
+                                    resettingOnboardingId === company.id ||
+                                    resettingEmailId === company.id ||
+                                    syncingId === company.id ||
+                                    simulatingId === company.id ||
+                                    vencendoId === company.id ||
+                                    expiringId === company.id
+                                  }
+                                >
+                                  {resettingOnboardingId === company.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Wrench className="w-3.5 h-3.5 mr-1" />
+                                  )}
+                                  1º Acesso
+                                </Button>
+                              )}
 
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="h-8 px-2"
-                                title="Simular Bloqueio Completo"
-                                onClick={() => handleSimulateBlock(company.id)}
-                                disabled={
-                                  simulatingId === company.id ||
-                                  syncingId === company.id ||
-                                  expiringId === company.id ||
-                                  vencendoId === company.id ||
-                                  resettingEmailId === company.id
-                                }
-                              >
-                                {simulatingId === company.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <ShieldBan className="w-3.5 h-3.5 mr-1" />
-                                )}
-                                Bloquear
-                              </Button>
+                              {pinnedActions.includes("dados") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-amber-600 border-amber-200 hover:bg-amber-50"
+                                  title="Resetar Dados (Serviços/Agend.)"
+                                  onClick={() => {
+                                    setSelectedCompanyForReset(company);
+                                    setIsResetDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                  Dados
+                                </Button>
+                              )}
+
+                              {pinnedActions.includes("bloquear") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-red-600 border-red-200 hover:bg-red-50"
+                                  title="Bloquear Empresa (Completo)"
+                                  onClick={() =>
+                                    handleSimulateBlock(company.id)
+                                  }
+                                  disabled={
+                                    simulatingId === company.id ||
+                                    syncingId === company.id ||
+                                    expiringId === company.id ||
+                                    vencendoId === company.id ||
+                                    resettingEmailId === company.id
+                                  }
+                                >
+                                  {simulatingId === company.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <ShieldBan className="w-3.5 h-3.5 mr-1" />
+                                  )}
+                                  Bloquear
+                                </Button>
+                              )}
+
+                              {/* Menu "+" para as ações não pinned */}
+                              {pinnedActions.length < ALL_ACTIONS.length && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 px-2"
+                                      title="Mais opções de teste"
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent
+                                    align="end"
+                                    className="w-56"
+                                  >
+                                    {!pinnedActions.includes("sync") && (
+                                      <DropdownMenuItem
+                                        onClick={() => handleSync(company.id)}
+                                        disabled={
+                                          syncingId === company.id ||
+                                          simulatingId === company.id ||
+                                          expiringId === company.id ||
+                                          vencendoId === company.id ||
+                                          resettingEmailId === company.id
+                                        }
+                                      >
+                                        {syncingId === company.id ? (
+                                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        ) : (
+                                          <RefreshCw className="w-4 h-4 mr-2" />
+                                        )}
+                                        Sincronizar Asaas
+                                      </DropdownMenuItem>
+                                    )}
+
+                                    {!pinnedActions.includes("vencer") && (
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleSimulatePastDue(company.id)
+                                        }
+                                        disabled={
+                                          vencendoId === company.id ||
+                                          syncingId === company.id ||
+                                          simulatingId === company.id ||
+                                          expiringId === company.id ||
+                                          resettingEmailId === company.id
+                                        }
+                                        className="text-orange-600 focus:text-orange-600"
+                                      >
+                                        {vencendoId === company.id ? (
+                                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        ) : (
+                                          <AlertTriangle className="w-4 h-4 mr-2" />
+                                        )}
+                                        Simular Vencimento
+                                      </DropdownMenuItem>
+                                    )}
+
+                                    {!pinnedActions.includes("transicao") && (
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleTestExpiration(company.id)
+                                        }
+                                        disabled={
+                                          expiringId === company.id ||
+                                          syncingId === company.id ||
+                                          simulatingId === company.id ||
+                                          vencendoId === company.id ||
+                                          resettingEmailId === company.id
+                                        }
+                                        className="text-blue-600 focus:text-blue-600"
+                                      >
+                                        {expiringId === company.id ? (
+                                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        ) : (
+                                          <Clock className="w-4 h-4 mr-2" />
+                                        )}
+                                        Transição (Manual → Auto)
+                                      </DropdownMenuItem>
+                                    )}
+
+                                    {!pinnedActions.includes("email") && (
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleResetEmailVerification(
+                                            company.ownerId,
+                                            company.id,
+                                          )
+                                        }
+                                        disabled={
+                                          resettingEmailId === company.id ||
+                                          syncingId === company.id ||
+                                          simulatingId === company.id ||
+                                          vencendoId === company.id ||
+                                          expiringId === company.id
+                                        }
+                                        className="text-cyan-600 focus:text-cyan-600"
+                                      >
+                                        {resettingEmailId === company.id ? (
+                                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        ) : (
+                                          <Mail className="w-4 h-4 mr-2" />
+                                        )}
+                                        Resetar Verificação E-mail
+                                      </DropdownMenuItem>
+                                    )}
+
+                                    {!pinnedActions.includes("dados") && (
+                                      <DropdownMenuItem
+                                        onClick={() => {
+                                          setSelectedCompanyForReset(company);
+                                          setIsResetDialogOpen(true);
+                                        }}
+                                        className="text-amber-600 focus:text-amber-600"
+                                      >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        Resetar Dados
+                                      </DropdownMenuItem>
+                                    )}
+
+                                    {!pinnedActions.includes("onboarding") && (
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleResetOnboarding(company.id)
+                                        }
+                                        disabled={
+                                          resettingOnboardingId ===
+                                            company.id ||
+                                          resettingEmailId === company.id ||
+                                          syncingId === company.id ||
+                                          simulatingId === company.id ||
+                                          vencendoId === company.id ||
+                                          expiringId === company.id
+                                        }
+                                        className="text-violet-600 focus:text-violet-600"
+                                      >
+                                        {resettingOnboardingId ===
+                                        company.id ? (
+                                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        ) : (
+                                          <Wrench className="w-4 h-4 mr-2" />
+                                        )}
+                                        Resetar 1º Acesso
+                                      </DropdownMenuItem>
+                                    )}
+
+                                    {!pinnedActions.includes("bloquear") && (
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleSimulateBlock(company.id)
+                                        }
+                                        disabled={
+                                          simulatingId === company.id ||
+                                          syncingId === company.id ||
+                                          expiringId === company.id ||
+                                          vencendoId === company.id ||
+                                          resettingEmailId === company.id
+                                        }
+                                        className="text-red-600 focus:text-red-600"
+                                      >
+                                        {simulatingId === company.id ? (
+                                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        ) : (
+                                          <ShieldBan className="w-4 h-4 mr-2" />
+                                        )}
+                                        Bloquear Empresa
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1170,7 +1518,9 @@ export default function MasterDeveloperAreaPage() {
                 <div className="p-3 rounded-md border border-cyan-200 bg-cyan-50 text-cyan-900 text-sm flex items-start gap-2">
                   <Mail className="w-4 h-4 mt-0.5 shrink-0" />
                   <div>
-                    <strong>Reset E-mail:</strong> Define a verificação de e-mail do proprietário como pendente. Útil para testar o fluxo de onboarding.
+                    <strong>Reset E-mail:</strong> Define a verificação de
+                    e-mail do proprietário como pendente. Útil para testar o
+                    fluxo de onboarding.
                   </div>
                 </div>
                 <div className="p-3 rounded-md border border-red-200 bg-red-50 text-red-900 text-sm flex items-start gap-2">
@@ -1469,6 +1819,50 @@ export default function MasterDeveloperAreaPage() {
                 <Trash2 className="w-4 h-4 mr-2" />
               )}
               Confirmar Reset
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de Configuração de Ações */}
+      <Dialog open={isActionsConfigOpen} onOpenChange={setIsActionsConfigOpen}>
+        <DialogContent className="sm:max-w-106.25">
+          <DialogHeader>
+            <DialogTitle>Configurar Botões de Ação</DialogTitle>
+            <DialogDescription>
+              Selecione quais botões devem ficar visíveis na tabela. Os outros
+              ficarão dentro do menu "+".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {ALL_ACTIONS.map((action) => (
+              <div key={action.id} className="flex items-center space-x-3">
+                <Checkbox
+                  id={`action-${action.id}`}
+                  checked={pinnedActions.includes(action.id)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setPinnedActions([...pinnedActions, action.id]);
+                    } else {
+                      setPinnedActions(
+                        pinnedActions.filter((id) => id !== action.id),
+                      );
+                    }
+                  }}
+                />
+                <Label
+                  htmlFor={`action-${action.id}`}
+                  className="flex items-center gap-2 cursor-pointer flex-1"
+                >
+                  <action.icon className={`h-4 w-4 ${action.color}`} />
+                  <span>{action.label}</span>
+                </Label>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsActionsConfigOpen(false)}>
+              Pronto
             </Button>
           </DialogFooter>
         </DialogContent>

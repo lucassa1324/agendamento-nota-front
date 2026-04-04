@@ -1,7 +1,6 @@
 "use client";
 
 import { ArrowRight, Loader2, Sparkles } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@/lib/api-client";
-import { API_BASE_URL } from "@/lib/auth-client";
+import { API_BASE_URL, useSession } from "@/lib/auth-client";
 import { businessService } from "@/lib/business-service";
 
 const WEEK_DAYS = [
@@ -24,9 +23,9 @@ const WEEK_DAYS = [
 ];
 
 export default function OnboardingPage() {
-  const router = useRouter();
   const { toast } = useToast();
   const { studio } = useStudio();
+  const { refetch } = useSession();
   const [isChecking, setIsChecking] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [serviceName, setServiceName] = useState("Atendimento Padrão");
@@ -44,35 +43,24 @@ export default function OnboardingPage() {
   }, [studio?.slug]);
 
   useEffect(() => {
-    const verifySetup = async () => {
+    const verifySetup = () => {
       if (!studio?.id || !studio?.slug) return;
-      try {
-        const servicesResponse = await customFetch(
-          `/api/services/company/${studio.id}`,
-        );
-        const services = servicesResponse.ok
-          ? await servicesResponse.json()
-          : [];
-        const settings = await businessService.getSettings(studio.id);
-        const hasService = Array.isArray(services) && services.length > 0;
-        const hasOpenDay =
-          Array.isArray(settings?.weekly) &&
-          settings.weekly.some((day) => day.status === "OPEN");
-        if (hasService && hasOpenDay) {
-          await customFetch(`${API_BASE_URL}/api/account/complete-onboarding`, {
-            method: "PATCH",
-          });
-          router.replace(targetOverviewPath);
-          return;
-        }
-      } catch {}
       setIsChecking(false);
     };
     verifySetup();
-  }, [studio?.id, studio?.slug, router, targetOverviewPath]);
+  }, [studio?.id, studio?.slug]);
 
   const handleCompleteOnboarding = async () => {
-    if (!studio?.id || !studio?.slug) return;
+    if (!studio?.id || !studio?.slug) {
+      toast({
+        title: "Erro de inicialização",
+        description:
+          "Os dados do estúdio não foram carregados. Tente recarregar a página.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
       const createServiceResponse = await customFetch("/api/services", {
@@ -124,13 +112,29 @@ export default function OnboardingPage() {
         method: "PATCH",
       });
 
+      try {
+        // Tenta dar refetch com um timeout de 2 segundos para não travar o usuário
+        await Promise.race([
+          refetch(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("Timeout")), 2000),
+          ),
+        ]);
+      } catch (e) {
+        // Ignora erro de refetch para seguir com o redirecionamento
+      }
+
+      // Limpa os flags de tour para que apareçam na próxima página
+      localStorage.removeItem("tour_overview_v1");
+      localStorage.removeItem("tour_customizer_v1");
+
       toast({
         title: "Configuração concluída",
         description: "Seu estúdio está pronto para receber agendamentos.",
       });
 
-      router.replace(targetOverviewPath);
-      router.refresh();
+      window.location.assign(targetOverviewPath);
+      return;
     } catch (error) {
       toast({
         title: "Erro",
