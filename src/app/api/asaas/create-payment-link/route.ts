@@ -28,7 +28,7 @@ const readEnvFallback = async (key: string) => {
       if (value) {
         return value;
       }
-    } catch {}
+    } catch { }
   }
 
   return "";
@@ -38,6 +38,15 @@ const wait = (ms: number) =>
   new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+
+type AsaasPayment = {
+  status?: string;
+  invoiceUrl?: string;
+  bankSlipUrl?: string;
+};
+
+const isPayableStatus = (status?: string) =>
+  status === "PENDING" || status === "OVERDUE";
 
 export async function POST(req: Request) {
   try {
@@ -84,10 +93,10 @@ export async function POST(req: Request) {
           const users = await usersResponse.json();
           const currentUser = Array.isArray(users)
             ? users.find(
-                (user: { email?: string; cpfCnpj?: string }) =>
-                  user.email?.toLowerCase() ===
-                  String(customerEmail).toLowerCase(),
-              )
+              (user: { email?: string; cpfCnpj?: string }) =>
+                user.email?.toLowerCase() ===
+                String(customerEmail).toLowerCase(),
+            )
             : null;
           resolvedCustomerCpfCnpj = String(currentUser?.cpfCnpj || "").replace(
             /\D/g,
@@ -241,35 +250,37 @@ export async function POST(req: Request) {
     const findPayableInvoiceUrl = async () => {
       for (let attempt = 0; attempt < 4; attempt++) {
         const pendingResponse = await fetch(
-          `${asaasApiUrl}/payments?subscription=${subscriptionId}&status=PENDING&limit=1`,
+          `${asaasApiUrl}/payments?subscription=${subscriptionId}&status=PENDING&limit=10`,
           {
             headers: { access_token: asaasApiKey },
           },
         );
         const pendingPayload = (await pendingResponse.json()) as {
-          data?: Array<{ invoiceUrl?: string; bankSlipUrl?: string }>;
+          data?: AsaasPayment[];
         };
-        const pendingUrl =
-          pendingPayload.data?.[0]?.invoiceUrl ||
-          pendingPayload.data?.[0]?.bankSlipUrl;
+        const pendingPayment = pendingPayload.data?.find((payment) =>
+          isPayableStatus(payment?.status || "PENDING"),
+        );
+        const pendingUrl = pendingPayment?.invoiceUrl || pendingPayment?.bankSlipUrl;
         if (pendingUrl) {
           return pendingUrl;
         }
 
-        const genericResponse = await fetch(
-          `${asaasApiUrl}/payments?subscription=${subscriptionId}&limit=1`,
+        const overdueResponse = await fetch(
+          `${asaasApiUrl}/payments?subscription=${subscriptionId}&status=OVERDUE&limit=10`,
           {
             headers: { access_token: asaasApiKey },
           },
         );
-        const genericPayload = (await genericResponse.json()) as {
-          data?: Array<{ invoiceUrl?: string; bankSlipUrl?: string }>;
+        const overduePayload = (await overdueResponse.json()) as {
+          data?: AsaasPayment[];
         };
-        const genericUrl =
-          genericPayload.data?.[0]?.invoiceUrl ||
-          genericPayload.data?.[0]?.bankSlipUrl;
-        if (genericUrl) {
-          return genericUrl;
+        const overduePayment = overduePayload.data?.find((payment) =>
+          isPayableStatus(payment?.status || "OVERDUE"),
+        );
+        const overdueUrl = overduePayment?.invoiceUrl || overduePayment?.bankSlipUrl;
+        if (overdueUrl) {
+          return overdueUrl;
         }
 
         await wait(1200);
@@ -296,11 +307,20 @@ export async function POST(req: Request) {
         dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000)
           .toISOString()
           .split("T")[0],
-        description: "Assinatura Plano Pro - Aura Sistema",
+        description: planName
+          ? `Assinatura Plano ${planName} - Aura Sistema`
+          : "Assinatura Plano Pro - Aura Sistema",
         externalReference: businessId,
+        remoteIp: clientIp,
       }),
     });
     const newPayment = await createPaymentResponse.json();
+    if (newPayment?.errors) {
+      throw new Error(
+        newPayment.errors?.[0]?.description ||
+        "Erro ao criar nova cobrança no Asaas",
+      );
+    }
     const fallbackUrl = newPayment?.invoiceUrl || newPayment?.bankSlipUrl;
 
     if (fallbackUrl) {

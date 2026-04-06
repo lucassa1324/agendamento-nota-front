@@ -106,8 +106,11 @@ export function useEditorState() {
   const syncBackground = useCallback(
     <T extends object>(prev: T, updates: Partial<T>): T => {
       // Validação: aborta se updates não for um objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [SYNC_BACKGROUND] Updates inválido recebido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [SYNC_BACKGROUND] Updates inválido recebido:",
+          updates,
+        );
         return prev;
       }
 
@@ -341,7 +344,8 @@ export function useEditorState() {
         nextAppearance.bgType = prvs.bgType;
       } else {
         // Fallback robusto usando resolveBgType
-        const currentImg = (state.bgImage || nextAppearance.backgroundImageUrl) as string | undefined;
+        const currentImg = (state.bgImage ||
+          nextAppearance.backgroundImageUrl) as string | undefined;
         const resolvedType = resolveBgType(undefined, currentImg);
         state.bgType = resolvedType;
         nextAppearance.bgType = resolvedType;
@@ -370,7 +374,10 @@ export function useEditorState() {
           ...(nextAppearance.overlay || { opacity: state.overlayOpacity ?? 0 }),
           color: overlayUpdate.color,
         };
-      } else if ((appearancePrev?.overlay as Record<string, unknown>)?.color !== undefined) {
+      } else if (
+        (appearancePrev?.overlay as Record<string, unknown>)?.color !==
+        undefined
+      ) {
         nextAppearance.overlay = {
           ...(nextAppearance.overlay || { opacity: state.overlayOpacity ?? 0 }),
           color: (appearancePrev?.overlay as Record<string, unknown>).color,
@@ -479,13 +486,13 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         valuesData.cardBgColor ||
-        valuesData.cardBackgroundColor ||
-        valuesData.card_background_color ||
-        cardConfig.backgroundColor ||
-        cardConfig.cardBackgroundColor ||
-        content.cardBgColor ||
-        itemsStyle.itemBackgroundColor ||
-        appearance.cardBgColor,
+          valuesData.cardBackgroundColor ||
+          valuesData.card_background_color ||
+          cardConfig.backgroundColor ||
+          cardConfig.cardBackgroundColor ||
+          content.cardBgColor ||
+          itemsStyle.itemBackgroundColor ||
+          appearance.cardBgColor,
       );
 
       return {
@@ -501,20 +508,20 @@ export function useEditorState() {
         cardTitleColor:
           sanitizeColor(
             valuesData.cardTitleColor ||
-            appearance.cardTitleColor ||
-            content.cardTitleColor,
+              appearance.cardTitleColor ||
+              content.cardTitleColor,
           ) || defaultValuesSettings.cardTitleColor,
         cardDescriptionColor:
           sanitizeColor(
             valuesData.cardDescriptionColor ||
-            appearance.cardDescriptionColor ||
-            content.cardDescriptionColor,
+              appearance.cardDescriptionColor ||
+              content.cardDescriptionColor,
           ) || defaultValuesSettings.cardDescriptionColor,
         cardIconColor:
           sanitizeColor(
             valuesData.cardIconColor ||
-            appearance.cardIconColor ||
-            content.cardIconColor,
+              appearance.cardIconColor ||
+              content.cardIconColor,
           ) || defaultValuesSettings.cardIconColor,
         bgColor:
           sanitizeColor(valuesData.bgColor || appearance.backgroundColor) ||
@@ -533,18 +540,18 @@ export function useEditorState() {
           cardBgColor: cardBg,
           cardTitleColor: sanitizeColor(
             valuesData.cardTitleColor ||
-            appearance.cardTitleColor ||
-            content.cardTitleColor,
+              appearance.cardTitleColor ||
+              content.cardTitleColor,
           ),
           cardDescriptionColor: sanitizeColor(
             valuesData.cardDescriptionColor ||
-            appearance.cardDescriptionColor ||
-            content.cardDescriptionColor,
+              appearance.cardDescriptionColor ||
+              content.cardDescriptionColor,
           ),
           cardIconColor: sanitizeColor(
             valuesData.cardIconColor ||
-            appearance.cardIconColor ||
-            content.cardIconColor,
+              appearance.cardIconColor ||
+              content.cardIconColor,
           ),
           backgroundColor: sanitizeColor(
             valuesData.bgColor || appearance.backgroundColor,
@@ -580,13 +587,13 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         servicesData.cardBgColor ||
-        servicesData.cardBackgroundColor ||
-        servicesData.card_background_color ||
-        cardConfig.backgroundColor ||
-        cardConfig.cardBackgroundColor ||
-        content.cardBgColor ||
-        itemsStyle.itemBackgroundColor ||
-        appearance.cardBgColor,
+          servicesData.cardBackgroundColor ||
+          servicesData.card_background_color ||
+          cardConfig.backgroundColor ||
+          cardConfig.cardBackgroundColor ||
+          content.cardBgColor ||
+          itemsStyle.itemBackgroundColor ||
+          appearance.cardBgColor,
       );
 
       return {
@@ -603,26 +610,26 @@ export function useEditorState() {
         cardTitleColor:
           sanitizeColor(
             servicesData.cardTitleColor ||
-            appearance.cardTitleColor ||
-            content.cardTitleColor,
+              appearance.cardTitleColor ||
+              content.cardTitleColor,
           ) || defaultServicesSettings.cardTitleColor,
         cardDescriptionColor:
           sanitizeColor(
             servicesData.cardDescriptionColor ||
-            appearance.cardDescriptionColor ||
-            content.cardDescriptionColor,
+              appearance.cardDescriptionColor ||
+              content.cardDescriptionColor,
           ) || defaultServicesSettings.cardDescriptionColor,
         cardPriceColor:
           sanitizeColor(
             servicesData.cardPriceColor ||
-            appearance.cardPriceColor ||
-            content.cardPriceColor,
+              appearance.cardPriceColor ||
+              content.cardPriceColor,
           ) || defaultServicesSettings.cardPriceColor,
         cardIconColor:
           sanitizeColor(
             servicesData.cardIconColor ||
-            appearance.cardIconColor ||
-            content.cardIconColor,
+              appearance.cardIconColor ||
+              content.cardIconColor,
           ) || defaultServicesSettings.cardIconColor,
         bgColor:
           sanitizeColor(servicesData.bgColor || appearance.backgroundColor) ||
@@ -641,23 +648,23 @@ export function useEditorState() {
           cardBgColor: cardBg,
           cardTitleColor: sanitizeColor(
             servicesData.cardTitleColor ||
-            appearance.cardTitleColor ||
-            content.cardTitleColor,
+              appearance.cardTitleColor ||
+              content.cardTitleColor,
           ),
           cardDescriptionColor: sanitizeColor(
             servicesData.cardDescriptionColor ||
-            appearance.cardDescriptionColor ||
-            content.cardDescriptionColor,
+              appearance.cardDescriptionColor ||
+              content.cardDescriptionColor,
           ),
           cardPriceColor: sanitizeColor(
             servicesData.cardPriceColor ||
-            appearance.cardPriceColor ||
-            content.cardPriceColor,
+              appearance.cardPriceColor ||
+              content.cardPriceColor,
           ),
           cardIconColor: sanitizeColor(
             servicesData.cardIconColor ||
-            appearance.cardIconColor ||
-            content.cardIconColor,
+              appearance.cardIconColor ||
+              content.cardIconColor,
           ),
           backgroundColor: sanitizeColor(
             servicesData.bgColor || appearance.backgroundColor,
@@ -693,20 +700,20 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         galleryData.cardBgColor ||
-        galleryData.cardBackgroundColor ||
-        galleryData.card_background_color ||
-        cardConfig.backgroundColor ||
-        cardConfig.cardBackgroundColor ||
-        content.cardBgColor ||
-        itemsStyle.itemBackgroundColor ||
-        appearance.cardBgColor,
+          galleryData.cardBackgroundColor ||
+          galleryData.card_background_color ||
+          cardConfig.backgroundColor ||
+          cardConfig.cardBackgroundColor ||
+          content.cardBgColor ||
+          itemsStyle.itemBackgroundColor ||
+          appearance.cardBgColor,
       );
 
       const resolvedBgColor =
         sanitizeColor(
           appearance.backgroundColor ||
-          galleryData.bgColor ||
-          galleryData.backgroundColor,
+            galleryData.bgColor ||
+            galleryData.backgroundColor,
         ) || defaultGallerySettings.bgColor;
 
       return {
@@ -714,15 +721,15 @@ export function useEditorState() {
         ...(gallery as Partial<GallerySettings>),
         gridConfig: {
           ...defaultGallerySettings.gridConfig,
-          ...(galleryData.gridConfig as Record<string, unknown> || {}),
+          ...((galleryData.gridConfig as Record<string, unknown>) || {}),
         } as NonNullable<GallerySettings["gridConfig"]>,
         displayLogic: {
           ...defaultGallerySettings.displayLogic,
-          ...(galleryData.displayLogic as Record<string, unknown> || {}),
+          ...((galleryData.displayLogic as Record<string, unknown>) || {}),
         } as NonNullable<GallerySettings["displayLogic"]>,
         photoStyle: {
           ...defaultGallerySettings.photoStyle,
-          ...(galleryData.photoStyle as Record<string, unknown> || {}),
+          ...((galleryData.photoStyle as Record<string, unknown>) || {}),
         } as NonNullable<GallerySettings["photoStyle"]>,
         titleColor:
           sanitizeColor(galleryData.titleColor || appearance.titleColor) ||
@@ -995,21 +1002,26 @@ export function useEditorState() {
     [],
   );
 
-  const [heroSettings, setHeroSettings] =
-    useState<HeroSettings>(getHeroSettings());
+  const [heroSettings, setHeroSettings] = useState<HeroSettings>(
+    getHeroSettings(),
+  );
   const [aboutHeroSettings, setAboutHeroSettings] = useState<HeroSettings>(
     getAboutHeroSettings(),
   );
-  const [storySettings, setStorySettings] =
-    useState<StorySettings>(getStorySettings());
-  const [teamSettings, setTeamSettings] =
-    useState<TeamSettings>(getTeamSettings());
+  const [storySettings, setStorySettings] = useState<StorySettings>(
+    getStorySettings(),
+  );
+  const [teamSettings, setTeamSettings] = useState<TeamSettings>(
+    getTeamSettings(),
+  );
   const [testimonialsSettings, setTestimonialsSettings] =
     useState<TestimonialsSettings>(getTestimonialsSettings());
-  const [fontSettings, setFontSettings] =
-    useState<FontSettings>(getFontSettings());
-  const [colorSettings, setColorSettings] =
-    useState<ColorSettings>(getColorSettings());
+  const [fontSettings, setFontSettings] = useState<FontSettings>(
+    getFontSettings(),
+  );
+  const [colorSettings, setColorSettings] = useState<ColorSettings>(
+    getColorSettings(),
+  );
   const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(
     getServicesSettings(),
   );
@@ -1023,8 +1035,7 @@ export function useEditorState() {
   );
   const [galleryPageSettings, setGalleryPageSettings] =
     useState<GallerySettings>(getGalleryPageSettings());
-  const [ctaSettings, setCTASettings] =
-    useState<CTASettings>(getCTASettings());
+  const [ctaSettings, setCTASettings] = useState<CTASettings>(getCTASettings());
   const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(
     getHeaderSettings(),
   );
@@ -1241,17 +1252,22 @@ export function useEditorState() {
           (siteColors?.buttonText as string) || config.colors?.buttonText || "",
         specialtyBadge: {
           background:
-            ((siteColors?.specialtyBadge as Record<string, string>)?.background) ||
-            ((siteColors?.specialty_badge as Record<string, string>)?.background) ||
+            (siteColors?.specialtyBadge as Record<string, string>)
+              ?.background ||
+            (siteColors?.specialty_badge as Record<string, string>)
+              ?.background ||
             defaultColorSettings.specialtyBadge.background,
           text:
-            ((siteColors?.specialtyBadge as Record<string, string>)?.text) ||
-            ((siteColors?.specialty_badge as Record<string, string>)?.text) ||
+            (siteColors?.specialtyBadge as Record<string, string>)?.text ||
+            (siteColors?.specialty_badge as Record<string, string>)?.text ||
             defaultColorSettings.specialtyBadge.text,
           borderRadius:
-            ((siteColors?.specialtyBadge as Record<string, string>)?.borderRadius) ||
-            ((siteColors?.specialty_badge as Record<string, string>)?.borderRadius) ||
-            ((siteColors?.specialty_badge as Record<string, string>)?.border_radius) ||
+            (siteColors?.specialtyBadge as Record<string, string>)
+              ?.borderRadius ||
+            (siteColors?.specialty_badge as Record<string, string>)
+              ?.borderRadius ||
+            (siteColors?.specialty_badge as Record<string, string>)
+              ?.border_radius ||
             defaultColorSettings.specialtyBadge.borderRadius,
         },
       };
@@ -1264,22 +1280,23 @@ export function useEditorState() {
         lastSavedColor.text !== defaultColorSettings.text ||
         lastSavedColor.accent !== defaultColorSettings.accent ||
         lastSavedSpecialtyBadge.borderRadius !==
-        defaultColorSettings.specialtyBadge.borderRadius;
-      const normalizeColor = (value?: string) => sanitizeColor(value || "") || "";
+          defaultColorSettings.specialtyBadge.borderRadius;
+      const normalizeColor = (value?: string) =>
+        sanitizeColor(value || "") || "";
       const isConfigAlignedWithLastSaved =
         !hasLastSavedColors ||
         (normalizeColor(resolvedColors.primary) ===
           normalizeColor(lastSavedColor.primary) &&
           normalizeColor(resolvedColors.secondary) ===
-          normalizeColor(lastSavedColor.secondary) &&
+            normalizeColor(lastSavedColor.secondary) &&
           normalizeColor(resolvedColors.background) ===
-          normalizeColor(lastSavedColor.background) &&
+            normalizeColor(lastSavedColor.background) &&
           normalizeColor(resolvedColors.text) ===
-          normalizeColor(lastSavedColor.text) &&
+            normalizeColor(lastSavedColor.text) &&
           normalizeColor(resolvedColors.accent || "") ===
-          normalizeColor(lastSavedColor.accent || "") &&
+            normalizeColor(lastSavedColor.accent || "") &&
           resolvedColors.specialtyBadge.borderRadius ===
-          lastSavedSpecialtyBadge.borderRadius);
+            lastSavedSpecialtyBadge.borderRadius);
       if (!isConfigAlignedWithLastSaved) {
         console.log(
           ">>> [SYNC] studio.config desatualizado em relação ao lastSaved. Ignorando sync.",
@@ -1542,8 +1559,11 @@ export function useEditorState() {
   const handleUpdateHero = useCallback(
     (updates: Partial<HeroSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateHero recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateHero recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1555,8 +1575,11 @@ export function useEditorState() {
   const handleUpdateAboutHero = useCallback(
     (updates: Partial<HeroSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateAboutHero recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateAboutHero recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1570,8 +1593,11 @@ export function useEditorState() {
   const handleUpdateStory = useCallback(
     (updates: Partial<StorySettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateStory recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateStory recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1583,8 +1609,11 @@ export function useEditorState() {
   const handleUpdateTeam = useCallback(
     (updates: Partial<TeamSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateTeam recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateTeam recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1596,8 +1625,11 @@ export function useEditorState() {
   const handleUpdateTestimonials = useCallback(
     (updates: Partial<TestimonialsSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateTestimonials recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateTestimonials recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1610,8 +1642,11 @@ export function useEditorState() {
 
   const handleUpdateFont = useCallback((updates: Partial<FontSettings>) => {
     // Type guard: aborta se updates não for objeto válido
-    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-      console.error('>>> [EDITOR_STATE] handleUpdateFont recebeu updates inválido:', updates);
+    if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+      console.error(
+        ">>> [EDITOR_STATE] handleUpdateFont recebeu updates inválido:",
+        updates,
+      );
       return;
     }
     setIsDirty(true);
@@ -1620,8 +1655,11 @@ export function useEditorState() {
 
   const handleUpdateColors = useCallback((updates: Partial<ColorSettings>) => {
     // Type guard: aborta se updates não for objeto válido
-    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-      console.error('>>> [EDITOR_STATE] handleUpdateColors recebeu updates inválido:', updates);
+    if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+      console.error(
+        ">>> [EDITOR_STATE] handleUpdateColors recebeu updates inválido:",
+        updates,
+      );
       return;
     }
     setIsDirty(true);
@@ -1645,8 +1683,11 @@ export function useEditorState() {
   const handleUpdateServices = useCallback(
     (updates: Partial<ServicesSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateServices recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateServices recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1685,8 +1726,11 @@ export function useEditorState() {
   const handleUpdateHomeValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateHomeValues recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateHomeValues recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1727,8 +1771,11 @@ export function useEditorState() {
   const handleUpdateAboutUsValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateAboutUsValues recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateAboutUsValues recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1769,8 +1816,11 @@ export function useEditorState() {
   const handleUpdateGalleryPreview = useCallback(
     (updates: Partial<GallerySettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateGalleryPreview recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateGalleryPreview recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1802,8 +1852,11 @@ export function useEditorState() {
   const handleUpdateGalleryPage = useCallback(
     (updates: Partial<GallerySettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateGalleryPage recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateGalleryPage recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1835,8 +1888,11 @@ export function useEditorState() {
   const handleUpdateCTA = useCallback(
     (updates: Partial<CTASettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateCTA recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateCTA recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1847,8 +1903,11 @@ export function useEditorState() {
 
   const handleUpdateHeader = useCallback((updates: Partial<HeaderSettings>) => {
     // Type guard: aborta se updates não for objeto válido
-    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-      console.error('>>> [EDITOR_STATE] handleUpdateHeader recebeu updates inválido:', updates);
+    if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+      console.error(
+        ">>> [EDITOR_STATE] handleUpdateHeader recebeu updates inválido:",
+        updates,
+      );
       return;
     }
     setIsDirty(true);
@@ -1870,8 +1929,11 @@ export function useEditorState() {
 
   const handleUpdateFooter = useCallback((updates: Partial<FooterSettings>) => {
     // Type guard: aborta se updates não for objeto válido
-    if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-      console.error('>>> [EDITOR_STATE] handleUpdateFooter recebeu updates inválido:', updates);
+    if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+      console.error(
+        ">>> [EDITOR_STATE] handleUpdateFooter recebeu updates inválido:",
+        updates,
+      );
       return;
     }
     setIsDirty(true);
@@ -1893,8 +1955,11 @@ export function useEditorState() {
   const handleUpdateBookingService = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateBookingService recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateBookingService recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1911,8 +1976,11 @@ export function useEditorState() {
   const handleUpdateBookingDate = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateBookingDate recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateBookingDate recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1929,8 +1997,11 @@ export function useEditorState() {
   const handleUpdateBookingTime = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateBookingTime recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateBookingTime recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1947,8 +2018,11 @@ export function useEditorState() {
   const handleUpdateBookingForm = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateBookingForm recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateBookingForm recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -1965,8 +2039,11 @@ export function useEditorState() {
   const handleUpdateBookingConfirmation = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       // Type guard: aborta se updates não for objeto válido
-      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
-        console.error('>>> [EDITOR_STATE] handleUpdateBookingConfirmation recebeu updates inválido:', updates);
+      if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+        console.error(
+          ">>> [EDITOR_STATE] handleUpdateBookingConfirmation recebeu updates inválido:",
+          updates,
+        );
         return;
       }
       setIsDirty(true);
@@ -2028,11 +2105,23 @@ export function useEditorState() {
           u: Partial<BackgroundSettings>,
         ) => void,
         story: handleUpdateStory as (u: Partial<BackgroundSettings>) => void,
+        "home-story": handleUpdateStory as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
         team: handleUpdateTeam as (u: Partial<BackgroundSettings>) => void,
+        "home-team": handleUpdateTeam as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
         testimonials: handleUpdateTestimonials as (
           u: Partial<BackgroundSettings>,
         ) => void,
+        "home-testimonials": handleUpdateTestimonials as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
         services: handleUpdateServices as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        "home-services": handleUpdateServices as (
           u: Partial<BackgroundSettings>,
         ) => void,
         values: handleUpdateHomeValues as (
@@ -2050,13 +2139,20 @@ export function useEditorState() {
         gallery: handleUpdateGalleryPreview as (
           u: Partial<BackgroundSettings>,
         ) => void,
+        "home-gallery": handleUpdateGalleryPreview as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
         "gallery-preview": handleUpdateGalleryPreview as (
+          u: Partial<BackgroundSettings>,
+        ) => void,
+        "page-gallery": handleUpdateGalleryPage as (
           u: Partial<BackgroundSettings>,
         ) => void,
         "gallery-grid": handleUpdateGalleryPage as (
           u: Partial<BackgroundSettings>,
         ) => void,
         cta: handleUpdateCTA as (u: Partial<BackgroundSettings>) => void,
+        "home-cta": handleUpdateCTA as (u: Partial<BackgroundSettings>) => void,
         "booking-service": handleUpdateBookingService as (
           u: Partial<BackgroundSettings>,
         ) => void,

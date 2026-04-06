@@ -640,21 +640,40 @@ export default function MasterDeveloperAreaPage() {
       method,
       route,
       body,
+      rawBody,
+      headers,
+      acceptedStatuses,
     }: {
       id: string;
       checkName: string;
       method: "GET" | "POST" | "PATCH" | "DELETE";
       route: string;
       body?: unknown;
+      rawBody?: BodyInit;
+      headers?: HeadersInit;
+      acceptedStatuses?: number[];
     }) => {
       const startedAt = Date.now();
 
       try {
+        const requestBody =
+          rawBody !== undefined
+            ? rawBody
+            : body !== undefined
+              ? JSON.stringify(body)
+              : undefined;
+        const requestHeaders =
+          headers ||
+          (rawBody !== undefined
+            ? undefined
+            : body !== undefined
+              ? { "Content-Type": "application/json" }
+              : undefined);
         const response = await customFetch(`${API_BASE_URL}${route}`, {
           method,
           credentials: "include",
-          headers: body ? { "Content-Type": "application/json" } : undefined,
-          body: body ? JSON.stringify(body) : undefined,
+          headers: requestHeaders,
+          body: requestBody,
         });
 
         const raw = await response.text();
@@ -674,24 +693,26 @@ export default function MasterDeveloperAreaPage() {
           (response.ok ? "" : raw || `HTTP ${response.status}`);
         const responsePreview =
           raw && raw.length > 180 ? `${raw.slice(0, 177)}...` : raw || null;
+        const isSuccessful =
+          response.ok || Boolean(acceptedStatuses?.includes(response.status));
 
         appendDiagnostic({
           id,
           checkName,
           method,
           route,
-          status: response.ok ? "OK" : "ERRO",
+          status: isSuccessful ? "OK" : "ERRO",
           httpStatus: response.status,
           durationMs,
-          errorMessage: response.ok ? null : message,
-          errorLocation: response.ok
+          errorMessage: isSuccessful ? null : message,
+          errorLocation: isSuccessful
             ? "-"
             : resolveErrorLocation(route, response.status, message || ""),
           responsePreview,
         });
 
         return {
-          ok: response.ok,
+          ok: isSuccessful,
           status: response.status,
           parsed,
           raw,
@@ -867,6 +888,84 @@ export default function MasterDeveloperAreaPage() {
           method: "GET",
           route: `/api/gallery/public/${setupPayload.companyId}`,
         });
+
+        const imageBytes = Uint8Array.from([
+          137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0,
+          1, 0, 0, 0, 1, 8, 4, 0, 0, 0, 181, 28, 12, 2, 0, 0, 0, 11, 73, 68, 65,
+          84, 120, 218, 99, 252, 255, 31, 0, 3, 3, 1, 253, 163, 115, 253, 234,
+          0, 0, 0, 0, 73, 69, 78, 68, 174, 66, 96, 130,
+        ]);
+        const imageFile = new File([imageBytes], "diagnostic-bg.png", {
+          type: "image/png",
+        });
+        const uploadBody = new FormData();
+        uploadBody.append("file", imageFile);
+        uploadBody.append("businessId", setupPayload.companyId);
+        uploadBody.append("section", "gallery");
+
+        const uploadBackgroundResult = await runCheck({
+          id: "backblaze-upload-bg",
+          checkName: "Upload de Imagem no Backblaze",
+          method: "POST",
+          route: "/api/settings/background-image",
+          rawBody: uploadBody,
+        });
+
+        let uploadedImageRoute: string | null = null;
+        const uploadedImageUrl = extractString(
+          uploadBackgroundResult.parsed?.imageUrl,
+        );
+        if (uploadedImageUrl) {
+          try {
+            uploadedImageRoute = uploadedImageUrl.startsWith("http")
+              ? new URL(uploadedImageUrl).pathname
+              : uploadedImageUrl;
+          } catch {
+            uploadedImageRoute = uploadedImageUrl;
+          }
+        }
+
+        if (uploadedImageRoute && uploadedImageUrl) {
+          await runCheck({
+            id: "backblaze-fetch-bg",
+            checkName: "Buscar Imagem Salva no Backblaze",
+            method: "GET",
+            route: uploadedImageRoute,
+          });
+
+          await runCheck({
+            id: "backblaze-delete-bg",
+            checkName: "Excluir Imagem do Backblaze",
+            method: "DELETE",
+            route: "/api/settings/background-image",
+            body: {
+              imageUrl: uploadedImageUrl,
+              businessId: setupPayload.companyId,
+            },
+          });
+
+          await runCheck({
+            id: "backblaze-verify-delete-bg",
+            checkName: "Validar Exclusão no Backblaze",
+            method: "GET",
+            route: uploadedImageRoute,
+            acceptedStatuses: [404],
+          });
+        } else {
+          appendDiagnostic({
+            id: "backblaze-flow",
+            checkName: "Fluxo Backblaze",
+            method: "POST",
+            route: "/api/settings/background-image",
+            status: "ERRO",
+            httpStatus: uploadBackgroundResult.status,
+            durationMs: 0,
+            errorMessage:
+              "Upload retornou sem imageUrl; não foi possível validar leitura/exclusão.",
+            errorLocation: "Módulo Settings / Storage",
+            responsePreview: uploadBackgroundResult.raw || null,
+          });
+        }
 
         await runCheck({
           id: "appointment-list-admin",

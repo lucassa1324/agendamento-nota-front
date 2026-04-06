@@ -1426,8 +1426,48 @@ export function useEditorApi({
 
               // 5. ATUALIZAÇÃO DO CONTEXTO GLOBAL (Força re-render do site no editor)
               if (updateStudioInfo && fresh) {
-                console.log(">>> [SYNC] Atualizando studio.config com os dados salvos.");
-                updateStudioInfo({ config: fresh });
+                const freshConfig =
+                  fresh && typeof fresh === "object" && !Array.isArray(fresh)
+                    ? (fresh as Record<string, unknown>)
+                    : {};
+                const currentConfig =
+                  settings && typeof settings === "object" && !Array.isArray(settings)
+                    ? (settings as unknown as Record<string, unknown>)
+                    : {};
+                updateStudioInfo({
+                  config: {
+                    ...freshConfig,
+                    sections: {
+                      ...((freshConfig.sections as Record<string, unknown>) || {}),
+                      ...((payload.sections as Record<string, unknown>) || {}),
+                    },
+                    layoutGlobal: {
+                      ...((freshConfig.layoutGlobal as Record<string, unknown>) ||
+                        {}),
+                      ...((payload.layoutGlobal as Record<string, unknown>) || {}),
+                    },
+                    home: {
+                      ...((freshConfig.home as Record<string, unknown>) || {}),
+                      heroBanner: sanitizedHero,
+                    },
+                    hero: sanitizedHero,
+                    aboutHero: sanitizedAboutHero,
+                    story: sanitizedStory,
+                    team: sanitizedTeam,
+                    testimonials: sanitizedTestimonials,
+                    services: sanitizedServices,
+                    cta: sanitizedCta,
+                    header: sanitizedHeader,
+                    footer: sanitizedFooter,
+                    galleryPreviewSettings: sanitizedGalleryPreview,
+                    galleryPageSettings: sanitizedGalleryPage,
+                    pageVisibility: settings.pageVisibility,
+                    visibleSections: settings.visibleSections,
+                    fontSettings: currentConfig.fontSettings || settings.fontSettings,
+                    colorSettings:
+                      currentConfig.colorSettings || settings.colorSettings,
+                  },
+                });
               }
 
               // 6. LIMPEZA DE CACHE DE PREVIEW

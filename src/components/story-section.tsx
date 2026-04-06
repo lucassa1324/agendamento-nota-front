@@ -1,15 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useStudio } from "@/context/studio-context";
 import {
   getStorageKey,
   getStorySettings,
+  SECTION_IDS,
   type StorySettings,
   sanitizeColor,
   sanitizeSection,
-  SECTION_IDS,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import {
@@ -22,7 +22,7 @@ import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 const safeString = (val: unknown, defaultStr: string = ""): string => {
   if (typeof val === "string") return val;
   if (val === null || val === undefined) return defaultStr;
-  
+
   if (Array.isArray(val)) {
     const joined = val
       .map((item) => safeString(item, ""))
@@ -30,23 +30,22 @@ const safeString = (val: unknown, defaultStr: string = ""): string => {
       .join("\n");
     return joined || defaultStr;
   }
-  
+
   if (typeof val === "object") {
     const obj = val as Record<string, unknown>;
-    const candidate =
-      obj.text ?? obj.value ?? obj.content ?? obj.title;
-    
+    const candidate = obj.text ?? obj.value ?? obj.content ?? obj.title;
+
     if (candidate !== undefined && candidate !== val) {
       return safeString(candidate, defaultStr);
     }
-    
+
     try {
       return JSON.stringify(val);
     } catch (_e) {
       return defaultStr;
     }
   }
-  
+
   return String(val);
 };
 
@@ -58,17 +57,33 @@ export function StorySection() {
   );
 
   const studioConfig = studio?.config;
+  const isInsideIframe =
+    typeof window !== "undefined" && window.parent !== window;
+  const hasLivePreviewUpdateRef = useRef(false);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
+    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
+    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+      console.log("[StorySection] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
+      return;
+    }
+
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     const config = studioConfig as SiteConfigData | undefined;
-    const siteCustomization = config?.siteCustomization || config?.site_customization;
-    const layoutGlobal = siteCustomization?.layoutGlobal || 
-                        siteCustomization?.layout_global || 
-                        (config as Record<string, unknown>)?.layoutGlobal || 
-                        (config as Record<string, unknown>)?.layout_global;
+    const siteCustomization =
+      config?.siteCustomization || config?.site_customization;
+    const layoutGlobal =
+      siteCustomization?.layoutGlobal ||
+      siteCustomization?.layout_global ||
+      (config as Record<string, unknown>)?.layoutGlobal ||
+      (config as Record<string, unknown>)?.layout_global;
     const home = config?.home;
-    const rawStory = (home?.storySection || home?.historySection || config?.story || (layoutGlobal as Record<string, unknown>)?.story) as Record<string, unknown> | undefined;
+    const rawStory = (home?.storySection ||
+      home?.historySection ||
+      config?.story ||
+      (layoutGlobal as Record<string, unknown>)?.story) as
+      | Record<string, unknown>
+      | undefined;
 
     if (rawStory) {
       const content = (rawStory.content as Record<string, unknown>) || {};
@@ -81,10 +96,14 @@ export function StorySection() {
         title: safeString(content.title ?? rawStory.title ?? ""),
         content: safeString(content.content ?? rawStory.content ?? ""),
         titleColor: sanitizeColor(
-          (rawStory.titleColor as string) || (appearance.titleColor as string) || (content.titleColor as string),
+          (rawStory.titleColor as string) ||
+            (appearance.titleColor as string) ||
+            (content.titleColor as string),
         ),
         titleFont:
-          (rawStory.titleFont as string) || (appearance.titleFont as string) || (content.titleFont as string),
+          (rawStory.titleFont as string) ||
+          (appearance.titleFont as string) ||
+          (content.titleFont as string),
         contentColor: sanitizeColor(
           (rawStory.contentColor as string) ||
             (appearance.contentColor as string) ||
@@ -94,7 +113,10 @@ export function StorySection() {
           (rawStory.contentFont as string) ||
           (appearance.contentFont as string) ||
           (content.contentFont as string),
-        bgImage: (rawStory.bgImage as string) || (appearance.backgroundImageUrl as string) || "",
+        bgImage:
+          (rawStory.bgImage as string) ||
+          (appearance.backgroundImageUrl as string) ||
+          "",
         bgColor: sanitizeColor(
           (rawStory.bgColor as string) ||
             (rawStory.backgroundColor as string) ||
@@ -106,16 +128,42 @@ export function StorySection() {
     } else {
       setSettings(getStorySettings());
     }
+  }, [studioConfig]);
+
+  useEffect(() => {
+    // Só carrega os dados iniciais se não houver um preview ativo ou se não estiver no iframe
+    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
+      loadData();
+    }
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_STORY_SETTINGS") {
-        const rawStory = event.data.settings as Record<string, unknown>;
+      if (
+        event.data.type === "UPDATE_STORY_SETTINGS" ||
+        event.data.type === "UPDATE_SITE_DATA" ||
+        event.data.type === "UPDATE_SITE_CONFIG"
+      ) {
+        hasLivePreviewUpdateRef.current = true;
+        
+        let rawStory = event.data.settings as Record<string, unknown> | undefined;
+        
+        if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+          const siteData = event.data.data as Record<string, unknown>;
+          const layoutGlobal = (siteData.layoutGlobal ||
+            siteData.layout_global) as Record<string, unknown> | undefined;
+          const home = siteData.home as Record<string, unknown> | undefined;
+          rawStory = (home?.storySection ||
+            home?.historySection ||
+            siteData.story ||
+            layoutGlobal?.story) as Record<string, unknown>;
+        }
+
         if (!rawStory) return;
 
         const content = (rawStory.content as Record<string, unknown>) || {};
-        const appearance = (rawStory.appearance as Record<string, unknown>) || {};
+        const appearance =
+          (rawStory.appearance as Record<string, unknown>) || {};
 
         const normalizedStory = {
           ...rawStory,
@@ -123,37 +171,45 @@ export function StorySection() {
           ...appearance,
           title: safeString(content.title ?? rawStory.title ?? ""),
           content: safeString(content.content ?? rawStory.content ?? ""),
-          titleColor: sanitizeColor(
-            (rawStory.titleColor as string) || (appearance.titleColor as string) || (content.titleColor as string),
-          ) || "",
-          titleFont:
-            safeString(
-              (rawStory.titleFont as string) ||
-                (appearance.titleFont as string) ||
-                (content.titleFont as string),
-            ),
-          contentColor: sanitizeColor(
-            (rawStory.contentColor as string) ||
-              (appearance.contentColor as string) ||
-              (content.contentColor as string),
-          ) || "",
-          contentFont:
-            safeString(
-              (rawStory.contentFont as string) ||
-                (appearance.contentFont as string) ||
-                (content.contentFont as string),
-            ),
-          bgImage: (rawStory.bgImage as string) || (appearance.backgroundImageUrl as string) || "",
-          bgColor: sanitizeColor(
-            (rawStory.bgColor as string) ||
-              (rawStory.backgroundColor as string) ||
-              (appearance.backgroundColor as string) ||
-              "",
-          ) || "",
+          titleColor:
+            sanitizeColor(
+              (rawStory.titleColor as string) ||
+                (appearance.titleColor as string) ||
+                (content.titleColor as string),
+            ) || "",
+          titleFont: safeString(
+            (rawStory.titleFont as string) ||
+              (appearance.titleFont as string) ||
+              (content.titleFont as string),
+          ),
+          contentColor:
+            sanitizeColor(
+              (rawStory.contentColor as string) ||
+                (appearance.contentColor as string) ||
+                (content.contentColor as string),
+            ) || "",
+          contentFont: safeString(
+            (rawStory.contentFont as string) ||
+              (appearance.contentFont as string) ||
+              (content.contentFont as string),
+          ),
+          bgImage:
+            (rawStory.bgImage as string) ||
+            (appearance.backgroundImageUrl as string) ||
+            "",
+          bgColor:
+            sanitizeColor(
+              (rawStory.bgColor as string) ||
+                (rawStory.backgroundColor as string) ||
+                (appearance.backgroundColor as string) ||
+                "",
+            ) || "",
         };
 
         setSettings((prev) =>
-          prev ? { ...prev, ...normalizedStory } : (normalizedStory as unknown as StorySettings),
+          prev
+            ? { ...prev, ...normalizedStory }
+            : (normalizedStory as unknown as StorySettings),
         );
       }
 
@@ -182,51 +238,12 @@ export function StorySection() {
         }
       } catch (_e) {}
     };
-    const handleDataReady = () => {
-      const cfg = studioConfig as SiteConfigData | undefined;
-      const lg = (cfg?.layoutGlobal || cfg?.layout_global) as Record<string, unknown> | undefined;
-      const homeData = cfg?.home;
-      const rawStoryData = (homeData?.storySection || homeData?.historySection || cfg?.story || lg?.story) as Record<string, unknown> | undefined;
-      if (rawStoryData) {
-        const content = (rawStoryData.content as Record<string, unknown>) || {};
-        const appearance = (rawStoryData.appearance as Record<string, unknown>) || {};
 
-        const normalizedStory = {
-          ...rawStoryData,
-          ...content,
-          ...appearance,
-          title: safeString(content.title ?? rawStoryData.title ?? ""),
-          content: safeString(content.content ?? rawStoryData.content ?? ""),
-          titleColor: sanitizeColor(
-            (rawStoryData.titleColor as string) || (appearance.titleColor as string) || (content.titleColor as string),
-          ) || "",
-          titleFont:
-            safeString(
-              (rawStoryData.titleFont as string) ||
-                (appearance.titleFont as string) ||
-                (content.titleFont as string),
-            ),
-          contentColor: sanitizeColor(
-            (rawStoryData.contentColor as string) ||
-              (appearance.contentColor as string) ||
-              (content.contentColor as string),
-          ) || "",
-          contentFont:
-            safeString(
-              (rawStoryData.contentFont as string) ||
-                (appearance.contentFont as string) ||
-                (content.contentFont as string),
-            ),
-          bgImage: (rawStoryData.bgImage as string) || (appearance.backgroundImageUrl as string) || "",
-          bgColor: sanitizeColor(
-            (rawStoryData.bgColor as string) ||
-              (rawStoryData.backgroundColor as string) ||
-              (appearance.backgroundColor as string) ||
-              "",
-          ) || "",
-        };
-        setSettings(normalizedStory as unknown as StorySettings);
+    const handleDataReady = () => {
+      if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+        return;
       }
+      loadData();
     };
 
     window.addEventListener("message", handleMessage);
@@ -238,7 +255,7 @@ export function StorySection() {
       window.removeEventListener("storySettingsUpdated", handleUpdate);
       window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [studioConfig]);
+  }, [isInsideIframe, studioConfig, loadData]);
 
   if (!settings) return null;
 
@@ -256,47 +273,51 @@ export function StorySection() {
       >
         <SectionBackground settings={settings as SectionBackgroundSettings} />
         <div className="container mx-auto px-4 relative z-10">
-        <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div className="relative h-100 w-full overflow-hidden rounded-2xl shadow-xl">
-            <Image
-              src={settings.image || "/professional-eyebrow-artist-at-work.jpg"}
-              alt={settings.title}
-              fill
-              className="object-cover"
-            />
-          </div>
-          <div>
-            <h2
-              className="font-serif text-4xl md:text-5xl font-bold mb-6 text-balance transition-all duration-300"
-              style={{
-                color: settings.titleColor || "var(--foreground)",
-                fontFamily: settings.titleFont || "var(--font-title)",
-              }}
-            >
-              {settings.title}
-            </h2>
-            <div
-              className="space-y-4 leading-relaxed transition-all duration-300"
-              style={{
-                color: settings.contentColor || "var(--foreground)",
-                fontFamily: settings.contentFont || "var(--font-body)",
-              }}
-            >
-              {typeof contentText === "string" && contentText.split ? (
-                contentText
-                  .split("\n")
-                  .filter((p) => p && p.trim() !== "")
-                  .map((paragraph, index) => (
-                    <p key={`${paragraph.slice(0, 20)}-${index}`}>{paragraph}</p>
-                  ))
-              ) : (
-                <p>{String(contentText || "")}</p>
-              )}
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="relative h-100 w-full overflow-hidden rounded-2xl shadow-xl">
+              <Image
+                src={
+                  settings.image || "/professional-eyebrow-artist-at-work.jpg"
+                }
+                alt={settings.title}
+                fill
+                className="object-cover"
+              />
+            </div>
+            <div>
+              <h2
+                className="font-serif text-4xl md:text-5xl font-bold mb-6 text-balance transition-all duration-300"
+                style={{
+                  color: settings.titleColor || "var(--foreground)",
+                  fontFamily: settings.titleFont || "var(--font-title)",
+                }}
+              >
+                {settings.title}
+              </h2>
+              <div
+                className="space-y-4 leading-relaxed transition-all duration-300"
+                style={{
+                  color: settings.contentColor || "var(--foreground)",
+                  fontFamily: settings.contentFont || "var(--font-body)",
+                }}
+              >
+                {typeof contentText === "string" && contentText.split ? (
+                  contentText
+                    .split("\n")
+                    .filter((p) => p && p.trim() !== "")
+                    .map((paragraph, index) => (
+                      <p key={`${paragraph.slice(0, 20)}-${index}`}>
+                        {paragraph}
+                      </p>
+                    ))
+                ) : (
+                  <p>{String(contentText || "")}</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
     </SessionWrapper>
   );
 }

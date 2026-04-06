@@ -32,7 +32,7 @@ import {
   Utensils,
   Wind,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import {
@@ -106,6 +106,8 @@ export function ValuesSection({
 
   const studioId = studio?.id;
   const studioConfig = studio?.config;
+  const isInsideIframe = typeof window !== "undefined" && window.parent !== window;
+  const hasLivePreviewUpdateRef = useRef(false);
 
   // Atualiza o estado interno se a prop settings mudar
   useEffect(() => {
@@ -331,6 +333,12 @@ export function ValuesSection({
   }, []);
 
   const loadData = useCallback(() => {
+    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
+    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+      console.log("[ValuesSection] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
+      return;
+    }
+
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studioId) {
       const config = studioConfig as SiteConfigData | undefined;
@@ -397,31 +405,60 @@ export function ValuesSection({
   // Efeito para sincronizar com mudanças no contexto global (Hydration/Post-Save)
   useEffect(() => {
     if (isMounted) {
-      console.log(">>> [VALUES_SECTION] Syncing with studioConfig change...");
-      loadData();
+      // Só sincroniza se não estivermos no iframe ou se ainda não houve atualização de preview
+      if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
+        console.log(">>> [VALUES_SECTION] Syncing with studioConfig change...");
+        loadData();
+      }
     }
-  }, [isMounted, loadData]);
+  }, [isMounted, loadData, isInsideIframe]);
 
   useEffect(() => {
     setIsMounted(true);
-    loadData();
+    // Só carrega os dados iniciais se não houver um preview ativo ou se não estiver no iframe
+    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
+      loadData();
+    }
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
       if (
-        event.data.type === "UPDATE_HOME_VALUES_SETTINGS" &&
-        source === "home"
+        (event.data.type === "UPDATE_HOME_VALUES_SETTINGS" && source === "home") ||
+        (event.data.type === "UPDATE_ABOUT_US_VALUES_SETTINGS" && source === "about") ||
+        event.data.type === "UPDATE_SITE_DATA" ||
+        event.data.type === "UPDATE_SITE_CONFIG"
       ) {
-        console.log(
-          ">>> [VALUES_SECTION] Mensagem UPDATE_HOME_VALUES_SETTINGS recebida:",
-          event.data.settings,
-        );
-        const incoming = event.data.settings as
-          | Record<string, unknown>
-          | undefined;
-        if (incoming) {
-          const normalized = normalizeValues(incoming);
+        hasLivePreviewUpdateRef.current = true;
+        
+        let rawValues: Record<string, unknown> | undefined;
+
+        if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+          const siteData = event.data.data as Record<string, unknown>;
+          rawValues =
+            source === "home"
+              ? ((siteData.homeValuesSettings ||
+                  siteData.valuesSection ||
+                  siteData.values) as Record<string, unknown> | undefined)
+              : ((siteData.aboutUsValuesSettings ||
+                  siteData.valuesSection ||
+                  siteData.values) as Record<string, unknown> | undefined);
+        } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
+          const config = event.data.config as Record<string, unknown>;
+          rawValues =
+            source === "home"
+              ? ((config.homeValuesSettings ||
+                  config.valuesSection ||
+                  config.values) as Record<string, unknown> | undefined)
+              : ((config.aboutUsValuesSettings ||
+                  config.valuesSection ||
+                  config.values) as Record<string, unknown> | undefined);
+        } else {
+          rawValues = event.data.settings as Record<string, unknown> | undefined;
+        }
+
+        if (rawValues) {
+          const normalized = normalizeValues(rawValues);
           setSettings((prev) => {
             const hasIncomingItems =
               Array.isArray(normalized.items) && normalized.items.length > 0;
@@ -435,50 +472,6 @@ export function ValuesSection({
                 }
               : normalized;
           });
-        }
-      }
-
-      if (
-        event.data.type === "UPDATE_ABOUT_US_VALUES_SETTINGS" &&
-        source === "about"
-      ) {
-        console.log(
-          ">>> [VALUES_SECTION] Mensagem UPDATE_ABOUT_US_VALUES_SETTINGS recebida:",
-          event.data.settings,
-        );
-        const incoming = event.data.settings as
-          | Record<string, unknown>
-          | undefined;
-        if (incoming) {
-          const normalized = normalizeValues(incoming);
-          setSettings((prev) => {
-            const hasIncomingItems =
-              Array.isArray(normalized.items) && normalized.items.length > 0;
-            return prev
-              ? {
-                  ...prev,
-                  ...normalized,
-                  // Trava: se o payload não trouxer itens válidos, preservamos os atuais
-                  items: hasIncomingItems ? normalized.items : prev.items,
-                }
-              : normalized;
-          });
-        }
-      }
-
-      if (event.data.type === "UPDATE_SITE_DATA") {
-        const siteValues =
-          source === "home"
-            ? ((event.data.data?.homeValuesSettings ||
-                event.data.data?.valuesSection ||
-                event.data.data?.values) as Record<string, unknown> | undefined)
-            : ((event.data.data?.aboutUsValuesSettings ||
-                event.data.data?.valuesSection ||
-                event.data.data?.values) as
-                | Record<string, unknown>
-                | undefined);
-        if (siteValues) {
-          setSettings(normalizeValues(siteValues));
         }
       }
 
@@ -506,14 +499,20 @@ export function ValuesSection({
         ? "homeValuesSettingsUpdated"
         : "aboutUsValuesSettingsUpdated";
     window.addEventListener(updateEvent, loadData);
-    window.addEventListener("DataReady", loadData);
+    const handleDataReady = () => {
+      if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+        return;
+      }
+      loadData();
+    };
+    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener(updateEvent, loadData);
-      window.removeEventListener("DataReady", loadData);
+      window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [loadData, normalizeValues, source]);
+  }, [isInsideIframe, loadData, normalizeValues, source]);
 
   // Lógica interna de visibilidade para sincronizar com o que o Editor manda via PostMessage
   const isSectionVisible = (id: string) => {

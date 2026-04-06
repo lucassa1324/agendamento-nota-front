@@ -75,6 +75,7 @@ export function GalleryPreview() {
 
   const [settings, setSettings] = useState<GallerySettings | null>(null);
   const settingsRef = useRef<GallerySettings | null>(null);
+  const hasLivePreviewUpdateRef = useRef(false);
 
   // Sincroniza o ref sempre que o state mudar
   useEffect(() => {
@@ -191,6 +192,13 @@ export function GalleryPreview() {
 
   const loadData = useCallback(
     async (force = false) => {
+      // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
+      const isInsideIframe = typeof window !== "undefined" && window.parent !== window;
+      if (isInsideIframe && hasLivePreviewUpdateRef.current && !force) {
+        console.log("[GalleryPreview] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
+        return;
+      }
+
       const now = Date.now();
       // Evita chamadas simultâneas ou muito próximas (menos de 1s entre elas)
       // a menos que seja forçado (ex: clique manual ou salvamento)
@@ -345,7 +353,11 @@ export function GalleryPreview() {
       typeof window !== "undefined" &&
       window.location.search.includes("preview=true");
 
-    loadData();
+    // Se já temos configurações no modo preview, bloqueamos o loadData inicial
+    // para evitar que os dados do banco sobrescrevam os dados do editor.
+    if (!isPreview || !settingsRef.current) {
+      loadData();
+    }
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
@@ -355,6 +367,7 @@ export function GalleryPreview() {
           event.data.type === "UPDATE_GALLERY_SETTINGS") &&
         event.data.settings
       ) {
+        hasLivePreviewUpdateRef.current = true;
         const incoming = event.data.settings as
           | Record<string, unknown>
           | undefined;
@@ -418,8 +431,12 @@ export function GalleryPreview() {
         return;
       }
 
-      if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
-        if (isPreview && settingsRef.current) {
+      if (
+        (event.data.type === "UPDATE_SITE_DATA" ||
+          event.data.type === "UPDATE_SITE_CONFIG") &&
+        event.data.data
+      ) {
+        if (isPreview && hasLivePreviewUpdateRef.current) {
           return;
         }
         const siteData = normalizePayload(
@@ -441,9 +458,12 @@ export function GalleryPreview() {
           event.data.type,
         );
         if (isPreview) {
-          // Se for DataReady no preview, NÃO chamamos loadData se já temos configurações,
-          // pois isso causaria o reset/flicker. O HeroSection bloqueia isso.
-          if (event.data.type === "DataReady" && settingsRef.current) {
+          // Se for DataReady no preview, NÃO chamamos loadData se já temos configurações via Live Update,
+          // pois isso causaria o reset/flicker.
+          if (
+            event.data.type === "DataReady" &&
+            hasLivePreviewUpdateRef.current
+          ) {
             console.log(
               "[GALLERY_SYNC] Modo Preview detectado. Bloqueando sobreposição pelo banco.",
             );

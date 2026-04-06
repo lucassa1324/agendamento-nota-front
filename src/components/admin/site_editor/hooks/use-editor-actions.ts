@@ -75,7 +75,7 @@ const applyDefaultVisuals = <T extends Record<string, unknown>>(
     if (isVisualKey(key)) {
       if (key === "appearance" && value && typeof value === "object") {
         next[key] = {
-          ...(next[key] as Record<string, unknown> || {}),
+          ...((next[key] as Record<string, unknown>) || {}),
           ...(value as Record<string, unknown>),
         };
       } else {
@@ -243,8 +243,8 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações do Sobre aplicadas.",
     });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     }
   }, [aboutHeroSettings, setLastAppliedAboutHero, toast]);
 
@@ -254,8 +254,8 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações da História aplicadas.",
     });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     }
   }, [storySettings, setLastAppliedStory, toast]);
 
@@ -265,8 +265,8 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações da Equipe aplicadas.",
     });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     }
   }, [teamSettings, setLastAppliedTeam, toast]);
 
@@ -276,8 +276,8 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Depoimentos aplicadas.",
     });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     }
   }, [testimonialsSettings, setLastAppliedTestimonials, toast]);
 
@@ -287,8 +287,8 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Fontes aplicadas.",
     });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     }
   }, [fontSettings, setLastAppliedFont, toast]);
 
@@ -300,8 +300,8 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Cores aplicadas.",
     });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     }
   }, [colorSettings, setLastAppliedColor, toast]);
 
@@ -311,8 +311,8 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Serviços aplicadas.",
     });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     }
   }, [servicesSettings, setLastAppliedServices, toast]);
 
@@ -322,8 +322,8 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Valores aplicadas.",
     });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     }
   }, [homeValuesSettings, setLastAppliedHomeValues, toast]);
 
@@ -333,8 +333,8 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações de Valores aplicadas.",
     });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     }
   }, [aboutUsValuesSettings, setLastAppliedAboutUsValues, toast]);
 
@@ -348,8 +348,8 @@ export function useEditorActions({
       title: "Sucesso",
       description: "Configurações da Galeria aplicadas.",
     });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     }
   }, [
     activeSectionId,
@@ -363,8 +363,8 @@ export function useEditorActions({
   const handleApplyCTA = useCallback(() => {
     setLastAppliedCTA(ctaSettings);
     toast({ title: "Sucesso", description: "Configurações de CTA aplicadas." });
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('storySettingsUpdated'));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
     }
   }, [ctaSettings, setLastAppliedCTA, toast]);
 
@@ -458,10 +458,17 @@ export function useEditorActions({
       applyDefaultVisuals(galleryPageSettings, defaultGallerySettings),
     );
     setCTASettings(applyDefaultVisuals(ctaSettings, defaultCTASettings));
-    setHeaderSettings(applyDefaultVisuals(headerSettings, defaultHeaderSettings));
-    setFooterSettings(applyDefaultVisuals(footerSettings, defaultFooterSettings));
+    setHeaderSettings(
+      applyDefaultVisuals(headerSettings, defaultHeaderSettings),
+    );
+    setFooterSettings(
+      applyDefaultVisuals(footerSettings, defaultFooterSettings),
+    );
     setBookingServiceSettings(
-      applyDefaultVisuals(bookingServiceSettings, defaultBookingServiceSettings),
+      applyDefaultVisuals(
+        bookingServiceSettings,
+        defaultBookingServiceSettings,
+      ),
     );
     setBookingDateSettings(
       applyDefaultVisuals(bookingDateSettings, defaultBookingDateSettings),
@@ -618,18 +625,26 @@ export function useEditorActions({
       // 1. Identificar configurações atuais da seção para detecção de mudanças
       const settingsMap: Record<string, BackgroundSettings> = {
         hero: heroSettings,
+        "home-hero": heroSettings,
         "about-hero": aboutHeroSettings,
         story: storySettings,
+        "home-story": storySettings,
         team: teamSettings,
+        "home-team": teamSettings,
         testimonials: testimonialsSettings,
+        "home-testimonials": testimonialsSettings,
         services: servicesSettings,
+        "home-services": servicesSettings,
         "home-values": homeValuesSettings,
         "about-values": aboutUsValuesSettings,
         "about-us-values": aboutUsValuesSettings,
         gallery: gallerySettings,
+        "home-gallery": gallerySettings,
         "gallery-preview": gallerySettings,
+        "page-gallery": galleryPageSettings,
         "gallery-grid": galleryPageSettings,
         cta: ctaSettings,
+        "home-cta": ctaSettings,
         "booking-service": bookingServiceSettings as BackgroundSettings,
         "booking-date": bookingDateSettings as BackgroundSettings,
         "booking-time": bookingTimeSettings as BackgroundSettings,
@@ -685,7 +700,6 @@ export function useEditorActions({
         // REMOVIDO: Não deletar automaticamente a imagem ao trocar para cor sólida.
         // Isso permite que o usuário teste cores sem perder a imagem já enviada.
         // A imagem só deve ser deletada se o usuário clicar explicitamente no botão de remover (X).
-
         // Apenas limpamos a URL da imagem para que a cor sólida apareça
         // mas mantemos a referência no banco se o usuário não quiser deletar.
         // Se o usuário quiser realmente deletar, ele usará o botão (X) no BackgroundEditor.
@@ -703,39 +717,54 @@ export function useEditorActions({
       handleUpdateBackgroundState(normalizedUpdates, targetSectionId);
 
       const currentSettingsMap: Record<string, BackgroundSettings | undefined> =
-      {
-        hero: heroSettings,
-        "about-hero": aboutHeroSettings,
-        story: storySettings,
-        team: teamSettings,
-        testimonials: testimonialsSettings,
-        services: servicesSettings,
-        "home-values": homeValuesSettings,
-        "about-values": aboutUsValuesSettings,
-        "about-us-values": aboutUsValuesSettings,
-        gallery: gallerySettings,
-        "gallery-preview": gallerySettings,
-        "gallery-grid": galleryPageSettings,
-        cta: ctaSettings,
-        "booking-service": bookingServiceSettings,
-        "booking-date": bookingDateSettings,
-        "booking-time": bookingTimeSettings,
-        "booking-form": bookingFormSettings,
-        "booking-confirmation": bookingConfirmationSettings,
-      };
+        {
+          hero: heroSettings,
+          "home-hero": heroSettings,
+          "about-hero": aboutHeroSettings,
+          story: storySettings,
+          "home-story": storySettings,
+          team: teamSettings,
+          "home-team": teamSettings,
+          testimonials: testimonialsSettings,
+          "home-testimonials": testimonialsSettings,
+          services: servicesSettings,
+          "home-services": servicesSettings,
+          "home-values": homeValuesSettings,
+          "about-values": aboutUsValuesSettings,
+          "about-us-values": aboutUsValuesSettings,
+          gallery: gallerySettings,
+          "home-gallery": gallerySettings,
+          "gallery-preview": gallerySettings,
+          "page-gallery": galleryPageSettings,
+          "gallery-grid": galleryPageSettings,
+          cta: ctaSettings,
+          "home-cta": ctaSettings,
+          "booking-service": bookingServiceSettings,
+          "booking-date": bookingDateSettings,
+          "booking-time": bookingTimeSettings,
+          "booking-form": bookingFormSettings,
+          "booking-confirmation": bookingConfirmationSettings,
+        };
 
       const saveFnMap: Record<
         string,
         (u: Partial<BackgroundSettings>) => void
       > = {
         hero: (u) => saveHeroSettings({ ...heroSettings, ...u }),
+        "home-hero": (u) => saveHeroSettings({ ...heroSettings, ...u }),
         "about-hero": (u) =>
           saveAboutHeroSettings({ ...aboutHeroSettings, ...u }),
         story: (u) => saveStorySettings({ ...storySettings, ...u }),
+        "home-story": (u) => saveStorySettings({ ...storySettings, ...u }),
         team: (u) => saveTeamSettings({ ...teamSettings, ...u }),
+        "home-team": (u) => saveTeamSettings({ ...teamSettings, ...u }),
         testimonials: (u) =>
           saveTestimonialsSettings({ ...testimonialsSettings, ...u }),
+        "home-testimonials": (u) =>
+          saveTestimonialsSettings({ ...testimonialsSettings, ...u }),
         services: (u) => saveServicesSettings({ ...servicesSettings, ...u }),
+        "home-services": (u) =>
+          saveServicesSettings({ ...servicesSettings, ...u }),
         "home-values": (u) =>
           saveHomeValuesSettings({ ...homeValuesSettings, ...u }),
         "about-values": (u) =>
@@ -743,11 +772,16 @@ export function useEditorActions({
         "about-us-values": (u) =>
           saveAboutUsValuesSettings({ ...aboutUsValuesSettings, ...u }),
         gallery: (u) => saveGallerySettings({ ...gallerySettings, ...u }),
+        "home-gallery": (u) =>
+          saveGallerySettings({ ...gallerySettings, ...u }),
         "gallery-preview": (u) =>
           saveGallerySettings({ ...gallerySettings, ...u }),
+        "page-gallery": (u) =>
+          saveGalleryPageSettings({ ...galleryPageSettings, ...u }),
         "gallery-grid": (u) =>
           saveGalleryPageSettings({ ...galleryPageSettings, ...u }),
         cta: (u) => saveCTASettings({ ...ctaSettings, ...u }),
+        "home-cta": (u) => saveCTASettings({ ...ctaSettings, ...u }),
         "booking-service": (u) =>
           saveBookingServiceSettings({ ...bookingServiceSettings, ...u }),
         "booking-date": (u) =>
@@ -765,18 +799,26 @@ export function useEditorActions({
 
       const saveKeyMap: Record<string, string> = {
         hero: "heroSettings",
+        "home-hero": "heroSettings",
         "about-hero": "aboutHeroSettings",
         story: "storySettings",
+        "home-story": "storySettings",
         team: "teamSettings",
+        "home-team": "teamSettings",
         testimonials: "testimonialsSettings",
+        "home-testimonials": "testimonialsSettings",
         services: "servicesSettings",
+        "home-services": "servicesSettings",
         "home-values": "homeValuesSettings",
         "about-values": "aboutUsValuesSettings",
         "about-us-values": "aboutUsValuesSettings",
         gallery: "gallerySettings",
+        "home-gallery": "gallerySettings",
         "gallery-preview": "gallerySettings",
+        "page-gallery": "galleryPageSettings",
         "gallery-grid": "galleryPageSettings",
         cta: "ctaSettings",
+        "home-cta": "ctaSettings",
         "booking-service": "bookingServiceSettings",
         "booking-date": "bookingDateSettings",
         "booking-time": "bookingTimeSettings",
@@ -791,12 +833,15 @@ export function useEditorActions({
           ? { ...currentSettings, ...normalizedUpdates }
           : normalizedUpdates;
 
-        console.log(`>>> [useEditorActions] Salvando rascunho para ${targetSectionId}:`, {
-          bgType: merged.bgType,
-          bgColor: merged.bgColor,
-          bgImage: merged.bgImage,
-          appearance: merged.appearance
-        });
+        console.log(
+          `>>> [useEditorActions] Salvando rascunho para ${targetSectionId}:`,
+          {
+            bgType: merged.bgType,
+            bgColor: merged.bgColor,
+            bgImage: merged.bgImage,
+            appearance: merged.appearance,
+          },
+        );
 
         /* REMOVIDO: Não limpamos a URL da imagem ao salvar se for cor sólida.
            Isso permite que o usuário alterne de volta para 'imagem' sem perder o upload anterior.
@@ -1193,7 +1238,9 @@ export function useEditorActions({
         "booking-date": setBookingDateSettings as (u: unknown) => void,
         "booking-time": setBookingTimeSettings as (u: unknown) => void,
         "booking-form": setBookingFormSettings as (u: unknown) => void,
-        "booking-confirmation": setBookingConfirmationSettings as (u: unknown) => void,
+        "booking-confirmation": setBookingConfirmationSettings as (
+          u: unknown,
+        ) => void,
       };
 
       // Mapa de funções de salvamento (localStorage)
@@ -1220,7 +1267,9 @@ export function useEditorActions({
         "booking-date": saveBookingDateSettings as (u: unknown) => void,
         "booking-time": saveBookingTimeSettings as (u: unknown) => void,
         "booking-form": saveBookingFormSettings as (u: unknown) => void,
-        "booking-confirmation": saveBookingConfirmationSettings as (u: unknown) => void,
+        "booking-confirmation": saveBookingConfirmationSettings as (
+          u: unknown,
+        ) => void,
       };
 
       // Mapa de chaves para o draft

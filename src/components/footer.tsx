@@ -12,7 +12,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useStudio } from "@/context/studio-context";
 import {
   defaultFooterSettings,
@@ -22,6 +22,7 @@ import {
   getPageVisibility,
   getSiteProfile,
   getVisibleSections,
+  sanitizeColor,
   type SiteProfile,
   SECTION_IDS,
 } from "@/lib/booking-data";
@@ -53,17 +54,10 @@ export function Footer({
   >({ [SECTION_IDS.layoutFooter]: true });
   const [mounted, setMounted] = useState(false);
 
+  const hasLivePreviewUpdateRef = useRef(false);
+  const [isInsideIframe, setIsInsideIframe] = useState(false);
+
   const only = searchParams.get("only");
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (externalFooterSettings) {
-      setFooterSettings(externalFooterSettings);
-    }
-  }, [externalFooterSettings]);
 
   const studioId = studio?.id;
   const studioName = studio?.name;
@@ -89,7 +83,15 @@ export function Footer({
   const studioShowLinkedin = studio?.showLinkedin;
   const studioShowX = studio?.showX;
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
+    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
+    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+      console.log(
+        "[Footer] Guard Logic: Ignorando loadData do banco (Preview Ativo)",
+      );
+      return;
+    }
+
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     const baseProfile = getSiteProfile();
 
@@ -97,14 +99,6 @@ export function Footer({
       // Função auxiliar para validar se um dado é útil (não nulo, não vazio, não apenas espaços)
       const isValid = (val: unknown): val is string =>
         val !== null && val !== undefined && String(val).trim() !== "";
-
-      // LOG DE DIAGNÓSTICO DO ESTÚDIO
-      console.log(">>> [FOOTER] Objeto Studio Recebido:", {
-        contact: studioContact,
-        email_root: studioEmail,
-        phone: studioPhone,
-        address: studioAddress,
-      });
 
       const mergedProfile: SiteProfile = {
         ...baseProfile,
@@ -142,8 +136,7 @@ export function Footer({
 
         // Para booleanos, garantimos que se o dado vier do banco como true/false, usamos ele.
         // Se vier nulo/undefined, usamos o que está no localStorage.
-        showInstagram:
-          studioShowInstagram ?? baseProfile.showInstagram ?? true,
+        showInstagram: studioShowInstagram ?? baseProfile.showInstagram ?? true,
         showFacebook: studioShowFacebook ?? baseProfile.showFacebook ?? true,
         showWhatsapp: studioShowWhatsapp ?? baseProfile.showWhatsapp ?? true,
         showTiktok: studioShowTiktok ?? baseProfile.showTiktok ?? false,
@@ -167,6 +160,49 @@ export function Footer({
         setFooterSettings(getFooterSettings());
       }
     }
+  }, [
+    studioId,
+    studioName,
+    studioSiteName,
+    studioDescription,
+    studioPhone,
+    studioEmail,
+    studioAddress,
+    studioContact,
+    studioFooterConfig,
+    studioInstagram,
+    studioFacebook,
+    studioWhatsapp,
+    studioTiktok,
+    studioLinkedin,
+    studioX,
+    studioLogoUrl,
+    studioTitleSuffix,
+    studioShowInstagram,
+    studioShowFacebook,
+    studioShowWhatsapp,
+    studioShowTiktok,
+    studioShowLinkedin,
+    studioShowX,
+    externalFooterSettings,
+  ]);
+
+  useEffect(() => {
+    setMounted(true);
+    setIsInsideIframe(window.self !== window.top);
+  }, []);
+
+  useEffect(() => {
+    if (externalFooterSettings) {
+      setFooterSettings(externalFooterSettings);
+    }
+  }, [externalFooterSettings]);
+
+  useEffect(() => {
+    // Só carrega os dados iniciais se não houver um preview ativo ou se não estiver no iframe
+    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
+      loadData();
+    }
 
     // Notificar o pai (admin) que o componente de rodapé está pronto
     if (window.self !== window.top) {
@@ -177,27 +213,85 @@ export function Footer({
     }
 
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
+      if (!event.data || typeof event.data !== "object") return;
+
+      if (event.data.type === "UPDATE_PAGE_VISIBILITY") {
         setPageVisibility(event.data.settings || {});
       }
-      if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
+      if (event.data.type === "UPDATE_VISIBLE_SECTIONS") {
         setVisibleSections(event.data.settings || {});
       }
-      if (event.data?.type === "UPDATE_FOOTER_SETTINGS") {
-        console.log(
-          "Footer: Recebendo novas configurações",
-          event.data.settings,
-        );
-        setFooterSettings(event.data.settings);
+      if (
+        event.data.type === "UPDATE_FOOTER_SETTINGS" ||
+        event.data.type === "UPDATE_SITE_DATA" ||
+        event.data.type === "UPDATE_SITE_CONFIG"
+      ) {
+        hasLivePreviewUpdateRef.current = true;
+
+        let rawFooter: Record<string, unknown> | undefined;
+
+        if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+          const siteData = event.data.data as Record<string, unknown>;
+          rawFooter = siteData.footer as Record<string, unknown>;
+        } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
+          const siteConfig = event.data.config as Record<string, unknown>;
+          rawFooter = siteConfig.footer as Record<string, unknown>;
+        } else {
+          rawFooter = event.data.settings as Record<string, unknown>;
+        }
+
+        if (rawFooter) {
+          const appearance =
+            (rawFooter.appearance as Record<string, unknown>) || {};
+          const normalizedFooter = {
+            ...rawFooter,
+            ...appearance,
+            bgColor: sanitizeColor(
+              (rawFooter.bgColor as string) ||
+                (rawFooter.backgroundColor as string) ||
+                (appearance.backgroundColor as string) ||
+                "",
+            ),
+            titleColor: sanitizeColor(
+              (rawFooter.titleColor as string) ||
+                (appearance.titleColor as string) ||
+                "",
+            ),
+            textColor: sanitizeColor(
+              (rawFooter.textColor as string) ||
+                (appearance.textColor as string) ||
+                "",
+            ),
+            iconColor: sanitizeColor(
+              (rawFooter.iconColor as string) ||
+                (appearance.iconColor as string) ||
+                "",
+            ),
+          };
+
+          setFooterSettings((prev) =>
+            prev
+              ? ({ ...prev, ...normalizedFooter } as FooterSettings)
+              : (normalizedFooter as FooterSettings),
+          );
+        }
+      }
+    };
+
+    const handleDataReady = () => {
+      if (!hasLivePreviewUpdateRef.current) {
+        loadData();
       }
     };
 
     window.addEventListener("message", handleMessage);
+    window.addEventListener("DataReady", handleDataReady);
 
     // Se estivermos no admin propriamente dito, não precisamos dos outros listeners
     if (pathname?.startsWith("/admin")) {
       return () => {
         window.removeEventListener("message", handleMessage);
+        window.removeEventListener("DataReady", handleDataReady);
       };
     }
 
@@ -234,8 +328,9 @@ export function Footer({
       );
       window.removeEventListener("footerSettingsUpdated", handleFooterUpdate);
       window.removeEventListener("message", handleMessage);
+      window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [studioId, studioName, studioSiteName, studioDescription, studioPhone, studioEmail, studioAddress, studioContact, studioFooterConfig, studioInstagram, studioFacebook, studioWhatsapp, studioTiktok, studioLinkedin, studioX, studioLogoUrl, studioTitleSuffix, studioShowInstagram, studioShowFacebook, studioShowWhatsapp, studioShowTiktok, studioShowLinkedin, studioShowX, pathname, externalFooterSettings]);
+  }, [pathname, isInsideIframe, loadData]);
 
   // Se estivermos isolando algo que não seja o footer, escondemos o footer
   if (only && only !== SECTION_IDS.layoutFooter) return null;

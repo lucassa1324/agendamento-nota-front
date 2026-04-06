@@ -32,7 +32,7 @@ import {
   Utensils,
   Wind,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "@/components/admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
@@ -41,10 +41,10 @@ import { useStudio } from "@/context/studio-context";
 import {
   getServicesSettings,
   getSettingsFromStorage,
+  SECTION_IDS,
   type Service,
   type ServicesSettings,
   sanitizeColor,
-  SECTION_IDS,
 } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
 
@@ -84,7 +84,8 @@ const MOCK_SERVICES: Service[] = [
   {
     id: "mock-1",
     name: "Corte de Cabelo Premium",
-    description: "Corte moderno realizado com visagismo para realçar seu rosto.",
+    description:
+      "Corte moderno realizado com visagismo para realçar seu rosto.",
     price: 60,
     duration: 45,
     icon: "Scissors",
@@ -130,7 +131,9 @@ export function ServicesSection() {
 
   const studioId = studio?.id;
   const studioConfig = studio?.config;
-  const isInsideIframe = typeof window !== "undefined" && window.parent !== window;
+  const isInsideIframe =
+    typeof window !== "undefined" && window.parent !== window;
+  const hasLivePreviewUpdateRef = useRef(false);
 
   const normalizeConfigServices = useCallback(
     (configServices: Record<string, unknown>): ServicesSettings => {
@@ -174,7 +177,8 @@ export function ServicesSection() {
             (content.cardBgColor as string) ||
             ((configServices.cardBgColor as Record<string, unknown>)
               ?.text as string) ||
-            ((appearance.cardBgColor as Record<string, unknown>)?.text as string) ||
+            ((appearance.cardBgColor as Record<string, unknown>)
+              ?.text as string) ||
             ((content.cardBgColor as Record<string, unknown>)?.text as string),
         ),
         cardTitleColor: sanitizeColor(
@@ -185,7 +189,8 @@ export function ServicesSection() {
               ?.text as string) ||
             ((appearance.cardTitleColor as Record<string, unknown>)
               ?.text as string) ||
-            ((content.cardTitleColor as Record<string, unknown>)?.text as string),
+            ((content.cardTitleColor as Record<string, unknown>)
+              ?.text as string),
         ),
         cardDescriptionColor: sanitizeColor(
           (configServices.cardDescriptionColor as string) ||
@@ -206,7 +211,8 @@ export function ServicesSection() {
               ?.text as string) ||
             ((appearance.cardPriceColor as Record<string, unknown>)
               ?.text as string) ||
-            ((content.cardPriceColor as Record<string, unknown>)?.text as string),
+            ((content.cardPriceColor as Record<string, unknown>)
+              ?.text as string),
         ),
         cardIconColor: sanitizeColor(
           (configServices.cardIconColor as string) ||
@@ -216,7 +222,8 @@ export function ServicesSection() {
               ?.text as string) ||
             ((appearance.cardIconColor as Record<string, unknown>)
               ?.text as string) ||
-            ((content.cardIconColor as Record<string, unknown>)?.text as string),
+            ((content.cardIconColor as Record<string, unknown>)
+              ?.text as string),
         ),
         cardTitleFont:
           (configServices.cardTitleFont as string) ||
@@ -261,10 +268,9 @@ export function ServicesSection() {
           ...appearance,
           overlay: {
             ...((appearance.overlay as Record<string, unknown>) || {}),
-            color:
-              (configServices.overlayColor ||
-                (appearance.overlay as Record<string, unknown>)?.color ||
-                "") as string,
+            color: (configServices.overlayColor ||
+              (appearance.overlay as Record<string, unknown>)?.color ||
+              "") as string,
             opacity: Number(
               configServices.overlayOpacity ??
                 appearance.overlayOpacity ??
@@ -280,6 +286,14 @@ export function ServicesSection() {
 
   const loadData = useCallback(
     (forceRevalidate = false) => {
+      // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
+      if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+        console.log(
+          "[ServicesSection] Guard Logic: Ignorando loadData do banco (Preview Ativo)",
+        );
+        return;
+      }
+
       // Tenta pegar do cache primeiro para ser instantâneo
       const cachedStudioStr = localStorage.getItem("studio_data");
       const settingsFromStorage = getSettingsFromStorage();
@@ -344,15 +358,16 @@ export function ServicesSection() {
 
       // Filtra apenas os serviços marcados para home
       let homeServices: Service[] = normalizedServices.filter(
-          (s: Service) => s?.showOnHome === true,
+        (s: Service) => s?.showOnHome === true,
       );
 
       if (homeServices.length === 0 && normalizedServices.length > 0) {
         homeServices = normalizedServices;
       }
 
-      const layoutGlobal = (currentConfig?.layoutGlobal || currentConfig?.layout_global) as Record<string, unknown> | undefined;
-      
+      const layoutGlobal = (currentConfig?.layoutGlobal ||
+        currentConfig?.layout_global) as Record<string, unknown> | undefined;
+
       // No site em produção, priorizamos home.servicesSection se existir
       const home = currentConfig?.home as Record<string, unknown> | undefined;
       const homeServicesSection = (home?.servicesSection ||
@@ -366,7 +381,7 @@ export function ServicesSection() {
       const finalConfigServices = configServices
         ? normalizeConfigServices(configServices)
         : undefined;
-      
+
       setServices(homeServices);
       if (finalConfigServices) {
         setSettings(finalConfigServices);
@@ -391,6 +406,7 @@ export function ServicesSection() {
       if (!event.data || typeof event.data !== "object") return;
 
       if (event.data.type === "UPDATE_SERVICES_SETTINGS") {
+        hasLivePreviewUpdateRef.current = true;
         const incoming = event.data.settings as
           | Record<string, unknown>
           | undefined;
@@ -401,7 +417,7 @@ export function ServicesSection() {
             (incoming.content as Record<string, unknown>) || {};
           const incomingItemsStyle =
             (incoming.itemsStyle as Record<string, unknown>) || {};
-          
+
           const sanitized = {
             ...incoming,
             bgColor:
@@ -423,12 +439,12 @@ export function ServicesSection() {
               ) || "",
             cardBgColor:
               sanitizeColor(
-              (incoming.cardBgColor as string) ||
-              (incomingAppearance.cardBgColor as string) ||
-              (incomingAppearance.cardBackgroundColor as string) ||
-              (incomingContent.cardBgColor as string) ||
-              (incomingItemsStyle.itemBackgroundColor as string),
-            ) || "",
+                (incoming.cardBgColor as string) ||
+                  (incomingAppearance.cardBgColor as string) ||
+                  (incomingAppearance.cardBackgroundColor as string) ||
+                  (incomingContent.cardBgColor as string) ||
+                  (incomingItemsStyle.itemBackgroundColor as string),
+              ) || "",
             cardTitleColor:
               sanitizeColor(
                 (incoming.cardTitleColor as string) ||
@@ -468,18 +484,14 @@ export function ServicesSection() {
         }
       }
 
-      if (
-        event.data.type === "UPDATE_SITE_DATA" &&
-        event.data.data
-      ) {
+      if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+        hasLivePreviewUpdateRef.current = true;
         const siteData = event.data.data as Record<string, unknown>;
-        const layoutGlobal =
-          (siteData.layoutGlobal ||
-            siteData.layout_global) as Record<string, unknown> | undefined;
+        const layoutGlobal = (siteData.layoutGlobal ||
+          siteData.layout_global) as Record<string, unknown> | undefined;
         const home = siteData.home as Record<string, unknown> | undefined;
-        const homeServicesSection =
-          (home?.servicesSection ||
-            home?.services_section) as Record<string, unknown> | undefined;
+        const homeServicesSection = (home?.servicesSection ||
+          home?.services_section) as Record<string, unknown> | undefined;
         const siteServices =
           homeServicesSection ||
           (home?.services as Record<string, unknown> | undefined) ||
@@ -500,7 +512,12 @@ export function ServicesSection() {
     };
 
     const handleServicesSettingsUpdated = () => loadData(true);
-    const handleDataReady = () => loadData();
+    const handleDataReady = () => {
+      if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+        return;
+      }
+      loadData();
+    };
     window.addEventListener("message", handleMessage);
     window.addEventListener(
       "servicesSettingsUpdated",
@@ -516,7 +533,7 @@ export function ServicesSection() {
       );
       window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [loadData, normalizeConfigServices]);
+  }, [isInsideIframe, loadData, normalizeConfigServices]);
 
   // Fallback Skeleton enquanto carrega do banco
   if (!isMounted || (isLoading && !isInsideIframe)) {
@@ -527,7 +544,10 @@ export function ServicesSection() {
           <div className="h-6 w-96 bg-gray-200 animate-pulse mx-auto mb-12 rounded"></div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-64 bg-gray-100 animate-pulse rounded-xl"></div>
+              <div
+                key={i}
+                className="h-64 bg-gray-100 animate-pulse rounded-xl"
+              ></div>
             ))}
           </div>
         </div>
@@ -547,130 +567,136 @@ export function ServicesSection() {
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >
-      <SectionBackground settings={settings} />
+        <SectionBackground settings={settings} />
 
-      <div className="container relative z-10 mx-auto px-4">
-        {(settings.showTitle !== false || settings.showSubtitle !== false) && (
-          <div className="text-center mb-16">
-            {settings.showTitle !== false && (
-              <h2
-                className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
-                style={{
-                  color: settings.titleColor || "var(--foreground)",
-                  fontFamily: settings.titleFont
-                    ? `"${settings.titleFont}", sans-serif`
-                    : "var(--font-title)",
-                }}
-              >
-                {renderSafeText(settings.title)}
-              </h2>
-            )}
-            {settings.showSubtitle !== false && (
-              <p
-                className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
-                style={{
-                  color: settings.subtitleColor || "var(--foreground)",
-                  fontFamily: settings.subtitleFont
-                    ? `"${settings.subtitleFont}", sans-serif`
-                    : "var(--font-subtitle)",
-                }}
-              >
-                {renderSafeText(settings.subtitle)}
-              </p>
-            )}
-          </div>
-        )}
+        <div className="container relative z-10 mx-auto px-4">
+          {(settings.showTitle !== false ||
+            settings.showSubtitle !== false) && (
+            <div className="text-center mb-16">
+              {settings.showTitle !== false && (
+                <h2
+                  className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
+                  style={{
+                    color: settings.titleColor || "var(--foreground)",
+                    fontFamily: settings.titleFont
+                      ? `"${settings.titleFont}", sans-serif`
+                      : "var(--font-title)",
+                  }}
+                >
+                  {renderSafeText(settings.title)}
+                </h2>
+              )}
+              {settings.showSubtitle !== false && (
+                <p
+                  className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
+                  style={{
+                    color: settings.subtitleColor || "var(--foreground)",
+                    fontFamily: settings.subtitleFont
+                      ? `"${settings.subtitleFont}", sans-serif`
+                      : "var(--font-subtitle)",
+                  }}
+                >
+                  {renderSafeText(settings.subtitle)}
+                </p>
+              )}
+            </div>
+          )}
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {services?.map((service: Service, index: number) => {
-            // Usa o ícone definido no serviço ou tenta inferir pelo nome
-            let Icon = Sparkles;
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {services?.map((service: Service, index: number) => {
+              // Usa o ícone definido no serviço ou tenta inferir pelo nome
+              let Icon = Sparkles;
 
-            if (service?.icon && iconMap[service.icon]) {
-              Icon = iconMap[service.icon];
-            } else {
-              const name = renderSafeText(service?.name).toLowerCase() || "";
-              if (name.includes("design")) Icon = Scissors;
-              else if (name.includes("color") || name.includes("henna"))
-                Icon = Palette;
-              else if (name.includes("lamina")) Icon = Star;
-            }
+              if (service?.icon && iconMap[service.icon]) {
+                Icon = iconMap[service.icon];
+              } else {
+                const name = renderSafeText(service?.name).toLowerCase() || "";
+                if (name.includes("design")) Icon = Scissors;
+                else if (name.includes("color") || name.includes("henna"))
+                  Icon = Palette;
+                else if (name.includes("lamina")) Icon = Star;
+              }
 
-            return (
-              <Card
-                key={
-                  service?.id ? `${service.id}-${index}` : `service-${index}`
-                }
-                className="border-border hover:border-accent transition-all duration-300 overflow-hidden"
-                style={{
-                  backgroundColor: settings?.cardBgColor || "var(--card, white)",
-                  borderRadius: settings?.cardBorderRadius || "0.75rem",
-                  borderWidth: settings?.cardBorderWidth || "1px",
-                  borderColor: settings?.cardBorderColor || "var(--border)",
-                }}
-              >
-                <CardContent className="p-6">
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center mb-4 transition-colors"
-                    style={{
-                      backgroundColor: settings?.cardIconColor
-                        ? `${settings.cardIconColor}1a`
-                        : "var(--primary-muted, rgba(0, 0, 0, 0.05))",
-                    }}
-                  >
-                    <Icon
-                      className="w-6 h-6 transition-colors"
+              return (
+                <Card
+                  key={
+                    service?.id ? `${service.id}-${index}` : `service-${index}`
+                  }
+                  className="border-border hover:border-accent transition-all duration-300 overflow-hidden"
+                  style={{
+                    backgroundColor:
+                      settings?.cardBgColor || "var(--card, white)",
+                    borderRadius: settings?.cardBorderRadius || "0.75rem",
+                    borderWidth: settings?.cardBorderWidth || "1px",
+                    borderColor: settings?.cardBorderColor || "var(--border)",
+                  }}
+                >
+                  <CardContent className="p-6">
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center mb-4 transition-colors"
                       style={{
-                        color: settings?.cardIconColor || "var(--primary)",
-                      }}
-                    />
-                  </div>
-                  <h3
-                    className="text-xl font-semibold mb-2"
-                    style={{
-                      color: settings?.cardTitleColor || "var(--card-foreground, var(--foreground))",
-                      fontFamily: settings?.cardTitleFont
-                        ? `"${settings.cardTitleFont}", sans-serif`
-                        : "var(--font-subtitle)",
-                    }}
-                  >
-                    {renderSafeText(service?.name) || "Serviço sem nome"}
-                  </h3>
-                  <p
-                    className="text-sm mb-4 leading-relaxed opacity-80"
-                    style={{
-                      color:
-                        settings?.cardDescriptionColor || "var(--card-foreground, var(--foreground))",
-                      fontFamily: settings?.cardDescriptionFont
-                        ? `"${settings.cardDescriptionFont}", sans-serif`
-                        : "var(--font-text)",
-                    }}
-                  >
-                    {renderSafeText(service?.description) || "Sem descrição disponível"}
-                  </p>
-                  <div className="flex items-center justify-between mt-auto">
-                    <span
-                      className="font-bold text-lg"
-                      style={{
-                        color: settings?.cardPriceColor || "var(--primary)",
-                        fontFamily: settings?.cardPriceFont
-                          ? `"${settings.cardPriceFont}", sans-serif`
-                          : "inherit",
+                        backgroundColor: settings?.cardIconColor
+                          ? `${settings.cardIconColor}1a`
+                          : "var(--primary-muted, rgba(0, 0, 0, 0.05))",
                       }}
                     >
-                      R$ {renderSafeText(service?.price) || "0,00"}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {renderSafeText(service?.duration) || "0"} min
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                      <Icon
+                        className="w-6 h-6 transition-colors"
+                        style={{
+                          color: settings?.cardIconColor || "var(--primary)",
+                        }}
+                      />
+                    </div>
+                    <h3
+                      className="text-xl font-semibold mb-2"
+                      style={{
+                        color:
+                          settings?.cardTitleColor ||
+                          "var(--card-foreground, var(--foreground))",
+                        fontFamily: settings?.cardTitleFont
+                          ? `"${settings.cardTitleFont}", sans-serif`
+                          : "var(--font-subtitle)",
+                      }}
+                    >
+                      {renderSafeText(service?.name) || "Serviço sem nome"}
+                    </h3>
+                    <p
+                      className="text-sm mb-4 leading-relaxed opacity-80"
+                      style={{
+                        color:
+                          settings?.cardDescriptionColor ||
+                          "var(--card-foreground, var(--foreground))",
+                        fontFamily: settings?.cardDescriptionFont
+                          ? `"${settings.cardDescriptionFont}", sans-serif`
+                          : "var(--font-text)",
+                      }}
+                    >
+                      {renderSafeText(service?.description) ||
+                        "Sem descrição disponível"}
+                    </p>
+                    <div className="flex items-center justify-between mt-auto">
+                      <span
+                        className="font-bold text-lg"
+                        style={{
+                          color: settings?.cardPriceColor || "var(--primary)",
+                          fontFamily: settings?.cardPriceFont
+                            ? `"${settings.cardPriceFont}", sans-serif`
+                            : "inherit",
+                        }}
+                      >
+                        R$ {renderSafeText(service?.price) || "0,00"}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {renderSafeText(service?.duration) || "0"} min
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
     </SessionWrapper>
   );
 }

@@ -14,7 +14,7 @@ import {
   Sun,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import {
@@ -70,10 +70,18 @@ export function HeroSection() {
 
   const config = studio?.config as SiteConfigData | undefined;
 
-  // Sincronização Unificada: O estado customStyles agora é derivado DIRETAMENTE do StudioContext.
-  // Isso resolve a divergência entre editor e preview, pois ambos passam a beber da mesma fonte.
-  useEffect(() => {
+  const isInsideIframe =
+    typeof window !== "undefined" && window.parent !== window;
+  const hasLivePreviewUpdateRef = useRef(false);
+
+  const loadData = useCallback(() => {
     if (!config) return;
+
+    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
+    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+      console.log("[HeroSection] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
+      return;
+    }
 
     const home = config?.home as Record<string, unknown> | undefined;
     const layoutGlobal = (config?.layoutGlobal || config?.layout_global) as
@@ -176,9 +184,9 @@ export function HeroSection() {
           content.subtitleFont,
         bgImage: rawHero.bgImage || appearance.backgroundImageUrl || "",
         bgColor: sanitizeColor(
-          rawHero.bgColor ||
-            rawHero.backgroundColor ||
-            appearance.backgroundColor ||
+          (rawHero.bgColor as string) ||
+            (rawHero.backgroundColor as string) ||
+            (appearance.backgroundColor as string) ||
             "",
         ),
         bgType: (rawHero.bgType ||
@@ -192,6 +200,15 @@ export function HeroSection() {
       setCustomStyles(getHeroSettings());
     }
   }, [config]);
+
+  // Sincronização Unificada: O estado customStyles agora é derivado DIRETAMENTE do StudioContext.
+  // Isso resolve a divergência entre editor e preview, pois ambos passam a beber da mesma fonte.
+  useEffect(() => {
+    // Só sincroniza se não estivermos no iframe ou se ainda não houve atualização de preview
+    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
+      loadData();
+    }
+  }, [loadData, isInsideIframe]);
 
   // Log de depuração solicitado para verificar a estrutura dos dados
   useEffect(() => {
@@ -216,25 +233,137 @@ export function HeroSection() {
         setTimeout(() => {
           setHighlightedElement(null);
         }, 2000);
-      } else if (event.data.type === "UPDATE_HERO_SETTINGS") {
-        console.log(
-          ">>> [HERO] Recebido update via postMessage",
-          event.data.settings,
-        );
+      } else if (
+        event.data.type === "UPDATE_HERO_SETTINGS" ||
+        event.data.type === "UPDATE_SITE_DATA" ||
+        event.data.type === "UPDATE_SITE_CONFIG"
+      ) {
+        hasLivePreviewUpdateRef.current = true;
+        
+        let rawHero = event.data.settings as Record<string, unknown> | undefined;
 
-        // Validação: só aplica o update se for um objeto válido
-        if (
-          event.data.settings &&
-          ((typeof event.data.settings === "object" &&
-            !Array.isArray(event.data.settings)) ||
-            typeof event.data.settings === "string")
-        ) {
-          setCustomStyles((prev) => sanitizeSection(event.data.settings, prev));
-        } else {
-          console.error(
-            ">>> [HERO] Settings inválidos recebidos via postMessage:",
-            event.data.settings,
-          );
+        if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+          const siteData = event.data.data as Record<string, unknown>;
+          const layoutGlobal = (siteData.layoutGlobal ||
+            siteData.layout_global) as Record<string, unknown> | undefined;
+          const home = siteData.home as Record<string, unknown> | undefined;
+          rawHero = (home?.heroBanner ||
+            home?.hero ||
+            siteData.hero ||
+            layoutGlobal?.hero) as Record<string, unknown>;
+        } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
+          const siteConfig = event.data.config as Record<string, unknown>;
+          const layoutGlobal = (siteConfig.layoutGlobal ||
+            siteConfig.layout_global) as Record<string, unknown> | undefined;
+          const home = siteConfig.home as Record<string, unknown> | undefined;
+          rawHero = (home?.heroBanner ||
+            home?.hero ||
+            siteConfig.hero ||
+            layoutGlobal?.hero) as Record<string, unknown>;
+        }
+
+        if (rawHero) {
+          const content = (rawHero.content as Record<string, unknown>) || {};
+          const appearance = (rawHero.appearance as Record<string, unknown>) || {};
+
+          const normalizedHero = {
+            ...rawHero,
+            ...content,
+            ...appearance,
+            title: content.title ?? rawHero.title,
+            subtitle: content.subtitle ?? rawHero.subtitle,
+            showTitle:
+              content.showTitle !== undefined
+                ? content.showTitle
+                : rawHero.showTitle !== undefined
+                  ? rawHero.showTitle
+                  : true,
+            showSubtitle:
+              content.showSubtitle !== undefined
+                ? content.showSubtitle
+                : rawHero.showSubtitle !== undefined
+                  ? rawHero.showSubtitle
+                  : true,
+            showBadge:
+              content.showBadge !== undefined
+                ? content.showBadge
+                : rawHero.showBadge !== undefined
+                  ? rawHero.showBadge
+                  : true,
+            badge: rawHero.badge || content.badge || "",
+            badgeIcon: rawHero.badgeIcon || content.badgeIcon || "",
+            badgeFont:
+              rawHero.badgeFont || appearance.badgeFont || content.badgeFont,
+            badgeColor: sanitizeColor(
+              rawHero.badgeColor || appearance.badgeColor || content.badgeColor,
+            ),
+            badgeTextColor: sanitizeColor(
+              rawHero.badgeTextColor ||
+                appearance.badgeTextColor ||
+                content.badgeTextColor,
+            ),
+            primaryButton: rawHero.primaryButton ?? content.primaryButton,
+            primaryButtonFont:
+              rawHero.primaryButtonFont ||
+              appearance.primaryButtonFont ||
+              content.primaryButtonFont,
+            primaryButtonColor: sanitizeColor(
+              rawHero.primaryButtonColor ||
+                appearance.primaryButtonColor ||
+                content.primaryButtonColor,
+            ),
+            primaryButtonTextColor: sanitizeColor(
+              rawHero.primaryButtonTextColor ||
+                appearance.primaryButtonTextColor ||
+                content.primaryButtonTextColor,
+            ),
+            primaryButtonLink:
+              rawHero.primaryButtonLink ?? content.primaryButtonLink,
+            secondaryButton: rawHero.secondaryButton ?? content.secondaryButton,
+            secondaryButtonFont:
+              rawHero.secondaryButtonFont ||
+              appearance.secondaryButtonFont ||
+              content.secondaryButtonFont,
+            secondaryButtonColor: sanitizeColor(
+              rawHero.secondaryButtonColor ||
+                appearance.secondaryButtonColor ||
+                content.secondaryButtonColor,
+            ),
+            secondaryButtonTextColor: sanitizeColor(
+              rawHero.secondaryButtonTextColor ||
+                appearance.secondaryButtonTextColor ||
+                content.secondaryButtonTextColor,
+            ),
+            secondaryButtonLink:
+              rawHero.secondaryButtonLink ?? content.secondaryButtonLink,
+            titleColor: sanitizeColor(
+              rawHero.titleColor || appearance.titleColor || content.titleColor,
+            ),
+            subtitleColor: sanitizeColor(
+              rawHero.subtitleColor ||
+                appearance.subtitleColor ||
+                content.subtitleColor,
+            ),
+            titleFont:
+              rawHero.titleFont || appearance.titleFont || content.titleFont,
+            subtitleFont:
+              rawHero.subtitleFont ||
+              appearance.subtitleFont ||
+              content.subtitleFont,
+            bgImage: rawHero.bgImage || appearance.backgroundImageUrl || "",
+            bgColor: sanitizeColor(
+              (rawHero.bgColor as string) ||
+                (rawHero.backgroundColor as string) ||
+                (appearance.backgroundColor as string) ||
+                "",
+            ),
+            bgType: (rawHero.bgType ||
+              appearance.bgType ||
+              (rawHero.bgImage || appearance.backgroundImageUrl
+                ? "image"
+                : "color")) as "color" | "image",
+          };
+          setCustomStyles(normalizedHero as HeroSettings);
         }
       }
     };
@@ -251,12 +380,20 @@ export function HeroSection() {
       } catch (_e) {}
     };
 
+    const handleDataReady = () => {
+      if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+        return;
+      }
+      loadData();
+    };
+
     window.addEventListener("message", handleMessage);
     window.addEventListener("heroSettingsUpdated", handleHeroSettingsUpdate);
     window.addEventListener("pageVisibilityUpdated", () =>
       setPageVisibility(getPageVisibility()),
     );
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
+    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
@@ -268,8 +405,9 @@ export function HeroSection() {
         setPageVisibility(getPageVisibility()),
       );
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
+      window.removeEventListener("DataReady", handleDataReady);
     };
-  }, []);
+  }, [isInsideIframe, loadData]);
 
   useEffect(() => {
     console.log("[BG_CHECK]", {

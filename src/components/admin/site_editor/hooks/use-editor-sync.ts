@@ -44,6 +44,61 @@ export function useEditorSync({
       sanitizeSection(current, fallback),
     [],
   );
+  const buildPreviewSection = useCallback(
+    (current: unknown, fallback: unknown): Record<string, unknown> => {
+      const merged = sanitizeSectionData(current, fallback);
+      const currentRecord =
+        current && typeof current === "object" && !Array.isArray(current)
+          ? (current as Record<string, unknown>)
+          : {};
+      const fallbackRecord =
+        fallback && typeof fallback === "object" && !Array.isArray(fallback)
+          ? (fallback as Record<string, unknown>)
+          : {};
+      const mergedAppearance =
+        (merged.appearance as Record<string, unknown> | undefined) || {};
+      const currentAppearance =
+        (currentRecord.appearance as Record<string, unknown> | undefined) || {};
+      const fallbackAppearance =
+        (fallbackRecord.appearance as Record<string, unknown> | undefined) || {};
+      const draftBgColor =
+        sanitizeColor(
+          (currentRecord.bgColor as string | undefined) ||
+          (currentRecord.backgroundColor as string | undefined) ||
+          (currentAppearance.backgroundColor as string | undefined),
+        ) || "";
+      const mergedBgColor =
+        sanitizeColor(
+          (merged.bgColor as string | undefined) ||
+          (mergedAppearance.backgroundColor as string | undefined) ||
+          (fallbackRecord.bgColor as string | undefined) ||
+          (fallbackRecord.backgroundColor as string | undefined) ||
+          (fallbackAppearance.backgroundColor as string | undefined),
+        ) || "";
+      const resolvedBgColor = draftBgColor || mergedBgColor;
+      if (resolvedBgColor) {
+        merged.bgColor = resolvedBgColor;
+        merged.backgroundColor = resolvedBgColor;
+      }
+      const nextAppearance = {
+        ...mergedAppearance,
+        ...(resolvedBgColor ? { backgroundColor: resolvedBgColor } : {}),
+      };
+      if (Object.keys(nextAppearance).length > 0) {
+        merged.appearance = nextAppearance;
+      }
+      if (currentRecord.bgType === "color") {
+        merged.bgType = "color";
+        merged.bgImage = "";
+        merged.appearance = {
+          ...(merged.appearance as Record<string, unknown>),
+          backgroundImageUrl: "",
+        };
+      }
+      return merged;
+    },
+    [sanitizeSectionData],
+  );
 
   const {
     heroSettings,
@@ -89,205 +144,50 @@ export function useEditorSync({
   } = state;
 
   const previewHeroSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       heroSettings,
       lastSavedHero,
     ) as typeof heroSettings & Record<string, unknown>;
-
-    // Log para conferir se, após o F5, o valor lastSavedHero contém a cor correta
-    console.log("[useEditorSync] Post-F5 lastSavedHero:", {
-      bgColor: lastSavedHero?.bgColor,
-      appearanceBg: lastSavedHero?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || merged.appearance?.backgroundColor,
-    });
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (heroSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
-
     return merged;
-  }, [lastSavedHero, heroSettings, sanitizeSectionData]);
+  }, [lastSavedHero, heroSettings, buildPreviewSection]);
 
   const previewAboutHeroSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       aboutHeroSettings,
       lastSavedAboutHero,
     ) as typeof aboutHeroSettings & Record<string, unknown>;
-
-    // Log para conferir se, após o F5, o valor lastSavedAboutHero contém a cor correta
-    console.log("[useEditorSync] Post-F5 lastSavedAboutHero:", {
-      bgColor: lastSavedAboutHero?.bgColor,
-      appearanceBg: lastSavedAboutHero?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || merged.appearance?.backgroundColor,
-    });
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (aboutHeroSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
-
     return merged;
-  }, [lastSavedAboutHero, aboutHeroSettings, sanitizeSectionData]);
+  }, [lastSavedAboutHero, aboutHeroSettings, buildPreviewSection]);
 
   const previewStorySettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       storySettings,
       lastSavedStory,
     ) as typeof storySettings & Record<string, unknown>;
-
-    // Log para conferir se, após o F5, o valor lastSavedStory contém a cor correta
-    console.log("[useEditorSync] Post-F5 lastSavedStory:", {
-      bgColor: lastSavedStory?.bgColor,
-      appearanceBg: lastSavedStory?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || merged.appearance?.backgroundColor,
-    });
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (storySettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
-
     return merged;
-  }, [lastSavedStory, storySettings, sanitizeSectionData]);
+  }, [lastSavedStory, storySettings, buildPreviewSection]);
 
   const previewTeamSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       teamSettings,
       lastSavedTeam,
     ) as typeof teamSettings & Record<string, unknown>;
-
-    // Log para conferir se, após o F5, o valor lastSavedTeam contém a cor correta
-    console.log("[useEditorSync] Post-F5 lastSavedTeam:", {
-      bgColor: lastSavedTeam?.bgColor,
-      appearanceBg: lastSavedTeam?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || merged.appearance?.backgroundColor,
-    });
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (teamSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
-
     return merged;
-  }, [lastSavedTeam, teamSettings, sanitizeSectionData]);
+  }, [lastSavedTeam, teamSettings, buildPreviewSection]);
 
   const previewTestimonialsSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       testimonialsSettings,
       lastSavedTestimonials,
     ) as typeof testimonialsSettings & Record<string, unknown>;
-
-    // Log para conferir se, após o F5, o valor lastSavedTestimonials contém a cor correta
-    console.log("[useEditorSync] Post-F5 lastSavedTestimonials:", {
-      bgColor: lastSavedTestimonials?.bgColor,
-      appearanceBg: lastSavedTestimonials?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || merged.appearance?.backgroundColor,
-    });
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (testimonialsSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
-
     return merged;
-  }, [lastSavedTestimonials, testimonialsSettings, sanitizeSectionData]);
+  }, [lastSavedTestimonials, testimonialsSettings, buildPreviewSection]);
 
   const previewServicesSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       servicesSettings,
       lastSavedServices,
     ) as typeof servicesSettings & Record<string, unknown>;
-
-    // Log para conferir se, após o F5, o valor lastSavedServices contém a cor correta
-    console.log("[useEditorSync] Post-F5 lastSavedServices:", {
-      bgColor: lastSavedServices?.bgColor,
-      appearanceBg: lastSavedServices?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || merged.appearance?.backgroundColor,
-    });
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (servicesSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
     merged.titleColor = sanitizeColor(merged.titleColor) || "";
     merged.subtitleColor = sanitizeColor(merged.subtitleColor) || "";
     merged.cardBgColor =
@@ -307,7 +207,7 @@ export function useEditorSync({
     }
 
     return merged;
-  }, [lastSavedServices, servicesSettings, sanitizeSectionData]);
+  }, [lastSavedServices, servicesSettings, buildPreviewSection]);
 
   const previewHomeValuesSettings = useMemo(() => {
     const merged = sanitizeSectionData(
@@ -449,171 +349,55 @@ export function useEditorSync({
   }, [lastSavedAboutUsValues, aboutUsValuesSettings, sanitizeSectionData]);
 
   const previewCTASettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       ctaSettings,
       lastSavedCTA,
     ) as typeof ctaSettings & Record<string, unknown>;
-
-    // Log para conferir se, após o F5, o valor lastSavedCTA contém a cor correta
-    console.log("[useEditorSync] Post-F5 lastSavedCTA:", {
-      bgColor: lastSavedCTA?.bgColor,
-      appearanceBg: lastSavedCTA?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || merged.appearance?.backgroundColor,
-    });
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (ctaSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
-
     return merged;
-  }, [lastSavedCTA, ctaSettings, sanitizeSectionData]);
+  }, [lastSavedCTA, ctaSettings, buildPreviewSection]);
 
   const previewBookingServiceSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       bookingServiceSettings,
       lastSavedBookingService,
     ) as typeof bookingServiceSettings & Record<string, unknown>;
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (bookingServiceSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
     return normalizeStepSettings(merged);
-  }, [lastSavedBookingService, bookingServiceSettings, sanitizeSectionData]);
+  }, [lastSavedBookingService, bookingServiceSettings, buildPreviewSection]);
 
   const previewBookingDateSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       bookingDateSettings,
       lastSavedBookingDate,
     ) as typeof bookingDateSettings & Record<string, unknown>;
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (bookingDateSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
     return normalizeStepSettings(merged);
-  }, [lastSavedBookingDate, bookingDateSettings, sanitizeSectionData]);
+  }, [lastSavedBookingDate, bookingDateSettings, buildPreviewSection]);
 
   const previewBookingTimeSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       bookingTimeSettings,
       lastSavedBookingTime,
     ) as typeof bookingTimeSettings & Record<string, unknown>;
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (bookingTimeSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
     return normalizeStepSettings(merged);
-  }, [lastSavedBookingTime, bookingTimeSettings, sanitizeSectionData]);
+  }, [lastSavedBookingTime, bookingTimeSettings, buildPreviewSection]);
 
   const previewBookingFormSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       bookingFormSettings,
       lastSavedBookingForm,
     ) as typeof bookingFormSettings & Record<string, unknown>;
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (bookingFormSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
     return normalizeStepSettings(merged);
-  }, [lastSavedBookingForm, bookingFormSettings, sanitizeSectionData]);
+  }, [lastSavedBookingForm, bookingFormSettings, buildPreviewSection]);
 
   const previewBookingConfirmationSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       bookingConfirmationSettings,
       lastSavedBookingConfirmation,
     ) as typeof bookingConfirmationSettings & Record<string, unknown>;
-
-    // Sanitização de Cores e Sincronização de Appearance
-    const resolvedBgColor =
-      sanitizeColor(merged.bgColor || merged.appearance?.backgroundColor) || "";
-    merged.bgColor = resolvedBgColor;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...merged.appearance,
-        backgroundColor: resolvedBgColor,
-      };
-    }
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (bookingConfirmationSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
     return normalizeStepSettings(merged);
   }, [
     lastSavedBookingConfirmation,
     bookingConfirmationSettings,
-    sanitizeSectionData,
+    buildPreviewSection,
   ]);
 
   const previewFontSettings = useMemo(
@@ -625,26 +409,10 @@ export function useEditorSync({
     [lastSavedColor, colorSettings, sanitizeSectionData],
   );
   const previewGallerySettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       gallerySettings,
       lastSavedGallery,
     ) as typeof gallerySettings & Record<string, unknown>;
-
-    // Log para conferir se, após o F5, o valor lastSavedGallery contém a cor correta
-    console.log("[useEditorSync] Post-F5 lastSavedGallery:", {
-      bgColor: lastSavedGallery?.bgColor,
-      appearanceBg: lastSavedGallery?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || merged.appearance?.backgroundColor,
-    });
-
-    // Bloqueio de Imagem Zumbi: Se o rascunho for cor, mata a URL do banco no merge
-    if (gallerySettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
-
-    // Sanitização de Cores
     const mergedRecord = merged as Record<string, unknown>;
     const resolvedBgColor =
       sanitizeColor(
@@ -669,25 +437,12 @@ export function useEditorSync({
     }
 
     return merged;
-  }, [lastSavedGallery, gallerySettings, sanitizeSectionData]);
+  }, [lastSavedGallery, gallerySettings, buildPreviewSection]);
   const previewGalleryPageSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       galleryPageSettings,
       lastSavedGalleryPage,
     ) as typeof galleryPageSettings & Record<string, unknown>;
-
-    // Log para conferir se, após o F5, o valor lastSavedGalleryPage contém a cor correta
-    console.log("[useEditorSync] Post-F5 lastSavedGalleryPage:", {
-      bgColor: lastSavedGalleryPage?.bgColor,
-      appearanceBg: lastSavedGalleryPage?.appearance?.backgroundColor,
-      mergedBg: merged.bgColor || merged.appearance?.backgroundColor,
-    });
-
-    if (galleryPageSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
     const mergedRecord = merged as Record<string, unknown>;
     const resolvedBgColor =
       sanitizeColor(
@@ -712,9 +467,9 @@ export function useEditorSync({
     }
 
     return merged;
-  }, [lastSavedGalleryPage, galleryPageSettings, sanitizeSectionData]);
+  }, [lastSavedGalleryPage, galleryPageSettings, buildPreviewSection]);
   const previewHeaderSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       headerSettings,
       lastSavedHeader,
     ) as typeof headerSettings & Record<string, unknown>;
@@ -733,9 +488,9 @@ export function useEditorSync({
       };
     }
     return merged;
-  }, [lastSavedHeader, headerSettings, sanitizeSectionData]);
+  }, [lastSavedHeader, headerSettings, buildPreviewSection]);
   const previewFooterSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       footerSettings,
       lastSavedFooter,
     ) as typeof footerSettings & Record<string, unknown>;
@@ -754,7 +509,7 @@ export function useEditorSync({
       };
     }
     return merged;
-  }, [lastSavedFooter, footerSettings, sanitizeSectionData]);
+  }, [lastSavedFooter, footerSettings, buildPreviewSection]);
 
   const previewBookingSteps = useMemo(
     () => ({

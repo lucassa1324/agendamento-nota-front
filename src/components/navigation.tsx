@@ -4,7 +4,7 @@ import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import { ADMIN_URL } from "@/lib/auth-client";
@@ -42,25 +42,27 @@ export function Navigation({
       agendar: true,
     },
   );
-  console.log(">>> [NAVIGATION] pageVisibility:", pageVisibility);
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
   >({});
 
-  const only = searchParams.get("only");
+  const hasLivePreviewUpdateRef = useRef(false);
+  const [isInsideIframe, setIsInsideIframe] = useState(false);
 
-  useEffect(() => {
-    if (externalHeaderSettings) {
-      setHeaderSettings(externalHeaderSettings);
-    }
-  }, [externalHeaderSettings]);
+  const only = searchParams.get("only");
 
   const studioId = studio?.id;
   const studioName = studio?.name;
   const studioLogoUrl = studio?.logoUrl;
   const studioHeaderConfig = studio?.config?.header;
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
+    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
+    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+      console.log("[Navigation] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
+      return;
+    }
+
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     const baseProfile = getSiteProfile();
     if (studioId) {
@@ -83,6 +85,29 @@ export function Navigation({
         setHeaderSettings(getHeaderSettings());
       }
     }
+  }, [
+    studioId,
+    studioName,
+    studioLogoUrl,
+    studioHeaderConfig,
+    externalHeaderSettings,
+  ]);
+
+  useEffect(() => {
+    setIsInsideIframe(window.self !== window.top);
+  }, []);
+
+  useEffect(() => {
+    if (externalHeaderSettings) {
+      setHeaderSettings(externalHeaderSettings);
+    }
+  }, [externalHeaderSettings]);
+
+  useEffect(() => {
+    // Só carrega os dados iniciais se não houver um preview ativo ou se não estiver no iframe
+    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
+      loadData();
+    }
 
     // Notificar o pai (admin) que o componente de navegação está pronto
     if (window.self !== window.top) {
@@ -93,18 +118,64 @@ export function Navigation({
     }
 
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
+      if (!event.data || typeof event.data !== "object") return;
+
+      if (event.data.type === "UPDATE_PAGE_VISIBILITY") {
         setPageVisibility(event.data.settings || {});
       }
-      if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
+      if (event.data.type === "UPDATE_VISIBLE_SECTIONS") {
         setVisibleSections(event.data.settings || {});
       }
-      if (event.data?.type === "UPDATE_HEADER_SETTINGS") {
-        console.log(
-          "Header: Recebendo novas configurações",
-          event.data.settings,
-        );
-        setHeaderSettings(event.data.settings);
+      if (
+        event.data.type === "UPDATE_HEADER_SETTINGS" ||
+        event.data.type === "UPDATE_SITE_DATA" ||
+        event.data.type === "UPDATE_SITE_CONFIG"
+      ) {
+        hasLivePreviewUpdateRef.current = true;
+
+        let rawHeader: Record<string, unknown> | undefined;
+
+        if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+          const siteData = event.data.data as Record<string, unknown>;
+          rawHeader = siteData.header as Record<string, unknown>;
+        } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
+          const siteConfig = event.data.config as Record<string, unknown>;
+          rawHeader = siteConfig.header as Record<string, unknown>;
+        } else {
+          rawHeader = event.data.settings as Record<string, unknown>;
+        }
+
+        if (rawHeader) {
+          const appearance =
+            (rawHeader.appearance as Record<string, unknown>) || {};
+          const normalizedHeader = {
+            ...rawHeader,
+            ...appearance,
+            bgColor:
+              (rawHeader.bgColor as string) ||
+              (rawHeader.backgroundColor as string) ||
+              (appearance.backgroundColor as string) ||
+              "",
+            textColor:
+              (rawHeader.textColor as string) ||
+              (appearance.textColor as string) ||
+              "",
+            buttonBgColor:
+              (rawHeader.buttonBgColor as string) ||
+              (appearance.buttonBgColor as string) ||
+              "",
+            buttonTextColor:
+              (rawHeader.buttonTextColor as string) ||
+              (appearance.buttonTextColor as string) ||
+              "",
+          };
+
+          setHeaderSettings((prev) =>
+            prev
+              ? { ...prev, ...normalizedHeader }
+              : (normalizedHeader as HeaderSettings),
+          );
+        }
       }
     };
 
@@ -121,12 +192,8 @@ export function Navigation({
     };
 
     const handleDataReady = () => {
-      if (!externalHeaderSettings) {
-        if (studioHeaderConfig) {
-          setHeaderSettings(studioHeaderConfig as HeaderSettings);
-        } else {
-          setHeaderSettings(getHeaderSettings());
-        }
+      if (!hasLivePreviewUpdateRef.current) {
+        loadData();
       }
     };
 
@@ -149,13 +216,7 @@ export function Navigation({
       );
       window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [
-    studioId,
-    studioName,
-    studioLogoUrl,
-    studioHeaderConfig,
-    externalHeaderSettings,
-  ]);
+  }, [isInsideIframe, loadData]);
 
   // Se estivermos isolando algo que não seja o header, escondemos o navigation
   if (only && only !== SECTION_IDS.layoutHeader) return null;

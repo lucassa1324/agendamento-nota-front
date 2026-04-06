@@ -2,7 +2,7 @@
 
 import { Calendar } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import {
@@ -23,8 +23,6 @@ export function CTASection() {
   const { studio } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
   const [settings, setSettings] = useState<CTASettings | null>(null);
-  const isEditing = useRef(false);
-  
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
     {
       inicio: true,
@@ -33,25 +31,26 @@ export function CTASection() {
       agendar: true,
     },
   );
-  console.log(">>> [CTA] pageVisibility:", pageVisibility);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
   );
-
   const studioConfig = studio?.config;
+  const isInsideIframe =
+    typeof window !== "undefined" && window.parent !== window;
+  const hasLivePreviewUpdateRef = useRef(false);
 
-  // 1. Efeito para carregar estado inicial e reagir ao studioConfig
-  useEffect(() => {
-    setIsMounted(true);
-    setPageVisibility(getPageVisibility());
-
-    // Se já estamos editando localmente (via postMessage), NÃO deixamos o studioConfig sobrescrever
-    if (isEditing.current) return;
+  const loadData = useCallback(() => {
+    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
+    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+      console.log("[CTASection] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
+      return;
+    }
 
     // Tenta carregar do Storage primeiro (Rascunho)
     const localDraft = getCTASettings();
     const storageKey = `agendamento_nota_ctaSettings`;
-    const hasDraft = typeof window !== "undefined" && localStorage.getItem(storageKey) !== null;
+    const hasDraft =
+      typeof window !== "undefined" && localStorage.getItem(storageKey) !== null;
 
     if (hasDraft && localDraft) {
       setSettings(localDraft);
@@ -66,9 +65,7 @@ export function CTASection() {
       const rawCTA = (home?.ctaSection ||
         home?.cta ||
         config?.cta ||
-        layoutGlobal?.cta) as
-        | Record<string, unknown>
-        | undefined;
+        layoutGlobal?.cta) as Record<string, unknown> | undefined;
 
       if (rawCTA) {
         const content = (rawCTA.content as Record<string, unknown>) || {};
@@ -107,7 +104,8 @@ export function CTASection() {
               (appearance.buttonTextColor as string) ||
               (content.buttonTextColor as string),
           ),
-          buttonLink: (content.buttonLink as string) ?? (rawCTA.buttonLink as string),
+          buttonLink:
+            (content.buttonLink as string) ?? (rawCTA.buttonLink as string),
           bgImage:
             (rawCTA.bgImage as string) ||
             (appearance.backgroundImageUrl as string) ||
@@ -128,6 +126,17 @@ export function CTASection() {
     }
   }, [studioConfig]);
 
+  // 1. Efeito para carregar estado inicial e reagir ao studioConfig
+  useEffect(() => {
+    setIsMounted(true);
+    setPageVisibility(getPageVisibility());
+
+    // Só sincroniza se não estivermos no iframe ou se ainda não houve atualização de preview
+    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
+      loadData();
+    }
+  }, [loadData, isInsideIframe]);
+
   // 2. Efeito para Listeners de Eventos e Mensagens
   useEffect(() => {
     const handleVisibilityUpdate = () => {
@@ -136,7 +145,7 @@ export function CTASection() {
 
     const handleSettingsUpdate = () => {
       // Se não estivermos em modo de edição ativa via postMessage, podemos atualizar pelo storage
-      if (!isEditing.current) {
+      if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
         setSettings(getCTASettings());
       }
     };
@@ -144,30 +153,90 @@ export function CTASection() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_CTA_SETTINGS") {
-        // ATIVA O MODO DE EDIÇÃO LOCAL - Bloqueia atualizações do studioConfig
-        isEditing.current = true;
+      if (
+        event.data.type === "UPDATE_CTA_SETTINGS" ||
+        event.data.type === "UPDATE_SITE_DATA" ||
+        event.data.type === "UPDATE_SITE_CONFIG"
+      ) {
+        hasLivePreviewUpdateRef.current = true;
 
-        const updatedSettings = { ...event.data.settings };
-        const colorFields = [
-          "titleColor",
-          "subtitleColor",
-          "buttonColor",
-          "buttonTextColor",
-          "bgColor",
-        ];
+        let rawCTA = event.data.settings as Record<string, unknown> | undefined;
 
-        colorFields.forEach((field) => {
-          if (updatedSettings[field] !== undefined) {
-            updatedSettings[field] = sanitizeColor(updatedSettings[field]);
-          }
-        });
+        if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+          const siteData = event.data.data as Record<string, unknown>;
+          const layoutGlobal = (siteData.layoutGlobal ||
+            siteData.layout_global) as Record<string, unknown> | undefined;
+          const home = siteData.home as Record<string, unknown> | undefined;
+          rawCTA = (home?.ctaSection ||
+            home?.cta ||
+            siteData.cta ||
+            layoutGlobal?.cta) as Record<string, unknown>;
+        } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
+          const siteConfig = event.data.config as Record<string, unknown>;
+          const layoutGlobal = (siteConfig.layoutGlobal ||
+            siteConfig.layout_global) as Record<string, unknown> | undefined;
+          const home = siteConfig.home as Record<string, unknown> | undefined;
+          rawCTA = (home?.ctaSection ||
+            home?.cta ||
+            siteConfig.cta ||
+            layoutGlobal?.cta) as Record<string, unknown>;
+        }
 
-        // Atualização atômica
-        setSettings((prev) => {
-          if (!prev) return updatedSettings as CTASettings;
-          return { ...prev, ...updatedSettings };
-        });
+        if (rawCTA) {
+          const content = (rawCTA.content as Record<string, unknown>) || {};
+          const appearance = (rawCTA.appearance as Record<string, unknown>) || {};
+          const normalizedCTA = {
+            ...rawCTA,
+            ...content,
+            ...appearance,
+            title: (content.title as string) ?? (rawCTA.title as string),
+            subtitle: (content.subtitle as string) ?? (rawCTA.subtitle as string),
+            titleColor: sanitizeColor(
+              (rawCTA.titleColor as string) ||
+                (appearance.titleColor as string) ||
+                (content.titleColor as string),
+            ),
+            subtitleColor: sanitizeColor(
+              (rawCTA.subtitleColor as string) ||
+                (appearance.subtitleColor as string) ||
+                (content.subtitleColor as string),
+            ),
+            titleFont:
+              (rawCTA.titleFont as string) ||
+              (appearance.titleFont as string) ||
+              (content.titleFont as string),
+            subtitleFont:
+              (rawCTA.subtitleFont as string) ||
+              (appearance.subtitleFont as string) ||
+              (content.subtitleFont as string),
+            buttonColor: sanitizeColor(
+              (rawCTA.buttonColor as string) ||
+                (appearance.buttonColor as string) ||
+                (content.buttonColor as string),
+            ),
+            buttonTextColor: sanitizeColor(
+              (rawCTA.buttonTextColor as string) ||
+                (appearance.buttonTextColor as string) ||
+                (content.buttonTextColor as string),
+            ),
+            buttonLink:
+              (content.buttonLink as string) ?? (rawCTA.buttonLink as string),
+            bgImage:
+              (rawCTA.bgImage as string) ||
+              (appearance.backgroundImageUrl as string) ||
+              "",
+            bgColor: sanitizeColor(
+              (rawCTA.bgColor as string) ||
+                (rawCTA.backgroundColor as string) ||
+                (appearance.backgroundColor as string) ||
+                "",
+            ),
+          };
+          setSettings((prev) => {
+            if (!prev) return normalizedCTA as CTASettings;
+            return { ...prev, ...normalizedCTA } as CTASettings;
+          });
+        }
       }
 
       if (
@@ -179,16 +248,28 @@ export function CTASection() {
       }
     };
 
+    const handleDataReady = () => {
+      if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+        return;
+      }
+      loadData();
+    };
+
     window.addEventListener("message", handleMessage);
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
     window.addEventListener("ctaSettingsUpdated", handleSettingsUpdate);
+    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
+      window.removeEventListener(
+        "pageVisibilityUpdated",
+        handleVisibilityUpdate,
+      );
       window.removeEventListener("ctaSettingsUpdated", handleSettingsUpdate);
+      window.removeEventListener("DataReady", handleDataReady);
     };
-  }, []);
+  }, [isInsideIframe, loadData]);
 
   if (!isMounted || !settings) return null;
   if (pageVisibility.agendar === false) return null;

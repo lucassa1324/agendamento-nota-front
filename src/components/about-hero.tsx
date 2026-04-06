@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import {
@@ -25,11 +25,27 @@ export function AboutHero() {
     null,
   );
 
-  const home = studio?.config?.home as Record<string, unknown> | undefined;
-  const layoutGlobal = (studio?.config?.layoutGlobal || studio?.config?.layout_global) as Record<string, unknown> | undefined;
-  const aboutHeroConfig = home?.aboutHero || studio?.config?.aboutHero || layoutGlobal?.aboutHero || layoutGlobal?.hero;
+  const hasLivePreviewUpdateRef = useRef(false);
+  const [isInsideIframe, setIsInsideIframe] = useState(false);
 
-  useEffect(() => {
+  const home = studio?.config?.home as Record<string, unknown> | undefined;
+  const layoutGlobal = (studio?.config?.layoutGlobal ||
+    studio?.config?.layout_global) as
+    | Record<string, unknown>
+    | undefined;
+  const aboutHeroConfig =
+    home?.aboutHero ||
+    studio?.config?.aboutHero ||
+    layoutGlobal?.aboutHero ||
+    layoutGlobal?.hero;
+
+  const loadData = useCallback(() => {
+    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
+    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+      console.log("[AboutHero] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
+      return;
+    }
+
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (aboutHeroConfig) {
       const rawAboutHero = aboutHeroConfig as Record<string, unknown>;
@@ -129,38 +145,112 @@ export function AboutHero() {
     } else {
       setSettings(getAboutHeroSettings());
     }
+  }, [aboutHeroConfig]);
+
+  useEffect(() => {
+    setIsInsideIframe(window.self !== window.top);
+
+    // Só carrega os dados iniciais se não houver um preview ativo ou se não estiver no iframe
+    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
+      loadData();
+    }
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      if (event.data.type === "UPDATE_ABOUT_HERO_SETTINGS") {
-        // Validação: só processa se settings for um objeto válido
-        if (!event.data.settings || typeof event.data.settings !== 'object' || Array.isArray(event.data.settings)) {
-          console.error(">>> [ABOUT_HERO] Settings inválidos recebidos via postMessage:", event.data.settings);
-          return;
+      if (
+        event.data.type === "UPDATE_ABOUT_HERO_SETTINGS" ||
+        event.data.type === "UPDATE_SITE_DATA" ||
+        event.data.type === "UPDATE_SITE_CONFIG"
+      ) {
+        hasLivePreviewUpdateRef.current = true;
+
+        let rawSettings: Record<string, unknown> | undefined;
+
+        if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+          const siteData = event.data.data as Record<string, unknown>;
+          rawSettings = (siteData.aboutHero ||
+            siteData.hero) as Record<string, unknown>;
+        } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
+          const siteConfig = event.data.config as Record<string, unknown>;
+          const homeConfig = siteConfig.home as Record<string, unknown>;
+          const layoutConfig = (siteConfig.layoutGlobal ||
+            siteConfig.layout_global) as Record<string, unknown>;
+          rawSettings = (homeConfig?.aboutHero ||
+            siteConfig.aboutHero ||
+            layoutConfig?.aboutHero ||
+            layoutConfig?.hero) as Record<string, unknown>;
+        } else {
+          rawSettings = event.data.settings as Record<string, unknown>;
         }
-        
+
+        if (!rawSettings || typeof rawSettings !== "object") return;
+
         // Sanitize colors in real-time update
-        const updatedSettings = { ...event.data.settings };
-        const colorFields = [
-          "badgeColor",
-          "badgeTextColor",
-          "titleColor",
-          "subtitleColor",
-          "primaryButtonColor",
-          "primaryButtonTextColor",
-          "secondaryButtonColor",
-          "secondaryButtonTextColor",
-          "bgColor",
-        ];
+        const content = (rawSettings.content as Record<string, unknown>) || {};
+        const appearance =
+          (rawSettings.appearance as Record<string, unknown>) || {};
 
-        colorFields.forEach((field) => {
-          if (updatedSettings[field] !== undefined) {
-            updatedSettings[field] = sanitizeColor(updatedSettings[field]);
-          }
-        });
+        const updatedSettings = {
+          ...rawSettings,
+          ...content,
+          ...appearance,
+          title: (content.title as string) ?? (rawSettings.title as string),
+          subtitle:
+            (content.subtitle as string) ?? (rawSettings.subtitle as string),
+          badgeColor: sanitizeColor(
+            (rawSettings.badgeColor as string) ||
+              (appearance.badgeColor as string) ||
+              (content.badgeColor as string),
+          ),
+          badgeTextColor: sanitizeColor(
+            (rawSettings.badgeTextColor as string) ||
+              (appearance.badgeTextColor as string) ||
+              (content.badgeTextColor as string),
+          ),
+          titleColor: sanitizeColor(
+            (rawSettings.titleColor as string) ||
+              (appearance.titleColor as string) ||
+              (content.titleColor as string),
+          ),
+          subtitleColor: sanitizeColor(
+            (rawSettings.subtitleColor as string) ||
+              (appearance.subtitleColor as string) ||
+              (content.subtitleColor as string),
+          ),
+          primaryButtonColor: sanitizeColor(
+            (rawSettings.primaryButtonColor as string) ||
+              (appearance.primaryButtonColor as string) ||
+              (content.primaryButtonColor as string),
+          ),
+          primaryButtonTextColor: sanitizeColor(
+            (rawSettings.primaryButtonTextColor as string) ||
+              (appearance.primaryButtonTextColor as string) ||
+              (content.primaryButtonTextColor as string),
+          ),
+          secondaryButtonColor: sanitizeColor(
+            (rawSettings.secondaryButtonColor as string) ||
+              (appearance.secondaryButtonColor as string) ||
+              (content.secondaryButtonColor as string),
+          ),
+          secondaryButtonTextColor: sanitizeColor(
+            (rawSettings.secondaryButtonTextColor as string) ||
+              (appearance.secondaryButtonTextColor as string) ||
+              (content.secondaryButtonTextColor as string),
+          ),
+          bgColor: sanitizeColor(
+            (rawSettings.bgColor as string) ||
+              (rawSettings.backgroundColor as string) ||
+              (appearance.backgroundColor as string) ||
+              "",
+          ),
+        };
 
-        setSettings((prev) => (prev ? { ...prev, ...updatedSettings } : prev));
+        setSettings((prev) =>
+          prev
+            ? ({ ...prev, ...updatedSettings } as HeroSettings)
+            : (updatedSettings as HeroSettings),
+        );
       }
 
       if (event.data.type === "HIGHLIGHT_SECTION") {
@@ -186,14 +276,22 @@ export function AboutHero() {
       } catch (_e) {}
     };
 
+    const handleDataReady = () => {
+      if (!hasLivePreviewUpdateRef.current) {
+        loadData();
+      }
+    };
+
     window.addEventListener("message", handleMessage);
     window.addEventListener("aboutHeroSettingsUpdated", handleUpdate);
+    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("aboutHeroSettingsUpdated", handleUpdate);
+      window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [aboutHeroConfig]);
+  }, [isInsideIframe, aboutHeroConfig, loadData]);
 
   if (!settings) return null;
 
