@@ -150,11 +150,18 @@ export function ServicesSection() {
       const pickFirstDefined = (...values: unknown[]) =>
         values.find((value) => value !== undefined && value !== null);
 
-      const resolvedBgType = (pickFirstDefined(
-        sanitized.bgType,
-        appearance.bgType,
-        "color",
-      ) || "color") as "color" | "image";
+      const rawBgImage =
+        ((sanitized.bgImage as string) ||
+          (appearance.backgroundImageUrl as string) ||
+          "") as string;
+      const hasBgImage = rawBgImage.trim().length > 0;
+      const rawBgType = pickFirstDefined(sanitized.bgType, appearance.bgType);
+      const resolvedBgType =
+        rawBgType === "color" || rawBgType === "image"
+          ? rawBgType
+          : hasBgImage
+            ? "image"
+            : "color";
 
       const rawBgColor = pickFirstDefined(
         sanitized.bgColor,
@@ -227,15 +234,13 @@ export function ServicesSection() {
             (appearance.cardIconColor as string) ||
             (content.cardIconColor as string),
         ),
-        bgImage:
-          (sanitized.bgImage as string) ||
-          (appearance.backgroundImageUrl as string) ||
-          "",
+        bgImage: resolvedBgType === "image" ? rawBgImage : "",
         bgColor: normalizedBgColor,
         bgType: resolvedBgType,
         appearance: {
           ...appearance,
           backgroundColor: normalizedBgColor,
+          backgroundImageUrl: resolvedBgType === "image" ? rawBgImage : "",
           overlay: {
             ...((appearance.overlay as Record<string, unknown>) || {}),
             color: (sanitized.overlayColor ||
@@ -485,6 +490,12 @@ export function ServicesSection() {
 
   if (!settings) return null;
 
+  const sectionBackgroundColor =
+    sanitizeColor(settings.bgColor) ||
+    sanitizeColor(settings.appearance?.backgroundColor) ||
+    "var(--background)";
+  const sectionUsesColorBackground = settings.bgType !== "image";
+
   console.log(">>> [IFRAME_RENDER]", {
     isInsideIframe,
     bgColor: settings.bgColor,
@@ -496,12 +507,18 @@ export function ServicesSection() {
     <section
       id={SECTION_IDS.homeServices}
       className={cn(
-        "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
+        "relative isolate py-20 md:py-32 transition-all duration-500 overflow-hidden",
         highlightedElement === SECTION_IDS.homeServices &&
           "ring-8 ring-inset ring-primary/30 bg-primary/5",
       )}
+      style={{
+        backgroundColor: sectionUsesColorBackground
+          ? sectionBackgroundColor
+          : undefined,
+        backgroundImage: sectionUsesColorBackground ? "none" : undefined,
+      }}
     >
-      <SectionBackground settings={settings} />
+      <SectionBackground settings={settings} className="z-0" />
 
       <div className="container relative z-10 mx-auto px-4">
         {(settings.showTitle !== false || settings.showSubtitle !== false) && (

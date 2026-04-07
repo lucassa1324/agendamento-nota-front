@@ -175,6 +175,45 @@ export function SectionBackground({
   const shouldShowImage =
     effectiveBgType === "image" && hasValidImage && !imageError;
 
+  if (effectiveBgType === "color" && !hasValidImage) {
+    return (
+      <div
+        className={cn(
+          "absolute inset-0 overflow-hidden pointer-events-none min-h-100 -z-10",
+          hideColorLayer ? "bg-transparent" : "bg-background",
+          className,
+        )}
+        style={{
+          backgroundColor: !hideColorLayer
+            ? color || effectiveBackgroundColor
+            : undefined,
+          backgroundImage: "none",
+        }}
+      >
+        {!hideColorLayer && (
+          <div
+            className="absolute inset-0 z-0 transition-colors duration-500"
+            style={{
+              backgroundColor: effectiveBackgroundColor,
+              backgroundImage: "none",
+            }}
+          />
+        )}
+        <div
+          className={cn(
+            "absolute inset-0 z-1 transition-opacity duration-500",
+            !effectiveOverlayColor && !gradientClassName && "bg-black/20",
+            !effectiveOverlayColor && gradientClassName,
+          )}
+          style={{
+            opacity: effectiveOverlayOpacity,
+            backgroundColor: effectiveOverlayColor,
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       key={`${effectiveBgType}-${bgImage}`}
