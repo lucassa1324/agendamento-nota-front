@@ -474,7 +474,28 @@ export function StudioProvider({
   }, [refreshData]);
 
   const updateStudioInfo = useCallback((updates: Partial<Business>) => {
-    setStudio((prev) => (prev ? { ...prev, ...updates } : null));
+    setStudio((prev) => {
+      if (!prev) return null;
+
+      const prevConfig =
+        prev.config && typeof prev.config === "object" && !Array.isArray(prev.config)
+          ? (prev.config as Record<string, unknown>)
+          : {};
+      const incomingConfig =
+        updates.config &&
+          typeof updates.config === "object" &&
+          !Array.isArray(updates.config)
+          ? (updates.config as Record<string, unknown>)
+          : {};
+
+      const mergedConfig = deepMerge(prevConfig, incomingConfig);
+
+      return {
+        ...prev,
+        ...updates,
+        config: mergedConfig as Business["config"],
+      };
+    });
   }, []);
 
   const mapConfig = useCallback(
@@ -537,46 +558,51 @@ export function StudioProvider({
 
       const finalColors: ColorSettings = {
         primary:
-          sanitizeColor(layoutColors?.primary) ||
           sanitizeColor(config.colors?.primary) ||
+          sanitizeColor(layoutColors?.primary) ||
           defaultColorSettings.primary ||
           "#000000",
         secondary:
-          sanitizeColor(layoutColors?.secondary) ||
           sanitizeColor(config.colors?.secondary) ||
+          sanitizeColor(layoutColors?.secondary) ||
           defaultColorSettings.secondary ||
           "#1a1a1a",
         background:
-          sanitizeColor(layoutColors?.background) ||
           sanitizeColor(config.colors?.background) ||
+          sanitizeColor(layoutColors?.background) ||
           defaultColorSettings.background ||
           "#ffffff",
         text:
-          sanitizeColor(layoutColors?.text) ||
           sanitizeColor(config.colors?.text) ||
+          sanitizeColor(layoutColors?.text) ||
           defaultColorSettings.text ||
           "#1a1a1a",
         accent:
-          sanitizeColor(layoutColors?.accent) ||
           sanitizeColor(config.colors?.accent) ||
+          sanitizeColor(layoutColors?.accent) ||
           defaultColorSettings.primary ||
           "#000000",
         buttonText:
-          sanitizeColor(layoutColors?.buttonText) ||
           sanitizeColor(config.colors?.buttonText) ||
+          sanitizeColor(layoutColors?.buttonText) ||
           "#ffffff",
         specialtyBadge: {
           background:
+            (config.colors?.specialtyBadge as Record<string, string>)
+              ?.background ||
             (layoutColors?.specialtyBadge as Record<string, string>)
               ?.background ||
             (layoutColors?.specialty_badge as Record<string, string>)
               ?.background ||
             defaultColorSettings.specialtyBadge.background,
           text:
+            (config.colors?.specialtyBadge as Record<string, string>)?.text ||
             (layoutColors?.specialtyBadge as Record<string, string>)?.text ||
             (layoutColors?.specialty_badge as Record<string, string>)?.text ||
             defaultColorSettings.specialtyBadge.text,
           borderRadius:
+            (config.colors?.specialtyBadge as Record<string, string>)
+              ?.borderRadius ||
             (layoutColors?.specialtyBadge as Record<string, string>)
               ?.borderRadius ||
             (layoutColors?.specialty_badge as Record<string, string>)
@@ -676,95 +702,105 @@ export function StudioProvider({
           }
         : undefined;
 
+      const servicesSource = (config.services ||
+        (config as Record<string, unknown>).services_section ||
+        home?.servicesSection ||
+        home?.services ||
+        layoutGlobal?.services) as ServicesSettings | undefined;
+
+      const homeValuesSource = ((config as Record<string, unknown>)?.homeValuesSettings ||
+        (config as Record<string, unknown>)?.values ||
+        (home as Record<string, unknown>)?.valuesSection ||
+        (home as Record<string, unknown>)?.values ||
+        (layoutGlobal as Record<string, unknown>)?.homeValuesSettings) as
+        | ValuesSettings
+        | undefined;
+
+      const aboutUsValuesSource = ((config as Record<string, unknown>)?.aboutUsValuesSettings ||
+        (config as Record<string, unknown>)?.values ||
+        aboutUs?.valuesSection ||
+        aboutUs?.values ||
+        (layoutGlobal as Record<string, unknown>)?.aboutUsValuesSettings) as
+        | ValuesSettings
+        | undefined;
+
+      const valuesSource = (config.values ||
+        (config as Record<string, unknown>).values_section ||
+        home?.valuesSection ||
+        home?.values_section ||
+        home?.values ||
+        layoutGlobal?.values ||
+        layoutGlobal?.values_section ||
+        layoutGlobal?.values_settings) as
+        | ValuesSettings
+        | undefined;
+
       return {
         ...config,
         colors: finalColors,
-        hero: (layoutGlobal?.heroBanner ||
-          layoutGlobal?.hero ||
+        hero: (config.hero ||
+          (config as Record<string, unknown>).heroBanner ||
           home?.heroBanner ||
           home?.hero ||
-          (config as Record<string, unknown>).heroBanner ||
-          config.hero) as HeroSettings | undefined,
-        aboutHero: (layoutGlobal?.aboutHero || config.aboutHero) as
-          | HeroSettings
-          | undefined,
-        story: (layoutGlobal?.story || config.story) as
-          | StorySettings
-          | undefined,
-        team: (layoutGlobal?.team || config.team) as TeamSettings | undefined,
-        testimonials: (layoutGlobal?.testimonials || config.testimonials) as
-          | TestimonialsSettings
-          | undefined,
-        services: normalizeDeepStep(
-          layoutGlobal?.services ||
-            layoutGlobal?.services_section ||
-            layoutGlobal?.services_settings ||
-            home?.servicesSection ||
-            home?.services_section ||
-            home?.services ||
-            config.services ||
-            (config as Record<string, unknown>).services_section,
-        ) as ServicesSettings | undefined,
-        homeValuesSettings: normalizeDeepStep(
-          (config as Record<string, unknown>)?.homeValuesSettings ||
-            (layoutGlobal as Record<string, unknown>)?.homeValuesSettings ||
-            (home as Record<string, unknown>)?.valuesSection ||
-            (home as Record<string, unknown>)?.values ||
-            (config as Record<string, unknown>)?.values,
-        ) as ValuesSettings | undefined,
-        aboutUsValuesSettings: normalizeDeepStep(
-          (config as Record<string, unknown>)?.aboutUsValuesSettings ||
-            aboutUs?.valuesSection ||
-            aboutUs?.values ||
-            (layoutGlobal as Record<string, unknown>)?.aboutUsValuesSettings ||
-            (config as Record<string, unknown>)?.values,
-        ) as ValuesSettings | undefined,
-        values: normalizeDeepStep(
-          layoutGlobal?.values ||
-            layoutGlobal?.values_section ||
-            layoutGlobal?.values_settings ||
-            home?.valuesSection ||
-            home?.values_section ||
-            home?.values ||
-            config.values ||
-            (config as Record<string, unknown>).values_section,
-        ) as ValuesSettings | undefined,
+          layoutGlobal?.heroBanner ||
+          layoutGlobal?.hero) as HeroSettings | undefined,
+        aboutHero: (config.aboutHero ||
+          home?.aboutHero ||
+          layoutGlobal?.aboutHero) as HeroSettings | undefined,
+        story: (config.story ||
+          home?.storySection ||
+          home?.story ||
+          layoutGlobal?.story) as StorySettings | undefined,
+        team: (config.team ||
+          home?.teamSection ||
+          home?.team ||
+          layoutGlobal?.team) as TeamSettings | undefined,
+        testimonials: (config.testimonials ||
+          home?.testimonialsSection ||
+          home?.testimonials ||
+          layoutGlobal?.testimonials) as TestimonialsSettings | undefined,
+        services: servicesSource,
+        homeValuesSettings: homeValuesSource,
+        aboutUsValuesSettings: aboutUsValuesSource,
+        values: valuesSource,
         galleryPreviewSettings: (config.galleryPreviewSettings ||
-          layoutGlobal?.galleryPreview ||
           home?.galleryPreview ||
-          home?.gallerySection) as GallerySettings | undefined,
+          home?.gallerySection ||
+          layoutGlobal?.galleryPreview ||
+          layoutGlobal?.gallerySection) as GallerySettings | undefined,
         galleryPageSettings: (config.galleryPageSettings ||
           config.gallery ||
           layoutGlobal?.gallery) as GallerySettings | undefined,
-        gallery: (layoutGlobal?.gallery || config.gallery) as
-          | GallerySettings
-          | undefined,
-        cta: (layoutGlobal?.cta ||
+        gallery: (config.gallery ||
+          home?.galleryPreview ||
+          home?.gallerySection ||
+          layoutGlobal?.gallery) as GallerySettings | undefined,
+        cta: (config.cta ||
           home?.ctaSection ||
           home?.cta ||
-          config.cta) as CTASettings | undefined,
-        header: (layoutGlobal?.header || config.header) as
+          layoutGlobal?.cta) as CTASettings | undefined,
+        header: (config.header || layoutGlobal?.header) as
           | HeaderSettings
           | undefined,
-        footer: (layoutGlobal?.footer || config.footer) as
+        footer: (config.footer || layoutGlobal?.footer) as
           | FooterSettings
           | undefined,
-        theme: (layoutGlobal?.fontes ||
-          layoutGlobal?.typography ||
-          config.theme ||
-          config.typography) as FontSettings | undefined,
-        visibleSections: (layoutGlobal?.visibleSections ||
-          layoutGlobal?.visible_sections ||
-          config.visibleSections ||
-          config.visible_sections) as Record<string, boolean> | undefined,
-        pageVisibility: (layoutGlobal?.pageVisibility ||
-          layoutGlobal?.page_visibility ||
-          config.pageVisibility ||
-          config.page_visibility) as Record<string, boolean> | undefined,
+        theme: (config.theme ||
+          config.typography ||
+          layoutGlobal?.fontes ||
+          layoutGlobal?.typography) as FontSettings | undefined,
+        visibleSections: (config.visibleSections ||
+          config.visible_sections ||
+          layoutGlobal?.visibleSections ||
+          layoutGlobal?.visible_sections) as Record<string, boolean> | undefined,
+        pageVisibility: (config.pageVisibility ||
+          config.page_visibility ||
+          layoutGlobal?.pageVisibility ||
+          layoutGlobal?.page_visibility) as Record<string, boolean> | undefined,
         bookingSteps:
+          normalizedBookingFromConfig ||
           normalizedBookingFromLayout ||
-          layoutBookingLegacy ||
-          normalizedBookingFromConfig,
+          layoutBookingLegacy,
       };
     },
     [],

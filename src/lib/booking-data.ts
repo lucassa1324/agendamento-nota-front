@@ -1,9 +1,10 @@
+import { format } from "date-fns";
 import { inventoryService } from "./inventory-service";
-import type { SiteConfigData } from "./site-config-types";
 import {
   BookingStepSchema,
   SectionSchema,
 } from "./schemas/site-customization-schema";
+import type { SiteConfigData } from "./site-config-types";
 
 // --- Sincronização Global entre Abas via LocalStorage ---
 if (typeof window !== "undefined") {
@@ -180,6 +181,7 @@ export type DaySchedule = {
   lunchEnd: string;
   closeTime: string;
   interval: number;
+  minimumBookingLeadMinutes?: number;
 };
 
 export type WeekSchedule = DaySchedule[];
@@ -194,6 +196,7 @@ export const sanitizeColor = (color: unknown): string | undefined => {
     if (typeof colorObj.hex === "string") return colorObj.hex;
     if (typeof colorObj.text === "string") return colorObj.text;
     if (typeof colorObj.color === "string") return colorObj.color;
+    if (typeof colorObj.rgb === "string") return colorObj.rgb;
     // Se não encontrar nada óbvio, tenta converter para string e ver o que acontece
     try {
       const str = String(color);
@@ -296,12 +299,110 @@ export const sanitizeSection = (
   }
 
   const record = currentData as Record<string, unknown>;
-  const keys = Object.keys(record);
-  if (keys.length > 0 && keys.every((key) => /^\d+$/.test(key))) {
-    return { ...fallback };
+
+  // PILAR: Limpeza de Objeto - Evitar acumular "lixo" de configurações antigas
+  // Em vez de fazer merge cego (...fallback, ...record), vamos construir o objeto
+  // priorizando o que vem do registro novo.
+  // Somente adicionamos do fallback o que for estritamente necessário (whitelist de campos padrão)
+  const mergedRoot: Record<string, unknown> = {
+    ...record,
+  };
+
+  const WHITELIST_FIELDS = [
+    "title",
+    "subtitle",
+    "description",
+    "visible",
+    "showTitle",
+    "showSubtitle",
+    "bgType",
+    "bgColor",
+    "backgroundColor",
+    "titleColor",
+    "subtitleColor",
+    "cardBgColor",
+    "cardTitleColor",
+    "cardDescriptionColor",
+    "cardPriceColor",
+    "cardIconColor",
+  ];
+
+  // Só adicionamos do fallback o que for estritamente necessário e não estiver no record
+  Object.entries(fallback).forEach(([key, value]) => {
+    // Se a chave não está no record, verificamos se ela é "lixo" ou campo padrão
+    if (mergedRoot[key] === undefined || mergedRoot[key] === null) {
+      // Se for um campo padrão conhecido, mantemos do fallback
+      if (
+        WHITELIST_FIELDS.includes(key) ||
+        key === "appearance" ||
+        key === "content"
+      ) {
+        mergedRoot[key] = value;
+      }
+      // Caso contrário, ignoramos para evitar acumular propriedades obsoletas
+    }
+  });
+
+  const recordAppearance =
+    record.appearance &&
+      typeof record.appearance === "object" &&
+      !Array.isArray(record.appearance)
+      ? (record.appearance as Record<string, unknown>)
+      : {};
+
+  const recordContent =
+    record.content &&
+      typeof record.content === "object" &&
+      !Array.isArray(record.content)
+      ? (record.content as Record<string, unknown>)
+      : {};
+
+  // Se o recordContent ou recordAppearance tiverem valores, eles devem estar no root para compatibilidade
+  for (const [key, value] of Object.entries(recordContent)) {
+    if (value !== undefined && value !== null) {
+      mergedRoot[key] = value;
+    }
   }
 
-  return { ...fallback, ...record };
+  for (const [key, value] of Object.entries(recordAppearance)) {
+    if (value !== undefined && value !== null) {
+      mergedRoot[key] = value;
+    }
+  }
+
+  const fallbackAppearance =
+    fallback.appearance &&
+      typeof fallback.appearance === "object" &&
+      !Array.isArray(fallback.appearance)
+      ? (fallback.appearance as Record<string, unknown>)
+      : {};
+
+  const fallbackContent =
+    fallback.content &&
+      typeof fallback.content === "object" &&
+      !Array.isArray(fallback.content)
+      ? (fallback.content as Record<string, unknown>)
+      : {};
+
+  const finalAppearance: Record<string, unknown> = { ...recordAppearance };
+  Object.entries(fallbackAppearance).forEach(([key, value]) => {
+    if (finalAppearance[key] === undefined || finalAppearance[key] === null) {
+      finalAppearance[key] = value;
+    }
+  });
+
+  const finalContent: Record<string, unknown> = { ...recordContent };
+  Object.entries(fallbackContent).forEach(([key, value]) => {
+    if (finalContent[key] === undefined || finalContent[key] === null) {
+      finalContent[key] = value;
+    }
+  });
+
+  return {
+    ...mergedRoot,
+    appearance: finalAppearance,
+    content: finalContent,
+  };
 };
 
 export type SectionConfig = Record<string, unknown>;
@@ -338,27 +439,56 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
   // Se não tem dados brutos, retorna o padrão
   if (!raw) return defaults;
 
-  // Se o raw parece ser um objeto vazio (mas não undefined), ainda assim tentamos mesclar
-  // para garantir que não percamos configurações parciais.
-  const merged = {
-    ...defaults,
+  // PILAR: Prioridade Invertida e Limpeza
+  // O que vem do "raw" (banco ou editor) deve ter prioridade TOTAL sobre o defaults.
+  // Começamos com raw e preenchemos apenas o estritamente necessário dos defaults.
+  const merged: Record<string, unknown> = {
     ...raw,
-    appearance: {
-      ...(defaults.appearance as Record<string, unknown> | undefined),
-      ...(raw?.appearance as Record<string, unknown> | undefined),
-    },
-    content: {
-      ...(defaults.content as Record<string, unknown> | undefined),
-      ...(raw?.content as Record<string, unknown> | undefined),
-    },
   };
+
+  const CORE_FIELDS = [
+    "title",
+    "subtitle",
+    "description",
+    "visible",
+    "showTitle",
+    "showSubtitle",
+  ];
+
+  // Preenche campos principais se estiverem ausentes
+  CORE_FIELDS.forEach((field) => {
+    if (merged[field] === undefined || merged[field] === null) {
+      merged[field] = defaults[field];
+    }
+  });
+
+  // Se o raw tem appearance, ele deve sobrescrever o defaults.appearance
+  // mas podemos manter propriedades do defaults que não existem no raw como fallback de segurança.
+  if (raw.appearance && typeof raw.appearance === "object") {
+    merged.appearance = {
+      ...(defaults.appearance as Record<string, unknown> | undefined),
+      ...(raw.appearance as Record<string, unknown>),
+    };
+  } else if (!raw.appearance && defaults.appearance) {
+    merged.appearance = defaults.appearance as Record<string, unknown>;
+  }
+
+  // O mesmo para content
+  if (raw.content && typeof raw.content === "object") {
+    merged.content = {
+      ...(defaults.content as Record<string, unknown> | undefined),
+      ...(raw.content as Record<string, unknown>),
+    };
+  } else if (!raw.content && defaults.content) {
+    merged.content = defaults.content as Record<string, unknown>;
+  }
 
   // 1. Blindagem: Preservar campos que não estão no defaults mas estão no raw
   // Isso é crucial para evitar regressões quando novos campos são adicionados em um setor
   // e o outro setor (que ainda usa o defaults antigo) tenta normalizar.
-  Object.keys(raw).forEach(key => {
+  Object.keys(raw).forEach((key) => {
     if (!(key in merged)) {
-      (merged as any)[key] = raw[key];
+      merged[key] = raw[key];
     }
   });
 
@@ -371,7 +501,9 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
       const validated = SectionSchema.parse(merged);
       return normalizePersistenceData(validated) as T;
     }
-    console.warn(">>> [SCHEMA_WARNING] SectionSchema não disponível para validação.");
+    console.warn(
+      ">>> [SCHEMA_WARNING] SectionSchema não disponível para validação.",
+    );
     return normalizePersistenceData(merged) as T;
   } catch (e) {
     console.error(">>> [SCHEMA_VALIDATION_ERROR] Erro ao validar seção:", e);
@@ -451,10 +583,10 @@ export const normalizePayload = (config: SiteConfigData | null | undefined) => {
       (layoutGlobal?.sections as SectionsMap | undefined)?.[
       SECTION_IDS.homeStory
       ] ||
-      (root.story as SectionConfig | undefined) ||
-      (layoutGlobal?.story as SectionConfig | undefined) ||
       (home?.storySection as SectionConfig | undefined) ||
-      (home?.story as SectionConfig | undefined),
+      (home?.story as SectionConfig | undefined) ||
+      (layoutGlobal?.story as SectionConfig | undefined) ||
+      (root.story as SectionConfig | undefined),
       defaultStorySettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeTeam]: normalizeSectionConfig(
@@ -462,10 +594,10 @@ export const normalizePayload = (config: SiteConfigData | null | undefined) => {
       (layoutGlobal?.sections as SectionsMap | undefined)?.[
       SECTION_IDS.homeTeam
       ] ||
-      (root.team as SectionConfig | undefined) ||
-      (layoutGlobal?.team as SectionConfig | undefined) ||
       (home?.teamSection as SectionConfig | undefined) ||
-      (home?.team as SectionConfig | undefined),
+      (home?.team as SectionConfig | undefined) ||
+      (layoutGlobal?.team as SectionConfig | undefined) ||
+      (root.team as SectionConfig | undefined),
       defaultTeamSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeTestimonials]: normalizeSectionConfig(
@@ -475,10 +607,10 @@ export const normalizePayload = (config: SiteConfigData | null | undefined) => {
       (layoutGlobal?.sections as SectionsMap | undefined)?.[
       SECTION_IDS.homeTestimonials
       ] ||
-      (root.testimonials as SectionConfig | undefined) ||
-      (layoutGlobal?.testimonials as SectionConfig | undefined) ||
       (home?.testimonialsSection as SectionConfig | undefined) ||
-      (home?.testimonials as SectionConfig | undefined),
+      (home?.testimonials as SectionConfig | undefined) ||
+      (layoutGlobal?.testimonials as SectionConfig | undefined) ||
+      (root.testimonials as SectionConfig | undefined),
       defaultTestimonialsSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeServices]: normalizeSectionConfig(
@@ -486,10 +618,10 @@ export const normalizePayload = (config: SiteConfigData | null | undefined) => {
       (layoutGlobal?.sections as SectionsMap | undefined)?.[
       SECTION_IDS.homeServices
       ] ||
-      (root.services as SectionConfig | undefined) ||
-      (layoutGlobal?.services as SectionConfig | undefined) ||
       (home?.servicesSection as SectionConfig | undefined) ||
-      (home?.services as SectionConfig | undefined),
+      (home?.services as SectionConfig | undefined) ||
+      (layoutGlobal?.services as SectionConfig | undefined) ||
+      (root.services as SectionConfig | undefined),
       defaultServicesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeValues]: normalizeSectionConfig(
@@ -497,10 +629,10 @@ export const normalizePayload = (config: SiteConfigData | null | undefined) => {
       (layoutGlobal?.sections as SectionsMap | undefined)?.[
       SECTION_IDS.homeValues
       ] ||
-      (root.homeValuesSettings as SectionConfig | undefined) ||
-      (layoutGlobal?.homeValuesSettings as SectionConfig | undefined) ||
       (home?.valuesSection as SectionConfig | undefined) ||
       (home?.values as SectionConfig | undefined) ||
+      (layoutGlobal?.homeValuesSettings as SectionConfig | undefined) ||
+      (root.homeValuesSettings as SectionConfig | undefined) ||
       (root.values as SectionConfig | undefined),
       defaultValuesSettings as unknown as SectionConfig,
     ),
@@ -557,10 +689,10 @@ export const normalizePayload = (config: SiteConfigData | null | undefined) => {
       (layoutGlobal?.sections as SectionsMap | undefined)?.[
       SECTION_IDS.homeCta
       ] ||
-      (root.cta as SectionConfig | undefined) ||
-      (layoutGlobal?.cta as SectionConfig | undefined) ||
       (home?.ctaSection as SectionConfig | undefined) ||
-      (home?.cta as SectionConfig | undefined),
+      (home?.cta as SectionConfig | undefined) ||
+      (layoutGlobal?.cta as SectionConfig | undefined) ||
+      (root.cta as SectionConfig | undefined),
       defaultCTASettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.layoutHeader]: normalizeSectionConfig(
@@ -1213,8 +1345,10 @@ export type BookingStepSettings = {
   cardBgColor?: string;
   interval?: string | number;
   slotInterval?: string | number;
+  minimumBookingLeadMinutes?: number;
   step3Times?: {
     interval?: string | number;
+    minimumBookingLeadMinutes?: number;
   };
   buttonColor?: string;
   appearance?: AppearanceSettings;
@@ -1237,6 +1371,10 @@ export const defaultBookingServiceSettings: BookingStepSettings = {
   imageY: 50,
   accentColor: "#000000",
   cardBgColor: "#FFFFFF",
+  minimumBookingLeadMinutes: 0,
+  step3Times: {
+    minimumBookingLeadMinutes: 0,
+  },
   appearance: {
     backgroundImageUrl: "",
   },
@@ -2092,15 +2230,24 @@ export const normalizeStepSettings = (
 
   // 3. Resolver Appearance (Source of Truth do banco)
   const appearance = (stepData.appearance as Record<string, unknown>) || {
-    backgroundImageUrl: (stepData.bgImage as string) || (stepData.bg_image as string) || "",
+    backgroundImageUrl:
+      (stepData.bgImage as string) || (stepData.bg_image as string) || "",
   };
 
   // 4. Blindagem: Se o stepData já tiver propriedades que o normalizeStepSettings não conhece, preserve-as!
   // Isso evita regressões quando novas funcionalidades são adicionadas em outros setores.
   const final = {
     ...stepData, // Spread do original PRIMEIRO
-    cardBgColor: finalCardColor || (stepData.cardBgColor as string) || (stepData.card_bg_color as string) || "",
-    bgColor: finalBgColor || (stepData.bgColor as string) || (stepData.bg_color as string) || "transparent",
+    cardBgColor:
+      finalCardColor ||
+      (stepData.cardBgColor as string) ||
+      (stepData.card_bg_color as string) ||
+      "",
+    bgColor:
+      finalBgColor ||
+      (stepData.bgColor as string) ||
+      (stepData.bg_color as string) ||
+      "transparent",
     appearance: {
       ...appearance,
       backgroundColor:
@@ -2151,6 +2298,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 1,
@@ -2161,6 +2309,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 2,
@@ -2171,6 +2320,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 3,
@@ -2181,6 +2331,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 4,
@@ -2191,6 +2342,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 5,
@@ -2201,6 +2353,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 6,
@@ -2211,6 +2364,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "17:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
 ];
 
@@ -2409,6 +2563,15 @@ export function getAvailableTimeSlots(
     (b: Booking) => b.date === date && b.status !== "cancelado",
   );
 
+  const nowInSaoPaulo = new Date(
+    new Date().toLocaleString("en-US", {
+      timeZone: "America/Sao_Paulo",
+    }),
+  );
+  const nowDateKey = format(nowInSaoPaulo, "yyyy-MM-dd");
+  const nowMinutes = nowInSaoPaulo.getHours() * 60 + nowInSaoPaulo.getMinutes();
+  const minimumLeadMinutes = daySchedule.minimumBookingLeadMinutes || 0;
+
   return allSlots.map((time) => {
     const available = isTimeSlotAvailable(
       time,
@@ -2417,7 +2580,18 @@ export function getAvailableTimeSlots(
       daySchedule,
       dayBlocks,
     );
-    return { time, available };
+
+    // Se o slot estiver disponível, verificar a antecedência mínima se for para hoje
+    let finalAvailable = available;
+    if (available && date === nowDateKey) {
+      const [slotHour, slotMinute] = time.split(":").map(Number);
+      const slotMinutes = slotHour * 60 + slotMinute;
+      if (slotMinutes - nowMinutes < minimumLeadMinutes) {
+        finalAvailable = false;
+      }
+    }
+
+    return { time, available: finalAvailable };
   });
 }
 

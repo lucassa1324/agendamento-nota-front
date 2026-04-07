@@ -183,9 +183,17 @@ export function SiteCustomizer() {
     fetchCustomizationRef.current = fetchCustomization;
   }, [fetchCustomization]);
 
+  const handleSaveGlobalRef = useRef(handleSaveGlobal);
+  useEffect(() => {
+    handleSaveGlobalRef.current = handleSaveGlobal;
+  }, [handleSaveGlobal]);
+
   const applyAndSave = (applyFn: () => void) => async () => {
     applyFn();
-    await handleSaveGlobal();
+    await new Promise<void>((resolve) => {
+      window.setTimeout(() => resolve(), 0);
+    });
+    await handleSaveGlobalRef.current();
   };
 
   const handleToggleStatus = async () => {

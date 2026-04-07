@@ -581,10 +581,27 @@ export function useEditorApi({
         settings.testimonialsSettings,
         lastSaved.lastSavedTestimonials,
       );
-      const sanitizedServices = sanitizeSectionData(
+      const sanitizedServicesDraft = sanitizeSectionData(
         settings.servicesSettings,
         lastSaved.lastSavedServices,
       );
+      const servicesAppearance =
+        (sanitizedServicesDraft.appearance as Record<string, unknown> | undefined) || {};
+      const resolvedServicesBgColor =
+        (servicesAppearance.backgroundColor as string) ||
+        (servicesAppearance.bgColor as string) ||
+        (sanitizedServicesDraft.bgColor as string) ||
+        "";
+      const sanitizedServices = {
+        ...sanitizedServicesDraft,
+        bgColor: resolvedServicesBgColor,
+        backgroundColor: resolvedServicesBgColor,
+        appearance: {
+          ...servicesAppearance,
+          backgroundColor: resolvedServicesBgColor,
+          bgColor: resolvedServicesBgColor,
+        },
+      };
       const sanitizedHomeValues = sanitizeSectionData(
         settings.homeValuesSettings,
         lastSaved.lastSavedHomeValues,
@@ -802,6 +819,16 @@ export function useEditorApi({
                 const overlay = toSafeRecord(
                   (appearance as Record<string, unknown>).overlay,
                 ) || {};
+                const sectionBackgroundColor =
+                  section === "services"
+                    ? (appearance.backgroundColor as string) ||
+                      (appearance.bgColor as string) ||
+                      (sectionData.bgColor as string) ||
+                      ""
+                    : (sectionData.bgColor as string) ||
+                      (appearance.backgroundColor as string) ||
+                      (appearance.bgColor as string) ||
+                      "";
 
                 // Mapeia TODOS os campos de aparência para garantir sincronização total
                 subObj.appearance = {
@@ -809,10 +836,8 @@ export function useEditorApi({
                   backgroundImageUrl:
                     sectionData.bgImage || appearance.backgroundImageUrl || "",
                   showBackgroundImage: sectionData.bgType === "image",
-                  backgroundColor:
-                    (sectionData.bgColor as string) ||
-                    (appearance.backgroundColor as string) ||
-                    "",
+                  backgroundColor: sectionBackgroundColor,
+                  bgColor: sectionBackgroundColor,
                   overlayOpacity:
                     typeof sectionData.overlayOpacity === "number"
                       ? sectionData.overlayOpacity
@@ -885,10 +910,8 @@ export function useEditorApi({
                 }
 
                 subObj.bgType = sectionData.bgType || "color";
-                subObj.bgColor =
-                  (sectionData.bgColor as string) ||
-                  (appearance.backgroundColor as string) ||
-                  "";
+                subObj.bgColor = sectionBackgroundColor;
+                subObj.backgroundColor = sectionBackgroundColor;
                 subObj.bgImage =
                   sectionData.bgImage || appearance.backgroundImageUrl || "";
 
@@ -930,7 +953,7 @@ export function useEditorApi({
                     sectionData.cardBgColor || sectionData.card_background_color,
                   cardBackgroundColor:
                     sectionData.cardBgColor || sectionData.cardBackgroundColor,
-                  bg_color: sectionData.bgColor || sectionData.bg_color,
+                  bg_color: sectionBackgroundColor || sectionData.bg_color,
                   title_color: sectionData.titleColor || sectionData.title_color,
                   subtitle_color: sectionData.subtitleColor || sectionData.subtitle_color,
                   badge_color: sectionData.badgeColor || sectionData.badge_color,
@@ -1136,10 +1159,20 @@ export function useEditorApi({
               }
             }
 
-            if (!payload.layoutGlobal) payload.layoutGlobal = {};
-            const layoutKey = section === "hero" ? "heroBanner" : section;
-            (payload.layoutGlobal as Record<string, unknown>)[layoutKey] =
-              sectionData;
+            // Alinhamento com o Contrato (customization-schema-contract.md)
+            if (section === "hero") {
+              if (!payload.home) payload.home = {};
+              (payload.home as Record<string, unknown>).heroBanner = sectionData;
+            } else if (section === "galleryPreviewSettings") {
+              if (!payload.home) payload.home = {};
+              (payload.home as Record<string, unknown>).galleryPreview = sectionData;
+            } else if (section === "homeValuesSettings") {
+              if (!payload.home) payload.home = {};
+              (payload.home as Record<string, unknown>).valuesSection = sectionData;
+            } else {
+              if (!payload.layoutGlobal) payload.layoutGlobal = {};
+              (payload.layoutGlobal as Record<string, unknown>)[section] = sectionData;
+            }
           }
 
           // Tratamento especial para fontes e cores globais (Theme)
@@ -1402,8 +1435,24 @@ export function useEditorApi({
               setters.setLastSavedStory(sanitizedStory);
               setters.setLastSavedTeam(sanitizedTeam);
               setters.setLastSavedTestimonials(sanitizedTestimonials);
-              setters.setLastSavedFont(settings.fontSettings);
-              setters.setLastSavedColor(settings.colorSettings);
+              const normalizedFresh = normalizePayload(fresh as SiteConfigData);
+              const freshConfig =
+                normalizedFresh &&
+                  typeof normalizedFresh === "object" &&
+                  !Array.isArray(normalizedFresh)
+                  ? (normalizedFresh as Record<string, unknown>)
+                  : {};
+              const resolvedFont =
+                (freshConfig.fontSettings as FontSettings) ||
+                (freshConfig.theme as FontSettings) ||
+                settings.fontSettings;
+              const resolvedColor =
+                (freshConfig.colorSettings as ColorSettings) ||
+                (freshConfig.colors as ColorSettings) ||
+                settings.colorSettings;
+
+              setters.setLastSavedFont(resolvedFont);
+              setters.setLastSavedColor(resolvedColor);
               setters.setLastSavedServices(sanitizedServices);
               setters.setLastSavedHomeValues(sanitizedHomeValues);
               setters.setLastSavedAboutUsValues(sanitizedAboutUsValues);
@@ -1426,49 +1475,81 @@ export function useEditorApi({
 
               // 5. ATUALIZAÇÃO DO CONTEXTO GLOBAL (Força re-render do site no editor)
               if (updateStudioInfo && fresh) {
-                const freshConfig =
-                  fresh && typeof fresh === "object" && !Array.isArray(fresh)
-                    ? (fresh as Record<string, unknown>)
-                    : {};
-                const currentConfig =
-                  settings && typeof settings === "object" && !Array.isArray(settings)
-                    ? (settings as unknown as Record<string, unknown>)
-                    : {};
-                updateStudioInfo({
-                  config: {
-                    ...freshConfig,
-                    sections: {
-                      ...((freshConfig.sections as Record<string, unknown>) || {}),
-                      ...((payload.sections as Record<string, unknown>) || {}),
-                    },
-                    layoutGlobal: {
-                      ...((freshConfig.layoutGlobal as Record<string, unknown>) ||
-                        {}),
-                      ...((payload.layoutGlobal as Record<string, unknown>) || {}),
-                    },
-                    home: {
-                      ...((freshConfig.home as Record<string, unknown>) || {}),
-                      heroBanner: sanitizedHero,
-                    },
-                    hero: sanitizedHero,
-                    aboutHero: sanitizedAboutHero,
-                    story: sanitizedStory,
-                    team: sanitizedTeam,
-                    testimonials: sanitizedTestimonials,
-                    services: sanitizedServices,
-                    cta: sanitizedCta,
-                    header: sanitizedHeader,
-                    footer: sanitizedFooter,
-                    galleryPreviewSettings: sanitizedGalleryPreview,
-                    galleryPageSettings: sanitizedGalleryPage,
-                    pageVisibility: settings.pageVisibility,
-                    visibleSections: settings.visibleSections,
-                    fontSettings: currentConfig.fontSettings || settings.fontSettings,
-                    colorSettings:
-                      currentConfig.colorSettings || settings.colorSettings,
+                console.log(">>> [DEBUG_SAVE] Injetando no context - SanitizedServices:", sanitizedServices);
+                const authoritativeConfig = {
+                  ...freshConfig,
+                  sections: {
+                    ...((freshConfig.sections as Record<string, unknown>) || {}),
+                    ...((payload.sections as Record<string, unknown>) || {}),
                   },
+                  layoutGlobal: {
+                    ...((freshConfig.layoutGlobal as Record<string, unknown>) || {}),
+                    ...((payload.layoutGlobal as Record<string, unknown>) || {}),
+                    siteColors: settings.colorSettings,
+                    color: settings.colorSettings,
+                    cores_base: settings.colorSettings,
+                    typography: settings.fontSettings,
+                    fontes: settings.fontSettings,
+                  },
+                  home: {
+                    ...((freshConfig.home as Record<string, unknown>) || {}),
+                    heroBanner: sanitizedHero,
+                    hero: sanitizedHero,
+                    servicesSection: sanitizedServices,
+                    services: sanitizedServices,
+                    valuesSection: sanitizedHomeValues,
+                    values: sanitizedHomeValues,
+                    storySection: sanitizedStory,
+                    story: sanitizedStory,
+                    teamSection: sanitizedTeam,
+                    team: sanitizedTeam,
+                    testimonialsSection: sanitizedTestimonials,
+                    testimonials: sanitizedTestimonials,
+                    galleryPreview: sanitizedGalleryPreview,
+                    gallerySection: sanitizedGalleryPreview,
+                    ctaSection: sanitizedCta,
+                    cta: sanitizedCta,
+                  },
+                  aboutUs: {
+                    ...((freshConfig.aboutUs as Record<string, unknown>) || {}),
+                    valuesSection: sanitizedAboutUsValues,
+                    values: sanitizedAboutUsValues,
+                  },
+                  hero: sanitizedHero,
+                  aboutHero: sanitizedAboutHero,
+                  story: sanitizedStory,
+                  team: sanitizedTeam,
+                  testimonials: sanitizedTestimonials,
+                  services: sanitizedServices,
+                  homeValuesSettings: sanitizedHomeValues,
+                  aboutUsValuesSettings: sanitizedAboutUsValues,
+                  galleryPreviewSettings: sanitizedGalleryPreview,
+                  galleryPageSettings: sanitizedGalleryPage,
+                  cta: sanitizedCta,
+                  header: sanitizedHeader,
+                  footer: sanitizedFooter,
+                  pageVisibility: settings.pageVisibility,
+                  visibleSections: settings.visibleSections,
+                  fontSettings: settings.fontSettings,
+                  colorSettings: settings.colorSettings,
+                  colors: settings.colorSettings,
+                  theme: settings.fontSettings,
+                };
+
+                console.log(
+                  ">>> [ESTRUTURA INJETADA NO CONTEXT]",
+                  JSON.parse(JSON.stringify(authoritativeConfig)),
+                );
+
+                updateStudioInfo({
+                  config: authoritativeConfig,
                 });
               }
+
+              console.log(">>> [ESTADO_POS_SAVE] Verificando cor final injetada:", {
+                sanitizedServicesColor: sanitizedServices.bgColor || (sanitizedServices as any).appearance?.bgColor,
+                freshConfigServicesColor: (freshConfig as any).home?.servicesSection?.bgColor || (freshConfig as any).services?.bgColor
+              });
 
               // 6. LIMPEZA DE CACHE DE PREVIEW
               if (typeof localStorage !== "undefined") {

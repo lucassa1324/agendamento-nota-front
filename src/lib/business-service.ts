@@ -27,6 +27,7 @@ type SettingsPayload = {
   slotInterval?: string; // Adicionado para suportar o campo que o backend retorna
   weekly: WeekdaySchedulePayload[];
   agendaAberta?: boolean; // Adicionado para refletir o status da agenda no Dashboard
+  minimumBookingLeadMinutes?: number;
 };
 
 type ServiceHttpError = Error & {
@@ -51,7 +52,7 @@ async function buildHttpError(
       } else if (parsed.message) {
         message = parsed.message;
       }
-    } catch {}
+    } catch { }
   }
 
   const error = new Error(message) as ServiceHttpError;

@@ -56,19 +56,21 @@ const normalizeSection = <T extends Record<string, unknown>>(
   if (!value || !isRecord(value)) return defaultValue;
 
   // Deep merge com o valor padrão para garantir que todos os campos existam
-  const merged = defaultValue
-    ? { ...defaultValue, ...value }
-    : { ...value };
+  const merged = defaultValue ? { ...defaultValue, ...value } : { ...value };
 
   // Tratamento de segurança contra o Object Object Bug
   // Se campos que deveriam ser strings vierem como objetos, extraímos o texto ou usamos o default
   const safeString = (val: unknown, defaultStr: string = ""): string => {
-    if (typeof val === 'string') return val;
-    if (typeof val === 'object' && val !== null) {
+    if (typeof val === "string") return val;
+    if (typeof val === "object" && val !== null) {
       const obj = val as Record<string, unknown>;
       // Tenta pegar o texto de várias formas comuns que o CMS pode enviar
-      const extracted = (obj.text as string) || (obj.value as string) || (obj.content as string) || (obj.title as string);
-      if (typeof extracted === 'string') return extracted;
+      const extracted =
+        (obj.text as string) ||
+        (obj.value as string) ||
+        (obj.content as string) ||
+        (obj.title as string);
+      if (typeof extracted === "string") return extracted;
 
       // Se ainda for objeto e tiver um toString personalizado, usa, senão retorna o default
       return defaultStr;
@@ -81,16 +83,16 @@ const normalizeSection = <T extends Record<string, unknown>>(
   const cardConfig = isRecord(merged.cardConfig) ? merged.cardConfig : {};
   const itemsStyle = isRecord(merged.itemsStyle) ? merged.itemsStyle : {};
 
-  const bgImage = safeString(appearance.backgroundImageUrl || merged.bgImage || "");
+  const bgImage = safeString(
+    appearance.backgroundImageUrl || merged.bgImage || "",
+  );
 
   let bgType: "color" | "image" = merged.bgType as "color" | "image";
   if (merged.bgType === "color" || merged.bgType === "image") {
     bgType = merged.bgType as "color" | "image";
-  }
-  else if (typeof appearance.showBackgroundImage === "boolean") {
+  } else if (typeof appearance.showBackgroundImage === "boolean") {
     bgType = appearance.showBackgroundImage ? "image" : "color";
-  }
-  else {
+  } else {
     bgType = bgImage ? "image" : "color";
   }
 
@@ -100,7 +102,7 @@ const normalizeSection = <T extends Record<string, unknown>>(
     merged.bgColor ||
     appearance.cardBgColor ||
     merged.cardBgColor ||
-    ""
+    "",
   );
 
   const cardBgColor = safeString(
@@ -113,17 +115,33 @@ const normalizeSection = <T extends Record<string, unknown>>(
     cardConfig.cardBackgroundColor ||
     cardConfig.backgroundColor ||
     itemsStyle.itemBackgroundColor ||
-    ""
+    "",
   );
 
   const flattened = {
     ...merged,
     ...content,
     ...appearance,
-    title: safeString(content.title ?? merged.title ?? "", (defaultValue as Record<string, unknown> | undefined)?.title as string || ""),
-    subtitle: safeString(content.subtitle ?? merged.subtitle ?? "", (defaultValue as Record<string, unknown> | undefined)?.subtitle as string || ""),
-    description: safeString(content.description ?? merged.description ?? "", (defaultValue as Record<string, unknown> | undefined)?.description as string || ""),
-    content: safeString(content.content ?? merged.content ?? "", (defaultValue as Record<string, unknown> | undefined)?.content as string || ""),
+    title: safeString(
+      content.title ?? merged.title ?? "",
+      ((defaultValue as Record<string, unknown> | undefined)
+        ?.title as string) || "",
+    ),
+    subtitle: safeString(
+      content.subtitle ?? merged.subtitle ?? "",
+      ((defaultValue as Record<string, unknown> | undefined)
+        ?.subtitle as string) || "",
+    ),
+    description: safeString(
+      content.description ?? merged.description ?? "",
+      ((defaultValue as Record<string, unknown> | undefined)
+        ?.description as string) || "",
+    ),
+    content: safeString(
+      content.content ?? merged.content ?? "",
+      ((defaultValue as Record<string, unknown> | undefined)
+        ?.content as string) || "",
+    ),
     bgImage,
     bgColor,
     bgType,
@@ -154,9 +172,7 @@ const normalizeHeroSettings = (
     ...base,
     overlayOpacity: base.overlayOpacity ?? 0.5,
     imageOpacity:
-      base.imageOpacity === defaultValue.imageOpacity
-        ? 1
-        : base.imageOpacity,
+      base.imageOpacity === defaultValue.imageOpacity ? 1 : base.imageOpacity,
   };
 };
 
@@ -176,30 +192,37 @@ const normalizeValuesSettings = (
   const valuesRecord = isRecord(valuesSource)
     ? (valuesSource as Record<string, unknown>)
     : undefined;
-  const itemsStyle = valuesRecord?.itemsStyle as Record<string, unknown> | undefined;
-  const itemsStyleCardBg =
-    (itemsStyle?.itemBackgroundColor as string) || "";
+  const itemsStyle = valuesRecord?.itemsStyle as
+    | Record<string, unknown>
+    | undefined;
+  const itemsStyleCardBg = (itemsStyle?.itemBackgroundColor as string) || "";
 
   const content = valuesRecord?.content as Record<string, unknown> | undefined;
-  const contentCardBg = content?.cardBgColor as string || "";
-  const appearance = valuesRecord?.appearance as Record<string, unknown> | undefined;
+  const contentCardBg = (content?.cardBgColor as string) || "";
+  const appearance = valuesRecord?.appearance as
+    | Record<string, unknown>
+    | undefined;
   const appearanceCardBg =
     (appearance?.cardBgColor as string) ||
     (appearance?.cardBackgroundColor as string) ||
     "";
 
-  const valuesSourceWithCardBg = (itemsStyleCardBg || contentCardBg || appearanceCardBg)
-    ? {
-      ...valuesRecord,
-      cardBgColor: (valuesRecord?.cardBgColor as string | undefined) ||
-        contentCardBg ||
-        appearanceCardBg ||
-        itemsStyleCardBg,
-      cardBackgroundColor:
-        (valuesRecord?.cardBackgroundColor as string | undefined) ||
-        contentCardBg || appearanceCardBg || itemsStyleCardBg,
-    }
-    : (valuesRecord || defaultValue);
+  const valuesSourceWithCardBg =
+    itemsStyleCardBg || contentCardBg || appearanceCardBg
+      ? {
+        ...valuesRecord,
+        cardBgColor:
+          (valuesRecord?.cardBgColor as string | undefined) ||
+          contentCardBg ||
+          appearanceCardBg ||
+          itemsStyleCardBg,
+        cardBackgroundColor:
+          (valuesRecord?.cardBackgroundColor as string | undefined) ||
+          contentCardBg ||
+          appearanceCardBg ||
+          itemsStyleCardBg,
+      }
+      : valuesRecord || defaultValue;
 
   const base = normalizeSection(
     getSectionValue(
@@ -219,9 +242,11 @@ const normalizeValuesSettings = (
   const sourceCardBgColor =
     (valuesRecord?.cardBgColor as string | undefined) ||
     (valuesRecord?.cardBackgroundColor as string | undefined) ||
-    (valuesRecord as Record<string, unknown> | undefined)?.card_background_color ||
+    (valuesRecord as Record<string, unknown> | undefined)
+      ?.card_background_color ||
     (valuesRecord?.cardConfig as Record<string, unknown>)?.backgroundColor ||
-    (valuesRecord?.cardConfig as Record<string, unknown>)?.cardBackgroundColor ||
+    (valuesRecord?.cardConfig as Record<string, unknown>)
+      ?.cardBackgroundColor ||
     appearanceCardBg ||
     contentCardBg ||
     itemsStyleCardBg;
@@ -230,8 +255,13 @@ const normalizeValuesSettings = (
     sourceBgColor && sourceBgColor !== sourceCardBgColor,
   );
 
-  const baseAppearance = base && isRecord(base.appearance) ? base.appearance : {};
-  if (!hasExplicitBg && base?.cardBgColor && base.bgColor === base.cardBgColor) {
+  const baseAppearance =
+    base && isRecord(base.appearance) ? base.appearance : {};
+  if (
+    !hasExplicitBg &&
+    base?.cardBgColor &&
+    base.bgColor === base.cardBgColor
+  ) {
     return {
       ...base,
       bgColor: "",
@@ -259,11 +289,7 @@ export function useEditorConfigLoader({
 }: UseEditorConfigLoaderProps) {
   const hasLoadedFromBank = useRef(false);
 
-  const {
-    loadLocalDrafts,
-    saveLocalDrafts,
-    saveHeroSettings,
-  } = local;
+  const { loadLocalDrafts, saveLocalDrafts, saveHeroSettings } = local;
 
   const {
     setHeroSettings,
@@ -356,13 +382,19 @@ export function useEditorConfigLoader({
       const drafts = loadLocalDrafts();
 
       // LOG de Sincronização
-      const apiTime = baseConfig.updatedAt ? new Date(baseConfig.updatedAt).getTime() : 0;
+      const apiTime = baseConfig.updatedAt
+        ? new Date(baseConfig.updatedAt).getTime()
+        : 0;
       const localTime = Number(drafts.draftTimestamp) || 0;
-      const isFallback = (config as Record<string, unknown>).isFallback || (baseConfig as Record<string, unknown>).isFallback;
+      const isFallback =
+        (config as Record<string, unknown>).isFallback ||
+        (baseConfig as Record<string, unknown>).isFallback;
 
-      console.log(`>>> [SYNC_CHECK] Server: ${apiTime} | Local: ${localTime} | Fallback: ${isFallback}`);
+      console.log(
+        `>>> [SYNC_CHECK] Server: ${apiTime} | Local: ${localTime} | Fallback: ${isFallback}`,
+      );
 
-      // REMOVIDO: Sincronização automática para o LocalStorage. 
+      // REMOVIDO: Sincronização automática para o LocalStorage.
       // O Banco de Dados é a única fonte da verdade no F5.
       // if (apiTime > localTime && !isFallback) { ... }
 
@@ -377,10 +409,10 @@ export function useEditorConfigLoader({
 
       const rootHeroBanner = (baseConfig as Record<string, unknown>)
         ?.heroBanner as HeroSettings | undefined;
-      const heroSource = (layoutGlobal?.heroBanner ||
-        home?.heroBanner ||
-        rootHeroBanner ||
+      const heroSource = (home?.heroBanner ||
         home?.hero ||
+        layoutGlobal?.heroBanner ||
+        rootHeroBanner ||
         layoutGlobal?.hero ||
         baseConfig.hero) as HeroSettings | undefined;
 
@@ -409,8 +441,14 @@ export function useEditorConfigLoader({
         defaultValue?: T,
       ): T | undefined => {
         // Se force for true, o banco sempre vence o rascunho local
-        if (force && bankValue && !isBankValueEmptyOrDefault(bankValue, defaultValue)) {
-          console.log(`>>> [LOADER] Force detectado para ${sectionKey}. Usando dados do banco.`);
+        if (
+          force &&
+          bankValue &&
+          !isBankValueEmptyOrDefault(bankValue, defaultValue)
+        ) {
+          console.log(
+            `>>> [LOADER] Force detectado para ${sectionKey}. Usando dados do banco.`,
+          );
           return bankValue;
         }
 
@@ -423,7 +461,9 @@ export function useEditorConfigLoader({
         const localTime = Number(drafts.draftTimestamp) || 0;
         const isLocalNewer = shouldRecoverDrafts && localTime > apiTime;
         const isServerNewer = apiTime > localTime;
-        const isFallback = (config as Record<string, unknown>).isFallback || (baseConfig as Record<string, unknown>).isFallback;
+        const isFallback =
+          (config as Record<string, unknown>).isFallback ||
+          (baseConfig as Record<string, unknown>).isFallback;
 
         // Mapeamento inteligente para chaves de agendamento (JSONB aninhado)
         let effectiveBankValue = bankValue;
@@ -433,19 +473,32 @@ export function useEditorConfigLoader({
             .replace("Settings", "")
             .toLowerCase();
 
-          const appointmentFlow = (baseConfig as Record<string, unknown>).appointmentFlow as Record<string, unknown> | undefined;
+          const appointmentFlow = (baseConfig as Record<string, unknown>)
+            .appointmentFlow as Record<string, unknown> | undefined;
           const nestedValue =
             (appointmentFlow?.[stepKey] as Record<string, unknown>) ||
             (appointmentFlow?.steps as Record<string, unknown>)?.[stepKey] ||
-            (appointmentFlow?.steps as Record<string, unknown>)?.step1Services || // Mapeamento profundo para step1Services
-            ((baseConfig as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.[stepKey];
+            (appointmentFlow?.steps as Record<string, unknown>)
+              ?.step1Services || // Mapeamento profundo para step1Services
+            (
+              (baseConfig as Record<string, unknown>).bookingSteps as Record<
+                string,
+                unknown
+              >
+            )?.[stepKey];
 
-          if (nestedValue && !isBankValueEmptyOrDefault(nestedValue as T, defaultValue)) {
+          if (
+            nestedValue &&
+            !isBankValueEmptyOrDefault(nestedValue as T, defaultValue)
+          ) {
             effectiveBankValue = nestedValue as T;
           }
         }
 
-        const isBankEmpty = isBankValueEmptyOrDefault(effectiveBankValue, defaultValue);
+        const isBankEmpty = isBankValueEmptyOrDefault(
+          effectiveBankValue,
+          defaultValue,
+        );
 
         console.log(
           `>>> [SYNC] Section: ${sectionKey} | Local: ${localTime} | Server: ${apiTime} | LocalNewer: ${isLocalNewer} | ServerNewer: ${isServerNewer} | BankEmpty: ${isBankEmpty} | IsFallback: ${isFallback}`,
@@ -453,13 +506,17 @@ export function useEditorConfigLoader({
 
         // 1. Se o banco falhou (fallback), o LocalStorage vence sempre
         if (isFallback) {
-          console.log(`>>> [LOADER] Fallback detectado para ${sectionKey}. Usando rascunho local.`);
+          console.log(
+            `>>> [LOADER] Fallback detectado para ${sectionKey}. Usando rascunho local.`,
+          );
           return draftValue || defaultValue;
         }
 
         // 2. Se o servidor for MAIS RECENTE que o rascunho local, o servidor vence e limpa o conflito.
         if (isServerNewer && !isBankEmpty) {
-          console.log(`>>> [LOADER] Servidor é mais recente para ${sectionKey}. Sincronizando LocalStorage.`);
+          console.log(
+            `>>> [LOADER] Servidor é mais recente para ${sectionKey}. Sincronizando LocalStorage.`,
+          );
           return effectiveBankValue;
         }
 
@@ -470,7 +527,9 @@ export function useEditorConfigLoader({
           draftValue !== null &&
           Object.keys(draftValue as object).length > 0
         ) {
-          console.log(`>>> [LOADER] Rascunho local é mais recente para ${sectionKey}.`);
+          console.log(
+            `>>> [LOADER] Rascunho local é mais recente para ${sectionKey}.`,
+          );
           return draftValue;
         }
 
@@ -486,7 +545,9 @@ export function useEditorConfigLoader({
           draftValue !== null &&
           Object.keys(draftValue as object).length > 0
         ) {
-          console.log(`>>> [LOADER] Banco vazio/default para ${sectionKey}, preservando rascunho local.`);
+          console.log(
+            `>>> [LOADER] Banco vazio/default para ${sectionKey}, preservando rascunho local.`,
+          );
           return draftValue;
         }
 
@@ -510,7 +571,9 @@ export function useEditorConfigLoader({
         aboutHero: normalizeHeroSettings(
           getSectionValue(
             "aboutHeroSettings",
-            (layoutGlobal?.aboutHero || baseConfig.aboutHero) as HeroSettings,
+            (home?.aboutHero ||
+              layoutGlobal?.aboutHero ||
+              baseConfig.aboutHero) as HeroSettings,
             drafts.aboutHeroSettings as HeroSettings,
             defaultAboutHeroSettings,
           ),
@@ -561,11 +624,16 @@ export function useEditorConfigLoader({
                 layoutGlobal?.services ||
                 baseConfig.services) as ServicesSettings;
 
-              const cardConfig = (servicesSource as Record<string, unknown>)?.cardConfig as Record<string, unknown>;
+              const cardConfig = (servicesSource as Record<string, unknown>)
+                ?.cardConfig as Record<string, unknown>;
               if (cardConfig) {
                 return {
                   ...servicesSource,
-                  cardBgColor: (cardConfig.cardBackgroundColor as string) || (cardConfig.backgroundColor as string) || (servicesSource as Record<string, unknown>).cardBgColor as string,
+                  cardBgColor:
+                    (cardConfig.cardBackgroundColor as string) ||
+                    (cardConfig.backgroundColor as string) ||
+                    ((servicesSource as Record<string, unknown>)
+                      .cardBgColor as string),
                 };
               }
               return servicesSource;
@@ -576,10 +644,10 @@ export function useEditorConfigLoader({
           defaultServicesSettings,
         ),
         homeValuesSettings: normalizeValuesSettings(
-          (baseConfig.homeValuesSettings ||
-            layoutGlobal?.homeValuesSettings ||
-            home?.valuesSection ||
+          (home?.valuesSection ||
             home?.values ||
+            baseConfig.homeValuesSettings ||
+            layoutGlobal?.homeValuesSettings ||
             baseConfig.values) as ValuesSettings,
           drafts.homeValuesSettings as ValuesSettings,
           defaultValuesSettings,
@@ -588,10 +656,10 @@ export function useEditorConfigLoader({
           slug,
         ),
         aboutUsValuesSettings: normalizeValuesSettings(
-          (baseConfig.aboutUsValuesSettings ||
-            layoutGlobal?.aboutUsValuesSettings ||
-            aboutUs?.valuesSection ||
+          (aboutUs?.valuesSection ||
             aboutUs?.values ||
+            baseConfig.aboutUsValuesSettings ||
+            layoutGlobal?.aboutUsValuesSettings ||
             baseConfig.values) as ValuesSettings,
           drafts.aboutUsValuesSettings as ValuesSettings,
           defaultValuesSettings,
@@ -606,11 +674,12 @@ export function useEditorConfigLoader({
             baseConfig.visibleSections ||
             baseConfig.visible_sections;
 
-          const base = (force && bankValue)
-            ? (bankValue as Record<string, boolean>)
-            : (drafts.visibleSections as Record<string, boolean>) ||
-            (bankValue as Record<string, boolean>) ||
-            {};
+          const base =
+            force && bankValue
+              ? (bankValue as Record<string, boolean>)
+              : (drafts.visibleSections as Record<string, boolean>) ||
+              (bankValue as Record<string, boolean>) ||
+              {};
 
           const resolvedAboutValues =
             base["about-values"] ?? base.values ?? true;
@@ -645,7 +714,7 @@ export function useEditorConfigLoader({
             baseConfig.pageVisibility ||
             baseConfig.page_visibility;
 
-          return (force && bankValue)
+          return force && bankValue
             ? (bankValue as Record<string, boolean>)
             : (drafts.pageVisibility as Record<string, boolean>) ||
             (bankValue as Record<string, boolean>) ||
@@ -654,9 +723,9 @@ export function useEditorConfigLoader({
         galleryPreviewSettings: normalizeSection(
           getSectionValue(
             "gallerySettings",
-            (baseConfig.galleryPreviewSettings ||
-              home?.galleryPreview ||
+            (home?.galleryPreview ||
               home?.gallerySection ||
+              baseConfig.galleryPreviewSettings ||
               layoutGlobal?.galleryPreview ||
               layoutGlobal?.gallerySection) as GallerySettings,
             drafts.gallerySettings as GallerySettings,
@@ -700,7 +769,10 @@ export function useEditorConfigLoader({
         bookingService: getSectionValue(
           "bookingServiceSettings",
           ((baseConfig.appointmentFlow as Record<string, unknown>)?.service ||
-            ((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.service ||
+            (
+              (baseConfig.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.service ||
             (baseConfig.bookingSteps as Record<string, unknown>)?.service ||
             baseConfig.bookingService) as BookingStepSettings,
           drafts.bookingServiceSettings as BookingStepSettings,
@@ -709,7 +781,10 @@ export function useEditorConfigLoader({
         bookingDate: getSectionValue(
           "bookingDateSettings",
           ((baseConfig.appointmentFlow as Record<string, unknown>)?.date ||
-            ((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.date ||
+            (
+              (baseConfig.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.date ||
             (baseConfig.bookingSteps as Record<string, unknown>)?.date ||
             baseConfig.bookingDate) as BookingStepSettings,
           drafts.bookingDateSettings as BookingStepSettings,
@@ -718,7 +793,10 @@ export function useEditorConfigLoader({
         bookingTime: getSectionValue(
           "bookingTimeSettings",
           ((baseConfig.appointmentFlow as Record<string, unknown>)?.time ||
-            ((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.time ||
+            (
+              (baseConfig.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.time ||
             (baseConfig.bookingSteps as Record<string, unknown>)?.time ||
             baseConfig.bookingTime) as BookingStepSettings,
           drafts.bookingTimeSettings as BookingStepSettings,
@@ -727,7 +805,10 @@ export function useEditorConfigLoader({
         bookingForm: getSectionValue(
           "bookingFormSettings",
           ((baseConfig.appointmentFlow as Record<string, unknown>)?.form ||
-            ((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.form ||
+            (
+              (baseConfig.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.form ||
             (baseConfig.bookingSteps as Record<string, unknown>)?.form ||
             baseConfig.bookingForm) as BookingStepSettings,
           drafts.bookingFormSettings as BookingStepSettings,
@@ -735,9 +816,14 @@ export function useEditorConfigLoader({
         ),
         bookingConfirmation: getSectionValue(
           "bookingConfirmationSettings",
-          ((baseConfig.appointmentFlow as Record<string, unknown>)?.confirmation ||
-            ((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.confirmation ||
-            (baseConfig.bookingSteps as Record<string, unknown>)?.confirmation ||
+          ((baseConfig.appointmentFlow as Record<string, unknown>)
+            ?.confirmation ||
+            (
+              (baseConfig.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.confirmation ||
+            (baseConfig.bookingSteps as Record<string, unknown>)
+              ?.confirmation ||
             baseConfig.bookingConfirmation) as BookingStepSettings,
           drafts.bookingConfirmationSettings as BookingStepSettings,
           defaultBookingConfirmationSettings,
@@ -788,12 +874,18 @@ export function useEditorConfigLoader({
 
       // Autoridade máxima removida: agora usamos getSectionValue que já decide entre banco e rascunho.
       if (sanitizedHero) {
-        // Se o valor carregado for igual ao rascunho e o rascunho for mais recente, 
+        // Se o valor carregado for igual ao rascunho e o rascunho for mais recente,
         // mantemos o lastSaved como o valor do banco para permitir salvar.
-        const isUsingDraft = JSON.stringify(sanitizedHero) === JSON.stringify(drafts.heroSettings);
+        const isUsingDraft =
+          JSON.stringify(sanitizedHero) === JSON.stringify(drafts.heroSettings);
 
-        if (isUsingDraft && !isBankValueEmptyOrDefault(heroSource, defaultHeroSettings)) {
-          setLastSavedHero(normalizeHeroSettings(heroSource) || defaultHeroSettings);
+        if (
+          isUsingDraft &&
+          !isBankValueEmptyOrDefault(heroSource, defaultHeroSettings)
+        ) {
+          setLastSavedHero(
+            normalizeHeroSettings(heroSource) || defaultHeroSettings,
+          );
         } else {
           setLastSavedHero(sanitizedHero);
         }
@@ -870,7 +962,9 @@ export function useEditorConfigLoader({
         setLastSavedAboutHero,
         setLastAppliedAboutHero,
         defaultAboutHeroSettings,
-        (layoutGlobal?.aboutHero || baseConfig.aboutHero) as HeroSettings,
+        (home?.aboutHero ||
+          layoutGlobal?.aboutHero ||
+          baseConfig.aboutHero) as HeroSettings,
       );
       processSection(
         "storySettings",
@@ -879,7 +973,10 @@ export function useEditorConfigLoader({
         setLastSavedStory,
         setLastAppliedStory,
         defaultStorySettings,
-        (layoutGlobal?.story || baseConfig.story) as StorySettings,
+        (home?.storySection ||
+          home?.story ||
+          layoutGlobal?.story ||
+          baseConfig.story) as StorySettings,
       );
       processSection(
         "teamSettings",
@@ -888,7 +985,10 @@ export function useEditorConfigLoader({
         setLastSavedTeam,
         setLastAppliedTeam,
         defaultTeamSettings,
-        (layoutGlobal?.team || baseConfig.team) as TeamSettings,
+        (home?.teamSection ||
+          home?.team ||
+          layoutGlobal?.team ||
+          baseConfig.team) as TeamSettings,
       );
       processSection(
         "testimonialsSettings",
@@ -897,12 +997,18 @@ export function useEditorConfigLoader({
         setLastSavedTestimonials,
         setLastAppliedTestimonials,
         defaultTestimonialsSettings,
-        (layoutGlobal?.testimonials ||
+        (home?.testimonialsSection ||
+          home?.testimonials ||
+          layoutGlobal?.testimonials ||
           baseConfig.testimonials) as TestimonialsSettings,
       );
       processSection(
         "servicesSettings",
-        data.services as ServicesSettings,
+        ((home?.servicesSection ||
+          home?.services ||
+          layoutGlobal?.services ||
+          data.services ||
+          baseConfig.services) as ServicesSettings),
         setServicesSettings,
         setLastSavedServices,
         setLastAppliedServices,
@@ -919,10 +1025,10 @@ export function useEditorConfigLoader({
         setLastSavedHomeValues,
         setLastAppliedHomeValues,
         defaultValuesSettings,
-        (baseConfig.homeValuesSettings ||
-          layoutGlobal?.homeValuesSettings ||
-          home?.valuesSection ||
+        (home?.valuesSection ||
           home?.values ||
+          baseConfig.homeValuesSettings ||
+          layoutGlobal?.homeValuesSettings ||
           baseConfig.values) as ValuesSettings,
       );
       processSection(
@@ -932,10 +1038,10 @@ export function useEditorConfigLoader({
         setLastSavedAboutUsValues,
         setLastAppliedAboutUsValues,
         defaultValuesSettings,
-        (baseConfig.aboutUsValuesSettings ||
-          layoutGlobal?.aboutUsValuesSettings ||
-          aboutUs?.valuesSection ||
+        (aboutUs?.valuesSection ||
           aboutUs?.values ||
+          baseConfig.aboutUsValuesSettings ||
+          layoutGlobal?.aboutUsValuesSettings ||
           baseConfig.values) as ValuesSettings,
       );
       processSection(
@@ -945,9 +1051,9 @@ export function useEditorConfigLoader({
         setLastSavedGallery,
         setLastAppliedGallery,
         defaultGallerySettings,
-        (baseConfig.galleryPreviewSettings ||
-          home?.galleryPreview ||
+        (home?.galleryPreview ||
           home?.gallerySection ||
+          baseConfig.galleryPreviewSettings ||
           layoutGlobal?.galleryPreview ||
           layoutGlobal?.gallerySection) as GallerySettings,
       );
@@ -1023,16 +1129,28 @@ export function useEditorConfigLoader({
           key: "bookingServiceSettings" as keyof EditorLocalDrafts,
           data: data.bookingService as BookingStepSettings, // Usando data (que é draft-aware)
           bank:
-            ((layoutGlobal?.bookingSteps as Record<string, unknown>)?.service as BookingStepSettings) ||
-            ((baseConfig.bookingSteps as Record<string, unknown>)?.service as BookingStepSettings) ||
-            (((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.service as BookingStepSettings) ||
-            (((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.service as BookingStepSettings) ||
-            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.service as BookingStepSettings) ||
-            ((baseConfig.appointmentFlow as Record<string, unknown>)?.service as BookingStepSettings) ||
+            ((layoutGlobal?.bookingSteps as Record<string, unknown>)
+              ?.service as BookingStepSettings) ||
+            ((baseConfig.bookingSteps as Record<string, unknown>)
+              ?.service as BookingStepSettings) ||
+            ((
+              (layoutGlobal?.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.service as BookingStepSettings) ||
+            ((
+              (baseConfig.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.service as BookingStepSettings) ||
+            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)
+              ?.service as BookingStepSettings) ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)
+              ?.service as BookingStepSettings) ||
             (layoutGlobal as Record<string, unknown>)?.bookingService ||
             (baseConfig as Record<string, unknown>).bookingService,
           set: setBookingServiceSettings as (v: BookingStepSettings) => void,
-          setLast: setLastSavedBookingService as (v: BookingStepSettings) => void,
+          setLast: setLastSavedBookingService as (
+            v: BookingStepSettings,
+          ) => void,
           setApplied: setLastAppliedBookingService as (
             v: BookingStepSettings,
           ) => void,
@@ -1042,12 +1160,22 @@ export function useEditorConfigLoader({
           key: "bookingDateSettings" as keyof EditorLocalDrafts,
           data: data.bookingDate as BookingStepSettings,
           bank:
-            ((layoutGlobal?.bookingSteps as Record<string, unknown>)?.date as BookingStepSettings) ||
-            ((baseConfig.bookingSteps as Record<string, unknown>)?.date as BookingStepSettings) ||
-            (((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.date as BookingStepSettings) ||
-            (((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.date as BookingStepSettings) ||
-            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.date as BookingStepSettings) ||
-            ((baseConfig.appointmentFlow as Record<string, unknown>)?.date as BookingStepSettings) ||
+            ((layoutGlobal?.bookingSteps as Record<string, unknown>)
+              ?.date as BookingStepSettings) ||
+            ((baseConfig.bookingSteps as Record<string, unknown>)
+              ?.date as BookingStepSettings) ||
+            ((
+              (layoutGlobal?.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.date as BookingStepSettings) ||
+            ((
+              (baseConfig.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.date as BookingStepSettings) ||
+            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)
+              ?.date as BookingStepSettings) ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)
+              ?.date as BookingStepSettings) ||
             (layoutGlobal as Record<string, unknown>)?.bookingDate ||
             (baseConfig as Record<string, unknown>).bookingDate,
           set: setBookingDateSettings as (v: BookingStepSettings) => void,
@@ -1061,12 +1189,22 @@ export function useEditorConfigLoader({
           key: "bookingTimeSettings" as keyof EditorLocalDrafts,
           data: data.bookingTime as BookingStepSettings,
           bank:
-            ((layoutGlobal?.bookingSteps as Record<string, unknown>)?.time as BookingStepSettings) ||
-            ((baseConfig.bookingSteps as Record<string, unknown>)?.time as BookingStepSettings) ||
-            (((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.time as BookingStepSettings) ||
-            (((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.time as BookingStepSettings) ||
-            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.time as BookingStepSettings) ||
-            ((baseConfig.appointmentFlow as Record<string, unknown>)?.time as BookingStepSettings) ||
+            ((layoutGlobal?.bookingSteps as Record<string, unknown>)
+              ?.time as BookingStepSettings) ||
+            ((baseConfig.bookingSteps as Record<string, unknown>)
+              ?.time as BookingStepSettings) ||
+            ((
+              (layoutGlobal?.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.time as BookingStepSettings) ||
+            ((
+              (baseConfig.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.time as BookingStepSettings) ||
+            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)
+              ?.time as BookingStepSettings) ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)
+              ?.time as BookingStepSettings) ||
             (layoutGlobal as Record<string, unknown>)?.bookingTime ||
             (baseConfig as Record<string, unknown>).bookingTime,
           set: setBookingTimeSettings as (v: BookingStepSettings) => void,
@@ -1080,12 +1218,22 @@ export function useEditorConfigLoader({
           key: "bookingFormSettings" as keyof EditorLocalDrafts,
           data: data.bookingForm as BookingStepSettings,
           bank:
-            ((layoutGlobal?.bookingSteps as Record<string, unknown>)?.form as BookingStepSettings) ||
-            ((baseConfig.bookingSteps as Record<string, unknown>)?.form as BookingStepSettings) ||
-            (((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.form as BookingStepSettings) ||
-            (((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.form as BookingStepSettings) ||
-            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.form as BookingStepSettings) ||
-            ((baseConfig.appointmentFlow as Record<string, unknown>)?.form as BookingStepSettings) ||
+            ((layoutGlobal?.bookingSteps as Record<string, unknown>)
+              ?.form as BookingStepSettings) ||
+            ((baseConfig.bookingSteps as Record<string, unknown>)
+              ?.form as BookingStepSettings) ||
+            ((
+              (layoutGlobal?.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.form as BookingStepSettings) ||
+            ((
+              (baseConfig.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.form as BookingStepSettings) ||
+            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)
+              ?.form as BookingStepSettings) ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)
+              ?.form as BookingStepSettings) ||
             (layoutGlobal as Record<string, unknown>)?.bookingForm ||
             (baseConfig as Record<string, unknown>).bookingForm,
           set: setBookingFormSettings as (v: BookingStepSettings) => void,
@@ -1099,16 +1247,30 @@ export function useEditorConfigLoader({
           key: "bookingConfirmationSettings" as keyof EditorLocalDrafts,
           data: data.bookingConfirmation as BookingStepSettings,
           bank:
-            ((layoutGlobal?.bookingSteps as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
-            ((baseConfig.bookingSteps as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
-            (((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
-            (((baseConfig.appointmentFlow as Record<string, unknown>)?.steps as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
-            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
-            ((baseConfig.appointmentFlow as Record<string, unknown>)?.confirmation as BookingStepSettings) ||
+            ((layoutGlobal?.bookingSteps as Record<string, unknown>)
+              ?.confirmation as BookingStepSettings) ||
+            ((baseConfig.bookingSteps as Record<string, unknown>)
+              ?.confirmation as BookingStepSettings) ||
+            ((
+              (layoutGlobal?.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.confirmation as BookingStepSettings) ||
+            ((
+              (baseConfig.appointmentFlow as Record<string, unknown>)
+                ?.steps as Record<string, unknown>
+            )?.confirmation as BookingStepSettings) ||
+            ((layoutGlobal?.appointmentFlow as Record<string, unknown>)
+              ?.confirmation as BookingStepSettings) ||
+            ((baseConfig.appointmentFlow as Record<string, unknown>)
+              ?.confirmation as BookingStepSettings) ||
             (layoutGlobal as Record<string, unknown>)?.bookingConfirmation ||
             (baseConfig as Record<string, unknown>).bookingConfirmation,
-          set: setBookingConfirmationSettings as (v: BookingStepSettings) => void,
-          setLast: setLastSavedBookingConfirmation as (v: BookingStepSettings) => void,
+          set: setBookingConfirmationSettings as (
+            v: BookingStepSettings,
+          ) => void,
+          setLast: setLastSavedBookingConfirmation as (
+            v: BookingStepSettings,
+          ) => void,
           setApplied: setLastAppliedBookingConfirmation as (
             v: BookingStepSettings,
           ) => void,
@@ -1148,7 +1310,8 @@ export function useEditorConfigLoader({
         fontSettings:
           (data as Record<string, unknown>).theme &&
             typeof (data as Record<string, unknown>).theme === "object" &&
-            Object.keys((data as Record<string, unknown>).theme as object).length > 0
+            Object.keys((data as Record<string, unknown>).theme as object)
+              .length > 0
             ? ((data as Record<string, unknown>).theme as FontSettings)
             : data.font &&
               typeof data.font === "object" &&
@@ -1158,7 +1321,8 @@ export function useEditorConfigLoader({
         colorSettings:
           (data as Record<string, unknown>).colors &&
             typeof (data as Record<string, unknown>).colors === "object" &&
-            Object.keys((data as Record<string, unknown>).colors as object).length > 0
+            Object.keys((data as Record<string, unknown>).colors as object)
+              .length > 0
             ? ((data as Record<string, unknown>).colors as ColorSettings)
             : data.color &&
               typeof data.color === "object" &&
@@ -1167,7 +1331,8 @@ export function useEditorConfigLoader({
               : defaultColorSettings,
         servicesSettings: data.services || defaultServicesSettings,
         homeValuesSettings: data.homeValuesSettings || defaultValuesSettings,
-        aboutUsValuesSettings: data.aboutUsValuesSettings || defaultValuesSettings,
+        aboutUsValuesSettings:
+          data.aboutUsValuesSettings || defaultValuesSettings,
         gallerySettings:
           (data.galleryPreviewSettings as GallerySettings) ||
           defaultGallerySettings,
@@ -1178,50 +1343,160 @@ export function useEditorConfigLoader({
         headerSettings: data.header || defaultHeaderSettings,
         footerSettings: data.footer || defaultFooterSettings,
         bookingServiceSettings:
-          ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.service &&
-            typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).service === "object" &&
-            Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).service as object).length > 0
-            ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).service as BookingStepSettings)
+          (
+            (data as Record<string, unknown>).bookingSteps as Record<
+              string,
+              unknown
+            >
+          )?.service &&
+            typeof (
+              (data as Record<string, unknown>).bookingSteps as Record<
+                string,
+                unknown
+              >
+            ).service === "object" &&
+            Object.keys(
+              (
+                (data as Record<string, unknown>).bookingSteps as Record<
+                  string,
+                  unknown
+                >
+              ).service as object,
+            ).length > 0
+            ? ((
+              (data as Record<string, unknown>).bookingSteps as Record<
+                string,
+                unknown
+              >
+            ).service as BookingStepSettings)
             : data.bookingService &&
               typeof data.bookingService === "object" &&
               Object.keys(data.bookingService).length > 0
               ? (data.bookingService as BookingStepSettings)
               : defaultBookingServiceSettings,
         bookingDateSettings:
-          ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.date &&
-            typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).date === "object" &&
-            Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).date as object).length > 0
-            ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).date as BookingStepSettings)
+          (
+            (data as Record<string, unknown>).bookingSteps as Record<
+              string,
+              unknown
+            >
+          )?.date &&
+            typeof (
+              (data as Record<string, unknown>).bookingSteps as Record<
+                string,
+                unknown
+              >
+            ).date === "object" &&
+            Object.keys(
+              (
+                (data as Record<string, unknown>).bookingSteps as Record<
+                  string,
+                  unknown
+                >
+              ).date as object,
+            ).length > 0
+            ? ((
+              (data as Record<string, unknown>).bookingSteps as Record<
+                string,
+                unknown
+              >
+            ).date as BookingStepSettings)
             : data.bookingDate &&
               typeof data.bookingDate === "object" &&
               Object.keys(data.bookingDate).length > 0
               ? (data.bookingDate as BookingStepSettings)
               : defaultBookingDateSettings,
         bookingTimeSettings:
-          ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.time &&
-            typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).time === "object" &&
-            Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).time as object).length > 0
-            ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).time as BookingStepSettings)
+          (
+            (data as Record<string, unknown>).bookingSteps as Record<
+              string,
+              unknown
+            >
+          )?.time &&
+            typeof (
+              (data as Record<string, unknown>).bookingSteps as Record<
+                string,
+                unknown
+              >
+            ).time === "object" &&
+            Object.keys(
+              (
+                (data as Record<string, unknown>).bookingSteps as Record<
+                  string,
+                  unknown
+                >
+              ).time as object,
+            ).length > 0
+            ? ((
+              (data as Record<string, unknown>).bookingSteps as Record<
+                string,
+                unknown
+              >
+            ).time as BookingStepSettings)
             : data.bookingTime &&
               typeof data.bookingTime === "object" &&
               Object.keys(data.bookingTime).length > 0
               ? (data.bookingTime as BookingStepSettings)
               : defaultBookingTimeSettings,
         bookingFormSettings:
-          ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.form &&
-            typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).form === "object" &&
-            Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).form as object).length > 0
-            ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).form as BookingStepSettings)
+          (
+            (data as Record<string, unknown>).bookingSteps as Record<
+              string,
+              unknown
+            >
+          )?.form &&
+            typeof (
+              (data as Record<string, unknown>).bookingSteps as Record<
+                string,
+                unknown
+              >
+            ).form === "object" &&
+            Object.keys(
+              (
+                (data as Record<string, unknown>).bookingSteps as Record<
+                  string,
+                  unknown
+                >
+              ).form as object,
+            ).length > 0
+            ? ((
+              (data as Record<string, unknown>).bookingSteps as Record<
+                string,
+                unknown
+              >
+            ).form as BookingStepSettings)
             : data.bookingForm &&
               typeof data.bookingForm === "object" &&
               Object.keys(data.bookingForm).length > 0
               ? (data.bookingForm as BookingStepSettings)
               : defaultBookingFormSettings,
         bookingConfirmationSettings:
-          ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>)?.confirmation &&
-            typeof ((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).confirmation === "object" &&
-            Object.keys(((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).confirmation as object).length > 0
-            ? (((data as Record<string, unknown>).bookingSteps as Record<string, unknown>).confirmation as BookingStepSettings)
+          (
+            (data as Record<string, unknown>).bookingSteps as Record<
+              string,
+              unknown
+            >
+          )?.confirmation &&
+            typeof (
+              (data as Record<string, unknown>).bookingSteps as Record<
+                string,
+                unknown
+              >
+            ).confirmation === "object" &&
+            Object.keys(
+              (
+                (data as Record<string, unknown>).bookingSteps as Record<
+                  string,
+                  unknown
+                >
+              ).confirmation as object,
+            ).length > 0
+            ? ((
+              (data as Record<string, unknown>).bookingSteps as Record<
+                string,
+                unknown
+              >
+            ).confirmation as BookingStepSettings)
             : data.bookingConfirmation &&
               typeof data.bookingConfirmation === "object" &&
               Object.keys(data.bookingConfirmation).length > 0

@@ -181,9 +181,14 @@ export function SubscriptionCancellationModal({
         throw new Error("Falha ao encerrar conta");
       }
 
+      const result = await res.json().catch(() => null);
+      const refundMessage =
+        result?.refundPolicy?.message ||
+        "Sua assinatura foi cancelada com sucesso.";
+
       toast({
         title: "Conta Encerrada",
-        description: "Sua assinatura foi cancelada com sucesso.",
+        description: refundMessage,
       });
 
       // Force Logout and Redirect

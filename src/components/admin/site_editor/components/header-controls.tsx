@@ -13,8 +13,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { useStudio } from "@/context/studio-context";
+import { cn } from "@/lib/utils";
 
 interface HeaderControlsProps {
   previewMode: "desktop" | "mobile";
@@ -62,13 +62,13 @@ export function HeaderControls({
     setZoomInputValue(value.toString());
   };
 
-  const { businessId: studioId, refreshData } = useStudio();
+  const { refreshData } = useStudio();
 
   const handleReload = async () => {
     // 1. Recarregar dados do Studio (lateral/dashboard)
     if (refreshData) {
       console.log(">>> [HEADER_CONTROLS] Recarregando dados do Studio...");
-      refreshData();
+      await Promise.resolve(refreshData());
     }
 
     // 2. Recarregar o iframe (preview)
@@ -141,7 +141,12 @@ export function HeaderControls({
         </Button>
       </div>
 
-      <div className={cn("w-px h-3 sm:h-4 bg-border mx-0.5 sm:mx-1", isMobile ? "hidden sm:block" : "hidden md:block")} />
+      <div
+        className={cn(
+          "w-px h-3 sm:h-4 bg-border mx-0.5 sm:mx-1",
+          isMobile ? "hidden sm:block" : "hidden md:block",
+        )}
+      />
 
       <div className="flex items-center gap-0.5 sm:gap-1 px-0.5">
         {!isMobile && (

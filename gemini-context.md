@@ -133,17 +133,16 @@ export type DaySchedule = {
 export type WeekSchedule = DaySchedule[];
 
 // Helper para isolamento de dados por usuário
-export const sanitizeColor = (
-  color: unknown,
-): string | undefined => {
+export const sanitizeColor = (color: unknown): string | undefined => {
   if (!color) return undefined;
-  
+
   // Se for um objeto, tenta extrair a string de cor (caso comum em alguns componentes de UI)
   if (typeof color === "object" && color !== null) {
     const colorObj = color as Record<string, unknown>;
     if (typeof colorObj.hex === "string") return colorObj.hex;
     if (typeof colorObj.text === "string") return colorObj.text;
     if (typeof colorObj.color === "string") return colorObj.color;
+    if (typeof colorObj.rgb === "string") return colorObj.rgb;
     // Se não encontrar nada óbvio, tenta converter para string e ver o que acontece
     try {
       const str = String(color);
@@ -173,7 +172,7 @@ export const sanitizeColor = (
 };
 
 /**
- * Função de utilidade que limpa o objeto de configurações antes de qualquer operação 
+ * Função de utilidade que limpa o objeto de configurações antes de qualquer operação
  * de persistência ou renderização, garantindo que "lixo" de UI não chegue ao estado global.
  * Implementa normalização recursiva para chaves de cores.
  */
@@ -182,10 +181,12 @@ export const normalizePersistenceData = (data: unknown): unknown => {
 
   // Se for um array, processa cada item
   if (Array.isArray(data)) {
-    return data.map(item => normalizePersistenceData(item));
+    return data.map((item) => normalizePersistenceData(item));
   }
 
-  const cleanData: Record<string, unknown> = { ...(data as Record<string, unknown>) };
+  const cleanData: Record<string, unknown> = {
+    ...(data as Record<string, unknown>),
+  };
 
   Object.keys(cleanData).forEach((key) => {
     const value = cleanData[key];
@@ -195,7 +196,7 @@ export const normalizePersistenceData = (data: unknown): unknown => {
       const v = value as Record<string, unknown>;
       if (v.hex || v.color || v.rgb) {
         cleanData[key] = sanitizeColor(value);
-      } 
+      }
       // 2. Se for um objeto aninhado (não nulo), limpa recursivamente
       else if (!(value instanceof Date)) {
         cleanData[key] = normalizePersistenceData(value);
@@ -211,7 +212,9 @@ export const sanitizeSection = (
   fallbackData: unknown,
 ): Record<string, unknown> => {
   const fallback =
-    fallbackData && typeof fallbackData === "object" && !Array.isArray(fallbackData)
+    fallbackData &&
+      typeof fallbackData === "object" &&
+      !Array.isArray(fallbackData)
       ? (fallbackData as Record<string, unknown>)
       : {};
 
@@ -233,17 +236,119 @@ export const sanitizeSection = (
     return { ...fallback, title: currentData };
   }
 
-  if (!currentData || typeof currentData !== "object" || Array.isArray(currentData)) {
+  if (
+    !currentData ||
+    typeof currentData !== "object" ||
+    Array.isArray(currentData)
+  ) {
     return { ...fallback };
   }
 
   const record = currentData as Record<string, unknown>;
-  const keys = Object.keys(record);
-  if (keys.length > 0 && keys.every((key) => /^\d+$/.test(key))) {
-    return { ...fallback };
+
+  // PILAR: Limpeza de Objeto - Evitar acumular "lixo" de configurações antigas
+  // Em vez de fazer merge cego (...fallback, ...record), vamos construir o objeto
+  // priorizando o que vem do registro novo.
+  // Somente adicionamos do fallback o que for estritamente necessário (whitelist de campos padrão)
+  const mergedRoot: Record<string, unknown> = {
+    ...record,
+  };
+
+  const WHITELIST_FIELDS = [
+    "title",
+    "subtitle",
+    "description",
+    "visible",
+    "showTitle",
+    "showSubtitle",
+    "bgType",
+    "bgColor",
+    "backgroundColor",
+    "titleColor",
+    "subtitleColor",
+    "cardBgColor",
+    "cardTitleColor",
+    "cardDescriptionColor",
+    "cardPriceColor",
+    "cardIconColor",
+  ];
+
+  // Só adicionamos do fallback o que for estritamente necessário e não estiver no record
+  Object.entries(fallback).forEach(([key, value]) => {
+    // Se a chave não está no record, verificamos se ela é "lixo" ou campo padrão
+    if (mergedRoot[key] === undefined || mergedRoot[key] === null) {
+      // Se for um campo padrão conhecido, mantemos do fallback
+      if (
+        WHITELIST_FIELDS.includes(key) ||
+        key === "appearance" ||
+        key === "content"
+      ) {
+        mergedRoot[key] = value;
+      }
+      // Caso contrário, ignoramos para evitar acumular propriedades obsoletas
+    }
+  });
+
+  const recordAppearance =
+    record.appearance &&
+      typeof record.appearance === "object" &&
+      !Array.isArray(record.appearance)
+      ? (record.appearance as Record<string, unknown>)
+      : {};
+
+  const recordContent =
+    record.content &&
+      typeof record.content === "object" &&
+      !Array.isArray(record.content)
+      ? (record.content as Record<string, unknown>)
+      : {};
+
+  // Se o recordContent ou recordAppearance tiverem valores, eles devem estar no root para compatibilidade
+  for (const [key, value] of Object.entries(recordContent)) {
+    if (value !== undefined && value !== null) {
+      mergedRoot[key] = value;
+    }
   }
 
-  return { ...fallback, ...record };
+  for (const [key, value] of Object.entries(recordAppearance)) {
+    if (value !== undefined && value !== null) {
+      mergedRoot[key] = value;
+    }
+  }
+
+  const fallbackAppearance =
+    fallback.appearance &&
+      typeof fallback.appearance === "object" &&
+      !Array.isArray(fallback.appearance)
+      ? (fallback.appearance as Record<string, unknown>)
+      : {};
+
+  const fallbackContent =
+    fallback.content &&
+      typeof fallback.content === "object" &&
+      !Array.isArray(fallback.content)
+      ? (fallback.content as Record<string, unknown>)
+      : {};
+
+  const finalAppearance: Record<string, unknown> = { ...recordAppearance };
+  Object.entries(fallbackAppearance).forEach(([key, value]) => {
+    if (finalAppearance[key] === undefined || finalAppearance[key] === null) {
+      finalAppearance[key] = value;
+    }
+  });
+
+  const finalContent: Record<string, unknown> = { ...recordContent };
+  Object.entries(fallbackContent).forEach(([key, value]) => {
+    if (finalContent[key] === undefined || finalContent[key] === null) {
+      finalContent[key] = value;
+    }
+  });
+
+  return {
+    ...mergedRoot,
+    appearance: finalAppearance,
+    content: finalContent,
+  };
 };
 
 export type SectionConfig = Record<string, unknown>;
@@ -268,6 +373,7 @@ export const SECTION_IDS = {
   bookingTime: "booking-time",
   bookingForm: "booking-form",
   bookingConfirmation: "booking-confirmation",
+  booking: "booking",
 } as const;
 
 export type SectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
@@ -276,20 +382,79 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
   raw: T | undefined,
   defaults: T,
 ) => {
-  const merged = {
-    ...defaults,
-    ...(raw || {}),
-    appearance: {
-      ...(defaults.appearance as Record<string, unknown> | undefined),
-      ...(raw?.appearance as Record<string, unknown> | undefined),
-    },
-    content: {
-      ...(defaults.content as Record<string, unknown> | undefined),
-      ...(raw?.content as Record<string, unknown> | undefined),
-    },
+  // Se não tem dados brutos, retorna o padrão
+  if (!raw) return defaults;
+
+  // PILAR: Prioridade Invertida e Limpeza
+  // O que vem do "raw" (banco ou editor) deve ter prioridade TOTAL sobre o defaults.
+  // Começamos com raw e preenchemos apenas o estritamente necessário dos defaults.
+  const merged: Record<string, unknown> = {
+    ...raw,
   };
 
-  return normalizePersistenceData(merged) as T;
+  const CORE_FIELDS = [
+    "title",
+    "subtitle",
+    "description",
+    "visible",
+    "showTitle",
+    "showSubtitle",
+  ];
+
+  // Preenche campos principais se estiverem ausentes
+  CORE_FIELDS.forEach((field) => {
+    if (merged[field] === undefined || merged[field] === null) {
+      merged[field] = defaults[field];
+    }
+  });
+
+  // Se o raw tem appearance, ele deve sobrescrever o defaults.appearance
+  // mas podemos manter propriedades do defaults que não existem no raw como fallback de segurança.
+  if (raw.appearance && typeof raw.appearance === "object") {
+    merged.appearance = {
+      ...(defaults.appearance as Record<string, unknown> | undefined),
+      ...(raw.appearance as Record<string, unknown>),
+    };
+  } else if (!raw.appearance && defaults.appearance) {
+    merged.appearance = defaults.appearance as Record<string, unknown>;
+  }
+
+  // O mesmo para content
+  if (raw.content && typeof raw.content === "object") {
+    merged.content = {
+      ...(defaults.content as Record<string, unknown> | undefined),
+      ...(raw.content as Record<string, unknown>),
+    };
+  } else if (!raw.content && defaults.content) {
+    merged.content = defaults.content as Record<string, unknown>;
+  }
+
+  // 1. Blindagem: Preservar campos que não estão no defaults mas estão no raw
+  // Isso é crucial para evitar regressões quando novos campos são adicionados em um setor
+  // e o outro setor (que ainda usa o defaults antigo) tenta normalizar.
+  Object.keys(raw).forEach((key) => {
+    if (!(key in merged)) {
+      merged[key] = raw[key];
+    }
+  });
+
+  // 2. PILAR 1: Validar e Limpar via Schema (Zod)
+  // Isso garante que cores em formatos estranhos sejam convertidas e campos obrigatórios existam.
+  try {
+    // Verificação de segurança: Se o SectionSchema por algum motivo for undefined ou inválido,
+    // não chamamos o parse para evitar que o erro interno do Zod pare o editor.
+    if (SectionSchema && typeof SectionSchema.parse === "function") {
+      const validated = SectionSchema.parse(merged);
+      return normalizePersistenceData(validated) as T;
+    }
+    console.warn(
+      ">>> [SCHEMA_WARNING] SectionSchema não disponível para validação.",
+    );
+    return normalizePersistenceData(merged) as T;
+  } catch (e) {
+    console.error(">>> [SCHEMA_VALIDATION_ERROR] Erro ao validar seção:", e);
+    return normalizePersistenceData(merged) as T;
+  }
 };
 
 const getPayloadRoot = (config: SiteConfigData | null | undefined) => {
@@ -299,159 +464,185 @@ const getPayloadRoot = (config: SiteConfigData | null | undefined) => {
     config) as SiteConfigData;
 };
 
-export const normalizePayload = (
-  config: SiteConfigData | null | undefined,
-) => {
+export const normalizePayload = (config: SiteConfigData | null | undefined) => {
   const safeConfig = (config || {}) as SiteConfigData;
   const root = getPayloadRoot(safeConfig);
 
-  const layoutGlobal = (root.layoutGlobal ||
-    root.layout_global) as Record<string, unknown> | undefined;
+  const layoutGlobal = (root.layoutGlobal || root.layout_global) as
+    | Record<string, unknown>
+    | undefined;
   const home = root.home as Record<string, unknown> | undefined;
   const about = root.about as Record<string, unknown> | undefined;
+  const rootSections = root.sections as Record<string, unknown> | undefined;
+  const gallerySection = rootSections?.gallery as
+    | Record<string, unknown>
+    | undefined;
+  const galleryStyles = gallerySection?.styles as
+    | Record<string, unknown>
+    | undefined;
+  const galleryBackgroundColor =
+    typeof galleryStyles?.backgroundColor === "string"
+      ? galleryStyles.backgroundColor
+      : undefined;
+  const gallerySectionWithAppearance = gallerySection
+    ? {
+      ...gallerySection,
+      bgColor:
+        (gallerySection.bgColor as string | undefined) ||
+        galleryBackgroundColor,
+      appearance: {
+        ...((gallerySection.appearance as Record<string, unknown>) || {}),
+        backgroundColor:
+          (gallerySection.appearance as Record<string, unknown> | undefined)
+            ?.backgroundColor || galleryBackgroundColor,
+      },
+    }
+    : undefined;
 
   const sections: SectionsMap = {
+    // 1. Preservar seções existentes para não perder nada novo
+    ...(rootSections || {}),
     [SECTION_IDS.homeHero]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeHero] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeHero
-        ] ||
-        (root.hero as SectionConfig | undefined) ||
-        (layoutGlobal?.hero as SectionConfig | undefined) ||
-        (home?.heroSection as SectionConfig | undefined) ||
-        (home?.hero as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeHero
+      ] ||
+      (root.hero as SectionConfig | undefined) ||
+      (layoutGlobal?.hero as SectionConfig | undefined) ||
+      (home?.heroSection as SectionConfig | undefined) ||
+      (home?.hero as SectionConfig | undefined),
       defaultHeroSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.aboutHero]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.aboutHero] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.aboutHero
-        ] ||
-        (root.aboutHero as SectionConfig | undefined) ||
-        (layoutGlobal?.aboutHero as SectionConfig | undefined) ||
-        (about?.heroSection as SectionConfig | undefined) ||
-        (about?.hero as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.aboutHero
+      ] ||
+      (root.aboutHero as SectionConfig | undefined) ||
+      (layoutGlobal?.aboutHero as SectionConfig | undefined) ||
+      (about?.heroSection as SectionConfig | undefined) ||
+      (about?.hero as SectionConfig | undefined),
       defaultAboutHeroSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeStory]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeStory] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeStory
-        ] ||
-        (root.story as SectionConfig | undefined) ||
-        (layoutGlobal?.story as SectionConfig | undefined) ||
-        (home?.storySection as SectionConfig | undefined) ||
-        (home?.story as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeStory
+      ] ||
+      (home?.storySection as SectionConfig | undefined) ||
+      (home?.story as SectionConfig | undefined) ||
+      (layoutGlobal?.story as SectionConfig | undefined) ||
+      (root.story as SectionConfig | undefined),
       defaultStorySettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeTeam]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeTeam] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeTeam
-        ] ||
-        (root.team as SectionConfig | undefined) ||
-        (layoutGlobal?.team as SectionConfig | undefined) ||
-        (home?.teamSection as SectionConfig | undefined) ||
-        (home?.team as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeTeam
+      ] ||
+      (home?.teamSection as SectionConfig | undefined) ||
+      (home?.team as SectionConfig | undefined) ||
+      (layoutGlobal?.team as SectionConfig | undefined) ||
+      (root.team as SectionConfig | undefined),
       defaultTeamSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeTestimonials]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[
-        SECTION_IDS.homeTestimonials
+      SECTION_IDS.homeTestimonials
       ] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeTestimonials
-        ] ||
-        (root.testimonials as SectionConfig | undefined) ||
-        (layoutGlobal?.testimonials as SectionConfig | undefined) ||
-        (home?.testimonialsSection as SectionConfig | undefined) ||
-        (home?.testimonials as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeTestimonials
+      ] ||
+      (home?.testimonialsSection as SectionConfig | undefined) ||
+      (home?.testimonials as SectionConfig | undefined) ||
+      (layoutGlobal?.testimonials as SectionConfig | undefined) ||
+      (root.testimonials as SectionConfig | undefined),
       defaultTestimonialsSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeServices]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeServices] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeServices
-        ] ||
-        (root.services as SectionConfig | undefined) ||
-        (layoutGlobal?.services as SectionConfig | undefined) ||
-        (home?.servicesSection as SectionConfig | undefined) ||
-        (home?.services as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeServices
+      ] ||
+      (home?.servicesSection as SectionConfig | undefined) ||
+      (home?.services as SectionConfig | undefined) ||
+      (layoutGlobal?.services as SectionConfig | undefined) ||
+      (root.services as SectionConfig | undefined),
       defaultServicesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeValues]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeValues] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeValues
-        ] ||
-        (root.homeValuesSettings as SectionConfig | undefined) ||
-        (layoutGlobal?.homeValuesSettings as SectionConfig | undefined) ||
-        (home?.valuesSection as SectionConfig | undefined) ||
-        (home?.values as SectionConfig | undefined) ||
-        (root.values as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeValues
+      ] ||
+      (root.homeValuesSettings as SectionConfig | undefined) ||
+      (layoutGlobal?.homeValuesSettings as SectionConfig | undefined) ||
+      (home?.valuesSection as SectionConfig | undefined) ||
+      (home?.values as SectionConfig | undefined) ||
+      (root.values as SectionConfig | undefined),
       defaultValuesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.aboutValues]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.aboutValues] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.aboutValues
-        ] ||
-        (root.aboutUsValuesSettings as SectionConfig | undefined) ||
-        (layoutGlobal?.aboutUsValuesSettings as SectionConfig | undefined) ||
-        (about?.valuesSection as SectionConfig | undefined) ||
-        (about?.values as SectionConfig | undefined) ||
-        (root.values as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.aboutValues
+      ] ||
+      (root.aboutUsValuesSettings as SectionConfig | undefined) ||
+      (layoutGlobal?.aboutUsValuesSettings as SectionConfig | undefined) ||
+      (about?.valuesSection as SectionConfig | undefined) ||
+      (about?.values as SectionConfig | undefined) ||
+      (root.values as SectionConfig | undefined),
       defaultValuesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeGallery]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeGallery] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeGallery
-        ] ||
-        (root.galleryPreviewSettings as SectionConfig | undefined) ||
-        (layoutGlobal?.galleryPreview as SectionConfig | undefined) ||
-        (layoutGlobal?.gallerySection as SectionConfig | undefined) ||
-        (home?.galleryPreview as SectionConfig | undefined) ||
-        (home?.gallerySection as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeGallery
+      ] ||
+      (root.galleryPreviewSettings as SectionConfig | undefined) ||
+      (layoutGlobal?.galleryPreview as SectionConfig | undefined) ||
+      (layoutGlobal?.gallerySection as SectionConfig | undefined) ||
+      (home?.galleryPreview as SectionConfig | undefined) ||
+      (home?.gallerySection as SectionConfig | undefined),
       defaultGallerySettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.pageGallery]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.pageGallery] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.pageGallery
-        ] ||
-        (root.galleryPageSettings as SectionConfig | undefined) ||
-        (root.gallery as SectionConfig | undefined) ||
-        (layoutGlobal?.gallery as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.pageGallery
+      ] ||
+      (root.galleryPageSettings as SectionConfig | undefined) ||
+      (root.gallery as SectionConfig | undefined) ||
+      (layoutGlobal?.gallery as SectionConfig | undefined),
       defaultGallerySettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeCta]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeCta] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeCta
-        ] ||
-        (root.cta as SectionConfig | undefined) ||
-        (layoutGlobal?.cta as SectionConfig | undefined) ||
-        (home?.ctaSection as SectionConfig | undefined) ||
-        (home?.cta as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeCta
+      ] ||
+      (root.cta as SectionConfig | undefined) ||
+      (layoutGlobal?.cta as SectionConfig | undefined) ||
+      (home?.ctaSection as SectionConfig | undefined) ||
+      (home?.cta as SectionConfig | undefined),
       defaultCTASettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.layoutHeader]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.layoutHeader] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.layoutHeader
-        ] ||
-        (root.header as SectionConfig | undefined) ||
-        (layoutGlobal?.header as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.layoutHeader
+      ] ||
+      (root.header as SectionConfig | undefined) ||
+      (layoutGlobal?.header as SectionConfig | undefined),
       defaultHeaderSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.layoutFooter]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.layoutFooter] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.layoutFooter
-        ] ||
-        (root.footer as SectionConfig | undefined) ||
-        (layoutGlobal?.footer as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.layoutFooter
+      ] ||
+      (root.footer as SectionConfig | undefined) ||
+      (layoutGlobal?.footer as SectionConfig | undefined),
       defaultFooterSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.bookingService]: normalizeSectionConfig(
@@ -459,7 +650,7 @@ export const normalizePayload = (
         SECTION_IDS.bookingService
       ] ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.bookingService
+        SECTION_IDS.bookingService
         ] ||
         ((root.appointmentFlow as Record<string, unknown> | undefined)
           ?.service as SectionConfig | undefined) ||
@@ -470,14 +661,14 @@ export const normalizePayload = (
           | SectionConfig
           | undefined) ||
         (root.bookingService as SectionConfig | undefined)) as
-        | SectionConfig
-        | undefined,
+      | SectionConfig
+      | undefined,
       defaultBookingServiceSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.bookingDate]: normalizeSectionConfig(
       ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingDate] ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.bookingDate
+        SECTION_IDS.bookingDate
         ] ||
         ((root.appointmentFlow as Record<string, unknown> | undefined)
           ?.date as SectionConfig | undefined) ||
@@ -488,14 +679,14 @@ export const normalizePayload = (
           | SectionConfig
           | undefined) ||
         (root.bookingDate as SectionConfig | undefined)) as
-        | SectionConfig
-        | undefined,
+      | SectionConfig
+      | undefined,
       defaultBookingDateSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.bookingTime]: normalizeSectionConfig(
       ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingTime] ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.bookingTime
+        SECTION_IDS.bookingTime
         ] ||
         ((root.appointmentFlow as Record<string, unknown> | undefined)
           ?.time as SectionConfig | undefined) ||
@@ -506,14 +697,14 @@ export const normalizePayload = (
           | SectionConfig
           | undefined) ||
         (root.bookingTime as SectionConfig | undefined)) as
-        | SectionConfig
-        | undefined,
+      | SectionConfig
+      | undefined,
       defaultBookingTimeSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.bookingForm]: normalizeSectionConfig(
       ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingForm] ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.bookingForm
+        SECTION_IDS.bookingForm
         ] ||
         ((root.appointmentFlow as Record<string, unknown> | undefined)
           ?.form as SectionConfig | undefined) ||
@@ -524,8 +715,8 @@ export const normalizePayload = (
           | SectionConfig
           | undefined) ||
         (root.bookingForm as SectionConfig | undefined)) as
-        | SectionConfig
-        | undefined,
+      | SectionConfig
+      | undefined,
       defaultBookingFormSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.bookingConfirmation]: normalizeSectionConfig(
@@ -533,7 +724,7 @@ export const normalizePayload = (
         SECTION_IDS.bookingConfirmation
       ] ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.bookingConfirmation
+        SECTION_IDS.bookingConfirmation
         ] ||
         ((root.appointmentFlow as Record<string, unknown> | undefined)
           ?.confirmation as SectionConfig | undefined) ||
@@ -543,8 +734,8 @@ export const normalizePayload = (
         ((root.bookingSteps as Record<string, unknown> | undefined)
           ?.confirmation as SectionConfig | undefined) ||
         (root.bookingConfirmation as SectionConfig | undefined)) as
-        | SectionConfig
-        | undefined,
+      | SectionConfig
+      | undefined,
       defaultBookingConfirmationSettings as unknown as SectionConfig,
     ),
   };
@@ -560,6 +751,142 @@ export const normalizePayload = (
     site_customization: normalizedRoot,
     sections,
   } as SiteConfigData;
+};
+
+/**
+ * PILAR: Normalização de Seção Específica (Exemplo: Services)
+ * Esta função unifica as diversas fontes de dados (content, appearance, itemsStyle)
+ * em um único objeto plano, facilitando o uso no componente.
+ * Ela também garante que campos obsoletos sejam removidos via sanitizeSection.
+ */
+export const normalizeConfigServices = (
+  configServices: Record<string, unknown>,
+  fallback: ServicesSettings
+): ServicesSettings => {
+  // 1. Sanitizar primeiro para tirar lixo de configurações antigas e priorizar o novo
+  const sanitized = sanitizeSection(configServices, fallback);
+
+  const content = (sanitized.content as Record<string, unknown>) || {};
+  const appearance = (sanitized.appearance as Record<string, unknown>) || {};
+  const itemsStyle = (sanitized.itemsStyle as Record<string, unknown>) || {};
+
+  const pickFirstDefined = (...values: unknown[]) =>
+    values.find((value) => value !== undefined && value !== null);
+
+  const resolvedBgType = (pickFirstDefined(
+    sanitized.bgType,
+    appearance.bgType,
+    "color",
+  ) || "color") as "color" | "image";
+
+  const rawBgColor = pickFirstDefined(
+    sanitized.bgColor,
+    sanitized.backgroundColor,
+    appearance.backgroundColor,
+    appearance.bgColor,
+  );
+
+  const normalizedBgColor =
+    resolvedBgType === "color"
+      ? sanitizeColor(rawBgColor) || ""
+      : sanitizeColor(
+          (rawBgColor as string) || (appearance.backgroundColor as string),
+        ) || "";
+
+  // Merge de tudo para não perder nenhuma propriedade nova (passthrough)
+  const merged = {
+    ...appearance,
+    ...content,
+    ...itemsStyle,
+    ...sanitized,
+  };
+
+  return {
+    ...merged,
+    title: (sanitized.title as string) || (content.title as string),
+    subtitle: (sanitized.subtitle as string) || (content.subtitle as string),
+    titleColor: sanitizeColor(
+      (sanitized.titleColor as string) ||
+        (appearance.titleColor as string) ||
+        (content.titleColor as string),
+    ),
+    subtitleColor: sanitizeColor(
+      (sanitized.subtitleColor as string) ||
+        (appearance.subtitleColor as string) ||
+        (content.subtitleColor as string),
+    ),
+    cardBgColor: sanitizeColor(
+      (sanitized.cardBgColor as string) ||
+        (sanitized.cardBackgroundColor as string) ||
+        (sanitized.card_background_color as string) ||
+        (appearance.cardBgColor as string) ||
+        (appearance.cardBackgroundColor as string) ||
+        (content.cardBgColor as string) ||
+        (itemsStyle.itemBackgroundColor as string),
+    ),
+    cardTitleColor: sanitizeColor(
+      (sanitized.cardTitleColor as string) ||
+        (appearance.cardTitleColor as string) ||
+        (content.cardTitleColor as string),
+    ),
+    cardDescriptionColor: sanitizeColor(
+      (sanitized.cardDescriptionColor as string) ||
+        (appearance.cardDescriptionColor as string) ||
+        (content.cardDescriptionColor as string),
+    ),
+    cardPriceColor: sanitizeColor(
+      (sanitized.cardPriceColor as string) ||
+        (appearance.cardPriceColor as string) ||
+        (content.cardPriceColor as string),
+    ),
+    cardIconColor: sanitizeColor(
+      (sanitized.cardIconColor as string) ||
+        (appearance.cardIconColor as string) ||
+        (content.cardIconColor as string),
+    ),
+    bgImage:
+      (sanitized.bgImage as string) ||
+      (appearance.backgroundImageUrl as string) ||
+      "",
+    bgColor: normalizedBgColor,
+    bgType: resolvedBgType,
+    appearance: {
+      ...appearance,
+      backgroundColor: normalizedBgColor,
+      overlay: {
+        ...((appearance.overlay as Record<string, unknown>) || {}),
+        color: (sanitized.overlayColor ||
+          (appearance.overlay as Record<string, unknown>)?.color ||
+          "") as string,
+        opacity: Number(
+          sanitized.overlayOpacity ??
+            appearance.overlayOpacity ??
+            (appearance.overlay as Record<string, unknown>)?.opacity ??
+            0,
+        ),
+      },
+    },
+  } as ServicesSettings;
+};
+
+/**
+ * PILAR: Sincronização de Live Preview (Iframe)
+ * O componente dentro do iframe ouve mensagens postMessage do editor pai.
+ * Quando recebe UPDATE_SERVICES_SETTINGS, ele deve:
+ * 1. Marcar que tem uma atualização pendente (hasLivePreviewUpdateRef.current = true).
+ * 2. Normalizar os dados recebidos via normalizeConfigServices.
+ * 3. Atualizar o estado local, substituindo o estado anterior para evitar "garbage sync".
+ */
+const handleMessage = (event: MessageEvent) => {
+  if (!event.data || typeof event.data !== "object") return;
+  if (event.data.type === "UPDATE_SERVICES_SETTINGS") {
+    const incoming = event.data.settings;
+    if (incoming) {
+      // O normalizeConfigServices já chama sanitizeSection internamente
+      const normalized = normalizeConfigServices(incoming, currentSettings);
+      setSettings(normalized);
+    }
+  }
 };
 
 export function getStorageKey(key: string): string {

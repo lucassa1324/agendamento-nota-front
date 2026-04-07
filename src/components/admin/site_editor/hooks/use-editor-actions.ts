@@ -301,7 +301,7 @@ export function useEditorActions({
       description: "Configurações de Cores aplicadas.",
     });
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
+      window.dispatchEvent(new CustomEvent("colorSettingsUpdated"));
     }
   }, [colorSettings, setLastAppliedColor, toast]);
 
@@ -717,34 +717,34 @@ export function useEditorActions({
       handleUpdateBackgroundState(normalizedUpdates, targetSectionId);
 
       const currentSettingsMap: Record<string, BackgroundSettings | undefined> =
-        {
-          hero: heroSettings,
-          "home-hero": heroSettings,
-          "about-hero": aboutHeroSettings,
-          story: storySettings,
-          "home-story": storySettings,
-          team: teamSettings,
-          "home-team": teamSettings,
-          testimonials: testimonialsSettings,
-          "home-testimonials": testimonialsSettings,
-          services: servicesSettings,
-          "home-services": servicesSettings,
-          "home-values": homeValuesSettings,
-          "about-values": aboutUsValuesSettings,
-          "about-us-values": aboutUsValuesSettings,
-          gallery: gallerySettings,
-          "home-gallery": gallerySettings,
-          "gallery-preview": gallerySettings,
-          "page-gallery": galleryPageSettings,
-          "gallery-grid": galleryPageSettings,
-          cta: ctaSettings,
-          "home-cta": ctaSettings,
-          "booking-service": bookingServiceSettings,
-          "booking-date": bookingDateSettings,
-          "booking-time": bookingTimeSettings,
-          "booking-form": bookingFormSettings,
-          "booking-confirmation": bookingConfirmationSettings,
-        };
+      {
+        hero: heroSettings,
+        "home-hero": heroSettings,
+        "about-hero": aboutHeroSettings,
+        story: storySettings,
+        "home-story": storySettings,
+        team: teamSettings,
+        "home-team": teamSettings,
+        testimonials: testimonialsSettings,
+        "home-testimonials": testimonialsSettings,
+        services: servicesSettings,
+        "home-services": servicesSettings,
+        "home-values": homeValuesSettings,
+        "about-values": aboutUsValuesSettings,
+        "about-us-values": aboutUsValuesSettings,
+        gallery: gallerySettings,
+        "home-gallery": gallerySettings,
+        "gallery-preview": gallerySettings,
+        "page-gallery": galleryPageSettings,
+        "gallery-grid": galleryPageSettings,
+        cta: ctaSettings,
+        "home-cta": ctaSettings,
+        "booking-service": bookingServiceSettings,
+        "booking-date": bookingDateSettings,
+        "booking-time": bookingTimeSettings,
+        "booking-form": bookingFormSettings,
+        "booking-confirmation": bookingConfirmationSettings,
+      };
 
       const saveFnMap: Record<
         string,

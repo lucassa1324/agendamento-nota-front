@@ -79,7 +79,9 @@ export function HeroSection() {
 
     // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
     if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-      console.log("[HeroSection] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
+      console.log(
+        "[HeroSection] Guard Logic: Ignorando loadData do banco (Preview Ativo)",
+      );
       return;
     }
 
@@ -183,23 +185,33 @@ export function HeroSection() {
           appearance.subtitleFont ||
           content.subtitleFont,
         bgImage: rawHero.bgImage || appearance.backgroundImageUrl || "",
-        bgColor: sanitizeColor(
-          (rawHero.bgColor as string) ||
-            (rawHero.backgroundColor as string) ||
-            (appearance.backgroundColor as string) ||
-            "",
-        ),
+        bgColor:
+          sanitizeColor(
+            (rawHero.bgColor as string) ||
+              (rawHero.bg_color as string) ||
+              (rawHero.backgroundColor as string) ||
+              (appearance.backgroundColor as string) ||
+              (appearance.bgColor as string) ||
+              "",
+          ) || "",
         bgType: (rawHero.bgType ||
           appearance.bgType ||
           (rawHero.bgImage || appearance.backgroundImageUrl
             ? "image"
             : "color")) as "color" | "image",
       };
+      console.log("[HeroSection] loadData: Dados normalizados com sucesso", {
+        bgColor: normalizedHero.bgColor,
+        bgType: normalizedHero.bgType,
+      });
       setCustomStyles(normalizedHero as HeroSettings);
     } else {
+      console.log(
+        "[HeroSection] loadData: Nenhum dado encontrado no config, usando default",
+      );
       setCustomStyles(getHeroSettings());
     }
-  }, [config]);
+  }, [config, isInsideIframe]);
 
   // Sincronização Unificada: O estado customStyles agora é derivado DIRETAMENTE do StudioContext.
   // Isso resolve a divergência entre editor e preview, pois ambos passam a beber da mesma fonte.
@@ -213,7 +225,7 @@ export function HeroSection() {
   // Log de depuração solicitado para verificar a estrutura dos dados
   useEffect(() => {
     if (config) {
-      console.log(">>> [HERO_RENDER_DEBUG]", config);
+      // console.log(">>> [HERO_RENDER_DEBUG]", config);
     }
   }, [config]);
 
@@ -238,9 +250,12 @@ export function HeroSection() {
         event.data.type === "UPDATE_SITE_DATA" ||
         event.data.type === "UPDATE_SITE_CONFIG"
       ) {
+        // Marcamos que houve uma atualização do editor de forma SÍNCRONA
         hasLivePreviewUpdateRef.current = true;
-        
-        let rawHero = event.data.settings as Record<string, unknown> | undefined;
+
+        let rawHero = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
 
         if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
           const siteData = event.data.data as Record<string, unknown>;
@@ -251,7 +266,10 @@ export function HeroSection() {
             home?.hero ||
             siteData.hero ||
             layoutGlobal?.hero) as Record<string, unknown>;
-        } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
+        } else if (
+          event.data.type === "UPDATE_SITE_CONFIG" &&
+          event.data.config
+        ) {
           const siteConfig = event.data.config as Record<string, unknown>;
           const layoutGlobal = (siteConfig.layoutGlobal ||
             siteConfig.layout_global) as Record<string, unknown> | undefined;
@@ -264,7 +282,8 @@ export function HeroSection() {
 
         if (rawHero) {
           const content = (rawHero.content as Record<string, unknown>) || {};
-          const appearance = (rawHero.appearance as Record<string, unknown>) || {};
+          const appearance =
+            (rawHero.appearance as Record<string, unknown>) || {};
 
           const normalizedHero = {
             ...rawHero,
@@ -294,29 +313,35 @@ export function HeroSection() {
             badgeIcon: rawHero.badgeIcon || content.badgeIcon || "",
             badgeFont:
               rawHero.badgeFont || appearance.badgeFont || content.badgeFont,
-            badgeColor: sanitizeColor(
-              rawHero.badgeColor || appearance.badgeColor || content.badgeColor,
-            ),
-            badgeTextColor: sanitizeColor(
-              rawHero.badgeTextColor ||
-                appearance.badgeTextColor ||
-                content.badgeTextColor,
-            ),
+            badgeColor:
+              sanitizeColor(
+                rawHero.badgeColor ||
+                  appearance.badgeColor ||
+                  content.badgeColor,
+              ) || "",
+            badgeTextColor:
+              sanitizeColor(
+                rawHero.badgeTextColor ||
+                  appearance.badgeTextColor ||
+                  content.badgeTextColor,
+              ) || "",
             primaryButton: rawHero.primaryButton ?? content.primaryButton,
             primaryButtonFont:
               rawHero.primaryButtonFont ||
               appearance.primaryButtonFont ||
               content.primaryButtonFont,
-            primaryButtonColor: sanitizeColor(
-              rawHero.primaryButtonColor ||
-                appearance.primaryButtonColor ||
-                content.primaryButtonColor,
-            ),
-            primaryButtonTextColor: sanitizeColor(
-              rawHero.primaryButtonTextColor ||
-                appearance.primaryButtonTextColor ||
-                content.primaryButtonTextColor,
-            ),
+            primaryButtonColor:
+              sanitizeColor(
+                rawHero.primaryButtonColor ||
+                  appearance.primaryButtonColor ||
+                  content.primaryButtonColor,
+              ) || "",
+            primaryButtonTextColor:
+              sanitizeColor(
+                rawHero.primaryButtonTextColor ||
+                  appearance.primaryButtonTextColor ||
+                  content.primaryButtonTextColor,
+              ) || "",
             primaryButtonLink:
               rawHero.primaryButtonLink ?? content.primaryButtonLink,
             secondaryButton: rawHero.secondaryButton ?? content.secondaryButton,
@@ -324,26 +349,32 @@ export function HeroSection() {
               rawHero.secondaryButtonFont ||
               appearance.secondaryButtonFont ||
               content.secondaryButtonFont,
-            secondaryButtonColor: sanitizeColor(
-              rawHero.secondaryButtonColor ||
-                appearance.secondaryButtonColor ||
-                content.secondaryButtonColor,
-            ),
-            secondaryButtonTextColor: sanitizeColor(
-              rawHero.secondaryButtonTextColor ||
-                appearance.secondaryButtonTextColor ||
-                content.secondaryButtonTextColor,
-            ),
+            secondaryButtonColor:
+              sanitizeColor(
+                rawHero.secondaryButtonColor ||
+                  appearance.secondaryButtonColor ||
+                  content.secondaryButtonColor,
+              ) || "",
+            secondaryButtonTextColor:
+              sanitizeColor(
+                rawHero.secondaryButtonTextColor ||
+                  appearance.secondaryButtonTextColor ||
+                  content.secondaryButtonTextColor,
+              ) || "",
             secondaryButtonLink:
               rawHero.secondaryButtonLink ?? content.secondaryButtonLink,
-            titleColor: sanitizeColor(
-              rawHero.titleColor || appearance.titleColor || content.titleColor,
-            ),
-            subtitleColor: sanitizeColor(
-              rawHero.subtitleColor ||
-                appearance.subtitleColor ||
-                content.subtitleColor,
-            ),
+            titleColor:
+              sanitizeColor(
+                rawHero.titleColor ||
+                  appearance.titleColor ||
+                  content.titleColor,
+              ) || "",
+            subtitleColor:
+              sanitizeColor(
+                rawHero.subtitleColor ||
+                  appearance.subtitleColor ||
+                  content.subtitleColor,
+              ) || "",
             titleFont:
               rawHero.titleFont || appearance.titleFont || content.titleFont,
             subtitleFont:
@@ -351,19 +382,36 @@ export function HeroSection() {
               appearance.subtitleFont ||
               content.subtitleFont,
             bgImage: rawHero.bgImage || appearance.backgroundImageUrl || "",
-            bgColor: sanitizeColor(
-              (rawHero.bgColor as string) ||
-                (rawHero.backgroundColor as string) ||
-                (appearance.backgroundColor as string) ||
-                "",
-            ),
+            bgColor:
+              sanitizeColor(
+                (rawHero.bgColor as string) ||
+                  (rawHero.backgroundColor as string) ||
+                  (appearance.backgroundColor as string) ||
+                  "",
+              ) || "",
             bgType: (rawHero.bgType ||
               appearance.bgType ||
               (rawHero.bgImage || appearance.backgroundImageUrl
                 ? "image"
                 : "color")) as "color" | "image",
           };
-          setCustomStyles(normalizedHero as HeroSettings);
+
+          console.log(
+            "[HeroSection] handleMessage: Aplicando atualização do editor",
+            {
+              bgColor: normalizedHero.bgColor,
+              type: event.data.type,
+            },
+          );
+
+          const safeHero = sanitizeSection(
+            normalizedHero,
+            defaultHeroSettings,
+          ) as Partial<HeroSettings>;
+          setCustomStyles((prev) => ({
+            ...prev,
+            ...safeHero,
+          }));
         }
       }
     };

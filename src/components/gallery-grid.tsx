@@ -5,7 +5,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ImageModal } from "@/components/image-modal";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
-import { defaultGallerySettings, type GallerySettings, normalizePayload, SECTION_IDS, sanitizeColor } from "@/lib/booking-data";
+import {
+  defaultGallerySettings,
+  type GallerySettings,
+  normalizePayload,
+  SECTION_IDS,
+  sanitizeColor,
+} from "@/lib/booking-data";
 import { type GalleryItem, galleryService } from "@/lib/gallery-service";
 
 interface Service {
@@ -27,7 +33,9 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
   const [isLoading, setIsLoading] = useState(false);
   const loadingRef = useRef(false);
 
-  const [settings, setSettings] = useState<GallerySettings>(propsSettings || defaultGallerySettings);
+  const [settings, setSettings] = useState<GallerySettings>(
+    propsSettings || defaultGallerySettings,
+  );
   const [isInsideIframe, setIsInsideIframe] = useState(false);
   const hasLivePreviewUpdateRef = useRef(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
@@ -66,16 +74,35 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
 
         // Atualizar settings do studio se não foram passadas via props
         if (!propsSettings && studio.config) {
-          const normalized = normalizePayload(studio.config as Record<string, unknown>);
-          const pageGallery = (normalized.sections?.[SECTION_IDS.pageGallery] || normalized.sections?.[SECTION_IDS.homeGallery]) as Record<string, unknown>;
+          const normalized = normalizePayload(
+            studio.config as Record<string, unknown>,
+          );
+          const pageGallery = (normalized.sections?.[SECTION_IDS.pageGallery] ||
+            normalized.sections?.[SECTION_IDS.homeGallery]) as Record<
+            string,
+            unknown
+          >;
           if (pageGallery) {
-            const appearance = (pageGallery.appearance as Record<string, unknown>) || {};
+            const appearance =
+              (pageGallery.appearance as Record<string, unknown>) || {};
             setSettings({
               ...defaultGallerySettings,
               ...(pageGallery as unknown as GallerySettings),
-              bgColor: sanitizeColor((pageGallery.bgColor as string) || (appearance.backgroundColor as string)) || "",
-              buttonColor: sanitizeColor((pageGallery.buttonColor as string) || (appearance.buttonColor as string)) || "",
-              buttonTextColor: sanitizeColor((pageGallery.buttonTextColor as string) || (appearance.buttonTextColor as string)) || "",
+              bgColor:
+                sanitizeColor(
+                  (pageGallery.bgColor as string) ||
+                    (appearance.backgroundColor as string),
+                ) || "",
+              buttonColor:
+                sanitizeColor(
+                  (pageGallery.buttonColor as string) ||
+                    (appearance.buttonColor as string),
+                ) || "",
+              buttonTextColor:
+                sanitizeColor(
+                  (pageGallery.buttonTextColor as string) ||
+                    (appearance.buttonTextColor as string),
+                ) || "",
             });
           }
         }
@@ -109,6 +136,58 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
   // Listener para mensagens do editor (Live Preview)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
+
+      if (event.data.type) {
+        console.log(
+          ">>> [RECEIVE_POST_MESSAGE]",
+          event.data.type,
+          event.data.settings || event.data.payload,
+        );
+      }
+
+      const applyGallerySettings = (sectionData: Record<string, unknown>) => {
+        hasLivePreviewUpdateRef.current = true;
+        const appearance =
+          (sectionData.appearance as Record<string, unknown>) || {};
+
+        setSettings({
+          ...defaultGallerySettings,
+          ...(sectionData as unknown as GallerySettings),
+          bgColor:
+            sanitizeColor(
+              (sectionData.bgColor as string) ||
+                (appearance.backgroundColor as string) ||
+                (sectionData.backgroundColor as string),
+            ) || "",
+          buttonColor:
+            sanitizeColor(
+              (sectionData.buttonColor as string) ||
+                (appearance.buttonColor as string),
+            ) || "",
+          buttonTextColor:
+            sanitizeColor(
+              (sectionData.buttonTextColor as string) ||
+                (appearance.buttonTextColor as string),
+            ) || "",
+        });
+      };
+
+      if (
+        event.data.type === "UPDATE_GALLERY_PAGE" ||
+        event.data.type === "UPDATE_GALLERY_PAGE_SETTINGS" ||
+        event.data.type === "UPDATE_GALLERY_SETTINGS" ||
+        event.data.type === "UPDATE_GALLERY_PREVIEW"
+      ) {
+        const directSettings = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
+        if (directSettings) {
+          applyGallerySettings(directSettings);
+        }
+        return;
+      }
+
       if (
         event.data.type === "UPDATE_SITE_DATA" ||
         event.data.type === "UPDATE_SITE_CONFIG"
@@ -116,23 +195,13 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
         const config = event.data.config || event.data.data;
         if (config) {
           const normalized = normalizePayload(config);
-          const sectionData = (normalized.sections?.[SECTION_IDS.pageGallery] || normalized.sections?.[SECTION_IDS.homeGallery]) as Record<string, unknown>;
+          const sectionData = (normalized.sections?.[SECTION_IDS.pageGallery] ||
+            normalized.sections?.[SECTION_IDS.homeGallery]) as
+            | Record<string, unknown>
+            | undefined;
 
           if (sectionData) {
-            hasLivePreviewUpdateRef.current = true;
-            const appearance = (sectionData.appearance as Record<string, unknown>) || {};
-            
-            setSettings({
-              ...defaultGallerySettings,
-              ...(sectionData as unknown as GallerySettings),
-              bgColor: sanitizeColor(
-                (sectionData.bgColor as string) || 
-                (appearance.backgroundColor as string) || 
-                (sectionData.backgroundColor as string)
-              ) || "",
-              buttonColor: sanitizeColor((sectionData.buttonColor as string) || (appearance.buttonColor as string)) || "",
-              buttonTextColor: sanitizeColor((sectionData.buttonTextColor as string) || (appearance.buttonTextColor as string)) || "",
-            });
+            applyGallerySettings(sectionData);
           }
         }
       }
@@ -143,7 +212,7 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
   }, []);
 
   useEffect(() => {
-    // Se estivermos no iframe e já recebemos um update via Live Preview, 
+    // Se estivermos no iframe e já recebemos um update via Live Preview,
     // não rodamos o loadData inicial para não resetar o estado
     if (isInsideIframe && hasLivePreviewUpdateRef.current) {
       return;
@@ -166,10 +235,14 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
       ? images
       : images.filter((img) => img.category === selectedCategory);
 
-  const background = settings.bgColor || (settings as unknown as Record<string, { backgroundColor: string }>).appearance?.backgroundColor || "transparent";
+  const background =
+    settings.bgColor ||
+    (settings as unknown as Record<string, { backgroundColor: string }>)
+      .appearance?.backgroundColor ||
+    "transparent";
 
   return (
-    <div 
+    <div
       id="gallery-grid"
       style={{
         backgroundColor: background,
@@ -185,15 +258,15 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
             style={{
               backgroundColor:
                 selectedCategory === category.id
-                  ? (settings.buttonColor || "var(--primary)")
+                  ? settings.buttonColor || "var(--primary)"
                   : "transparent",
               color:
                 selectedCategory === category.id
-                  ? (settings.buttonTextColor || "white")
+                  ? settings.buttonTextColor || "white"
                   : "var(--foreground)",
               borderColor:
                 selectedCategory === category.id
-                  ? (settings.buttonColor || "var(--primary)")
+                  ? settings.buttonColor || "var(--primary)"
                   : "var(--border)",
               fontFamily: "var(--font-body)",
             }}

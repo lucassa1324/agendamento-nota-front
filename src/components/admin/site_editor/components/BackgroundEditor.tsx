@@ -117,6 +117,12 @@ export function BackgroundEditor({
               className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const value = e.target.value;
+                if (section === "services") {
+                  console.log(">>> [COLOR_PICKER_EMIT]", value, {
+                    bgColorBefore: settings.bgColor,
+                    appearanceBgBefore: settings.appearance?.backgroundColor,
+                  });
+                }
                 onUpdate({
                   bgColor: value,
                   appearance: {
@@ -132,6 +138,12 @@ export function BackgroundEditor({
               className="h-8 text-[10px] flex-1 uppercase"
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const value = e.target.value;
+                if (section === "services") {
+                  console.log(">>> [COLOR_PICKER_EMIT]", value, {
+                    bgColorBefore: settings.bgColor,
+                    appearanceBgBefore: settings.appearance?.backgroundColor,
+                  });
+                }
                 onUpdate({
                   bgColor: value,
                   appearance: {

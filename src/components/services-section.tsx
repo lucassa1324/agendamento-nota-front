@@ -34,7 +34,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
-import { SessionWrapper } from "@/components/admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
@@ -45,6 +44,7 @@ import {
   type Service,
   type ServicesSettings,
   sanitizeColor,
+  sanitizeSection,
 } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
 
@@ -137,142 +137,112 @@ export function ServicesSection() {
 
   const normalizeConfigServices = useCallback(
     (configServices: Record<string, unknown>): ServicesSettings => {
-      const content = (configServices.content as Record<string, unknown>) || {};
+      // 1. Sanitizar primeiro para tirar lixo de configurações antigas e priorizar o novo
+      // Usamos getServicesSettings() como fallback para preencher o que faltar (campos padrão)
+      const sanitized = sanitizeSection(configServices, getServicesSettings());
+
+      const content = (sanitized.content as Record<string, unknown>) || {};
       const appearance =
-        (configServices.appearance as Record<string, unknown>) || {};
-      return {
-        ...configServices,
-        ...content,
+        (sanitized.appearance as Record<string, unknown>) || {};
+      const itemsStyle =
+        (sanitized.itemsStyle as Record<string, unknown>) || {};
+
+      const pickFirstDefined = (...values: unknown[]) =>
+        values.find((value) => value !== undefined && value !== null);
+
+      const resolvedBgType = (pickFirstDefined(
+        sanitized.bgType,
+        appearance.bgType,
+        "color",
+      ) || "color") as "color" | "image";
+
+      const rawBgColor = pickFirstDefined(
+        sanitized.bgColor,
+        sanitized.backgroundColor,
+        appearance.backgroundColor,
+        appearance.bgColor,
+      );
+
+      const normalizedBgColor =
+        resolvedBgType === "color"
+          ? sanitizeColor(rawBgColor) || ""
+          : sanitizeColor(
+              (rawBgColor as string) || (appearance.backgroundColor as string),
+            ) || "";
+
+      // PILAR: Unificação e Robustez
+      // Começamos com um merge de tudo para não perder nenhuma propriedade nova (passthrough)
+      const merged = {
         ...appearance,
-        title: (configServices.title as string) || (content.title as string),
+        ...content,
+        ...itemsStyle,
+        ...sanitized,
+      };
+
+      return {
+        ...merged,
+        title: (sanitized.title as string) || (content.title as string),
         subtitle:
-          (configServices.subtitle as string) || (content.subtitle as string),
+          (sanitized.subtitle as string) || (content.subtitle as string),
         titleColor: sanitizeColor(
-          (configServices.titleColor as string) ||
+          (sanitized.titleColor as string) ||
             (appearance.titleColor as string) ||
             (content.titleColor as string),
         ),
         subtitleColor: sanitizeColor(
-          (configServices.subtitleColor as string) ||
+          (sanitized.subtitleColor as string) ||
             (appearance.subtitleColor as string) ||
             (content.subtitleColor as string),
         ),
-        titleFont:
-          (configServices.titleFont as string) ||
-          (appearance.titleFont as string) ||
-          (content.titleFont as string),
-        subtitleFont:
-          (configServices.subtitleFont as string) ||
-          (appearance.subtitleFont as string) ||
-          (content.subtitleFont as string),
         cardBgColor: sanitizeColor(
-          (configServices.cardBgColor as string) ||
-            (configServices.cardBackgroundColor as string) ||
-            (configServices.card_background_color as string) ||
-            ((configServices.cardConfig as Record<string, unknown>)
-              ?.cardBackgroundColor as string) ||
-            ((configServices.cardConfig as Record<string, unknown>)
-              ?.backgroundColor as string) ||
+          (sanitized.cardBgColor as string) ||
+            (sanitized.cardBackgroundColor as string) ||
+            (sanitized.card_background_color as string) ||
             (appearance.cardBgColor as string) ||
+            (appearance.cardBackgroundColor as string) ||
             (content.cardBgColor as string) ||
-            ((configServices.cardBgColor as Record<string, unknown>)
-              ?.text as string) ||
-            ((appearance.cardBgColor as Record<string, unknown>)
-              ?.text as string) ||
-            ((content.cardBgColor as Record<string, unknown>)?.text as string),
+            (itemsStyle.itemBackgroundColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.cardBackgroundColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.backgroundColor as string),
         ),
         cardTitleColor: sanitizeColor(
-          (configServices.cardTitleColor as string) ||
+          (sanitized.cardTitleColor as string) ||
             (appearance.cardTitleColor as string) ||
-            (content.cardTitleColor as string) ||
-            ((configServices.cardTitleColor as Record<string, unknown>)
-              ?.text as string) ||
-            ((appearance.cardTitleColor as Record<string, unknown>)
-              ?.text as string) ||
-            ((content.cardTitleColor as Record<string, unknown>)
-              ?.text as string),
+            (content.cardTitleColor as string),
         ),
         cardDescriptionColor: sanitizeColor(
-          (configServices.cardDescriptionColor as string) ||
+          (sanitized.cardDescriptionColor as string) ||
             (appearance.cardDescriptionColor as string) ||
-            (content.cardDescriptionColor as string) ||
-            ((configServices.cardDescriptionColor as Record<string, unknown>)
-              ?.text as string) ||
-            ((appearance.cardDescriptionColor as Record<string, unknown>)
-              ?.text as string) ||
-            ((content.cardDescriptionColor as Record<string, unknown>)
-              ?.text as string),
+            (content.cardDescriptionColor as string),
         ),
         cardPriceColor: sanitizeColor(
-          (configServices.cardPriceColor as string) ||
+          (sanitized.cardPriceColor as string) ||
             (appearance.cardPriceColor as string) ||
-            (content.cardPriceColor as string) ||
-            ((configServices.cardPriceColor as Record<string, unknown>)
-              ?.text as string) ||
-            ((appearance.cardPriceColor as Record<string, unknown>)
-              ?.text as string) ||
-            ((content.cardPriceColor as Record<string, unknown>)
-              ?.text as string),
+            (content.cardPriceColor as string),
         ),
         cardIconColor: sanitizeColor(
-          (configServices.cardIconColor as string) ||
+          (sanitized.cardIconColor as string) ||
             (appearance.cardIconColor as string) ||
-            (content.cardIconColor as string) ||
-            ((configServices.cardIconColor as Record<string, unknown>)
-              ?.text as string) ||
-            ((appearance.cardIconColor as Record<string, unknown>)
-              ?.text as string) ||
-            ((content.cardIconColor as Record<string, unknown>)
-              ?.text as string),
+            (content.cardIconColor as string),
         ),
-        cardTitleFont:
-          (configServices.cardTitleFont as string) ||
-          (appearance.cardTitleFont as string) ||
-          (content.cardTitleFont as string),
-        cardDescriptionFont:
-          (configServices.cardDescriptionFont as string) ||
-          (appearance.cardDescriptionFont as string) ||
-          (content.cardDescriptionFont as string),
-        cardPriceFont:
-          (configServices.cardPriceFont as string) ||
-          (appearance.cardPriceFont as string) ||
-          (content.cardPriceFont as string),
         bgImage:
-          (configServices.bgImage as string) ||
+          (sanitized.bgImage as string) ||
           (appearance.backgroundImageUrl as string) ||
           "",
-        bgColor: sanitizeColor(
-          (configServices.bgColor as string) ||
-            (configServices.backgroundColor as string) ||
-            (appearance.backgroundColor as string) ||
-            "",
-        ),
-        bgType: (configServices.bgType || appearance.bgType || "color") as
-          | "color"
-          | "image",
-        imageOpacity: Number(
-          configServices.imageOpacity ?? appearance.imageOpacity ?? 1,
-        ),
-        overlayOpacity: Number(
-          configServices.overlayOpacity ??
-            appearance.overlayOpacity ??
-            (appearance.overlay as Record<string, unknown>)?.opacity ??
-            0,
-        ),
-        imageScale: Number(
-          configServices.imageScale ?? appearance.imageScale ?? 1,
-        ),
-        imageX: Number(configServices.imageX ?? appearance.imageX ?? 50),
-        imageY: Number(configServices.imageY ?? appearance.imageY ?? 50),
+        bgColor: normalizedBgColor,
+        bgType: resolvedBgType,
         appearance: {
           ...appearance,
+          backgroundColor: normalizedBgColor,
           overlay: {
             ...((appearance.overlay as Record<string, unknown>) || {}),
-            color: (configServices.overlayColor ||
+            color: (sanitized.overlayColor ||
               (appearance.overlay as Record<string, unknown>)?.color ||
               "") as string,
             opacity: Number(
-              configServices.overlayOpacity ??
+              sanitized.overlayOpacity ??
                 appearance.overlayOpacity ??
                 (appearance.overlay as Record<string, unknown>)?.opacity ??
                 0,
@@ -286,10 +256,9 @@ export function ServicesSection() {
 
   const loadData = useCallback(
     (forceRevalidate = false) => {
-      // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
       if (isInsideIframe && hasLivePreviewUpdateRef.current) {
         console.log(
-          "[ServicesSection] Guard Logic: Ignorando loadData do banco (Preview Ativo)",
+          "[ServicesSection] Guard Logic: Ignorando loadData do banco (Preview Ativo mantido).",
         );
         return;
       }
@@ -405,88 +374,47 @@ export function ServicesSection() {
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
+      if (event.data.type) {
+        console.log(
+          ">>> [RECEIVE_POST_MESSAGE]",
+          event.data.type,
+          event.data.settings || event.data.payload,
+        );
+      }
+
       if (event.data.type === "UPDATE_SERVICES_SETTINGS") {
         hasLivePreviewUpdateRef.current = true;
         const incoming = event.data.settings as
           | Record<string, unknown>
           | undefined;
+
+        console.log(
+          ">>> [ServicesSection] Recebido UPDATE_SERVICES_SETTINGS:",
+          {
+            incoming,
+            bgColor: incoming?.bgColor,
+            appearanceBg: (
+              incoming?.appearance as Record<string, unknown> | undefined
+            )?.backgroundColor,
+          },
+        );
+
         if (incoming) {
-          const incomingAppearance =
-            (incoming.appearance as Record<string, unknown>) || {};
-          const incomingContent =
-            (incoming.content as Record<string, unknown>) || {};
-          const incomingItemsStyle =
-            (incoming.itemsStyle as Record<string, unknown>) || {};
-
-          const sanitized = {
-            ...incoming,
-            bgColor:
-              sanitizeColor(
-                (incoming.bgColor as string) ||
-                  (incomingAppearance.backgroundColor as string),
-              ) || "",
-            titleColor:
-              sanitizeColor(
-                (incoming.titleColor as string) ||
-                  (incomingAppearance.titleColor as string) ||
-                  (incomingContent.titleColor as string),
-              ) || "",
-            subtitleColor:
-              sanitizeColor(
-                (incoming.subtitleColor as string) ||
-                  (incomingAppearance.subtitleColor as string) ||
-                  (incomingContent.subtitleColor as string),
-              ) || "",
-            cardBgColor:
-              sanitizeColor(
-                (incoming.cardBgColor as string) ||
-                  (incomingAppearance.cardBgColor as string) ||
-                  (incomingAppearance.cardBackgroundColor as string) ||
-                  (incomingContent.cardBgColor as string) ||
-                  (incomingItemsStyle.itemBackgroundColor as string),
-              ) || "",
-            cardTitleColor:
-              sanitizeColor(
-                (incoming.cardTitleColor as string) ||
-                  (incomingAppearance.cardTitleColor as string) ||
-                  (incomingContent.cardTitleColor as string),
-              ) || "",
-            cardDescriptionColor:
-              sanitizeColor(
-                (incoming.cardDescriptionColor as string) ||
-                  (incomingAppearance.cardDescriptionColor as string) ||
-                  (incomingContent.cardDescriptionColor as string),
-              ) || "",
-            cardPriceColor:
-              sanitizeColor(
-                (incoming.cardPriceColor as string) ||
-                  (incomingAppearance.cardPriceColor as string) ||
-                  (incomingContent.cardPriceColor as string),
-              ) || "",
-            cardIconColor:
-              sanitizeColor(
-                (incoming.cardIconColor as string) ||
-                  (incomingAppearance.cardIconColor as string) ||
-                  (incomingContent.cardIconColor as string),
-              ) || "",
-          };
-
-          setSettings((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  ...sanitized,
-                }
-              : {
-                  ...(sanitized as ServicesSettings),
-                },
-          );
+          const normalized = normalizeConfigServices(incoming);
+          setSettings(normalized);
         }
       }
 
       if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
         hasLivePreviewUpdateRef.current = true;
         const siteData = event.data.data as Record<string, unknown>;
+
+        console.log(">>> [ServicesSection] Recebido UPDATE_SITE_DATA:", {
+          hasServices: !!siteData.services,
+          hasHome: !!siteData.home,
+          hasLayout: !!siteData.layoutGlobal,
+        });
+
         const layoutGlobal = (siteData.layoutGlobal ||
           siteData.layout_global) as Record<string, unknown> | undefined;
         const home = siteData.home as Record<string, unknown> | undefined;
@@ -557,146 +485,150 @@ export function ServicesSection() {
 
   if (!settings) return null;
 
+  console.log(">>> [IFRAME_RENDER]", {
+    isInsideIframe,
+    bgColor: settings.bgColor,
+    appearanceBg: settings.appearance?.backgroundColor,
+    bgType: settings.bgType,
+  });
+
   return (
-    <SessionWrapper appearance={settings?.appearance}>
-      <section
-        id={SECTION_IDS.homeServices}
-        className={cn(
-          "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
-          highlightedElement === SECTION_IDS.homeServices &&
-            "ring-8 ring-inset ring-primary/30 bg-primary/5",
-        )}
-      >
-        <SectionBackground settings={settings} />
+    <section
+      id={SECTION_IDS.homeServices}
+      className={cn(
+        "relative py-20 md:py-32 transition-all duration-500 overflow-hidden",
+        highlightedElement === SECTION_IDS.homeServices &&
+          "ring-8 ring-inset ring-primary/30 bg-primary/5",
+      )}
+    >
+      <SectionBackground settings={settings} />
 
-        <div className="container relative z-10 mx-auto px-4">
-          {(settings.showTitle !== false ||
-            settings.showSubtitle !== false) && (
-            <div className="text-center mb-16">
-              {settings.showTitle !== false && (
-                <h2
-                  className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
-                  style={{
-                    color: settings.titleColor || "var(--foreground)",
-                    fontFamily: settings.titleFont
-                      ? `"${settings.titleFont}", sans-serif`
-                      : "var(--font-title)",
-                  }}
-                >
-                  {renderSafeText(settings.title)}
-                </h2>
-              )}
-              {settings.showSubtitle !== false && (
-                <p
-                  className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
-                  style={{
-                    color: settings.subtitleColor || "var(--foreground)",
-                    fontFamily: settings.subtitleFont
-                      ? `"${settings.subtitleFont}", sans-serif`
-                      : "var(--font-subtitle)",
-                  }}
-                >
-                  {renderSafeText(settings.subtitle)}
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {services?.map((service: Service, index: number) => {
-              // Usa o ícone definido no serviço ou tenta inferir pelo nome
-              let Icon = Sparkles;
-
-              if (service?.icon && iconMap[service.icon]) {
-                Icon = iconMap[service.icon];
-              } else {
-                const name = renderSafeText(service?.name).toLowerCase() || "";
-                if (name.includes("design")) Icon = Scissors;
-                else if (name.includes("color") || name.includes("henna"))
-                  Icon = Palette;
-                else if (name.includes("lamina")) Icon = Star;
-              }
-
-              return (
-                <Card
-                  key={
-                    service?.id ? `${service.id}-${index}` : `service-${index}`
-                  }
-                  className="border-border hover:border-accent transition-all duration-300 overflow-hidden"
-                  style={{
-                    backgroundColor:
-                      settings?.cardBgColor || "var(--card, white)",
-                    borderRadius: settings?.cardBorderRadius || "0.75rem",
-                    borderWidth: settings?.cardBorderWidth || "1px",
-                    borderColor: settings?.cardBorderColor || "var(--border)",
-                  }}
-                >
-                  <CardContent className="p-6">
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center mb-4 transition-colors"
-                      style={{
-                        backgroundColor: settings?.cardIconColor
-                          ? `${settings.cardIconColor}1a`
-                          : "var(--primary-muted, rgba(0, 0, 0, 0.05))",
-                      }}
-                    >
-                      <Icon
-                        className="w-6 h-6 transition-colors"
-                        style={{
-                          color: settings?.cardIconColor || "var(--primary)",
-                        }}
-                      />
-                    </div>
-                    <h3
-                      className="text-xl font-semibold mb-2"
-                      style={{
-                        color:
-                          settings?.cardTitleColor ||
-                          "var(--card-foreground, var(--foreground))",
-                        fontFamily: settings?.cardTitleFont
-                          ? `"${settings.cardTitleFont}", sans-serif`
-                          : "var(--font-subtitle)",
-                      }}
-                    >
-                      {renderSafeText(service?.name) || "Serviço sem nome"}
-                    </h3>
-                    <p
-                      className="text-sm mb-4 leading-relaxed opacity-80"
-                      style={{
-                        color:
-                          settings?.cardDescriptionColor ||
-                          "var(--card-foreground, var(--foreground))",
-                        fontFamily: settings?.cardDescriptionFont
-                          ? `"${settings.cardDescriptionFont}", sans-serif`
-                          : "var(--font-text)",
-                      }}
-                    >
-                      {renderSafeText(service?.description) ||
-                        "Sem descrição disponível"}
-                    </p>
-                    <div className="flex items-center justify-between mt-auto">
-                      <span
-                        className="font-bold text-lg"
-                        style={{
-                          color: settings?.cardPriceColor || "var(--primary)",
-                          fontFamily: settings?.cardPriceFont
-                            ? `"${settings.cardPriceFont}", sans-serif`
-                            : "inherit",
-                        }}
-                      >
-                        R$ {renderSafeText(service?.price) || "0,00"}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {renderSafeText(service?.duration) || "0"} min
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+      <div className="container relative z-10 mx-auto px-4">
+        {(settings.showTitle !== false || settings.showSubtitle !== false) && (
+          <div className="text-center mb-16">
+            {settings.showTitle !== false && (
+              <h2
+                className="text-4xl md:text-5xl font-bold mb-4 text-balance transition-all duration-300"
+                style={{
+                  color: settings.titleColor || "var(--foreground)",
+                  fontFamily: settings.titleFont
+                    ? `"${settings.titleFont}", sans-serif`
+                    : "var(--font-title)",
+                }}
+              >
+                {renderSafeText(settings.title)}
+              </h2>
+            )}
+            {settings.showSubtitle !== false && (
+              <p
+                className="text-lg max-w-2xl mx-auto text-pretty leading-relaxed transition-all duration-300"
+                style={{
+                  color: settings.subtitleColor || "var(--foreground)",
+                  fontFamily: settings.subtitleFont
+                    ? `"${settings.subtitleFont}", sans-serif`
+                    : "var(--font-subtitle)",
+                }}
+              >
+                {renderSafeText(settings.subtitle)}
+              </p>
+            )}
           </div>
+        )}
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {services?.map((service: Service, index: number) => {
+            // Usa o ícone definido no serviço ou tenta inferir pelo nome
+            let Icon = Sparkles;
+
+            if (service?.icon && iconMap[service.icon]) {
+              Icon = iconMap[service.icon];
+            } else {
+              const name = renderSafeText(service?.name).toLowerCase() || "";
+              if (name.includes("design")) Icon = Scissors;
+              else if (name.includes("color") || name.includes("henna"))
+                Icon = Palette;
+              else if (name.includes("lamina")) Icon = Star;
+            }
+
+            return (
+              <Card
+                key={
+                  service?.id ? `${service.id}-${index}` : `service-${index}`
+                }
+                className="border-border hover:border-accent transition-all duration-300 overflow-hidden"
+                style={{
+                  backgroundColor:
+                    settings?.cardBgColor || "var(--card, white)",
+                  borderRadius: settings?.cardBorderRadius || "0.75rem",
+                  borderWidth: settings?.cardBorderWidth || "1px",
+                  borderColor: settings?.cardBorderColor || "var(--border)",
+                }}
+              >
+                <CardContent className="p-6">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center mb-4 transition-colors"
+                    style={{
+                      backgroundColor: settings?.cardIconColor
+                        ? `${settings.cardIconColor}1a`
+                        : "var(--primary-muted, rgba(0, 0, 0, 0.05))",
+                    }}
+                  >
+                    <Icon
+                      className="w-6 h-6 transition-colors"
+                      style={{
+                        color: settings?.cardIconColor || "var(--primary)",
+                      }}
+                    />
+                  </div>
+                  <h3
+                    className="text-xl font-semibold mb-2"
+                    style={{
+                      color:
+                        settings?.cardTitleColor ||
+                        "var(--card-foreground, var(--foreground))",
+                      fontFamily: settings?.cardTitleFont
+                        ? `"${settings.cardTitleFont}", sans-serif`
+                        : "var(--font-subtitle)",
+                    }}
+                  >
+                    {renderSafeText(service?.name) || "Serviço sem nome"}
+                  </h3>
+                  <p
+                    className="text-sm mb-4 leading-relaxed opacity-80"
+                    style={{
+                      color:
+                        settings?.cardDescriptionColor ||
+                        "var(--card-foreground, var(--foreground))",
+                      fontFamily: settings?.cardDescriptionFont
+                        ? `"${settings.cardDescriptionFont}", sans-serif`
+                        : "var(--font-text)",
+                    }}
+                  >
+                    {renderSafeText(service?.description) ||
+                      "Sem descrição disponível"}
+                  </p>
+                  <div className="flex items-center justify-between mt-auto">
+                    <span
+                      className="font-bold text-lg"
+                      style={{
+                        color: settings?.cardPriceColor || "var(--primary)",
+                        fontFamily: settings?.cardPriceFont
+                          ? `"${settings.cardPriceFont}", sans-serif`
+                          : "inherit",
+                      }}
+                    >
+                      R$ {renderSafeText(service?.price) || "0,00"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {renderSafeText(service?.duration) || "0"} min
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
-      </section>
-    </SessionWrapper>
+      </div>
+    </section>
   );
 }

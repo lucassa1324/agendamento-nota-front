@@ -24,6 +24,7 @@ import {
   sanitizeColor,
   sanitizeSection,
 } from "@/lib/booking-data";
+import { normalizeSectionBackgroundData } from "../components/SectionBackground";
 import type { useEditorState } from "./use-editor-state";
 
 interface UseEditorSyncProps {
@@ -51,6 +52,20 @@ export function useEditorSync({
         current && typeof current === "object" && !Array.isArray(current)
           ? (current as Record<string, unknown>)
           : {};
+
+      if (
+        Object.keys(currentRecord).length > 0 &&
+        currentRecord.title === "Nossos Serviços"
+      ) {
+        const currentAppearance =
+          (currentRecord.appearance as Record<string, unknown> | undefined) ||
+          {};
+        console.log(">>> [BUILD_PREVIEW] Iniciando para Serviços:", {
+          currentBgColor: currentRecord.bgColor,
+          currentAppearanceBg: currentAppearance.backgroundColor,
+        });
+      }
+
       const fallbackRecord =
         fallback && typeof fallback === "object" && !Array.isArray(fallback)
           ? (fallback as Record<string, unknown>)
@@ -60,20 +75,21 @@ export function useEditorSync({
       const currentAppearance =
         (currentRecord.appearance as Record<string, unknown> | undefined) || {};
       const fallbackAppearance =
-        (fallbackRecord.appearance as Record<string, unknown> | undefined) || {};
+        (fallbackRecord.appearance as Record<string, unknown> | undefined) ||
+        {};
       const draftBgColor =
         sanitizeColor(
           (currentRecord.bgColor as string | undefined) ||
-          (currentRecord.backgroundColor as string | undefined) ||
-          (currentAppearance.backgroundColor as string | undefined),
+            (currentRecord.backgroundColor as string | undefined) ||
+            (currentAppearance.backgroundColor as string | undefined),
         ) || "";
       const mergedBgColor =
         sanitizeColor(
           (merged.bgColor as string | undefined) ||
-          (mergedAppearance.backgroundColor as string | undefined) ||
-          (fallbackRecord.bgColor as string | undefined) ||
-          (fallbackRecord.backgroundColor as string | undefined) ||
-          (fallbackAppearance.backgroundColor as string | undefined),
+            (mergedAppearance.backgroundColor as string | undefined) ||
+            (fallbackRecord.bgColor as string | undefined) ||
+            (fallbackRecord.backgroundColor as string | undefined) ||
+            (fallbackAppearance.backgroundColor as string | undefined),
         ) || "";
       const resolvedBgColor = draftBgColor || mergedBgColor;
       if (resolvedBgColor) {
@@ -95,7 +111,21 @@ export function useEditorSync({
           backgroundImageUrl: "",
         };
       }
-      return merged;
+
+      const normalizedBackground = normalizeSectionBackgroundData(merged);
+
+      if (normalizedBackground.title === "Nossos Serviços") {
+        const normalizedAppearance =
+          (normalizedBackground.appearance as
+            | Record<string, unknown>
+            | undefined) || {};
+        console.log(">>> [BUILD_PREVIEW] Finalizado para Serviços:", {
+          mergedBgColor: normalizedBackground.bgColor,
+          mergedAppearanceBg: normalizedAppearance.backgroundColor,
+        });
+      }
+
+      return normalizedBackground;
     },
     [sanitizeSectionData],
   );
@@ -210,17 +240,11 @@ export function useEditorSync({
   }, [lastSavedServices, servicesSettings, buildPreviewSection]);
 
   const previewHomeValuesSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
+    const merged = buildPreviewSection(
       homeValuesSettings,
       lastSavedHomeValues,
-    ) as
-      | (typeof homeValuesSettings & Record<string, unknown>)
-      | (typeof lastSavedHomeValues & Record<string, unknown>);
-    if (homeValuesSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
+    ) as typeof homeValuesSettings & Record<string, unknown>;
+
     const mergedRecord = merged as Record<string, unknown>;
     const mergedCardConfig = mergedRecord.cardConfig as
       | Record<string, unknown>
@@ -234,119 +258,68 @@ export function useEditorSync({
     const mergedAppearance = mergedRecord.appearance as
       | Record<string, unknown>
       | undefined;
+
     const resolvedCardBgColor =
       sanitizeColor(
         (merged.cardBgColor as string | undefined) ||
-        (mergedRecord.cardBackgroundColor as string | undefined) ||
-        (mergedRecord.card_background_color as string | undefined) ||
-        (mergedCardConfig?.cardBackgroundColor as string | undefined) ||
-        (mergedCardConfig?.backgroundColor as string | undefined) ||
-        (mergedContent?.cardBgColor as string | undefined) ||
-        (mergedItemsStyle?.itemBackgroundColor as string | undefined) ||
-        (mergedAppearance?.cardBgColor as string | undefined) ||
-        (mergedAppearance?.cardBackgroundColor as string | undefined),
-      ) || "";
-    if (!merged.cardBgColor && resolvedCardBgColor) {
-      merged.cardBgColor = resolvedCardBgColor;
-    }
-    if (!mergedRecord.cardBackgroundColor && resolvedCardBgColor) {
-      mergedRecord.cardBackgroundColor = resolvedCardBgColor;
-    }
-    const resolvedValuesBg =
-      sanitizeColor(
-        (merged.bgColor as string | undefined) ||
-        (mergedAppearance?.backgroundColor as string | undefined),
-      ) || "";
-    merged.bgColor = resolvedValuesBg;
-    mergedRecord.backgroundColor = resolvedValuesBg;
-    mergedRecord.values_bg = resolvedValuesBg;
-    if (merged.appearance) {
-      merged.appearance = {
-        ...(merged.appearance as Record<string, unknown>),
-        backgroundColor: resolvedValuesBg,
-      };
-    }
-    return merged;
-  }, [lastSavedHomeValues, homeValuesSettings, sanitizeSectionData]);
-
-  const previewAboutUsValuesSettings = useMemo(() => {
-    const merged = sanitizeSectionData(
-      aboutUsValuesSettings,
-      lastSavedAboutUsValues,
-    ) as
-      | (typeof aboutUsValuesSettings & Record<string, unknown>)
-      | (typeof lastSavedAboutUsValues & Record<string, unknown>);
-    if (aboutUsValuesSettings.bgType === "color") {
-      merged.bgImage = "";
-      if (merged.appearance)
-        merged.appearance = { ...merged.appearance, backgroundImageUrl: "" };
-    }
-    const mergedRecord = merged as Record<string, unknown>;
-    const lastSavedRecord = lastSavedAboutUsValues as
-      | Record<string, unknown>
-      | undefined;
-    const resolvedItems = Array.isArray(merged.items)
-      ? merged.items
-      : Array.isArray(mergedRecord.values)
-        ? mergedRecord.values
-        : Array.isArray(lastSavedRecord?.items)
-          ? (lastSavedRecord?.items as unknown[])
-          : Array.isArray(defaultValuesSettings.items)
-            ? defaultValuesSettings.items
-            : [];
-    if (!Array.isArray(merged.items) && resolvedItems.length > 0) {
-      merged.items = resolvedItems as typeof merged.items;
-    }
-    const mergedCardConfig = mergedRecord.cardConfig as
-      | Record<string, unknown>
-      | undefined;
-    const mergedContent = mergedRecord.content as
-      | Record<string, unknown>
-      | undefined;
-    const mergedItemsStyle = mergedRecord.itemsStyle as
-      | Record<string, unknown>
-      | undefined;
-    const mergedAppearance = mergedRecord.appearance as
-      | Record<string, unknown>
-      | undefined;
-    const resolvedCardBgColor =
-      sanitizeColor(
-        (merged.cardBgColor as string | undefined) ||
-        (mergedRecord.cardBackgroundColor as string | undefined) ||
-        (mergedRecord.card_background_color as string | undefined) ||
-        (mergedCardConfig?.cardBackgroundColor as string | undefined) ||
-        (mergedCardConfig?.backgroundColor as string | undefined) ||
-        (mergedContent?.cardBgColor as string | undefined) ||
-        (mergedItemsStyle?.itemBackgroundColor as string | undefined) ||
-        (mergedAppearance?.cardBgColor as string | undefined) ||
-        (mergedAppearance?.cardBackgroundColor as string | undefined),
+          (mergedRecord.cardBackgroundColor as string | undefined) ||
+          (mergedRecord.card_background_color as string | undefined) ||
+          (mergedCardConfig?.cardBackgroundColor as string | undefined) ||
+          (mergedCardConfig?.backgroundColor as string | undefined) ||
+          (mergedContent?.cardBgColor as string | undefined) ||
+          (mergedItemsStyle?.itemBackgroundColor as string | undefined) ||
+          (mergedAppearance?.cardBgColor as string | undefined) ||
+          (mergedAppearance?.cardBackgroundColor as string | undefined),
       ) || "";
 
-    // Forçar a atualização das chaves de preview se houver uma cor resolvida
     if (resolvedCardBgColor) {
       merged.cardBgColor = resolvedCardBgColor;
       mergedRecord.cardBackgroundColor = resolvedCardBgColor;
     }
 
-    const resolvedValuesBg =
+    return merged;
+  }, [lastSavedHomeValues, homeValuesSettings, buildPreviewSection]);
+
+  const previewAboutUsValuesSettings = useMemo(() => {
+    const merged = buildPreviewSection(
+      aboutUsValuesSettings,
+      lastSavedAboutUsValues,
+    ) as typeof aboutUsValuesSettings & Record<string, unknown>;
+
+    const mergedRecord = merged as Record<string, unknown>;
+    const mergedCardConfig = mergedRecord.cardConfig as
+      | Record<string, unknown>
+      | undefined;
+    const mergedContent = mergedRecord.content as
+      | Record<string, unknown>
+      | undefined;
+    const mergedItemsStyle = mergedRecord.itemsStyle as
+      | Record<string, unknown>
+      | undefined;
+    const mergedAppearance = mergedRecord.appearance as
+      | Record<string, unknown>
+      | undefined;
+
+    const resolvedCardBgColor =
       sanitizeColor(
-        (merged.bgColor as string | undefined) ||
-        (mergedAppearance?.backgroundColor as string | undefined),
+        (merged.cardBgColor as string | undefined) ||
+          (mergedRecord.cardBackgroundColor as string | undefined) ||
+          (mergedRecord.card_background_color as string | undefined) ||
+          (mergedCardConfig?.cardBackgroundColor as string | undefined) ||
+          (mergedCardConfig?.backgroundColor as string | undefined) ||
+          (mergedContent?.cardBgColor as string | undefined) ||
+          (mergedItemsStyle?.itemBackgroundColor as string | undefined) ||
+          (mergedAppearance?.cardBgColor as string | undefined) ||
+          (mergedAppearance?.cardBackgroundColor as string | undefined),
       ) || "";
 
-    if (resolvedValuesBg) {
-      merged.bgColor = resolvedValuesBg;
-      mergedRecord.backgroundColor = resolvedValuesBg;
-      mergedRecord.about_values_bg = resolvedValuesBg;
-      if (merged.appearance) {
-        merged.appearance = {
-          ...(merged.appearance as Record<string, unknown>),
-          backgroundColor: resolvedValuesBg,
-        };
-      }
+    if (resolvedCardBgColor) {
+      merged.cardBgColor = resolvedCardBgColor;
+      mergedRecord.cardBackgroundColor = resolvedCardBgColor;
     }
+
     return merged;
-  }, [lastSavedAboutUsValues, aboutUsValuesSettings, sanitizeSectionData]);
+  }, [lastSavedAboutUsValues, aboutUsValuesSettings, buildPreviewSection]);
 
   const previewCTASettings = useMemo(() => {
     const merged = buildPreviewSection(
@@ -417,8 +390,8 @@ export function useEditorSync({
     const resolvedBgColor =
       sanitizeColor(
         (merged.appearance?.backgroundColor as string | undefined) ||
-        (merged.bgColor as string | undefined) ||
-        (mergedRecord.backgroundColor as string | undefined),
+          (merged.bgColor as string | undefined) ||
+          (mergedRecord.backgroundColor as string | undefined),
       ) || "";
     merged.bgColor = resolvedBgColor;
     merged.titleColor = sanitizeColor(merged.titleColor) || "";
@@ -447,8 +420,8 @@ export function useEditorSync({
     const resolvedBgColor =
       sanitizeColor(
         (merged.appearance?.backgroundColor as string | undefined) ||
-        (merged.bgColor as string | undefined) ||
-        (mergedRecord.backgroundColor as string | undefined),
+          (merged.bgColor as string | undefined) ||
+          (mergedRecord.backgroundColor as string | undefined),
       ) || "";
     merged.bgColor = resolvedBgColor;
     merged.titleColor = sanitizeColor(merged.titleColor) || "";
@@ -478,7 +451,7 @@ export function useEditorSync({
     const resolvedBgColor =
       sanitizeColor(
         (merged.bgColor as string | undefined) ||
-        (appearance.backgroundColor as string | undefined),
+          (appearance.backgroundColor as string | undefined),
       ) || "";
     merged.bgColor = resolvedBgColor;
     if (Object.keys(appearance).length > 0) {
@@ -499,7 +472,7 @@ export function useEditorSync({
     const resolvedBgColor =
       sanitizeColor(
         (merged.bgColor as string | undefined) ||
-        (appearance.backgroundColor as string | undefined),
+          (appearance.backgroundColor as string | undefined),
       ) || "";
     merged.bgColor = resolvedBgColor;
     if (Object.keys(appearance).length > 0) {
@@ -690,8 +663,20 @@ export function useEditorSync({
         settings,
         defaultSettingsMap[type] || {},
       );
+
+      if (type === "UPDATE_SERVICES_SETTINGS") {
+        const appearance =
+          (sanitizedSettings.appearance as
+            | Record<string, unknown>
+            | undefined) || {};
+        console.log(`>>> [EDITOR_SYNC] Enviando ${type}:`, {
+          bgColor: sanitizedSettings.bgColor,
+          appearanceBg: appearance.backgroundColor,
+        });
+      }
+
       iframeRef.current?.contentWindow?.postMessage(
-        { type, settings: sanitizedSettings },
+        { type, settings: { ...sanitizedSettings } },
         "*",
       );
     },

@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { sanitizeColor } from "@/lib/booking-data";
 import { cn, getFullImageUrl } from "@/lib/utils";
 
 export interface SectionBackgroundSettings {
@@ -33,6 +34,94 @@ export interface SectionBackgroundProps {
   color?: string;
 }
 
+const getRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+
+const resolveBgType = (value: unknown, bgImage: string): "color" | "image" =>
+  value === "color" || value === "image" ? value : bgImage ? "image" : "color";
+
+export function normalizeSectionBackgroundData<
+  T extends Record<string, unknown>,
+>(section: T): T & SectionBackgroundSettings {
+  const appearance = getRecord(section.appearance);
+  const overlay = getRecord(appearance.overlay);
+  const bgImage =
+    (section.bgImage as string) ||
+    (appearance.backgroundImageUrl as string) ||
+    "";
+  const bgColor =
+    sanitizeColor(
+      (section.bgColor as string) ||
+        (section.bg_color as string) ||
+        (section.backgroundColor as string) ||
+        (appearance.backgroundColor as string) ||
+        (appearance.bgColor as string) ||
+        "",
+    ) || "";
+  const bgType = resolveBgType(section.bgType ?? appearance.bgType, bgImage);
+  const imageOpacity =
+    typeof section.imageOpacity === "number"
+      ? section.imageOpacity
+      : typeof appearance.imageOpacity === "number"
+        ? appearance.imageOpacity
+        : 1;
+  const overlayOpacity =
+    typeof section.overlayOpacity === "number"
+      ? section.overlayOpacity
+      : typeof overlay.opacity === "number"
+        ? overlay.opacity
+        : 0;
+  const imageScale =
+    typeof section.imageScale === "number"
+      ? section.imageScale
+      : typeof appearance.imageScale === "number"
+        ? (appearance.imageScale as number)
+        : 1;
+  const imageX =
+    typeof section.imageX === "number"
+      ? section.imageX
+      : typeof appearance.imageX === "number"
+        ? (appearance.imageX as number)
+        : 50;
+  const imageY =
+    typeof section.imageY === "number"
+      ? section.imageY
+      : typeof appearance.imageY === "number"
+        ? (appearance.imageY as number)
+        : 50;
+
+  return {
+    ...section,
+    bgImage,
+    bgColor,
+    backgroundColor: bgColor,
+    bgType,
+    imageOpacity,
+    overlayOpacity,
+    imageScale,
+    imageX,
+    imageY,
+    appearance: {
+      ...appearance,
+      backgroundColor: bgColor,
+      backgroundImageUrl: bgImage,
+      bgType,
+      imageOpacity,
+      imageScale,
+      imageX,
+      imageY,
+      overlay: {
+        ...overlay,
+        color:
+          (section.overlayColor as string) || (overlay.color as string) || "",
+        opacity: overlayOpacity,
+      },
+    },
+  } as T & SectionBackgroundSettings;
+}
+
 export function SectionBackground({
   settings,
   className,
@@ -42,12 +131,14 @@ export function SectionBackground({
   color,
 }: SectionBackgroundProps) {
   const [imageError, setImageError] = useState(false);
+  const normalizedSettings = normalizeSectionBackgroundData(
+    settings as unknown as Record<string, unknown>,
+  );
 
-  // MANTEMOS a URL da imagem mesmo se o tipo for 'color' para permitir testes sem perda de dados.
-  // A visibilidade é controlada por shouldShowImage abaixo.
-  // TASK 2: Se a URL começar com #, tratamos como nulo (bug do banco enviando hex como imagem)
   let bgImage =
-    settings.appearance?.backgroundImageUrl || settings.bgImage || defaultImage;
+    normalizedSettings.appearance?.backgroundImageUrl ||
+    normalizedSettings.bgImage ||
+    defaultImage;
 
   if (bgImage?.startsWith("#")) {
     console.warn(`[IMAGE_BUG_FIX] Ignorando hex ${bgImage} como URL de imagem`);
@@ -56,28 +147,31 @@ export function SectionBackground({
 
   const hasValidImage = !!bgImage;
 
-  // Calculamos valores efetivos com fallbacks robustos
   const effectiveBgType =
-    settings.bgType || (hasValidImage ? "image" : "color");
+    normalizedSettings.bgType || (hasValidImage ? "image" : "color");
 
   const effectiveImageOpacity =
-    settings.imageOpacity ?? settings.appearance?.imageOpacity ?? 1;
+    normalizedSettings.imageOpacity ??
+    normalizedSettings.appearance?.imageOpacity ??
+    1;
 
   const effectiveOverlayOpacity =
-    settings.overlayOpacity ?? settings.appearance?.overlay?.opacity ?? 0;
+    normalizedSettings.overlayOpacity ??
+    normalizedSettings.appearance?.overlay?.opacity ??
+    0;
 
-  const effectiveOverlayColor = settings.appearance?.overlay?.color || "";
+  const effectiveOverlayColor =
+    normalizedSettings.appearance?.overlay?.color || "";
 
   const effectiveBackgroundColor =
-    settings.appearance?.backgroundColor ||
-    settings.bgColor ||
+    normalizedSettings.appearance?.backgroundColor ||
+    normalizedSettings.bgColor ||
     "var(--background, white)";
 
-  const effectiveImageScale = settings.imageScale ?? 1;
-  const effectiveImageX = settings.imageX ?? 50;
-  const effectiveImageY = settings.imageY ?? 50;
+  const effectiveImageScale = normalizedSettings.imageScale ?? 1;
+  const effectiveImageX = normalizedSettings.imageX ?? 50;
+  const effectiveImageY = normalizedSettings.imageY ?? 50;
 
-  // Só mostramos imagem se o TIPO selecionado for 'image' E existir uma URL e não houver erro
   const shouldShowImage =
     effectiveBgType === "image" && hasValidImage && !imageError;
 
@@ -95,7 +189,6 @@ export function SectionBackground({
           : undefined,
       }}
     >
-      {/* CAMADA DE COR: Sempre visível se o tipo for 'color' OU se não tiver imagem para mostrar */}
       {!hideColorLayer && (
         <div
           className="absolute inset-0 z-0 transition-colors duration-500"
@@ -110,7 +203,6 @@ export function SectionBackground({
         />
       )}
 
-      {/* CAMADA DE IMAGEM: Só renderiza se o tipo for 'image' */}
       {shouldShowImage && bgImage && (
         <div
           className="absolute inset-0 z-0"
@@ -139,7 +231,6 @@ export function SectionBackground({
         </div>
       )}
 
-      {/* Overlay Layer */}
       <div
         className={cn(
           "absolute inset-0 z-1 transition-opacity duration-500",

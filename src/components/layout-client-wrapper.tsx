@@ -97,15 +97,27 @@ export function LayoutClientWrapper({
   }, [pathname]);
 
   useEffect(() => {
-    // Inicializa visibilidade local
     setVisibleSections(getVisibleSections());
 
     const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type) {
+        console.log(
+          ">>> [RECEIVE_POST_MESSAGE]",
+          event.data.type,
+          event.data.settings || event.data.payload,
+        );
+      }
+
       if (event.data?.type === "UPDATE_HEADER_SETTINGS") {
         setHeaderSettings(event.data.settings);
       }
       if (event.data?.type === "UPDATE_FOOTER_SETTINGS") {
         setFooterSettings(event.data.settings);
+      }
+      if (event.data?.type === "UPDATE_SERVICES_SETTINGS") {
+        console.log(
+          ">>> [LayoutWrapper] Detectado UPDATE_SERVICES_SETTINGS no iframe.",
+        );
       }
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
         setVisibleSections(event.data.settings || {});
