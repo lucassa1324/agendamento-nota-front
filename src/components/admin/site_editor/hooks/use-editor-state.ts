@@ -486,13 +486,13 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         valuesData.cardBgColor ||
-          valuesData.cardBackgroundColor ||
-          valuesData.card_background_color ||
-          cardConfig.backgroundColor ||
-          cardConfig.cardBackgroundColor ||
-          content.cardBgColor ||
-          itemsStyle.itemBackgroundColor ||
-          appearance.cardBgColor,
+        valuesData.cardBackgroundColor ||
+        valuesData.card_background_color ||
+        cardConfig.backgroundColor ||
+        cardConfig.cardBackgroundColor ||
+        content.cardBgColor ||
+        itemsStyle.itemBackgroundColor ||
+        appearance.cardBgColor,
       );
 
       return {
@@ -508,23 +508,23 @@ export function useEditorState() {
         cardTitleColor:
           sanitizeColor(
             valuesData.cardTitleColor ||
-              appearance.cardTitleColor ||
-              content.cardTitleColor,
+            appearance.cardTitleColor ||
+            content.cardTitleColor,
           ) || defaultValuesSettings.cardTitleColor,
         cardDescriptionColor:
           sanitizeColor(
             valuesData.cardDescriptionColor ||
-              appearance.cardDescriptionColor ||
-              content.cardDescriptionColor,
+            appearance.cardDescriptionColor ||
+            content.cardDescriptionColor,
           ) || defaultValuesSettings.cardDescriptionColor,
         cardIconColor:
           sanitizeColor(
             valuesData.cardIconColor ||
-              appearance.cardIconColor ||
-              content.cardIconColor,
+            appearance.cardIconColor ||
+            content.cardIconColor,
           ) || defaultValuesSettings.cardIconColor,
         bgColor:
-          sanitizeColor(valuesData.bgColor || appearance.backgroundColor) ||
+          sanitizeColor(appearance.backgroundColor || valuesData.bgColor) ||
           defaultValuesSettings.bgColor,
         bgImage: valuesImage,
         bgType: valuesBgType,
@@ -540,21 +540,21 @@ export function useEditorState() {
           cardBgColor: cardBg,
           cardTitleColor: sanitizeColor(
             valuesData.cardTitleColor ||
-              appearance.cardTitleColor ||
-              content.cardTitleColor,
+            appearance.cardTitleColor ||
+            content.cardTitleColor,
           ),
           cardDescriptionColor: sanitizeColor(
             valuesData.cardDescriptionColor ||
-              appearance.cardDescriptionColor ||
-              content.cardDescriptionColor,
+            appearance.cardDescriptionColor ||
+            content.cardDescriptionColor,
           ),
           cardIconColor: sanitizeColor(
             valuesData.cardIconColor ||
-              appearance.cardIconColor ||
-              content.cardIconColor,
+            appearance.cardIconColor ||
+            content.cardIconColor,
           ),
           backgroundColor: sanitizeColor(
-            valuesData.bgColor || appearance.backgroundColor,
+            appearance.backgroundColor || valuesData.bgColor,
           ),
           backgroundImageUrl: valuesImage,
           bgType: valuesBgType,
@@ -587,13 +587,13 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         servicesData.cardBgColor ||
-          servicesData.cardBackgroundColor ||
-          servicesData.card_background_color ||
-          cardConfig.backgroundColor ||
-          cardConfig.cardBackgroundColor ||
-          content.cardBgColor ||
-          itemsStyle.itemBackgroundColor ||
-          appearance.cardBgColor,
+        servicesData.cardBackgroundColor ||
+        servicesData.card_background_color ||
+        cardConfig.backgroundColor ||
+        cardConfig.cardBackgroundColor ||
+        content.cardBgColor ||
+        itemsStyle.itemBackgroundColor ||
+        appearance.cardBgColor,
       );
 
       return {
@@ -610,29 +610,29 @@ export function useEditorState() {
         cardTitleColor:
           sanitizeColor(
             servicesData.cardTitleColor ||
-              appearance.cardTitleColor ||
-              content.cardTitleColor,
+            appearance.cardTitleColor ||
+            content.cardTitleColor,
           ) || defaultServicesSettings.cardTitleColor,
         cardDescriptionColor:
           sanitizeColor(
             servicesData.cardDescriptionColor ||
-              appearance.cardDescriptionColor ||
-              content.cardDescriptionColor,
+            appearance.cardDescriptionColor ||
+            content.cardDescriptionColor,
           ) || defaultServicesSettings.cardDescriptionColor,
         cardPriceColor:
           sanitizeColor(
             servicesData.cardPriceColor ||
-              appearance.cardPriceColor ||
-              content.cardPriceColor,
+            appearance.cardPriceColor ||
+            content.cardPriceColor,
           ) || defaultServicesSettings.cardPriceColor,
         cardIconColor:
           sanitizeColor(
             servicesData.cardIconColor ||
-              appearance.cardIconColor ||
-              content.cardIconColor,
+            appearance.cardIconColor ||
+            content.cardIconColor,
           ) || defaultServicesSettings.cardIconColor,
         bgColor:
-          sanitizeColor(servicesData.bgColor || appearance.backgroundColor) ||
+          sanitizeColor(appearance.backgroundColor || servicesData.bgColor) ||
           defaultServicesSettings.bgColor,
         bgImage: servicesImage,
         bgType: servicesBgType,
@@ -648,26 +648,26 @@ export function useEditorState() {
           cardBgColor: cardBg,
           cardTitleColor: sanitizeColor(
             servicesData.cardTitleColor ||
-              appearance.cardTitleColor ||
-              content.cardTitleColor,
+            appearance.cardTitleColor ||
+            content.cardTitleColor,
           ),
           cardDescriptionColor: sanitizeColor(
             servicesData.cardDescriptionColor ||
-              appearance.cardDescriptionColor ||
-              content.cardDescriptionColor,
+            appearance.cardDescriptionColor ||
+            content.cardDescriptionColor,
           ),
           cardPriceColor: sanitizeColor(
             servicesData.cardPriceColor ||
-              appearance.cardPriceColor ||
-              content.cardPriceColor,
+            appearance.cardPriceColor ||
+            content.cardPriceColor,
           ),
           cardIconColor: sanitizeColor(
             servicesData.cardIconColor ||
-              appearance.cardIconColor ||
-              content.cardIconColor,
+            appearance.cardIconColor ||
+            content.cardIconColor,
           ),
           backgroundColor: sanitizeColor(
-            servicesData.bgColor || appearance.backgroundColor,
+            appearance.backgroundColor || servicesData.bgColor,
           ),
           backgroundImageUrl: servicesImage,
           bgType: servicesBgType,
@@ -700,20 +700,20 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         galleryData.cardBgColor ||
-          galleryData.cardBackgroundColor ||
-          galleryData.card_background_color ||
-          cardConfig.backgroundColor ||
-          cardConfig.cardBackgroundColor ||
-          content.cardBgColor ||
-          itemsStyle.itemBackgroundColor ||
-          appearance.cardBgColor,
+        galleryData.cardBackgroundColor ||
+        galleryData.card_background_color ||
+        cardConfig.backgroundColor ||
+        cardConfig.cardBackgroundColor ||
+        content.cardBgColor ||
+        itemsStyle.itemBackgroundColor ||
+        appearance.cardBgColor,
       );
 
       const resolvedBgColor =
         sanitizeColor(
           appearance.backgroundColor ||
-            galleryData.bgColor ||
-            galleryData.backgroundColor,
+          galleryData.bgColor ||
+          galleryData.backgroundColor,
         ) || defaultGallerySettings.bgColor;
 
       return {
@@ -802,7 +802,7 @@ export function useEditorState() {
         sanitizeColor(ctaData.buttonTextColor || appearance.buttonTextColor) ||
         defaultCTASettings.buttonTextColor,
       bgColor:
-        sanitizeColor(ctaData.bgColor || appearance.backgroundColor) ||
+        sanitizeColor(appearance.backgroundColor || ctaData.bgColor) ||
         defaultCTASettings.bgColor,
       bgImage: ctaImage,
       bgType: ctaBgType,
@@ -820,7 +820,7 @@ export function useEditorState() {
           ctaData.buttonTextColor || appearance.buttonTextColor,
         ),
         backgroundColor: sanitizeColor(
-          ctaData.bgColor || appearance.backgroundColor,
+          appearance.backgroundColor || ctaData.bgColor,
         ),
         backgroundImageUrl: ctaImage,
         bgType: ctaBgType,
@@ -852,7 +852,7 @@ export function useEditorState() {
           sanitizeColor(storyData.contentColor) ||
           defaultStorySettings.contentColor,
         bgColor:
-          sanitizeColor(storyData.bgColor || appearance.backgroundColor) ||
+          sanitizeColor(appearance.backgroundColor || storyData.bgColor) ||
           defaultStorySettings.bgColor,
         bgImage: storyImage,
         bgType: storyBgType,
@@ -863,7 +863,7 @@ export function useEditorState() {
             storyData.titleColor || appearance.titleColor,
           ),
           backgroundColor: sanitizeColor(
-            storyData.bgColor || appearance.backgroundColor,
+            appearance.backgroundColor || storyData.bgColor,
           ),
           backgroundImageUrl: storyImage,
           bgType: storyBgType,
@@ -895,7 +895,7 @@ export function useEditorState() {
         sanitizeColor(teamData.subtitleColor || appearance.subtitleColor) ||
         defaultTeamSettings.subtitleColor,
       bgColor:
-        sanitizeColor(teamData.bgColor || appearance.backgroundColor) ||
+        sanitizeColor(appearance.backgroundColor || teamData.bgColor) ||
         defaultTeamSettings.bgColor,
       bgImage: teamImage,
       bgType: teamBgType,
@@ -907,7 +907,7 @@ export function useEditorState() {
           teamData.subtitleColor || appearance.subtitleColor,
         ),
         backgroundColor: sanitizeColor(
-          teamData.bgColor || appearance.backgroundColor,
+          appearance.backgroundColor || teamData.bgColor,
         ),
         backgroundImageUrl: teamImage,
         bgType: teamBgType,
@@ -942,7 +942,7 @@ export function useEditorState() {
           ) || defaultTestimonialsSettings.subtitleColor,
         bgColor:
           sanitizeColor(
-            testimonialsData.bgColor || appearance.backgroundColor,
+            appearance.backgroundColor || testimonialsData.bgColor,
           ) || defaultTestimonialsSettings.bgColor,
         bgImage: testimonialsImage,
         bgType: testimonialsBgType,
@@ -956,7 +956,7 @@ export function useEditorState() {
             testimonialsData.subtitleColor || appearance.subtitleColor,
           ),
           backgroundColor: sanitizeColor(
-            testimonialsData.bgColor || appearance.backgroundColor,
+            appearance.backgroundColor || testimonialsData.bgColor,
           ),
           backgroundImageUrl: testimonialsImage,
           bgType: testimonialsBgType,
@@ -1280,7 +1280,7 @@ export function useEditorState() {
         lastSavedColor.text !== defaultColorSettings.text ||
         lastSavedColor.accent !== defaultColorSettings.accent ||
         lastSavedSpecialtyBadge.borderRadius !==
-          defaultColorSettings.specialtyBadge.borderRadius;
+        defaultColorSettings.specialtyBadge.borderRadius;
       const normalizeColor = (value?: string) =>
         sanitizeColor(value || "") || "";
       const isConfigAlignedWithLastSaved =
@@ -1288,15 +1288,15 @@ export function useEditorState() {
         (normalizeColor(resolvedColors.primary) ===
           normalizeColor(lastSavedColor.primary) &&
           normalizeColor(resolvedColors.secondary) ===
-            normalizeColor(lastSavedColor.secondary) &&
+          normalizeColor(lastSavedColor.secondary) &&
           normalizeColor(resolvedColors.background) ===
-            normalizeColor(lastSavedColor.background) &&
+          normalizeColor(lastSavedColor.background) &&
           normalizeColor(resolvedColors.text) ===
-            normalizeColor(lastSavedColor.text) &&
+          normalizeColor(lastSavedColor.text) &&
           normalizeColor(resolvedColors.accent || "") ===
-            normalizeColor(lastSavedColor.accent || "") &&
+          normalizeColor(lastSavedColor.accent || "") &&
           resolvedColors.specialtyBadge.borderRadius ===
-            lastSavedSpecialtyBadge.borderRadius);
+          lastSavedSpecialtyBadge.borderRadius);
       if (!isConfigAlignedWithLastSaved) {
         console.log(
           ">>> [SYNC] studio.config desatualizado em relação ao lastSaved. Ignorando sync.",
@@ -1736,6 +1736,13 @@ export function useEditorState() {
       setIsDirty(true);
       setHomeValuesSettings((prev: ValuesSettings) => {
         const newState = syncBackground(prev, updates);
+        const updatesAppearance =
+          (updates.appearance as Record<string, unknown> | undefined) || {};
+        const resolvedBgColor =
+          sanitizeColor(
+            (updates.bgColor as string | undefined) ||
+            (updatesAppearance.backgroundColor as string | undefined),
+          ) || "";
         if (updates.bgColor !== undefined)
           newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
         if (updates.titleColor !== undefined)
@@ -1762,6 +1769,17 @@ export function useEditorState() {
             sanitizeColor(updates.iconColor) || prev.iconColor;
         if (updates.borderRadius !== undefined)
           newState.borderRadius = updates.borderRadius || prev.borderRadius;
+        if (resolvedBgColor) {
+          newState.bgType = "color";
+          newState.bgColor = resolvedBgColor;
+          newState.bgImage = "";
+          newState.appearance = {
+            ...(newState.appearance || {}),
+            bgType: "color",
+            backgroundColor: resolvedBgColor,
+            backgroundImageUrl: "",
+          };
+        }
         return newState;
       });
     },
@@ -1781,6 +1799,13 @@ export function useEditorState() {
       setIsDirty(true);
       setAboutUsValuesSettings((prev: ValuesSettings) => {
         const newState = syncBackground(prev, updates);
+        const updatesAppearance =
+          (updates.appearance as Record<string, unknown> | undefined) || {};
+        const resolvedBgColor =
+          sanitizeColor(
+            (updates.bgColor as string | undefined) ||
+            (updatesAppearance.backgroundColor as string | undefined),
+          ) || "";
         if (updates.bgColor !== undefined)
           newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
         if (updates.titleColor !== undefined)
@@ -1807,6 +1832,17 @@ export function useEditorState() {
             sanitizeColor(updates.iconColor) || prev.iconColor;
         if (updates.borderRadius !== undefined)
           newState.borderRadius = updates.borderRadius || prev.borderRadius;
+        if (resolvedBgColor) {
+          newState.bgType = "color";
+          newState.bgColor = resolvedBgColor;
+          newState.bgImage = "";
+          newState.appearance = {
+            ...(newState.appearance || {}),
+            bgType: "color",
+            backgroundColor: resolvedBgColor,
+            backgroundImageUrl: "",
+          };
+        }
         return newState;
       });
     },

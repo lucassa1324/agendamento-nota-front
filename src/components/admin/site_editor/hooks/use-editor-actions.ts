@@ -717,34 +717,34 @@ export function useEditorActions({
       handleUpdateBackgroundState(normalizedUpdates, targetSectionId);
 
       const currentSettingsMap: Record<string, BackgroundSettings | undefined> =
-      {
-        hero: heroSettings,
-        "home-hero": heroSettings,
-        "about-hero": aboutHeroSettings,
-        story: storySettings,
-        "home-story": storySettings,
-        team: teamSettings,
-        "home-team": teamSettings,
-        testimonials: testimonialsSettings,
-        "home-testimonials": testimonialsSettings,
-        services: servicesSettings,
-        "home-services": servicesSettings,
-        "home-values": homeValuesSettings,
-        "about-values": aboutUsValuesSettings,
-        "about-us-values": aboutUsValuesSettings,
-        gallery: gallerySettings,
-        "home-gallery": gallerySettings,
-        "gallery-preview": gallerySettings,
-        "page-gallery": galleryPageSettings,
-        "gallery-grid": galleryPageSettings,
-        cta: ctaSettings,
-        "home-cta": ctaSettings,
-        "booking-service": bookingServiceSettings,
-        "booking-date": bookingDateSettings,
-        "booking-time": bookingTimeSettings,
-        "booking-form": bookingFormSettings,
-        "booking-confirmation": bookingConfirmationSettings,
-      };
+        {
+          hero: heroSettings,
+          "home-hero": heroSettings,
+          "about-hero": aboutHeroSettings,
+          story: storySettings,
+          "home-story": storySettings,
+          team: teamSettings,
+          "home-team": teamSettings,
+          testimonials: testimonialsSettings,
+          "home-testimonials": testimonialsSettings,
+          services: servicesSettings,
+          "home-services": servicesSettings,
+          "home-values": homeValuesSettings,
+          "about-values": aboutUsValuesSettings,
+          "about-us-values": aboutUsValuesSettings,
+          gallery: gallerySettings,
+          "home-gallery": gallerySettings,
+          "gallery-preview": gallerySettings,
+          "page-gallery": galleryPageSettings,
+          "gallery-grid": galleryPageSettings,
+          cta: ctaSettings,
+          "home-cta": ctaSettings,
+          "booking-service": bookingServiceSettings,
+          "booking-date": bookingDateSettings,
+          "booking-time": bookingTimeSettings,
+          "booking-form": bookingFormSettings,
+          "booking-confirmation": bookingConfirmationSettings,
+        };
 
       const saveFnMap: Record<
         string,
@@ -1081,9 +1081,36 @@ export function useEditorActions({
   const handleUpdateHomeValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
       handleUpdateHomeValuesState(updates);
-      const newSettings = { ...homeValuesSettings, ...updates };
+      const currentSettings = homeValuesSettings;
+      const updatedSettings = {
+        ...currentSettings,
+        ...updates,
+        bgType: updates.bgColor
+          ? "color"
+          : updates.bgType || currentSettings.bgType,
+        bgColor: updates.bgColor || currentSettings.bgColor,
+        cardBgColor: updates.cardBgColor || currentSettings.cardBgColor,
+        appearance: {
+          ...(currentSettings.appearance || {}),
+          ...(updates.appearance || {}),
+          backgroundColor: updates.bgColor || currentSettings.bgColor,
+          cardBackgroundColor:
+            updates.cardBgColor || currentSettings.cardBgColor,
+        },
+        values_bg: updates.bgColor || currentSettings.bgColor,
+        about_values_bg: updates.bgColor || currentSettings.bgColor,
+      };
+      console.log(">>> [VALUES_SAVE_AUDIT] homeValuesSettings", {
+        bgType: updatedSettings.bgType,
+        bgColor: updatedSettings.bgColor,
+        cardBgColor: updatedSettings.cardBgColor,
+        values_bg: updatedSettings.values_bg,
+        about_values_bg: updatedSettings.about_values_bg,
+        appearance: updatedSettings.appearance,
+      });
+
       scheduleDraftSave("homeValuesSettings", () =>
-        saveHomeValuesSettings(newSettings),
+        saveHomeValuesSettings(updatedSettings),
       );
     },
     [
@@ -1097,9 +1124,36 @@ export function useEditorActions({
   const handleUpdateAboutUsValues = useCallback(
     (updates: Partial<ValuesSettings>) => {
       handleUpdateAboutUsValuesState(updates);
-      const newSettings = { ...aboutUsValuesSettings, ...updates };
+      const currentSettings = aboutUsValuesSettings;
+      const updatedSettings = {
+        ...currentSettings,
+        ...updates,
+        bgType: updates.bgColor
+          ? "color"
+          : updates.bgType || currentSettings.bgType,
+        bgColor: updates.bgColor || currentSettings.bgColor,
+        cardBgColor: updates.cardBgColor || currentSettings.cardBgColor,
+        appearance: {
+          ...(currentSettings.appearance || {}),
+          ...(updates.appearance || {}),
+          backgroundColor: updates.bgColor || currentSettings.bgColor,
+          cardBackgroundColor:
+            updates.cardBgColor || currentSettings.cardBgColor,
+        },
+        values_bg: updates.bgColor || currentSettings.bgColor,
+        about_values_bg: updates.bgColor || currentSettings.bgColor,
+      };
+      console.log(">>> [VALUES_SAVE_AUDIT] aboutUsValuesSettings", {
+        bgType: updatedSettings.bgType,
+        bgColor: updatedSettings.bgColor,
+        cardBgColor: updatedSettings.cardBgColor,
+        values_bg: updatedSettings.values_bg,
+        about_values_bg: updatedSettings.about_values_bg,
+        appearance: updatedSettings.appearance,
+      });
+
       scheduleDraftSave("aboutUsValuesSettings", () =>
-        saveAboutUsValuesSettings(newSettings),
+        saveAboutUsValuesSettings(updatedSettings),
       );
     },
     [

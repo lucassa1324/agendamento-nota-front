@@ -625,29 +625,75 @@ export const normalizePayload = (config: SiteConfigData | null | undefined) => {
       defaultServicesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeValues]: normalizeSectionConfig(
-      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeValues] ||
-      (layoutGlobal?.sections as SectionsMap | undefined)?.[
-      SECTION_IDS.homeValues
-      ] ||
-      (home?.valuesSection as SectionConfig | undefined) ||
-      (home?.values as SectionConfig | undefined) ||
-      (layoutGlobal?.homeValuesSettings as SectionConfig | undefined) ||
-      (root.homeValuesSettings as SectionConfig | undefined) ||
-      (root.values as SectionConfig | undefined),
+      (() => {
+        const raw =
+          (root.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeValues
+          ] ||
+          (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeValues
+          ] ||
+          (home?.homeValuesSettings as SectionConfig | undefined) ||
+          (home?.valuesSection as SectionConfig | undefined) ||
+          (home?.values as SectionConfig | undefined) ||
+          (layoutGlobal?.homeValuesSettings as SectionConfig | undefined) ||
+          (root.homeValuesSettings as SectionConfig | undefined) ||
+          (root.values as SectionConfig | undefined) ||
+          (root.valuesSection as SectionConfig | undefined);
+        if (!raw) return raw;
+        const legacyBgColor =
+          sanitizeColor(
+            raw.values_bg ||
+            raw.about_values_bg ||
+            root.values_bg ||
+            root.valuesBg,
+          ) || "";
+        if (!raw.bgColor && legacyBgColor) {
+          return {
+            ...raw,
+            bgColor: legacyBgColor,
+            backgroundColor: legacyBgColor,
+          };
+        }
+        return raw as SectionConfig;
+      })(),
       defaultValuesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.aboutValues]: normalizeSectionConfig(
-      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.aboutValues] ||
-      (layoutGlobal?.sections as SectionsMap | undefined)?.[
-      SECTION_IDS.aboutValues
-      ] ||
-      (root.aboutUsValuesSettings as SectionConfig | undefined) ||
-      (root.aboutUsValues as SectionConfig | undefined) ||
-      (layoutGlobal?.aboutUsValuesSettings as SectionConfig | undefined) ||
-      (layoutGlobal?.aboutUsValues as SectionConfig | undefined) ||
-      (about?.valuesSection as SectionConfig | undefined) ||
-      (about?.values as SectionConfig | undefined) ||
-      (root.about_us_values as SectionConfig | undefined),
+      (() => {
+        const raw =
+          (root.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.aboutValues
+          ] ||
+          (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.aboutValues
+          ] ||
+          (root.aboutUsValuesSettings as SectionConfig | undefined) ||
+          (root.aboutUsValues as SectionConfig | undefined) ||
+          (about?.aboutUsValuesSettings as SectionConfig | undefined) ||
+          (about?.aboutUsValues as SectionConfig | undefined) ||
+          (about?.valuesSection as SectionConfig | undefined) ||
+          (about?.values as SectionConfig | undefined) ||
+          (layoutGlobal?.aboutUsValuesSettings as SectionConfig | undefined) ||
+          (layoutGlobal?.aboutUsValues as SectionConfig | undefined) ||
+          (root.about_us_values as SectionConfig | undefined);
+        if (!raw) return raw;
+        const legacyBgColor =
+          sanitizeColor(
+            raw.about_values_bg ||
+            raw.values_bg ||
+            root.about_values_bg ||
+            root.aboutValuesBg,
+          ) || "";
+        if (!raw.bgColor && legacyBgColor) {
+          return {
+            ...raw,
+            bgColor: legacyBgColor,
+            backgroundColor: legacyBgColor,
+          };
+        }
+        return raw as SectionConfig;
+      })(),
       defaultValuesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeGallery]: normalizeSectionConfig(

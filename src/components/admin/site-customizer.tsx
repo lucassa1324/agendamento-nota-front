@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, PanelLeftClose, Save, Settings2 } from "lucide-react";
+import { LayoutDashboard, PanelLeftClose, Save, Settings2, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Joyride, { type CallBackProps, STATUS, type Step } from "react-joyride";
@@ -35,8 +35,13 @@ import { useSiteEditor } from "./site_editor/hooks/use-site-editor";
 
 export function SiteCustomizer() {
   const { isSidebarOpen, setIsSidebarOpen: onToggleSidebar } = useSidebar();
-  const [isNavOpen, setIsNavOpen] = useState(false);
   const isMobile = useIsMobile();
+  const [isNavOpen, setIsNavOpen] = useState(!isMobile);
+  
+  // Sincronizar isNavOpen com isMobile apenas no carregamento inicial
+  useEffect(() => {
+    setIsNavOpen(!isMobile);
+  }, [isMobile]);
   const { toast } = useToast();
   const params = useParams();
   const router = useRouter();
@@ -188,12 +193,34 @@ export function SiteCustomizer() {
     handleSaveGlobalRef.current = handleSaveGlobal;
   }, [handleSaveGlobal]);
 
-  const applyAndSave = (applyFn: () => void) => async () => {
-    applyFn();
-    await new Promise<void>((resolve) => {
+  const waitForNextStateCycle = () =>
+    new Promise<void>((resolve) => {
       window.setTimeout(() => resolve(), 0);
     });
+
+  const applyAndSave = (applyFn: () => void) => async () => {
+    applyFn();
+    await waitForNextStateCycle();
     await handleSaveGlobalRef.current();
+  };
+
+  const handlePageVisibilityChangeWithAutosave = (
+    pageId: string,
+    isVisible: boolean,
+  ) => {
+    handlePageVisibilityChange(pageId, isVisible);
+    void (async () => {
+      await waitForNextStateCycle();
+      await handleSaveGlobalRef.current(false);
+    })();
+  };
+
+  const handleSectionVisibilityToggleWithAutosave = (sectionId: string) => {
+    handleSectionVisibilityToggle(sectionId);
+    void (async () => {
+      await waitForNextStateCycle();
+      await handleSaveGlobalRef.current(false);
+    })();
   };
 
   const handleToggleStatus = async () => {
@@ -457,10 +484,10 @@ export function SiteCustomizer() {
     visibleSections,
     onPageToggle: togglePageExpansion,
     onSectionSelect: scrollToSection,
-    onSectionVisibilityToggle: handleSectionVisibilityToggle,
+    onSectionVisibilityToggle: handleSectionVisibilityToggleWithAutosave,
     onSectionReset: handleSectionReset,
     pageVisibility,
-    onPageVisibilityChange: handlePageVisibilityChange,
+    onPageVisibilityChange: handlePageVisibilityChangeWithAutosave,
     onSaveLocal: handleSaveLocal,
     onSaveGlobal: handleSaveGlobal,
     onPublish: handlePublish,
@@ -553,7 +580,7 @@ export function SiteCustomizer() {
             variant="ghost"
             size="icon"
             className={cn(
-              "h-9 w-9 text-muted-foreground hover:text-foreground md:w-auto md:px-3 md:gap-1.5 transition-colors lg:hidden",
+              "h-9 w-9 text-muted-foreground hover:text-foreground md:w-auto md:px-3 md:gap-1.5 transition-colors 2xl:hidden",
               isNavOpen && "bg-accent text-accent-foreground",
             )}
             title={
@@ -561,9 +588,13 @@ export function SiteCustomizer() {
             }
             onClick={() => setIsNavOpen(!isNavOpen)}
           >
-            <LayoutDashboard className="w-5 h-5" />
+            {isNavOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <LayoutDashboard className="w-5 h-5" />
+            )}
             <span className="hidden md:inline text-xs font-medium uppercase tracking-tight">
-              Navegação
+              {isNavOpen ? "Fechar" : "Navegação"}
             </span>
           </Button>
 
@@ -661,7 +692,11 @@ export function SiteCustomizer() {
           </SheetContent>
         </Sheet>
 
-        <div className="hidden lg:block shrink-0 border-r border-border bg-card shadow-lg">
+        <div className={cn(
+          "hidden shrink-0 border-r border-border bg-card shadow-lg transition-all duration-300",
+          "2xl:block",
+          isNavOpen ? "lg:block" : "lg:hidden"
+        )}>
           <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
         </div>
 
