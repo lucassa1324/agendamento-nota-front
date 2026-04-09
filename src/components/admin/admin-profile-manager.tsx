@@ -2,7 +2,6 @@
 
 import {
   AlertTriangle,
-  Calendar,
   Check,
   CreditCard,
   Eye,
@@ -40,7 +39,11 @@ export function AdminProfileManager() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { data: session } = useSession();
-  const { studio, isLoading: isLoadingStudio, error: studioError } = useStudio();
+  const {
+    studio,
+    isLoading: isLoadingStudio,
+    error: studioError,
+  } = useStudio();
   const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
 
@@ -54,8 +57,20 @@ export function AdminProfileManager() {
       return;
     }
 
+    const planToUse = {
+      id: "pro",
+      name: "Pro",
+      price: 49.9,
+    };
+
     setIsSubscribing(true);
     try {
+      const customerCpfCnpj = (
+        (session.user as { cpfCnpj?: string }).cpfCnpj || ""
+      ).replace(/\D/g, "");
+      const businessId =
+        (session.user as { businessId?: string }).businessId || studio?.id;
+
       // 1. Obter IP (Opcional, mas Asaas costuma pedir se for cartão)
       let clientIp = "127.0.0.1";
       try {
@@ -75,6 +90,10 @@ export function AdminProfileManager() {
         body: JSON.stringify({
           customerEmail: session.user.email,
           customerName: session.user.name,
+          customerCpfCnpj,
+          businessId,
+          planPrice: planToUse.price,
+          planName: planToUse.name,
         }),
       });
 
@@ -93,7 +112,8 @@ export function AdminProfileManager() {
       console.error("Erro ao gerar pagamento:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível gerar o link de pagamento. Tente novamente.",
+        description:
+          "Não foi possível gerar o link de pagamento. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -483,21 +503,27 @@ export function AdminProfileManager() {
                       Status Atual
                     </p>
                     <div className="flex items-center gap-2">
-                      {studioError?.includes("(402)") || (session.user as any).business?.subscriptionStatus === "past_due" ? (
+                      {studioError?.includes("(402)") ||
+                      (session.user as any).business?.subscriptionStatus ===
+                        "past_due" ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
                           Pagamento Pendente
                         </span>
-                      ) : (session.user as any).business?.subscriptionStatus === "active" ? (
+                      ) : (session.user as any).business?.subscriptionStatus ===
+                        "active" ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
                           Ativa
                         </span>
-                      ) : (session.user as any).business?.subscriptionStatus === "trialing" ? (
+                      ) : ["trial", "trialing"].includes(
+                          (session.user as any).business?.subscriptionStatus,
+                        ) ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
                           Período de Teste
                         </span>
                       ) : (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 border border-zinc-200">
-                          {(session.user as any).business?.subscriptionStatus || "Desconhecido"}
+                          {(session.user as any).business?.subscriptionStatus ||
+                            "Desconhecido"}
                         </span>
                       )}
                     </div>
@@ -510,7 +536,9 @@ export function AdminProfileManager() {
                           Início do Plano
                         </p>
                         <p className="text-sm font-semibold">
-                          {new Date(studio.createdAt).toLocaleDateString("pt-BR")}
+                          {new Date(studio.createdAt).toLocaleDateString(
+                            "pt-BR",
+                          )}
                         </p>
                       </div>
                       <div className="space-y-1">
@@ -518,39 +546,54 @@ export function AdminProfileManager() {
                           Próxima Fatura
                         </p>
                         <p className="text-sm font-semibold">
-                          {getNextInvoiceDate(studio.createdAt).toLocaleDateString("pt-BR")}
+                          {getNextInvoiceDate(
+                            studio.createdAt,
+                          ).toLocaleDateString("pt-BR")}
                         </p>
                       </div>
                     </>
                   )}
                 </div>
 
-                {(studioError?.includes("(402)") || (session.user as any).business?.subscriptionStatus === "past_due" || (session.user as any).business?.subscriptionStatus === "trialing") && (
-                  <div className="flex flex-col sm:flex-row items-center gap-4 pt-2 border-t border-border mt-4">
-                    <div className="flex-1">
-                      <p className="text-sm text-muted-foreground">
-                        {studioError?.includes("(402)") || (session.user as any).business?.subscriptionStatus === "past_due"
-                          ? "Sua assinatura está com pagamento pendente. Regularize agora para evitar interrupções no serviço."
-                          : "Seu período de teste está ativo. Você pode assinar agora para garantir a continuidade do seu acesso."}
-                      </p>
+                {(studioError?.includes("(402)") ||
+                  (session.user as any).business?.subscriptionStatus ===
+                    "past_due" ||
+                  ["trial", "trialing"].includes(
+                    (session.user as any).business?.subscriptionStatus,
+                  )) && (
+                  <div className="space-y-6 pt-4 border-t border-border mt-4 w-full">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 bg-primary/5 p-4 rounded-lg border border-primary/20">
+                      <div className="flex-1">
+                        <p className="text-sm text-zinc-700 font-medium">
+                          {studioError?.includes("(402)") ||
+                          (session.user as any).business?.subscriptionStatus ===
+                            "past_due"
+                            ? "Sua assinatura está com pagamento pendente. Regularize agora para evitar interrupções no serviço."
+                            : "Seu período de teste está ativo. Assine agora para garantir a continuidade do seu acesso e aproveitar todos os recursos."}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => handleSubscribe()}
+                        disabled={isSubscribing}
+                        className="w-full sm:w-auto bg-primary hover:bg-primary/90 min-w-50 shadow-sm"
+                      >
+                        {isSubscribing ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Processando...
+                          </>
+                        ) : (
+                          <>
+                            <CreditCard className="w-4 h-4 mr-2" />
+                            {studioError?.includes("(402)") ||
+                            (session.user as any).business
+                              ?.subscriptionStatus === "past_due"
+                              ? "Pagar Agora"
+                              : "Assinar Plano Pro"}
+                          </>
+                        )}
+                      </Button>
                     </div>
-                    <Button 
-                      onClick={handleSubscribe} 
-                      disabled={isSubscribing}
-                      className="w-full sm:w-auto bg-primary hover:bg-primary/90"
-                    >
-                      {isSubscribing ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Processando...
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="w-4 h-4 mr-2" />
-                          {studioError?.includes("(402)") || (session.user as any).business?.subscriptionStatus === "past_due" ? "Pagar Agora" : "Assinar Agora"}
-                        </>
-                      )}
-                    </Button>
                   </div>
                 )}
               </div>

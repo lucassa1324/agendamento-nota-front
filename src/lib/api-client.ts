@@ -1,10 +1,39 @@
 import { API_BASE_URL, getSessionToken } from "./auth-client";
 
+let billingGuardActive = false;
+
+function createBillingRequiredResponse() {
+  return new Response(
+    JSON.stringify({
+      error: "BILLING_REQUIRED",
+    }),
+    {
+      status: 402,
+      headers: { "Content-Type": "application/json" },
+    },
+  );
+}
+
 /**
  * Utilitário global para fetch com interceptação de erros específicos
  * como BUSINESS_SUSPENDED (403).
  */
 export async function customFetch(url: string, options: RequestInit = {}) {
+  if (typeof window !== "undefined") {
+    const isDashboardRoute = window.location.pathname.includes("/dashboard");
+    const isMinhaContaRoute = window.location.pathname.includes(
+      "/dashboard/minha-conta",
+    );
+
+    if (billingGuardActive && (isMinhaContaRoute || !isDashboardRoute)) {
+      billingGuardActive = false;
+    }
+
+    if (billingGuardActive && isDashboardRoute && !isMinhaContaRoute) {
+      return createBillingRequiredResponse();
+    }
+  }
+
   const sessionToken = await getSessionToken();
 
   // Construir URL completa se for relativa
@@ -14,13 +43,27 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     const proxyPrefix = "/api-proxy";
     const relativeProxyPrefix = "api-proxy";
 
-    if (API_BASE_URL && !url.startsWith(API_BASE_URL) && !url.startsWith(proxyPrefix) && !url.startsWith(relativeProxyPrefix)) {
-      // Garantir que não duplique a barra
-      const baseUrl = API_BASE_URL.endsWith("/")
-        ? API_BASE_URL.slice(0, -1)
-        : API_BASE_URL;
-      const path = url.startsWith("/") ? url : `/${url}`;
-      fullUrl = `${baseUrl}${path}`;
+    if (
+      API_BASE_URL &&
+      !url.startsWith(API_BASE_URL) &&
+      !url.startsWith(proxyPrefix) &&
+      !url.startsWith(relativeProxyPrefix)
+    ) {
+      // No client-side, preferimos caminhos relativos para evitar problemas de CORS com subdomínios
+      if (
+        typeof window !== "undefined" &&
+        API_BASE_URL.includes(window.location.origin)
+      ) {
+        const path = url.startsWith("/") ? url : `/${url}`;
+        fullUrl = `/api-proxy${path}`;
+      } else {
+        // Garantir que não duplique a barra
+        const baseUrl = API_BASE_URL.endsWith("/")
+          ? API_BASE_URL.slice(0, -1)
+          : API_BASE_URL;
+        const path = url.startsWith("/") ? url : `/${url}`;
+        fullUrl = `${baseUrl}${path}`;
+      }
     }
   }
 
@@ -119,12 +162,13 @@ export async function customFetch(url: string, options: RequestInit = {}) {
 
   // Interceptar erro 403 (Acesso Negado / Suspensão)
   if (response.status === 403) {
-    // Se for uma rota de API e não estivermos no Master Admin, redirecionar imediatamente
+    // Se for uma rota pública, redirecionar imediatamente
     // EXCEÇÃO: Não redirecionar se o usuário estiver tentando acessar a página de pagamento/conta
     if (
       typeof window !== "undefined" &&
-      !window.location.pathname.startsWith("/admin/master") &&
-      !window.location.pathname.includes("/dashboard/minha-conta")
+      !window.location.pathname.startsWith("/admin") &&
+      !window.location.pathname.includes("/dashboard/minha-conta") &&
+      !window.location.pathname.startsWith("/acesso-suspenso")
     ) {
       console.error(
         `>>> [FRONT_API] 403 detectado em ${window.location.pathname}. Redirecionando via window.location para quebrar loop...`,
@@ -144,11 +188,22 @@ export async function customFetch(url: string, options: RequestInit = {}) {
   // possam tratar exibindo a tela de bloqueio com opção de pagamento.
   if (response.status === 402) {
     if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("billing-required", {
-          detail: { url: fullUrl },
-        }),
+      const isDashboardRoute = window.location.pathname.includes("/dashboard");
+      const isMinhaContaRoute = window.location.pathname.includes(
+        "/dashboard/minha-conta",
       );
+
+      if (isDashboardRoute && !isMinhaContaRoute) {
+        if (!billingGuardActive) {
+          billingGuardActive = true;
+          window.dispatchEvent(
+            new CustomEvent("billing-required", {
+              detail: { url: fullUrl },
+            }),
+          );
+        }
+        return createBillingRequiredResponse();
+      }
     }
     console.warn(
       `>>> [FRONT_API] 402 detectado em ${url}. Deixando componente tratar.`,
@@ -158,6 +213,23 @@ export async function customFetch(url: string, options: RequestInit = {}) {
   // Interceptar erro 401 para fallback de cache
   if (response.status === 401) {
     if (typeof window !== "undefined") {
+      const isDashboardRoute = window.location.pathname.includes("/dashboard");
+      const isMinhaContaRoute = window.location.pathname.includes(
+        "/dashboard/minha-conta",
+      );
+
+      if (isDashboardRoute && !isMinhaContaRoute) {
+        if (!billingGuardActive) {
+          billingGuardActive = true;
+          window.dispatchEvent(
+            new CustomEvent("billing-required", {
+              detail: { url: fullUrl, sourceStatus: 401 },
+            }),
+          );
+        }
+        return createBillingRequiredResponse();
+      }
+
       const cachedStudio = localStorage.getItem("studio_data");
       if (cachedStudio && url.includes("/studio/")) {
         return new Response(cachedStudio, {

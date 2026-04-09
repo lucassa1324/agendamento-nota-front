@@ -24,6 +24,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { PushNotificationsButton } from "@/components/admin/push-notifications-button";
+import { SystemNotifications } from "@/components/admin/system-notifications";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import { BASE_DOMAIN } from "@/lib/auth-client";
@@ -178,18 +179,21 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
 
       {/* User Profile */}
       <div className="p-4 border-b border-border space-y-4">
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-            <User className="w-4 h-4" />
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <User className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold truncate text-foreground">
+                {adminUser?.name || "Administrador"}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                @{adminUser?.username || "admin"}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold truncate text-foreground">
-              {adminUser?.name || "Administrador"}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              @{adminUser?.username || "admin"}
-            </p>
-          </div>
+          <SystemNotifications />
         </div>
 
         <a

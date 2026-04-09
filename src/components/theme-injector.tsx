@@ -90,7 +90,8 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
       const extraFonts = new Set<string>();
       if (heroSettings?.titleFont) extraFonts.add(heroSettings.titleFont);
       if (heroSettings?.subtitleFont) extraFonts.add(heroSettings.subtitleFont);
-      if (servicesSettings?.titleFont) extraFonts.add(servicesSettings.titleFont);
+      if (servicesSettings?.titleFont)
+        extraFonts.add(servicesSettings.titleFont);
       if (servicesSettings?.subtitleFont)
         extraFonts.add(servicesSettings.subtitleFont);
       if (servicesSettings?.cardTitleFont)
@@ -116,8 +117,7 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
       if (aboutUsValuesSettings?.cardDescriptionFont)
         extraFonts.add(aboutUsValuesSettings.cardDescriptionFont);
       if (teamSettings?.titleFont) extraFonts.add(teamSettings.titleFont);
-      if (teamSettings?.subtitleFont)
-        extraFonts.add(teamSettings.subtitleFont);
+      if (teamSettings?.subtitleFont) extraFonts.add(teamSettings.subtitleFont);
       if (testimonialsSettings?.titleFont)
         extraFonts.add(testimonialsSettings.titleFont);
       if (testimonialsSettings?.subtitleFont)
@@ -201,7 +201,8 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
       const extraFonts = new Set<string>();
       if (heroSettings?.titleFont) extraFonts.add(heroSettings.titleFont);
       if (heroSettings?.subtitleFont) extraFonts.add(heroSettings.subtitleFont);
-      if (servicesSettings?.titleFont) extraFonts.add(servicesSettings.titleFont);
+      if (servicesSettings?.titleFont)
+        extraFonts.add(servicesSettings.titleFont);
       if (servicesSettings?.subtitleFont)
         extraFonts.add(servicesSettings.subtitleFont);
       if (servicesSettings?.cardTitleFont)
@@ -227,8 +228,7 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
       if (aboutUsValuesSettings?.cardDescriptionFont)
         extraFonts.add(aboutUsValuesSettings.cardDescriptionFont);
       if (teamSettings?.titleFont) extraFonts.add(teamSettings.titleFont);
-      if (teamSettings?.subtitleFont)
-        extraFonts.add(teamSettings.subtitleFont);
+      if (teamSettings?.subtitleFont) extraFonts.add(teamSettings.subtitleFont);
       if (testimonialsSettings?.titleFont)
         extraFonts.add(testimonialsSettings.titleFont);
       if (testimonialsSettings?.subtitleFont)
@@ -283,14 +283,16 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
     if (studio?.config) {
       console.log(">>> [THEME] Carregando tema a partir do Banco de Dados");
       const config = studio.config as SiteConfigData;
-      const siteCustomization = config.siteCustomization || config.site_customization;
+      const siteCustomization =
+        config.siteCustomization || config.site_customization;
       const layoutGlobal = (siteCustomization?.layoutGlobal ||
         siteCustomization?.layout_global) as LayoutGlobalSettings | undefined;
 
       const siteColors = (layoutGlobal?.siteColors ||
         layoutGlobal?.cores_base) as Record<string, unknown> | undefined;
-      const siteFonts = (layoutGlobal?.fontes ||
-        layoutGlobal?.typography) as Record<string, unknown> | undefined;
+      const siteFonts = (layoutGlobal?.fontes || layoutGlobal?.typography) as
+        | Record<string, unknown>
+        | undefined;
       const badgeRecord =
         (siteColors?.specialtyBadge as Record<string, unknown>) ||
         (siteColors?.specialty_badge as Record<string, unknown>) ||
@@ -422,39 +424,53 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
           ?.cardBgColor ||
         cardBgFromFlow;
       if (cardBg) {
-        sectionStyles["--card-background"] =
-          cardBg as string;
+        sectionStyles["--card-background"] = cardBg as string;
       } else if (layoutGlobal?.card_bg_color) {
         sectionStyles["--card-background"] = layoutGlobal.card_bg_color;
       }
 
       // Coleta de Fontes Extras (Seções)
       const extraFonts = new Set<string>();
-      
+
       // Hero
       const hero = config.hero as Record<string, unknown> | undefined;
       const heroContent = hero?.content as Record<string, unknown> | undefined;
-      const heroAppearance = hero?.appearance as Record<string, unknown> | undefined;
-      
-      const heroTitleFont = (heroAppearance?.titleFont as string) || (heroContent?.titleFont as string) || (hero?.titleFont as string);
+      const heroAppearance = hero?.appearance as
+        | Record<string, unknown>
+        | undefined;
+
+      const heroTitleFont =
+        (heroAppearance?.titleFont as string) ||
+        (heroContent?.titleFont as string) ||
+        (hero?.titleFont as string);
       if (heroTitleFont) extraFonts.add(heroTitleFont);
-      
-      const heroSubtitleFont = (heroAppearance?.subtitleFont as string) || (heroContent?.subtitleFont as string) || (hero?.subtitleFont as string);
+
+      const heroSubtitleFont =
+        (heroAppearance?.subtitleFont as string) ||
+        (heroContent?.subtitleFont as string) ||
+        (hero?.subtitleFont as string);
       if (heroSubtitleFont) extraFonts.add(heroSubtitleFont);
 
       // Services
       const services = config.services as Record<string, unknown> | undefined;
-      const servicesAppearance = services?.appearance as Record<string, unknown> | undefined;
-      if (servicesAppearance?.titleFont) extraFonts.add(servicesAppearance.titleFont as string);
-      if (servicesAppearance?.subtitleFont) extraFonts.add(servicesAppearance.subtitleFont as string);
-      if (servicesAppearance?.cardTitleFont) extraFonts.add(servicesAppearance.cardTitleFont as string);
-      if (servicesAppearance?.cardDescriptionFont) extraFonts.add(servicesAppearance.cardDescriptionFont as string);
-      if (servicesAppearance?.cardPriceFont) extraFonts.add(servicesAppearance.cardPriceFont as string);
+      const servicesAppearance = services?.appearance as
+        | Record<string, unknown>
+        | undefined;
+      if (servicesAppearance?.titleFont)
+        extraFonts.add(servicesAppearance.titleFont as string);
+      if (servicesAppearance?.subtitleFont)
+        extraFonts.add(servicesAppearance.subtitleFont as string);
+      if (servicesAppearance?.cardTitleFont)
+        extraFonts.add(servicesAppearance.cardTitleFont as string);
+      if (servicesAppearance?.cardDescriptionFont)
+        extraFonts.add(servicesAppearance.cardDescriptionFont as string);
+      if (servicesAppearance?.cardPriceFont)
+        extraFonts.add(servicesAppearance.cardPriceFont as string);
 
-      return { 
-        colors: colorSettings, 
-        fonts: { ...fontSettings, extraFonts: Array.from(extraFonts) }, 
-        sectionStyles 
+      return {
+        colors: colorSettings,
+        fonts: { ...fontSettings, extraFonts: Array.from(extraFonts) },
+        sectionStyles,
       };
     }
 
@@ -496,9 +512,8 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
 
   const [colors, setColors] = useState<ColorSettings | null>(initialColors);
   const [fonts, setFonts] = useState<ExtendedFontSettings | null>(initialFonts);
-  const [sectionStyles, setSectionStyles] = useState<Record<string, string>>(
-    initialSectionStyles,
-  );
+  const [sectionStyles, setSectionStyles] =
+    useState<Record<string, string>>(initialSectionStyles);
 
   useEffect(() => {
     const { colors: c, fonts: f, sectionStyles: s } = loadSettings();
@@ -549,8 +564,8 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
       if (event.data.type === "UPDATE_COLORS") {
         setColors(event.data.settings);
       } else if (event.data.type === "UPDATE_TYPOGRAPHY") {
-        setFonts((prev) => 
-          prev ? { ...prev, ...event.data.settings } : event.data.settings
+        setFonts((prev) =>
+          prev ? { ...prev, ...event.data.settings } : event.data.settings,
         );
       } else if (event.data.type === "UPDATE_HERO_SETTINGS") {
         console.log(">>> [THEME] Recebido update HERO:", event.data.settings);
@@ -559,35 +574,94 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
           const current = prev || loadSettings().fonts;
           const newExtras = new Set(current.extraFonts || []);
           const settings = event.data.settings;
-          
+
           if (settings?.titleFont) {
-             console.log(">>> [THEME] Adicionando fonte extra (Hero Title):", settings.titleFont);
-             newExtras.add(settings.titleFont);
+            console.log(
+              ">>> [THEME] Adicionando fonte extra (Hero Title):",
+              settings.titleFont,
+            );
+            newExtras.add(settings.titleFont);
           }
           if (settings?.subtitleFont) {
-             console.log(">>> [THEME] Adicionando fonte extra (Hero Subtitle):", settings.subtitleFont);
-             newExtras.add(settings.subtitleFont);
+            console.log(
+              ">>> [THEME] Adicionando fonte extra (Hero Subtitle):",
+              settings.subtitleFont,
+            );
+            newExtras.add(settings.subtitleFont);
           }
-          
+
           return { ...current, extraFonts: Array.from(newExtras) };
         });
       } else if (event.data.type === "UPDATE_SERVICES_SETTINGS") {
-        console.log(">>> [THEME] Recebido update SERVICES:", event.data.settings);
+        console.log(
+          ">>> [THEME] Recebido update SERVICES:",
+          event.data.settings,
+        );
         setFonts((prev) => {
-           const current = prev || loadSettings().fonts;
-           const newExtras = new Set(current.extraFonts || []);
-           const settings = event.data.settings;
+          const current = prev || loadSettings().fonts;
+          const newExtras = new Set(current.extraFonts || []);
+          const settings = event.data.settings;
 
-            if (settings?.titleFont) newExtras.add(settings.titleFont);
-            if (settings?.subtitleFont) newExtras.add(settings.subtitleFont);
-            if (settings?.cardTitleFont) newExtras.add(settings.cardTitleFont);
-            if (settings?.cardDescriptionFont) newExtras.add(settings.cardDescriptionFont);
-            if (settings?.cardPriceFont) newExtras.add(settings.cardPriceFont);
-            
-            return { ...current, extraFonts: Array.from(newExtras) };
-       });
-     } else if (event.data.type === "UPDATE_EDITOR_STATE") {
+          if (settings?.titleFont) newExtras.add(settings.titleFont);
+          if (settings?.subtitleFont) newExtras.add(settings.subtitleFont);
+          if (settings?.cardTitleFont) newExtras.add(settings.cardTitleFont);
+          if (settings?.cardDescriptionFont)
+            newExtras.add(settings.cardDescriptionFont);
+          if (settings?.cardPriceFont) newExtras.add(settings.cardPriceFont);
+
+          return { ...current, extraFonts: Array.from(newExtras) };
+        });
+      } else if (
+        event.data.type === "UPDATE_TEAM_SETTINGS" ||
+        event.data.type === "UPDATE_TESTIMONIALS_SETTINGS" ||
+        event.data.type === "UPDATE_HOME_VALUES_SETTINGS" ||
+        event.data.type === "UPDATE_ABOUT_US_VALUES_SETTINGS" ||
+        event.data.type === "UPDATE_CTA_SETTINGS" ||
+        event.data.type === "UPDATE_HEADER_SETTINGS" ||
+        event.data.type === "UPDATE_FOOTER_SETTINGS" ||
+        event.data.type === "UPDATE_GALLERY_PREVIEW" ||
+        event.data.type === "UPDATE_GALLERY_SETTINGS" ||
+        event.data.type === "UPDATE_GALLERY_PAGE" ||
+        event.data.type === "UPDATE_GALLERY_PAGE_SETTINGS" ||
+        event.data.type === "UPDATE_STORY_SETTINGS" ||
+        event.data.type === "UPDATE_ABOUT_HERO_SETTINGS"
+      ) {
+        console.log(
+          `>>> [THEME] Recebido update para seção ${event.data.type}:`,
+          event.data.settings,
+        );
+        setFonts((prev) => {
+          const current = prev || loadSettings().fonts;
+          const newExtras = new Set(current.extraFonts || []);
+          const settings = event.data.settings;
+
+          if (!settings) return current;
+
+          // Mapeamento genérico de fontes comuns em seções
+          if (settings.titleFont) newExtras.add(settings.titleFont);
+          if (settings.subtitleFont) newExtras.add(settings.subtitleFont);
+          if (settings.cardTitleFont) newExtras.add(settings.cardTitleFont);
+          if (settings.cardDescriptionFont)
+            newExtras.add(settings.cardDescriptionFont);
+          if (settings.cardPriceFont) newExtras.add(settings.cardPriceFont);
+          if (settings.cardRoleFont) newExtras.add(settings.cardRoleFont);
+          if (settings.cardNameFont) newExtras.add(settings.cardNameFont);
+          if (settings.cardTextFont) newExtras.add(settings.cardTextFont);
+          if (settings.buttonFont) newExtras.add(settings.buttonFont);
+          if (settings.linksFont) newExtras.add(settings.linksFont);
+          if (settings.bodyFont) newExtras.add(settings.bodyFont);
+          if (settings.contentFont) newExtras.add(settings.contentFont);
+
+          return { ...current, extraFonts: Array.from(newExtras) };
+        });
+      } else if (
+        event.data.type === "UPDATE_EDITOR_STATE" ||
+        event.data.type === "UPDATE_SITE_DATA"
+      ) {
         // Quando o estado completo mudar, recarregamos tudo
+        console.log(
+          `>>> [THEME] Recebido ${event.data.type}, recarregando tema completo`,
+        );
         updateTheme();
       }
     };
@@ -609,7 +683,10 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
     // Forçar Injeção Direta no DOM (:root) e carregar fontes
     const applyToDocument = (doc: Document) => {
       const root = doc.documentElement;
-      console.log(">>> [THEME] Injetando estilos e fontes no documento:", fonts);
+      console.log(
+        ">>> [THEME] Injetando estilos e fontes no documento:",
+        fonts,
+      );
 
       // 1. Injetar Link do Google Fonts
       const fontFamilies = new Set<string>();
@@ -621,10 +698,10 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
         fontFamilies.add(fonts.subtitleFont.replace(/\s+/g, "+"));
       if (fonts.bodyFont && !defaultFonts.includes(fonts.bodyFont))
         fontFamilies.add(fonts.bodyFont.replace(/\s+/g, "+"));
-      
+
       // Adicionar fontes extras coletadas
       if (fonts.extraFonts) {
-        fonts.extraFonts.forEach(font => {
+        fonts.extraFonts.forEach((font) => {
           if (font && !defaultFonts.includes(font)) {
             fontFamilies.add(font.replace(/\s+/g, "+"));
           }
@@ -634,8 +711,10 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
       const familiesArray = Array.from(fontFamilies);
       if (familiesArray.length > 0) {
         const googleFontsUrl = `https://fonts.googleapis.com/css2?${familiesArray.map((f) => `family=${f}:wght@400;500;600;700;800;900`).join("&")}&display=swap`;
-        
-        let link = doc.getElementById("dynamic-google-fonts") as HTMLLinkElement;
+
+        let link = doc.getElementById(
+          "dynamic-google-fonts",
+        ) as HTMLLinkElement;
         if (!link) {
           link = doc.createElement("link");
           link.id = "dynamic-google-fonts";
@@ -649,8 +728,14 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
 
       // Fonts Variables
       if (fonts.bodyFont) {
-        root.style.setProperty("--font-body", `"${fonts.bodyFont}", sans-serif`);
-        root.style.setProperty("--font-sans", `"${fonts.bodyFont}", sans-serif`);
+        root.style.setProperty(
+          "--font-body",
+          `"${fonts.bodyFont}", sans-serif`,
+        );
+        root.style.setProperty(
+          "--font-sans",
+          `"${fonts.bodyFont}", sans-serif`,
+        );
       }
       if (fonts.headingFont) {
         root.style.setProperty("--font-title", `"${fonts.headingFont}", serif`);
@@ -710,7 +795,9 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
     // TASK 3: Sincronização de Iframe (Preview)
     // 1. Aplica imediatamente se o documento já estiver pronto
     if (iframeRef?.current?.contentDocument) {
-      console.log(">>> [THEME_IFRAME] Injetando variáveis CSS no Iframe (Imediato)");
+      console.log(
+        ">>> [THEME_IFRAME] Injetando variáveis CSS no Iframe (Imediato)",
+      );
       applyToDocument(iframeRef.current.contentDocument);
     }
 
@@ -718,7 +805,9 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
     const iframe = iframeRef?.current;
     const handleIframeLoad = () => {
       if (iframe?.contentDocument) {
-        console.log(">>> [THEME_IFRAME] Injetando variáveis CSS no Iframe (Evento Load)");
+        console.log(
+          ">>> [THEME_IFRAME] Injetando variáveis CSS no Iframe (Evento Load)",
+        );
         applyToDocument(iframe.contentDocument);
       }
     };
@@ -741,10 +830,10 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
     fontFamilies.add(fonts.subtitleFont.replace(/\s+/g, "+"));
   if (fonts.bodyFont && !defaultFonts.includes(fonts.bodyFont))
     fontFamilies.add(fonts.bodyFont.replace(/\s+/g, "+"));
-  
+
   // Adicionar fontes extras coletadas
   if (fonts.extraFonts) {
-    fonts.extraFonts.forEach(font => {
+    fonts.extraFonts.forEach((font) => {
       if (font && !defaultFonts.includes(font)) {
         fontFamilies.add(font.replace(/\s+/g, "+"));
       }

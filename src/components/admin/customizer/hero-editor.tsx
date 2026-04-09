@@ -1,6 +1,19 @@
 "use client";
 
-import { Award, Crown, Flower2, Gem, Heart, Moon, Smile, Sparkles, Star, Sun } from "lucide-react";
+import {
+  Award,
+  Crown,
+  Flower2,
+  Gem,
+  Heart,
+  Loader2,
+  Moon,
+  Smile,
+  Sparkles,
+  Star,
+  Sun,
+} from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +26,11 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BackgroundEditor, type BackgroundSettings } from "../site_editor/components/BackgroundEditor";
+import { renderSafeText } from "@/lib/utils";
+import {
+  BackgroundEditor,
+  type BackgroundSettings,
+} from "../site_editor/components/BackgroundEditor";
 import { SectionSubtitleEditor } from "../site_editor/components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../site_editor/components/SectionTitleEditor";
 
@@ -80,11 +97,15 @@ export interface HeroEditorProps {
     [key: string]: unknown;
   };
   onUpdate: (updates: Partial<HeroEditorProps["settings"]>) => void;
-  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
+  onUpdateBackground?: (
+    updates: Partial<BackgroundSettings>,
+    sectionId?: string,
+  ) => void;
   onHighlight?: (sectionId: string) => void;
   onReset?: () => void;
   hasChanges?: boolean;
   onSave?: () => void;
+  isSaving?: boolean;
 }
 
 export function HeroEditor({
@@ -94,18 +115,35 @@ export function HeroEditor({
   onReset: _onReset,
   hasChanges,
   onSave: externalOnSave,
+  isSaving,
 }: HeroEditorProps) {
+  const [localIsSaving, setLocalIsSaving] = useState(false);
+  const isLoading = isSaving || localIsSaving;
+
+  const handleSave = async () => {
+    if (!externalOnSave || isLoading) return;
+    setLocalIsSaving(true);
+    try {
+      await externalOnSave();
+    } finally {
+      setLocalIsSaving(false);
+    }
+  };
+
   // Helper to ensure updates are propagated correctly
   const handleUpdate = (updates: Partial<HeroEditorProps["settings"]>) => {
     console.log(">>> [HeroEditor] handleUpdate chamado com:", updates);
-    console.log(">>> [HeroEditor] Estado ATUAL antes da atualização:", settings);
+    console.log(
+      ">>> [HeroEditor] Estado ATUAL antes da atualização:",
+      settings,
+    );
     onUpdate({ ...settings, ...updates });
   };
 
   console.log(">>> [HeroEditor] RENDER: settings.bgImage =", settings.bgImage);
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <div className="space-y-4 sm:space-y-6 relative">
       <Tabs defaultValue="content" className="w-full">
         <TabsList className="grid w-full grid-cols-2 h-8 sm:h-9 mb-3 sm:mb-4">
           <TabsTrigger value="content" className="text-[11px] sm:text-xs">
@@ -116,26 +154,37 @@ export function HeroEditor({
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="content" className="space-y-3 sm:space-y-4 mt-0">
+        <TabsContent
+          value="content"
+          className="space-y-3 sm:space-y-4 mt-0 relative z-10"
+        >
           {/* Badge Editor */}
           <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Badge de Destaque</Label>
-                <p className="text-[10px] text-muted-foreground">Exibe um selo acima do título</p>
+                <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Badge de Destaque
+                </Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Exibe um selo acima do título
+                </p>
               </div>
               <Switch
                 checked={settings.showBadge !== false}
-                onCheckedChange={(checked) => handleUpdate({ showBadge: checked })}
+                onCheckedChange={(checked) =>
+                  handleUpdate({ showBadge: checked })
+                }
               />
             </div>
 
             {settings.showBadge !== false && (
               <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">Texto do Badge</Label>
+                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                    Texto do Badge
+                  </Label>
                   <Input
-                    value={typeof settings.badge === 'object' ? ((settings.badge as unknown as { text?: string }).text || "") : (settings.badge || "")}
+                    value={renderSafeText(settings.badge)}
                     onChange={(e) => handleUpdate({ badge: e.target.value })}
                     placeholder="Ex: Especialistas em Design"
                     className="h-8 text-xs"
@@ -144,7 +193,9 @@ export function HeroEditor({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">Ícone</Label>
+                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                      Ícone
+                    </Label>
                     <Select
                       value={settings.badgeIcon || "Sparkles"}
                       onValueChange={(v) => handleUpdate({ badgeIcon: v })}
@@ -154,7 +205,11 @@ export function HeroEditor({
                       </SelectTrigger>
                       <SelectContent>
                         {iconOptions.map((opt) => (
-                          <SelectItem key={opt.name} value={opt.name} className="text-xs">
+                          <SelectItem
+                            key={opt.name}
+                            value={opt.name}
+                            className="text-xs"
+                          >
                             <div className="flex items-center gap-2">
                               <opt.icon className="w-3 h-3" />
                               <span>{opt.name}</span>
@@ -166,17 +221,23 @@ export function HeroEditor({
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">Cor do Badge</Label>
+                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                      Cor do Badge
+                    </Label>
                     <div className="flex gap-2">
                       <Input
                         type="color"
                         value={settings.badgeColor || "#000000"}
-                        onChange={(e) => handleUpdate({ badgeColor: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdate({ badgeColor: e.target.value })
+                        }
                         className="h-8 w-8 p-0 border-none bg-transparent"
                       />
                       <Input
                         value={settings.badgeColor || ""}
-                        onChange={(e) => handleUpdate({ badgeColor: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdate({ badgeColor: e.target.value })
+                        }
                         placeholder="#000000"
                         className="h-8 text-[10px] uppercase"
                       />
@@ -185,17 +246,23 @@ export function HeroEditor({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">Cor do Texto do Badge</Label>
+                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                    Cor do Texto do Badge
+                  </Label>
                   <div className="flex gap-2">
                     <Input
                       type="color"
                       value={settings.badgeTextColor || "#000000"}
-                      onChange={(e) => handleUpdate({ badgeTextColor: e.target.value })}
+                      onChange={(e) =>
+                        handleUpdate({ badgeTextColor: e.target.value })
+                      }
                       className="h-8 w-8 p-0 border-none bg-transparent"
                     />
                     <Input
                       value={settings.badgeTextColor || ""}
-                      onChange={(e) => handleUpdate({ badgeTextColor: e.target.value })}
+                      onChange={(e) =>
+                        handleUpdate({ badgeTextColor: e.target.value })
+                      }
                       placeholder="#000000"
                       className="h-8 text-[10px] uppercase"
                     />
@@ -213,7 +280,9 @@ export function HeroEditor({
               handleUpdate({
                 ...(updates.title !== undefined && { title: updates.title }),
                 ...(updates.font !== undefined && { titleFont: updates.font }),
-                ...(updates.color !== undefined && { titleColor: updates.color }),
+                ...(updates.color !== undefined && {
+                  titleColor: updates.color,
+                }),
               })
             }
           />
@@ -239,49 +308,73 @@ export function HeroEditor({
 
           {/* Buttons Editor */}
           <div className="space-y-4 pt-4 border-t">
-            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Botões de Ação</Label>
-            
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Botões de Ação
+            </Label>
+
             <div className="space-y-4 p-4 rounded-lg border bg-muted/30">
               <div className="space-y-3">
-                <Label className="text-[10px] uppercase font-bold text-primary">Botão Principal</Label>
+                <Label className="text-[10px] uppercase font-bold text-primary">
+                  Botão Principal
+                </Label>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">Texto</Label>
+                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                    Texto
+                  </Label>
                   <Input
-                    value={typeof settings.primaryButton === 'object' ? ((settings.primaryButton as unknown as { text?: string }).text || "") : (settings.primaryButton || "")}
-                    onChange={(e) => handleUpdate({ primaryButton: e.target.value })}
+                    value={renderSafeText(settings.primaryButton)}
+                    onChange={(e) =>
+                      handleUpdate({ primaryButton: e.target.value })
+                    }
                     className="h-8 text-xs"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">Cor de Fundo</Label>
+                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                      Cor de Fundo
+                    </Label>
                     <div className="flex gap-2">
                       <Input
                         type="color"
                         value={settings.primaryButtonColor || "#000000"}
-                        onChange={(e) => handleUpdate({ primaryButtonColor: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdate({ primaryButtonColor: e.target.value })
+                        }
                         className="h-8 w-8 p-0 border-none bg-transparent"
                       />
                       <Input
                         value={settings.primaryButtonColor || ""}
-                        onChange={(e) => handleUpdate({ primaryButtonColor: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdate({ primaryButtonColor: e.target.value })
+                        }
                         placeholder="#000000"
                         className="h-8 text-[10px] uppercase"
                       />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">Cor do Texto</Label>
+                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                      Cor do Texto
+                    </Label>
                     <div className="flex gap-2">
                       <Input
                         type="color"
                         value={settings.primaryButtonTextColor || "#ffffff"}
-                        onChange={(e) => handleUpdate({ primaryButtonTextColor: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdate({
+                            primaryButtonTextColor: e.target.value,
+                          })
+                        }
                         className="h-8 w-8 p-0 border-none bg-transparent"
                       />
                       <Input
                         value={settings.primaryButtonTextColor || ""}
-                        onChange={(e) => handleUpdate({ primaryButtonTextColor: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdate({
+                            primaryButtonTextColor: e.target.value,
+                          })
+                        }
                         placeholder="#ffffff"
                         className="h-8 text-[10px] uppercase"
                       />
@@ -291,45 +384,67 @@ export function HeroEditor({
               </div>
 
               <div className="space-y-3 pt-4 border-t">
-                <Label className="text-[10px] uppercase font-bold text-primary">Botão Secundário</Label>
+                <Label className="text-[10px] uppercase font-bold text-primary">
+                  Botão Secundário
+                </Label>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">Texto</Label>
+                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                    Texto
+                  </Label>
                   <Input
-                    value={typeof settings.secondaryButton === 'object' ? ((settings.secondaryButton as unknown as { text?: string }).text || "") : (settings.secondaryButton || "")}
-                    onChange={(e) => handleUpdate({ secondaryButton: e.target.value })}
+                    value={renderSafeText(settings.secondaryButton)}
+                    onChange={(e) =>
+                      handleUpdate({ secondaryButton: e.target.value })
+                    }
                     className="h-8 text-xs"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">Cor da Borda/Texto</Label>
+                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                      Cor da Borda/Texto
+                    </Label>
                     <div className="flex gap-2">
                       <Input
                         type="color"
                         value={settings.secondaryButtonColor || "#000000"}
-                        onChange={(e) => handleUpdate({ secondaryButtonColor: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdate({ secondaryButtonColor: e.target.value })
+                        }
                         className="h-8 w-8 p-0 border-none bg-transparent"
                       />
                       <Input
                         value={settings.secondaryButtonColor || ""}
-                        onChange={(e) => handleUpdate({ secondaryButtonColor: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdate({ secondaryButtonColor: e.target.value })
+                        }
                         placeholder="#000000"
                         className="h-8 text-[10px] uppercase"
                       />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">Cor do Texto</Label>
+                    <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                      Cor do Texto
+                    </Label>
                     <div className="flex gap-2">
                       <Input
                         type="color"
                         value={settings.secondaryButtonTextColor || "#000000"}
-                        onChange={(e) => handleUpdate({ secondaryButtonTextColor: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdate({
+                            secondaryButtonTextColor: e.target.value,
+                          })
+                        }
                         className="h-8 w-8 p-0 border-none bg-transparent"
                       />
                       <Input
                         value={settings.secondaryButtonTextColor || ""}
-                        onChange={(e) => handleUpdate({ secondaryButtonTextColor: e.target.value })}
+                        onChange={(e) =>
+                          handleUpdate({
+                            secondaryButtonTextColor: e.target.value,
+                          })
+                        }
                         placeholder="#000000"
                         className="h-8 text-[10px] uppercase"
                       />
@@ -341,8 +456,11 @@ export function HeroEditor({
           </div>
         </TabsContent>
 
-        <TabsContent value="style" className="space-y-3 sm:space-y-4 mt-0">
-           <BackgroundEditor
+        <TabsContent
+          value="style"
+          className="space-y-3 sm:space-y-4 mt-0 relative z-10"
+        >
+          <BackgroundEditor
             settings={{
               bgType: settings.bgType,
               bgColor: settings.bgColor,
@@ -354,34 +472,41 @@ export function HeroEditor({
               imageY: settings.imageY,
               appearance: settings.appearance,
             }}
-          onUpdate={(updates) => {
-            if (onUpdateBackground) {
-              onUpdateBackground(updates, "hero");
-            } else {
-              handleUpdate(updates);
-            }
-          }}
-          section="hero"
-        />
-         </TabsContent>
+            onUpdate={(updates) => {
+              if (onUpdateBackground) {
+                onUpdateBackground(updates, "hero");
+              } else {
+                handleUpdate(updates);
+              }
+            }}
+            section="hero"
+          />
+        </TabsContent>
       </Tabs>
 
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
-          onClick={externalOnSave}
-          className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
-            hasChanges
+          disabled={!hasChanges || isLoading}
+          onClick={handleSave}
+          className={`w-full h-11 text-sm font-bold transition-all duration-300 relative ${
+            hasChanges && !isLoading
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
           }`}
         >
-          {hasChanges ? (
-            "Salvar Alterações"
-          ) : (
-            <span className="opacity-50">Nenhuma alteração</span>
-          )}
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : hasChanges ? (
+              "Salvar Alterações"
+            ) : (
+              <span className="opacity-50">Nenhuma alteração</span>
+            )}
+          </div>
         </Button>
       </div>
     </div>

@@ -35,6 +35,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -94,6 +95,8 @@ interface UserDetails {
     name: string;
     slug: string;
     active: boolean;
+    subscriptionStatus?: string;
+    trialEndsAt?: string | null;
   } | null;
   stats: {
     totalAppointments: number;
@@ -128,6 +131,9 @@ export default function MasterDashboardPage() {
   console.log(">>> [MASTER_PAGE] Renderizando Dashboard Master...");
   const [users, setUsers] = useState<UserMasterData[]>([]);
   const [stats, setStats] = useState<MasterStats | null>(null);
+  const [pricing, setPricing] = useState<{ price: number; updatedAt: string } | null>(null);
+  const [isUpdatingPrice, setIsUpdatingPrice] = useState(false);
+  const [newPrice, setNewPrice] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -178,6 +184,23 @@ export default function MasterDashboardPage() {
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setStats(statsData);
+      }
+
+      // 1.1. Buscar Preço da Mensalidade
+      try {
+        const pricingRes = await customFetch(
+          `${API_BASE_URL}/api/admin/master/settings/pricing`,
+          {
+            credentials: "include",
+          },
+        );
+        if (pricingRes.ok) {
+          const pricingData = await pricingRes.json();
+          setPricing(pricingData);
+          setNewPrice(pricingData.price.toString());
+        }
+      } catch (error) {
+        console.error(">>> [MASTER_ADMIN] Erro ao buscar preço:", error);
       }
 
       // 2. Buscar Usuários e Estúdios
@@ -475,6 +498,57 @@ export default function MasterDashboardPage() {
     }
   };
 
+  const handleUpdatePrice = async () => {
+    const priceValue = parseFloat(newPrice.replace(",", "."));
+    if (isNaN(priceValue)) {
+      toast({
+        title: "Valor Inválido",
+        description: "Por favor, insira um preço válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUpdatingPrice(true);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/settings/pricing`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ price: priceValue }),
+        },
+      );
+
+      if (response.status === 403) return handleForbidden();
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Erro ao atualizar preço");
+      }
+
+      setPricing({
+        price: result.price,
+        updatedAt: new Date().toISOString(),
+      });
+
+      toast({
+        title: "Sucesso",
+        description: "Preço da mensalidade atualizado com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro na Atualização",
+        description: error.message || "Não foi possível atualizar o preço.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingPrice(false);
+    }
+  };
+
   const filteredUsers = users
     .filter(
       (u) =>
@@ -520,6 +594,69 @@ export default function MasterDashboardPage() {
 
       {/* Cards de Estatísticas */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Preço da Mensalidade
+            </CardTitle>
+            <CreditCard className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold">
+                {pricing ? (
+                  new Intl.NumberFormat("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  }).format(pricing.price)
+                ) : (
+                  "..."
+                )}
+              </span>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Editar Preço da Mensalidade</DialogTitle>
+                    <DialogDescription>
+                      Este valor será aplicado a todas as novas cobranças e
+                      exibido na landing page.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="price">Novo Preço (R$)</Label>
+                      <Input
+                        id="price"
+                        type="text"
+                        placeholder="Ex: 49,90"
+                        value={newPrice}
+                        onChange={(e) => setNewPrice(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      onClick={handleUpdatePrice}
+                      disabled={isUpdatingPrice}
+                    >
+                      {isUpdatingPrice ? "Salvando..." : "Salvar Alteração"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {pricing
+                ? `Atualizado em ${new Date(pricing.updatedAt).toLocaleDateString("pt-BR")}`
+                : "Plano Pro / Automático"}
+            </p>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -961,6 +1098,34 @@ export default function MasterDashboardPage() {
                         <ExternalLink className="h-3 w-3" />
                       </a>
                     </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground uppercase">
+                        Status Interno
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            userDetails?.business?.subscriptionStatus === "active" ||
+                            userDetails?.business?.subscriptionStatus === "trial" ||
+                            userDetails?.business?.subscriptionStatus === "trialing"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {userDetails?.business?.subscriptionStatus || "N/A"}
+                        </span>
+                      </div>
+                    </div>
+                    {userDetails?.business?.trialEndsAt && (
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground uppercase">
+                          Fim do Trial
+                        </Label>
+                        <p className="text-xs font-medium">
+                          {new Date(userDetails.business.trialEndsAt).toLocaleDateString("pt-BR")}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-300 text-center">
@@ -1058,12 +1223,12 @@ export default function MasterDashboardPage() {
                       <div className="flex items-center gap-2">
                         <span
                           className={`px-2 py-0.5 rounded text-xs font-bold ${
-                            userDetails?.financial?.status === "Ativo"
+                            userDetails?.financial?.status === "Ativo" || userDetails?.financial?.status === "Teste"
                               ? "bg-green-100 text-green-700"
                               : userDetails?.financial?.status === "Vencido"
                                 ? "bg-red-100 text-red-700"
                                 : "bg-slate-100 text-slate-700"
-                          }`}
+                          } font-medium`}
                         >
                           {userDetails?.financial?.status || "Não identificado"}
                         </span>

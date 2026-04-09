@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import {
   ImageIcon,
   LayoutGrid,
+  Loader2,
   MousePointer2,
   RotateCcw,
   SlidersHorizontal,
@@ -34,7 +36,8 @@ interface GalleryEditorProps {
   settings: GallerySettings;
   onUpdate: (updates: Partial<GallerySettings>) => void;
   onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
-  onSave?: () => void;
+  onSave?: () => Promise<void> | void;
+  isSaving?: boolean;
   hasChanges?: boolean;
   sectionId?: string;
   onReset?: () => void;
@@ -45,10 +48,25 @@ export function GalleryEditor({
   onUpdate,
   onUpdateBackground,
   onSave: externalOnSave,
+  isSaving,
   hasChanges,
   sectionId,
   onReset,
 }: GalleryEditorProps) {
+  const [localIsSaving, setLocalIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!externalOnSave) return;
+    setLocalIsSaving(true);
+    try {
+      await externalOnSave();
+    } finally {
+      setLocalIsSaving(false);
+    }
+  };
+
+  const isLoading = isSaving || localIsSaving;
+
   if (!settings) return null;
 
   return (
@@ -391,20 +409,27 @@ export function GalleryEditor({
 
         <Button
           type="button"
-          disabled={!hasChanges}
-          onClick={externalOnSave}
+          disabled={!hasChanges || isLoading}
+          onClick={handleSave}
           className={cn(
-            "w-full h-11 text-sm font-bold transition-all duration-300",
-            hasChanges
+            "w-full h-11 text-sm font-bold transition-all duration-300 relative",
+            hasChanges && !isLoading
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? (
-            "Salvar Alterações"
-          ) : (
-            <span className="opacity-50">Nenhuma alteração</span>
-          )}
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : hasChanges ? (
+              "Salvar Alterações"
+            ) : (
+              <span className="opacity-50">Nenhuma alteração</span>
+            )}
+          </div>
         </Button>
       </div>
     </div>

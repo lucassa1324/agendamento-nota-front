@@ -1,9 +1,7 @@
-import type { RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
-import type {
-  SiteConfigData,
-} from "@/lib/site-config-types";
+import type { SiteConfigData } from "@/lib/site-config-types";
 import { useEditorActions } from "./use-editor-actions";
 import { useEditorApi } from "./use-editor-api";
 import { useEditorChanges } from "./use-editor-changes";
@@ -17,19 +15,36 @@ export type { SiteConfigData };
 
 export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
   const { toast } = useToast();
-  const { studio, updateStudioInfo } = useStudio();
+  const { studio, updateStudioInfo, refreshTrigger } = useStudio();
   const local = useEditorLocal();
   const state = useEditorState();
-  
+  const lastRefreshTriggerRef = useRef(refreshTrigger);
+
   const { checkShouldRecoverDraft } = useDraftRecovery();
-  
+
   const { loadExternalConfig } = useEditorConfigLoader({
     local,
     state,
     checkShouldRecoverDraft,
     slug: studio?.slug,
   });
-  
+
+  // Sincroniza o estado do editor quando o studio no contexto mudar.
+  // Só força atualização de `lastApplied` quando houver refresh manual.
+  useEffect(() => {
+    if (studio?.config) {
+      const forceSyncApplied = lastRefreshTriggerRef.current !== refreshTrigger;
+      console.log(
+        `>>> [useSiteEditor] Studio config mudou. forceSyncApplied=${forceSyncApplied}, trigger=${refreshTrigger}`,
+      );
+      loadExternalConfig(
+        studio.config as unknown as SiteConfigData,
+        forceSyncApplied,
+      );
+      lastRefreshTriggerRef.current = refreshTrigger;
+    }
+  }, [studio?.config, refreshTrigger, loadExternalConfig]);
+
   const {
     previewHeroSettings,
     previewAboutHeroSettings,
@@ -51,11 +66,11 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     previewBookingTimeSettings,
     previewBookingFormSettings,
     previewBookingConfirmationSettings,
-  } = useEditorSync({ 
-    iframeRef, 
-    state, 
-    pageVisibility: state.pageVisibility, 
-    visibleSections: state.visibleSections 
+  } = useEditorSync({
+    iframeRef,
+    state,
+    pageVisibility: state.pageVisibility,
+    visibleSections: state.visibleSections,
   });
 
   const {
@@ -246,6 +261,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setters,
     setIsDirty: state.setIsDirty,
     saveLocalDrafts: local.saveLocalDrafts,
+    clearLocalDrafts: local.clearLocalDrafts,
     updateStudioInfo,
   });
 

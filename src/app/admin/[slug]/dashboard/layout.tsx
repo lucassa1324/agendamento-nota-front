@@ -7,7 +7,6 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { BackendTrigger } from "@/components/admin/BackendTrigger";
 import { SubscriptionBlockScreen } from "@/components/admin/subscription-block-screen";
 import { TrialBanner } from "@/components/admin/trial-banner";
-import { VerificationBanner } from "@/components/admin/verification-banner";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,6 +57,7 @@ interface AuthUser {
   email: string;
   slug?: string;
   role?: string;
+  emailVerified?: boolean;
   business?: {
     id?: string;
     slug?: string;
@@ -78,7 +78,11 @@ function AdminLayoutContent({
   const slug = propSlug;
 
   const { data: session, isPending: isLoadingSession } = useSession();
-  const { studio, isLoading: isLoadingStudio, error: studioError } = useStudio();
+  const {
+    studio,
+    isLoading: isLoadingStudio,
+    error: studioError,
+  } = useStudio();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [adminUser, setAdminUser] = useState<{
@@ -86,6 +90,7 @@ function AdminLayoutContent({
     name: string;
   } | null>(null);
   const [billingRequiredDetected, setBillingRequiredDetected] = useState(false);
+  const isOnboarding = pathname?.includes("/dashboard/onboarding");
 
   useEffect(() => {
     // Só age quando o loading inicial do better-auth terminar
@@ -150,6 +155,22 @@ function AdminLayoutContent({
         return;
       }
 
+      // NOVO: BLOQUEIO DE E-MAIL NÃO VERIFICADO
+      // Bloqueamos acesso ao dashboard se o e-mail não estiver verificado
+      // Exceção: Super Admin ou e-mail do proprietário
+      if (
+        user.emailVerified === false &&
+        user.role !== "SUPER_ADMIN" &&
+        user.email !== "lucassa1324@gmail.com"
+      ) {
+        console.warn(
+          ">>> [DASHBOARD_LAYOUT] E-mail não verificado. Bloqueando acesso ao dashboard.",
+        );
+        localStorage.setItem("pending_verification_email", user.email || "");
+        router.push("/admin/pending-verification");
+        return;
+      }
+
       // Se for um Super Admin tentando acessar um dashboard de estúdio, permitimos?
       // Pela regra de negócio, o Super Admin deve ir para /admin/master.
       if (user.role === "SUPER_ADMIN") {
@@ -161,6 +182,21 @@ function AdminLayoutContent({
       }
 
       const businessSlug = user?.business?.slug || user?.slug;
+
+      const hasCompletedOnboarding = Boolean(
+        (session.user as { hasCompletedOnboarding?: boolean })
+          ?.hasCompletedOnboarding,
+      );
+
+      if (!hasCompletedOnboarding && !isOnboarding && businessSlug) {
+        router.push(`/admin/${businessSlug}/dashboard/onboarding`);
+        return;
+      }
+
+      if (hasCompletedOnboarding && isOnboarding && businessSlug) {
+        router.push(`/admin/${businessSlug}/dashboard/overview`);
+        return;
+      }
 
       if (businessSlug && businessSlug !== slug) {
         console.warn(
@@ -178,7 +214,7 @@ function AdminLayoutContent({
       });
       setIsCheckingSession(false);
     }
-  }, [session, isLoadingSession, slug, router]);
+  }, [session, isLoadingSession, slug, router, isOnboarding]);
 
   const handleLogout = async () => {
     await signOut();
@@ -228,10 +264,12 @@ function AdminLayoutContent({
   if (studioError && !isMaster && !isBillingError) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">
-        <h2 className="text-2xl font-bold text-destructive mb-2">Erro ao carregar estúdio</h2>
+        <h2 className="text-2xl font-bold text-destructive mb-2">
+          Erro ao carregar estúdio
+        </h2>
         <p className="text-muted-foreground mb-6">
-          {studioError === "Studio não encontrado" 
-            ? "O estúdio especificado na URL não foi encontrado." 
+          {studioError === "Studio não encontrado"
+            ? "O estúdio especificado na URL não foi encontrado."
             : `Houve um problema ao carregar os dados: ${studioError}`}
         </p>
         <button
@@ -279,9 +317,11 @@ function AdminLayoutContent({
       )}
 
       {/* Sidebar Desktop */}
-      <div className="hidden lg:block">
-        <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
-      </div>
+      {!isPersonalizacao && (
+        <div className="hidden lg:block shrink-0">
+          <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -292,7 +332,6 @@ function AdminLayoutContent({
           )}
         >
           <BackendTrigger />
-          <VerificationBanner />
           <TrialBanner />
           {shouldBlockAccess ? (
             <SubscriptionBlockScreen status={blockStatus} />

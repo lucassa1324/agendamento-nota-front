@@ -1,6 +1,13 @@
 "use client";
 
-import { CheckCircle2, ExternalLink, Search, ShieldCheck } from "lucide-react";
+import {
+  CheckCircle2,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AccessReleaseModal } from "@/components/admin/access-release-modal";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +61,7 @@ export default function MasterBusinessesPage() {
   const [selectedCompany, setSelectedCompany] =
     useState<CompanyMasterData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchCompanies = useCallback(async () => {
@@ -105,6 +113,45 @@ export default function MasterBusinessesPage() {
     setIsModalOpen(true);
   };
 
+  const handleSync = async (companyId: string) => {
+    setSyncingId(companyId);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/companies/${companyId}/sync`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Falha ao sincronizar");
+      }
+
+      toast({
+        title:
+          data.status === "active"
+            ? "Pagamento Confirmado"
+            : "Sincronização Concluída",
+        description: data.message,
+        variant: data.status === "active" ? "default" : "destructive",
+      });
+
+      fetchCompanies();
+    } catch (error) {
+      console.error("Erro ao sincronizar:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível sincronizar com o Asaas.",
+        variant: "destructive",
+      });
+    } finally {
+      setSyncingId(null);
+    }
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedCompany(null);
@@ -130,20 +177,33 @@ export default function MasterBusinessesPage() {
           : c.accessType !== "manual",
     );
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
+  const accessTypeMap: Record<string, string> = {
+    automatic: "Automático",
+    manual: "Manual",
+  };
+
+  const getStatusBadge = (company: CompanyMasterData) => {
+    // Prioridade 1: Se o acesso está inativo manualmente, mostrar como pendente
+    if (!company.active) {
+      return <Badge variant="destructive">Pagamento Pendente</Badge>;
+    }
+
+    switch (company.subscriptionStatus) {
       case "active":
         return <Badge className="bg-green-500 hover:bg-green-600">Ativo</Badge>;
       case "trialing":
+      case "trial":
         return <Badge className="bg-blue-500 hover:bg-blue-600">Trial</Badge>;
+      case "extended_trial":
+        return <Badge variant="outline">Trial Estendido</Badge>;
       case "past_due":
-        return <Badge variant="destructive">Pagamento Pendente</Badge>;
+        return <Badge variant="destructive">Vencido</Badge>;
       case "unpaid":
         return <Badge variant="destructive">Não Pago</Badge>;
       case "canceled":
         return <Badge variant="secondary">Cancelado</Badge>;
       default:
-        return <Badge variant="outline">{status}</Badge>;
+        return <Badge variant="outline">{company.subscriptionStatus}</Badge>;
     }
   };
 
@@ -186,7 +246,8 @@ export default function MasterBusinessesPage() {
                   <SelectItem value="all">Todos status</SelectItem>
                   <SelectItem value="active">Ativas</SelectItem>
                   <SelectItem value="trialing">Trial</SelectItem>
-                  <SelectItem value="past_due">Pagamento pendente</SelectItem>
+                  <SelectItem value="extended_trial">Trial Estendido</SelectItem>
+                  <SelectItem value="past_due">Vencido</SelectItem>
                   <SelectItem value="unpaid">Não pago</SelectItem>
                   <SelectItem value="canceled">Canceladas</SelectItem>
                 </SelectContent>
@@ -244,17 +305,36 @@ export default function MasterBusinessesPage() {
                         )}
                       </TableCell>
                       <TableCell>{company.slug}</TableCell>
+                      <TableCell>{getStatusBadge(company)}</TableCell>
                       <TableCell>
-                        {getStatusBadge(company.subscriptionStatus)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {company.accessType || "Padrão"}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">
+                            {accessTypeMap[company.accessType] || "Automático"}
+                          </Badge>
+                          {company.accessType === "automatic" && (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleSync(company.id)}
+                                disabled={syncingId === company.id}
+                                title="Sincronizar com Asaas"
+                              >
+                                {syncingId === company.id ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-3 w-3" />
+                                )}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {company.subscriptionStatus !== "active" ? (
+                          {company.subscriptionStatus !== "active" ||
+                          !company.active ? (
                             <Button
                               size="sm"
                               variant="default"

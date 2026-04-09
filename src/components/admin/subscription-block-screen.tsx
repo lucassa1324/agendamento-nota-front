@@ -2,7 +2,7 @@
 
 import { AlertTriangle, CreditCard, Loader2, LogOut, User } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { signOut, useSession } from "@/lib/auth-client";
+import {
+  API_BASE_URL,
+  authClient,
+  signOut,
+  useSession,
+} from "@/lib/auth-client";
 
 interface SubscriptionBlockScreenProps {
   status: string;
@@ -26,8 +31,102 @@ export function SubscriptionBlockScreen({
   const params = useParams();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [price, setPrice] = useState<number>(49.9);
 
   const slug = params?.slug as string;
+
+  const handleAccessReleased = useCallback(
+    async (message: string) => {
+      toast.success(message);
+      try {
+        await authClient.getSession();
+      } catch (error) {
+        console.error("Erro ao atualizar sessão:", error);
+      }
+      
+      // Pequeno delay para garantir que o toast seja lido e a sessão atualizada
+      setTimeout(() => {
+        if (slug) {
+          // Usa window.location.href para forçar um recarregamento completo da dashboard
+          // Isso limpa qualquer cache do middleware ou do Next.js
+          window.location.href = `/admin/${slug}/dashboard`;
+          return;
+        }
+        window.location.reload();
+      }, 1500);
+    },
+    [slug],
+  );
+
+  useEffect(() => {
+    // Tenta sincronizar automaticamente ao abrir a tela de bloqueio
+    const autoSync = async () => {
+      console.log(
+        ">>> [SUBSCRIPTION_BLOCK] Tentando sincronização automática...",
+      );
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/business/sync`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("better-auth.session_token")}`,
+          },
+        });
+        const data = await response.json();
+        if (data.success) {
+          await handleAccessReleased(
+            "Pagamento identificado! Liberando acesso...",
+          );
+          return true;
+        }
+      } catch (err) {
+        console.error("Erro no auto-sync:", err);
+      }
+      return false;
+    };
+
+    autoSync();
+
+    // Configura polling para verificar o pagamento periodicamente (a cada 10 segundos)
+    // Isso evita que o usuário precise apertar F5 manualmente
+    const pollInterval = setInterval(async () => {
+      console.log(">>> [SUBSCRIPTION_BLOCK] Polling de verificação...");
+      const success = await autoSync();
+      if (success) {
+        clearInterval(pollInterval);
+      }
+    }, 10000); // 10 segundos
+
+    const fetchPrice = async () => {
+      try {
+        console.log(">>> [SUBSCRIPTION_BLOCK] Buscando preço dinâmico...");
+        const response = await fetch(
+          `${API_BASE_URL}/api/business/settings/pricing?t=${Date.now()}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          },
+        );
+        if (response.ok) {
+          const data = await response.json();
+          console.log(">>> [SUBSCRIPTION_BLOCK] Preço recebido:", data.price);
+          if (data.price) {
+            setPrice(data.price);
+          }
+        } else {
+          console.error(
+            ">>> [SUBSCRIPTION_BLOCK] Erro ao buscar preço (status):",
+            response.status,
+          );
+        }
+      } catch (error) {
+        console.error(">>> [SUBSCRIPTION_BLOCK] Erro ao buscar preço:", error);
+      }
+    };
+    fetchPrice();
+
+    return () => clearInterval(pollInterval);
+  }, [handleAccessReleased]);
 
   const handleGoToMinhaConta = () => {
     if (slug) {
@@ -55,6 +154,10 @@ export function SubscriptionBlockScreen({
         console.warn("Falha ao obter IP público:", e);
       }
 
+      const customerCpfCnpj = (
+        (session.user as { cpfCnpj?: string }).cpfCnpj || ""
+      ).replace(/\D/g, "");
+
       const response = await fetch("/api/asaas/create-payment-link", {
         method: "POST",
         headers: {
@@ -64,13 +167,16 @@ export function SubscriptionBlockScreen({
         body: JSON.stringify({
           customerEmail: session.user.email,
           customerName: session.user.name,
+          customerCpfCnpj,
+          businessId: (session.user as { businessId?: string }).businessId,
         }),
       });
 
       const data = await response.json();
 
       if (data.url) {
-        window.open(data.url, "_blank");
+        // Redireciona na mesma aba para evitar bloqueio de popup e garantir que o usuário veja a cobrança
+        window.location.href = data.url;
       } else {
         throw new Error(data.error || "Erro ao gerar link de pagamento");
       }
@@ -81,6 +187,32 @@ export function SubscriptionBlockScreen({
       );
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/business/sync`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("better-auth.session_token")}`,
+        },
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        await handleAccessReleased(
+          data.message || "Pagamento identificado! Liberando acesso...",
+        );
+      } else {
+        toast.error(data.message || "Nenhum pagamento identificado.");
+      }
+    } catch (error) {
+      console.error("Erro ao sincronizar:", error);
+      toast.error("Erro ao verificar pagamento. Tente novamente mais tarde.");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -143,9 +275,14 @@ export function SubscriptionBlockScreen({
         </CardHeader>
         <CardContent className="space-y-3 pt-2">
           <div className="bg-muted/50 p-3 rounded-lg text-sm text-center">
-            <p className="font-medium mb-0.5 text-xs text-muted-foreground uppercase tracking-wider">Valor da Assinatura</p>
+            <p className="font-medium mb-0.5 text-xs text-muted-foreground uppercase tracking-wider">
+              Valor da Assinatura
+            </p>
             <p className="text-xl font-bold text-primary">
-              R$ 49,90
+              {new Intl.NumberFormat("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              }).format(price)}
               <span className="text-xs font-normal text-muted-foreground ml-1">
                 /mês
               </span>
@@ -155,23 +292,39 @@ export function SubscriptionBlockScreen({
         <CardFooter className="flex flex-col gap-2">
           <Button
             className="w-full h-11 text-sm font-semibold shadow-md"
-            size="default"
             onClick={handleSubscribe}
-            disabled={isLoading}
+            disabled={isLoading || isSyncing}
           >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Gerando Pagamento...
+                Gerando link...
               </>
             ) : (
               <>
                 <CreditCard className="mr-2 h-4 w-4" />
-                Regularizar Assinatura Agora
+                Pagar Agora
               </>
             )}
           </Button>
-          <div className="flex w-full gap-2">
+
+          <Button
+            variant="outline"
+            className="w-full h-11 text-sm font-semibold"
+            onClick={handleSync}
+            disabled={isLoading || isSyncing}
+          >
+            {isSyncing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Verificando...
+              </>
+            ) : (
+              "Já paguei, liberar meu acesso"
+            )}
+          </Button>
+
+          <div className="grid grid-cols-2 gap-2 w-full mt-2">
             <Button
               variant="outline"
               size="sm"

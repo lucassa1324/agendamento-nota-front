@@ -37,6 +37,10 @@ export function ScheduleManager() {
   const [initialSchedule, setInitialSchedule] = useState<string>("");
   const [globalInterval, setGlobalInterval] = useState<number>(30);
   const [initialInterval, setInitialInterval] = useState<number>(30);
+  const [minimumBookingLeadMinutes, setMinimumBookingLeadMinutes] =
+    useState<number>(0);
+  const [initialMinimumBookingLeadMinutes, setInitialMinimumBookingLeadMinutes] =
+    useState<number>(0);
   const [blockedPeriods, setBlockedPeriods] = useState<BlockedPeriod[]>([]);
   const [initialBlocked, setInitialBlocked] = useState<string>("");
   const [newBlocked, setNewBlocked] = useState<
@@ -84,6 +88,7 @@ export function ScheduleManager() {
         const backendWeekly = settings.weekly;
 
         const currentInterval = parseDuration(settings.interval);
+        const currentLead = Number(settings.minimumBookingLeadMinutes || 0);
 
         finalSchedule = Array.from({ length: 7 }, (_, i) => {
           const dayData = backendWeekly.find((d) => Number(d.dayOfWeek) === i);
@@ -114,6 +119,8 @@ export function ScheduleManager() {
 
         setGlobalInterval(currentInterval);
         setInitialInterval(currentInterval);
+        setMinimumBookingLeadMinutes(currentLead);
+        setInitialMinimumBookingLeadMinutes(currentLead);
       } else {
         // 2. Fallback para LocalStorage se não houver dados no backend
         finalSchedule = getWeekSchedule();
@@ -122,6 +129,8 @@ export function ScheduleManager() {
           setGlobalInterval(firstOpenDay.interval);
           setInitialInterval(firstOpenDay.interval);
         }
+        setMinimumBookingLeadMinutes(0);
+        setInitialMinimumBookingLeadMinutes(0);
       }
 
       setWeekSchedule(finalSchedule);
@@ -130,9 +139,10 @@ export function ScheduleManager() {
       const finalBlocks = blocks || getBlockedPeriods();
       setBlockedPeriods(finalBlocks);
       setInitialBlocked(JSON.stringify(finalBlocks));
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const knownError = error as { status?: number };
       // Se for erro de faturamento, silenciamos logs de erro
-      if (error?.status === 402) {
+      if (knownError?.status === 402) {
         console.warn("ScheduleManager: Acesso bloqueado por faturamento.");
       } else {
         console.error("Erro ao carregar dados do servidor:", error);
@@ -145,6 +155,8 @@ export function ScheduleManager() {
       setInitialSchedule(JSON.stringify(schedule));
       setBlockedPeriods(blocked);
       setInitialBlocked(JSON.stringify(blocked));
+      setMinimumBookingLeadMinutes(0);
+      setInitialMinimumBookingLeadMinutes(0);
     } finally {
       setIsLoading(false);
     }
@@ -164,18 +176,20 @@ export function ScheduleManager() {
     setWeekSchedule(updatedSchedule);
     setInitialSchedule(JSON.stringify(updatedSchedule));
     setInitialInterval(globalInterval);
+    setInitialMinimumBookingLeadMinutes(minimumBookingLeadMinutes);
 
     businessService
       .saveSettings({
         companyId: studio.id,
         interval: minutesToHHmm(globalInterval),
         weekly: buildSchedulePayload(updatedSchedule),
+        minimumBookingLeadMinutes,
       })
       .catch(() => {});
 
     toast({
       title: "Intervalo Atualizado!",
-      description: `O intervalo de ${globalInterval} minutos foi aplicado e salvo.`,
+      description: `Intervalo (${globalInterval} min) e antecedência mínima (${minimumBookingLeadMinutes} min) salvos.`,
       className: "bg-blue-600 text-white border-none",
     });
   };
@@ -190,6 +204,7 @@ export function ScheduleManager() {
         companyId: studio.id,
         interval: minutesToHHmm(globalInterval),
         weekly: buildSchedulePayload(weekSchedule),
+        minimumBookingLeadMinutes,
       })
       .catch(() => {});
 
@@ -215,7 +230,9 @@ export function ScheduleManager() {
   };
 
   const isScheduleDirty = initialSchedule !== JSON.stringify(weekSchedule);
-  const isIntervalDirty = globalInterval !== initialInterval;
+  const isIntervalDirty =
+    globalInterval !== initialInterval ||
+    minimumBookingLeadMinutes !== initialMinimumBookingLeadMinutes;
   const isBlockedDirty = initialBlocked !== JSON.stringify(blockedPeriods);
 
   const handleCreateBlock = async () => {
@@ -407,10 +424,10 @@ export function ScheduleManager() {
       <div className="mb-8 bg-card/50 p-6 rounded-xl border border-border shadow-sm">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-2 h-6 bg-primary rounded-full" />
-          <span className="text-lg font-bold">Intervalo de Atendimento</span>
+          <span className="text-lg font-bold">Regras de Horários</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
           <div className="space-y-2">
             <Label
               htmlFor="global-interval"
@@ -450,6 +467,33 @@ export function ScheduleManager() {
                 {isIntervalDirty ? "Salvar Intervalo" : "Salvo"}
               </Button>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label
+              htmlFor="minimum-booking-lead"
+              className="text-sm font-medium text-muted-foreground"
+            >
+              Antecedência mínima (minutos)
+            </Label>
+            <Select
+              value={minimumBookingLeadMinutes.toString()}
+              onValueChange={(value) =>
+                setMinimumBookingLeadMinutes(Number.parseInt(value, 10))
+              }
+            >
+              <SelectTrigger id="minimum-booking-lead" className="w-full">
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Sem antecedência</SelectItem>
+                <SelectItem value="15">15 min</SelectItem>
+                <SelectItem value="30">30 min</SelectItem>
+                <SelectItem value="45">45 min</SelectItem>
+                <SelectItem value="60">60 min</SelectItem>
+                <SelectItem value="90">90 min</SelectItem>
+                <SelectItem value="120">120 min</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

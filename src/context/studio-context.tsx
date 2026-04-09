@@ -13,6 +13,7 @@ import {
 import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL, BASE_DOMAIN } from "@/lib/auth-client";
 import type {
+  BookingStepSettings,
   Business,
   ColorSettings,
   CTASettings,
@@ -76,6 +77,7 @@ import {
 } from "@/lib/booking-data";
 import type { SiteConfigData } from "@/lib/site-config-types";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
+import { deepMerge } from "@/lib/utils/deep-merge";
 
 interface StudioContextType {
   studio: Business | null;
@@ -85,6 +87,7 @@ interface StudioContextType {
   businessId: string | null;
   updateStudioInfo: (updates: Partial<Business>) => void;
   refreshData: () => void;
+  refreshTrigger: number;
 }
 
 const StudioContext = createContext<StudioContextType | undefined>(undefined);
@@ -130,7 +133,7 @@ const SITE_BASE_FALLBACK = (id: string, slug: string): Business => ({
       time: defaultBookingTimeSettings,
       form: defaultBookingFormSettings,
       confirmation: defaultBookingConfirmationSettings,
-    }
+    },
   } as unknown as Business["config"],
   services: [],
 });
@@ -158,7 +161,11 @@ export function StudioProvider({
     initialId || null,
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [lastSaveTimestamp, setLastSaveTimestamp] = useState<number>(0);
 
+  // Comentado para evitar que limpe o localStorage em cada nova aba/refresh,
+  // o que impedia a sincronização entre abas e causava perda de rascunhos locais.
+  /*
   useEffect(() => {
     if (typeof window === "undefined") return;
     const hasCleared = sessionStorage.getItem("emergency_storage_cleared");
@@ -167,6 +174,7 @@ export function StudioProvider({
     sessionStorage.clear();
     sessionStorage.setItem("emergency_storage_cleared", "1");
   }, []);
+  */
 
   const refreshData = useCallback(() => {
     console.log(">>> [STUDIO_CONTEXT] Forçando atualização de dados...");
@@ -179,103 +187,226 @@ export function StudioProvider({
     const handleSyncMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
 
-      const { type, settings } = event.data;
+      const { type, settings, path } = event.data;
 
-      if (typeof type === "string" && type.startsWith("UPDATE_") && settings) {
-        console.log(`>>> [STUDIO_CONTEXT] Recebendo sincronização via postMessage: ${type}`);
-        
+      if (
+        typeof type === "string" &&
+        (type.startsWith("UPDATE_") || type === "SYNC_UPDATE") &&
+        settings
+      ) {
+        console.log(
+          `>>> [STUDIO_CONTEXT] Recebendo sincronização via postMessage: ${type}`,
+        );
+
+        // 1. Efeitos Colaterais (Salvamento e Disparo de Eventos)
+        // Devem ocorrer fora do setStudio para evitar o erro de "Cannot update a component while rendering a different component"
+        switch (type) {
+          case "SYNC_UPDATE":
+            // Novo Protocolo Unificado (Pilar 3)
+            // Se o editor enviar path="hero" e settings={...}, salvamos o hero
+            if (path === "hero") saveHeroSettings(settings as HeroSettings);
+            if (path === "colors") saveColorSettings(settings as ColorSettings);
+            if (path === "fonts") saveFontSettings(settings as FontSettings);
+            break;
+          case "UPDATE_HERO_SETTINGS":
+            saveHeroSettings(settings as HeroSettings);
+            break;
+          case "UPDATE_ABOUT_HERO_SETTINGS":
+            saveAboutHeroSettings(settings as HeroSettings);
+            break;
+          case "UPDATE_SERVICES_SETTINGS":
+            saveServicesSettings(settings as ServicesSettings);
+            break;
+          case "UPDATE_COLOR_SETTINGS":
+            saveColorSettings(settings as ColorSettings);
+            break;
+          case "UPDATE_FONT_SETTINGS":
+            saveFontSettings(settings as FontSettings);
+            break;
+          case "UPDATE_GALLERY_PREVIEW":
+          case "UPDATE_GALLERY_SETTINGS":
+            saveGallerySettings(settings as GallerySettings);
+            break;
+          case "UPDATE_GALLERY_PAGE":
+          case "UPDATE_GALLERY_PAGE_SETTINGS":
+            saveGalleryPageSettings(settings as GallerySettings);
+            break;
+          case "UPDATE_STORY_SETTINGS":
+            saveStorySettings(settings as StorySettings);
+            break;
+          case "UPDATE_TEAM_SETTINGS":
+            saveTeamSettings(settings as TeamSettings);
+            break;
+          case "UPDATE_TESTIMONIALS_SETTINGS":
+            saveTestimonialsSettings(settings as TestimonialsSettings);
+            break;
+          case "UPDATE_HOME_VALUES_SETTINGS":
+            saveHomeValuesSettings(settings as ValuesSettings);
+            break;
+          case "UPDATE_ABOUT_US_VALUES_SETTINGS":
+            saveAboutUsValuesSettings(settings as ValuesSettings);
+            break;
+          case "UPDATE_CTA_SETTINGS":
+            saveCTASettings(settings as CTASettings);
+            break;
+          case "UPDATE_HEADER_SETTINGS":
+            saveHeaderSettings(settings as HeaderSettings);
+            break;
+          case "UPDATE_FOOTER_SETTINGS":
+            saveFooterSettings(settings as FooterSettings);
+            break;
+          case "UPDATE_PAGE_VISIBILITY":
+            savePageVisibility(settings as Record<string, boolean>);
+            break;
+          case "UPDATE_VISIBLE_SECTIONS":
+            saveVisibleSections(settings as Record<string, boolean>);
+            break;
+          case "UPDATE_BOOKING_SERVICE_SETTINGS":
+            saveBookingServiceSettings(settings as BookingStepSettings);
+            break;
+          case "UPDATE_BOOKING_DATE_SETTINGS":
+            saveBookingDateSettings(settings as BookingStepSettings);
+            break;
+          case "UPDATE_BOOKING_TIME_SETTINGS":
+            saveBookingTimeSettings(settings as BookingStepSettings);
+            break;
+          case "UPDATE_BOOKING_FORM_SETTINGS":
+            saveBookingFormSettings(settings as BookingStepSettings);
+            break;
+          case "UPDATE_BOOKING_CONFIRMATION_SETTINGS":
+            saveBookingConfirmationSettings(settings as BookingStepSettings);
+            break;
+        }
+
+        // 2. Atualização de Estado (Função Pura)
         setStudio((prev) => {
           if (!prev) return null;
-          
+
           const currentConfig = (prev.config as SiteConfigData) || {};
           const updatedConfig = { ...currentConfig };
 
           switch (type) {
+            case "SYNC_UPDATE":
+              // Protocolo Unificado (Pilar 3) + Blindagem Deep Merge (Pilar 2)
+              if (path && typeof path === "string") {
+                const currentVal = (updatedConfig as any)[path];
+                (updatedConfig as any)[path] = deepMerge(currentVal, settings);
+              }
+              break;
             case "UPDATE_HERO_SETTINGS":
-              updatedConfig.hero = settings;
+              updatedConfig.hero = deepMerge(updatedConfig.hero, settings);
               break;
             case "UPDATE_ABOUT_HERO_SETTINGS":
-              updatedConfig.aboutHero = settings;
+              updatedConfig.aboutHero = deepMerge(
+                updatedConfig.aboutHero,
+                settings,
+              );
               break;
             case "UPDATE_SERVICES_SETTINGS":
-              updatedConfig.services = settings;
+              updatedConfig.services = deepMerge(
+                updatedConfig.services,
+                settings,
+              );
               break;
             case "UPDATE_COLOR_SETTINGS":
-              updatedConfig.colors = settings;
+              updatedConfig.colors = deepMerge(updatedConfig.colors, settings);
               break;
             case "UPDATE_FONT_SETTINGS":
-              updatedConfig.theme = settings;
+              updatedConfig.theme = deepMerge(updatedConfig.theme, settings);
               break;
             case "UPDATE_GALLERY_PREVIEW":
-              updatedConfig.galleryPreviewSettings = settings;
+            case "UPDATE_GALLERY_SETTINGS":
+              updatedConfig.galleryPreviewSettings = deepMerge(
+                updatedConfig.galleryPreviewSettings,
+                settings,
+              );
               break;
             case "UPDATE_GALLERY_PAGE":
-              updatedConfig.galleryPageSettings = settings;
-              break;
-            case "UPDATE_GALLERY_SETTINGS":
-              updatedConfig.galleryPreviewSettings = settings;
-              break;
             case "UPDATE_GALLERY_PAGE_SETTINGS":
-              updatedConfig.galleryPageSettings = settings;
+              updatedConfig.galleryPageSettings = deepMerge(
+                updatedConfig.galleryPageSettings,
+                settings,
+              );
               break;
             case "UPDATE_STORY_SETTINGS":
-              updatedConfig.story = settings;
+              updatedConfig.story = deepMerge(updatedConfig.story, settings);
               break;
             case "UPDATE_TEAM_SETTINGS":
-              updatedConfig.team = settings;
+              updatedConfig.team = deepMerge(updatedConfig.team, settings);
               break;
             case "UPDATE_TESTIMONIALS_SETTINGS":
-              updatedConfig.testimonials = settings;
+              updatedConfig.testimonials = deepMerge(
+                updatedConfig.testimonials,
+                settings,
+              );
               break;
             case "UPDATE_HOME_VALUES_SETTINGS":
-              updatedConfig.homeValuesSettings = settings;
+              updatedConfig.homeValuesSettings = deepMerge(
+                updatedConfig.homeValuesSettings,
+                settings,
+              );
               break;
             case "UPDATE_ABOUT_US_VALUES_SETTINGS":
-              updatedConfig.aboutUsValuesSettings = settings;
+              updatedConfig.aboutUsValuesSettings = deepMerge(
+                updatedConfig.aboutUsValuesSettings,
+                settings,
+              );
               break;
             case "UPDATE_CTA_SETTINGS":
-              updatedConfig.cta = settings;
+              updatedConfig.cta = deepMerge(updatedConfig.cta, settings);
               break;
             case "UPDATE_HEADER_SETTINGS":
-              updatedConfig.header = settings;
+              updatedConfig.header = deepMerge(updatedConfig.header, settings);
               break;
             case "UPDATE_FOOTER_SETTINGS":
-              updatedConfig.footer = settings;
+              updatedConfig.footer = deepMerge(updatedConfig.footer, settings);
               break;
             case "UPDATE_PAGE_VISIBILITY":
-              updatedConfig.pageVisibility = settings;
+              updatedConfig.pageVisibility = deepMerge(
+                updatedConfig.pageVisibility,
+                settings,
+              );
               break;
             case "UPDATE_VISIBLE_SECTIONS":
-              updatedConfig.visibleSections = settings;
+              updatedConfig.visibleSections = deepMerge(
+                updatedConfig.visibleSections,
+                settings,
+              );
               break;
             case "UPDATE_BOOKING_SERVICE_SETTINGS":
               updatedConfig.bookingSteps = {
                 ...updatedConfig.bookingSteps,
-                service: settings,
+                service: deepMerge(
+                  updatedConfig.bookingSteps?.service,
+                  settings,
+                ),
               };
               break;
             case "UPDATE_BOOKING_DATE_SETTINGS":
               updatedConfig.bookingSteps = {
                 ...updatedConfig.bookingSteps,
-                date: settings,
+                date: deepMerge(updatedConfig.bookingSteps?.date, settings),
               };
               break;
             case "UPDATE_BOOKING_TIME_SETTINGS":
               updatedConfig.bookingSteps = {
                 ...updatedConfig.bookingSteps,
-                time: settings,
+                time: deepMerge(updatedConfig.bookingSteps?.time, settings),
               };
               break;
             case "UPDATE_BOOKING_FORM_SETTINGS":
               updatedConfig.bookingSteps = {
                 ...updatedConfig.bookingSteps,
-                form: settings,
+                form: deepMerge(updatedConfig.bookingSteps?.form, settings),
               };
               break;
             case "UPDATE_BOOKING_CONFIRMATION_SETTINGS":
               updatedConfig.bookingSteps = {
                 ...updatedConfig.bookingSteps,
-                confirmation: settings,
+                confirmation: deepMerge(
+                  updatedConfig.bookingSteps?.confirmation,
+                  settings,
+                ),
               };
               break;
           }
@@ -298,6 +429,7 @@ export function StudioProvider({
         console.log(
           ">>> [CACHE] Sinal de publicação recebido. Forçando atualização do contexto...",
         );
+        setLastSaveTimestamp(Date.now());
         refreshData();
       };
       window.addEventListener("site-published-success", handleGlobalUpdate);
@@ -309,8 +441,63 @@ export function StudioProvider({
     }
   }, [refreshData]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleStorageChange = (event: StorageEvent) => {
+      const currentAdminId = localStorage.getItem("current_admin_id");
+
+      // Se a chave mudar no localStorage e contiver o admin id ou for uma chave global relevante, atualizamos
+      const isUserSpecific =
+        currentAdminId && event.key && event.key.startsWith(currentAdminId);
+      const isGlobalKey = event.key === "current_admin_id"; // Apenas chaves estruturais globais
+
+      if (event.key && (isUserSpecific || isGlobalKey)) {
+        // Se mudou o admin_id, precisamos recarregar tudo do zero pois as chaves do localStorage mudaram
+        if (event.key === "current_admin_id") {
+          if (event.newValue === event.oldValue) return;
+          console.log(
+            ">>> [STUDIO_CONTEXT] Mudança no admin_id detectada. Recarregando...",
+          );
+          refreshData();
+          return;
+        }
+
+        // Para outras chaves, os componentes individuais já escutam via booking-data.ts
+        // Não chamamos refreshData() aqui para evitar sobrescrever o LocalStorage com dados (antigos) do Banco
+        console.log(
+          `>>> [STUDIO_CONTEXT] Mudança detectada no localStorage: ${event.key}. Sincronização via eventos locais.`,
+        );
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, [refreshData]);
+
   const updateStudioInfo = useCallback((updates: Partial<Business>) => {
-    setStudio((prev) => (prev ? { ...prev, ...updates } : null));
+    setStudio((prev) => {
+      if (!prev) return null;
+
+      const prevConfig =
+        prev.config && typeof prev.config === "object" && !Array.isArray(prev.config)
+          ? (prev.config as Record<string, unknown>)
+          : {};
+      const incomingConfig =
+        updates.config &&
+          typeof updates.config === "object" &&
+          !Array.isArray(updates.config)
+          ? (updates.config as Record<string, unknown>)
+          : {};
+
+      const mergedConfig = deepMerge(prevConfig, incomingConfig);
+
+      return {
+        ...prev,
+        ...updates,
+        config: mergedConfig as Business["config"],
+      };
+    });
   }, []);
 
   const mapConfig = useCallback(
@@ -373,47 +560,57 @@ export function StudioProvider({
 
       const finalColors: ColorSettings = {
         primary:
-          sanitizeColor(layoutColors?.primary) ||
           sanitizeColor(config.colors?.primary) ||
+          sanitizeColor(layoutColors?.primary) ||
           defaultColorSettings.primary ||
           "#000000",
         secondary:
-          sanitizeColor(layoutColors?.secondary) ||
           sanitizeColor(config.colors?.secondary) ||
+          sanitizeColor(layoutColors?.secondary) ||
           defaultColorSettings.secondary ||
           "#1a1a1a",
         background:
-          sanitizeColor(layoutColors?.background) ||
           sanitizeColor(config.colors?.background) ||
+          sanitizeColor(layoutColors?.background) ||
           defaultColorSettings.background ||
           "#ffffff",
         text:
-          sanitizeColor(layoutColors?.text) ||
           sanitizeColor(config.colors?.text) ||
+          sanitizeColor(layoutColors?.text) ||
           defaultColorSettings.text ||
           "#1a1a1a",
         accent:
-          sanitizeColor(layoutColors?.accent) ||
           sanitizeColor(config.colors?.accent) ||
+          sanitizeColor(layoutColors?.accent) ||
           defaultColorSettings.primary ||
           "#000000",
         buttonText:
-          sanitizeColor(layoutColors?.buttonText) ||
           sanitizeColor(config.colors?.buttonText) ||
+          sanitizeColor(layoutColors?.buttonText) ||
           "#ffffff",
         specialtyBadge: {
           background:
-            ((layoutColors?.specialtyBadge as Record<string, string>)?.background) ||
-            ((layoutColors?.specialty_badge as Record<string, string>)?.background) ||
+            (config.colors?.specialtyBadge as Record<string, string>)
+              ?.background ||
+            (layoutColors?.specialtyBadge as Record<string, string>)
+              ?.background ||
+            (layoutColors?.specialty_badge as Record<string, string>)
+              ?.background ||
             defaultColorSettings.specialtyBadge.background,
           text:
-            ((layoutColors?.specialtyBadge as Record<string, string>)?.text) ||
-            ((layoutColors?.specialty_badge as Record<string, string>)?.text) ||
+            (config.colors?.specialtyBadge as Record<string, string>)?.text ||
+            (layoutColors?.specialtyBadge as Record<string, string>)?.text ||
+            (layoutColors?.specialty_badge as Record<string, string>)?.text ||
             defaultColorSettings.specialtyBadge.text,
           borderRadius:
-            ((layoutColors?.specialtyBadge as Record<string, string>)?.borderRadius) ||
-            ((layoutColors?.specialty_badge as Record<string, string>)?.borderRadius) ||
-            ((layoutColors?.specialty_badge as Record<string, string>)?.border_radius) ||
+            (config.colors?.specialtyBadge as Record<string, string>)
+              ?.borderRadius ||
+            (layoutColors?.specialtyBadge as Record<string, string>)
+              ?.borderRadius ||
+            (layoutColors?.specialty_badge as Record<string, string>)
+              ?.borderRadius ||
+            (layoutColors?.specialty_badge as Record<string, string>)
+              ?.border_radius ||
             defaultColorSettings.specialtyBadge.borderRadius,
         },
       };
@@ -421,13 +618,28 @@ export function StudioProvider({
       const bookingFromLayoutRaw = (layoutGlobal?.bookingSteps ||
         layoutGlobal?.booking_steps ||
         layoutGlobal?.appointmentFlow ||
-        layoutGlobal?.appointment_flow) as SiteConfigData["bookingSteps"] | undefined;
+        layoutGlobal?.appointment_flow) as
+        | SiteConfigData["bookingSteps"]
+        | undefined;
 
-      // Normalização profunda para garantir que o cardBgColor seja capturado de qualquer fonte (snake_case, cardConfig, etc.)
+      // Normalização profunda para garantir que o cardBgColor e outros campos críticos sejam capturados de qualquer fonte
       const normalizeDeepStep = (step: unknown) => {
         if (!step) return undefined;
         // normalizeStepSettings em booking-data.ts já é robusto o suficiente para capturar cardBgColor de múltiplas fontes
-        return normalizeStepSettings(step as Record<string, unknown>);
+        const normalized = normalizeStepSettings(
+          step as Record<string, unknown>,
+        );
+
+        // Blindagem adicional: Garantir que se o step original tinha dados, o normalizado não venha vazio
+        if (
+          typeof step === "object" &&
+          step !== null &&
+          Object.keys(step).length > 0 &&
+          Object.keys(normalized).length === 0
+        ) {
+          return step as BookingStepSettings;
+        }
+        return normalized;
       };
 
       const normalizedBookingFromLayout = bookingFromLayoutRaw
@@ -469,8 +681,10 @@ export function StudioProvider({
                   (layoutGlobal as Record<string, unknown>)?.booking_form,
               ),
               confirmation: normalizeDeepStep(
-                (layoutGlobal as Record<string, unknown>)?.bookingConfirmation ||
-                  (layoutGlobal as Record<string, unknown>)?.booking_confirmation,
+                (layoutGlobal as Record<string, unknown>)
+                  ?.bookingConfirmation ||
+                  (layoutGlobal as Record<string, unknown>)
+                    ?.booking_confirmation,
               ),
             }
           : undefined;
@@ -490,94 +704,105 @@ export function StudioProvider({
           }
         : undefined;
 
+      const servicesSource = (config.services ||
+        (config as Record<string, unknown>).services_section ||
+        home?.servicesSection ||
+        home?.services ||
+        layoutGlobal?.services) as ServicesSettings | undefined;
+
+      const homeValuesSource = ((config as Record<string, unknown>)?.homeValuesSettings ||
+        (config as Record<string, unknown>)?.values ||
+        (home as Record<string, unknown>)?.valuesSection ||
+        (home as Record<string, unknown>)?.values ||
+        (layoutGlobal as Record<string, unknown>)?.homeValuesSettings) as
+        | ValuesSettings
+        | undefined;
+
+      const aboutUsValuesSource = ((config as Record<string, unknown>)?.aboutUsValuesSettings ||
+        (config as Record<string, unknown>)?.values ||
+        aboutUs?.valuesSection ||
+        aboutUs?.values ||
+        (layoutGlobal as Record<string, unknown>)?.aboutUsValuesSettings) as
+        | ValuesSettings
+        | undefined;
+
+      const valuesSource = (config.values ||
+        (config as Record<string, unknown>).values_section ||
+        home?.valuesSection ||
+        home?.values_section ||
+        home?.values ||
+        layoutGlobal?.values ||
+        layoutGlobal?.values_section ||
+        layoutGlobal?.values_settings) as
+        | ValuesSettings
+        | undefined;
+
       return {
         ...config,
         colors: finalColors,
-        hero: (layoutGlobal?.heroBanner ||
-          layoutGlobal?.hero ||
+        hero: (config.hero ||
+          (config as Record<string, unknown>).heroBanner ||
           home?.heroBanner ||
           home?.hero ||
-          (config as Record<string, unknown>).heroBanner ||
-          config.hero) as HeroSettings | undefined,
-        aboutHero: (layoutGlobal?.aboutHero || config.aboutHero) as
-          | HeroSettings
-          | undefined,
-        story: (layoutGlobal?.story || config.story) as
-          | StorySettings
-          | undefined,
-        team: (layoutGlobal?.team || config.team) as TeamSettings | undefined,
-        testimonials: (layoutGlobal?.testimonials || config.testimonials) as
-          | TestimonialsSettings
-          | undefined,
-        services: normalizeDeepStep(
-          layoutGlobal?.services ||
-            layoutGlobal?.services_section ||
-            layoutGlobal?.services_settings ||
-            home?.servicesSection ||
-            home?.services_section ||
-            home?.services ||
-            config.services ||
-            (config as Record<string, unknown>).services_section,
-        ) as ServicesSettings | undefined,
-        homeValuesSettings: normalizeDeepStep(
-          (config as Record<string, unknown>)?.homeValuesSettings ||
-            (layoutGlobal as Record<string, unknown>)?.homeValuesSettings ||
-            (home as Record<string, unknown>)?.valuesSection ||
-            (home as Record<string, unknown>)?.values ||
-            (config as Record<string, unknown>)?.values,
-        ) as ValuesSettings | undefined,
-        aboutUsValuesSettings: normalizeDeepStep(
-          (config as Record<string, unknown>)?.aboutUsValuesSettings ||
-            aboutUs?.valuesSection ||
-            aboutUs?.values ||
-            (layoutGlobal as Record<string, unknown>)?.aboutUsValuesSettings ||
-            (config as Record<string, unknown>)?.values,
-        ) as ValuesSettings | undefined,
-        values: normalizeDeepStep(
-          layoutGlobal?.values ||
-            layoutGlobal?.values_section ||
-            layoutGlobal?.values_settings ||
-            home?.valuesSection ||
-            home?.values_section ||
-            home?.values ||
-            config.values ||
-            (config as Record<string, unknown>).values_section,
-        ) as ValuesSettings | undefined,
+          layoutGlobal?.heroBanner ||
+          layoutGlobal?.hero) as HeroSettings | undefined,
+        aboutHero: (config.aboutHero ||
+          home?.aboutHero ||
+          layoutGlobal?.aboutHero) as HeroSettings | undefined,
+        story: (config.story ||
+          home?.storySection ||
+          home?.story ||
+          layoutGlobal?.story) as StorySettings | undefined,
+        team: (config.team ||
+          home?.teamSection ||
+          home?.team ||
+          layoutGlobal?.team) as TeamSettings | undefined,
+        testimonials: (config.testimonials ||
+          home?.testimonialsSection ||
+          home?.testimonials ||
+          layoutGlobal?.testimonials) as TestimonialsSettings | undefined,
+        services: servicesSource,
+        homeValuesSettings: homeValuesSource,
+        aboutUsValuesSettings: aboutUsValuesSource,
+        values: valuesSource,
         galleryPreviewSettings: (config.galleryPreviewSettings ||
-          layoutGlobal?.galleryPreview ||
           home?.galleryPreview ||
-          home?.gallerySection) as GallerySettings | undefined,
+          home?.gallerySection ||
+          layoutGlobal?.galleryPreview ||
+          layoutGlobal?.gallerySection) as GallerySettings | undefined,
         galleryPageSettings: (config.galleryPageSettings ||
           config.gallery ||
           layoutGlobal?.gallery) as GallerySettings | undefined,
-        gallery: (layoutGlobal?.gallery ||
-          config.gallery) as GallerySettings | undefined,
-        cta: (layoutGlobal?.cta ||
+        gallery: (config.gallery ||
+          home?.galleryPreview ||
+          home?.gallerySection ||
+          layoutGlobal?.gallery) as GallerySettings | undefined,
+        cta: (config.cta ||
           home?.ctaSection ||
           home?.cta ||
-          config.cta) as CTASettings | undefined,
-        header: (layoutGlobal?.header || config.header) as
+          layoutGlobal?.cta) as CTASettings | undefined,
+        header: (config.header || layoutGlobal?.header) as
           | HeaderSettings
           | undefined,
-        footer: (layoutGlobal?.footer || config.footer) as
+        footer: (config.footer || layoutGlobal?.footer) as
           | FooterSettings
           | undefined,
-        theme: (layoutGlobal?.fontes ||
-          layoutGlobal?.typography ||
-          config.theme ||
-          config.typography) as FontSettings | undefined,
-        visibleSections: (layoutGlobal?.visibleSections ||
-          layoutGlobal?.visible_sections ||
-          config.visibleSections ||
-          config.visible_sections) as Record<string, boolean> | undefined,
-        pageVisibility: (layoutGlobal?.pageVisibility ||
-          layoutGlobal?.page_visibility ||
-          config.pageVisibility ||
-          config.page_visibility) as Record<string, boolean> | undefined,
+        theme: (config.theme ||
+          config.typography ||
+          layoutGlobal?.fontes ||
+          layoutGlobal?.typography) as FontSettings | undefined,
+        visibleSections: (config.visibleSections ||
+          config.visible_sections ||
+          layoutGlobal?.visibleSections ||
+          layoutGlobal?.visible_sections) as Record<string, boolean> | undefined,
+        pageVisibility: (config.pageVisibility ||
+          config.page_visibility ||
+          layoutGlobal?.pageVisibility ||
+          layoutGlobal?.page_visibility) as Record<string, boolean> | undefined,
         bookingSteps:
+          normalizedBookingFromConfig ||
           normalizedBookingFromLayout ||
-          layoutBookingLegacy ||
-          normalizedBookingFromConfig,
+          layoutBookingLegacy,
       };
     },
     [],
@@ -598,12 +823,15 @@ export function StudioProvider({
         (event.data as Record<string, unknown>);
 
       const mappedConfig = mapConfig(incoming);
-      
-      console.log(">>> [STUDIO_CONTEXT] Reidratando estado do Studio com dados recebidos:", {
-        hasColors: !!mappedConfig.colors,
-        hasTheme: !!mappedConfig.theme,
-        hasBooking: !!mappedConfig.bookingSteps
-      });
+
+      console.log(
+        ">>> [STUDIO_CONTEXT] Reidratando estado do Studio com dados recebidos:",
+        {
+          hasColors: !!mappedConfig.colors,
+          hasTheme: !!mappedConfig.theme,
+          hasBooking: !!mappedConfig.bookingSteps,
+        },
+      );
 
       setStudio((prev) =>
         prev
@@ -665,6 +893,20 @@ export function StudioProvider({
 
   // --- NOVO: Sincronização de Fonte Única da Verdade (DB -> LocalStorage) ---
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    // Sincroniza o ID do admin para garantir que getStorageKey funcione corretamente
+    const adminId = studio?.id || businessId;
+    if (adminId) {
+      const current = localStorage.getItem("current_admin_id");
+      if (current !== adminId) {
+        console.log(
+          `>>> [STUDIO_CONTEXT] Definindo current_admin_id: ${adminId}`,
+        );
+        localStorage.setItem("current_admin_id", adminId);
+      }
+    }
+
     if (isPreview) return;
     if (studio) {
       try {
@@ -823,7 +1065,7 @@ export function StudioProvider({
         );
       }
     }
-  }, [isPreview, studio]);
+  }, [isPreview, studio, businessId]);
 
   // --- NOVO: Sincronização do Título da Página (Aba do Navegador) ---
   useEffect(() => {
@@ -854,23 +1096,6 @@ export function StudioProvider({
       setBusinessId(initialId);
     }
   }, [initialSlug, initialId]);
-
-  // --- NOVO: Listener para publicação bem sucedida ---
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const handlePublishSuccess = () => {
-      console.log(
-        ">>> [StudioContext] Sinal de publicação recebido. Forçando atualização dos dados...",
-      );
-      // Incrementa o trigger para disparar o fetchStudio no useEffect principal
-      setRefreshTrigger((prev) => prev + 1);
-    };
-
-    window.addEventListener("site-published-success", handlePublishSuccess);
-    return () =>
-      window.removeEventListener("site-published-success", handlePublishSuccess);
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -1028,7 +1253,9 @@ export function StudioProvider({
           console.log(">>> [StudioProvider] Resposta bruta do servidor:", text);
 
           if (!text || text.trim() === "") {
-            console.warn(">>> [StudioProvider] Resposta vazia. Aplicando Site Base Fallback.");
+            console.warn(
+              ">>> [StudioProvider] Resposta vazia. Aplicando Site Base Fallback.",
+            );
             setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
             setIsLoading(false);
             return;
@@ -1036,12 +1263,14 @@ export function StudioProvider({
 
           try {
             const data = JSON.parse(text);
-            
+
             if (!data || (!data.id && !data.slug)) {
-               console.warn(">>> [StudioProvider] Dados inválidos. Aplicando Site Base Fallback.");
-               setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
-               setIsLoading(false);
-               return;
+              console.warn(
+                ">>> [StudioProvider] Dados inválidos. Aplicando Site Base Fallback.",
+              );
+              setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
+              setIsLoading(false);
+              return;
             }
             console.log(
               ">>> [StudioProvider] Dados do studio carregados com sucesso:",
@@ -1184,18 +1413,21 @@ export function StudioProvider({
             const customizationResponse = data?.id
               ? await (isAdminPath || isPreview
                   ? siteCustomizerService.getDraftCustomization(data.id, signal)
-                  : siteCustomizerService.getPublishedCustomization(data.id, signal))
+                  : siteCustomizerService.getPublishedCustomization(
+                      data.id,
+                      signal,
+                    ))
               : null;
 
             if (signal.aborted) return;
 
             const rawCustomization = ((customizationResponse &&
-              !customizationResponse.isFallback
-                ? customizationResponse
-                : data.siteCustomization ||
-                  data.site_customization ||
-                  data.config ||
-                  data) ?? {}) as Record<string, unknown>;
+            !customizationResponse.isFallback
+              ? customizationResponse
+              : data.siteCustomization ||
+                data.site_customization ||
+                data.config ||
+                data) ?? {}) as Record<string, unknown>;
 
             const initialConfig = mapConfig(rawCustomization);
 
@@ -1211,14 +1443,34 @@ export function StudioProvider({
               config: initialConfig as unknown as Business["config"],
             };
 
-            setStudio(initialStudio);
+            setStudio((prev) => {
+              // Blindagem: Se houver salvamento recente, priorizamos o estado atual (localDraft)
+              // para evitar o reset para valores antigos do banco enquanto o cache propaga.
+              const isRecentSave = Date.now() - lastSaveTimestamp < 2000;
+              if (prev && isRecentSave) {
+                console.log(
+                  ">>> [STUDIO_CONTEXT] Priorizando localDraft (estado atual) sobre API devido a salvamento recente.",
+                );
+                return {
+                  ...initialStudio,
+                  config: deepMerge(
+                    initialStudio.config,
+                    prev.config,
+                  ) as Business["config"],
+                };
+              }
+              return initialStudio;
+            });
 
-            // 6. Guarda de Rota: Se o estúdio estiver inativo, redirecionar (Exceto para Master Admin e Minha Conta)
+            // 6. Guarda de Rota: Se o estúdio estiver inativo, redirecionar (Exceto para Editor, Master Admin e Minha Conta)
             if (initialStudio.active === false) {
               if (
                 typeof window !== "undefined" &&
+                !isAdminPath &&
+                !isPreview &&
                 !window.location.pathname.startsWith("/admin/master") &&
-                !window.location.pathname.includes("/dashboard/minha-conta")
+                !window.location.pathname.includes("/dashboard/minha-conta") &&
+                !window.location.pathname.startsWith("/acesso-suspenso")
               ) {
                 console.error(
                   ">>> [STUDIO_GUARD] Estúdio inativo detectado no carregamento inicial. Redirecionando...",
@@ -1314,14 +1566,18 @@ export function StudioProvider({
 
                   setStudio((prev) => {
                     if (!prev) return prev;
-                    const layoutGlobal =
-                      (mappedConfig.layoutGlobal ||
-                        (mappedConfig as Record<string, unknown>)
-                          .layout_global) as Record<string, unknown> | undefined;
+
+                    const isRecentSave = Date.now() - lastSaveTimestamp < 2000;
+
+                    const layoutGlobal = (mappedConfig.layoutGlobal ||
+                      (mappedConfig as Record<string, unknown>)
+                        .layout_global) as Record<string, unknown> | undefined;
                     const newColors =
                       (layoutGlobal?.siteColors as ColorSettings | undefined) ||
                       (layoutGlobal?.color as ColorSettings | undefined) ||
-                      (layoutGlobal?.site_colors as ColorSettings | undefined) ||
+                      (layoutGlobal?.site_colors as
+                        | ColorSettings
+                        | undefined) ||
                       (layoutGlobal?.cores_base as ColorSettings | undefined) ||
                       mappedConfig.colors;
                     const hasNewColors =
@@ -1334,15 +1590,27 @@ export function StudioProvider({
                     const nextColors = hasNewColors
                       ? newColors
                       : prev.config?.colors;
+
+                    const baseConfig = {
+                      ...(mappedConfig as unknown as Business["config"]),
+                      colors: nextColors,
+                    };
+
+                    // Blindagem: Se houver salvamento recente, priorizamos o estado atual (localDraft)
+                    const finalConfig =
+                      isRecentSave && prev.config
+                        ? deepMerge(baseConfig, prev.config)
+                        : baseConfig;
+
                     const newStudio = {
                       ...prev,
-                      config: {
-                        ...(mappedConfig as unknown as Business["config"]),
-                        colors: nextColors,
-                      },
+                      config: finalConfig as unknown as Business["config"],
                     };
+
                     console.log(
-                      ">>> [DEBUG_SYNC] Estado Studio reidratado com novas cores:",
+                      isRecentSave
+                        ? ">>> [DEBUG_SYNC] Estado Studio reidratado (Blindagem Ativa - Priorizando localDraft)."
+                        : ">>> [DEBUG_SYNC] Estado Studio reidratado com novas cores:",
                       nextColors?.background || "N/A",
                     );
                     return newStudio;
@@ -1381,22 +1649,31 @@ export function StudioProvider({
           );
 
           if (response.status === 404) {
-            console.warn(">>> [StudioProvider] 404 detectado. Aplicando Site Base Fallback.");
+            console.warn(
+              ">>> [StudioProvider] 404 detectado. Aplicando Site Base Fallback.",
+            );
             setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
             setError("Studio não encontrado");
           } else {
-            console.warn(`>>> [StudioProvider] Erro ${response.status}. Aplicando Site Base Fallback.`);
+            console.warn(
+              `>>> [StudioProvider] Erro ${response.status}. Aplicando Site Base Fallback.`,
+            );
             setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
             setError(`Erro do servidor (${response.status})`);
           }
         }
       } catch (err: unknown) {
         if (err instanceof Error && err.name === "AbortError") {
-          console.log(">>> [StudioProvider] Fluxo de busca de studio abortado. Ignorando atualização de erro.");
+          console.log(
+            ">>> [StudioProvider] Fluxo de busca de studio abortado. Ignorando atualização de erro.",
+          );
           return;
         }
 
-        console.warn(">>> [StudioProvider] Erro capturado. Aplicando Site Base Fallback.", err);
+        console.warn(
+          ">>> [StudioProvider] Erro capturado. Aplicando Site Base Fallback.",
+          err,
+        );
         setStudio(SITE_BASE_FALLBACK(currentId || "", currentSlug || ""));
         setError(
           err instanceof Error
@@ -1408,10 +1685,14 @@ export function StudioProvider({
           // Garantimos um delay mínimo para evitar flickering e garantir sincronia
           setTimeout(() => {
             setIsLoading(false);
-            console.log(">>> [StudioProvider] Sincronização finalizada. Desativando loading.");
+            console.log(
+              ">>> [StudioProvider] Sincronização finalizada. Desativando loading.",
+            );
           }, 300);
         } else {
-           console.log(">>> [StudioProvider] Sinal abortado detectado no finally. Mantendo isLoading para próxima tentativa.");
+          console.log(
+            ">>> [StudioProvider] Sinal abortado detectado no finally. Mantendo isLoading para próxima tentativa.",
+          );
         }
       }
     }
@@ -1421,14 +1702,7 @@ export function StudioProvider({
     return () => {
       controller.abort();
     };
-  }, [
-    slug,
-    businessId,
-    isPreview,
-    isAdminPath,
-    refreshTrigger,
-    mapConfig,
-  ]);
+  }, [slug, businessId, isPreview, isAdminPath, refreshTrigger, mapConfig]);
 
   useEffect(() => {
     // REMOVIDO: Redirecionamento automático para /404 ou home
@@ -1443,6 +1717,8 @@ export function StudioProvider({
     if (studio && studio.active === false) {
       if (
         typeof window !== "undefined" &&
+        !isAdminPath &&
+        !isPreview &&
         !window.location.pathname.startsWith("/admin/master") &&
         !window.location.pathname.includes("/dashboard/minha-conta") &&
         !window.location.pathname.startsWith("/acesso-suspenso")
@@ -1453,7 +1729,7 @@ export function StudioProvider({
         window.location.href = "/acesso-suspenso";
       }
     }
-  }, [studio]);
+  }, [studio, isAdminPath, isPreview]);
 
   const value = useMemo(
     () => ({
@@ -1464,8 +1740,18 @@ export function StudioProvider({
       businessId,
       updateStudioInfo,
       refreshData,
+      refreshTrigger,
     }),
-    [studio, isLoading, error, slug, businessId, updateStudioInfo, refreshData],
+    [
+      studio,
+      isLoading,
+      error,
+      slug,
+      businessId,
+      updateStudioInfo,
+      refreshData,
+      refreshTrigger,
+    ],
   );
 
   // Tratamento visual para erro 404 (Studio não encontrado)

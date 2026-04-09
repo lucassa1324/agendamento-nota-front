@@ -14,15 +14,17 @@ import {
   Sun,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import {
+  defaultHeroSettings,
   getHeroSettings,
   getPageVisibility,
   getSiteProfile,
   getStorageKey,
   type HeroSettings,
+  SECTION_IDS,
   type SiteProfile,
   sanitizeColor,
   sanitizeSection,
@@ -32,7 +34,6 @@ import {
   SectionBackground,
   type SectionBackgroundSettings,
 } from "./admin/site_editor/components/SectionBackground";
-import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 const iconMap: Record<string, LucideIcon> = {
@@ -69,60 +70,162 @@ export function HeroSection() {
 
   const config = studio?.config as SiteConfigData | undefined;
 
-  // Sincronização Unificada: O estado customStyles agora é derivado DIRETAMENTE do StudioContext.
-  // Isso resolve a divergência entre editor e preview, pois ambos passam a beber da mesma fonte.
-  useEffect(() => {
+  const isInsideIframe =
+    typeof window !== "undefined" && window.parent !== window;
+  const hasLivePreviewUpdateRef = useRef(false);
+
+  const loadData = useCallback(() => {
     if (!config) return;
 
+    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
+    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+      console.log(
+        "[HeroSection] Guard Logic: Ignorando loadData do banco (Preview Ativo)",
+      );
+      return;
+    }
+
     const home = config?.home as Record<string, unknown> | undefined;
-    const layoutGlobal = (config?.layoutGlobal || config?.layout_global) as Record<string, unknown> | undefined;
-    const rawHero = (home?.heroBanner || home?.hero || config?.heroBanner || config?.hero || layoutGlobal?.heroBanner || layoutGlobal?.hero) as Record<string, unknown> | undefined;
+    const layoutGlobal = (config?.layoutGlobal || config?.layout_global) as
+      | Record<string, unknown>
+      | undefined;
+    const rawHero = (home?.heroBanner ||
+      home?.hero ||
+      config?.heroBanner ||
+      config?.hero ||
+      layoutGlobal?.heroBanner ||
+      layoutGlobal?.hero) as Record<string, unknown> | undefined;
 
     if (rawHero) {
       const content = (rawHero.content as Record<string, unknown>) || {};
       const appearance = (rawHero.appearance as Record<string, unknown>) || {};
-      
+
       const normalizedHero = {
         ...rawHero,
         ...content,
         ...appearance,
-        title: (content.title as string) ?? (rawHero.title as string),
-        subtitle: (content.subtitle as string) ?? (rawHero.subtitle as string),
-        showTitle: content.showTitle !== undefined ? content.showTitle : (rawHero.showTitle !== undefined ? rawHero.showTitle : true),
-        showSubtitle: content.showSubtitle !== undefined ? content.showSubtitle : (rawHero.showSubtitle !== undefined ? rawHero.showSubtitle : true),
-        showBadge: content.showBadge !== undefined ? content.showBadge : (rawHero.showBadge !== undefined ? rawHero.showBadge : true),
-        badge: (rawHero.badge as string) || (content.badge as string) || "",
-        badgeIcon: (rawHero.badgeIcon as string) || (content.badgeIcon as string) || "",
-        badgeFont: (rawHero.badgeFont as string) || (appearance.badgeFont as string) || (content.badgeFont as string),
-        badgeColor: sanitizeColor((rawHero.badgeColor as string) || (appearance.badgeColor as string) || (content.badgeColor as string)),
-        badgeTextColor: sanitizeColor((rawHero.badgeTextColor as string) || (appearance.badgeTextColor as string) || (content.badgeTextColor as string)),
-        primaryButton: (rawHero.primaryButton as string) ?? (content.primaryButton as string),
-        primaryButtonFont: (rawHero.primaryButtonFont as string) || (appearance.primaryButtonFont as string) || (content.primaryButtonFont as string),
-        primaryButtonColor: sanitizeColor((rawHero.primaryButtonColor as string) || (appearance.primaryButtonColor as string) || (content.primaryButtonColor as string)),
-        primaryButtonTextColor: sanitizeColor((rawHero.primaryButtonTextColor as string) || (appearance.primaryButtonTextColor as string) || (content.primaryButtonTextColor as string)),
-        primaryButtonLink: (rawHero.primaryButtonLink as string) ?? (content.primaryButtonLink as string),
-        secondaryButton: (rawHero.secondaryButton as string) ?? (content.secondaryButton as string),
-        secondaryButtonFont: (rawHero.secondaryButtonFont as string) || (appearance.secondaryButtonFont as string) || (content.secondaryButtonFont as string),
-        secondaryButtonColor: sanitizeColor((rawHero.secondaryButtonColor as string) || (appearance.secondaryButtonColor as string) || (content.secondaryButtonColor as string)),
-        secondaryButtonTextColor: sanitizeColor((rawHero.secondaryButtonTextColor as string) || (appearance.secondaryButtonTextColor as string) || (content.secondaryButtonTextColor as string)),
-        secondaryButtonLink: (rawHero.secondaryButtonLink as string) ?? (content.secondaryButtonLink as string),
-        titleColor: sanitizeColor((rawHero.titleColor as string) || (appearance.titleColor as string) || (content.titleColor as string)),
-        subtitleColor: sanitizeColor((rawHero.subtitleColor as string) || (appearance.subtitleColor as string) || (content.subtitleColor as string)),
-        titleFont: (rawHero.titleFont as string) || (appearance.titleFont as string) || (content.titleFont as string),
-        subtitleFont: (rawHero.subtitleFont as string) || (appearance.subtitleFont as string) || (content.subtitleFont as string),
-        bgImage: (rawHero.bgImage as string) || (appearance.backgroundImageUrl as string) || "",
-        bgColor: sanitizeColor((rawHero.bgColor as string) || (rawHero.backgroundColor as string) || (appearance.backgroundColor as string) || ""),
+        title: content.title ?? rawHero.title,
+        subtitle: content.subtitle ?? rawHero.subtitle,
+        showTitle:
+          content.showTitle !== undefined
+            ? content.showTitle
+            : rawHero.showTitle !== undefined
+              ? rawHero.showTitle
+              : true,
+        showSubtitle:
+          content.showSubtitle !== undefined
+            ? content.showSubtitle
+            : rawHero.showSubtitle !== undefined
+              ? rawHero.showSubtitle
+              : true,
+        showBadge:
+          content.showBadge !== undefined
+            ? content.showBadge
+            : rawHero.showBadge !== undefined
+              ? rawHero.showBadge
+              : true,
+        badge: rawHero.badge || content.badge || "",
+        badgeIcon: rawHero.badgeIcon || content.badgeIcon || "",
+        badgeFont:
+          rawHero.badgeFont || appearance.badgeFont || content.badgeFont,
+        badgeColor: sanitizeColor(
+          rawHero.badgeColor || appearance.badgeColor || content.badgeColor,
+        ),
+        badgeTextColor: sanitizeColor(
+          rawHero.badgeTextColor ||
+            appearance.badgeTextColor ||
+            content.badgeTextColor,
+        ),
+        primaryButton: rawHero.primaryButton ?? content.primaryButton,
+        primaryButtonFont:
+          rawHero.primaryButtonFont ||
+          appearance.primaryButtonFont ||
+          content.primaryButtonFont,
+        primaryButtonColor: sanitizeColor(
+          rawHero.primaryButtonColor ||
+            appearance.primaryButtonColor ||
+            content.primaryButtonColor,
+        ),
+        primaryButtonTextColor: sanitizeColor(
+          rawHero.primaryButtonTextColor ||
+            appearance.primaryButtonTextColor ||
+            content.primaryButtonTextColor,
+        ),
+        primaryButtonLink:
+          rawHero.primaryButtonLink ?? content.primaryButtonLink,
+        secondaryButton: rawHero.secondaryButton ?? content.secondaryButton,
+        secondaryButtonFont:
+          rawHero.secondaryButtonFont ||
+          appearance.secondaryButtonFont ||
+          content.secondaryButtonFont,
+        secondaryButtonColor: sanitizeColor(
+          rawHero.secondaryButtonColor ||
+            appearance.secondaryButtonColor ||
+            content.secondaryButtonColor,
+        ),
+        secondaryButtonTextColor: sanitizeColor(
+          rawHero.secondaryButtonTextColor ||
+            appearance.secondaryButtonTextColor ||
+            content.secondaryButtonTextColor,
+        ),
+        secondaryButtonLink:
+          rawHero.secondaryButtonLink ?? content.secondaryButtonLink,
+        titleColor: sanitizeColor(
+          rawHero.titleColor || appearance.titleColor || content.titleColor,
+        ),
+        subtitleColor: sanitizeColor(
+          rawHero.subtitleColor ||
+            appearance.subtitleColor ||
+            content.subtitleColor,
+        ),
+        titleFont:
+          rawHero.titleFont || appearance.titleFont || content.titleFont,
+        subtitleFont:
+          rawHero.subtitleFont ||
+          appearance.subtitleFont ||
+          content.subtitleFont,
+        bgImage: rawHero.bgImage || appearance.backgroundImageUrl || "",
+        bgColor:
+          sanitizeColor(
+            (rawHero.bgColor as string) ||
+              (rawHero.bg_color as string) ||
+              (rawHero.backgroundColor as string) ||
+              (appearance.backgroundColor as string) ||
+              (appearance.bgColor as string) ||
+              "",
+          ) || "",
+        bgType: (rawHero.bgType ||
+          appearance.bgType ||
+          (rawHero.bgImage || appearance.backgroundImageUrl
+            ? "image"
+            : "color")) as "color" | "image",
       };
+      console.log("[HeroSection] loadData: Dados normalizados com sucesso", {
+        bgColor: normalizedHero.bgColor,
+        bgType: normalizedHero.bgType,
+      });
       setCustomStyles(normalizedHero as HeroSettings);
     } else {
+      console.log(
+        "[HeroSection] loadData: Nenhum dado encontrado no config, usando default",
+      );
       setCustomStyles(getHeroSettings());
     }
-  }, [config]);
+  }, [config, isInsideIframe]);
+
+  // Sincronização Unificada: O estado customStyles agora é derivado DIRETAMENTE do StudioContext.
+  // Isso resolve a divergência entre editor e preview, pois ambos passam a beber da mesma fonte.
+  useEffect(() => {
+    // Só sincroniza se não estivermos no iframe ou se ainda não houve atualização de preview
+    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
+      loadData();
+    }
+  }, [loadData, isInsideIframe]);
 
   // Log de depuração solicitado para verificar a estrutura dos dados
   useEffect(() => {
     if (config) {
-      console.log(">>> [HERO_RENDER_DEBUG]", config);
+      // console.log(">>> [HERO_RENDER_DEBUG]", config);
     }
   }, [config]);
 
@@ -142,21 +245,173 @@ export function HeroSection() {
         setTimeout(() => {
           setHighlightedElement(null);
         }, 2000);
-      } else if (event.data.type === "UPDATE_HERO_SETTINGS") {
-        console.log(">>> [HERO] Recebido update via postMessage", event.data.settings);
-        
-        // Validação: só aplica o update se for um objeto válido
-        if (
-          event.data.settings &&
-          ((typeof event.data.settings === "object" &&
-            !Array.isArray(event.data.settings)) ||
-            typeof event.data.settings === "string")
+      } else if (
+        event.data.type === "UPDATE_HERO_SETTINGS" ||
+        event.data.type === "UPDATE_SITE_DATA" ||
+        event.data.type === "UPDATE_SITE_CONFIG"
+      ) {
+        // Marcamos que houve uma atualização do editor de forma SÍNCRONA
+        hasLivePreviewUpdateRef.current = true;
+
+        let rawHero = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
+
+        if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+          const siteData = event.data.data as Record<string, unknown>;
+          const layoutGlobal = (siteData.layoutGlobal ||
+            siteData.layout_global) as Record<string, unknown> | undefined;
+          const home = siteData.home as Record<string, unknown> | undefined;
+          rawHero = (home?.heroBanner ||
+            home?.hero ||
+            siteData.hero ||
+            layoutGlobal?.hero) as Record<string, unknown>;
+        } else if (
+          event.data.type === "UPDATE_SITE_CONFIG" &&
+          event.data.config
         ) {
-          setCustomStyles((prev) =>
-            sanitizeSection(event.data.settings, prev),
+          const siteConfig = event.data.config as Record<string, unknown>;
+          const layoutGlobal = (siteConfig.layoutGlobal ||
+            siteConfig.layout_global) as Record<string, unknown> | undefined;
+          const home = siteConfig.home as Record<string, unknown> | undefined;
+          rawHero = (home?.heroBanner ||
+            home?.hero ||
+            siteConfig.hero ||
+            layoutGlobal?.hero) as Record<string, unknown>;
+        }
+
+        if (rawHero) {
+          const content = (rawHero.content as Record<string, unknown>) || {};
+          const appearance =
+            (rawHero.appearance as Record<string, unknown>) || {};
+
+          const normalizedHero = {
+            ...rawHero,
+            ...content,
+            ...appearance,
+            title: content.title ?? rawHero.title,
+            subtitle: content.subtitle ?? rawHero.subtitle,
+            showTitle:
+              content.showTitle !== undefined
+                ? content.showTitle
+                : rawHero.showTitle !== undefined
+                  ? rawHero.showTitle
+                  : true,
+            showSubtitle:
+              content.showSubtitle !== undefined
+                ? content.showSubtitle
+                : rawHero.showSubtitle !== undefined
+                  ? rawHero.showSubtitle
+                  : true,
+            showBadge:
+              content.showBadge !== undefined
+                ? content.showBadge
+                : rawHero.showBadge !== undefined
+                  ? rawHero.showBadge
+                  : true,
+            badge: rawHero.badge || content.badge || "",
+            badgeIcon: rawHero.badgeIcon || content.badgeIcon || "",
+            badgeFont:
+              rawHero.badgeFont || appearance.badgeFont || content.badgeFont,
+            badgeColor:
+              sanitizeColor(
+                rawHero.badgeColor ||
+                  appearance.badgeColor ||
+                  content.badgeColor,
+              ) || "",
+            badgeTextColor:
+              sanitizeColor(
+                rawHero.badgeTextColor ||
+                  appearance.badgeTextColor ||
+                  content.badgeTextColor,
+              ) || "",
+            primaryButton: rawHero.primaryButton ?? content.primaryButton,
+            primaryButtonFont:
+              rawHero.primaryButtonFont ||
+              appearance.primaryButtonFont ||
+              content.primaryButtonFont,
+            primaryButtonColor:
+              sanitizeColor(
+                rawHero.primaryButtonColor ||
+                  appearance.primaryButtonColor ||
+                  content.primaryButtonColor,
+              ) || "",
+            primaryButtonTextColor:
+              sanitizeColor(
+                rawHero.primaryButtonTextColor ||
+                  appearance.primaryButtonTextColor ||
+                  content.primaryButtonTextColor,
+              ) || "",
+            primaryButtonLink:
+              rawHero.primaryButtonLink ?? content.primaryButtonLink,
+            secondaryButton: rawHero.secondaryButton ?? content.secondaryButton,
+            secondaryButtonFont:
+              rawHero.secondaryButtonFont ||
+              appearance.secondaryButtonFont ||
+              content.secondaryButtonFont,
+            secondaryButtonColor:
+              sanitizeColor(
+                rawHero.secondaryButtonColor ||
+                  appearance.secondaryButtonColor ||
+                  content.secondaryButtonColor,
+              ) || "",
+            secondaryButtonTextColor:
+              sanitizeColor(
+                rawHero.secondaryButtonTextColor ||
+                  appearance.secondaryButtonTextColor ||
+                  content.secondaryButtonTextColor,
+              ) || "",
+            secondaryButtonLink:
+              rawHero.secondaryButtonLink ?? content.secondaryButtonLink,
+            titleColor:
+              sanitizeColor(
+                rawHero.titleColor ||
+                  appearance.titleColor ||
+                  content.titleColor,
+              ) || "",
+            subtitleColor:
+              sanitizeColor(
+                rawHero.subtitleColor ||
+                  appearance.subtitleColor ||
+                  content.subtitleColor,
+              ) || "",
+            titleFont:
+              rawHero.titleFont || appearance.titleFont || content.titleFont,
+            subtitleFont:
+              rawHero.subtitleFont ||
+              appearance.subtitleFont ||
+              content.subtitleFont,
+            bgImage: rawHero.bgImage || appearance.backgroundImageUrl || "",
+            bgColor:
+              sanitizeColor(
+                (rawHero.bgColor as string) ||
+                  (rawHero.backgroundColor as string) ||
+                  (appearance.backgroundColor as string) ||
+                  "",
+              ) || "",
+            bgType: (rawHero.bgType ||
+              appearance.bgType ||
+              (rawHero.bgImage || appearance.backgroundImageUrl
+                ? "image"
+                : "color")) as "color" | "image",
+          };
+
+          console.log(
+            "[HeroSection] handleMessage: Aplicando atualização do editor",
+            {
+              bgColor: normalizedHero.bgColor,
+              type: event.data.type,
+            },
           );
-        } else {
-          console.error(">>> [HERO] Settings inválidos recebidos via postMessage:", event.data.settings);
+
+          const safeHero = sanitizeSection(
+            normalizedHero,
+            defaultHeroSettings,
+          ) as Partial<HeroSettings>;
+          setCustomStyles((prev) => ({
+            ...prev,
+            ...safeHero,
+          }));
         }
       }
     };
@@ -173,18 +428,34 @@ export function HeroSection() {
       } catch (_e) {}
     };
 
+    const handleDataReady = () => {
+      if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+        return;
+      }
+      loadData();
+    };
+
     window.addEventListener("message", handleMessage);
     window.addEventListener("heroSettingsUpdated", handleHeroSettingsUpdate);
-    window.addEventListener("pageVisibilityUpdated", () => setPageVisibility(getPageVisibility()));
+    window.addEventListener("pageVisibilityUpdated", () =>
+      setPageVisibility(getPageVisibility()),
+    );
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
+    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener("heroSettingsUpdated", handleHeroSettingsUpdate);
-      window.removeEventListener("pageVisibilityUpdated", () => setPageVisibility(getPageVisibility()));
+      window.removeEventListener(
+        "heroSettingsUpdated",
+        handleHeroSettingsUpdate,
+      );
+      window.removeEventListener("pageVisibilityUpdated", () =>
+        setPageVisibility(getPageVisibility()),
+      );
       window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
+      window.removeEventListener("DataReady", handleDataReady);
     };
-  }, []);
+  }, [isInsideIframe, loadData]);
 
   useEffect(() => {
     console.log("[BG_CHECK]", {
@@ -210,7 +481,7 @@ export function HeroSection() {
   if (!isMounted || isLoading) {
     return (
       <section
-        id="inicio"
+        id={SECTION_IDS.homeHero}
         className="relative min-h-[90vh] flex items-center justify-center bg-background"
       >
         <div className="container mx-auto px-4 text-center">
@@ -236,80 +507,104 @@ export function HeroSection() {
   const description =
     profile?.description ||
     "Transforme seu olhar com técnicas profissionais de design de sobrancelhas. Atendimento personalizado para destacar sua beleza única.";
+  const badgeValue = customStyles.badge;
+  const badgeText =
+    badgeValue === undefined || badgeValue === null
+      ? defaultHeroSettings.badge
+      : renderSafeText(badgeValue);
+  const titleValue = customStyles.title;
+  const titleText =
+    titleValue === undefined || titleValue === null
+      ? defaultHeroSettings.title
+      : renderSafeText(titleValue);
+  const subtitleValue = customStyles.subtitle;
+  const subtitleText =
+    subtitleValue === undefined || subtitleValue === null
+      ? description || defaultHeroSettings.subtitle
+      : renderSafeText(subtitleValue);
+  const primaryValue = customStyles.primaryButton;
+  const primaryText =
+    primaryValue === undefined || primaryValue === null
+      ? defaultHeroSettings.primaryButton
+      : renderSafeText(primaryValue);
+  const secondaryValue = customStyles.secondaryButton;
+  const secondaryText =
+    secondaryValue === undefined || secondaryValue === null
+      ? defaultHeroSettings.secondaryButton
+      : renderSafeText(secondaryValue);
 
   return (
-    <SessionWrapper appearance={customStyles?.appearance}>
-      <section
-        id="inicio"
-        className={cn(
-          "relative min-h-[80vh] md:min-h-screen flex items-center transition-all duration-500 pt-16 md:pt-0 overflow-hidden",
-          getHighlightClass("inicio"),
-        )}
-      >
-        <SectionBackground settings={customStyles as SectionBackgroundSettings} />
+    <section
+      id={SECTION_IDS.homeHero}
+      className={cn(
+        "relative min-h-[80vh] md:min-h-screen flex items-center transition-all duration-500 pt-16 md:pt-0 overflow-hidden",
+        getHighlightClass(SECTION_IDS.homeHero),
+      )}
+    >
+      <SectionBackground settings={customStyles as SectionBackgroundSettings} />
 
-        <div className="container relative z-10 mx-auto px-4 py-20">
-          <div className="max-w-3xl mx-auto text-center">
-            {customStyles.showBadge !== false && (
-              <div
-                className={cn(
-                  "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6 animate-in fade-in zoom-in duration-500",
-                  getHighlightClass("hero-badge"),
-                )}
+      <div className="container relative z-10 mx-auto px-4 py-20">
+        <div className="max-w-3xl mx-auto text-center">
+          {customStyles.showBadge !== false && badgeText.trim().length > 0 && (
+            <div
+              className={cn(
+                "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6 animate-in fade-in zoom-in duration-500",
+                getHighlightClass("hero-badge"),
+              )}
+              style={{
+                fontFamily: customStyles.badgeFont || "var(--font-body)",
+                borderColor:
+                  customStyles.badgeColor || "rgba(var(--accent), 0.2)",
+                backgroundColor: customStyles.badgeColor
+                  ? `${customStyles.badgeColor}22`
+                  : "rgba(var(--accent), 0.1)",
+              }}
+            >
+              {(() => {
+                const BadgeIcon =
+                  iconMap[customStyles.badgeIcon || "Sparkles"] || Sparkles;
+                return (
+                  <BadgeIcon
+                    className="w-4 h-4"
+                    style={{
+                      color: customStyles.badgeColor || "var(--accent)",
+                    }}
+                  />
+                );
+              })()}
+              <span
+                className="text-sm font-medium"
                 style={{
-                  fontFamily: customStyles.badgeFont || "var(--font-body)",
-                  borderColor: customStyles.badgeColor || "rgba(var(--accent), 0.2)",
-                  backgroundColor: customStyles.badgeColor
-                    ? `${customStyles.badgeColor}22`
-                    : "rgba(var(--accent), 0.1)",
+                  color:
+                    customStyles.badgeTextColor ||
+                    customStyles.badgeColor ||
+                    "var(--accent)",
                 }}
               >
-                {(() => {
-                  const BadgeIcon =
-                    iconMap[customStyles.badgeIcon || "Sparkles"] || Sparkles;
-                  return (
-                    <BadgeIcon
-                      className="w-4 h-4"
-                      style={{
-                        color: customStyles.badgeColor || "var(--accent)",
-                      }}
-                    />
-                  );
-                })()}
-                <span
-                  className="text-sm font-medium"
-                  style={{
-                    color:
-                      customStyles.badgeTextColor ||
-                      customStyles.badgeColor ||
-                      "var(--accent)",
-                  }}
-                >
-                  {renderSafeText(customStyles.badge) ||
-                    "Especialistas em Design de Sobrancelhas"}
-                </span>
-              </div>
-            )}
+                {badgeText}
+              </span>
+            </div>
+          )}
 
-            {customStyles.showTitle !== false && (
-              <h1
-                className={cn(
-                  "font-serif text-5xl md:text-7xl font-bold mb-6 text-balance leading-tight transition-all duration-300",
-                  getHighlightClass("hero-title"),
-                )}
-                style={{
-                  fontFamily: customStyles.titleFont
-                    ? `"${customStyles.titleFont}", sans-serif`
-                    : "var(--font-title)",
-                  color: customStyles.titleColor || "var(--foreground)",
-                }}
-              >
-                {renderSafeText(customStyles.title) ||
-                  "Realce Sua Beleza Natural"}
-              </h1>
-            )}
+          {customStyles.showTitle !== false && titleText.trim().length > 0 && (
+            <h1
+              className={cn(
+                "font-serif text-5xl md:text-7xl font-bold mb-6 text-balance leading-tight transition-all duration-300",
+                getHighlightClass("hero-title"),
+              )}
+              style={{
+                fontFamily: customStyles.titleFont
+                  ? `"${customStyles.titleFont}", sans-serif`
+                  : "var(--font-title)",
+                color: customStyles.titleColor || "var(--foreground)",
+              }}
+            >
+              {titleText}
+            </h1>
+          )}
 
-            {customStyles.showSubtitle !== false && (
+          {customStyles.showSubtitle !== false &&
+            subtitleText.trim().length > 0 && (
               <p
                 className={cn(
                   "text-lg md:text-xl mb-8 text-pretty leading-relaxed max-w-2xl mx-auto transition-all duration-300",
@@ -323,17 +618,18 @@ export function HeroSection() {
                   color: customStyles.subtitleColor || "var(--foreground)",
                 }}
               >
-                {renderSafeText(customStyles.subtitle) || description}
+                {subtitleText}
               </p>
             )}
 
-            <div
-              className={cn(
-                "flex flex-col sm:flex-row gap-4 justify-center",
-                getHighlightClass("hero-buttons"),
-              )}
-            >
-              {pageVisibility.agendar !== false && (
+          <div
+            className={cn(
+              "flex flex-col sm:flex-row gap-4 justify-center",
+              getHighlightClass("hero-buttons"),
+            )}
+          >
+            {pageVisibility.agendar !== false &&
+              primaryText.trim().length > 0 && (
                 <Button
                   asChild
                   size="lg"
@@ -347,16 +643,16 @@ export function HeroSection() {
                     color: customStyles.primaryButtonTextColor || "#ffffff",
                     fontFamily:
                       customStyles.primaryButtonFont || "var(--font-body)",
-                    boxShadow: `0 10px 15px -3px ${customStyles.primaryButtonColor ? `${customStyles.primaryButtonColor}40` : 'rgba(var(--primary), 0.25)'}`,
+                    boxShadow: `0 10px 15px -3px ${customStyles.primaryButtonColor ? `${customStyles.primaryButtonColor}40` : "rgba(var(--primary), 0.25)"}`,
                   }}
                 >
                   <Link href={customStyles.primaryButtonLink || "/agendamento"}>
-                    {renderSafeText(customStyles.primaryButton) ||
-                      "Agendar Agora"}
+                    {primaryText}
                   </Link>
                 </Button>
               )}
-              {pageVisibility.galeria !== false && (
+            {pageVisibility.galeria !== false &&
+              secondaryText.trim().length > 0 && (
                 <Button
                   asChild
                   variant="outline"
@@ -366,26 +662,25 @@ export function HeroSection() {
                     getHighlightClass("hero-secondary-button"),
                   )}
                   style={{
-                  color:
-                    customStyles.secondaryButtonTextColor ||
-                    (customStyles.secondaryButtonColor || "var(--primary)"),
-                  borderColor:
-                    customStyles.secondaryButtonColor ||
-                    "var(--primary)",
-                  backgroundColor: "transparent",
-                  fontFamily:
-                    customStyles.secondaryButtonFont || "var(--font-body)",
-                }}
+                    color:
+                      customStyles.secondaryButtonTextColor ||
+                      customStyles.secondaryButtonColor ||
+                      "var(--primary)",
+                    borderColor:
+                      customStyles.secondaryButtonColor || "var(--primary)",
+                    backgroundColor: "transparent",
+                    fontFamily:
+                      customStyles.secondaryButtonFont || "var(--font-body)",
+                  }}
                 >
                   <Link href={customStyles.secondaryButtonLink || "/servicos"}>
-                    {renderSafeText(customStyles.secondaryButton)}
+                    {secondaryText}
                   </Link>
                 </Button>
               )}
-            </div>
           </div>
         </div>
-      </section>
-    </SessionWrapper>
+      </div>
+    </section>
   );
 }

@@ -2,25 +2,55 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { description, screenshot, url, userAgent } = await req.json();
+    const { type, description, screenshot, url, userAgent, metadata } =
+      await req.json();
 
-    if (!description || !screenshot) {
+    if (!description || !type) {
       return NextResponse.json(
-        { error: "Descrição e screenshot são obrigatórios." },
+        { error: "Tipo e descrição são obrigatórios." },
         { status: 400 },
       );
     }
 
-    // TODO: Implementar persistência real (salvar no banco de dados, enviar email, etc.)
-    // Por enquanto, apenas logamos no console para simular o recebimento.
-    console.log("=== NOVO FEEDBACK RECEBIDO ===");
-    console.log("URL:", url);
-    console.log("User Agent:", userAgent);
-    console.log("Descrição:", description);
-    console.log("Screenshot (base64 length):", screenshot.length);
-    console.log("==============================");
+    const requestOrigin = new URL(req.url).origin;
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || "/api-proxy").replace(
+      /\/$/,
+      "",
+    );
+    const backendUrl = apiBase.startsWith("http")
+      ? apiBase
+      : `${requestOrigin}${apiBase}`;
 
-    return NextResponse.json({ message: "Feedback recebido com sucesso!" });
+    const response = await fetch(`${backendUrl}/api/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type,
+        description,
+        screenshot,
+        url,
+        userAgent,
+        metadata,
+      }),
+      cache: "no-store",
+    });
+
+    const responseData = await response
+      .json()
+      .catch(() => ({ error: "Resposta inválida do servidor." }));
+
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: responseData?.error || "Falha ao registrar feedback." },
+        { status: response.status || 500 },
+      );
+    }
+
+    return NextResponse.json({
+      message: "Feedback recebido com sucesso!",
+      id: responseData?.id,
+      screenshotUrl: responseData?.screenshotUrl,
+    });
   } catch (error) {
     console.error("Erro ao processar feedback:", error);
     return NextResponse.json(

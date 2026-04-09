@@ -285,8 +285,8 @@ export const SidebarContent = memo(
       hasBookingConfirmationChanges;
 
     const isGallerySection =
-      activeSection === "gallery-preview" || activeSection === "gallery-grid";
-    const isGalleryPage = activeSection === "gallery-grid";
+      activeSection === "home-gallery" || activeSection === "page-gallery";
+    const isGalleryPage = activeSection === "page-gallery";
     const currentGallerySettings = isGalleryPage
       ? galleryPageSettings
       : gallerySettings;
@@ -296,7 +296,7 @@ export const SidebarContent = memo(
     const currentHasGalleryChanges = isGalleryPage
       ? hasGalleryPageChanges
       : hasGalleryChanges;
-    const isHomeValuesSection = activeSection === "values";
+    const isHomeValuesSection = activeSection === "home-values";
     const isAboutValuesSection = activeSection === "about-values";
 
     const [isResetOpen, setIsResetOpen] = useState(false);
@@ -388,21 +388,23 @@ export const SidebarContent = memo(
               </div>
 
               <div className="space-y-2 sm:space-y-3 xl:space-y-4 p-2 sm:p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
-                {activeSection === "header" && (
+                {activeSection === "layout-header" && (
           <HeaderEditor
             settings={headerSettings}
             onUpdate={onUpdateHeader}
             hasChanges={hasHeaderChanges}
             onSave={onSaveHeader}
+            isSaving={isSaving}
           />
         )}
 
-        {activeSection === "footer" && (
+        {activeSection === "layout-footer" && (
           <FooterEditor
             settings={footerSettings}
             onUpdate={onUpdateFooter}
             hasChanges={hasFooterChanges}
             onSave={onSaveFooter}
+            isSaving={isSaving}
           />
         )}
                 {activeSection === "typography" && (
@@ -412,6 +414,7 @@ export const SidebarContent = memo(
                     onHighlight={onHighlight}
                     hasChanges={hasFontChanges}
                     onSave={onSaveFont}
+                    isSaving={isSaving}
                   />
                 )}
                 {activeSection === "colors" && (
@@ -420,18 +423,20 @@ export const SidebarContent = memo(
                       onUpdate={onUpdateColors}
                       hasChanges={hasColorChanges}
                       onSave={onSaveColors}
+                      isSaving={isSaving}
                     />
                   )}
 
-                {activeSection === "hero" && (
+                {activeSection === "home-hero" && (
                   <HeroEditor
                     settings={heroSettings}
                     onUpdate={onUpdateHero}
-                    onUpdateBackground={(updates) => onUpdateBackground(updates, "hero")}
+                    onUpdateBackground={(updates) => onUpdateBackground(updates, "home-hero")}
                     onHighlight={onHighlight}
-                    onReset={() => onSectionReset("hero")}
+                    onReset={() => onSectionReset("home-hero")}
                     hasChanges={hasHeroChanges}
                     onSave={onSaveHero}
+                    isSaving={isSaving}
                   />
                 )}
                 {activeSection === "about-hero" && (
@@ -443,25 +448,28 @@ export const SidebarContent = memo(
                     onReset={() => onSectionReset("about-hero")}
                     hasChanges={hasAboutHeroChanges}
                     onSave={onSaveAboutHero}
+                    isSaving={isSaving}
                   />
                 )}
-                {activeSection === "story" && (
+                {activeSection === "home-story" && (
                   <HistoryEditor
                     settings={storySettings}
                     onUpdate={onUpdateStory}
                     onUpdateBackground={onUpdateBackground}
                     hasChanges={hasStoryChanges}
                     onSave={onSaveStory}
+                    isSaving={isSaving}
                   />
                 )}
-                {activeSection === "services" && (
+                {activeSection === "home-services" && (
                   <ServicesEditor
                     settings={servicesSettings}
                     onUpdate={onUpdateServices}
                     onUpdateBackground={onUpdateBackground}
-                    onReset={() => onSectionReset("services")}
+                    onReset={() => onSectionReset("home-services")}
                     hasChanges={hasServicesChanges}
                     onSave={onSaveServices}
+                    isSaving={isSaving}
                   />
                 )}
                 {(isHomeValuesSection || isAboutValuesSection) &&
@@ -471,6 +479,7 @@ export const SidebarContent = memo(
                       onUpdate={onUpdateAboutUsValues}
                       onSave={onSaveAboutUsValues}
                       hasChanges={hasAboutUsValuesChanges}
+                      isSaving={isSaving}
                     />
                   ) : (
                     <ValuesEditor
@@ -478,26 +487,29 @@ export const SidebarContent = memo(
                       onUpdate={onUpdateHomeValues}
                       onSave={onSaveHomeValues}
                       hasChanges={hasHomeValuesChanges}
+                      isSaving={isSaving}
                     />
                   ))}
 
-                {activeSection === "team" && (
+                {activeSection === "home-team" && (
                   <TeamEditor
                     settings={teamSettings}
                     onUpdate={onUpdateTeam}
                     onUpdateBackground={onUpdateBackground}
                     hasChanges={hasTeamChanges}
                     onSave={onSaveTeam}
+                    isSaving={isSaving}
                   />
                 )}
 
-                {activeSection === "testimonials" && (
+                {activeSection === "home-testimonials" && (
                   <TestimonialsEditor
                     settings={testimonialsSettings}
                     onUpdate={onUpdateTestimonials}
                     onUpdateBackground={onUpdateBackground}
                     onSave={onSaveTestimonials}
                     hasChanges={hasTestimonialsChanges}
+                    isSaving={isSaving}
                   />
                 )}
 
@@ -510,16 +522,18 @@ export const SidebarContent = memo(
                     onReset={() => activeSection && onSectionReset(activeSection)}
                     hasChanges={currentHasGalleryChanges}
                     sectionId={activeSection || undefined}
+                    isSaving={isSaving}
                   />
                 )}
 
-                {activeSection === "cta" && (
+                {activeSection === "home-cta" && (
                   <CTAEditor
                     settings={ctaSettings}
                     onUpdate={onUpdateCTA}
                     onUpdateBackground={onUpdateBackground}
                     hasChanges={hasCTAChanges}
                     onSave={onSaveCTA}
+                    isSaving={isSaving}
                   />
                 )}
 
@@ -532,6 +546,7 @@ export const SidebarContent = memo(
                     onSave={onSaveBookingService}
                     hasChanges={hasBookingServiceChanges}
                     onHighlight={onHighlight}
+                    isSaving={isSaving}
                   />
                 )}
 
@@ -544,6 +559,7 @@ export const SidebarContent = memo(
                     onSave={onSaveBookingDate}
                     hasChanges={hasBookingDateChanges}
                     onHighlight={onHighlight}
+                    isSaving={isSaving}
                   />
                 )}
 
@@ -556,6 +572,7 @@ export const SidebarContent = memo(
                     onSave={onSaveBookingTime}
                     hasChanges={hasBookingTimeChanges}
                     onHighlight={onHighlight}
+                    isSaving={isSaving}
                   />
                 )}
 
@@ -568,6 +585,7 @@ export const SidebarContent = memo(
                     onSave={onSaveBookingForm}
                     hasChanges={hasBookingFormChanges}
                     onHighlight={onHighlight}
+                    isSaving={isSaving}
                   />
                 )}
 
@@ -580,24 +598,25 @@ export const SidebarContent = memo(
                     onSave={onSaveBookingConfirmation}
                     hasChanges={hasBookingConfirmationChanges}
                     onHighlight={onHighlight}
+                    isSaving={isSaving}
                   />
                 )}
 
                 {![
-                  "header",
-                  "footer",
+                  "layout-header",
+                  "layout-footer",
                   "typography",
-                  "hero",
+                  "home-hero",
                   "about-hero",
-                  "story",
-                  "team",
-                  "testimonials",
-                  "services",
-                  "values",
+                  "home-story",
+                  "home-team",
+                  "home-testimonials",
+                  "home-services",
+                  "home-values",
                   "about-values",
-                  "gallery-preview",
-                  "gallery-grid",
-                  "cta",
+                  "home-gallery",
+                  "page-gallery",
+                  "home-cta",
                   "booking-service",
                   "booking-date",
                   "booking-time",

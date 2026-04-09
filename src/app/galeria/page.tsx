@@ -15,6 +15,7 @@ import {
   getGalleryPageSettings,
   getPageVisibility,
   getVisibleSections,
+  SECTION_IDS,
   sanitizeColor,
 } from "@/lib/booking-data";
 
@@ -222,7 +223,7 @@ export default function GaleriaPage({
 
   return (
     <main>
-      {isSectionVisible("gallery-grid") && (
+      {isSectionVisible(SECTION_IDS.pageGallery) && (
         <section 
           className="relative py-20 md:py-32 overflow-hidden"
           style={{

@@ -489,7 +489,7 @@ export function ProfileManager() {
               id="site-name"
               value={profile.name || ""}
               onChange={(e) => updateField("name", e.target.value)}
-              placeholder="Ex: Brow Studio"
+              placeholder="Ex: Aura Sistema"
               autoComplete="off"
             />
           </div>

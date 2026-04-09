@@ -16,6 +16,7 @@ import {
   Heart,
   ImageIcon,
   Laptop,
+  Loader2,
   Medal,
   Moon,
   Music,
@@ -36,6 +37,7 @@ import {
   Utensils,
   Wind,
 } from "lucide-react";
+import { useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -97,6 +99,7 @@ interface ValuesEditorProps {
   onUpdate: (updates: Partial<ValuesSettings>) => void;
   onSave?: () => void;
   hasChanges?: boolean;
+  isSaving?: boolean;
 }
 
 export function ValuesEditor({
@@ -104,9 +107,19 @@ export function ValuesEditor({
   onUpdate,
   onSave: externalOnSave,
   hasChanges,
+  isSaving: externalIsSaving,
 }: ValuesEditorProps) {
-  const handleSave = () => {
-    if (externalOnSave) externalOnSave();
+  const [localIsSaving, setLocalIsSaving] = useState(false);
+  const isLoading = externalIsSaving || localIsSaving;
+
+  const handleSave = async () => {
+    if (!externalOnSave || isLoading) return;
+    setLocalIsSaving(true);
+    try {
+      await externalOnSave();
+    } finally {
+      setLocalIsSaving(false);
+    }
   };
 
   const addItem = () => {
@@ -577,20 +590,27 @@ export function ValuesEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
+          disabled={!hasChanges || isLoading}
           onClick={handleSave}
           className={cn(
-            "w-full h-11 text-sm font-bold transition-all duration-300",
-            hasChanges
+            "w-full h-11 text-sm font-bold transition-all duration-300 relative",
+            hasChanges && !isLoading
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? (
-            "Salvar Alterações"
-          ) : (
-            <span className="opacity-50">Nenhuma alteração</span>
-          )}
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : hasChanges ? (
+              "Salvar Alterações"
+            ) : (
+              <span className="opacity-50">Nenhuma alteração</span>
+            )}
+          </div>
         </Button>
       </div>
     </div>

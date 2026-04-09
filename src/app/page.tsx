@@ -68,15 +68,14 @@ export default function Home({
   }, [studio, isPreview]);
 
   useEffect(() => {
-    // Se não houver slug e não estiver carregando, redireciona para a landing page externa
-    // EXCETO se estivermos no modo preview do editor
-    if (!studioLoading && !slug && LANDING_PAGE_URL && !isPreview) {
-      if (typeof window !== "undefined") {
-        console.log("Redirecting to landing page:", LANDING_PAGE_URL);
-        window.location.replace(LANDING_PAGE_URL);
-      }
+    if (studioLoading || slug || isPreview) return;
+    if (LANDING_PAGE_URL && typeof window !== "undefined") {
+      console.log("Redirecting to landing page:", LANDING_PAGE_URL);
+      window.location.replace(LANDING_PAGE_URL);
+      return;
     }
-  }, [slug, studioLoading, isPreview]);
+    router.replace("/admin");
+  }, [slug, studioLoading, isPreview, router]);
 
   useEffect(() => {
     // Se a página inicial estiver desativada, redireciona para agendamento
@@ -150,8 +149,14 @@ export default function Home({
   }, []);
 
   const isVisible = (id: string) => {
-    // Se houver uma seção isolada, apenas ela deve aparecer
-    // Exceção: 'typography' e 'colors' mostram a página inteira
+    // Se a seção estiver explicitamente escondida, ela NUNCA deve aparecer
+    // Isso garante que o botão 'Ocultar seção' funcione mesmo durante o isolamento (edição)
+    if (visibleSections[id] === false) {
+      return false;
+    }
+
+    // Se houver uma seção isolada (modo de edição focada), apenas ela deve aparecer
+    // Exceção: 'typography' e 'colors' mostram a página inteira para visualização global
     if (
       isolatedSection &&
       isolatedSection !== "typography" &&
@@ -159,13 +164,14 @@ export default function Home({
     ) {
       return isolatedSection === id;
     }
-    // Caso contrário, verificamos se a seção está marcada como visível (default é true)
-    return visibleSections[id] !== false;
+
+    // Caso contrário, a seção é visível por padrão
+    return true;
   };
 
   // Se estiver carregando o studio ou redirecionando, mostramos um estado neutro
   // No modo preview, permitimos renderizar mesmo sem slug para evitar o loading infinito no editor
-  if ((studioLoading || !slug) && !isPreview) {
+  if ((studioLoading || (!slug && !!LANDING_PAGE_URL)) && !isPreview) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -181,11 +187,11 @@ export default function Home({
 
   return (
     <main key={publishVersion}>
-      {isVisible("hero") && <HeroSection />}
-      {isVisible("services") && <ServicesSection />}
-      {isVisible("values") && <ValuesSection source="home" />}
-      {isVisible("gallery-preview") && <GalleryPreview />}
-      {isVisible("cta") && <CTASection />}
+      {isVisible("home-hero") && <HeroSection />}
+      {isVisible("home-services") && <ServicesSection />}
+      {isVisible("home-values") && <ValuesSection source="home" />}
+      {isVisible("home-gallery") && <GalleryPreview />}
+      {isVisible("home-cta") && <CTASection />}
     </main>
   );
 }

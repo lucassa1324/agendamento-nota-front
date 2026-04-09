@@ -229,6 +229,27 @@ class SiteCustomizerService {
   ): Promise<SiteConfigData | null> {
     console.log(">>> [FRONT_API_CALL] Enviando para o servidor...", data);
 
+    if (data.values) {
+      console.log(
+        ">>> [DRAFT_PAYLOAD_CHECK] Seção Valores:",
+        JSON.stringify(data.values, null, 2),
+      );
+    }
+
+    if (data.homeValuesSettings) {
+      console.log(
+        ">>> [DRAFT_PAYLOAD_CHECK] Seção Home Values:",
+        JSON.stringify(data.homeValuesSettings, null, 2),
+      );
+    }
+
+    if (data.aboutUsValuesSettings) {
+      console.log(
+        ">>> [DRAFT_PAYLOAD_CHECK] Seção About Us Values:",
+        JSON.stringify(data.aboutUsValuesSettings, null, 2),
+      );
+    }
+
     console.log(
       `[CUSTOMIZER] Salvando configurações em: /api/settings/draft/${companyId}`,
     );

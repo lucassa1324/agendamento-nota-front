@@ -1,20 +1,14 @@
 "use client";
 
-import {
-  Activity,
-  ArrowLeft,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Save,
-} from "lucide-react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
+import { LayoutDashboard, PanelLeftClose, Save, Settings2, X } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Joyride, { type CallBackProps, STATUS, type Step } from "react-joyride";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { ThemeInjectorClient } from "@/components/theme-injector-client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
@@ -27,7 +21,7 @@ import { useStudio } from "@/context/studio-context";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@/lib/api-client";
-import { API_BASE_URL } from "@/lib/auth-client";
+import { API_BASE_URL, signOut, useSession } from "@/lib/auth-client";
 import type { Business } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 
@@ -42,9 +36,26 @@ import { useSiteEditor } from "./site_editor/hooks/use-site-editor";
 export function SiteCustomizer() {
   const { isSidebarOpen, setIsSidebarOpen: onToggleSidebar } = useSidebar();
   const isMobile = useIsMobile();
+  const [isNavOpen, setIsNavOpen] = useState(!isMobile);
+  
+  // Sincronizar isNavOpen com isMobile apenas no carregamento inicial
+  useEffect(() => {
+    setIsNavOpen(!isMobile);
+  }, [isMobile]);
   const { toast } = useToast();
   const params = useParams();
+  const router = useRouter();
   const slug = params?.slug as string;
+
+  const { data: session } = useSession();
+  const adminUser = session?.user
+    ? { name: session.user.name, username: session.user.email }
+    : null;
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push("/admin");
+  };
 
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -53,6 +64,7 @@ export function SiteCustomizer() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isTourRunning, setIsTourRunning] = useState(false);
 
   const { businessId: studioId } = useStudio();
   const {
@@ -154,15 +166,61 @@ export function SiteCustomizer() {
     setActiveSectionId,
   } = useSiteEditor(iframeRef);
 
+  useEffect(() => {
+    const hasSeenCustomizerTour = localStorage.getItem("tour_customizer_v1");
+    if (hasSeenCustomizerTour === "true") return;
+    const timer = window.setTimeout(() => {
+      setIsTourRunning(true);
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const handleTourCallback = (data: CallBackProps) => {
+    if (data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED) {
+      localStorage.setItem("tour_customizer_v1", "true");
+      setIsTourRunning(false);
+    }
+  };
+
   // Use a ref to store the latest fetchCustomization function to break the dependency loop
   const fetchCustomizationRef = useRef(fetchCustomization);
   useEffect(() => {
     fetchCustomizationRef.current = fetchCustomization;
   }, [fetchCustomization]);
 
+  const handleSaveGlobalRef = useRef(handleSaveGlobal);
+  useEffect(() => {
+    handleSaveGlobalRef.current = handleSaveGlobal;
+  }, [handleSaveGlobal]);
+
+  const waitForNextStateCycle = () =>
+    new Promise<void>((resolve) => {
+      window.setTimeout(() => resolve(), 0);
+    });
+
   const applyAndSave = (applyFn: () => void) => async () => {
     applyFn();
-    await handleSaveGlobal();
+    await waitForNextStateCycle();
+    await handleSaveGlobalRef.current();
+  };
+
+  const handlePageVisibilityChangeWithAutosave = (
+    pageId: string,
+    isVisible: boolean,
+  ) => {
+    handlePageVisibilityChange(pageId, isVisible);
+    void (async () => {
+      await waitForNextStateCycle();
+      await handleSaveGlobalRef.current(false);
+    })();
+  };
+
+  const handleSectionVisibilityToggleWithAutosave = (sectionId: string) => {
+    handleSectionVisibilityToggle(sectionId);
+    void (async () => {
+      await waitForNextStateCycle();
+      await handleSaveGlobalRef.current(false);
+    })();
   };
 
   const handleToggleStatus = async () => {
@@ -173,10 +231,9 @@ export function SiteCustomizer() {
     setIsUpdatingStatus(true);
 
     try {
-      // Usa o endpoint de status do usuário (que controla o acesso do estúdio)
-      // Buscamos o ID do usuário através do business ou usamos o business.id se for o mesmo
+      // Usa o endpoint de status da empresa (que controla o acesso do estúdio)
       const response = await customFetch(
-        `${API_BASE_URL}/api/admin/master/users/${business.id}/status`,
+        `${API_BASE_URL}/api/business/${business.id}/status`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -240,9 +297,13 @@ export function SiteCustomizer() {
       let fetchUrl = `${API_BASE_URL}/api/business/slug/${slug}`;
       if (studioId) {
         fetchUrl = `${API_BASE_URL}/api/business/${studioId}`;
-        console.log(`>>> [CUSTOMIZER_FETCH] Buscando estúdio via ID: ${studioId}`);
+        console.log(
+          `>>> [CUSTOMIZER_FETCH] Buscando estúdio via ID: ${studioId}`,
+        );
       } else {
-        console.log(`>>> [CUSTOMIZER_FETCH] Buscando estúdio via SLUG: ${slug}`);
+        console.log(
+          `>>> [CUSTOMIZER_FETCH] Buscando estúdio via SLUG: ${slug}`,
+        );
       }
 
       const response = await customFetch(fetchUrl, {
@@ -423,10 +484,10 @@ export function SiteCustomizer() {
     visibleSections,
     onPageToggle: togglePageExpansion,
     onSectionSelect: scrollToSection,
-    onSectionVisibilityToggle: handleSectionVisibilityToggle,
+    onSectionVisibilityToggle: handleSectionVisibilityToggleWithAutosave,
     onSectionReset: handleSectionReset,
     pageVisibility,
-    onPageVisibilityChange: handlePageVisibilityChange,
+    onPageVisibilityChange: handlePageVisibilityChangeWithAutosave,
     onSaveLocal: handleSaveLocal,
     onSaveGlobal: handleSaveGlobal,
     onPublish: handlePublish,
@@ -436,29 +497,6 @@ export function SiteCustomizer() {
     pages,
     sections,
   };
-
-  const shouldSaveLocal =
-    hasUnsavedGlobalChanges ||
-    hasHeroChanges ||
-    hasAboutHeroChanges ||
-    hasStoryChanges ||
-    hasTeamChanges ||
-    hasTestimonialsChanges ||
-    hasFontChanges ||
-    hasColorChanges ||
-    hasServicesChanges ||
-    hasHomeValuesChanges ||
-    hasAboutUsValuesChanges ||
-    hasGalleryChanges ||
-    hasGalleryPageChanges ||
-    hasCTAChanges ||
-    hasHeaderChanges ||
-    hasFooterChanges ||
-    hasBookingServiceChanges ||
-    hasBookingDateChanges ||
-    hasBookingTimeChanges ||
-    hasBookingFormChanges ||
-    hasBookingConfirmationChanges;
 
   if (isLoading || isConfigFetching) {
     return (
@@ -490,110 +528,179 @@ export function SiteCustomizer() {
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden overflow-x-hidden bg-background">
+      <Joyride
+        run={isTourRunning}
+        continuous
+        showProgress
+        showSkipButton
+        disableOverlayClose
+        callback={handleTourCallback}
+        locale={{
+          back: "Voltar",
+          close: "Fechar",
+          last: "Concluir",
+          next: "Próximo",
+          skip: "Pular",
+        }}
+        steps={
+          [
+            {
+              target: '[data-tour="customizer-tools-button"]',
+              content:
+                "Comece por aqui para abrir as ferramentas de edição do seu site.",
+              placement: "bottom",
+            },
+            {
+              target: '[data-tour="customizer-tools-sidebar"]',
+              content:
+                "Nesta lateral você escolhe a seção da página e altera textos, cores e visibilidade.",
+            },
+            {
+              target: '[data-tour="customizer-preview-controls"]',
+              content:
+                "Use estes controles para alternar o preview entre desktop e mobile.",
+            },
+            {
+              target: '[data-tour="customizer-preview-area"]',
+              content:
+                "Aqui você acompanha as alterações em tempo real antes de publicar.",
+            },
+          ] satisfies Step[]
+        }
+        styles={{
+          options: {
+            zIndex: 10000,
+          },
+        }}
+      />
       {/* Top Header */}
-      <header className="h-12 sm:h-14 border-b border-border bg-card flex items-center justify-between flex-wrap sm:flex-nowrap px-2 sm:px-4 shrink-0 z-30 shadow-sm gap-2 gap-y-1">
-        <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
-          <Link href={`/admin/${slug}/dashboard/overview`}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                if (typeof window !== "undefined") {
-                  sessionStorage.setItem("personalizacao_skip_bank", "1");
-                  if (businesses[0]) {
-                    sessionStorage.setItem(
-                      "personalizacao_business",
-                      JSON.stringify(businesses[0]),
-                    );
-                  }
-                }
-                if (shouldSaveLocal) {
-                  handleSaveLocal();
-                }
-              }}
-              className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground hover:text-foreground shrink-0"
-              title="Voltar ao Dashboard"
-            >
-              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-            </Button>
-          </Link>
-
+      <header className="h-14 border-b border-border bg-card flex items-center justify-between px-2 sm:px-4 shrink-0 z-30 shadow-sm gap-2 overflow-hidden">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => onToggleSidebar(!isSidebarOpen)}
-            className="h-8 w-8 sm:h-10 sm:w-10 bg-[#1e293b] text-white hover:bg-[#334155] hover:text-white rounded-lg shadow-md transition-all active:scale-95 shrink-0"
-            title="Alternar barra lateral"
+            className={cn(
+              "h-9 w-9 text-muted-foreground hover:text-foreground md:w-auto md:px-3 md:gap-1.5 transition-colors 2xl:hidden",
+              isNavOpen && "bg-accent text-accent-foreground",
+            )}
+            title={
+              isNavOpen ? "Fechar Menu de Navegação" : "Abrir Menu de Navegação"
+            }
+            onClick={() => setIsNavOpen(!isNavOpen)}
+          >
+            {isNavOpen ? (
+              <X className="w-5 h-5" />
+            ) : (
+              <LayoutDashboard className="w-5 h-5" />
+            )}
+            <span className="hidden md:inline text-xs font-medium uppercase tracking-tight">
+              {isNavOpen ? "Fechar" : "Navegação"}
+            </span>
+          </Button>
+
+          <Button
+            variant="default"
+            size="default"
+            onClick={() => {
+              onToggleSidebar(!isSidebarOpen);
+              if (!isSidebarOpen) {
+                setActiveSectionId("hero");
+              }
+            }}
+            className={cn(
+              "h-9 px-2 sm:px-4 rounded-lg shadow-md transition-all active:scale-95 shrink-0 flex items-center gap-2 border border-slate-700",
+              isSidebarOpen
+                ? "bg-slate-100 text-slate-900 hover:bg-slate-200"
+                : "bg-indigo-600 text-white hover:bg-indigo-700 ring-2 ring-indigo-500/20",
+            )}
+            data-tour="customizer-tools-button"
+            title={
+              isSidebarOpen
+                ? "Fechar ferramentas de edição"
+                : "Abrir ferramentas de edição"
+            }
           >
             {isSidebarOpen ? (
               <PanelLeftClose className="w-4 h-4 sm:w-5 sm:h-5" />
             ) : (
-              <PanelLeftOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+              <Settings2 className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce" />
             )}
+            <span className="text-xs sm:text-sm font-bold uppercase tracking-wide">
+              {isSidebarOpen ? "Fechar" : "Ferramentas"}
+            </span>
           </Button>
 
-          <div className="flex items-center gap-2 sm:gap-6 shrink-0">
-            <div className="flex items-center gap-2 sm:gap-3 bg-muted/50 px-2 sm:px-3 py-1.5 rounded-lg border max-w-30 sm:max-w-none overflow-hidden">
-              <span className="hidden sm:inline text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">
-                Estúdio:
-              </span>
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs sm:text-sm font-semibold text-primary truncate">
-                  {businesses[0]?.name || slug}
-                </span>
-              </div>
-            </div>
-
-            <HeaderControls
-              previewMode={previewMode}
-              setPreviewMode={setPreviewMode}
-              setManualScale={setManualScale}
-              setIsAutoZoom={setIsAutoZoom}
-              isAutoZoom={isAutoZoom}
-              setManualWidth={setManualWidth}
-              reloadPreview={reloadPreview}
-              desktopScale={desktopScale}
-              mobileScale={mobileScale}
-              isMobile={isMobile}
-            />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-6 w-full sm:w-auto justify-end">
-          <div className="flex items-center gap-2 sm:gap-3 bg-muted/30 px-2 sm:px-3 py-1.5 rounded-lg border border-border/50">
-            <div className="flex flex-col items-end mr-1">
-              <Label
-                htmlFor="access-switch"
-                className="hidden sm:inline text-[10px] font-bold uppercase tracking-wider text-muted-foreground leading-none mb-1"
-              >
-                Acesso ao Site
-              </Label>
-              <div className="flex items-center gap-1.5">
-                {isUpdatingStatus ? (
-                  <Activity className="w-3 h-3 animate-spin text-primary" />
-                ) : (
-                  <Badge
-                    variant={businesses[0]?.active ? "default" : "destructive"}
-                    className="h-4 px-1.5 text-[9px] uppercase font-bold"
-                  >
-                    {businesses[0]?.active ? "Ativo" : "Off"}
-                  </Badge>
-                )}
-              </div>
-            </div>
+          {/* Botão de Status movido para perto dos botões principais */}
+          <div className="flex items-center gap-1.5 bg-muted/30 px-2 py-1 rounded-lg border border-border/50 shrink-0">
+            <span className="hidden sm:inline text-[10px] font-bold uppercase text-muted-foreground/70 ml-1">
+              Acesso ao site
+            </span>
+            <Badge
+              variant={businesses[0]?.active ? "default" : "destructive"}
+              className="h-4 px-1 text-[8px] uppercase font-bold"
+            >
+              {businesses[0]?.active ? "Ativo" : "Off"}
+            </Badge>
             <Switch
               id="access-switch"
               checked={businesses[0]?.active ?? true}
               onCheckedChange={handleToggleStatus}
               disabled={isUpdatingStatus || !businesses[0]}
-              className="scale-75 sm:scale-100 data-[state=checked]:bg-primary data-[state=unchecked]:bg-destructive origin-right"
+              className="scale-75 data-[state=checked]:bg-indigo-600"
             />
           </div>
+        </div>
+
+        {/* Centralizado os controles de preview */}
+        <div
+          className="flex-1 flex justify-center min-w-0"
+          data-tour="customizer-preview-controls"
+        >
+          <HeaderControls
+            previewMode={previewMode}
+            setPreviewMode={setPreviewMode}
+            setManualScale={setManualScale}
+            setIsAutoZoom={setIsAutoZoom}
+            isAutoZoom={isAutoZoom}
+            setManualWidth={setManualWidth}
+            reloadPreview={reloadPreview}
+            desktopScale={desktopScale}
+            mobileScale={mobileScale}
+            isMobile={isMobile}
+          />
+        </div>
+
+        {/* Lado direito agora mais limpo, apenas com info do estúdio se houver espaço */}
+        <div className="hidden xl:flex items-center gap-3 bg-muted/50 px-3 py-1.5 rounded-lg border overflow-hidden shrink-0">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            Estúdio:
+          </span>
+          <span className="text-sm font-semibold text-primary truncate max-w-37.5">
+            {businesses[0]?.name || slug}
+          </span>
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Mobile Sidebar */}
+        {/* Dashboard Navigation Sidebar (Mobile Drawer) */}
+        <Sheet open={isMobile && isNavOpen} onOpenChange={setIsNavOpen}>
+          <SheetContent side="left" className="p-0 w-64 border-r-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Menu de Navegação</SheetTitle>
+            </SheetHeader>
+            <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
+          </SheetContent>
+        </Sheet>
+
+        <div className={cn(
+          "hidden shrink-0 border-r border-border bg-card shadow-lg transition-all duration-300",
+          "2xl:block",
+          isNavOpen ? "lg:block" : "lg:hidden"
+        )}>
+          <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
+        </div>
+
+        {/* Mobile Sidebar (Editor Tools) */}
         <Sheet open={isMobile && isSidebarOpen} onOpenChange={onToggleSidebar}>
           <SheetContent side="left" className="p-0 w-[85%] sm:w-80 lg:hidden">
             <SheetHeader className="sr-only">
@@ -609,12 +716,16 @@ export function SiteCustomizer() {
             "hidden lg:flex flex-col h-full border-r border-border bg-card transition-all duration-300 ease-in-out overflow-hidden shrink-0 z-20",
             isSidebarOpen ? "w-64 xl:w-80 2xl:w-96" : "w-0 border-r-0",
           )}
+          data-tour="customizer-tools-sidebar"
         >
           <SidebarContent {...sidebarProps} />
         </div>
 
         {/* Preview Area */}
-        <div className="flex-1 flex flex-col relative overflow-hidden h-full min-w-0">
+        <div
+          className="flex-1 flex flex-col relative overflow-hidden h-full min-w-0"
+          data-tour="customizer-preview-area"
+        >
           <ThemeInjectorClient iframeRef={iframeRef} />
           <PreviewFrame
             iframeRef={iframeRef}

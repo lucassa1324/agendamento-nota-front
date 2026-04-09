@@ -9,7 +9,11 @@ import { TeamSection } from "@/components/team-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
 import { ValuesSection } from "@/components/values-section";
 import { useStudio } from "@/context/studio-context";
-import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
+import {
+  getPageVisibility,
+  getVisibleSections,
+  SECTION_IDS,
+} from "@/lib/booking-data";
 
 export default function SobrePage({
   searchParams: searchParamsPromise,
@@ -100,7 +104,12 @@ export default function SobrePage({
   }, [router, isPreview]);
 
   const isSectionVisible = (sectionId: string) => {
-    // Se houver uma seção isolada (modo preview de seção específica), 
+    // Se a seção estiver explicitamente escondida, ela NUNCA deve aparecer
+    if (visibleSections[sectionId] === false) {
+      return false;
+    }
+
+    // Se houver uma seção isolada (modo preview de seção específica),
     // apenas essa seção deve ser visível.
     if (
       isolatedSection &&
@@ -111,7 +120,7 @@ export default function SobrePage({
     }
 
     // Caso contrário, usamos o array de visibilidade vindo do banco ou do editor.
-    return visibleSections[sectionId] !== false;
+    return true;
   };
 
   if (isVisible === null) return null;
@@ -119,9 +128,9 @@ export default function SobrePage({
 
   return (
     <main>
-      {isSectionVisible("about-hero") && <AboutHero />}
-      {isSectionVisible("story") && <StorySection />}
-      {isSectionVisible("about-values") && (
+      {isSectionVisible(SECTION_IDS.aboutHero) && <AboutHero />}
+      {isSectionVisible(SECTION_IDS.homeStory) && <StorySection />}
+      {isSectionVisible(SECTION_IDS.aboutValues) && (
         <ValuesSection
           source="about"
           settings={
@@ -130,8 +139,8 @@ export default function SobrePage({
           }
         />
       )}
-      {isSectionVisible("team") && <TeamSection />}
-      {isSectionVisible("testimonials") && <TestimonialsSection />}
+      {isSectionVisible(SECTION_IDS.homeTeam) && <TeamSection />}
+      {isSectionVisible(SECTION_IDS.homeTestimonials) && <TestimonialsSection />}
     </main>
   );
 }

@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type {
   BookingStepSettings,
@@ -24,6 +18,7 @@ import type {
 import {
   normalizePayload as normalizePayloadData,
   normalizePersistenceData,
+  sanitizeColor,
   sanitizeSection,
 } from "@/lib/booking-data";
 import type { SiteConfigData } from "@/lib/site-config-types";
@@ -149,16 +144,14 @@ type EditorStateSetters = {
 };
 
 type UseEditorApiParams = {
-  loadExternalConfig: (
-    config: SiteConfigData,
-    force?: boolean,
-  ) => void;
+  loadExternalConfig: (config: SiteConfigData, force?: boolean) => void;
   settings: EditorSettings;
   lastSaved: EditorSavedState;
   lastApplied: EditorAppliedState;
   setters: EditorStateSetters;
   setIsDirty: (value: boolean) => void;
   saveLocalDrafts: (data: EditorLocalDrafts) => void;
+  clearLocalDrafts: () => void;
   updateStudioInfo?: (updates: Record<string, unknown>) => void;
 };
 
@@ -167,48 +160,58 @@ const normalizePayload = (data: SiteConfigData | null | undefined) =>
 
 // Função de validação robusta para objetos de configuração
 const validateSectionObject = (obj: unknown, sectionName: string): boolean => {
-  if (!obj || typeof obj !== 'object' || Array.isArray(obj)) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) {
     console.error(`>>> [API_GUARD] Objeto inválido para ${sectionName}:`, obj);
     return false;
   }
-  
+
   const keys = Object.keys(obj as Record<string, unknown>);
-  
+
   // Verifica se o objeto foi corrompido (transformado em string indexada)
-  if (keys.length > 0 && keys.every(key => /^\d+$/.test(key))) {
-    console.error(`>>> [API_GUARD] Objeto corrompido detectado para ${sectionName} (string indexada):`, obj);
+  if (keys.length > 0 && keys.every((key) => /^\d+$/.test(key))) {
+    console.error(
+      `>>> [API_GUARD] Objeto corrompido detectado para ${sectionName} (string indexada):`,
+      obj,
+    );
     return false;
   }
-  
+
   // Verifica se há propriedades esperadas ausentes (indica corrompimento)
-  const hasValidProperties = keys.some(key => 
-    !/^\d+$/.test(key) && key.length > 1 && key !== 'length'
+  const hasValidProperties = keys.some(
+    (key) => !/^\d+$/.test(key) && key.length > 1 && key !== "length",
   );
-  
+
   if (!hasValidProperties && keys.length > 0) {
-    console.error(`>>> [API_GUARD] Objeto sem propriedades válidas para ${sectionName}:`, obj);
+    console.error(
+      `>>> [API_GUARD] Objeto sem propriedades válidas para ${sectionName}:`,
+      obj,
+    );
     return false;
   }
-  
+
   return true;
 };
 
 // Função para sanitizar o payload antes de enviar para o backend
-const sanitizePayload = (payload: Record<string, unknown>): Record<string, unknown> => {
+const sanitizePayload = (
+  payload: Record<string, unknown>,
+): Record<string, unknown> => {
   const sanitized: Record<string, unknown> = {};
-  
+
   for (const [key, value] of Object.entries(payload)) {
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
       if (validateSectionObject(value, key)) {
         sanitized[key] = value;
       } else {
-        console.warn(`>>> [API_GUARD] Seção ${key} removida do payload por ser inválida`);
+        console.warn(
+          `>>> [API_GUARD] Seção ${key} removida do payload por ser inválida`,
+        );
       }
     } else {
       sanitized[key] = value;
     }
   }
-  
+
   return sanitized;
 };
 
@@ -220,6 +223,7 @@ export function useEditorApi({
   setters,
   setIsDirty,
   saveLocalDrafts,
+  clearLocalDrafts,
   updateStudioInfo,
 }: UseEditorApiParams) {
   const { toast } = useToast();
@@ -269,26 +273,124 @@ export function useEditorApi({
     if (hasChanged(settings.servicesSettings, lastSaved.lastSavedServices)) {
       changes.services = settings.servicesSettings;
     }
-    if (hasChanged(settings.homeValuesSettings, lastSaved.lastSavedHomeValues)) {
+    if (
+      hasChanged(settings.homeValuesSettings, lastSaved.lastSavedHomeValues)
+    ) {
+      const homeValuesLegacyBg = (
+        settings.homeValuesSettings as Record<string, unknown>
+      ).values_bg as string | undefined;
+      const homeValuesLegacyAboutBg = (
+        settings.homeValuesSettings as Record<string, unknown>
+      ).about_values_bg as string | undefined;
+      const homeValuesBg =
+        sanitizeColor(
+          settings.homeValuesSettings.appearance?.backgroundColor ||
+          settings.homeValuesSettings.bgColor ||
+          homeValuesLegacyBg ||
+          homeValuesLegacyAboutBg,
+        ) || "";
+      const homeValuesCardBg =
+        sanitizeColor(
+          settings.homeValuesSettings.cardBgColor ||
+          settings.homeValuesSettings.appearance?.cardBackgroundColor ||
+          settings.homeValuesSettings.appearance?.cardBgColor,
+        ) || "";
       changes.homeValuesSettings = {
         ...settings.homeValuesSettings,
+        ...(homeValuesBg
+          ? {
+            bgType: "color",
+            bgColor: homeValuesBg,
+            backgroundColor: homeValuesBg,
+            bgImage: "",
+          }
+          : {}),
+        ...(homeValuesCardBg
+          ? {
+            cardBgColor: homeValuesCardBg,
+            cardBackgroundColor: homeValuesCardBg,
+          }
+          : {}),
         appearance: {
           ...settings.homeValuesSettings.appearance,
-          backgroundColor:
-            settings.homeValuesSettings.appearance?.backgroundColor ||
-            settings.homeValuesSettings.bgColor ||
-            "",
+          ...(homeValuesBg
+            ? {
+              backgroundColor: homeValuesBg,
+              bgType: "color",
+              backgroundImageUrl: "",
+            }
+            : {}),
+          ...(homeValuesCardBg
+            ? {
+              cardBgColor: homeValuesCardBg,
+              cardBackgroundColor: homeValuesCardBg,
+            }
+            : {}),
         },
       };
       (changes.homeValuesSettings as Record<string, unknown>).values_bg =
-        settings.homeValuesSettings.appearance?.backgroundColor ||
-        settings.homeValuesSettings.bgColor ||
-        "";
+        homeValuesBg;
+      (changes.homeValuesSettings as Record<string, unknown>).about_values_bg =
+        homeValuesBg;
     }
     if (
-      hasChanged(settings.aboutUsValuesSettings, lastSaved.lastSavedAboutUsValues)
+      hasChanged(
+        settings.aboutUsValuesSettings,
+        lastSaved.lastSavedAboutUsValues,
+      )
     ) {
-      changes.aboutUsValuesSettings = settings.aboutUsValuesSettings;
+      const aboutValuesLegacyBg = (
+        settings.aboutUsValuesSettings as Record<string, unknown>
+      ).about_values_bg as string | undefined;
+      const aboutValuesLegacyValuesBg = (
+        settings.aboutUsValuesSettings as Record<string, unknown>
+      ).values_bg as string | undefined;
+      const aboutValuesBg =
+        sanitizeColor(
+          settings.aboutUsValuesSettings.appearance?.backgroundColor ||
+          settings.aboutUsValuesSettings.bgColor ||
+          aboutValuesLegacyBg ||
+          aboutValuesLegacyValuesBg,
+        ) || "";
+      const aboutValuesCardBg =
+        sanitizeColor(
+          settings.aboutUsValuesSettings.cardBgColor ||
+          settings.aboutUsValuesSettings.appearance?.cardBackgroundColor ||
+          settings.aboutUsValuesSettings.appearance?.cardBgColor,
+        ) || "";
+      changes.aboutUsValuesSettings = {
+        ...settings.aboutUsValuesSettings,
+        ...(aboutValuesBg
+          ? { bgType: "color", bgColor: aboutValuesBg, bgImage: "" }
+          : {}),
+        ...(aboutValuesCardBg
+          ? {
+            cardBgColor: aboutValuesCardBg,
+            cardBackgroundColor: aboutValuesCardBg,
+          }
+          : {}),
+        appearance: {
+          ...settings.aboutUsValuesSettings.appearance,
+          ...(aboutValuesBg
+            ? {
+              backgroundColor: aboutValuesBg,
+              bgType: "color",
+              backgroundImageUrl: "",
+            }
+            : {}),
+          ...(aboutValuesCardBg
+            ? {
+              cardBgColor: aboutValuesCardBg,
+              cardBackgroundColor: aboutValuesCardBg,
+            }
+            : {}),
+        },
+      };
+      (changes.aboutUsValuesSettings as Record<string, unknown>).values_bg =
+        aboutValuesBg;
+      (
+        changes.aboutUsValuesSettings as Record<string, unknown>
+      ).about_values_bg = aboutValuesBg;
     }
     if (hasChanged(settings.gallerySettings, lastSaved.lastSavedGallery)) {
       changes.galleryPreviewSettings = settings.gallerySettings;
@@ -328,36 +430,122 @@ export function useEditorApi({
     }
 
     const bookingChanges: SiteConfigData["bookingSteps"] = {};
-    if (
-      JSON.stringify(settings.bookingServiceSettings) !==
-      JSON.stringify(lastSaved.lastSavedBookingService)
-    ) {
-      bookingChanges.service = settings.bookingServiceSettings;
-    }
-    if (
-      JSON.stringify(settings.bookingDateSettings) !==
-      JSON.stringify(lastSaved.lastSavedBookingDate)
-    ) {
-      bookingChanges.date = settings.bookingDateSettings;
-    }
-    if (
-      JSON.stringify(settings.bookingTimeSettings) !==
-      JSON.stringify(lastSaved.lastSavedBookingTime)
-    ) {
-      bookingChanges.time = settings.bookingTimeSettings;
-    }
-    if (
-      JSON.stringify(settings.bookingFormSettings) !==
-      JSON.stringify(lastSaved.lastSavedBookingForm)
-    ) {
-      bookingChanges.form = settings.bookingFormSettings;
-    }
-    if (
-      JSON.stringify(settings.bookingConfirmationSettings) !==
-      JSON.stringify(lastSaved.lastSavedBookingConfirmation)
-    ) {
-      bookingChanges.confirmation = settings.bookingConfirmationSettings;
-    }
+
+    const processBookingStep = (
+      current: BookingStepSettings,
+      saved: BookingStepSettings,
+    ) => {
+      if (JSON.stringify(current) === JSON.stringify(saved)) return undefined;
+
+      const bg =
+        sanitizeColor(
+          current.appearance?.backgroundColor ||
+          current.bgColor ||
+          (current as Record<string, unknown>).backgroundColor,
+        ) || "";
+
+      const cardBg =
+        sanitizeColor(
+          current.cardBgColor ||
+          current.appearance?.cardBackgroundColor ||
+          current.appearance?.cardBgColor ||
+          (current as Record<string, unknown>).cardBackgroundColor,
+        ) || "";
+
+      const cardConfig = {
+        backgroundColor: cardBg,
+        cardBackgroundColor: cardBg,
+        background_color: cardBg,
+        card_background_color: cardBg,
+        cardBgColor: cardBg,
+        card_bg_color: cardBg,
+      };
+
+      const processed = {
+        ...current,
+        cardConfig,
+        ...(bg
+          ? {
+            bgType: "color",
+            bgColor: bg,
+            backgroundColor: bg,
+            bgImage: "",
+          }
+          : {}),
+        ...(cardBg
+          ? {
+            cardBgColor: cardBg,
+            cardBackgroundColor: cardBg,
+            card_bg_color: cardBg,
+            card_background_color: cardBg,
+          }
+          : {}),
+        appearance: {
+          ...current.appearance,
+          ...(bg
+            ? {
+              backgroundColor: bg,
+              bgType: "color",
+              backgroundImageUrl: "",
+            }
+            : {}),
+          ...(cardBg
+            ? {
+              cardBgColor: cardBg,
+              cardBackgroundColor: cardBg,
+              cardConfig,
+            }
+            : {}),
+        },
+        content: {
+          ...(((current as Record<string, unknown>).content as
+            | Record<string, unknown>
+            | undefined) || {}),
+          ...(cardBg
+            ? {
+              cardBgColor: cardBg,
+              cardBackgroundColor: cardBg,
+              card_bg_color: cardBg,
+              card_background_color: cardBg,
+              cardConfig,
+            }
+            : {}),
+        },
+      };
+
+      return processed as BookingStepSettings;
+    };
+
+    const serviceProcessed = processBookingStep(
+      settings.bookingServiceSettings,
+      lastSaved.lastSavedBookingService,
+    );
+    if (serviceProcessed) bookingChanges.service = serviceProcessed;
+
+    const dateProcessed = processBookingStep(
+      settings.bookingDateSettings,
+      lastSaved.lastSavedBookingDate,
+    );
+    if (dateProcessed) bookingChanges.date = dateProcessed;
+
+    const timeProcessed = processBookingStep(
+      settings.bookingTimeSettings,
+      lastSaved.lastSavedBookingTime,
+    );
+    if (timeProcessed) bookingChanges.time = timeProcessed;
+
+    const formProcessed = processBookingStep(
+      settings.bookingFormSettings,
+      lastSaved.lastSavedBookingForm,
+    );
+    if (formProcessed) bookingChanges.form = formProcessed;
+
+    const confirmationProcessed = processBookingStep(
+      settings.bookingConfirmationSettings,
+      lastSaved.lastSavedBookingConfirmation,
+    );
+    if (confirmationProcessed)
+      bookingChanges.confirmation = confirmationProcessed;
 
     if (Object.keys(bookingChanges).length > 0) {
       changes.bookingSteps = bookingChanges;
@@ -366,37 +554,40 @@ export function useEditorApi({
     return changes;
   }, [lastSaved, settings]);
 
-  const handleSaveLocal = useCallback((skipEvent = false) => {
-    saveLocalDrafts({
-      heroSettings: settings.heroSettings,
-      aboutHeroSettings: settings.aboutHeroSettings,
-      storySettings: settings.storySettings,
-      teamSettings: settings.teamSettings,
-      testimonialsSettings: settings.testimonialsSettings,
-      fontSettings: settings.fontSettings,
-      colorSettings: settings.colorSettings,
-      servicesSettings: settings.servicesSettings,
-      homeValuesSettings: settings.homeValuesSettings,
-      aboutUsValuesSettings: settings.aboutUsValuesSettings,
-      gallerySettings: settings.gallerySettings,
-      galleryPageSettings: settings.galleryPageSettings,
-      ctaSettings: settings.ctaSettings,
-      headerSettings: settings.headerSettings,
-      footerSettings: settings.footerSettings,
-      bookingServiceSettings: settings.bookingServiceSettings,
-      bookingDateSettings: settings.bookingDateSettings,
-      bookingTimeSettings: settings.bookingTimeSettings,
-      bookingFormSettings: settings.bookingFormSettings,
-      bookingConfirmationSettings: settings.bookingConfirmationSettings,
-      pageVisibility: settings.pageVisibility,
-      visibleSections: settings.visibleSections,
-    });
-    
-    // Dispara um evento para notificar outros hooks que o localStorage mudou
-    if (!skipEvent && typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('local_draft_changed'));
-    }
-  }, [saveLocalDrafts, settings]);
+  const handleSaveLocal = useCallback(
+    (skipEvent = false) => {
+      saveLocalDrafts({
+        heroSettings: settings.heroSettings,
+        aboutHeroSettings: settings.aboutHeroSettings,
+        storySettings: settings.storySettings,
+        teamSettings: settings.teamSettings,
+        testimonialsSettings: settings.testimonialsSettings,
+        fontSettings: settings.fontSettings,
+        colorSettings: settings.colorSettings,
+        servicesSettings: settings.servicesSettings,
+        homeValuesSettings: settings.homeValuesSettings,
+        aboutUsValuesSettings: settings.aboutUsValuesSettings,
+        gallerySettings: settings.gallerySettings,
+        galleryPageSettings: settings.galleryPageSettings,
+        ctaSettings: settings.ctaSettings,
+        headerSettings: settings.headerSettings,
+        footerSettings: settings.footerSettings,
+        bookingServiceSettings: settings.bookingServiceSettings,
+        bookingDateSettings: settings.bookingDateSettings,
+        bookingTimeSettings: settings.bookingTimeSettings,
+        bookingFormSettings: settings.bookingFormSettings,
+        bookingConfirmationSettings: settings.bookingConfirmationSettings,
+        pageVisibility: settings.pageVisibility,
+        visibleSections: settings.visibleSections,
+      });
+
+      // Dispara um evento para notificar outros hooks que o localStorage mudou
+      if (!skipEvent && typeof window !== "undefined") {
+        window.dispatchEvent(new Event("local_draft_changed"));
+      }
+    },
+    [saveLocalDrafts, settings],
+  );
 
   const hasUnsavedGlobalChanges = useMemo(() => {
     const heroChanged =
@@ -558,7 +749,7 @@ export function useEditorApi({
       }
       console.log(">>> [useEditorApi] Iniciando salvamento global...");
 
-      const sanitizeSectionData = <T,>(current: T, fallback: T) =>
+      const sanitizeSectionData = <T>(current: T, fallback: T) =>
         sanitizeSection(current, fallback) as T;
 
       const sanitizedHero = sanitizeSectionData(
@@ -581,10 +772,29 @@ export function useEditorApi({
         settings.testimonialsSettings,
         lastSaved.lastSavedTestimonials,
       );
-      const sanitizedServices = sanitizeSectionData(
+      const sanitizedServicesDraft = sanitizeSectionData(
         settings.servicesSettings,
         lastSaved.lastSavedServices,
       );
+      const servicesAppearance =
+        (sanitizedServicesDraft.appearance as
+          | Record<string, unknown>
+          | undefined) || {};
+      const resolvedServicesBgColor =
+        (servicesAppearance.backgroundColor as string) ||
+        (servicesAppearance.bgColor as string) ||
+        (sanitizedServicesDraft.bgColor as string) ||
+        "";
+      const sanitizedServices = {
+        ...sanitizedServicesDraft,
+        bgColor: resolvedServicesBgColor,
+        backgroundColor: resolvedServicesBgColor,
+        appearance: {
+          ...servicesAppearance,
+          backgroundColor: resolvedServicesBgColor,
+          bgColor: resolvedServicesBgColor,
+        },
+      };
       const sanitizedHomeValues = sanitizeSectionData(
         settings.homeValuesSettings,
         lastSaved.lastSavedHomeValues,
@@ -597,9 +807,9 @@ export function useEditorApi({
         const appearance =
           (section.appearance as Record<string, unknown> | undefined) || {};
         const backgroundColor =
+          (appearance.backgroundColor as string) ||
           (section.backgroundColor as string) ||
           (section.bgColor as string) ||
-          (appearance.backgroundColor as string) ||
           "";
         return {
           ...section,
@@ -610,9 +820,8 @@ export function useEditorApi({
           },
         };
       };
-      const normalizedHomeValues = normalizeValuesAppearance(
-        sanitizedHomeValues,
-      );
+      const normalizedHomeValues =
+        normalizeValuesAppearance(sanitizedHomeValues);
       const normalizedAboutUsValues = normalizeValuesAppearance(
         sanitizedAboutUsValues,
       );
@@ -668,8 +877,9 @@ export function useEditorApi({
         sanitizedGalleryPreview.appearance?.backgroundColor ||
         sanitizedGalleryPreview.bgColor ||
         "";
-      const rawGalleryStyles = (sanitizedGalleryPreview as Record<string, unknown>)
-        .styles as Record<string, unknown> | undefined;
+      const rawGalleryStyles = (
+        sanitizedGalleryPreview as Record<string, unknown>
+      ).styles as Record<string, unknown> | undefined;
       const gallerySectionPayload = {
         ...sanitizedGalleryPreview,
         styles: {
@@ -743,7 +953,8 @@ export function useEditorApi({
             !!value && typeof value === "object" && !Array.isArray(value);
           const toSafeRecord = (
             value: unknown,
-          ): Record<string, unknown> | undefined => (isRecord(value) ? value : undefined);
+          ): Record<string, unknown> | undefined =>
+            isRecord(value) ? value : undefined;
 
           const sectionToDatabasePath: Record<string, string | string[]> = {
             hero: "home.heroBanner",
@@ -752,11 +963,19 @@ export function useEditorApi({
             team: "home.teamSection",
             testimonials: "home.testimonialsSection",
             services: "home.servicesSection",
-            homeValuesSettings: ["homeValuesSettings", "home.homeValuesSettings"],
+            homeValuesSettings: [
+              "homeValuesSettings",
+              "home.homeValuesSettings",
+              "home.valuesSection",
+              "home.values",
+              "values",
+            ],
             aboutUsValuesSettings: [
               "aboutUsValuesSettings",
+              "aboutUsValues",
               "aboutUs.valuesSection",
               "aboutUs.values",
+              "about_us_values",
             ],
             gallery: ["home.galleryPreview", "sections.gallery"],
             galleryPageSettings: ["gallery", "galleryPageSettings"],
@@ -799,9 +1018,28 @@ export function useEditorApi({
                 }
 
                 const appearance = toSafeRecord(sectionData.appearance) || {};
-                const overlay = toSafeRecord(
-                  (appearance as Record<string, unknown>).overlay,
-                ) || {};
+                const overlay =
+                  toSafeRecord(
+                    (appearance as Record<string, unknown>).overlay,
+                  ) || {};
+                const sectionBackgroundColor =
+                  section === "services"
+                    ? (appearance.backgroundColor as string) ||
+                    (appearance.bgColor as string) ||
+                    (sectionData.bgColor as string) ||
+                    ""
+                    : (appearance.backgroundColor as string) ||
+                    (sectionData.backgroundColor as string) ||
+                    (sectionData.bgColor as string) ||
+                    "";
+                const sectionCardBackgroundColor =
+                  (sectionData.cardBgColor as string) ||
+                  (sectionData.cardBackgroundColor as string) ||
+                  (sectionData.card_background_color as string) ||
+                  (appearance.cardBackgroundColor as string) ||
+                  (appearance.cardBgColor as string) ||
+                  ((sectionData.content as any)?.cardBgColor as string) ||
+                  "";
 
                 // Mapeia TODOS os campos de aparência para garantir sincronização total
                 subObj.appearance = {
@@ -809,14 +1047,12 @@ export function useEditorApi({
                   backgroundImageUrl:
                     sectionData.bgImage || appearance.backgroundImageUrl || "",
                   showBackgroundImage: sectionData.bgType === "image",
-                  backgroundColor:
-                    (sectionData.bgColor as string) ||
-                    (appearance.backgroundColor as string) ||
-                    "",
+                  backgroundColor: sectionBackgroundColor,
+                  bgColor: sectionBackgroundColor,
                   overlayOpacity:
                     typeof sectionData.overlayOpacity === "number"
                       ? sectionData.overlayOpacity
-                      : appearance.overlayOpacity ?? 0,
+                      : (appearance.overlayOpacity ?? 0),
                   overlay: {
                     ...overlay,
                     color: (overlay.color as string) || "",
@@ -830,24 +1066,28 @@ export function useEditorApi({
                   imageOpacity:
                     typeof sectionData.imageOpacity === "number"
                       ? sectionData.imageOpacity
-                      : appearance.imageOpacity ?? 1,
+                      : (appearance.imageOpacity ?? 1),
                   imageScale:
                     typeof sectionData.imageScale === "number"
                       ? sectionData.imageScale
-                      : appearance.imageScale ?? 1,
+                      : (appearance.imageScale ?? 1),
                   imageX:
                     typeof sectionData.imageX === "number"
                       ? sectionData.imageX
-                      : appearance.imageX ?? 50,
+                      : (appearance.imageX ?? 50),
                   imageY:
                     typeof sectionData.imageY === "number"
                       ? sectionData.imageY
-                      : appearance.imageY ?? 50,
+                      : (appearance.imageY ?? 50),
                   // Garante campos de cores e fontes na aparência também
-                  titleColor: sectionData.titleColor || appearance.titleColor || "",
-                  subtitleColor: sectionData.subtitleColor || appearance.subtitleColor || "",
-                  titleFont: sectionData.titleFont || appearance.titleFont || "",
-                  subtitleFont: sectionData.subtitleFont || appearance.subtitleFont || "",
+                  titleColor:
+                    sectionData.titleColor || appearance.titleColor || "",
+                  subtitleColor:
+                    sectionData.subtitleColor || appearance.subtitleColor || "",
+                  titleFont:
+                    sectionData.titleFont || appearance.titleFont || "",
+                  subtitleFont:
+                    sectionData.subtitleFont || appearance.subtitleFont || "",
                 };
 
                 // Se for Hero, adiciona campos de botões e badge na aparência
@@ -859,7 +1099,8 @@ export function useEditorApi({
                     sectionData.badgeTextColor ||
                     appearance.badgeTextColor ||
                     "";
-                  heroApp.badgeFont = sectionData.badgeFont || appearance.badgeFont || "";
+                  heroApp.badgeFont =
+                    sectionData.badgeFont || appearance.badgeFont || "";
                   heroApp.primaryButtonColor =
                     sectionData.primaryButtonColor ||
                     appearance.primaryButtonColor ||
@@ -869,7 +1110,9 @@ export function useEditorApi({
                     appearance.primaryButtonTextColor ||
                     "";
                   heroApp.primaryButtonFont =
-                    sectionData.primaryButtonFont || appearance.primaryButtonFont || "";
+                    sectionData.primaryButtonFont ||
+                    appearance.primaryButtonFont ||
+                    "";
                   heroApp.secondaryButtonColor =
                     sectionData.secondaryButtonColor ||
                     appearance.secondaryButtonColor ||
@@ -884,15 +1127,31 @@ export function useEditorApi({
                     "";
                 }
 
+                // 2. Cores da Seção (Blindagem Total)
                 subObj.bgType = sectionData.bgType || "color";
-                subObj.bgColor =
-                  (sectionData.bgColor as string) ||
-                  (appearance.backgroundColor as string) ||
-                  "";
+                subObj.bgColor = sectionBackgroundColor;
+                subObj.backgroundColor = sectionBackgroundColor;
+                subObj.bg_color = sectionBackgroundColor;
                 subObj.bgImage =
                   sectionData.bgImage || appearance.backgroundImageUrl || "";
 
-                // Mapeamento de conteúdo completo para persistência
+                // 3. Mapeamento de conteúdo e cardConfig
+                const cardConfig = {
+                  backgroundColor: sectionCardBackgroundColor,
+                  cardBackgroundColor: sectionCardBackgroundColor,
+                  background_color: sectionCardBackgroundColor,
+                  card_background_color: sectionCardBackgroundColor,
+                  cardBgColor: sectionCardBackgroundColor,
+                  card_bg_color: sectionCardBackgroundColor,
+                };
+                subObj.cardConfig = cardConfig;
+                subObj.cardBgColor = sectionCardBackgroundColor;
+                subObj.cardBackgroundColor = sectionCardBackgroundColor;
+                subObj.card_bg_color = sectionCardBackgroundColor;
+                subObj.card_background_color = sectionCardBackgroundColor;
+                subObj.card_background = sectionCardBackgroundColor;
+
+                // 4. Mapeamento de conteúdo completo para persistência
                 const content: Record<string, unknown> = {
                   title: sectionData.title || "",
                   subtitle: sectionData.subtitle || "",
@@ -904,56 +1163,85 @@ export function useEditorApi({
 
                 const genericColor =
                   section === "homeValuesSettings" ||
-                  section === "aboutUsValuesSettings"
-                    ? (sectionData.bgColor as string) || ""
+                    section === "aboutUsValuesSettings"
+                    ? sectionBackgroundColor ||
+                    (sectionData.values_bg as string) ||
+                    (sectionData.about_values_bg as string) ||
+                    ""
                     : sectionData.primaryButtonColor ||
-                      sectionData.cardBgColor ||
-                      sectionData.bgColor ||
-                      "";
+                    sectionData.cardBgColor ||
+                    sectionData.bgColor ||
+                    "";
+
                 Object.assign(subObj, {
                   ...sectionData, // Joga todas as propriedades (incluindo camelCase) na raiz
+                  cardConfig, // Força o cardConfig atualizado
                   // Compatibilidade Snake Case para o Banco de Dados
                   primary_button_color:
-                    sectionData.primaryButtonColor || sectionData.primary_button_color,
+                    sectionData.primaryButtonColor ||
+                    sectionData.primary_button_color,
                   secondary_button_color:
-                    sectionData.secondaryButtonColor || sectionData.secondary_button_color,
-                  button_text: sectionData.buttonText || sectionData.button_text,
-                  button_color: sectionData.buttonColor || sectionData.button_color,
+                    sectionData.secondaryButtonColor ||
+                    sectionData.secondary_button_color,
+                  button_text:
+                    sectionData.buttonText || sectionData.button_text,
+                  button_color:
+                    sectionData.buttonColor || sectionData.button_color,
                   button_text_color:
-                    sectionData.buttonTextColor || sectionData.button_text_color,
-                  button_font: sectionData.buttonFont || sectionData.button_font,
-                  button_link: sectionData.buttonLink || sectionData.button_link,
+                    sectionData.buttonTextColor ||
+                    sectionData.button_text_color,
+                  button_font:
+                    sectionData.buttonFont || sectionData.button_font,
+                  button_link:
+                    sectionData.buttonLink || sectionData.button_link,
                   title_font: sectionData.titleFont || sectionData.title_font,
-                  subtitle_font: sectionData.subtitleFont || sectionData.subtitle_font,
-                  card_bg_color: sectionData.cardBgColor || sectionData.card_bg_color,
-                  card_background_color:
-                    sectionData.cardBgColor || sectionData.card_background_color,
-                  cardBackgroundColor:
-                    sectionData.cardBgColor || sectionData.cardBackgroundColor,
-                  bg_color: sectionData.bgColor || sectionData.bg_color,
-                  title_color: sectionData.titleColor || sectionData.title_color,
-                  subtitle_color: sectionData.subtitleColor || sectionData.subtitle_color,
-                  badge_color: sectionData.badgeColor || sectionData.badge_color,
+                  subtitle_font:
+                    sectionData.subtitleFont || sectionData.subtitle_font,
+                  card_bg_color: sectionCardBackgroundColor,
+                  card_background_color: sectionCardBackgroundColor,
+                  cardBackgroundColor: sectionCardBackgroundColor,
+                  cardBgColor: sectionCardBackgroundColor,
+                  bgColor: sectionBackgroundColor, // Força o valor calculado
+                  backgroundColor: sectionBackgroundColor, // Força o valor calculado
+                  bg_color: sectionBackgroundColor, // Força o valor calculado
+                  title_color:
+                    sectionData.titleColor || sectionData.title_color,
+                  subtitle_color:
+                    sectionData.subtitleColor || sectionData.subtitle_color,
+                  badge_color:
+                    sectionData.badgeColor || sectionData.badge_color,
                   badge_text_color:
                     sectionData.badgeTextColor || sectionData.badge_text_color,
                   color: genericColor,
                   // Adicionado: Chaves específicas que o backend espera converter internamente
-                  ...(section === "homeValuesSettings" ? { 
-                    values_bg: genericColor,
-                    // Garante que o appearance.backgroundColor seja preservado no objeto final
-                    appearance: {
-                      ...(subObj.appearance as Record<string, unknown>),
-                      backgroundColor: genericColor
+                  ...(section === "homeValuesSettings"
+                    ? {
+                      values_bg: genericColor,
+                      valuesBg: genericColor,
+                      // Garante que o appearance.backgroundColor seja preservado no objeto final
+                      appearance: {
+                        ...(subObj.appearance as Record<string, unknown>),
+                        backgroundColor: sectionBackgroundColor,
+                        bgColor: sectionBackgroundColor,
+                        cardBgColor: sectionCardBackgroundColor,
+                        cardBackgroundColor: sectionCardBackgroundColor,
+                      },
                     }
-                  } : {}),
-                  ...(section === "aboutUsValuesSettings" ? { 
-                    about_values_bg: genericColor,
-                    // Garante que o appearance.backgroundColor seja preservado no objeto final
-                    appearance: {
-                      ...(subObj.appearance as Record<string, unknown>),
-                      backgroundColor: genericColor
+                    : {}),
+                  ...(section === "aboutUsValuesSettings"
+                    ? {
+                      about_values_bg: genericColor,
+                      aboutValuesBg: genericColor,
+                      // Garante que o appearance.backgroundColor seja preservado no objeto final
+                      appearance: {
+                        ...(subObj.appearance as Record<string, unknown>),
+                        backgroundColor: sectionBackgroundColor,
+                        bgColor: sectionBackgroundColor,
+                        cardBgColor: sectionCardBackgroundColor,
+                        cardBackgroundColor: sectionCardBackgroundColor,
+                      },
                     }
-                  } : {}),
+                    : {}),
                 });
 
                 if (section === "hero" || section === "aboutHero") {
@@ -981,17 +1269,23 @@ export function useEditorApi({
                     content.cardTextFont = sectionData.cardTextFont || "";
                     content.cardTextColor = sectionData.cardTextColor || "";
                     content.cardRatingColor = sectionData.cardRatingColor || "";
-                    content.cardBorderRadius = sectionData.cardBorderRadius || "";
+                    content.cardBorderRadius =
+                      sectionData.cardBorderRadius || "";
 
                     // Suporte para cardConfig exigido pelo backend
                     const cardConfig = {
-                      backgroundColor: sectionData.cardBgColor || "",
-                      cardBackgroundColor: sectionData.cardBgColor || "",
-                      background_color: sectionData.cardBgColor || "",
-                      card_background_color: sectionData.cardBgColor || "",
+                      backgroundColor: sectionCardBackgroundColor,
+                      cardBackgroundColor: sectionCardBackgroundColor,
+                      background_color: sectionCardBackgroundColor,
+                      card_background_color: sectionCardBackgroundColor,
+                      cardBgColor: sectionCardBackgroundColor,
+                      card_bg_color: sectionCardBackgroundColor,
                     };
                     subObj.cardConfig = cardConfig;
-                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig =
+                      cardConfig;
+                    content.cardBgColor = sectionCardBackgroundColor;
+                    content.card_bg_color = sectionCardBackgroundColor;
                   }
 
                   if (
@@ -1008,26 +1302,21 @@ export function useEditorApi({
                     content.columns = sectionData.columns || 3;
                     content.gap = sectionData.gap || 16;
                     content.aspectRatio = sectionData.aspectRatio || "square";
-                    content.cardBgColor =
-                      (sectionData as Record<string, unknown>).cardBgColor as string || "";
+                    content.cardBgColor = sectionCardBackgroundColor;
+                    content.card_bg_color = sectionCardBackgroundColor;
 
                     // Suporte para cardConfig exigido pelo backend
                     const cardConfig = {
-                      backgroundColor:
-                        (sectionData as Record<string, unknown>).cardBgColor as string ||
-                        "",
-                      cardBackgroundColor:
-                        (sectionData as Record<string, unknown>).cardBgColor as string ||
-                        "",
-                      background_color:
-                        (sectionData as Record<string, unknown>).cardBgColor as string ||
-                        "",
-                      card_background_color:
-                        (sectionData as Record<string, unknown>).cardBgColor as string ||
-                        "",
+                      backgroundColor: sectionCardBackgroundColor,
+                      cardBackgroundColor: sectionCardBackgroundColor,
+                      background_color: sectionCardBackgroundColor,
+                      card_background_color: sectionCardBackgroundColor,
+                      cardBgColor: sectionCardBackgroundColor,
+                      card_bg_color: sectionCardBackgroundColor,
                     };
                     subObj.cardConfig = cardConfig;
-                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig =
+                      cardConfig;
                   }
 
                   if (section === "cta") {
@@ -1047,7 +1336,10 @@ export function useEditorApi({
                     content.title = sectionData.title || "";
                     content.subtitle = sectionData.subtitle || "";
                     content.items = sectionData.items || [];
-                    content.cardBgColor = sectionData.cardBgColor || "";
+                    content.cardBgColor = sectionCardBackgroundColor;
+                    content.cardBackgroundColor = sectionCardBackgroundColor;
+                    content.card_bg_color = sectionCardBackgroundColor;
+                    content.card_background_color = sectionCardBackgroundColor;
                     content.cardTitleFont = sectionData.cardTitleFont || "";
                     content.cardTitleColor = sectionData.cardTitleColor || "";
                     content.cardDescriptionFont =
@@ -1066,13 +1358,15 @@ export function useEditorApi({
                       card_background_color: sectionData.cardBgColor || "",
                     };
                     subObj.cardConfig = cardConfig;
-                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig =
+                      cardConfig;
                   }
 
                   if (section === "services") {
                     content.title = sectionData.title || "";
                     content.subtitle = sectionData.subtitle || "";
-                    content.cardBgColor = sectionData.cardBgColor || "";
+                    content.cardBgColor = sectionCardBackgroundColor;
+                    content.card_bg_color = sectionCardBackgroundColor;
                     content.cardTitleFont = sectionData.cardTitleFont || "";
                     content.cardTitleColor = sectionData.cardTitleColor || "";
                     content.cardDescriptionFont =
@@ -1082,7 +1376,8 @@ export function useEditorApi({
                     content.cardPriceFont = sectionData.cardPriceFont || "";
                     content.cardPriceColor = sectionData.cardPriceColor || "";
                     content.cardIconColor = sectionData.cardIconColor || "";
-                    content.cardBorderRadius = sectionData.cardBorderRadius || "";
+                    content.cardBorderRadius =
+                      sectionData.cardBorderRadius || "";
                     content.cardBorderWidth = sectionData.cardBorderWidth || "";
                     content.cardBorderColor = sectionData.cardBorderColor || "";
                     content.showTitle = sectionData.showTitle ?? true;
@@ -1090,22 +1385,26 @@ export function useEditorApi({
 
                     // Novo: Suporte para cardConfig exigido pelo backend
                     const cardConfig = {
-                      backgroundColor: sectionData.cardBgColor || "",
-                      cardBackgroundColor: sectionData.cardBgColor || "",
-                      background_color: sectionData.cardBgColor || "",
-                      card_background_color: sectionData.cardBgColor || "",
+                      backgroundColor: sectionCardBackgroundColor,
+                      cardBackgroundColor: sectionCardBackgroundColor,
+                      background_color: sectionCardBackgroundColor,
+                      card_background_color: sectionCardBackgroundColor,
+                      cardBgColor: sectionCardBackgroundColor,
+                      card_bg_color: sectionCardBackgroundColor,
                     };
 
                     subObj.cardConfig = cardConfig;
                     // Garantir que o cardConfig também vá para o layoutGlobal.services
-                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig =
+                      cardConfig;
                   }
 
                   if (section === "team") {
                     content.title = sectionData.title || "";
                     content.subtitle = sectionData.subtitle || "";
                     content.members = sectionData.members || [];
-                    content.cardBgColor = sectionData.cardBgColor || "";
+                    content.cardBgColor = sectionCardBackgroundColor;
+                    content.card_bg_color = sectionCardBackgroundColor;
                     content.cardTitleFont = sectionData.cardTitleFont || "";
                     content.cardTitleColor = sectionData.cardTitleColor || "";
                     content.cardRoleFont = sectionData.cardRoleFont || "";
@@ -1117,13 +1416,16 @@ export function useEditorApi({
 
                     // Suporte para cardConfig exigido pelo backend
                     const cardConfig = {
-                      backgroundColor: sectionData.cardBgColor || "",
-                      cardBackgroundColor: sectionData.cardBgColor || "",
-                      background_color: sectionData.cardBgColor || "",
-                      card_background_color: sectionData.cardBgColor || "",
+                      backgroundColor: sectionCardBackgroundColor,
+                      cardBackgroundColor: sectionCardBackgroundColor,
+                      background_color: sectionCardBackgroundColor,
+                      card_background_color: sectionCardBackgroundColor,
+                      cardBgColor: sectionCardBackgroundColor,
+                      card_bg_color: sectionCardBackgroundColor,
                     };
                     subObj.cardConfig = cardConfig;
-                    (sectionData as Record<string, unknown>).cardConfig = cardConfig;
+                    (sectionData as Record<string, unknown>).cardConfig =
+                      cardConfig;
                   }
 
                   subObj.content = content;
@@ -1136,10 +1438,24 @@ export function useEditorApi({
               }
             }
 
-            if (!payload.layoutGlobal) payload.layoutGlobal = {};
-            const layoutKey = section === "hero" ? "heroBanner" : section;
-            (payload.layoutGlobal as Record<string, unknown>)[layoutKey] =
-              sectionData;
+            // Alinhamento com o Contrato (customization-schema-contract.md)
+            if (section === "hero") {
+              if (!payload.home) payload.home = {};
+              (payload.home as Record<string, unknown>).heroBanner =
+                sectionData;
+            } else if (section === "galleryPreviewSettings") {
+              if (!payload.home) payload.home = {};
+              (payload.home as Record<string, unknown>).galleryPreview =
+                sectionData;
+            } else if (section === "homeValuesSettings") {
+              if (!payload.home) payload.home = {};
+              (payload.home as Record<string, unknown>).valuesSection =
+                sectionData;
+            } else {
+              if (!payload.layoutGlobal) payload.layoutGlobal = {};
+              (payload.layoutGlobal as Record<string, unknown>)[section] =
+                sectionData;
+            }
           }
 
           // Tratamento especial para fontes e cores globais (Theme)
@@ -1201,7 +1517,11 @@ export function useEditorApi({
           // Tratar Visibilidade
           (payload.layoutGlobal as Record<string, unknown>).pageVisibility =
             settings.pageVisibility;
+          (payload.layoutGlobal as Record<string, unknown>).page_visibility =
+            settings.pageVisibility;
           (payload.layoutGlobal as Record<string, unknown>).visibleSections =
+            settings.visibleSections;
+          (payload.layoutGlobal as Record<string, unknown>).visible_sections =
             settings.visibleSections;
 
           // Tratar Passos de Agendamento
@@ -1214,120 +1534,139 @@ export function useEditorApi({
             steps: {
               ...(cleanBookingSteps.service
                 ? {
-                    service: {
-                      ...cleanBookingSteps.service,
-                      // Mapeamento de Dualidade (camelCase -> snake_case)
-                      card_bg_color: cleanBookingSteps.service.cardBgColor,
-                      card_background_color: cleanBookingSteps.service.cardBgColor,
-                      cardBackgroundColor: cleanBookingSteps.service.cardBgColor,
-                      button_color: cleanBookingSteps.service.buttonColor,
-                      title_color: cleanBookingSteps.service.titleColor,
-                      subtitle_color: cleanBookingSteps.service.subtitleColor,
-                      accent_color: cleanBookingSteps.service.accentColor,
-                      bg_color: cleanBookingSteps.service.bgColor,
-                      // Suporte para cardConfig exigido pelo backend no fluxo de agendamento
-                      cardConfig: {
-                        backgroundColor: cleanBookingSteps.service.cardBgColor || "",
-                        cardBackgroundColor: cleanBookingSteps.service.cardBgColor || "",
-                        background_color: cleanBookingSteps.service.cardBgColor || "",
-                        card_background_color: cleanBookingSteps.service.cardBgColor || "",
-                      },
+                  service: {
+                    ...cleanBookingSteps.service,
+                    // Mapeamento de Dualidade (camelCase -> snake_case)
+                    card_bg_color: cleanBookingSteps.service.cardBgColor,
+                    card_background_color:
+                      cleanBookingSteps.service.cardBgColor,
+                    cardBackgroundColor:
+                      cleanBookingSteps.service.cardBgColor,
+                    button_color: cleanBookingSteps.service.buttonColor,
+                    title_color: cleanBookingSteps.service.titleColor,
+                    subtitle_color: cleanBookingSteps.service.subtitleColor,
+                    accent_color: cleanBookingSteps.service.accentColor,
+                    bg_color: cleanBookingSteps.service.bgColor,
+                    // Suporte para cardConfig exigido pelo backend no fluxo de agendamento
+                    cardConfig: {
+                      backgroundColor:
+                        cleanBookingSteps.service.cardBgColor || "",
+                      cardBackgroundColor:
+                        cleanBookingSteps.service.cardBgColor || "",
+                      background_color:
+                        cleanBookingSteps.service.cardBgColor || "",
+                      card_background_color:
+                        cleanBookingSteps.service.cardBgColor || "",
                     },
-                  }
+                  },
+                }
                 : {}),
               ...(cleanBookingSteps.date
                 ? {
-                    date: {
-                      ...cleanBookingSteps.date,
-                      // Mapeamento de Dualidade
-                      card_bg_color: cleanBookingSteps.date.cardBgColor,
-                      card_background_color: cleanBookingSteps.date.cardBgColor,
-                      cardBackgroundColor: cleanBookingSteps.date.cardBgColor,
-                      title_color: cleanBookingSteps.date.titleColor,
-                      subtitle_color: cleanBookingSteps.date.subtitleColor,
-                      accent_color: cleanBookingSteps.date.accentColor,
-                      bg_color: cleanBookingSteps.date.bgColor,
-                      // Suporte para cardConfig
-                      cardConfig: {
-                        backgroundColor: cleanBookingSteps.date.cardBgColor || "",
-                        cardBackgroundColor: cleanBookingSteps.date.cardBgColor || "",
-                        background_color: cleanBookingSteps.date.cardBgColor || "",
-                        card_background_color: cleanBookingSteps.date.cardBgColor || "",
-                      },
+                  date: {
+                    ...cleanBookingSteps.date,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.date.cardBgColor,
+                    card_background_color: cleanBookingSteps.date.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.date.cardBgColor,
+                    title_color: cleanBookingSteps.date.titleColor,
+                    subtitle_color: cleanBookingSteps.date.subtitleColor,
+                    accent_color: cleanBookingSteps.date.accentColor,
+                    bg_color: cleanBookingSteps.date.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor:
+                        cleanBookingSteps.date.cardBgColor || "",
+                      cardBackgroundColor:
+                        cleanBookingSteps.date.cardBgColor || "",
+                      background_color:
+                        cleanBookingSteps.date.cardBgColor || "",
+                      card_background_color:
+                        cleanBookingSteps.date.cardBgColor || "",
                     },
-                  }
+                  },
+                }
                 : {}),
               ...(cleanBookingSteps.time
                 ? {
-                    time: {
-                      ...cleanBookingSteps.time,
-                      // Mapeamento de Dualidade
-                      card_bg_color: cleanBookingSteps.time.cardBgColor,
-                      card_background_color: cleanBookingSteps.time.cardBgColor,
-                      cardBackgroundColor: cleanBookingSteps.time.cardBgColor,
-                      title_color: cleanBookingSteps.time.titleColor,
-                      subtitle_color: cleanBookingSteps.time.subtitleColor,
-                      accent_color: cleanBookingSteps.time.accentColor,
-                      bg_color: cleanBookingSteps.time.bgColor,
-                      // Suporte para cardConfig
-                      cardConfig: {
-                        backgroundColor: cleanBookingSteps.time.cardBgColor || "",
-                        cardBackgroundColor: cleanBookingSteps.time.cardBgColor || "",
-                        background_color: cleanBookingSteps.time.cardBgColor || "",
-                        card_background_color: cleanBookingSteps.time.cardBgColor || "",
-                      },
+                  time: {
+                    ...cleanBookingSteps.time,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.time.cardBgColor,
+                    card_background_color: cleanBookingSteps.time.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.time.cardBgColor,
+                    title_color: cleanBookingSteps.time.titleColor,
+                    subtitle_color: cleanBookingSteps.time.subtitleColor,
+                    accent_color: cleanBookingSteps.time.accentColor,
+                    bg_color: cleanBookingSteps.time.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor:
+                        cleanBookingSteps.time.cardBgColor || "",
+                      cardBackgroundColor:
+                        cleanBookingSteps.time.cardBgColor || "",
+                      background_color:
+                        cleanBookingSteps.time.cardBgColor || "",
+                      card_background_color:
+                        cleanBookingSteps.time.cardBgColor || "",
                     },
-                  }
+                  },
+                }
                 : {}),
               ...(cleanBookingSteps.form
                 ? {
-                    form: {
-                      ...cleanBookingSteps.form,
-                      // Mapeamento de Dualidade
-                      card_bg_color: cleanBookingSteps.form.cardBgColor,
-                      card_background_color: cleanBookingSteps.form.cardBgColor,
-                      cardBackgroundColor: cleanBookingSteps.form.cardBgColor,
-                      title_color: cleanBookingSteps.form.titleColor,
-                      subtitle_color: cleanBookingSteps.form.subtitleColor,
-                      accent_color: cleanBookingSteps.form.accentColor,
-                      bg_color: cleanBookingSteps.form.bgColor,
-                      // Suporte para cardConfig
-                      cardConfig: {
-                        backgroundColor: cleanBookingSteps.form.cardBgColor || "",
-                        cardBackgroundColor: cleanBookingSteps.form.cardBgColor || "",
-                        background_color: cleanBookingSteps.form.cardBgColor || "",
-                        card_background_color: cleanBookingSteps.form.cardBgColor || "",
-                      },
+                  form: {
+                    ...cleanBookingSteps.form,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.form.cardBgColor,
+                    card_background_color: cleanBookingSteps.form.cardBgColor,
+                    cardBackgroundColor: cleanBookingSteps.form.cardBgColor,
+                    title_color: cleanBookingSteps.form.titleColor,
+                    subtitle_color: cleanBookingSteps.form.subtitleColor,
+                    accent_color: cleanBookingSteps.form.accentColor,
+                    bg_color: cleanBookingSteps.form.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor:
+                        cleanBookingSteps.form.cardBgColor || "",
+                      cardBackgroundColor:
+                        cleanBookingSteps.form.cardBgColor || "",
+                      background_color:
+                        cleanBookingSteps.form.cardBgColor || "",
+                      card_background_color:
+                        cleanBookingSteps.form.cardBgColor || "",
                     },
-                  }
+                  },
+                }
                 : {}),
               ...(cleanBookingSteps.confirmation
                 ? {
-                    confirmation: {
-                      ...cleanBookingSteps.confirmation,
-                      // Mapeamento de Dualidade
-                      card_bg_color: cleanBookingSteps.confirmation.cardBgColor,
-                      card_background_color:
-                        cleanBookingSteps.confirmation.cardBgColor,
+                  confirmation: {
+                    ...cleanBookingSteps.confirmation,
+                    // Mapeamento de Dualidade
+                    card_bg_color: cleanBookingSteps.confirmation.cardBgColor,
+                    card_background_color:
+                      cleanBookingSteps.confirmation.cardBgColor,
+                    cardBackgroundColor:
+                      cleanBookingSteps.confirmation.cardBgColor,
+                    title_color: cleanBookingSteps.confirmation.titleColor,
+                    subtitle_color:
+                      cleanBookingSteps.confirmation.subtitleColor,
+                    accent_color: cleanBookingSteps.confirmation.accentColor,
+                    bg_color: cleanBookingSteps.confirmation.bgColor,
+                    // Suporte para cardConfig
+                    cardConfig: {
+                      backgroundColor:
+                        cleanBookingSteps.confirmation.cardBgColor || "",
                       cardBackgroundColor:
-                        cleanBookingSteps.confirmation.cardBgColor,
-                      title_color: cleanBookingSteps.confirmation.titleColor,
-                      subtitle_color: cleanBookingSteps.confirmation.subtitleColor,
-                      accent_color: cleanBookingSteps.confirmation.accentColor,
-                      bg_color: cleanBookingSteps.confirmation.bgColor,
-                      // Suporte para cardConfig
-                      cardConfig: {
-                        backgroundColor:
-                          cleanBookingSteps.confirmation.cardBgColor || "",
-                        cardBackgroundColor:
-                          cleanBookingSteps.confirmation.cardBgColor || "",
-                        background_color:
-                          cleanBookingSteps.confirmation.cardBgColor || "",
-                        card_background_color:
-                          cleanBookingSteps.confirmation.cardBgColor || "",
-                      },
+                        cleanBookingSteps.confirmation.cardBgColor || "",
+                      background_color:
+                        cleanBookingSteps.confirmation.cardBgColor || "",
+                      card_background_color:
+                        cleanBookingSteps.confirmation.cardBgColor || "",
                     },
-                  }
+                  },
+                }
                 : {}),
             },
           };
@@ -1336,7 +1675,8 @@ export function useEditorApi({
               string,
               unknown
             >;
-            const serviceCardBg = cleanBookingSteps.service.cardBgColor || "#ffffff";
+            const serviceCardBg =
+              cleanBookingSteps.service.cardBgColor || "#ffffff";
             const existingStep1 =
               (appointmentFlow.step1Services as Record<string, unknown>) || {};
             appointmentFlow.step1Services = {
@@ -1371,14 +1711,19 @@ export function useEditorApi({
           );
 
           // 12. LOG DE AUDITORIA (Solicitado pelo usuário: Detalhado antes da chamada API)
-          console.log(">>> [AUDIT_LOG] Iniciando persistência de Full Sync no Backend", {
-            companyId,
-            timestamp: new Date().toISOString(),
-            payloadSections: Object.keys(sanitizedPayload.sections || {}),
-            payloadLayout: Object.keys(sanitizedPayload.layoutGlobal || {}),
-            payloadAppointment: Object.keys(sanitizedPayload.appointmentFlow || {}),
-            fullPayload: sanitizedPayload
-          });
+          console.log(
+            ">>> [AUDIT_LOG] Iniciando persistência de Full Sync no Backend",
+            {
+              companyId,
+              timestamp: new Date().toISOString(),
+              payloadSections: Object.keys(sanitizedPayload.sections || {}),
+              payloadLayout: Object.keys(sanitizedPayload.layoutGlobal || {}),
+              payloadAppointment: Object.keys(
+                sanitizedPayload.appointmentFlow || {},
+              ),
+              fullPayload: sanitizedPayload,
+            },
+          );
 
           const fresh = await siteCustomizerService.saveDraftCustomization(
             companyId,
@@ -1387,19 +1732,29 @@ export function useEditorApi({
 
           if (typeof window !== "undefined") {
             if (fresh) {
-              // REMOVIDO: clearLocalDrafts(); 
-              // Mantemos o localStorage para evitar que o preview resete para o padrão (rosa) 
-              // enquanto o studio.config do banco não é atualizado no frontend.
-              // O estado isDirty=false já garante que não haverá aviso de alterações não salvas.
-              
-              // 4. ATUALIZAÇÃO DO ESTADO LAST_SAVED (Sempre que o save no banco der certo)
               setters.setLastSavedHero(sanitizedHero);
               setters.setLastSavedAboutHero(sanitizedAboutHero);
               setters.setLastSavedStory(sanitizedStory);
               setters.setLastSavedTeam(sanitizedTeam);
               setters.setLastSavedTestimonials(sanitizedTestimonials);
-              setters.setLastSavedFont(settings.fontSettings);
-              setters.setLastSavedColor(settings.colorSettings);
+              const normalizedFresh = normalizePayload(fresh as SiteConfigData);
+              const freshConfig =
+                normalizedFresh &&
+                  typeof normalizedFresh === "object" &&
+                  !Array.isArray(normalizedFresh)
+                  ? (normalizedFresh as Record<string, unknown>)
+                  : {};
+              const resolvedFont =
+                (freshConfig.fontSettings as FontSettings) ||
+                (freshConfig.theme as FontSettings) ||
+                settings.fontSettings;
+              const resolvedColor =
+                (freshConfig.colorSettings as ColorSettings) ||
+                (freshConfig.colors as ColorSettings) ||
+                settings.colorSettings;
+
+              setters.setLastSavedFont(resolvedFont);
+              setters.setLastSavedColor(resolvedColor);
               setters.setLastSavedServices(sanitizedServices);
               setters.setLastSavedHomeValues(sanitizedHomeValues);
               setters.setLastSavedAboutUsValues(sanitizedAboutUsValues);
@@ -1417,14 +1772,177 @@ export function useEditorApi({
               setters.setLastSavedBookingConfirmation(
                 cleanBookingSteps.confirmation,
               );
-              
+
               setIsDirty(false);
 
               // 5. ATUALIZAÇÃO DO CONTEXTO GLOBAL (Força re-render do site no editor)
               if (updateStudioInfo && fresh) {
-                console.log(">>> [SYNC] Atualizando studio.config com os dados salvos.");
-                updateStudioInfo({ config: fresh });
+                console.log(
+                  ">>> [DEBUG_SAVE] Injetando no context - SanitizedServices:",
+                  sanitizedServices,
+                );
+                const freshAppointmentFlow =
+                  ((freshConfig.appointmentFlow as Record<string, unknown>) ||
+                    (freshConfig.appointment_flow as Record<string, unknown>) ||
+                    {}) as Record<string, unknown>;
+                const incomingAppointmentFlow =
+                  ((payload.appointmentFlow as Record<string, unknown>) ||
+                    {}) as Record<string, unknown>;
+                const serviceCardBg = cleanBookingSteps.service?.cardBgColor || "";
+                const serviceBg = cleanBookingSteps.service?.bgColor || "";
+                const serviceAccent = cleanBookingSteps.service?.accentColor || "";
+
+                const serviceFullConfig = cleanBookingSteps.service
+                  ? {
+                    ...cleanBookingSteps.service,
+                    cardBgColor: serviceCardBg,
+                    cardBackgroundColor: serviceCardBg,
+                    card_bg_color: serviceCardBg,
+                    card_background_color: serviceCardBg,
+                    bgColor: serviceBg,
+                    bg_color: serviceBg,
+                    backgroundColor: serviceBg,
+                    accentColor: serviceAccent,
+                    accent_color: serviceAccent,
+                    cardConfig: {
+                      backgroundColor: serviceCardBg,
+                      cardBackgroundColor: serviceCardBg,
+                      background_color: serviceCardBg,
+                      card_background_color: serviceCardBg,
+                      cardBgColor: serviceCardBg,
+                      card_bg_color: serviceCardBg,
+                    },
+                  }
+                  : undefined;
+
+                const authoritativeConfig = {
+                  ...freshConfig,
+                  sections: {
+                    ...((freshConfig.sections as Record<string, unknown>) ||
+                      {}),
+                    ...((payload.sections as Record<string, unknown>) || {}),
+                  },
+                  bookingSteps: {
+                    ...((freshConfig.bookingSteps as Record<string, unknown>) ||
+                      (freshConfig.booking_steps as Record<string, unknown>) ||
+                      {}),
+                    ...cleanBookingSteps,
+                  },
+                  booking_steps: {
+                    ...((freshConfig.booking_steps as Record<string, unknown>) ||
+                      (freshConfig.bookingSteps as Record<string, unknown>) ||
+                      {}),
+                    ...cleanBookingSteps,
+                  },
+                  appointmentFlow: {
+                    ...freshAppointmentFlow,
+                    ...incomingAppointmentFlow,
+                    ...(serviceFullConfig
+                      ? {
+                        step1Services: {
+                          ...((freshAppointmentFlow.step1Services as Record<
+                            string,
+                            unknown
+                          >) || {}),
+                          ...serviceFullConfig,
+                        },
+                      }
+                      : {}),
+                  },
+                  appointment_flow: {
+                    ...freshAppointmentFlow,
+                    ...incomingAppointmentFlow,
+                    ...(serviceFullConfig
+                      ? {
+                        step1_services: {
+                          ...((freshAppointmentFlow.step1_services as Record<
+                            string,
+                            unknown
+                          >) || {}),
+                          ...serviceFullConfig,
+                        },
+                      }
+                      : {}),
+                  },
+                  layoutGlobal: {
+                    ...((freshConfig.layoutGlobal as Record<string, unknown>) ||
+                      {}),
+                    ...((payload.layoutGlobal as Record<string, unknown>) ||
+                      {}),
+                    siteColors: settings.colorSettings,
+                    color: settings.colorSettings,
+                    cores_base: settings.colorSettings,
+                    typography: settings.fontSettings,
+                    fontes: settings.fontSettings,
+                  },
+                  home: {
+                    ...((freshConfig.home as Record<string, unknown>) || {}),
+                    heroBanner: sanitizedHero,
+                    hero: sanitizedHero,
+                    servicesSection: sanitizedServices,
+                    services: sanitizedServices,
+                    valuesSection: sanitizedHomeValues,
+                    values: sanitizedHomeValues,
+                    storySection: sanitizedStory,
+                    story: sanitizedStory,
+                    teamSection: sanitizedTeam,
+                    team: sanitizedTeam,
+                    testimonialsSection: sanitizedTestimonials,
+                    testimonials: sanitizedTestimonials,
+                    galleryPreview: sanitizedGalleryPreview,
+                    gallerySection: sanitizedGalleryPreview,
+                    ctaSection: sanitizedCta,
+                    cta: sanitizedCta,
+                  },
+                  aboutUs: {
+                    ...((freshConfig.aboutUs as Record<string, unknown>) || {}),
+                    valuesSection: sanitizedAboutUsValues,
+                    values: sanitizedAboutUsValues,
+                  },
+                  hero: sanitizedHero,
+                  aboutHero: sanitizedAboutHero,
+                  story: sanitizedStory,
+                  team: sanitizedTeam,
+                  testimonials: sanitizedTestimonials,
+                  services: sanitizedServices,
+                  homeValuesSettings: sanitizedHomeValues,
+                  aboutUsValuesSettings: sanitizedAboutUsValues,
+                  galleryPreviewSettings: sanitizedGalleryPreview,
+                  galleryPageSettings: sanitizedGalleryPage,
+                  cta: sanitizedCta,
+                  header: sanitizedHeader,
+                  footer: sanitizedFooter,
+                  pageVisibility: settings.pageVisibility,
+                  visibleSections: settings.visibleSections,
+                  fontSettings: settings.fontSettings,
+                  colorSettings: settings.colorSettings,
+                  colors: settings.colorSettings,
+                  theme: settings.fontSettings,
+                };
+
+                console.log(
+                  ">>> [ESTRUTURA INJETADA NO CONTEXT]",
+                  JSON.parse(JSON.stringify(authoritativeConfig)),
+                );
+
+                updateStudioInfo({
+                  config: authoritativeConfig,
+                });
               }
+
+              clearLocalDrafts();
+
+              console.log(
+                ">>> [ESTADO_POS_SAVE] Verificando cor final injetada:",
+                {
+                  sanitizedServicesColor:
+                    sanitizedServices.bgColor ||
+                    (sanitizedServices as any).appearance?.bgColor,
+                  freshConfigServicesColor:
+                    (freshConfig as any).home?.servicesSection?.bgColor ||
+                    (freshConfig as any).services?.bgColor,
+                },
+              );
 
               // 6. LIMPEZA DE CACHE DE PREVIEW
               if (typeof localStorage !== "undefined") {
@@ -1438,19 +1956,19 @@ export function useEditorApi({
             }
           }
 
-          setIsSaving(false); 
-      
-      // REMOVIDO DISPARO RECURSIVO: O estado lastSaved já foi atualizado, 
-      // o que forçará a reavaliação de hasUnsavedGlobalChanges naturalmente.
+          setIsSaving(false);
 
-      try { 
-        toast({ 
-          title: "Salvo com sucesso!", 
-          description: "As alterações foram salvas no rascunho.", 
-          duration: 2000, 
-        }); 
-      } catch(_e) {} 
-    } catch (err) {
+          // REMOVIDO DISPARO RECURSIVO: O estado lastSaved já foi atualizado,
+          // o que forçará a reavaliação de hasUnsavedGlobalChanges naturalmente.
+
+          try {
+            toast({
+              title: "Salvo com sucesso!",
+              description: "As alterações foram salvas no rascunho.",
+              duration: 2000,
+            });
+          } catch (_e) { }
+        } catch (err) {
           console.error(
             ">>> [useEditorApi] Erro fatal ao salvar no backend:",
             err,
@@ -1468,7 +1986,7 @@ export function useEditorApi({
         console.warn(
           ">>> [useEditorApi] companyId não encontrado, salvando apenas localmente.",
         );
-        
+
         // Em modo local, atualizamos o lastSaved para refletir o que foi salvo no localStorage
         setters.setLastSavedHero(sanitizedHero);
         setters.setLastSavedAboutHero(sanitizedAboutHero);
@@ -1500,9 +2018,12 @@ export function useEditorApi({
       }
 
       window.dispatchEvent(new CustomEvent("storySettingsUpdated"));
-      
+
       // LOGS DE DEPURAÇÃO PARA IDENTIFICAR POR QUE O BOTÃO DE PUBLICAR PODE ESTAR DESABILITADO
-      console.log(">>> [useEditorApi] Fim de handleSaveGlobal. hasUnsavedGlobalChanges:", hasUnsavedGlobalChanges);
+      console.log(
+        ">>> [useEditorApi] Fim de handleSaveGlobal. hasUnsavedGlobalChanges:",
+        hasUnsavedGlobalChanges,
+      );
     },
     [
       companyId,
@@ -1513,6 +2034,7 @@ export function useEditorApi({
       toast,
       hasUnsavedGlobalChanges,
       setIsDirty,
+      clearLocalDrafts,
       updateStudioInfo,
     ],
   );
@@ -1528,51 +2050,56 @@ export function useEditorApi({
       // 1. Primeiro salvamos qualquer rascunho pendente
       const changes = getChangedSettings();
       if (Object.keys(changes).length > 0) {
-        console.log(">>> [useEditorApi] Salvando rascunho antes de publicar...");
+        console.log(
+          ">>> [useEditorApi] Salvando rascunho antes de publicar...",
+        );
         await handleSaveGlobal(false); // Salva sem recarregar do banco ainda
       }
 
       // 2. Disparamos a publicação (copiar rascunho -> principal)
-      const success = await siteCustomizerService.publishCustomization(companyId);
+      const success =
+        await siteCustomizerService.publishCustomization(companyId);
 
       if (success) {
         toast({
           title: "Site Publicado!",
-          description: "As alterações agora estão visíveis para todos os clientes.",
+          description:
+            "As alterações agora estão visíveis para todos os clientes.",
         });
 
         // 3. Recarregar do banco para garantir sincronia total
-      await fetchCustomization(companyId);
+        await fetchCustomization(companyId);
 
-      // 4. ATUALIZAR ESTADOS LAST_APPLIED PARA REFLETIR QUE O RASCUNHO FOI PUBLICADO
-      // Isso fará com que hasUnsavedGlobalChanges se torne FALSE após a publicação
-      setters.setLastAppliedHero(settings.heroSettings);
-      setters.setLastAppliedAboutHero(settings.aboutHeroSettings);
-      setters.setLastAppliedStory(settings.storySettings);
-      setters.setLastAppliedTeam(settings.teamSettings);
-      setters.setLastAppliedTestimonials(settings.testimonialsSettings);
-      setters.setLastAppliedFont(settings.fontSettings);
-      setters.setLastAppliedColor(settings.colorSettings);
-      setters.setLastAppliedServices(settings.servicesSettings);
-      setters.setLastAppliedHomeValues(settings.homeValuesSettings);
-      setters.setLastAppliedAboutUsValues(settings.aboutUsValuesSettings);
-      setters.setLastAppliedGallery(settings.gallerySettings);
-      setters.setLastAppliedGalleryPage(settings.galleryPageSettings);
-      setters.setLastAppliedCTA(settings.ctaSettings);
-      setters.setLastAppliedHeader(settings.headerSettings);
-      setters.setLastAppliedFooter(settings.footerSettings);
+        // 4. ATUALIZAR ESTADOS LAST_APPLIED PARA REFLETIR QUE O RASCUNHO FOI PUBLICADO
+        // Isso fará com que hasUnsavedGlobalChanges se torne FALSE após a publicação
+        setters.setLastAppliedHero(settings.heroSettings);
+        setters.setLastAppliedAboutHero(settings.aboutHeroSettings);
+        setters.setLastAppliedStory(settings.storySettings);
+        setters.setLastAppliedTeam(settings.teamSettings);
+        setters.setLastAppliedTestimonials(settings.testimonialsSettings);
+        setters.setLastAppliedFont(settings.fontSettings);
+        setters.setLastAppliedColor(settings.colorSettings);
+        setters.setLastAppliedServices(settings.servicesSettings);
+        setters.setLastAppliedHomeValues(settings.homeValuesSettings);
+        setters.setLastAppliedAboutUsValues(settings.aboutUsValuesSettings);
+        setters.setLastAppliedGallery(settings.gallerySettings);
+        setters.setLastAppliedGalleryPage(settings.galleryPageSettings);
+        setters.setLastAppliedCTA(settings.ctaSettings);
+        setters.setLastAppliedHeader(settings.headerSettings);
+        setters.setLastAppliedFooter(settings.footerSettings);
 
-      setters.setLastAppliedBookingService(settings.bookingServiceSettings);
-      setters.setLastAppliedBookingDate(settings.bookingDateSettings);
-      setters.setLastAppliedBookingTime(settings.bookingTimeSettings);
-      setters.setLastAppliedBookingForm(settings.bookingFormSettings);
-      setters.setLastAppliedBookingConfirmation(
-        settings.bookingConfirmationSettings,
-      );
-    } else {
+        setters.setLastAppliedBookingService(settings.bookingServiceSettings);
+        setters.setLastAppliedBookingDate(settings.bookingDateSettings);
+        setters.setLastAppliedBookingTime(settings.bookingTimeSettings);
+        setters.setLastAppliedBookingForm(settings.bookingFormSettings);
+        setters.setLastAppliedBookingConfirmation(
+          settings.bookingConfirmationSettings,
+        );
+      } else {
         toast({
           title: "Erro ao publicar",
-          description: "Não foi possível publicar as alterações. Tente novamente.",
+          description:
+            "Não foi possível publicar as alterações. Tente novamente.",
           variant: "destructive",
         });
       }

@@ -52,14 +52,22 @@ export function TimeSlotSelector({
 }: TimeSlotSelectorProps) {
   const { studio } = useStudio();
   const appearance = settings?.appearance || {};
-  
+
   // Prioridade: Custom Setting > Global Appearance > Default Fallback
-  const accentColor = settings?.accentColor || appearance.accentColor || "var(--primary)";
-  const cardBgColor = settings?.cardBgColor || appearance.cardBgColor || "#FFFFFF";
-  const titleColor = settings?.titleColor || appearance.titleColor || "var(--foreground)";
-  const subtitleColor = settings?.subtitleColor || appearance.subtitleColor || "var(--muted-foreground)";
-  const titleFont = settings?.titleFont || appearance.titleFont || "var(--font-title)";
-  const subtitleFont = settings?.subtitleFont || appearance.subtitleFont || "var(--font-subtitle)";
+  const accentColor =
+    settings?.accentColor || appearance.accentColor || "var(--primary)";
+  const cardBgColor =
+    settings?.cardBgColor || appearance.cardBgColor || "#FFFFFF";
+  const titleColor =
+    settings?.titleColor || appearance.titleColor || "var(--foreground)";
+  const subtitleColor =
+    settings?.subtitleColor ||
+    appearance.subtitleColor ||
+    "var(--muted-foreground)";
+  const titleFont =
+    settings?.titleFont || appearance.titleFont || "var(--font-title)";
+  const subtitleFont =
+    settings?.subtitleFont || appearance.subtitleFont || "var(--font-subtitle)";
 
   const [backendInterval, setBackendInterval] = useState<number | undefined>(
     undefined,
@@ -139,6 +147,9 @@ export function TimeSlotSelector({
             closeTime: apiDay.afternoonEnd,
             interval:
               parseDuration(settings.interval || settings.slotInterval) || 30,
+            minimumBookingLeadMinutes: Number(
+              settings.minimumBookingLeadMinutes || 0,
+            ),
           };
 
           console.log(
@@ -159,64 +170,72 @@ export function TimeSlotSelector({
       }
 
       // 2. Processar Agendamentos
-      const dayAppointments = appointments.filter((app: { scheduledAt: string; status: string; customerName: string }) => {
-        // Garantir que estamos comparando a data no fuso local, já que o input 'date' (YYYY-MM-DD) é local
-        // Se app.scheduledAt for "2024-01-01T03:00:00Z" e estivermos no GTM-3, vira "2024-01-01T00:00:00" local
-        const dateObj = new Date(app.scheduledAt);
-        const appDate = format(dateObj, "yyyy-MM-dd");
+      const dayAppointments = appointments.filter(
+        (app: {
+          scheduledAt: string;
+          status: string;
+          customerName: string;
+        }) => {
+          // Garantir que estamos comparando a data no fuso local, já que o input 'date' (YYYY-MM-DD) é local
+          // Se app.scheduledAt for "2024-01-01T03:00:00Z" e estivermos no GTM-3, vira "2024-01-01T00:00:00" local
+          const dateObj = new Date(app.scheduledAt);
+          const appDate = format(dateObj, "yyyy-MM-dd");
 
-        console.log(
-          `>>> [DEBUG_SLOTS] Verificando agendamento: ${app.customerName} - Original: ${app.scheduledAt} -> Local: ${appDate} (Filtro: ${date})`,
-        );
+          console.log(
+            `>>> [DEBUG_SLOTS] Verificando agendamento: ${app.customerName} - Original: ${app.scheduledAt} -> Local: ${appDate} (Filtro: ${date})`,
+          );
 
-        return appDate === date && app.status !== "CANCELLED";
-      });
+          return appDate === date && app.status !== "CANCELLED";
+        },
+      );
 
-      const convertedBookings: Booking[] = dayAppointments.map((app: {
-        id: string;
-        serviceId: string;
-        serviceNameSnapshot: string;
-        serviceDurationSnapshot: string;
-        servicePriceSnapshot: string;
-        scheduledAt: string;
-        customerName: string;
-        customerEmail: string;
-        customerPhone: string;
-        status: string;
-        createdAt: string;
-      }) => {
-        let status: BookingStatus = "pending";
-        const apiStatus = app.status.toLowerCase();
-        if (apiStatus === "confirmed") status = "confirmado";
-        else if (apiStatus === "cancelled") status = "cancelado";
-        else if (apiStatus === "completed") status = "concluído";
+      const convertedBookings: Booking[] = dayAppointments.map(
+        (app: {
+          id: string;
+          serviceId: string;
+          serviceNameSnapshot: string;
+          serviceDurationSnapshot: string;
+          servicePriceSnapshot: string;
+          scheduledAt: string;
+          customerName: string;
+          customerEmail: string;
+          customerPhone: string;
+          status: string;
+          createdAt: string;
+        }) => {
+          let status: BookingStatus = "pending";
+          const apiStatus = app.status.toLowerCase();
+          if (apiStatus === "confirmed") status = "confirmado";
+          else if (apiStatus === "cancelled") status = "cancelado";
+          else if (apiStatus === "completed") status = "concluído";
 
-        const dateObj = new Date(app.scheduledAt);
-        const bookingTime = format(dateObj, "HH:mm");
-        const duration = parseDuration(app.serviceDurationSnapshot) || 60;
+          const dateObj = new Date(app.scheduledAt);
+          const bookingTime = format(dateObj, "HH:mm");
+          const duration = parseDuration(app.serviceDurationSnapshot) || 60;
 
-        console.log(
-          `>>> [DEBUG_SLOTS] Agendamento convertido: ${app.customerName} @ ${bookingTime} (Duração: ${duration}min)`,
-        );
+          console.log(
+            `>>> [DEBUG_SLOTS] Agendamento convertido: ${app.customerName} @ ${bookingTime} (Duração: ${duration}min)`,
+          );
 
-        return {
-          id: app.id,
-          serviceId: app.serviceId,
-          serviceName: app.serviceNameSnapshot,
-          // Corrigido: Converter "HH:mm" para minutos totais, senão parseInt("01:00") vira 1 minuto
-          serviceDuration: duration,
-          serviceDurationSnapshot: app.serviceDurationSnapshot,
-          servicePrice: parseFloat(app.servicePriceSnapshot),
-          date: format(dateObj, "yyyy-MM-dd"),
-          time: bookingTime,
-          clientName: app.customerName,
-          clientEmail: app.customerEmail,
-          clientPhone: app.customerPhone,
-          status,
-          createdAt: app.createdAt,
-          notificationsSent: { email: false, whatsapp: false },
-        };
-      });
+          return {
+            id: app.id,
+            serviceId: app.serviceId,
+            serviceName: app.serviceNameSnapshot,
+            // Corrigido: Converter "HH:mm" para minutos totais, senão parseInt("01:00") vira 1 minuto
+            serviceDuration: duration,
+            serviceDurationSnapshot: app.serviceDurationSnapshot,
+            servicePrice: parseFloat(app.servicePriceSnapshot),
+            date: format(dateObj, "yyyy-MM-dd"),
+            time: bookingTime,
+            clientName: app.customerName,
+            clientEmail: app.customerEmail,
+            clientPhone: app.customerPhone,
+            status,
+            createdAt: app.createdAt,
+            notificationsSent: { email: false, whatsapp: false },
+          };
+        },
+      );
 
       console.log(
         ">>> [DEBUG_SLOTS] Agendamentos finais para o dia:",
@@ -254,9 +273,7 @@ export function TimeSlotSelector({
       setTimeSlots(availableSlots);
     } catch (error) {
       console.error(">>> [TIME_SLOT_SELECTOR] Erro ao buscar dados:", error);
-      setTimeSlots(
-        getAvailableTimeSlots(date, totalDuration, finalInterval),
-      );
+      setTimeSlots(getAvailableTimeSlots(date, totalDuration, finalInterval));
     } finally {
       setIsLoadingBookings(false);
     }
@@ -316,9 +333,7 @@ export function TimeSlotSelector({
         className="border-primary/20 overflow-hidden relative"
         style={{
           backgroundColor: cardBgColor,
-          borderColor: accentColor
-            ? `${accentColor}33`
-            : undefined,
+          borderColor: accentColor ? `${accentColor}33` : undefined,
         }}
       >
         <div className="p-6 flex items-center justify-between min-h-35">
@@ -335,9 +350,7 @@ export function TimeSlotSelector({
                 : "text-primary-foreground shadow-md hover:scale-105 active:scale-95",
             )}
             style={{
-              backgroundColor: !isPreviousDayDisabled
-                ? accentColor
-                : undefined,
+              backgroundColor: !isPreviousDayDisabled ? accentColor : undefined,
             }}
             title="Dia anterior"
           >
@@ -418,7 +431,10 @@ export function TimeSlotSelector({
             <div className="flex flex-col items-center justify-center py-12 space-y-4">
               <div
                 className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"
-                style={{ borderColor: accentColor, borderTopColor: "transparent" }}
+                style={{
+                  borderColor: accentColor,
+                  borderTopColor: "transparent",
+                }}
               />
               <p className="text-muted-foreground animate-pulse">
                 Verificando horários disponíveis...
@@ -440,9 +456,7 @@ export function TimeSlotSelector({
                   )}
                   style={{
                     borderColor:
-                      slot.available && accentColor
-                        ? accentColor
-                        : undefined,
+                      slot.available && accentColor ? accentColor : undefined,
                     color:
                       slot.available && accentColor
                         ? accentColor

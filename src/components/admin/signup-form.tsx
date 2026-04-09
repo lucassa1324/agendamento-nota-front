@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, EyeOff, Lock, Mail, User } from "lucide-react";
+import { Eye, EyeOff, Lock, Mail, Phone, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
@@ -20,11 +20,28 @@ export function SignUpForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [studioName, setStudioName] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  const formatPhone = (value: string) => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 11) {
+      if (numbers.length <= 2) return numbers;
+      if (numbers.length <= 6) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+      if (numbers.length <= 10) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+    }
+    return value.slice(0, 15);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhone(e.target.value);
+    setPhone(formatted);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,19 +49,17 @@ export function SignUpForm() {
     setIsLoading(true);
 
     try {
-      console.log(">>> [SIGNUP] Iniciando cadastro para:", email);
-
       const { data, error: authError } = await signUp.email({
         email,
         password,
         name,
-        // @ts-expect-error - studioName é um campo customizado suportado pelo nosso backend
+        // @ts-expect-error - studioName e phone são campos customizados suportados pelo nosso backend
         studioName,
-        callbackURL: "/admin",
+        phone,
+        callbackURL: "/email-verified",
       });
 
       if (authError) {
-        console.warn(">>> [ADMIN_WARN] Erro no cadastro:", authError);
         setError(authError.message || "Erro ao criar conta.");
         setIsLoading(false);
         return;
@@ -52,11 +67,11 @@ export function SignUpForm() {
 
       if (data) {
         console.log(
-          ">>> [SIGNUP] Cadastro bem-sucedido, redirecionando para login...",
+          ">>> [SIGNUP] Cadastro bem-sucedido, salvando e-mail e redirecionando para verificação...",
         );
-        // Redireciona para a tela de login administrativa usando a URL absoluta do ambiente conforme solicitado
-        const adminLoginUrl = `${process.env.NEXT_PUBLIC_ADMIN_URL}/admin`;
-        window.location.href = adminLoginUrl;
+        // Salva o e-mail para a tela de pendência de verificação usar
+        localStorage.setItem("pending_verification_email", email);
+        router.push("/admin/pending-verification");
       }
     } catch (err) {
       console.warn(">>> [ADMIN_WARN] Erro inesperado durante o cadastro:", err);
@@ -105,6 +120,23 @@ export function SignUpForm() {
                 value={studioName}
                 onChange={(e) => setStudioName(e.target.value)}
                 placeholder="Ex: Studio da Ana"
+                className="pl-10"
+                required
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone">Telefone / WhatsApp</Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={handlePhoneChange}
+                placeholder="(00) 00000-0000"
                 className="pl-10"
                 required
                 disabled={isLoading}

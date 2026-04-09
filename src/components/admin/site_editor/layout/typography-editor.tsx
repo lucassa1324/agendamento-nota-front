@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -27,6 +27,7 @@ interface TypographyEditorProps {
   onHighlight?: (id: string) => void;
   hasChanges?: boolean;
   onSave?: () => void;
+  isSaving?: boolean;
 }
 
 export function TypographyEditor({
@@ -35,6 +36,7 @@ export function TypographyEditor({
   onHighlight,
   hasChanges,
   onSave: externalOnSave,
+  isSaving,
 }: TypographyEditorProps) {
   const handleAccordionChange = (values: string | string[]) => {
     if (onHighlight) {
@@ -229,7 +231,7 @@ export function TypographyEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
+          disabled={!hasChanges || isSaving}
           onClick={externalOnSave}
           className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
             hasChanges
@@ -237,7 +239,12 @@ export function TypographyEditor({
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
           }`}
         >
-          {hasChanges ? (
+          {isSaving ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Salvando...</span>
+            </div>
+          ) : hasChanges ? (
             "Salvar Alterações"
           ) : (
             <span className="opacity-50">Nenhuma alteração</span>

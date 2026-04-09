@@ -1,12 +1,18 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ImageModal } from "@/components/image-modal";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
+import {
+  defaultGallerySettings,
+  type GallerySettings,
+  normalizePayload,
+  SECTION_IDS,
+  sanitizeColor,
+} from "@/lib/booking-data";
 import { type GalleryItem, galleryService } from "@/lib/gallery-service";
-import { defaultGallerySettings, SECTION_IDS, normalizePayload, type GallerySettings, sanitizeColor } from "@/lib/booking-data";
 
 interface Service {
   name: string;
@@ -27,86 +33,190 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
   const [isLoading, setIsLoading] = useState(false);
   const loadingRef = useRef(false);
 
-  const [settings, setSettings] = useState<GallerySettings>(propsSettings || defaultGallerySettings);
-  
-  // Atualiza settings locais quando as props mudarem
-  useEffect(() => {
-    if (propsSettings) {
-      setSettings(propsSettings);
-    }
-  }, [propsSettings]);
-
+  const [settings, setSettings] = useState<GallerySettings>(
+    propsSettings || defaultGallerySettings,
+  );
+  const [isInsideIframe, setIsInsideIframe] = useState(false);
+  const hasLivePreviewUpdateRef = useRef(false);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   const handleImageError = (id: string) => {
     setImageErrors((prev) => ({ ...prev, [id]: true }));
   };
 
+  // Detectar se está dentro de um iframe
   useEffect(() => {
-    const loadData = async () => {
-      if (loadingRef.current) return; // Evita chamadas paralelas
+    setIsInsideIframe(window.self !== window.top);
+  }, []);
 
-      loadingRef.current = true;
-      setIsLoading(true);
-      try {
-        // Se tivermos dados do studio via context (multi-tenant), usamos eles
-        if (studio?.id) {
-          const allImages = await galleryService.getPublicGallery(studio.id);
-          const allServices = studio.services || [];
+  const loadData = useCallback(async () => {
+    if (loadingRef.current) return; // Evita chamadas paralelas
 
+    loadingRef.current = true;
+    setIsLoading(true);
+    try {
+      // Se tivermos dados do studio via context (multi-tenant), usamos eles
+      if (studio?.id) {
+        const allImages = await galleryService.getPublicGallery(studio.id);
+        const allServices = studio.services || [];
+
+        setImages(allImages);
+
+        const servicesWithImages = allServices.filter((service) =>
+          allImages.some((img) => img.category === service.name),
+        );
+
+        const dynamicCategories = [
+          { id: "todos", label: "Todos" },
+          ...servicesWithImages.map((s) => ({ id: s.name, label: s.name })),
+        ];
+        setCategories(dynamicCategories);
+
+        // Atualizar settings do studio se não foram passadas via props
+        if (!propsSettings && studio.config) {
+          const normalized = normalizePayload(
+            studio.config as Record<string, unknown>,
+          );
+          const pageGallery = (normalized.sections?.[SECTION_IDS.pageGallery] ||
+            normalized.sections?.[SECTION_IDS.homeGallery]) as Record<
+            string,
+            unknown
+          >;
+          if (pageGallery) {
+            const appearance =
+              (pageGallery.appearance as Record<string, unknown>) || {};
+            setSettings({
+              ...defaultGallerySettings,
+              ...(pageGallery as unknown as GallerySettings),
+              bgColor:
+                sanitizeColor(
+                  (pageGallery.bgColor as string) ||
+                    (appearance.backgroundColor as string),
+                ) || "",
+              buttonColor:
+                sanitizeColor(
+                  (pageGallery.buttonColor as string) ||
+                    (appearance.buttonColor as string),
+                ) || "",
+              buttonTextColor:
+                sanitizeColor(
+                  (pageGallery.buttonTextColor as string) ||
+                    (appearance.buttonTextColor as string),
+                ) || "",
+            });
+          }
+        }
+        return;
+      }
+
+      // Fallback para cache se studio ainda não carregou
+      const cachedStudioStr = localStorage.getItem("studio_data");
+      if (cachedStudioStr) {
+        const parsed = JSON.parse(cachedStudioStr);
+        if (parsed.id) {
+          const allImages = await galleryService.getPublicGallery(parsed.id);
           setImages(allImages);
 
-          const servicesWithImages = allServices.filter((service) =>
-            allImages.some((img) => img.category === service.name),
-          );
-
+          const allServices = (parsed.services || []) as Service[];
           const dynamicCategories = [
             { id: "todos", label: "Todos" },
-            ...servicesWithImages.map((s) => ({ id: s.name, label: s.name })),
+            ...allServices.map((s) => ({ id: s.name, label: s.name })),
           ];
           setCategories(dynamicCategories);
-
-          // Atualizar settings do studio se não foram passadas via props
-          if (!propsSettings && studio.config) {
-            const normalized = normalizePayload(studio.config as any);
-            const pageGallery = normalized.sections?.[SECTION_IDS.pageGallery] || normalized.sections?.[SECTION_IDS.homeGallery];
-            if (pageGallery) {
-              const appearance = (pageGallery.appearance as any) || {};
-              setSettings({
-                ...defaultGallerySettings,
-                ...(pageGallery as any),
-                bgColor: sanitizeColor((pageGallery as any).bgColor || appearance.backgroundColor) || "",
-                buttonColor: sanitizeColor((pageGallery as any).buttonColor || appearance.buttonColor) || "",
-                buttonTextColor: sanitizeColor((pageGallery as any).buttonTextColor || appearance.buttonTextColor) || "",
-              });
-            }
-          }
-          return;
         }
+      }
+    } catch (error) {
+      console.error("Erro ao carregar galeria:", error);
+    } finally {
+      loadingRef.current = false;
+      setIsLoading(false);
+    }
+  }, [studio?.id, studio?.services, studio?.config, propsSettings]);
 
-        // Fallback para cache se studio ainda não carregou
-        const cachedStudioStr = localStorage.getItem("studio_data");
-        if (cachedStudioStr) {
-          const parsed = JSON.parse(cachedStudioStr);
-          if (parsed.id) {
-            const allImages = await galleryService.getPublicGallery(parsed.id);
-            setImages(allImages);
+  // Listener para mensagens do editor (Live Preview)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.data || typeof event.data !== "object") return;
 
-            const allServices = (parsed.services || []) as Service[];
-            const dynamicCategories = [
-              { id: "todos", label: "Todos" },
-              ...allServices.map((s) => ({ id: s.name, label: s.name })),
-            ];
-            setCategories(dynamicCategories);
+      if (event.data.type) {
+        console.log(
+          ">>> [RECEIVE_POST_MESSAGE]",
+          event.data.type,
+          event.data.settings || event.data.payload,
+        );
+      }
+
+      const applyGallerySettings = (sectionData: Record<string, unknown>) => {
+        hasLivePreviewUpdateRef.current = true;
+        const appearance =
+          (sectionData.appearance as Record<string, unknown>) || {};
+
+        setSettings({
+          ...defaultGallerySettings,
+          ...(sectionData as unknown as GallerySettings),
+          bgColor:
+            sanitizeColor(
+              (sectionData.bgColor as string) ||
+                (appearance.backgroundColor as string) ||
+                (sectionData.backgroundColor as string),
+            ) || "",
+          buttonColor:
+            sanitizeColor(
+              (sectionData.buttonColor as string) ||
+                (appearance.buttonColor as string),
+            ) || "",
+          buttonTextColor:
+            sanitizeColor(
+              (sectionData.buttonTextColor as string) ||
+                (appearance.buttonTextColor as string),
+            ) || "",
+        });
+      };
+
+      if (
+        event.data.type === "UPDATE_GALLERY_PAGE" ||
+        event.data.type === "UPDATE_GALLERY_PAGE_SETTINGS" ||
+        event.data.type === "UPDATE_GALLERY_SETTINGS" ||
+        event.data.type === "UPDATE_GALLERY_PREVIEW"
+      ) {
+        const directSettings = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
+        if (directSettings) {
+          applyGallerySettings(directSettings);
+        }
+        return;
+      }
+
+      if (
+        event.data.type === "UPDATE_SITE_DATA" ||
+        event.data.type === "UPDATE_SITE_CONFIG"
+      ) {
+        const config = event.data.config || event.data.data;
+        if (config) {
+          const normalized = normalizePayload(config);
+          const sectionData = (normalized.sections?.[SECTION_IDS.pageGallery] ||
+            normalized.sections?.[SECTION_IDS.homeGallery]) as
+            | Record<string, unknown>
+            | undefined;
+
+          if (sectionData) {
+            applyGallerySettings(sectionData);
           }
         }
-      } catch (error) {
-        console.error("Erro ao carregar galeria:", error);
-      } finally {
-        loadingRef.current = false;
-        setIsLoading(false);
       }
     };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  useEffect(() => {
+    // Se estivermos no iframe e já recebemos um update via Live Preview,
+    // não rodamos o loadData inicial para não resetar o estado
+    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
+      return;
+    }
 
     loadData();
     window.addEventListener("galleryUpdated", loadData);
@@ -118,17 +228,21 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
       window.removeEventListener("studioSettingsUpdated", loadData);
       window.removeEventListener("servicesUpdated", loadData);
     };
-  }, [studio?.id, studio?.services, studio?.config, propsSettings]); // Dependência apenas do ID e serviços, não do objeto completo
+  }, [loadData, isInsideIframe]);
 
   const filteredImages =
     selectedCategory === "todos"
       ? images
       : images.filter((img) => img.category === selectedCategory);
 
-  const background = settings.bgColor || (settings as any).appearance?.backgroundColor || "transparent";
+  const background =
+    settings.bgColor ||
+    (settings as unknown as Record<string, { backgroundColor: string }>)
+      .appearance?.backgroundColor ||
+    "transparent";
 
   return (
-    <div 
+    <div
       id="gallery-grid"
       style={{
         backgroundColor: background,
@@ -144,15 +258,15 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
             style={{
               backgroundColor:
                 selectedCategory === category.id
-                  ? (settings.buttonColor || "var(--primary)")
+                  ? settings.buttonColor || "var(--primary)"
                   : "transparent",
               color:
                 selectedCategory === category.id
-                  ? (settings.buttonTextColor || "white")
+                  ? settings.buttonTextColor || "white"
                   : "var(--foreground)",
               borderColor:
                 selectedCategory === category.id
-                  ? (settings.buttonColor || "var(--primary)")
+                  ? settings.buttonColor || "var(--primary)"
                   : "var(--border)",
               fontFamily: "var(--font-body)",
             }}

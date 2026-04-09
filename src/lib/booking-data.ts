@@ -1,5 +1,61 @@
+import { format } from "date-fns";
 import { inventoryService } from "./inventory-service";
+import {
+  BookingStepSchema,
+  SectionSchema,
+} from "./schemas/site-customization-schema";
 import type { SiteConfigData } from "./site-config-types";
+
+// --- Sincronização Global entre Abas via LocalStorage ---
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (!event.key) return;
+
+    // Mapa de chaves para eventos customizados correspondentes
+    const keyToEvent: Record<string, string> = {
+      heroSettings: "heroSettingsUpdated",
+      aboutHeroSettings: "aboutHeroSettingsUpdated",
+      storySettings: "storySettingsUpdated",
+      homeValuesSettings: "homeValuesSettingsUpdated",
+      aboutUsValuesSettings: "aboutUsValuesSettingsUpdated",
+      valuesSettings: "valuesSettingsUpdated",
+      servicesSettings: "servicesSettingsUpdated",
+      fontSettings: "fontSettingsUpdated",
+      gallerySettings: "gallerySettingsUpdated",
+      galleryPageSettings: "galleryPageSettingsUpdated",
+      ctaSettings: "ctaSettingsUpdated",
+      teamSettings: "teamSettingsUpdated",
+      testimonialsSettings: "testimonialsSettingsUpdated",
+      headerSettings: "headerSettingsUpdated",
+      footerSettings: "footerSettingsUpdated",
+      colorSettings: "colorSettingsUpdated",
+      pageVisibility: "pageVisibilityUpdated",
+      visibleSections: "visibleSectionsUpdated",
+      siteProfile: "siteProfileUpdated",
+      services: "servicesUpdated",
+      bookingServiceSettings: "bookingServiceSettingsUpdated",
+      bookingDateSettings: "bookingDateSettingsUpdated",
+      bookingTimeSettings: "bookingTimeSettingsUpdated",
+      bookingFormSettings: "bookingFormSettingsUpdated",
+      bookingConfirmationSettings: "bookingConfirmationSettingsUpdated",
+    };
+
+    // Remove o prefixo do adminId se existir
+    const currentAdminId = localStorage.getItem("current_admin_id");
+    let baseKey = event.key;
+    if (currentAdminId && event.key.startsWith(`${currentAdminId}_`)) {
+      baseKey = event.key.substring(currentAdminId.length + 1);
+    }
+
+    const eventToDispatch = keyToEvent[baseKey];
+    if (eventToDispatch) {
+      console.log(
+        `>>> [STORAGE_SYNC] Disparando ${eventToDispatch} devido a mudança em ${event.key}`,
+      );
+      window.dispatchEvent(new Event(eventToDispatch));
+    }
+  });
+}
 
 export type ServiceResource = {
   inventoryId: string;
@@ -22,15 +78,15 @@ export type Service = {
   conflictingServiceIds?: string[];
   conflicting_service_ids?: string[];
   advanced_rules?:
-    | {
-        conflicts?: string[];
-      }
-    | string[];
+  | {
+    conflicts?: string[];
+  }
+  | string[];
   advancedRules?:
-    | {
-        conflicts?: string[];
-      }
-    | string[];
+  | {
+    conflicts?: string[];
+  }
+  | string[];
   resources?: ServiceResource[];
   // Mantido para compatibilidade temporária com componentes legados
   products?: {
@@ -125,22 +181,22 @@ export type DaySchedule = {
   lunchEnd: string;
   closeTime: string;
   interval: number;
+  minimumBookingLeadMinutes?: number;
 };
 
 export type WeekSchedule = DaySchedule[];
 
 // Helper para isolamento de dados por usuário
-export const sanitizeColor = (
-  color: unknown,
-): string | undefined => {
+export const sanitizeColor = (color: unknown): string | undefined => {
   if (!color) return undefined;
-  
+
   // Se for um objeto, tenta extrair a string de cor (caso comum em alguns componentes de UI)
   if (typeof color === "object" && color !== null) {
     const colorObj = color as Record<string, unknown>;
     if (typeof colorObj.hex === "string") return colorObj.hex;
     if (typeof colorObj.text === "string") return colorObj.text;
     if (typeof colorObj.color === "string") return colorObj.color;
+    if (typeof colorObj.rgb === "string") return colorObj.rgb;
     // Se não encontrar nada óbvio, tenta converter para string e ver o que acontece
     try {
       const str = String(color);
@@ -170,7 +226,7 @@ export const sanitizeColor = (
 };
 
 /**
- * Função de utilidade que limpa o objeto de configurações antes de qualquer operação 
+ * Função de utilidade que limpa o objeto de configurações antes de qualquer operação
  * de persistência ou renderização, garantindo que "lixo" de UI não chegue ao estado global.
  * Implementa normalização recursiva para chaves de cores.
  */
@@ -179,10 +235,12 @@ export const normalizePersistenceData = (data: unknown): unknown => {
 
   // Se for um array, processa cada item
   if (Array.isArray(data)) {
-    return data.map(item => normalizePersistenceData(item));
+    return data.map((item) => normalizePersistenceData(item));
   }
 
-  const cleanData: Record<string, unknown> = { ...(data as Record<string, unknown>) };
+  const cleanData: Record<string, unknown> = {
+    ...(data as Record<string, unknown>),
+  };
 
   Object.keys(cleanData).forEach((key) => {
     const value = cleanData[key];
@@ -192,7 +250,7 @@ export const normalizePersistenceData = (data: unknown): unknown => {
       const v = value as Record<string, unknown>;
       if (v.hex || v.color || v.rgb) {
         cleanData[key] = sanitizeColor(value);
-      } 
+      }
       // 2. Se for um objeto aninhado (não nulo), limpa recursivamente
       else if (!(value instanceof Date)) {
         cleanData[key] = normalizePersistenceData(value);
@@ -208,7 +266,9 @@ export const sanitizeSection = (
   fallbackData: unknown,
 ): Record<string, unknown> => {
   const fallback =
-    fallbackData && typeof fallbackData === "object" && !Array.isArray(fallbackData)
+    fallbackData &&
+      typeof fallbackData === "object" &&
+      !Array.isArray(fallbackData)
       ? (fallbackData as Record<string, unknown>)
       : {};
 
@@ -230,17 +290,119 @@ export const sanitizeSection = (
     return { ...fallback, title: currentData };
   }
 
-  if (!currentData || typeof currentData !== "object" || Array.isArray(currentData)) {
+  if (
+    !currentData ||
+    typeof currentData !== "object" ||
+    Array.isArray(currentData)
+  ) {
     return { ...fallback };
   }
 
   const record = currentData as Record<string, unknown>;
-  const keys = Object.keys(record);
-  if (keys.length > 0 && keys.every((key) => /^\d+$/.test(key))) {
-    return { ...fallback };
+
+  // PILAR: Limpeza de Objeto - Evitar acumular "lixo" de configurações antigas
+  // Em vez de fazer merge cego (...fallback, ...record), vamos construir o objeto
+  // priorizando o que vem do registro novo.
+  // Somente adicionamos do fallback o que for estritamente necessário (whitelist de campos padrão)
+  const mergedRoot: Record<string, unknown> = {
+    ...record,
+  };
+
+  const WHITELIST_FIELDS = [
+    "title",
+    "subtitle",
+    "description",
+    "visible",
+    "showTitle",
+    "showSubtitle",
+    "bgType",
+    "bgColor",
+    "backgroundColor",
+    "titleColor",
+    "subtitleColor",
+    "cardBgColor",
+    "cardTitleColor",
+    "cardDescriptionColor",
+    "cardPriceColor",
+    "cardIconColor",
+  ];
+
+  // Só adicionamos do fallback o que for estritamente necessário e não estiver no record
+  Object.entries(fallback).forEach(([key, value]) => {
+    // Se a chave não está no record, verificamos se ela é "lixo" ou campo padrão
+    if (mergedRoot[key] === undefined || mergedRoot[key] === null) {
+      // Se for um campo padrão conhecido, mantemos do fallback
+      if (
+        WHITELIST_FIELDS.includes(key) ||
+        key === "appearance" ||
+        key === "content"
+      ) {
+        mergedRoot[key] = value;
+      }
+      // Caso contrário, ignoramos para evitar acumular propriedades obsoletas
+    }
+  });
+
+  const recordAppearance =
+    record.appearance &&
+      typeof record.appearance === "object" &&
+      !Array.isArray(record.appearance)
+      ? (record.appearance as Record<string, unknown>)
+      : {};
+
+  const recordContent =
+    record.content &&
+      typeof record.content === "object" &&
+      !Array.isArray(record.content)
+      ? (record.content as Record<string, unknown>)
+      : {};
+
+  // Se o recordContent ou recordAppearance tiverem valores, eles devem estar no root para compatibilidade
+  for (const [key, value] of Object.entries(recordContent)) {
+    if (value !== undefined && value !== null) {
+      mergedRoot[key] = value;
+    }
   }
 
-  return { ...fallback, ...record };
+  for (const [key, value] of Object.entries(recordAppearance)) {
+    if (value !== undefined && value !== null) {
+      mergedRoot[key] = value;
+    }
+  }
+
+  const fallbackAppearance =
+    fallback.appearance &&
+      typeof fallback.appearance === "object" &&
+      !Array.isArray(fallback.appearance)
+      ? (fallback.appearance as Record<string, unknown>)
+      : {};
+
+  const fallbackContent =
+    fallback.content &&
+      typeof fallback.content === "object" &&
+      !Array.isArray(fallback.content)
+      ? (fallback.content as Record<string, unknown>)
+      : {};
+
+  const finalAppearance: Record<string, unknown> = { ...recordAppearance };
+  Object.entries(fallbackAppearance).forEach(([key, value]) => {
+    if (finalAppearance[key] === undefined || finalAppearance[key] === null) {
+      finalAppearance[key] = value;
+    }
+  });
+
+  const finalContent: Record<string, unknown> = { ...recordContent };
+  Object.entries(fallbackContent).forEach(([key, value]) => {
+    if (finalContent[key] === undefined || finalContent[key] === null) {
+      finalContent[key] = value;
+    }
+  });
+
+  return {
+    ...mergedRoot,
+    appearance: finalAppearance,
+    content: finalContent,
+  };
 };
 
 export type SectionConfig = Record<string, unknown>;
@@ -265,6 +427,7 @@ export const SECTION_IDS = {
   bookingTime: "booking-time",
   bookingForm: "booking-form",
   bookingConfirmation: "booking-confirmation",
+  booking: "booking",
 } as const;
 
 export type SectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
@@ -273,20 +436,232 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
   raw: T | undefined,
   defaults: T,
 ) => {
-  const merged = {
-    ...defaults,
-    ...(raw || {}),
-    appearance: {
-      ...(defaults.appearance as Record<string, unknown> | undefined),
-      ...(raw?.appearance as Record<string, unknown> | undefined),
-    },
-    content: {
-      ...(defaults.content as Record<string, unknown> | undefined),
-      ...(raw?.content as Record<string, unknown> | undefined),
-    },
+  // Se não tem dados brutos, retorna o padrão
+  if (!raw) return defaults;
+
+  // PILAR: Prioridade Invertida e Limpeza
+  // O que vem do "raw" (banco ou editor) deve ter prioridade TOTAL sobre o defaults.
+  // Começamos com raw e preenchemos apenas o estritamente necessário dos defaults.
+  const merged: Record<string, unknown> = {
+    ...raw,
   };
 
-  return normalizePersistenceData(merged) as T;
+  const CORE_FIELDS = [
+    "title",
+    "subtitle",
+    "description",
+    "visible",
+    "showTitle",
+    "showSubtitle",
+  ];
+
+  // Preenche campos principais se estiverem ausentes ou forem strings vazias/lixo
+  CORE_FIELDS.forEach((field) => {
+    const val = merged[field];
+    const isEmpty =
+      val === undefined ||
+      val === null ||
+      (typeof val === "string" &&
+        (val.trim() === "" || val.trim() === "{}" || val.trim() === "[]"));
+
+    if (isEmpty) {
+      merged[field] = defaults[field];
+    }
+  });
+
+  // O mesmo para content
+  const rawContent = raw.content;
+  let normalizedContent: Record<string, unknown> | undefined;
+
+  if (typeof rawContent === "string") {
+    const trimmed = rawContent.trim();
+    if (trimmed && trimmed !== "{}" && trimmed !== "[]") {
+      if (
+        (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+        (trimmed.startsWith("[") && trimmed.endsWith("]"))
+      ) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            normalizedContent = parsed as Record<string, unknown>;
+          } else {
+            normalizedContent = { text: rawContent };
+          }
+        } catch (_e) {
+          normalizedContent = { text: rawContent };
+        }
+      } else {
+        normalizedContent = { text: rawContent };
+      }
+    }
+  } else if (
+    rawContent &&
+    typeof rawContent === "object" &&
+    !Array.isArray(rawContent) &&
+    Object.keys(rawContent).length > 0
+  ) {
+    normalizedContent = rawContent as Record<string, unknown>;
+  }
+
+  if (normalizedContent) {
+    merged.content = {
+      ...(defaults.content as Record<string, unknown> | undefined),
+      ...normalizedContent,
+    };
+  } else if (defaults.content) {
+    merged.content = defaults.content as Record<string, unknown>;
+  }
+
+  if (typeof merged.content === "string") {
+    const trimmed = merged.content.trim();
+    if (!trimmed || trimmed === "{}" || trimmed === "[]") {
+      delete merged.content;
+    } else if (
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          merged.content = parsed as Record<string, unknown>;
+        } else {
+          merged.content = { text: merged.content };
+        }
+      } catch (_e) {
+        merged.content = { text: merged.content };
+      }
+    } else {
+      merged.content = { text: merged.content };
+    }
+  } else if (Array.isArray(merged.content)) {
+    merged.content = { items: merged.content };
+  } else if (merged.content && typeof merged.content !== "object") {
+    merged.content = { value: merged.content };
+  }
+
+  // O mesmo para appearance
+  const rawAppearance = raw.appearance;
+  let normalizedAppearance: Record<string, unknown> | undefined;
+
+  if (typeof rawAppearance === "string") {
+    const trimmed = rawAppearance.trim();
+    if (trimmed && trimmed !== "{}" && trimmed !== "[]") {
+      if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            normalizedAppearance = parsed as Record<string, unknown>;
+          }
+        } catch (_e) { }
+      }
+    }
+  } else if (
+    rawAppearance &&
+    typeof rawAppearance === "object" &&
+    !Array.isArray(rawAppearance) &&
+    Object.keys(rawAppearance).length > 0
+  ) {
+    normalizedAppearance = rawAppearance as Record<string, unknown>;
+  }
+
+  if (normalizedAppearance) {
+    merged.appearance = {
+      ...(defaults.appearance as Record<string, unknown> | undefined),
+      ...normalizedAppearance,
+    };
+  } else if (defaults.appearance) {
+    merged.appearance = defaults.appearance as Record<string, unknown>;
+  }
+
+  if (typeof merged.appearance === "string") {
+    const trimmed = merged.appearance.trim();
+    if (trimmed && trimmed !== "{}" && trimmed !== "[]") {
+      if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            merged.appearance = parsed as Record<string, unknown>;
+          } else {
+            delete merged.appearance;
+          }
+        } catch (_e) {
+          delete merged.appearance;
+        }
+      } else {
+        delete merged.appearance;
+      }
+    } else {
+      delete merged.appearance;
+    }
+  } else if (Array.isArray(merged.appearance)) {
+    delete merged.appearance;
+  } else if (merged.appearance && typeof merged.appearance !== "object") {
+    delete merged.appearance;
+  }
+
+  // 1. Pilar 3: Reidratação de Cores (Recuperar de qualquer chave possível)
+  const sectionBgColor = sanitizeColor(
+    merged.bgColor ||
+    merged.backgroundColor ||
+    (merged.appearance as Record<string, unknown> | undefined)?.backgroundColor ||
+    (merged.appearance as Record<string, unknown> | undefined)?.bgColor ||
+    (raw as Record<string, unknown>).bgColor ||
+    (raw as Record<string, unknown>).backgroundColor ||
+    (raw as Record<string, unknown>).bg_color
+  );
+
+  const sectionCardBgColor = sanitizeColor(
+    merged.cardBgColor ||
+    merged.cardBackgroundColor ||
+    (merged.appearance as Record<string, unknown> | undefined)?.cardBgColor ||
+    (merged.appearance as Record<string, unknown> | undefined)?.cardBackgroundColor ||
+    (merged.content as Record<string, unknown> | undefined)?.cardBgColor ||
+    (merged.content as Record<string, unknown> | undefined)?.cardBackgroundColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.cardBgColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.cardBackgroundColor ||
+    (raw as Record<string, unknown>).cardBgColor ||
+    (raw as Record<string, unknown>).cardBackgroundColor ||
+    (raw as Record<string, unknown>).card_bg_color ||
+    (raw as Record<string, unknown>).card_background_color ||
+    (raw as Record<string, unknown>).card_background
+  );
+
+  // 2. Pilar 2: Sincronização Multiponto (Injetar em todas as chaves)
+  if (sectionBgColor) {
+    merged.bgColor = sectionBgColor;
+    merged.backgroundColor = sectionBgColor;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).backgroundColor = sectionBgColor;
+      (merged.appearance as Record<string, unknown>).bgColor = sectionBgColor;
+    }
+  }
+
+  if (sectionCardBgColor) {
+    merged.cardBgColor = sectionCardBgColor;
+    merged.cardBackgroundColor = sectionCardBgColor;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).cardBgColor = sectionCardBgColor;
+      (merged.appearance as Record<string, unknown>).cardBackgroundColor = sectionCardBgColor;
+    }
+  }
+
+  // 3. PILAR 1: Validar e Limpar via Schema (Zod)
+  // Isso garante que cores em formatos estranhos sejam convertidas e campos obrigatórios existam.
+  try {
+    // Verificação de segurança: Se o SectionSchema por algum motivo for undefined ou inválido,
+    // não chamamos o parse para evitar que o erro interno do Zod pare o editor.
+    if (SectionSchema && typeof SectionSchema.parse === "function") {
+      const validated = SectionSchema.parse(merged);
+      return normalizePersistenceData(validated) as T;
+    }
+    console.warn(
+      ">>> [SCHEMA_WARNING] SectionSchema não disponível para validação.",
+    );
+    return normalizePersistenceData(merged) as T;
+  } catch (e) {
+    console.error(">>> [SCHEMA_VALIDATION_ERROR] Erro ao validar seção:", e);
+    return normalizePersistenceData(merged) as T;
+  }
 };
 
 const getPayloadRoot = (config: SiteConfigData | null | undefined) => {
@@ -296,14 +671,13 @@ const getPayloadRoot = (config: SiteConfigData | null | undefined) => {
     config) as SiteConfigData;
 };
 
-export const normalizePayload = (
-  config: SiteConfigData | null | undefined,
-) => {
+export const normalizePayload = (config: SiteConfigData | null | undefined) => {
   const safeConfig = (config || {}) as SiteConfigData;
   const root = getPayloadRoot(safeConfig);
 
-  const layoutGlobal = (root.layoutGlobal ||
-    root.layout_global) as Record<string, unknown> | undefined;
+  const layoutGlobal = (root.layoutGlobal || root.layout_global) as
+    | Record<string, unknown>
+    | undefined;
   const home = root.home as Record<string, unknown> | undefined;
   const about = root.about as Record<string, unknown> | undefined;
   const rootSections = root.sections as Record<string, unknown> | undefined;
@@ -319,173 +693,223 @@ export const normalizePayload = (
       : undefined;
   const gallerySectionWithAppearance = gallerySection
     ? {
-        ...gallerySection,
-        bgColor:
-          (gallerySection.bgColor as string | undefined) || galleryBackgroundColor,
-        appearance: {
-          ...((gallerySection.appearance as Record<string, unknown>) || {}),
-          backgroundColor:
-            (gallerySection.appearance as Record<string, unknown> | undefined)
-              ?.backgroundColor || galleryBackgroundColor,
-        },
-      }
+      ...gallerySection,
+      bgColor:
+        (gallerySection.bgColor as string | undefined) ||
+        galleryBackgroundColor,
+      appearance: {
+        ...((gallerySection.appearance as Record<string, unknown>) || {}),
+        backgroundColor:
+          (gallerySection.appearance as Record<string, unknown> | undefined)
+            ?.backgroundColor || galleryBackgroundColor,
+      },
+    }
     : undefined;
 
   const sections: SectionsMap = {
+    // 1. Preservar seções existentes para não perder nada novo
+    ...(rootSections || {}),
     [SECTION_IDS.homeHero]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeHero] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeHero
-        ] ||
-        (root.hero as SectionConfig | undefined) ||
-        (layoutGlobal?.hero as SectionConfig | undefined) ||
-        (home?.heroSection as SectionConfig | undefined) ||
-        (home?.hero as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeHero
+      ] ||
+      (root.hero as SectionConfig | undefined) ||
+      (layoutGlobal?.hero as SectionConfig | undefined) ||
+      (home?.heroSection as SectionConfig | undefined) ||
+      (home?.hero as SectionConfig | undefined),
       defaultHeroSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.aboutHero]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.aboutHero] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.aboutHero
-        ] ||
-        (root.aboutHero as SectionConfig | undefined) ||
-        (layoutGlobal?.aboutHero as SectionConfig | undefined) ||
-        (about?.heroSection as SectionConfig | undefined) ||
-        (about?.hero as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.aboutHero
+      ] ||
+      (root.aboutHero as SectionConfig | undefined) ||
+      (layoutGlobal?.aboutHero as SectionConfig | undefined) ||
+      (about?.heroSection as SectionConfig | undefined) ||
+      (about?.hero as SectionConfig | undefined),
       defaultAboutHeroSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeStory]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeStory] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeStory
-        ] ||
-        (root.story as SectionConfig | undefined) ||
-        (layoutGlobal?.story as SectionConfig | undefined) ||
-        (home?.storySection as SectionConfig | undefined) ||
-        (home?.story as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeStory
+      ] ||
+      (home?.storySection as SectionConfig | undefined) ||
+      (home?.story as SectionConfig | undefined) ||
+      (layoutGlobal?.story as SectionConfig | undefined) ||
+      (root.story as SectionConfig | undefined),
       defaultStorySettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeTeam]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeTeam] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeTeam
-        ] ||
-        (root.team as SectionConfig | undefined) ||
-        (layoutGlobal?.team as SectionConfig | undefined) ||
-        (home?.teamSection as SectionConfig | undefined) ||
-        (home?.team as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeTeam
+      ] ||
+      (home?.teamSection as SectionConfig | undefined) ||
+      (home?.team as SectionConfig | undefined) ||
+      (layoutGlobal?.team as SectionConfig | undefined) ||
+      (root.team as SectionConfig | undefined),
       defaultTeamSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeTestimonials]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[
-        SECTION_IDS.homeTestimonials
+      SECTION_IDS.homeTestimonials
       ] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeTestimonials
-        ] ||
-        (root.testimonials as SectionConfig | undefined) ||
-        (layoutGlobal?.testimonials as SectionConfig | undefined) ||
-        (home?.testimonialsSection as SectionConfig | undefined) ||
-        (home?.testimonials as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeTestimonials
+      ] ||
+      (home?.testimonialsSection as SectionConfig | undefined) ||
+      (home?.testimonials as SectionConfig | undefined) ||
+      (layoutGlobal?.testimonials as SectionConfig | undefined) ||
+      (root.testimonials as SectionConfig | undefined),
       defaultTestimonialsSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeServices]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeServices] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeServices
-        ] ||
-        (root.services as SectionConfig | undefined) ||
-        (layoutGlobal?.services as SectionConfig | undefined) ||
-        (home?.servicesSection as SectionConfig | undefined) ||
-        (home?.services as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeServices
+      ] ||
+      (home?.servicesSection as SectionConfig | undefined) ||
+      (home?.services as SectionConfig | undefined) ||
+      (layoutGlobal?.services as SectionConfig | undefined) ||
+      (root.services as SectionConfig | undefined),
       defaultServicesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeValues]: normalizeSectionConfig(
-      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeValues] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      (() => {
+        const raw =
+          (root.sections as SectionsMap | undefined)?.[
           SECTION_IDS.homeValues
-        ] ||
-        (root.homeValuesSettings as SectionConfig | undefined) ||
-        (layoutGlobal?.homeValuesSettings as SectionConfig | undefined) ||
-        (home?.valuesSection as SectionConfig | undefined) ||
-        (home?.values as SectionConfig | undefined) ||
-        (root.values as SectionConfig | undefined),
+          ] ||
+          (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeValues
+          ] ||
+          (home?.homeValuesSettings as SectionConfig | undefined) ||
+          (home?.valuesSection as SectionConfig | undefined) ||
+          (home?.values as SectionConfig | undefined) ||
+          (layoutGlobal?.homeValuesSettings as SectionConfig | undefined) ||
+          (root.homeValuesSettings as SectionConfig | undefined) ||
+          (root.values as SectionConfig | undefined) ||
+          (root.valuesSection as SectionConfig | undefined);
+        if (!raw) return raw;
+        const legacyBgColor =
+          sanitizeColor(
+            raw.values_bg ||
+            raw.about_values_bg ||
+            root.values_bg ||
+            root.valuesBg,
+          ) || "";
+        if (!raw.bgColor && legacyBgColor) {
+          return {
+            ...raw,
+            bgColor: legacyBgColor,
+            backgroundColor: legacyBgColor,
+          };
+        }
+        return raw as SectionConfig;
+      })(),
       defaultValuesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.aboutValues]: normalizeSectionConfig(
-      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.aboutValues] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      (() => {
+        const raw =
+          (root.sections as SectionsMap | undefined)?.[
           SECTION_IDS.aboutValues
-        ] ||
-        (root.aboutUsValuesSettings as SectionConfig | undefined) ||
-        (root.aboutUsValues as SectionConfig | undefined) ||
-        (layoutGlobal?.aboutUsValuesSettings as SectionConfig | undefined) ||
-        (layoutGlobal?.aboutUsValues as SectionConfig | undefined) ||
-        (about?.valuesSection as SectionConfig | undefined) ||
-        (about?.values as SectionConfig | undefined) ||
-        (root.about_us_values as SectionConfig | undefined),
+          ] ||
+          (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.aboutValues
+          ] ||
+          (root.aboutUsValuesSettings as SectionConfig | undefined) ||
+          (root.aboutUsValues as SectionConfig | undefined) ||
+          (about?.aboutUsValuesSettings as SectionConfig | undefined) ||
+          (about?.aboutUsValues as SectionConfig | undefined) ||
+          (about?.valuesSection as SectionConfig | undefined) ||
+          (about?.values as SectionConfig | undefined) ||
+          (layoutGlobal?.aboutUsValuesSettings as SectionConfig | undefined) ||
+          (layoutGlobal?.aboutUsValues as SectionConfig | undefined) ||
+          (root.about_us_values as SectionConfig | undefined);
+        if (!raw) return raw;
+        const legacyBgColor =
+          sanitizeColor(
+            raw.about_values_bg ||
+            raw.values_bg ||
+            root.about_values_bg ||
+            root.aboutValuesBg,
+          ) || "";
+        if (!raw.bgColor && legacyBgColor) {
+          return {
+            ...raw,
+            bgColor: legacyBgColor,
+            backgroundColor: legacyBgColor,
+          };
+        }
+        return raw as SectionConfig;
+      })(),
       defaultValuesSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeGallery]: normalizeSectionConfig(
       (home?.galleryPreview as SectionConfig | undefined) ||
-        (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeGallery] ||
-        (gallerySectionWithAppearance as SectionConfig | undefined) ||
-        ((root.sections as Record<string, unknown> | undefined)
-          ?.galleryPreview as SectionConfig | undefined) ||
-        ((root.sections as Record<string, unknown> | undefined)
-          ?.galleryPreviewSettings as SectionConfig | undefined) ||
-        ((root.sections as Record<string, unknown> | undefined)
-          ?.gallerySection as SectionConfig | undefined) ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeGallery
-        ] ||
-        (root.galleryPreviewSettings as SectionConfig | undefined) ||
-        (layoutGlobal?.galleryPreview as SectionConfig | undefined) ||
-        (layoutGlobal?.gallerySection as SectionConfig | undefined) ||
-        (home?.gallerySection as SectionConfig | undefined),
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeGallery] ||
+      (gallerySectionWithAppearance as SectionConfig | undefined) ||
+      ((root.sections as Record<string, unknown> | undefined)
+        ?.galleryPreview as SectionConfig | undefined) ||
+      ((root.sections as Record<string, unknown> | undefined)
+        ?.galleryPreviewSettings as SectionConfig | undefined) ||
+      ((root.sections as Record<string, unknown> | undefined)
+        ?.gallerySection as SectionConfig | undefined) ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeGallery
+      ] ||
+      (root.galleryPreviewSettings as SectionConfig | undefined) ||
+      (layoutGlobal?.galleryPreview as SectionConfig | undefined) ||
+      (layoutGlobal?.gallerySection as SectionConfig | undefined) ||
+      (home?.gallerySection as SectionConfig | undefined),
       defaultGallerySettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.pageGallery]: normalizeSectionConfig(
       (root.gallery as SectionConfig | undefined) ||
-        (root.sections as SectionsMap | undefined)?.[SECTION_IDS.pageGallery] ||
-        ((root.sections as Record<string, unknown> | undefined)
-          ?.galleryPageSettings as SectionConfig | undefined) ||
-        ((root.sections as Record<string, unknown> | undefined)
-          ?.gallery as SectionConfig | undefined) ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.pageGallery
-        ] ||
-        (root.galleryPageSettings as SectionConfig | undefined) ||
-        (layoutGlobal?.gallery as SectionConfig | undefined),
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.pageGallery] ||
+      ((root.sections as Record<string, unknown> | undefined)
+        ?.galleryPageSettings as SectionConfig | undefined) ||
+      ((root.sections as Record<string, unknown> | undefined)?.gallery as
+        | SectionConfig
+        | undefined) ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.pageGallery
+      ] ||
+      (root.galleryPageSettings as SectionConfig | undefined) ||
+      (layoutGlobal?.gallery as SectionConfig | undefined),
       defaultGallerySettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.homeCta]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeCta] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.homeCta
-        ] ||
-        (root.cta as SectionConfig | undefined) ||
-        (layoutGlobal?.cta as SectionConfig | undefined) ||
-        (home?.ctaSection as SectionConfig | undefined) ||
-        (home?.cta as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeCta
+      ] ||
+      (home?.ctaSection as SectionConfig | undefined) ||
+      (home?.cta as SectionConfig | undefined) ||
+      (layoutGlobal?.cta as SectionConfig | undefined) ||
+      (root.cta as SectionConfig | undefined),
       defaultCTASettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.layoutHeader]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.layoutHeader] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.layoutHeader
-        ] ||
-        (root.header as SectionConfig | undefined) ||
-        (layoutGlobal?.header as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.layoutHeader
+      ] ||
+      (root.header as SectionConfig | undefined) ||
+      (layoutGlobal?.header as SectionConfig | undefined),
       defaultHeaderSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.layoutFooter]: normalizeSectionConfig(
       (root.sections as SectionsMap | undefined)?.[SECTION_IDS.layoutFooter] ||
-        (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.layoutFooter
-        ] ||
-        (root.footer as SectionConfig | undefined) ||
-        (layoutGlobal?.footer as SectionConfig | undefined),
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.layoutFooter
+      ] ||
+      (root.footer as SectionConfig | undefined) ||
+      (layoutGlobal?.footer as SectionConfig | undefined),
       defaultFooterSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.bookingService]: normalizeSectionConfig(
@@ -493,73 +917,80 @@ export const normalizePayload = (
         SECTION_IDS.bookingService
       ] ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.bookingService
+        SECTION_IDS.bookingService
         ] ||
         ((root.appointmentFlow as Record<string, unknown> | undefined)
           ?.service as SectionConfig | undefined) ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
-          | Record<string, unknown>
-          | undefined)?.service ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.service ||
         ((root.bookingSteps as Record<string, unknown> | undefined)?.service as
           | SectionConfig
           | undefined) ||
         (root.bookingService as SectionConfig | undefined)) as
-        | SectionConfig
-        | undefined,
+      | SectionConfig
+      | undefined,
       defaultBookingServiceSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.bookingDate]: normalizeSectionConfig(
       ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingDate] ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.bookingDate
+        SECTION_IDS.bookingDate
         ] ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)
-          ?.date as SectionConfig | undefined) ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
-          | Record<string, unknown>
-          | undefined)?.date ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.date as
+          | SectionConfig
+          | undefined) ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.date ||
         ((root.bookingSteps as Record<string, unknown> | undefined)?.date as
           | SectionConfig
           | undefined) ||
         (root.bookingDate as SectionConfig | undefined)) as
-        | SectionConfig
-        | undefined,
+      | SectionConfig
+      | undefined,
       defaultBookingDateSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.bookingTime]: normalizeSectionConfig(
       ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingTime] ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.bookingTime
+        SECTION_IDS.bookingTime
         ] ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)
-          ?.time as SectionConfig | undefined) ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
-          | Record<string, unknown>
-          | undefined)?.time ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.time as
+          | SectionConfig
+          | undefined) ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.time ||
         ((root.bookingSteps as Record<string, unknown> | undefined)?.time as
           | SectionConfig
           | undefined) ||
         (root.bookingTime as SectionConfig | undefined)) as
-        | SectionConfig
-        | undefined,
+      | SectionConfig
+      | undefined,
       defaultBookingTimeSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.bookingForm]: normalizeSectionConfig(
       ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingForm] ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.bookingForm
+        SECTION_IDS.bookingForm
         ] ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)
-          ?.form as SectionConfig | undefined) ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
-          | Record<string, unknown>
-          | undefined)?.form ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.form as
+          | SectionConfig
+          | undefined) ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.form ||
         ((root.bookingSteps as Record<string, unknown> | undefined)?.form as
           | SectionConfig
           | undefined) ||
         (root.bookingForm as SectionConfig | undefined)) as
-        | SectionConfig
-        | undefined,
+      | SectionConfig
+      | undefined,
       defaultBookingFormSettings as unknown as SectionConfig,
     ),
     [SECTION_IDS.bookingConfirmation]: normalizeSectionConfig(
@@ -567,18 +998,19 @@ export const normalizePayload = (
         SECTION_IDS.bookingConfirmation
       ] ||
         (layoutGlobal?.sections as SectionsMap | undefined)?.[
-          SECTION_IDS.bookingConfirmation
+        SECTION_IDS.bookingConfirmation
         ] ||
         ((root.appointmentFlow as Record<string, unknown> | undefined)
           ?.confirmation as SectionConfig | undefined) ||
-        ((root.appointmentFlow as Record<string, unknown> | undefined)?.steps as
-          | Record<string, unknown>
-          | undefined)?.confirmation ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.confirmation ||
         ((root.bookingSteps as Record<string, unknown> | undefined)
           ?.confirmation as SectionConfig | undefined) ||
         (root.bookingConfirmation as SectionConfig | undefined)) as
-        | SectionConfig
-        | undefined,
+      | SectionConfig
+      | undefined,
       defaultBookingConfirmationSettings as unknown as SectionConfig,
     ),
   };
@@ -908,7 +1340,7 @@ export const defaultStorySettings: StorySettings = {
   titleColor: "#000000",
   titleFont: "",
   content:
-    "O Brow Studio nasceu da paixão por realçar a beauty natural de cada pessoa através do design de sobrancelhas. Com mais de 10 anos de experiência no mercado, nos especializamos em técnicas avançadas que valorizam a individualidade de cada cliente.\n\nNossa missão é proporcionar não apenas um serviço de qualidade, mas uma experiência transformadora. Acreditamos que sobrancelhas bem feitas têm o poder de elevar a autoestima e destacar a beleza única de cada pessoa.\n\nInvestimos constantemente em capacitação e nas melhores técnicas do mercado para garantir resultados excepcionais e a satisfação total de nossas clientes.",
+    "A Aura Sistema nasceu da paixão por realçar a beauty natural de cada pessoa através do design de sobrancelhas. Com mais de 10 anos de experiência no mercado, nos especializamos em técnicas avançadas que valorizam a individualidade de cada cliente.\n\nNossa missão é proporcionar não apenas um serviço de qualidade, mas uma experiência transformadora. Acreditamos que sobrancelhas bem feitas têm o poder de elevar a autoestima e destacar a beleza única de cada pessoa.\n\nInvestimos constantemente em capacitação e nas melhores técnicas do mercado para garantir resultados excepcionais e a satisfação total de nossas clientes.",
   contentColor: "#000000",
   contentFont: "",
   image: "/professional-eyebrow-artist-at-work.jpg",
@@ -1112,8 +1544,10 @@ export type BookingStepSettings = {
   cardBgColor?: string;
   interval?: string | number;
   slotInterval?: string | number;
+  minimumBookingLeadMinutes?: number;
   step3Times?: {
     interval?: string | number;
+    minimumBookingLeadMinutes?: number;
   };
   buttonColor?: string;
   appearance?: AppearanceSettings;
@@ -1136,6 +1570,10 @@ export const defaultBookingServiceSettings: BookingStepSettings = {
   imageY: 50,
   accentColor: "#000000",
   cardBgColor: "#FFFFFF",
+  minimumBookingLeadMinutes: 0,
+  step3Times: {
+    minimumBookingLeadMinutes: 0,
+  },
   appearance: {
     backgroundImageUrl: "",
   },
@@ -1262,7 +1700,7 @@ export function getBookingServiceSettings(
   const step1 = (flow?.step1Services || {}) as Record<string, unknown>;
 
   return {
-    ...((step1 as unknown) as BookingStepSettings),
+    ...(step1 as unknown as BookingStepSettings),
     title: (step1.title as string) || "Escolha seus Serviços",
     subtitle:
       (step1.subtitle as string) ||
@@ -1270,23 +1708,23 @@ export function getBookingServiceSettings(
     bgColor:
       sanitizeColor(
         (step1.bgColor as string) ||
-          (step1.bg_color as string) ||
-          (step1.backgroundColor as string) ||
-          (studio?.bgColor as string) ||
-          (studio?.backgroundColor as string) ||
-          "#ffffff",
+        (step1.bg_color as string) ||
+        (step1.backgroundColor as string) ||
+        (studio?.bgColor as string) ||
+        (studio?.backgroundColor as string) ||
+        "#ffffff",
       ) || "#ffffff",
     cardBgColor: sanitizeColor(
       (step1.cardBgColor as string) ||
-        (step1.cardBackgroundColor as string) ||
-        (step1.card_bg_color as string) ||
-        (step1.backgroundColor as string) ||
-        "rgba(255,255,255,0.6)",
+      (step1.cardBackgroundColor as string) ||
+      (step1.card_bg_color as string) ||
+      (step1.backgroundColor as string) ||
+      "rgba(255,255,255,0.6)",
     ),
     accentColor: sanitizeColor(
       (step1.accentColor as string) ||
-        (step1.accent_color as string) ||
-        "#000000",
+      (step1.accent_color as string) ||
+      "#000000",
     ),
   };
 }
@@ -1304,13 +1742,15 @@ export function saveBookingServiceSettings(
   }
 }
 
-export function getBookingDateSettings(config?: BookingConfig): BookingStepSettings {
+export function getBookingDateSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
   let base = { ...defaultBookingDateSettings };
-  const stepConfig = 
+  const stepConfig =
     config?.bookingSteps?.date ||
-    config?.appointmentFlow?.steps?.date || 
+    config?.appointmentFlow?.steps?.date ||
     config?.appointmentFlow?.date;
-  
+
   if (stepConfig) {
     base = {
       ...base,
@@ -1343,13 +1783,44 @@ export function getBookingDateSettings(config?: BookingConfig): BookingStepSetti
 
   return {
     ...base,
-    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingDateSettings.titleColor) || "",
-    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingDateSettings.subtitleColor) || "",
-    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingDateSettings.titleFont,
-    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingDateSettings.subtitleFont,
-    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingDateSettings.cardBgColor) || "",
-    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingDateSettings.accentColor) || "",
-    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingDateSettings.bgColor) || "",
+    titleColor:
+      sanitizeColor(
+        base.titleColor ||
+        base.appearance?.titleColor ||
+        defaultBookingDateSettings.titleColor,
+      ) || "",
+    subtitleColor:
+      sanitizeColor(
+        base.subtitleColor ||
+        base.appearance?.subtitleColor ||
+        defaultBookingDateSettings.subtitleColor,
+      ) || "",
+    titleFont:
+      base.titleFont ||
+      base.appearance?.titleFont ||
+      defaultBookingDateSettings.titleFont,
+    subtitleFont:
+      base.subtitleFont ||
+      base.appearance?.subtitleFont ||
+      defaultBookingDateSettings.subtitleFont,
+    cardBgColor:
+      sanitizeColor(
+        base.cardBgColor ||
+        base.appearance?.cardBgColor ||
+        defaultBookingDateSettings.cardBgColor,
+      ) || "",
+    accentColor:
+      sanitizeColor(
+        base.accentColor ||
+        base.appearance?.accentColor ||
+        defaultBookingDateSettings.accentColor,
+      ) || "",
+    bgColor:
+      sanitizeColor(
+        base.bgColor ||
+        base.appearance?.backgroundColor ||
+        defaultBookingDateSettings.bgColor,
+      ) || "",
   };
 }
 
@@ -1364,13 +1835,15 @@ export function saveBookingDateSettings(settings: BookingStepSettings): void {
   }
 }
 
-export function getBookingTimeSettings(config?: BookingConfig): BookingStepSettings {
+export function getBookingTimeSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
   let base = { ...defaultBookingTimeSettings };
-  const stepConfig = 
+  const stepConfig =
     config?.bookingSteps?.time ||
-    config?.appointmentFlow?.steps?.time || 
+    config?.appointmentFlow?.steps?.time ||
     config?.appointmentFlow?.time;
-  
+
   if (stepConfig) {
     base = {
       ...base,
@@ -1403,13 +1876,44 @@ export function getBookingTimeSettings(config?: BookingConfig): BookingStepSetti
 
   return {
     ...base,
-    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingTimeSettings.titleColor) || "",
-    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingTimeSettings.subtitleColor) || "",
-    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingTimeSettings.titleFont,
-    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingTimeSettings.subtitleFont,
-    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingTimeSettings.cardBgColor) || "",
-    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingTimeSettings.accentColor) || "",
-    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingTimeSettings.bgColor) || "",
+    titleColor:
+      sanitizeColor(
+        base.titleColor ||
+        base.appearance?.titleColor ||
+        defaultBookingTimeSettings.titleColor,
+      ) || "",
+    subtitleColor:
+      sanitizeColor(
+        base.subtitleColor ||
+        base.appearance?.subtitleColor ||
+        defaultBookingTimeSettings.subtitleColor,
+      ) || "",
+    titleFont:
+      base.titleFont ||
+      base.appearance?.titleFont ||
+      defaultBookingTimeSettings.titleFont,
+    subtitleFont:
+      base.subtitleFont ||
+      base.appearance?.subtitleFont ||
+      defaultBookingTimeSettings.subtitleFont,
+    cardBgColor:
+      sanitizeColor(
+        base.cardBgColor ||
+        base.appearance?.cardBgColor ||
+        defaultBookingTimeSettings.cardBgColor,
+      ) || "",
+    accentColor:
+      sanitizeColor(
+        base.accentColor ||
+        base.appearance?.accentColor ||
+        defaultBookingTimeSettings.accentColor,
+      ) || "",
+    bgColor:
+      sanitizeColor(
+        base.bgColor ||
+        base.appearance?.backgroundColor ||
+        defaultBookingTimeSettings.bgColor,
+      ) || "",
   };
 }
 
@@ -1424,13 +1928,15 @@ export function saveBookingTimeSettings(settings: BookingStepSettings): void {
   }
 }
 
-export function getBookingFormSettings(config?: BookingConfig): BookingStepSettings {
+export function getBookingFormSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
   let base = { ...defaultBookingFormSettings };
-  const stepConfig = 
+  const stepConfig =
     config?.bookingSteps?.form ||
-    config?.appointmentFlow?.steps?.form || 
+    config?.appointmentFlow?.steps?.form ||
     config?.appointmentFlow?.form;
-  
+
   if (stepConfig) {
     base = {
       ...base,
@@ -1463,13 +1969,44 @@ export function getBookingFormSettings(config?: BookingConfig): BookingStepSetti
 
   return {
     ...base,
-    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingFormSettings.titleColor) || "",
-    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingFormSettings.subtitleColor) || "",
-    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingFormSettings.titleFont,
-    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingFormSettings.subtitleFont,
-    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingFormSettings.cardBgColor) || "",
-    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingFormSettings.accentColor) || "",
-    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingFormSettings.bgColor) || "",
+    titleColor:
+      sanitizeColor(
+        base.titleColor ||
+        base.appearance?.titleColor ||
+        defaultBookingFormSettings.titleColor,
+      ) || "",
+    subtitleColor:
+      sanitizeColor(
+        base.subtitleColor ||
+        base.appearance?.subtitleColor ||
+        defaultBookingFormSettings.subtitleColor,
+      ) || "",
+    titleFont:
+      base.titleFont ||
+      base.appearance?.titleFont ||
+      defaultBookingFormSettings.titleFont,
+    subtitleFont:
+      base.subtitleFont ||
+      base.appearance?.subtitleFont ||
+      defaultBookingFormSettings.subtitleFont,
+    cardBgColor:
+      sanitizeColor(
+        base.cardBgColor ||
+        base.appearance?.cardBgColor ||
+        defaultBookingFormSettings.cardBgColor,
+      ) || "",
+    accentColor:
+      sanitizeColor(
+        base.accentColor ||
+        base.appearance?.accentColor ||
+        defaultBookingFormSettings.accentColor,
+      ) || "",
+    bgColor:
+      sanitizeColor(
+        base.bgColor ||
+        base.appearance?.backgroundColor ||
+        defaultBookingFormSettings.bgColor,
+      ) || "",
   };
 }
 
@@ -1484,13 +2021,15 @@ export function saveBookingFormSettings(settings: BookingStepSettings): void {
   }
 }
 
-export function getBookingConfirmationSettings(config?: BookingConfig): BookingStepSettings {
+export function getBookingConfirmationSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
   let base = { ...defaultBookingConfirmationSettings };
-  const stepConfig = 
+  const stepConfig =
     config?.bookingSteps?.confirmation ||
-    config?.appointmentFlow?.steps?.confirmation || 
+    config?.appointmentFlow?.steps?.confirmation ||
     config?.appointmentFlow?.confirmation;
-  
+
   if (stepConfig) {
     base = {
       ...base,
@@ -1503,7 +2042,9 @@ export function getBookingConfirmationSettings(config?: BookingConfig): BookingS
   }
   // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
-    const settings = localStorage.getItem(getStorageKey("bookingConfirmationSettings"));
+    const settings = localStorage.getItem(
+      getStorageKey("bookingConfirmationSettings"),
+    );
     if (settings) {
       try {
         const saved = JSON.parse(settings);
@@ -1523,13 +2064,44 @@ export function getBookingConfirmationSettings(config?: BookingConfig): BookingS
 
   return {
     ...base,
-    titleColor: sanitizeColor(base.titleColor || base.appearance?.titleColor || defaultBookingConfirmationSettings.titleColor) || "",
-    subtitleColor: sanitizeColor(base.subtitleColor || base.appearance?.subtitleColor || defaultBookingConfirmationSettings.subtitleColor) || "",
-    titleFont: base.titleFont || base.appearance?.titleFont || defaultBookingConfirmationSettings.titleFont,
-    subtitleFont: base.subtitleFont || base.appearance?.subtitleFont || defaultBookingConfirmationSettings.subtitleFont,
-    cardBgColor: sanitizeColor(base.cardBgColor || base.appearance?.cardBgColor || defaultBookingConfirmationSettings.cardBgColor) || "",
-    accentColor: sanitizeColor(base.accentColor || base.appearance?.accentColor || defaultBookingConfirmationSettings.accentColor) || "",
-    bgColor: sanitizeColor(base.bgColor || base.appearance?.backgroundColor || defaultBookingConfirmationSettings.bgColor) || "",
+    titleColor:
+      sanitizeColor(
+        base.titleColor ||
+        base.appearance?.titleColor ||
+        defaultBookingConfirmationSettings.titleColor,
+      ) || "",
+    subtitleColor:
+      sanitizeColor(
+        base.subtitleColor ||
+        base.appearance?.subtitleColor ||
+        defaultBookingConfirmationSettings.subtitleColor,
+      ) || "",
+    titleFont:
+      base.titleFont ||
+      base.appearance?.titleFont ||
+      defaultBookingConfirmationSettings.titleFont,
+    subtitleFont:
+      base.subtitleFont ||
+      base.appearance?.subtitleFont ||
+      defaultBookingConfirmationSettings.subtitleFont,
+    cardBgColor:
+      sanitizeColor(
+        base.cardBgColor ||
+        base.appearance?.cardBgColor ||
+        defaultBookingConfirmationSettings.cardBgColor,
+      ) || "",
+    accentColor:
+      sanitizeColor(
+        base.accentColor ||
+        base.appearance?.accentColor ||
+        defaultBookingConfirmationSettings.accentColor,
+      ) || "",
+    bgColor:
+      sanitizeColor(
+        base.bgColor ||
+        base.appearance?.backgroundColor ||
+        defaultBookingConfirmationSettings.bgColor,
+      ) || "",
   };
 }
 
@@ -1815,10 +2387,14 @@ export const normalizeStepSettings = (
 
   // 1. Resolver cor do CARD
   // Prioridade para configurações específicas de card, com fallback para backgroundColor legado
-  const cardConfig = (stepData.cardConfig || stepData.card_config || {}) as Record<string, unknown>;
+  const cardConfig = (stepData.cardConfig ||
+    stepData.card_config ||
+    {}) as Record<string, unknown>;
   const appearanceRaw = (stepData.appearance || {}) as Record<string, unknown>;
   const content = (stepData.content || {}) as Record<string, unknown>;
-  const itemsStyle = (stepData.itemsStyle || stepData.items_style || {}) as Record<string, unknown>;
+  const itemsStyle = (stepData.itemsStyle ||
+    stepData.items_style ||
+    {}) as Record<string, unknown>;
 
   const rawCardColor =
     (stepData.cardBgColor as string) ||
@@ -1844,25 +2420,61 @@ export const normalizeStepSettings = (
   // 2. Resolver cor do FUNDO DA SEÇÃO
   // NÃO usar rawCardColor como fallback para evitar que a cor do card pinte o fundo
   const rawBgColor =
-    (stepData.bgColor as string) || (stepData.bg_color as string);
+    (stepData.bgColor as string) ||
+    (stepData.bg_color as string) ||
+    (appearanceRaw.backgroundColor as string) ||
+    (appearanceRaw.background_color as string) ||
+    (stepData.backgroundColor as string);
   const finalBgColor = sanitizeColor(rawBgColor);
 
   // 3. Resolver Appearance (Source of Truth do banco)
   const appearance = (stepData.appearance as Record<string, unknown>) || {
-    backgroundImageUrl: (stepData.bgImage as string) || "",
+    backgroundImageUrl:
+      (stepData.bgImage as string) || (stepData.bg_image as string) || "",
   };
 
-  return {
-    ...stepData,
-    cardBgColor: finalCardColor || "",
-    bgColor: finalBgColor || "transparent",
+  // 4. Blindagem: Se o stepData já tiver propriedades que o normalizeStepSettings não conhece, preserve-as!
+  // Isso evita regressões quando novas funcionalidades são adicionadas em outros setores.
+  const final = {
+    ...stepData, // Spread do original PRIMEIRO
+    cardBgColor:
+      finalCardColor ||
+      (stepData.cardBgColor as string) ||
+      (stepData.card_bg_color as string) ||
+      "",
+    bgColor:
+      finalBgColor ||
+      (stepData.bgColor as string) ||
+      (stepData.bg_color as string) ||
+      "transparent",
     appearance: {
+      ...appearance,
+      backgroundColor:
+        (appearance.backgroundColor as string) ||
+        (appearance.background_color as string) ||
+        finalBgColor ||
+        "",
       backgroundImageUrl:
         (appearance.backgroundImageUrl as string) ||
         (stepData.bgImage as string) ||
+        (stepData.bg_image as string) ||
         "",
     },
-  } as BookingStepSettings;
+  };
+
+  // 5. PILAR 1: Validar e Limpar via Schema (Zod)
+  // Isso converte objetos de cor do Picker para strings e garante tipos mínimos.
+  try {
+    if (BookingStepSchema && typeof BookingStepSchema.parse === "function") {
+      const validated = BookingStepSchema.parse(final);
+      return validated as BookingStepSettings;
+    }
+    console.warn(">>> [SCHEMA_WARNING] BookingStepSchema não disponível.");
+    return final as BookingStepSettings;
+  } catch (e) {
+    console.error(">>> [SCHEMA_VALIDATION_ERROR] Erro ao validar Step:", e);
+    return final as BookingStepSettings;
+  }
 };
 
 export const defaultScheduleSettings: ScheduleSettings = {
@@ -1885,6 +2497,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 1,
@@ -1895,6 +2508,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 2,
@@ -1905,6 +2519,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 3,
@@ -1915,6 +2530,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 4,
@@ -1925,6 +2541,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 5,
@@ -1935,6 +2552,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 6,
@@ -1945,6 +2563,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "17:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
 ];
 
@@ -2143,6 +2762,15 @@ export function getAvailableTimeSlots(
     (b: Booking) => b.date === date && b.status !== "cancelado",
   );
 
+  const nowInSaoPaulo = new Date(
+    new Date().toLocaleString("en-US", {
+      timeZone: "America/Sao_Paulo",
+    }),
+  );
+  const nowDateKey = format(nowInSaoPaulo, "yyyy-MM-dd");
+  const nowMinutes = nowInSaoPaulo.getHours() * 60 + nowInSaoPaulo.getMinutes();
+  const minimumLeadMinutes = daySchedule.minimumBookingLeadMinutes || 0;
+
   return allSlots.map((time) => {
     const available = isTimeSlotAvailable(
       time,
@@ -2151,7 +2779,18 @@ export function getAvailableTimeSlots(
       daySchedule,
       dayBlocks,
     );
-    return { time, available };
+
+    // Se o slot estiver disponível, verificar a antecedência mínima se for para hoje
+    let finalAvailable = available;
+    if (available && date === nowDateKey) {
+      const [slotHour, slotMinute] = time.split(":").map(Number);
+      const slotMinutes = slotHour * 60 + slotMinute;
+      if (slotMinutes - nowMinutes < minimumLeadMinutes) {
+        finalAvailable = false;
+      }
+    }
+
+    return { time, available: finalAvailable };
   });
 }
 
@@ -2214,7 +2853,6 @@ function isTimeSlotAvailable(
   const lunchStartMinutes = timeToMinutes(daySchedule.lunchStart);
   const lunchEndMinutes = timeToMinutes(daySchedule.lunchEnd);
 
-  // Se lunchStart === lunchEnd, não há almoço
   if (lunchStartMinutes !== lunchEndMinutes) {
     if (startMinutes < lunchEndMinutes && endMinutes > lunchStartMinutes) {
       console.log(
@@ -2364,10 +3002,10 @@ export async function subtractInventoryForServiceAsync(
       // Priorizar 'resources' (novo formato) sobre 'products' (legado)
       const itemsToSubtract = service.resources?.length
         ? service.resources.map((r) => ({
-            productId: r.inventoryId,
-            quantity: r.quantity,
-            useSecondaryUnit: r.useSecondaryUnit,
-          }))
+          productId: r.inventoryId,
+          quantity: r.quantity,
+          useSecondaryUnit: r.useSecondaryUnit,
+        }))
         : service.products || [];
 
       if (itemsToSubtract.length === 0) continue;
@@ -2495,10 +3133,10 @@ export function subtractInventoryForService(serviceIds: string | string[]): {
     // Priorizar 'resources' (novo formato) sobre 'products' (legado)
     const itemsToSubtract = service.resources?.length
       ? service.resources.map((r) => ({
-          productId: r.inventoryId,
-          quantity: r.quantity,
-          useSecondaryUnit: r.useSecondaryUnit,
-        }))
+        productId: r.inventoryId,
+        quantity: r.quantity,
+        useSecondaryUnit: r.useSecondaryUnit,
+      }))
       : service.products || [];
 
     if (itemsToSubtract.length === 0) continue;
@@ -2700,7 +3338,9 @@ export function getNotificationSettings(): NotificationSettings {
   */
 }
 
-export function saveNotificationSettings(_settings: NotificationSettings): void {
+export function saveNotificationSettings(
+  _settings: NotificationSettings,
+): void {
   // localStorage.setItem(
   //   getStorageKey("notificationSettings"),
   //   JSON.stringify(settings),
@@ -2830,7 +3470,8 @@ export function getHomeValuesSettings(data?: unknown): ValuesSettings {
     (root.home_values as Record<string, unknown> | undefined) ||
     {};
   const appearance = values.appearance as Record<string, unknown> | undefined;
-  const title = typeof values.title === "string" ? values.title : "Nossos Valores";
+  const title =
+    typeof values.title === "string" ? values.title : "Nossos Valores";
   const subtitle = typeof values.subtitle === "string" ? values.subtitle : "";
   const items = Array.isArray(values.items)
     ? values.items
@@ -2838,7 +3479,8 @@ export function getHomeValuesSettings(data?: unknown): ValuesSettings {
   const backgroundColor =
     (typeof values.backgroundColor === "string" && values.backgroundColor) ||
     (typeof values.bgColor === "string" && values.bgColor) ||
-    (typeof appearance?.backgroundColor === "string" && appearance.backgroundColor) ||
+    (typeof appearance?.backgroundColor === "string" &&
+      appearance.backgroundColor) ||
     "transparent";
   const bgColor =
     (typeof values.bgColor === "string" && values.bgColor) ||
@@ -2890,7 +3532,8 @@ export function getAboutUsValuesSettings(data?: unknown): ValuesSettings {
     (root.aboutUsValues as Record<string, unknown> | undefined) ||
     (root.about_us_values as Record<string, unknown> | undefined) ||
     {};
-  const title = typeof values.title === "string" ? values.title : "Nossos Valores";
+  const title =
+    typeof values.title === "string" ? values.title : "Nossos Valores";
   const subtitle = typeof values.subtitle === "string" ? values.subtitle : "";
   const items = Array.isArray(values.items)
     ? values.items
@@ -3368,10 +4011,10 @@ export async function returnInventoryForServiceAsync(
 
       const itemsToReturn = service.resources?.length
         ? service.resources.map((r) => ({
-            productId: r.inventoryId,
-            quantity: r.quantity,
-            useSecondaryUnit: r.useSecondaryUnit,
-          }))
+          productId: r.inventoryId,
+          quantity: r.quantity,
+          useSecondaryUnit: r.useSecondaryUnit,
+        }))
         : service.products || [];
 
       if (itemsToReturn.length === 0) continue;
@@ -3481,10 +4124,10 @@ export async function calculateInventoryReturn(
 
     const itemsToReturn = service.resources?.length
       ? service.resources.map((r) => ({
-          productId: r.inventoryId,
-          quantity: r.quantity,
-          useSecondaryUnit: r.useSecondaryUnit,
-        }))
+        productId: r.inventoryId,
+        quantity: r.quantity,
+        useSecondaryUnit: r.useSecondaryUnit,
+      }))
       : service.products || [];
 
     for (const req of itemsToReturn) {

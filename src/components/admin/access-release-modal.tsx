@@ -71,11 +71,15 @@ export function AccessReleaseModal({
         remainingDays = diff > 0 ? diff : 0;
       }
 
+      const isTrialStatus =
+        company.subscriptionStatus === "trial" ||
+        company.subscriptionStatus === "trialing";
+
       // Lógica de Pré-seleção Baseada no Estado Atual
       if (company.accessType === "manual") {
         setSelectedOption("manual_custom_days");
         setManualDays(remainingDays > 0 ? remainingDays : 30);
-      } else if (company.accessType === "extended_trial") {
+      } else if (company.accessType === "extended_trial" || isTrialStatus) {
         setSelectedOption("extend_trial_custom");
         setTrialDays(remainingDays > 0 ? remainingDays : 14);
       } else {
@@ -148,15 +152,28 @@ export function AccessReleaseModal({
         return;
       }
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Falha ao atualizar assinatura");
+        throw new Error(data.error || "Falha ao atualizar assinatura");
       }
 
-      toast({
-        title: "Sucesso",
-        description: "Acesso da empresa atualizado com sucesso.",
-      });
+      if (selectedOption === "automatic") {
+        const isStillPending = data.message?.includes("past_due") || data.status === "past_due";
+        
+        toast({
+          title: isStillPending ? "Aguardando Pagamento" : "Sucesso",
+          description: isStillPending 
+            ? "A empresa foi movida para o modo automático, mas ainda não foi identificado um pagamento confirmado no Asaas."
+            : "Acesso da empresa atualizado e pagamento confirmado com sucesso.",
+          variant: isStillPending ? "destructive" : "default",
+        });
+      } else {
+        toast({
+          title: "Sucesso",
+          description: "Acesso da empresa atualizado com sucesso.",
+        });
+      }
 
       onSuccess();
       onClose();
