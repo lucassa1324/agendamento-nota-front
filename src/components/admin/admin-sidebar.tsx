@@ -10,8 +10,10 @@ import {
   CalendarPlus,
   Clock,
   ExternalLink,
+  Globe,
   ImageIcon,
   LayoutDashboard,
+
   ListTodo,
   LogOut,
   Package,
@@ -124,10 +126,16 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
         href: "/admin/dashboard/personalizacao",
         icon: Palette,
       },
+      {
+        title: "Domínio Customizado",
+        href: "/admin/dashboard/dns",
+        icon: Globe,
+      },
       { title: "Galeria", href: "/admin/dashboard/galeria", icon: ImageIcon },
     ],
   },
 ];
+
 
 interface AdminSidebarProps {
   adminUser: { name: string; username: string } | null;
