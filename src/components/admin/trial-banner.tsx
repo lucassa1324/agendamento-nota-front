@@ -2,10 +2,10 @@
 
 import { differenceInDays } from "date-fns";
 import { AlertTriangle, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStudio } from "@/context/studio-context";
-import { authClient, useSession } from "@/lib/auth-client";
+import { API_BASE_URL, authClient, useSession } from "@/lib/auth-client";
 
 interface SessionPayload {
   user: {
@@ -19,27 +19,26 @@ interface SessionPayload {
 }
 
 export function TrialBanner() {
-  const { studio } = useStudio();
+  const { studio, refreshData } = useStudio();
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(false);
   const [sessionData, setSessionData] = useState<SessionPayload | null>(null);
 
+  const refreshSessionData = useCallback(async () => {
+    try {
+      const result = await authClient.getSession();
+      if (result.data) {
+        setSessionData(result.data as unknown as SessionPayload);
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar sessão:", error);
+    }
+  }, []);
+
   // Busca dados atualizados da sessão para garantir que temos o status mais recente
   useEffect(() => {
-    const fetchSession = async () => {
-      try {
-        const result = await authClient.getSession();
-        if (result.data) {
-          // Converte explicitamente para unknown primeiro, depois para SessionPayload
-          // Isso é necessário porque o tipo retornado pelo authClient pode ser incompatível
-          setSessionData(result.data as unknown as SessionPayload);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar sessão:", error);
-      }
-    };
-    fetchSession();
-  }, []);
+    refreshSessionData();
+  }, [refreshSessionData]);
 
   // Verifica se o usuário é SUPER_ADMIN
   // O banner NÃO deve aparecer para Super Admin
@@ -68,8 +67,29 @@ export function TrialBanner() {
       ? userBusiness.subscriptionStatus
       : studio?.subscriptionStatus;
 
-  // Aceita tanto "trial" quanto "trialing" para compatibilidade
-  if (status !== "trial" && status !== "trialing") return null;
+  const tryAutoSyncSubscription = useCallback(async () => {
+    if (!session?.user?.email) return;
+    try {
+      const sessionToken =
+        typeof window !== "undefined"
+          ? localStorage.getItem("better-auth.session_token")
+          : null;
+      const response = await fetch(`${API_BASE_URL}/api/business/sync`, {
+        method: "POST",
+        credentials: "include",
+        headers: sessionToken
+          ? { Authorization: `Bearer ${sessionToken}` }
+          : undefined,
+      });
+      const data = await response.json();
+      if (data?.success) {
+        refreshData();
+        await refreshSessionData();
+      }
+    } catch (error) {
+      console.warn("Falha no auto-sync de assinatura:", error);
+    }
+  }, [refreshData, refreshSessionData, session?.user?.email]);
 
   const trialEndsAt =
     isOwner && userBusiness?.trialEndsAt
@@ -91,6 +111,30 @@ export function TrialBanner() {
     // Se não tem trialEndsAt, não assumimos nada (pode ser um erro de dados ou estado inválido)
     displayDays = 0;
   }
+
+  useEffect(() => {
+    if (status !== "trial" && status !== "trialing") return;
+
+    const hasPendingSync =
+      typeof window !== "undefined" &&
+      localStorage.getItem("pending_billing_sync") === "1";
+
+    // Só sincroniza automaticamente se:
+    // 1. Tiver um sinal de que o usuário acabou de pagar (veio do checkout)
+    // 2. Ou se o trial já expirou (0 dias), para verificar se houve pagamento
+    const shouldSync = hasPendingSync || displayDays === 0;
+
+    if (shouldSync) {
+      void tryAutoSyncSubscription().finally(() => {
+        if (hasPendingSync && typeof window !== "undefined") {
+          localStorage.removeItem("pending_billing_sync");
+        }
+      });
+    }
+  }, [status, tryAutoSyncSubscription, displayDays]);
+
+  // Aceita tanto "trial" quanto "trialing" para compatibilidade
+  if (status !== "trial" && status !== "trialing") return null;
 
   // Lógica de Urgência (<= 3 dias)
   const isCritical = displayDays <= 3;
@@ -144,7 +188,11 @@ export function TrialBanner() {
       const data = await response.json();
 
       if (data.url) {
-        window.open(data.url, "_blank");
+        if (typeof window !== "undefined") {
+          localStorage.setItem("pending_billing_sync", "1");
+        }
+        // Redireciona na mesma aba para evitar bloqueio de popup e garantir que o usuário veja a cobrança
+        window.location.href = data.url;
       } else {
         throw new Error(data.error || "Erro ao gerar link");
       }

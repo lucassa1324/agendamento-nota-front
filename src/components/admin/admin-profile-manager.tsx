@@ -100,10 +100,11 @@ export function AdminProfileManager() {
       const data = await response.json();
 
       if (data.url) {
-        window.open(data.url, "_blank");
+        // Redireciona na mesma aba para evitar bloqueio de popup e garantir que o usuário veja a cobrança
+        window.location.href = data.url;
         toast({
-          title: "Link de Pagamento",
-          description: "O link de pagamento foi aberto em uma nova aba.",
+          title: "Redirecionando",
+          description: "Aguarde enquanto levamos você ao pagamento.",
         });
       } else {
         throw new Error(data.error || "Erro ao gerar link de pagamento");
