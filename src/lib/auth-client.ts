@@ -46,7 +46,20 @@ console.log(">>> [AUTH_CLIENT] AUTH_BASE_URL configurada como:", AUTH_BASE_URL);
 export const LANDING_PAGE_URL = cleanUrl(
   process.env.NEXT_PUBLIC_LANDING_PAGE_URL,
 );
-export const BASE_DOMAIN = cleanUrl(process.env.NEXT_PUBLIC_BASE_DOMAIN);
+
+// Lógica inteligente para detectar o domínio base em produção
+const getBaseDomain = () => {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    // Se estivermos no domínio oficial, forçamos o uso dele como base
+    if (host.endsWith("aurasistema.com.br")) {
+      return "aurasistema.com.br";
+    }
+  }
+  return process.env.NEXT_PUBLIC_BASE_DOMAIN || "localhost:3000";
+};
+
+export const BASE_DOMAIN = cleanUrl(getBaseDomain());
 export const ADMIN_URL = cleanUrl(process.env.NEXT_PUBLIC_ADMIN_URL);
 
 export const authClient = createAuthClient({

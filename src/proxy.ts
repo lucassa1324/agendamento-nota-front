@@ -4,10 +4,14 @@ export function proxy(request: NextRequest) {
   const host = request.headers.get("host") || "";
 
   // Define os domínios base que não devem ser tratados como slugs
-  const baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN;
-  if (!baseDomain) return NextResponse.next();
+  let baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || "localhost:3000";
 
-  const baseDomains = [baseDomain, `www.${baseDomain}`];
+  // Prioriza o domínio oficial em produção se o host atual terminar com ele
+  if (host.endsWith("aurasistema.com.br")) {
+    baseDomain = "aurasistema.com.br";
+  }
+
+  const baseDomains = [baseDomain, `www.${baseDomain}`, "app.aurasistema.com.br"];
 
   // Verifica se o host atual é um dos domínios base
   const isBaseDomain = baseDomains.includes(host);
