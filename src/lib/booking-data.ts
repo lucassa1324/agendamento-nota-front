@@ -455,44 +455,197 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
     "showSubtitle",
   ];
 
-  // Preenche campos principais se estiverem ausentes
+  // Preenche campos principais se estiverem ausentes ou forem strings vazias/lixo
   CORE_FIELDS.forEach((field) => {
-    if (merged[field] === undefined || merged[field] === null) {
+    const val = merged[field];
+    const isEmpty =
+      val === undefined ||
+      val === null ||
+      (typeof val === "string" &&
+        (val.trim() === "" || val.trim() === "{}" || val.trim() === "[]"));
+
+    if (isEmpty) {
       merged[field] = defaults[field];
     }
   });
 
-  // Se o raw tem appearance, ele deve sobrescrever o defaults.appearance
-  // mas podemos manter propriedades do defaults que não existem no raw como fallback de segurança.
-  if (raw.appearance && typeof raw.appearance === "object") {
-    merged.appearance = {
-      ...(defaults.appearance as Record<string, unknown> | undefined),
-      ...(raw.appearance as Record<string, unknown>),
-    };
-  } else if (!raw.appearance && defaults.appearance) {
-    merged.appearance = defaults.appearance as Record<string, unknown>;
+  // O mesmo para content
+  const rawContent = raw.content;
+  let normalizedContent: Record<string, unknown> | undefined;
+
+  if (typeof rawContent === "string") {
+    const trimmed = rawContent.trim();
+    if (trimmed && trimmed !== "{}" && trimmed !== "[]") {
+      if (
+        (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+        (trimmed.startsWith("[") && trimmed.endsWith("]"))
+      ) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            normalizedContent = parsed as Record<string, unknown>;
+          } else {
+            normalizedContent = { text: rawContent };
+          }
+        } catch (_e) {
+          normalizedContent = { text: rawContent };
+        }
+      } else {
+        normalizedContent = { text: rawContent };
+      }
+    }
+  } else if (
+    rawContent &&
+    typeof rawContent === "object" &&
+    !Array.isArray(rawContent) &&
+    Object.keys(rawContent).length > 0
+  ) {
+    normalizedContent = rawContent as Record<string, unknown>;
   }
 
-  // O mesmo para content
-  if (raw.content && typeof raw.content === "object") {
+  if (normalizedContent) {
     merged.content = {
       ...(defaults.content as Record<string, unknown> | undefined),
-      ...(raw.content as Record<string, unknown>),
+      ...normalizedContent,
     };
-  } else if (!raw.content && defaults.content) {
+  } else if (defaults.content) {
     merged.content = defaults.content as Record<string, unknown>;
   }
 
-  // 1. Blindagem: Preservar campos que não estão no defaults mas estão no raw
-  // Isso é crucial para evitar regressões quando novos campos são adicionados em um setor
-  // e o outro setor (que ainda usa o defaults antigo) tenta normalizar.
-  Object.keys(raw).forEach((key) => {
-    if (!(key in merged)) {
-      merged[key] = raw[key];
+  if (typeof merged.content === "string") {
+    const trimmed = merged.content.trim();
+    if (!trimmed || trimmed === "{}" || trimmed === "[]") {
+      delete merged.content;
+    } else if (
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          merged.content = parsed as Record<string, unknown>;
+        } else {
+          merged.content = { text: merged.content };
+        }
+      } catch (_e) {
+        merged.content = { text: merged.content };
+      }
+    } else {
+      merged.content = { text: merged.content };
     }
-  });
+  } else if (Array.isArray(merged.content)) {
+    merged.content = { items: merged.content };
+  } else if (merged.content && typeof merged.content !== "object") {
+    merged.content = { value: merged.content };
+  }
 
-  // 2. PILAR 1: Validar e Limpar via Schema (Zod)
+  // O mesmo para appearance
+  const rawAppearance = raw.appearance;
+  let normalizedAppearance: Record<string, unknown> | undefined;
+
+  if (typeof rawAppearance === "string") {
+    const trimmed = rawAppearance.trim();
+    if (trimmed && trimmed !== "{}" && trimmed !== "[]") {
+      if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            normalizedAppearance = parsed as Record<string, unknown>;
+          }
+        } catch (_e) { }
+      }
+    }
+  } else if (
+    rawAppearance &&
+    typeof rawAppearance === "object" &&
+    !Array.isArray(rawAppearance) &&
+    Object.keys(rawAppearance).length > 0
+  ) {
+    normalizedAppearance = rawAppearance as Record<string, unknown>;
+  }
+
+  if (normalizedAppearance) {
+    merged.appearance = {
+      ...(defaults.appearance as Record<string, unknown> | undefined),
+      ...normalizedAppearance,
+    };
+  } else if (defaults.appearance) {
+    merged.appearance = defaults.appearance as Record<string, unknown>;
+  }
+
+  if (typeof merged.appearance === "string") {
+    const trimmed = merged.appearance.trim();
+    if (trimmed && trimmed !== "{}" && trimmed !== "[]") {
+      if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            merged.appearance = parsed as Record<string, unknown>;
+          } else {
+            delete merged.appearance;
+          }
+        } catch (_e) {
+          delete merged.appearance;
+        }
+      } else {
+        delete merged.appearance;
+      }
+    } else {
+      delete merged.appearance;
+    }
+  } else if (Array.isArray(merged.appearance)) {
+    delete merged.appearance;
+  } else if (merged.appearance && typeof merged.appearance !== "object") {
+    delete merged.appearance;
+  }
+
+  // 1. Pilar 3: Reidratação de Cores (Recuperar de qualquer chave possível)
+  const sectionBgColor = sanitizeColor(
+    merged.bgColor ||
+    merged.backgroundColor ||
+    (merged.appearance as Record<string, unknown> | undefined)?.backgroundColor ||
+    (merged.appearance as Record<string, unknown> | undefined)?.bgColor ||
+    (raw as Record<string, unknown>).bgColor ||
+    (raw as Record<string, unknown>).backgroundColor ||
+    (raw as Record<string, unknown>).bg_color
+  );
+
+  const sectionCardBgColor = sanitizeColor(
+    merged.cardBgColor ||
+    merged.cardBackgroundColor ||
+    (merged.appearance as Record<string, unknown> | undefined)?.cardBgColor ||
+    (merged.appearance as Record<string, unknown> | undefined)?.cardBackgroundColor ||
+    (merged.content as Record<string, unknown> | undefined)?.cardBgColor ||
+    (merged.content as Record<string, unknown> | undefined)?.cardBackgroundColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.cardBgColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.cardBackgroundColor ||
+    (raw as Record<string, unknown>).cardBgColor ||
+    (raw as Record<string, unknown>).cardBackgroundColor ||
+    (raw as Record<string, unknown>).card_bg_color ||
+    (raw as Record<string, unknown>).card_background_color ||
+    (raw as Record<string, unknown>).card_background
+  );
+
+  // 2. Pilar 2: Sincronização Multiponto (Injetar em todas as chaves)
+  if (sectionBgColor) {
+    merged.bgColor = sectionBgColor;
+    merged.backgroundColor = sectionBgColor;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).backgroundColor = sectionBgColor;
+      (merged.appearance as Record<string, unknown>).bgColor = sectionBgColor;
+    }
+  }
+
+  if (sectionCardBgColor) {
+    merged.cardBgColor = sectionCardBgColor;
+    merged.cardBackgroundColor = sectionCardBgColor;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).cardBgColor = sectionCardBgColor;
+      (merged.appearance as Record<string, unknown>).cardBackgroundColor = sectionCardBgColor;
+    }
+  }
+
+  // 3. PILAR 1: Validar e Limpar via Schema (Zod)
   // Isso garante que cores em formatos estranhos sejam convertidas e campos obrigatórios existam.
   try {
     // Verificação de segurança: Se o SectionSchema por algum motivo for undefined ou inválido,

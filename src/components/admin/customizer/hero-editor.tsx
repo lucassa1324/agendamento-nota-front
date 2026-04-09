@@ -6,12 +6,14 @@ import {
   Flower2,
   Gem,
   Heart,
+  Loader2,
   Moon,
   Smile,
   Sparkles,
   Star,
   Sun,
 } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -103,6 +105,7 @@ export interface HeroEditorProps {
   onReset?: () => void;
   hasChanges?: boolean;
   onSave?: () => void;
+  isSaving?: boolean;
 }
 
 export function HeroEditor({
@@ -112,7 +115,21 @@ export function HeroEditor({
   onReset: _onReset,
   hasChanges,
   onSave: externalOnSave,
+  isSaving,
 }: HeroEditorProps) {
+  const [localIsSaving, setLocalIsSaving] = useState(false);
+  const isLoading = isSaving || localIsSaving;
+
+  const handleSave = async () => {
+    if (!externalOnSave || isLoading) return;
+    setLocalIsSaving(true);
+    try {
+      await externalOnSave();
+    } finally {
+      setLocalIsSaving(false);
+    }
+  };
+
   // Helper to ensure updates are propagated correctly
   const handleUpdate = (updates: Partial<HeroEditorProps["settings"]>) => {
     console.log(">>> [HeroEditor] handleUpdate chamado com:", updates);
@@ -470,19 +487,26 @@ export function HeroEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
-          onClick={externalOnSave}
-          className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
-            hasChanges
+          disabled={!hasChanges || isLoading}
+          onClick={handleSave}
+          className={`w-full h-11 text-sm font-bold transition-all duration-300 relative ${
+            hasChanges && !isLoading
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
           }`}
         >
-          {hasChanges ? (
-            "Salvar Alterações"
-          ) : (
-            <span className="opacity-50">Nenhuma alteração</span>
-          )}
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : hasChanges ? (
+              "Salvar Alterações"
+            ) : (
+              <span className="opacity-50">Nenhuma alteração</span>
+            )}
+          </div>
         </Button>
       </div>
     </div>

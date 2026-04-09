@@ -128,7 +128,7 @@ export function ValuesSection({
       {};
 
     // PADRONIZAÇÃO DE CHAVES (Solicitado pelo usuário)
-    // Garantir que backgroundColor e cardBackgroundColor sejam as chaves principais
+    // Prioriza o nível superior (rawValues) antes de buscar fallbacks em appearance/itemsStyle
     const resolvedCardBgColor = sanitizeColor(
       (rawValues.cardBackgroundColor as string) ||
         (rawValues.cardBgColor as string) ||
@@ -557,14 +557,17 @@ export function ValuesSection({
               bgColor: sanitizeColor(
                 (incoming.bgColor as string) ||
                   (incoming.backgroundColor as string) ||
+                  (incoming.values_bg as string) ||
+                  (incoming.about_values_bg as string) ||
                   (incomingAppearance.backgroundColor as string) ||
                   (incomingAppearance.bgColor as string),
               ),
               cardBgColor: sanitizeColor(
-                (incoming.cardBgColor as string) ||
-                  (incoming.cardBackgroundColor as string) ||
-                  (incomingAppearance.cardBgColor as string) ||
+                (incoming.cardBackgroundColor as string) ||
+                  (incoming.cardBgColor as string) ||
+                  (incoming.card_background_color as string) ||
                   (incomingAppearance.cardBackgroundColor as string) ||
+                  (incomingAppearance.cardBgColor as string) ||
                   (incomingContent.cardBgColor as string),
               ),
             };

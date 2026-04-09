@@ -110,6 +110,9 @@ export function BookingFlow() {
 
   const resolveStep1Styles = useCallback((styles?: Record<string, unknown>) => {
     const safeStyles = styles || {};
+    const cardConfig =
+      (safeStyles.cardConfig as Record<string, unknown> | undefined) ||
+      (safeStyles.card_config as Record<string, unknown> | undefined);
     return {
       background:
         sanitizeColor(
@@ -121,7 +124,14 @@ export function BookingFlow() {
         sanitizeColor(
           (safeStyles.cardBgColor as string) ||
             (safeStyles.cardBackgroundColor as string) ||
-            (safeStyles.card_bg_color as string),
+            (safeStyles.card_bg_color as string) ||
+            (safeStyles.card_background_color as string) ||
+            (cardConfig?.cardBgColor as string) ||
+            (cardConfig?.cardBackgroundColor as string) ||
+            (cardConfig?.card_bg_color as string) ||
+            (cardConfig?.card_background_color as string) ||
+            (cardConfig?.backgroundColor as string) ||
+            (cardConfig?.background_color as string),
         ) || "transparent",
       accent:
         sanitizeColor(
@@ -332,7 +342,16 @@ export function BookingFlow() {
           sanitizeColor(
             (stepKey === "service" ? cardBgFromFlow : undefined) ||
               base.cardBgColor ||
+              (base as Record<string, unknown>).cardBackgroundColor as string ||
+              (base as Record<string, unknown>).card_bg_color as string ||
+              (base as Record<string, unknown>).card_background_color as string ||
               base.appearance?.cardBgColor ||
+              (base.appearance as Record<string, unknown> | undefined)
+                ?.cardBackgroundColor as string ||
+              (base.appearance as Record<string, unknown> | undefined)
+                ?.card_bg_color as string ||
+              (base.appearance as Record<string, unknown> | undefined)
+                ?.card_background_color as string ||
               defaults.cardBgColor,
           ) || (stepKey === "service" ? "#ffffff" : ""),
         accentColor:
@@ -669,15 +688,16 @@ export function BookingFlow() {
       if (event.data?.type === "UPDATE_BOOKING_SERVICE_SETTINGS") {
         const settings = event.data.settings as Record<string, unknown> | undefined;
         if (settings) {
+          const normalized = normalizeStepSettings(settings);
           setPreviewOverrides((prev) => {
             const mergedService: BookingStepSettings = {
               ...defaultBookingServiceSettings,
               ...(prev.service || {}),
-              ...(settings as Partial<BookingStepSettings>),
+              ...normalized,
               appearance: {
                 ...(defaultBookingServiceSettings.appearance || {}),
                 ...((prev.service?.appearance || {}) as BookingStepSettings["appearance"]),
-                ...((settings.appearance as BookingStepSettings["appearance"]) || {}),
+                ...(normalized.appearance || {}),
               },
             };
             return {

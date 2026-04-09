@@ -261,6 +261,7 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setters,
     setIsDirty: state.setIsDirty,
     saveLocalDrafts: local.saveLocalDrafts,
+    clearLocalDrafts: local.clearLocalDrafts,
     updateStudioInfo,
   });
 

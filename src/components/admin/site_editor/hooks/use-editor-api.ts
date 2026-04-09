@@ -151,6 +151,7 @@ type UseEditorApiParams = {
   setters: EditorStateSetters;
   setIsDirty: (value: boolean) => void;
   saveLocalDrafts: (data: EditorLocalDrafts) => void;
+  clearLocalDrafts: () => void;
   updateStudioInfo?: (updates: Record<string, unknown>) => void;
 };
 
@@ -222,6 +223,7 @@ export function useEditorApi({
   setters,
   setIsDirty,
   saveLocalDrafts,
+  clearLocalDrafts,
   updateStudioInfo,
 }: UseEditorApiParams) {
   const { toast } = useToast();
@@ -428,36 +430,122 @@ export function useEditorApi({
     }
 
     const bookingChanges: SiteConfigData["bookingSteps"] = {};
-    if (
-      JSON.stringify(settings.bookingServiceSettings) !==
-      JSON.stringify(lastSaved.lastSavedBookingService)
-    ) {
-      bookingChanges.service = settings.bookingServiceSettings;
-    }
-    if (
-      JSON.stringify(settings.bookingDateSettings) !==
-      JSON.stringify(lastSaved.lastSavedBookingDate)
-    ) {
-      bookingChanges.date = settings.bookingDateSettings;
-    }
-    if (
-      JSON.stringify(settings.bookingTimeSettings) !==
-      JSON.stringify(lastSaved.lastSavedBookingTime)
-    ) {
-      bookingChanges.time = settings.bookingTimeSettings;
-    }
-    if (
-      JSON.stringify(settings.bookingFormSettings) !==
-      JSON.stringify(lastSaved.lastSavedBookingForm)
-    ) {
-      bookingChanges.form = settings.bookingFormSettings;
-    }
-    if (
-      JSON.stringify(settings.bookingConfirmationSettings) !==
-      JSON.stringify(lastSaved.lastSavedBookingConfirmation)
-    ) {
-      bookingChanges.confirmation = settings.bookingConfirmationSettings;
-    }
+
+    const processBookingStep = (
+      current: BookingStepSettings,
+      saved: BookingStepSettings,
+    ) => {
+      if (JSON.stringify(current) === JSON.stringify(saved)) return undefined;
+
+      const bg =
+        sanitizeColor(
+          current.appearance?.backgroundColor ||
+          current.bgColor ||
+          (current as Record<string, unknown>).backgroundColor,
+        ) || "";
+
+      const cardBg =
+        sanitizeColor(
+          current.cardBgColor ||
+          current.appearance?.cardBackgroundColor ||
+          current.appearance?.cardBgColor ||
+          (current as Record<string, unknown>).cardBackgroundColor,
+        ) || "";
+
+      const cardConfig = {
+        backgroundColor: cardBg,
+        cardBackgroundColor: cardBg,
+        background_color: cardBg,
+        card_background_color: cardBg,
+        cardBgColor: cardBg,
+        card_bg_color: cardBg,
+      };
+
+      const processed = {
+        ...current,
+        cardConfig,
+        ...(bg
+          ? {
+            bgType: "color",
+            bgColor: bg,
+            backgroundColor: bg,
+            bgImage: "",
+          }
+          : {}),
+        ...(cardBg
+          ? {
+            cardBgColor: cardBg,
+            cardBackgroundColor: cardBg,
+            card_bg_color: cardBg,
+            card_background_color: cardBg,
+          }
+          : {}),
+        appearance: {
+          ...current.appearance,
+          ...(bg
+            ? {
+              backgroundColor: bg,
+              bgType: "color",
+              backgroundImageUrl: "",
+            }
+            : {}),
+          ...(cardBg
+            ? {
+              cardBgColor: cardBg,
+              cardBackgroundColor: cardBg,
+              cardConfig,
+            }
+            : {}),
+        },
+        content: {
+          ...(((current as Record<string, unknown>).content as
+            | Record<string, unknown>
+            | undefined) || {}),
+          ...(cardBg
+            ? {
+              cardBgColor: cardBg,
+              cardBackgroundColor: cardBg,
+              card_bg_color: cardBg,
+              card_background_color: cardBg,
+              cardConfig,
+            }
+            : {}),
+        },
+      };
+
+      return processed as BookingStepSettings;
+    };
+
+    const serviceProcessed = processBookingStep(
+      settings.bookingServiceSettings,
+      lastSaved.lastSavedBookingService,
+    );
+    if (serviceProcessed) bookingChanges.service = serviceProcessed;
+
+    const dateProcessed = processBookingStep(
+      settings.bookingDateSettings,
+      lastSaved.lastSavedBookingDate,
+    );
+    if (dateProcessed) bookingChanges.date = dateProcessed;
+
+    const timeProcessed = processBookingStep(
+      settings.bookingTimeSettings,
+      lastSaved.lastSavedBookingTime,
+    );
+    if (timeProcessed) bookingChanges.time = timeProcessed;
+
+    const formProcessed = processBookingStep(
+      settings.bookingFormSettings,
+      lastSaved.lastSavedBookingForm,
+    );
+    if (formProcessed) bookingChanges.form = formProcessed;
+
+    const confirmationProcessed = processBookingStep(
+      settings.bookingConfirmationSettings,
+      lastSaved.lastSavedBookingConfirmation,
+    );
+    if (confirmationProcessed)
+      bookingChanges.confirmation = confirmationProcessed;
 
     if (Object.keys(bookingChanges).length > 0) {
       changes.bookingSteps = bookingChanges;
@@ -1644,12 +1732,6 @@ export function useEditorApi({
 
           if (typeof window !== "undefined") {
             if (fresh) {
-              // REMOVIDO: clearLocalDrafts();
-              // Mantemos o localStorage para evitar que o preview resete para o padrão (rosa)
-              // enquanto o studio.config do banco não é atualizado no frontend.
-              // O estado isDirty=false já garante que não haverá aviso de alterações não salvas.
-
-              // 4. ATUALIZAÇÃO DO ESTADO LAST_SAVED (Sempre que o save no banco der certo)
               setters.setLastSavedHero(sanitizedHero);
               setters.setLastSavedAboutHero(sanitizedAboutHero);
               setters.setLastSavedStory(sanitizedStory);
@@ -1699,12 +1781,88 @@ export function useEditorApi({
                   ">>> [DEBUG_SAVE] Injetando no context - SanitizedServices:",
                   sanitizedServices,
                 );
+                const freshAppointmentFlow =
+                  ((freshConfig.appointmentFlow as Record<string, unknown>) ||
+                    (freshConfig.appointment_flow as Record<string, unknown>) ||
+                    {}) as Record<string, unknown>;
+                const incomingAppointmentFlow =
+                  ((payload.appointmentFlow as Record<string, unknown>) ||
+                    {}) as Record<string, unknown>;
+                const serviceCardBg = cleanBookingSteps.service?.cardBgColor || "";
+                const serviceBg = cleanBookingSteps.service?.bgColor || "";
+                const serviceAccent = cleanBookingSteps.service?.accentColor || "";
+
+                const serviceFullConfig = cleanBookingSteps.service
+                  ? {
+                    ...cleanBookingSteps.service,
+                    cardBgColor: serviceCardBg,
+                    cardBackgroundColor: serviceCardBg,
+                    card_bg_color: serviceCardBg,
+                    card_background_color: serviceCardBg,
+                    bgColor: serviceBg,
+                    bg_color: serviceBg,
+                    backgroundColor: serviceBg,
+                    accentColor: serviceAccent,
+                    accent_color: serviceAccent,
+                    cardConfig: {
+                      backgroundColor: serviceCardBg,
+                      cardBackgroundColor: serviceCardBg,
+                      background_color: serviceCardBg,
+                      card_background_color: serviceCardBg,
+                      cardBgColor: serviceCardBg,
+                      card_bg_color: serviceCardBg,
+                    },
+                  }
+                  : undefined;
+
                 const authoritativeConfig = {
                   ...freshConfig,
                   sections: {
                     ...((freshConfig.sections as Record<string, unknown>) ||
                       {}),
                     ...((payload.sections as Record<string, unknown>) || {}),
+                  },
+                  bookingSteps: {
+                    ...((freshConfig.bookingSteps as Record<string, unknown>) ||
+                      (freshConfig.booking_steps as Record<string, unknown>) ||
+                      {}),
+                    ...cleanBookingSteps,
+                  },
+                  booking_steps: {
+                    ...((freshConfig.booking_steps as Record<string, unknown>) ||
+                      (freshConfig.bookingSteps as Record<string, unknown>) ||
+                      {}),
+                    ...cleanBookingSteps,
+                  },
+                  appointmentFlow: {
+                    ...freshAppointmentFlow,
+                    ...incomingAppointmentFlow,
+                    ...(serviceFullConfig
+                      ? {
+                        step1Services: {
+                          ...((freshAppointmentFlow.step1Services as Record<
+                            string,
+                            unknown
+                          >) || {}),
+                          ...serviceFullConfig,
+                        },
+                      }
+                      : {}),
+                  },
+                  appointment_flow: {
+                    ...freshAppointmentFlow,
+                    ...incomingAppointmentFlow,
+                    ...(serviceFullConfig
+                      ? {
+                        step1_services: {
+                          ...((freshAppointmentFlow.step1_services as Record<
+                            string,
+                            unknown
+                          >) || {}),
+                          ...serviceFullConfig,
+                        },
+                      }
+                      : {}),
                   },
                   layoutGlobal: {
                     ...((freshConfig.layoutGlobal as Record<string, unknown>) ||
@@ -1771,6 +1929,8 @@ export function useEditorApi({
                   config: authoritativeConfig,
                 });
               }
+
+              clearLocalDrafts();
 
               console.log(
                 ">>> [ESTADO_POS_SAVE] Verificando cor final injetada:",
@@ -1874,6 +2034,7 @@ export function useEditorApi({
       toast,
       hasUnsavedGlobalChanges,
       setIsDirty,
+      clearLocalDrafts,
       updateStudioInfo,
     ],
   );

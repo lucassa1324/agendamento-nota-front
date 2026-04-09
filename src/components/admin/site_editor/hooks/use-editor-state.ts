@@ -1002,57 +1002,59 @@ export function useEditorState() {
     [],
   );
 
-  const [heroSettings, setHeroSettings] = useState<HeroSettings>(
+  const [heroSettings, setHeroSettings] = useState<HeroSettings>(() =>
     getHeroSettings(),
   );
-  const [aboutHeroSettings, setAboutHeroSettings] = useState<HeroSettings>(
+  const [aboutHeroSettings, setAboutHeroSettings] = useState<HeroSettings>(() =>
     getAboutHeroSettings(),
   );
-  const [storySettings, setStorySettings] = useState<StorySettings>(
+  const [storySettings, setStorySettings] = useState<StorySettings>(() =>
     getStorySettings(),
   );
-  const [teamSettings, setTeamSettings] = useState<TeamSettings>(
+  const [teamSettings, setTeamSettings] = useState<TeamSettings>(() =>
     getTeamSettings(),
   );
   const [testimonialsSettings, setTestimonialsSettings] =
-    useState<TestimonialsSettings>(getTestimonialsSettings());
-  const [fontSettings, setFontSettings] = useState<FontSettings>(
+    useState<TestimonialsSettings>(() => getTestimonialsSettings());
+  const [fontSettings, setFontSettings] = useState<FontSettings>(() =>
     getFontSettings(),
   );
-  const [colorSettings, setColorSettings] = useState<ColorSettings>(
+  const [colorSettings, setColorSettings] = useState<ColorSettings>(() =>
     getColorSettings(),
   );
-  const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(
+  const [servicesSettings, setServicesSettings] = useState<ServicesSettings>(() =>
     getServicesSettings(),
   );
   const [homeValuesSettings, setHomeValuesSettings] = useState<ValuesSettings>(
-    getHomeValuesSettings(),
+    () => getHomeValuesSettings(),
   );
   const [aboutUsValuesSettings, setAboutUsValuesSettings] =
-    useState<ValuesSettings>(getAboutUsValuesSettings());
-  const [gallerySettings, setGallerySettings] = useState<GallerySettings>(
+    useState<ValuesSettings>(() => getAboutUsValuesSettings());
+  const [gallerySettings, setGallerySettings] = useState<GallerySettings>(() =>
     getGallerySettings(),
   );
   const [galleryPageSettings, setGalleryPageSettings] =
-    useState<GallerySettings>(getGalleryPageSettings());
-  const [ctaSettings, setCTASettings] = useState<CTASettings>(getCTASettings());
-  const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(
+    useState<GallerySettings>(() => getGalleryPageSettings());
+  const [ctaSettings, setCTASettings] = useState<CTASettings>(() =>
+    getCTASettings(),
+  );
+  const [headerSettings, setHeaderSettings] = useState<HeaderSettings>(() =>
     getHeaderSettings(),
   );
-  const [footerSettings, setFooterSettings] = useState<FooterSettings>(
+  const [footerSettings, setFooterSettings] = useState<FooterSettings>(() =>
     getFooterSettings(),
   );
 
   const [bookingServiceSettings, setBookingServiceSettings] =
-    useState<BookingStepSettings>(getBookingServiceSettings());
+    useState<BookingStepSettings>(() => getBookingServiceSettings());
   const [bookingDateSettings, setBookingDateSettings] =
-    useState<BookingStepSettings>(getBookingDateSettings());
+    useState<BookingStepSettings>(() => getBookingDateSettings());
   const [bookingTimeSettings, setBookingTimeSettings] =
-    useState<BookingStepSettings>(getBookingTimeSettings());
+    useState<BookingStepSettings>(() => getBookingTimeSettings());
   const [bookingFormSettings, setBookingFormSettings] =
-    useState<BookingStepSettings>(getBookingFormSettings());
+    useState<BookingStepSettings>(() => getBookingFormSettings());
   const [bookingConfirmationSettings, setBookingConfirmationSettings] =
-    useState<BookingStepSettings>(getBookingConfirmationSettings());
+    useState<BookingStepSettings>(() => getBookingConfirmationSettings());
   const [sections, setSections] = useState<SectionsMap>(createDefaultSections);
 
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
@@ -1320,6 +1322,27 @@ export function useEditorState() {
       if (!isHeroAlignedWithLastSaved) {
         console.log(
           ">>> [SYNC] studio.config desatualizado para HERO em relação ao lastSaved. Ignorando sync.",
+        );
+        return;
+      }
+
+      const guardHomeValuesSection =
+        sections[SECTION_IDS.homeValues] ||
+        (config.homeValuesSettings as SectionConfig) ||
+        (config.values as SectionConfig);
+      const normalizedValues = normalizeValuesFromConfig(guardHomeValuesSection);
+      const hasLastSavedValues =
+        lastSavedHomeValues.bgColor !== defaultValuesSettings.bgColor ||
+        lastSavedHomeValues.cardBgColor !== defaultValuesSettings.cardBgColor;
+      const isValuesAlignedWithLastSaved =
+        !hasLastSavedValues ||
+        (normalizeColor(normalizedValues.bgColor) ===
+          normalizeColor(lastSavedHomeValues.bgColor) &&
+          normalizeColor(normalizedValues.cardBgColor) ===
+          normalizeColor(lastSavedHomeValues.cardBgColor));
+      if (!isValuesAlignedWithLastSaved) {
+        console.log(
+          ">>> [SYNC] studio.config desatualizado para VALUES em relação ao lastSaved. Ignorando sync para evitar tela branca.",
         );
         return;
       }
@@ -1701,9 +1724,12 @@ export function useEditorState() {
         if (updates.subtitleColor !== undefined)
           newState.subtitleColor =
             sanitizeColor(updates.subtitleColor) || prev.subtitleColor;
-        if (updates.cardBgColor !== undefined)
+        if (updates.cardBgColor !== undefined) {
           newState.cardBgColor =
             sanitizeColor(updates.cardBgColor) || prev.cardBgColor;
+        } else {
+          newState.cardBgColor = prev.cardBgColor;
+        }
         if (updates.cardTitleColor !== undefined)
           newState.cardTitleColor =
             sanitizeColor(updates.cardTitleColor) || prev.cardTitleColor;
@@ -1751,9 +1777,12 @@ export function useEditorState() {
         if (updates.subtitleColor !== undefined)
           newState.subtitleColor =
             sanitizeColor(updates.subtitleColor) || prev.subtitleColor;
-        if (updates.cardBgColor !== undefined)
+        if (updates.cardBgColor !== undefined) {
           newState.cardBgColor =
             sanitizeColor(updates.cardBgColor) || prev.cardBgColor;
+        } else {
+          newState.cardBgColor = prev.cardBgColor;
+        }
         if (updates.cardTitleColor !== undefined)
           newState.cardTitleColor =
             sanitizeColor(updates.cardTitleColor) || prev.cardTitleColor;

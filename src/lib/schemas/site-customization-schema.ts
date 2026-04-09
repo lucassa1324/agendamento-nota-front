@@ -37,7 +37,27 @@ export const SectionSchema = z
     subtitle: z.string().optional(),
     description: z.string().optional(),
     appearance: AppearanceSchema.optional(),
-    content: z.record(z.string(), z.any()).optional(),
+    content: z.preprocess((val) => {
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        if (!trimmed || trimmed === "{}" || trimmed === "[]") return undefined;
+        if (
+          (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+          (trimmed.startsWith("[") && trimmed.endsWith("]"))
+        ) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+              return parsed;
+            }
+          } catch (_e) {}
+        }
+        return { text: val };
+      }
+      if (Array.isArray(val)) return { items: val };
+      if (val && typeof val !== "object") return { value: val };
+      return val;
+    }, z.record(z.string(), z.any()).optional()),
     visible: z.boolean().optional().default(true),
   })
   .passthrough();

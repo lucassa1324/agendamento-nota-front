@@ -161,6 +161,7 @@ export function StudioProvider({
     initialId || null,
   );
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [lastSaveTimestamp, setLastSaveTimestamp] = useState<number>(0);
 
   // Comentado para evitar que limpe o localStorage em cada nova aba/refresh,
   // o que impedia a sincronização entre abas e causava perda de rascunhos locais.
@@ -428,6 +429,7 @@ export function StudioProvider({
         console.log(
           ">>> [CACHE] Sinal de publicação recebido. Forçando atualização do contexto...",
         );
+        setLastSaveTimestamp(Date.now());
         refreshData();
       };
       window.addEventListener("site-published-success", handleGlobalUpdate);
@@ -1441,7 +1443,24 @@ export function StudioProvider({
               config: initialConfig as unknown as Business["config"],
             };
 
-            setStudio(initialStudio);
+            setStudio((prev) => {
+              // Blindagem: Se houver salvamento recente, priorizamos o estado atual (localDraft)
+              // para evitar o reset para valores antigos do banco enquanto o cache propaga.
+              const isRecentSave = Date.now() - lastSaveTimestamp < 2000;
+              if (prev && isRecentSave) {
+                console.log(
+                  ">>> [STUDIO_CONTEXT] Priorizando localDraft (estado atual) sobre API devido a salvamento recente.",
+                );
+                return {
+                  ...initialStudio,
+                  config: deepMerge(
+                    initialStudio.config,
+                    prev.config,
+                  ) as Business["config"],
+                };
+              }
+              return initialStudio;
+            });
 
             // 6. Guarda de Rota: Se o estúdio estiver inativo, redirecionar (Exceto para Editor, Master Admin e Minha Conta)
             if (initialStudio.active === false) {
@@ -1547,6 +1566,9 @@ export function StudioProvider({
 
                   setStudio((prev) => {
                     if (!prev) return prev;
+
+                    const isRecentSave = Date.now() - lastSaveTimestamp < 2000;
+
                     const layoutGlobal = (mappedConfig.layoutGlobal ||
                       (mappedConfig as Record<string, unknown>)
                         .layout_global) as Record<string, unknown> | undefined;
@@ -1568,15 +1590,27 @@ export function StudioProvider({
                     const nextColors = hasNewColors
                       ? newColors
                       : prev.config?.colors;
+
+                    const baseConfig = {
+                      ...(mappedConfig as unknown as Business["config"]),
+                      colors: nextColors,
+                    };
+
+                    // Blindagem: Se houver salvamento recente, priorizamos o estado atual (localDraft)
+                    const finalConfig =
+                      isRecentSave && prev.config
+                        ? deepMerge(baseConfig, prev.config)
+                        : baseConfig;
+
                     const newStudio = {
                       ...prev,
-                      config: {
-                        ...(mappedConfig as unknown as Business["config"]),
-                        colors: nextColors,
-                      },
+                      config: finalConfig as unknown as Business["config"],
                     };
+
                     console.log(
-                      ">>> [DEBUG_SYNC] Estado Studio reidratado com novas cores:",
+                      isRecentSave
+                        ? ">>> [DEBUG_SYNC] Estado Studio reidratado (Blindagem Ativa - Priorizando localDraft)."
+                        : ">>> [DEBUG_SYNC] Estado Studio reidratado com novas cores:",
                       nextColors?.background || "N/A",
                     );
                     return newStudio;

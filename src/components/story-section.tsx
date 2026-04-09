@@ -6,6 +6,7 @@ import { useStudio } from "@/context/studio-context";
 import {
   getStorageKey,
   getStorySettings,
+  defaultStorySettings,
   SECTION_IDS,
   type StorySettings,
   sanitizeColor,
@@ -20,10 +21,17 @@ import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
 import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 const safeString = (val: unknown, defaultStr: string = ""): string => {
-  if (typeof val === "string") return val;
   if (val === null || val === undefined) return defaultStr;
 
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    // Se for uma string de objeto vazio ou array vazio, tratamos como vazio
+    if (trimmed === "{}" || trimmed === "[]") return defaultStr;
+    return val;
+  }
+
   if (Array.isArray(val)) {
+    if (val.length === 0) return defaultStr;
     const joined = val
       .map((item) => safeString(item, ""))
       .filter((item) => item.trim() !== "")
@@ -33,14 +41,34 @@ const safeString = (val: unknown, defaultStr: string = ""): string => {
 
   if (typeof val === "object") {
     const obj = val as Record<string, unknown>;
+
+    // Se o objeto estiver vazio, retorna o default
+    if (Object.keys(obj).length === 0) return defaultStr;
+
+    // Se for um objeto com campo 'text' ou similar que é um objeto vazio
     const candidate = obj.text ?? obj.value ?? obj.content ?? obj.title;
 
     if (candidate !== undefined && candidate !== val) {
       return safeString(candidate, defaultStr);
     }
 
+    // Blindagem Adicional: Se for um objeto que não tem conteúdo textual óbvio,
+    // evitamos stringificar se ele parecer "lixo" de UI ou metadados
+    const keys = Object.keys(obj);
+    if (
+      keys.length > 0 &&
+      keys.every((k) => k.startsWith("_") || k === "id" || k === "updatedAt")
+    ) {
+      return defaultStr;
+    }
+
     try {
-      return JSON.stringify(val);
+      const stringified = JSON.stringify(val);
+      if (stringified === "{}" || stringified === "[]") return defaultStr;
+      
+      // Se o stringify resultou em algo que contém objetos vazios em campos chave, 
+      // podemos ter problemas. Mas geralmente o safeString é chamado recursivamente.
+      return stringified;
     } catch (_e) {
       return defaultStr;
     }
@@ -85,7 +113,11 @@ export function StorySection() {
       | Record<string, unknown>
       | undefined;
 
-    if (rawStory) {
+    // Se tiver rawStory, mas ele estiver vazio ou apenas com lixo, ignoramos
+    const isEffectivelyEmpty = !rawStory || Object.keys(rawStory).length === 0 || 
+      (Object.keys(rawStory).length === 1 && rawStory.id);
+
+    if (rawStory && !isEffectivelyEmpty) {
       const content = (rawStory.content as Record<string, unknown>) || {};
       const appearance = (rawStory.appearance as Record<string, unknown>) || {};
 
@@ -93,8 +125,14 @@ export function StorySection() {
         ...rawStory,
         ...content,
         ...appearance,
-        title: safeString(content.title ?? rawStory.title ?? ""),
-        content: safeString(content.content ?? rawStory.content ?? ""),
+        title: safeString(
+          content.title ?? rawStory.title ?? "",
+          defaultStorySettings.title,
+        ),
+        content: safeString(
+          content.content ?? rawStory.content ?? "",
+          defaultStorySettings.content,
+        ),
         titleColor: sanitizeColor(
           (rawStory.titleColor as string) ||
             (appearance.titleColor as string) ||
@@ -161,6 +199,19 @@ export function StorySection() {
 
         if (!rawStory) return;
 
+        // Blindagem contra objetos vazios ou lixo no evento de mensagem
+        const isEffectivelyEmpty =
+          !rawStory ||
+          Object.keys(rawStory).length === 0 ||
+          (Object.keys(rawStory).length === 1 && rawStory.id);
+
+        if (isEffectivelyEmpty) {
+          console.log(
+            "[StorySection] Message received with empty rawStory, ignoring update",
+          );
+          return;
+        }
+
         const content = (rawStory.content as Record<string, unknown>) || {};
         const appearance =
           (rawStory.appearance as Record<string, unknown>) || {};
@@ -169,8 +220,14 @@ export function StorySection() {
           ...rawStory,
           ...content,
           ...appearance,
-          title: safeString(content.title ?? rawStory.title ?? ""),
-          content: safeString(content.content ?? rawStory.content ?? ""),
+          title: safeString(
+            content.title ?? rawStory.title ?? "",
+            defaultStorySettings.title,
+          ),
+          content: safeString(
+            content.content ?? rawStory.content ?? "",
+            defaultStorySettings.content,
+          ),
           titleColor:
             sanitizeColor(
               (rawStory.titleColor as string) ||

@@ -176,6 +176,8 @@ export function useEditorActions({
     setLastAppliedBookingTime,
     setLastAppliedBookingForm,
     setLastAppliedBookingConfirmation,
+    setLastSavedHomeValues,
+    setLastSavedAboutUsValues,
   } = state;
 
   const saveTimersRef = useRef<Record<string, number>>({});
@@ -658,7 +660,13 @@ export function useEditorActions({
         currentSettings?.appearance?.backgroundImageUrl ||
         currentSettings?.bgImage;
       const currentBgType = currentSettings?.bgType;
-      const normalizedUpdates = { ...updates };
+      const normalizedUpdates = { ...updates } as any;
+
+      // Garantia para seções de "Values": preservar cardBgColor se não enviado explicitamente
+      if (targetSectionId.includes("values")) {
+        normalizedUpdates.cardBgColor =
+          (updates as any).cardBgColor || (currentSettings as any)?.cardBgColor;
+      }
 
       if (
         normalizedUpdates.bgColor !== undefined &&
@@ -717,34 +725,34 @@ export function useEditorActions({
       handleUpdateBackgroundState(normalizedUpdates, targetSectionId);
 
       const currentSettingsMap: Record<string, BackgroundSettings | undefined> =
-        {
-          hero: heroSettings,
-          "home-hero": heroSettings,
-          "about-hero": aboutHeroSettings,
-          story: storySettings,
-          "home-story": storySettings,
-          team: teamSettings,
-          "home-team": teamSettings,
-          testimonials: testimonialsSettings,
-          "home-testimonials": testimonialsSettings,
-          services: servicesSettings,
-          "home-services": servicesSettings,
-          "home-values": homeValuesSettings,
-          "about-values": aboutUsValuesSettings,
-          "about-us-values": aboutUsValuesSettings,
-          gallery: gallerySettings,
-          "home-gallery": gallerySettings,
-          "gallery-preview": gallerySettings,
-          "page-gallery": galleryPageSettings,
-          "gallery-grid": galleryPageSettings,
-          cta: ctaSettings,
-          "home-cta": ctaSettings,
-          "booking-service": bookingServiceSettings,
-          "booking-date": bookingDateSettings,
-          "booking-time": bookingTimeSettings,
-          "booking-form": bookingFormSettings,
-          "booking-confirmation": bookingConfirmationSettings,
-        };
+      {
+        hero: heroSettings,
+        "home-hero": heroSettings,
+        "about-hero": aboutHeroSettings,
+        story: storySettings,
+        "home-story": storySettings,
+        team: teamSettings,
+        "home-team": teamSettings,
+        testimonials: testimonialsSettings,
+        "home-testimonials": testimonialsSettings,
+        services: servicesSettings,
+        "home-services": servicesSettings,
+        "home-values": homeValuesSettings,
+        "about-values": aboutUsValuesSettings,
+        "about-us-values": aboutUsValuesSettings,
+        gallery: gallerySettings,
+        "home-gallery": gallerySettings,
+        "gallery-preview": gallerySettings,
+        "page-gallery": galleryPageSettings,
+        "gallery-grid": galleryPageSettings,
+        cta: ctaSettings,
+        "home-cta": ctaSettings,
+        "booking-service": bookingServiceSettings,
+        "booking-date": bookingDateSettings,
+        "booking-time": bookingTimeSettings,
+        "booking-form": bookingFormSettings,
+        "booking-confirmation": bookingConfirmationSettings,
+      };
 
       const saveFnMap: Record<
         string,
@@ -1109,12 +1117,14 @@ export function useEditorActions({
         appearance: updatedSettings.appearance,
       });
 
+      setLastSavedHomeValues(updatedSettings);
       scheduleDraftSave("homeValuesSettings", () =>
         saveHomeValuesSettings(updatedSettings),
       );
     },
     [
       handleUpdateHomeValuesState,
+      setLastSavedHomeValues,
       scheduleDraftSave,
       saveHomeValuesSettings,
       homeValuesSettings,
@@ -1152,12 +1162,14 @@ export function useEditorActions({
         appearance: updatedSettings.appearance,
       });
 
+      setLastSavedAboutUsValues(updatedSettings);
       scheduleDraftSave("aboutUsValuesSettings", () =>
         saveAboutUsValuesSettings(updatedSettings),
       );
     },
     [
       handleUpdateAboutUsValuesState,
+      setLastSavedAboutUsValues,
       scheduleDraftSave,
       saveAboutUsValuesSettings,
       aboutUsValuesSettings,

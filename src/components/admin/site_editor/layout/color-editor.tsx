@@ -1,5 +1,6 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -20,6 +21,7 @@ interface ColorEditorProps {
   onUpdate: (updates: Partial<ColorEditorProps["settings"]>) => void;
   hasChanges?: boolean;
   onSave?: () => void;
+  isSaving?: boolean;
 }
 
 export function ColorEditor({
@@ -27,6 +29,7 @@ export function ColorEditor({
   onUpdate,
   hasChanges,
   onSave: externalOnSave,
+  isSaving,
 }: ColorEditorProps) {
   const colorOptions = [
     {
@@ -156,7 +159,7 @@ export function ColorEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
+          disabled={!hasChanges || isSaving}
           onClick={externalOnSave}
           className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
             hasChanges
@@ -164,7 +167,12 @@ export function ColorEditor({
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
           }`}
         >
-          {hasChanges ? (
+          {isSaving ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Salvando...</span>
+            </div>
+          ) : hasChanges ? (
             "Salvar Alterações"
           ) : (
             <span className="opacity-50">Nenhuma alteração</span>
