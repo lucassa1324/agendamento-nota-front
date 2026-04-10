@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Info,
   KeyRound,
+  Loader2,
   MoreHorizontal,
   Pencil,
   Power,
@@ -134,6 +135,8 @@ export default function MasterDashboardPage() {
   const [pricing, setPricing] = useState<{ price: number; updatedAt: string } | null>(null);
   const [isUpdatingPrice, setIsUpdatingPrice] = useState(false);
   const [newPrice, setNewPrice] = useState<string>("");
+  const [announcement, setAnnouncement] = useState("");
+  const [isUpdatingAnnouncement, setIsUpdatingAnnouncement] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -189,18 +192,33 @@ export default function MasterDashboardPage() {
       // 1.1. Buscar Preço da Mensalidade
       try {
         const pricingRes = await customFetch(
-          `${API_BASE_URL}/api/admin/master/settings/pricing`,
+          `${API_BASE_URL}/api/admin/master/settings/monthly_price`,
           {
             credentials: "include",
           },
         );
         if (pricingRes.ok) {
           const pricingData = await pricingRes.json();
-          setPricing(pricingData);
-          setNewPrice(pricingData.price.toString());
+          setPricing({
+            price: parseFloat(pricingData.value),
+            updatedAt: pricingData.updatedAt,
+          });
+          setNewPrice(pricingData.value);
+        }
+
+        // 1.2. Buscar Aviso Global
+        const announcementRes = await customFetch(
+          `${API_BASE_URL}/api/admin/master/settings/global_announcement`,
+          {
+            credentials: "include",
+          },
+        );
+        if (announcementRes.ok) {
+          const announcementData = await announcementRes.json();
+          setAnnouncement(announcementData.value || "");
         }
       } catch (error) {
-        console.error(">>> [MASTER_ADMIN] Erro ao buscar preço:", error);
+        console.error(">>> [MASTER_ADMIN] Erro ao buscar configurações:", error);
       }
 
       // 2. Buscar Usuários e Estúdios
@@ -512,12 +530,16 @@ export default function MasterDashboardPage() {
     setIsUpdatingPrice(true);
     try {
       const response = await customFetch(
-        `${API_BASE_URL}/api/admin/master/settings/pricing`,
+        `${API_BASE_URL}/api/admin/master/settings`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ price: priceValue }),
+          body: JSON.stringify({
+            key: "monthly_price",
+            value: priceValue.toString(),
+            description: "Preço base da mensalidade"
+          }),
         },
       );
 
@@ -530,8 +552,8 @@ export default function MasterDashboardPage() {
       }
 
       setPricing({
-        price: result.price,
-        updatedAt: new Date().toISOString(),
+        price: parseFloat(result.value),
+        updatedAt: result.updatedAt,
       });
 
       toast({
@@ -546,6 +568,46 @@ export default function MasterDashboardPage() {
       });
     } finally {
       setIsUpdatingPrice(false);
+    }
+  };
+
+  const handleUpdateAnnouncement = async () => {
+    setIsUpdatingAnnouncement(true);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/settings`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            key: "global_announcement",
+            value: announcement,
+            description: "Aviso global exibido para todos os usuários"
+          }),
+        },
+      );
+
+      if (response.status === 403) return handleForbidden();
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Erro ao salvar aviso");
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Aviso global atualizado com sucesso.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Erro ao Salvar",
+        description: error.message || "Não foi possível salvar o aviso.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdatingAnnouncement(false);
     }
   };
 
@@ -702,6 +764,44 @@ export default function MasterDashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Aviso Global */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Aviso Global do Sistema</CardTitle>
+            </div>
+            <Button 
+              size="sm" 
+              onClick={handleUpdateAnnouncement}
+              disabled={isUpdatingAnnouncement}
+            >
+              {isUpdatingAnnouncement ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                "Atualizar Aviso"
+              )}
+            </Button>
+          </div>
+          <CardDescription>
+            Este texto será exibido para todos os usuários logados no ícone de notificações (sino). 
+            Deixe em branco para remover o aviso.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <textarea
+            className="w-full min-h-25 p-3 rounded-md border border-input bg-background text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+            placeholder="Digite aqui o aviso importante para os usuários..."
+            value={announcement}
+            onChange={(e) => setAnnouncement(e.target.value)}
+          />
+        </CardContent>
+      </Card>
 
       {/* Tabela de Gerenciamento */}
       <Card>
