@@ -271,7 +271,88 @@ export function useEditorApi({
       changes.colors = settings.colorSettings;
     }
     if (hasChanged(settings.servicesSettings, lastSaved.lastSavedServices)) {
-      changes.services = settings.servicesSettings;
+      const servicesBg =
+        sanitizeColor(
+          settings.servicesSettings.appearance?.backgroundColor ||
+            settings.servicesSettings.bgColor,
+        ) || "";
+
+      const cardBg =
+        sanitizeColor(
+          settings.servicesSettings.cardBgColor ||
+            settings.servicesSettings.appearance?.cardBackgroundColor ||
+            settings.servicesSettings.appearance?.cardBgColor,
+        ) || "";
+
+      const cardIconColor =
+        sanitizeColor(
+          settings.servicesSettings.cardIconColor ||
+            settings.servicesSettings.appearance?.cardIconColor,
+        ) || "";
+
+      const cardTitleColor =
+        sanitizeColor(
+          settings.servicesSettings.cardTitleColor ||
+            settings.servicesSettings.appearance?.cardTitleColor,
+        ) || "";
+
+      const cardDescriptionColor =
+        sanitizeColor(
+          settings.servicesSettings.cardDescriptionColor ||
+            settings.servicesSettings.appearance?.cardDescriptionColor,
+        ) || "";
+
+      const cardPriceColor =
+        sanitizeColor(
+          settings.servicesSettings.cardPriceColor ||
+            settings.servicesSettings.appearance?.cardPriceColor,
+        ) || "";
+
+      const cardConfig = {
+        backgroundColor: cardBg,
+        cardBackgroundColor: cardBg,
+        background_color: cardBg,
+        card_background_color: cardBg,
+        cardBgColor: cardBg,
+        card_bg_color: cardBg,
+        iconColor: cardIconColor,
+        cardIconColor: cardIconColor,
+        titleColor: cardTitleColor,
+        cardTitleColor: cardTitleColor,
+        descriptionColor: cardDescriptionColor,
+        cardDescriptionColor: cardDescriptionColor,
+        priceColor: cardPriceColor,
+        cardPriceColor: cardPriceColor,
+      };
+      const servicesAppearance: Record<string, unknown> = {
+        ...settings.servicesSettings.appearance,
+        cardConfig,
+        ...(servicesBg
+          ? {
+              backgroundColor: servicesBg,
+              bgType: "color",
+              backgroundImageUrl: "",
+            }
+          : {}),
+        ...(cardBg ? { cardBgColor: cardBg, cardBackgroundColor: cardBg } : {}),
+        ...(cardIconColor ? { cardIconColor } : {}),
+      };
+
+      const servicesPayload: Record<string, unknown> = {
+        ...settings.servicesSettings,
+        cardConfig,
+        ...(servicesBg
+          ? {
+              bgType: "color",
+              bgColor: servicesBg,
+              backgroundColor: servicesBg,
+              bgImage: "",
+            }
+          : {}),
+        appearance:
+          servicesAppearance as typeof settings.servicesSettings.appearance,
+      };
+      changes.services = servicesPayload as SiteConfigData["services"];
     }
     if (
       hasChanged(settings.homeValuesSettings, lastSaved.lastSavedHomeValues)
@@ -285,46 +366,46 @@ export function useEditorApi({
       const homeValuesBg =
         sanitizeColor(
           settings.homeValuesSettings.appearance?.backgroundColor ||
-          settings.homeValuesSettings.bgColor ||
-          homeValuesLegacyBg ||
-          homeValuesLegacyAboutBg,
+            settings.homeValuesSettings.bgColor ||
+            homeValuesLegacyBg ||
+            homeValuesLegacyAboutBg,
         ) || "";
       const homeValuesCardBg =
         sanitizeColor(
           settings.homeValuesSettings.cardBgColor ||
-          settings.homeValuesSettings.appearance?.cardBackgroundColor ||
-          settings.homeValuesSettings.appearance?.cardBgColor,
+            settings.homeValuesSettings.appearance?.cardBackgroundColor ||
+            settings.homeValuesSettings.appearance?.cardBgColor,
         ) || "";
       changes.homeValuesSettings = {
         ...settings.homeValuesSettings,
         ...(homeValuesBg
           ? {
-            bgType: "color",
-            bgColor: homeValuesBg,
-            backgroundColor: homeValuesBg,
-            bgImage: "",
-          }
+              bgType: "color",
+              bgColor: homeValuesBg,
+              backgroundColor: homeValuesBg,
+              bgImage: "",
+            }
           : {}),
         ...(homeValuesCardBg
           ? {
-            cardBgColor: homeValuesCardBg,
-            cardBackgroundColor: homeValuesCardBg,
-          }
+              cardBgColor: homeValuesCardBg,
+              cardBackgroundColor: homeValuesCardBg,
+            }
           : {}),
         appearance: {
           ...settings.homeValuesSettings.appearance,
           ...(homeValuesBg
             ? {
-              backgroundColor: homeValuesBg,
-              bgType: "color",
-              backgroundImageUrl: "",
-            }
+                backgroundColor: homeValuesBg,
+                bgType: "color",
+                backgroundImageUrl: "",
+              }
             : {}),
           ...(homeValuesCardBg
             ? {
-              cardBgColor: homeValuesCardBg,
-              cardBackgroundColor: homeValuesCardBg,
-            }
+                cardBgColor: homeValuesCardBg,
+                cardBackgroundColor: homeValuesCardBg,
+              }
             : {}),
         },
       };
@@ -348,15 +429,15 @@ export function useEditorApi({
       const aboutValuesBg =
         sanitizeColor(
           settings.aboutUsValuesSettings.appearance?.backgroundColor ||
-          settings.aboutUsValuesSettings.bgColor ||
-          aboutValuesLegacyBg ||
-          aboutValuesLegacyValuesBg,
+            settings.aboutUsValuesSettings.bgColor ||
+            aboutValuesLegacyBg ||
+            aboutValuesLegacyValuesBg,
         ) || "";
       const aboutValuesCardBg =
         sanitizeColor(
           settings.aboutUsValuesSettings.cardBgColor ||
-          settings.aboutUsValuesSettings.appearance?.cardBackgroundColor ||
-          settings.aboutUsValuesSettings.appearance?.cardBgColor,
+            settings.aboutUsValuesSettings.appearance?.cardBackgroundColor ||
+            settings.aboutUsValuesSettings.appearance?.cardBgColor,
         ) || "";
       changes.aboutUsValuesSettings = {
         ...settings.aboutUsValuesSettings,
@@ -365,24 +446,24 @@ export function useEditorApi({
           : {}),
         ...(aboutValuesCardBg
           ? {
-            cardBgColor: aboutValuesCardBg,
-            cardBackgroundColor: aboutValuesCardBg,
-          }
+              cardBgColor: aboutValuesCardBg,
+              cardBackgroundColor: aboutValuesCardBg,
+            }
           : {}),
         appearance: {
           ...settings.aboutUsValuesSettings.appearance,
           ...(aboutValuesBg
             ? {
-              backgroundColor: aboutValuesBg,
-              bgType: "color",
-              backgroundImageUrl: "",
-            }
+                backgroundColor: aboutValuesBg,
+                bgType: "color",
+                backgroundImageUrl: "",
+              }
             : {}),
           ...(aboutValuesCardBg
             ? {
-              cardBgColor: aboutValuesCardBg,
-              cardBackgroundColor: aboutValuesCardBg,
-            }
+                cardBgColor: aboutValuesCardBg,
+                cardBackgroundColor: aboutValuesCardBg,
+              }
             : {}),
         },
       };
@@ -440,16 +521,16 @@ export function useEditorApi({
       const bg =
         sanitizeColor(
           current.appearance?.backgroundColor ||
-          current.bgColor ||
-          (current as Record<string, unknown>).backgroundColor,
+            current.bgColor ||
+            (current as Record<string, unknown>).backgroundColor,
         ) || "";
 
       const cardBg =
         sanitizeColor(
           current.cardBgColor ||
-          current.appearance?.cardBackgroundColor ||
-          current.appearance?.cardBgColor ||
-          (current as Record<string, unknown>).cardBackgroundColor,
+            current.appearance?.cardBackgroundColor ||
+            current.appearance?.cardBgColor ||
+            (current as Record<string, unknown>).cardBackgroundColor,
         ) || "";
 
       const cardConfig = {
@@ -466,35 +547,35 @@ export function useEditorApi({
         cardConfig,
         ...(bg
           ? {
-            bgType: "color",
-            bgColor: bg,
-            backgroundColor: bg,
-            bgImage: "",
-          }
+              bgType: "color",
+              bgColor: bg,
+              backgroundColor: bg,
+              bgImage: "",
+            }
           : {}),
         ...(cardBg
           ? {
-            cardBgColor: cardBg,
-            cardBackgroundColor: cardBg,
-            card_bg_color: cardBg,
-            card_background_color: cardBg,
-          }
+              cardBgColor: cardBg,
+              cardBackgroundColor: cardBg,
+              card_bg_color: cardBg,
+              card_background_color: cardBg,
+            }
           : {}),
         appearance: {
           ...current.appearance,
           ...(bg
             ? {
-              backgroundColor: bg,
-              bgType: "color",
-              backgroundImageUrl: "",
-            }
+                backgroundColor: bg,
+                bgType: "color",
+                backgroundImageUrl: "",
+              }
             : {}),
           ...(cardBg
             ? {
-              cardBgColor: cardBg,
-              cardBackgroundColor: cardBg,
-              cardConfig,
-            }
+                cardBgColor: cardBg,
+                cardBackgroundColor: cardBg,
+                cardConfig,
+              }
             : {}),
         },
         content: {
@@ -503,12 +584,12 @@ export function useEditorApi({
             | undefined) || {}),
           ...(cardBg
             ? {
-              cardBgColor: cardBg,
-              cardBackgroundColor: cardBg,
-              card_bg_color: cardBg,
-              card_background_color: cardBg,
-              cardConfig,
-            }
+                cardBgColor: cardBg,
+                cardBackgroundColor: cardBg,
+                card_bg_color: cardBg,
+                card_background_color: cardBg,
+                cardConfig,
+              }
             : {}),
         },
       };
@@ -1025,13 +1106,13 @@ export function useEditorApi({
                 const sectionBackgroundColor =
                   section === "services"
                     ? (appearance.backgroundColor as string) ||
-                    (appearance.bgColor as string) ||
-                    (sectionData.bgColor as string) ||
-                    ""
+                      (appearance.bgColor as string) ||
+                      (sectionData.bgColor as string) ||
+                      ""
                     : (appearance.backgroundColor as string) ||
-                    (sectionData.backgroundColor as string) ||
-                    (sectionData.bgColor as string) ||
-                    "";
+                      (sectionData.backgroundColor as string) ||
+                      (sectionData.bgColor as string) ||
+                      "";
                 const sectionCardBackgroundColor =
                   (sectionData.cardBgColor as string) ||
                   (sectionData.cardBackgroundColor as string) ||
@@ -1163,15 +1244,15 @@ export function useEditorApi({
 
                 const genericColor =
                   section === "homeValuesSettings" ||
-                    section === "aboutUsValuesSettings"
+                  section === "aboutUsValuesSettings"
                     ? sectionBackgroundColor ||
-                    (sectionData.values_bg as string) ||
-                    (sectionData.about_values_bg as string) ||
-                    ""
+                      (sectionData.values_bg as string) ||
+                      (sectionData.about_values_bg as string) ||
+                      ""
                     : sectionData.primaryButtonColor ||
-                    sectionData.cardBgColor ||
-                    sectionData.bgColor ||
-                    "";
+                      sectionData.cardBgColor ||
+                      sectionData.bgColor ||
+                      "";
 
                 Object.assign(subObj, {
                   ...sectionData, // Joga todas as propriedades (incluindo camelCase) na raiz
@@ -1216,31 +1297,31 @@ export function useEditorApi({
                   // Adicionado: Chaves específicas que o backend espera converter internamente
                   ...(section === "homeValuesSettings"
                     ? {
-                      values_bg: genericColor,
-                      valuesBg: genericColor,
-                      // Garante que o appearance.backgroundColor seja preservado no objeto final
-                      appearance: {
-                        ...(subObj.appearance as Record<string, unknown>),
-                        backgroundColor: sectionBackgroundColor,
-                        bgColor: sectionBackgroundColor,
-                        cardBgColor: sectionCardBackgroundColor,
-                        cardBackgroundColor: sectionCardBackgroundColor,
-                      },
-                    }
+                        values_bg: genericColor,
+                        valuesBg: genericColor,
+                        // Garante que o appearance.backgroundColor seja preservado no objeto final
+                        appearance: {
+                          ...(subObj.appearance as Record<string, unknown>),
+                          backgroundColor: sectionBackgroundColor,
+                          bgColor: sectionBackgroundColor,
+                          cardBgColor: sectionCardBackgroundColor,
+                          cardBackgroundColor: sectionCardBackgroundColor,
+                        },
+                      }
                     : {}),
                   ...(section === "aboutUsValuesSettings"
                     ? {
-                      about_values_bg: genericColor,
-                      aboutValuesBg: genericColor,
-                      // Garante que o appearance.backgroundColor seja preservado no objeto final
-                      appearance: {
-                        ...(subObj.appearance as Record<string, unknown>),
-                        backgroundColor: sectionBackgroundColor,
-                        bgColor: sectionBackgroundColor,
-                        cardBgColor: sectionCardBackgroundColor,
-                        cardBackgroundColor: sectionCardBackgroundColor,
-                      },
-                    }
+                        about_values_bg: genericColor,
+                        aboutValuesBg: genericColor,
+                        // Garante que o appearance.backgroundColor seja preservado no objeto final
+                        appearance: {
+                          ...(subObj.appearance as Record<string, unknown>),
+                          backgroundColor: sectionBackgroundColor,
+                          bgColor: sectionBackgroundColor,
+                          cardBgColor: sectionCardBackgroundColor,
+                          cardBackgroundColor: sectionCardBackgroundColor,
+                        },
+                      }
                     : {}),
                 });
 
@@ -1391,6 +1472,15 @@ export function useEditorApi({
                       card_background_color: sectionCardBackgroundColor,
                       cardBgColor: sectionCardBackgroundColor,
                       card_bg_color: sectionCardBackgroundColor,
+                      iconColor: sectionData.cardIconColor || "",
+                      cardIconColor: sectionData.cardIconColor || "",
+                      titleColor: sectionData.cardTitleColor || "",
+                      cardTitleColor: sectionData.cardTitleColor || "",
+                      descriptionColor: sectionData.cardDescriptionColor || "",
+                      cardDescriptionColor:
+                        sectionData.cardDescriptionColor || "",
+                      priceColor: sectionData.cardPriceColor || "",
+                      cardPriceColor: sectionData.cardPriceColor || "",
                     };
 
                     subObj.cardConfig = cardConfig;
@@ -1534,139 +1624,139 @@ export function useEditorApi({
             steps: {
               ...(cleanBookingSteps.service
                 ? {
-                  service: {
-                    ...cleanBookingSteps.service,
-                    // Mapeamento de Dualidade (camelCase -> snake_case)
-                    card_bg_color: cleanBookingSteps.service.cardBgColor,
-                    card_background_color:
-                      cleanBookingSteps.service.cardBgColor,
-                    cardBackgroundColor:
-                      cleanBookingSteps.service.cardBgColor,
-                    button_color: cleanBookingSteps.service.buttonColor,
-                    title_color: cleanBookingSteps.service.titleColor,
-                    subtitle_color: cleanBookingSteps.service.subtitleColor,
-                    accent_color: cleanBookingSteps.service.accentColor,
-                    bg_color: cleanBookingSteps.service.bgColor,
-                    // Suporte para cardConfig exigido pelo backend no fluxo de agendamento
-                    cardConfig: {
-                      backgroundColor:
-                        cleanBookingSteps.service.cardBgColor || "",
-                      cardBackgroundColor:
-                        cleanBookingSteps.service.cardBgColor || "",
-                      background_color:
-                        cleanBookingSteps.service.cardBgColor || "",
+                    service: {
+                      ...cleanBookingSteps.service,
+                      // Mapeamento de Dualidade (camelCase -> snake_case)
+                      card_bg_color: cleanBookingSteps.service.cardBgColor,
                       card_background_color:
-                        cleanBookingSteps.service.cardBgColor || "",
+                        cleanBookingSteps.service.cardBgColor,
+                      cardBackgroundColor:
+                        cleanBookingSteps.service.cardBgColor,
+                      button_color: cleanBookingSteps.service.buttonColor,
+                      title_color: cleanBookingSteps.service.titleColor,
+                      subtitle_color: cleanBookingSteps.service.subtitleColor,
+                      accent_color: cleanBookingSteps.service.accentColor,
+                      bg_color: cleanBookingSteps.service.bgColor,
+                      // Suporte para cardConfig exigido pelo backend no fluxo de agendamento
+                      cardConfig: {
+                        backgroundColor:
+                          cleanBookingSteps.service.cardBgColor || "",
+                        cardBackgroundColor:
+                          cleanBookingSteps.service.cardBgColor || "",
+                        background_color:
+                          cleanBookingSteps.service.cardBgColor || "",
+                        card_background_color:
+                          cleanBookingSteps.service.cardBgColor || "",
+                      },
                     },
-                  },
-                }
+                  }
                 : {}),
               ...(cleanBookingSteps.date
                 ? {
-                  date: {
-                    ...cleanBookingSteps.date,
-                    // Mapeamento de Dualidade
-                    card_bg_color: cleanBookingSteps.date.cardBgColor,
-                    card_background_color: cleanBookingSteps.date.cardBgColor,
-                    cardBackgroundColor: cleanBookingSteps.date.cardBgColor,
-                    title_color: cleanBookingSteps.date.titleColor,
-                    subtitle_color: cleanBookingSteps.date.subtitleColor,
-                    accent_color: cleanBookingSteps.date.accentColor,
-                    bg_color: cleanBookingSteps.date.bgColor,
-                    // Suporte para cardConfig
-                    cardConfig: {
-                      backgroundColor:
-                        cleanBookingSteps.date.cardBgColor || "",
-                      cardBackgroundColor:
-                        cleanBookingSteps.date.cardBgColor || "",
-                      background_color:
-                        cleanBookingSteps.date.cardBgColor || "",
-                      card_background_color:
-                        cleanBookingSteps.date.cardBgColor || "",
+                    date: {
+                      ...cleanBookingSteps.date,
+                      // Mapeamento de Dualidade
+                      card_bg_color: cleanBookingSteps.date.cardBgColor,
+                      card_background_color: cleanBookingSteps.date.cardBgColor,
+                      cardBackgroundColor: cleanBookingSteps.date.cardBgColor,
+                      title_color: cleanBookingSteps.date.titleColor,
+                      subtitle_color: cleanBookingSteps.date.subtitleColor,
+                      accent_color: cleanBookingSteps.date.accentColor,
+                      bg_color: cleanBookingSteps.date.bgColor,
+                      // Suporte para cardConfig
+                      cardConfig: {
+                        backgroundColor:
+                          cleanBookingSteps.date.cardBgColor || "",
+                        cardBackgroundColor:
+                          cleanBookingSteps.date.cardBgColor || "",
+                        background_color:
+                          cleanBookingSteps.date.cardBgColor || "",
+                        card_background_color:
+                          cleanBookingSteps.date.cardBgColor || "",
+                      },
                     },
-                  },
-                }
+                  }
                 : {}),
               ...(cleanBookingSteps.time
                 ? {
-                  time: {
-                    ...cleanBookingSteps.time,
-                    // Mapeamento de Dualidade
-                    card_bg_color: cleanBookingSteps.time.cardBgColor,
-                    card_background_color: cleanBookingSteps.time.cardBgColor,
-                    cardBackgroundColor: cleanBookingSteps.time.cardBgColor,
-                    title_color: cleanBookingSteps.time.titleColor,
-                    subtitle_color: cleanBookingSteps.time.subtitleColor,
-                    accent_color: cleanBookingSteps.time.accentColor,
-                    bg_color: cleanBookingSteps.time.bgColor,
-                    // Suporte para cardConfig
-                    cardConfig: {
-                      backgroundColor:
-                        cleanBookingSteps.time.cardBgColor || "",
-                      cardBackgroundColor:
-                        cleanBookingSteps.time.cardBgColor || "",
-                      background_color:
-                        cleanBookingSteps.time.cardBgColor || "",
-                      card_background_color:
-                        cleanBookingSteps.time.cardBgColor || "",
+                    time: {
+                      ...cleanBookingSteps.time,
+                      // Mapeamento de Dualidade
+                      card_bg_color: cleanBookingSteps.time.cardBgColor,
+                      card_background_color: cleanBookingSteps.time.cardBgColor,
+                      cardBackgroundColor: cleanBookingSteps.time.cardBgColor,
+                      title_color: cleanBookingSteps.time.titleColor,
+                      subtitle_color: cleanBookingSteps.time.subtitleColor,
+                      accent_color: cleanBookingSteps.time.accentColor,
+                      bg_color: cleanBookingSteps.time.bgColor,
+                      // Suporte para cardConfig
+                      cardConfig: {
+                        backgroundColor:
+                          cleanBookingSteps.time.cardBgColor || "",
+                        cardBackgroundColor:
+                          cleanBookingSteps.time.cardBgColor || "",
+                        background_color:
+                          cleanBookingSteps.time.cardBgColor || "",
+                        card_background_color:
+                          cleanBookingSteps.time.cardBgColor || "",
+                      },
                     },
-                  },
-                }
+                  }
                 : {}),
               ...(cleanBookingSteps.form
                 ? {
-                  form: {
-                    ...cleanBookingSteps.form,
-                    // Mapeamento de Dualidade
-                    card_bg_color: cleanBookingSteps.form.cardBgColor,
-                    card_background_color: cleanBookingSteps.form.cardBgColor,
-                    cardBackgroundColor: cleanBookingSteps.form.cardBgColor,
-                    title_color: cleanBookingSteps.form.titleColor,
-                    subtitle_color: cleanBookingSteps.form.subtitleColor,
-                    accent_color: cleanBookingSteps.form.accentColor,
-                    bg_color: cleanBookingSteps.form.bgColor,
-                    // Suporte para cardConfig
-                    cardConfig: {
-                      backgroundColor:
-                        cleanBookingSteps.form.cardBgColor || "",
-                      cardBackgroundColor:
-                        cleanBookingSteps.form.cardBgColor || "",
-                      background_color:
-                        cleanBookingSteps.form.cardBgColor || "",
-                      card_background_color:
-                        cleanBookingSteps.form.cardBgColor || "",
+                    form: {
+                      ...cleanBookingSteps.form,
+                      // Mapeamento de Dualidade
+                      card_bg_color: cleanBookingSteps.form.cardBgColor,
+                      card_background_color: cleanBookingSteps.form.cardBgColor,
+                      cardBackgroundColor: cleanBookingSteps.form.cardBgColor,
+                      title_color: cleanBookingSteps.form.titleColor,
+                      subtitle_color: cleanBookingSteps.form.subtitleColor,
+                      accent_color: cleanBookingSteps.form.accentColor,
+                      bg_color: cleanBookingSteps.form.bgColor,
+                      // Suporte para cardConfig
+                      cardConfig: {
+                        backgroundColor:
+                          cleanBookingSteps.form.cardBgColor || "",
+                        cardBackgroundColor:
+                          cleanBookingSteps.form.cardBgColor || "",
+                        background_color:
+                          cleanBookingSteps.form.cardBgColor || "",
+                        card_background_color:
+                          cleanBookingSteps.form.cardBgColor || "",
+                      },
                     },
-                  },
-                }
+                  }
                 : {}),
               ...(cleanBookingSteps.confirmation
                 ? {
-                  confirmation: {
-                    ...cleanBookingSteps.confirmation,
-                    // Mapeamento de Dualidade
-                    card_bg_color: cleanBookingSteps.confirmation.cardBgColor,
-                    card_background_color:
-                      cleanBookingSteps.confirmation.cardBgColor,
-                    cardBackgroundColor:
-                      cleanBookingSteps.confirmation.cardBgColor,
-                    title_color: cleanBookingSteps.confirmation.titleColor,
-                    subtitle_color:
-                      cleanBookingSteps.confirmation.subtitleColor,
-                    accent_color: cleanBookingSteps.confirmation.accentColor,
-                    bg_color: cleanBookingSteps.confirmation.bgColor,
-                    // Suporte para cardConfig
-                    cardConfig: {
-                      backgroundColor:
-                        cleanBookingSteps.confirmation.cardBgColor || "",
-                      cardBackgroundColor:
-                        cleanBookingSteps.confirmation.cardBgColor || "",
-                      background_color:
-                        cleanBookingSteps.confirmation.cardBgColor || "",
+                    confirmation: {
+                      ...cleanBookingSteps.confirmation,
+                      // Mapeamento de Dualidade
+                      card_bg_color: cleanBookingSteps.confirmation.cardBgColor,
                       card_background_color:
-                        cleanBookingSteps.confirmation.cardBgColor || "",
+                        cleanBookingSteps.confirmation.cardBgColor,
+                      cardBackgroundColor:
+                        cleanBookingSteps.confirmation.cardBgColor,
+                      title_color: cleanBookingSteps.confirmation.titleColor,
+                      subtitle_color:
+                        cleanBookingSteps.confirmation.subtitleColor,
+                      accent_color: cleanBookingSteps.confirmation.accentColor,
+                      bg_color: cleanBookingSteps.confirmation.bgColor,
+                      // Suporte para cardConfig
+                      cardConfig: {
+                        backgroundColor:
+                          cleanBookingSteps.confirmation.cardBgColor || "",
+                        cardBackgroundColor:
+                          cleanBookingSteps.confirmation.cardBgColor || "",
+                        background_color:
+                          cleanBookingSteps.confirmation.cardBgColor || "",
+                        card_background_color:
+                          cleanBookingSteps.confirmation.cardBgColor || "",
+                      },
                     },
-                  },
-                }
+                  }
                 : {}),
             },
           };
@@ -1740,8 +1830,8 @@ export function useEditorApi({
               const normalizedFresh = normalizePayload(fresh as SiteConfigData);
               const freshConfig =
                 normalizedFresh &&
-                  typeof normalizedFresh === "object" &&
-                  !Array.isArray(normalizedFresh)
+                typeof normalizedFresh === "object" &&
+                !Array.isArray(normalizedFresh)
                   ? (normalizedFresh as Record<string, unknown>)
                   : {};
               const resolvedFont =
@@ -1788,31 +1878,33 @@ export function useEditorApi({
                 const incomingAppointmentFlow =
                   ((payload.appointmentFlow as Record<string, unknown>) ||
                     {}) as Record<string, unknown>;
-                const serviceCardBg = cleanBookingSteps.service?.cardBgColor || "";
+                const serviceCardBg =
+                  cleanBookingSteps.service?.cardBgColor || "";
                 const serviceBg = cleanBookingSteps.service?.bgColor || "";
-                const serviceAccent = cleanBookingSteps.service?.accentColor || "";
+                const serviceAccent =
+                  cleanBookingSteps.service?.accentColor || "";
 
                 const serviceFullConfig = cleanBookingSteps.service
                   ? {
-                    ...cleanBookingSteps.service,
-                    cardBgColor: serviceCardBg,
-                    cardBackgroundColor: serviceCardBg,
-                    card_bg_color: serviceCardBg,
-                    card_background_color: serviceCardBg,
-                    bgColor: serviceBg,
-                    bg_color: serviceBg,
-                    backgroundColor: serviceBg,
-                    accentColor: serviceAccent,
-                    accent_color: serviceAccent,
-                    cardConfig: {
-                      backgroundColor: serviceCardBg,
-                      cardBackgroundColor: serviceCardBg,
-                      background_color: serviceCardBg,
-                      card_background_color: serviceCardBg,
+                      ...cleanBookingSteps.service,
                       cardBgColor: serviceCardBg,
+                      cardBackgroundColor: serviceCardBg,
                       card_bg_color: serviceCardBg,
-                    },
-                  }
+                      card_background_color: serviceCardBg,
+                      bgColor: serviceBg,
+                      bg_color: serviceBg,
+                      backgroundColor: serviceBg,
+                      accentColor: serviceAccent,
+                      accent_color: serviceAccent,
+                      cardConfig: {
+                        backgroundColor: serviceCardBg,
+                        cardBackgroundColor: serviceCardBg,
+                        background_color: serviceCardBg,
+                        card_background_color: serviceCardBg,
+                        cardBgColor: serviceCardBg,
+                        card_bg_color: serviceCardBg,
+                      },
+                    }
                   : undefined;
 
                 const authoritativeConfig = {
@@ -1829,7 +1921,10 @@ export function useEditorApi({
                     ...cleanBookingSteps,
                   },
                   booking_steps: {
-                    ...((freshConfig.booking_steps as Record<string, unknown>) ||
+                    ...((freshConfig.booking_steps as Record<
+                      string,
+                      unknown
+                    >) ||
                       (freshConfig.bookingSteps as Record<string, unknown>) ||
                       {}),
                     ...cleanBookingSteps,
@@ -1839,14 +1934,14 @@ export function useEditorApi({
                     ...incomingAppointmentFlow,
                     ...(serviceFullConfig
                       ? {
-                        step1Services: {
-                          ...((freshAppointmentFlow.step1Services as Record<
-                            string,
-                            unknown
-                          >) || {}),
-                          ...serviceFullConfig,
-                        },
-                      }
+                          step1Services: {
+                            ...((freshAppointmentFlow.step1Services as Record<
+                              string,
+                              unknown
+                            >) || {}),
+                            ...serviceFullConfig,
+                          },
+                        }
                       : {}),
                   },
                   appointment_flow: {
@@ -1854,14 +1949,14 @@ export function useEditorApi({
                     ...incomingAppointmentFlow,
                     ...(serviceFullConfig
                       ? {
-                        step1_services: {
-                          ...((freshAppointmentFlow.step1_services as Record<
-                            string,
-                            unknown
-                          >) || {}),
-                          ...serviceFullConfig,
-                        },
-                      }
+                          step1_services: {
+                            ...((freshAppointmentFlow.step1_services as Record<
+                              string,
+                              unknown
+                            >) || {}),
+                            ...serviceFullConfig,
+                          },
+                        }
                       : {}),
                   },
                   layoutGlobal: {
@@ -1967,7 +2062,7 @@ export function useEditorApi({
               description: "As alterações foram salvas no rascunho.",
               duration: 2000,
             });
-          } catch (_e) { }
+          } catch (_e) {}
         } catch (err) {
           console.error(
             ">>> [useEditorApi] Erro fatal ao salvar no backend:",

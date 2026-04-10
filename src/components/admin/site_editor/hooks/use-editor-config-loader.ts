@@ -98,24 +98,24 @@ const normalizeSection = <T extends Record<string, unknown>>(
 
   const bgColor = safeString(
     appearance.backgroundColor ||
-    merged.backgroundColor ||
-    merged.bgColor ||
-    appearance.cardBgColor ||
-    merged.cardBgColor ||
-    "",
+      merged.backgroundColor ||
+      merged.bgColor ||
+      appearance.cardBgColor ||
+      merged.cardBgColor ||
+      "",
   );
 
   const cardBgColor = safeString(
     merged.cardBgColor ||
-    (merged as Record<string, unknown>).cardBackgroundColor ||
-    (merged as Record<string, unknown>).card_background_color ||
-    content.cardBgColor ||
-    appearance.cardBgColor ||
-    appearance.cardBackgroundColor ||
-    cardConfig.cardBackgroundColor ||
-    cardConfig.backgroundColor ||
-    itemsStyle.itemBackgroundColor ||
-    "",
+      (merged as Record<string, unknown>).cardBackgroundColor ||
+      (merged as Record<string, unknown>).card_background_color ||
+      content.cardBgColor ||
+      appearance.cardBgColor ||
+      appearance.cardBackgroundColor ||
+      cardConfig.cardBackgroundColor ||
+      cardConfig.backgroundColor ||
+      itemsStyle.itemBackgroundColor ||
+      "",
   );
 
   const flattened = {
@@ -210,18 +210,18 @@ const normalizeValuesSettings = (
   const valuesSourceWithCardBg =
     itemsStyleCardBg || contentCardBg || appearanceCardBg
       ? {
-        ...valuesRecord,
-        cardBgColor:
-          (valuesRecord?.cardBgColor as string | undefined) ||
-          contentCardBg ||
-          appearanceCardBg ||
-          itemsStyleCardBg,
-        cardBackgroundColor:
-          (valuesRecord?.cardBackgroundColor as string | undefined) ||
-          contentCardBg ||
-          appearanceCardBg ||
-          itemsStyleCardBg,
-      }
+          ...valuesRecord,
+          cardBgColor:
+            (valuesRecord?.cardBgColor as string | undefined) ||
+            contentCardBg ||
+            appearanceCardBg ||
+            itemsStyleCardBg,
+          cardBackgroundColor:
+            (valuesRecord?.cardBackgroundColor as string | undefined) ||
+            contentCardBg ||
+            appearanceCardBg ||
+            itemsStyleCardBg,
+        }
       : valuesRecord || defaultValue;
 
   const base = normalizeSection(
@@ -275,6 +275,151 @@ const normalizeValuesSettings = (
       ...defaultValue,
       ...base,
       items: defaultValue?.items,
+    };
+  }
+
+  return base;
+};
+
+const normalizeServicesSettings = (
+  servicesSource: ServicesSettings | undefined,
+  draftValue: ServicesSettings | undefined,
+  defaultValue: ServicesSettings = defaultServicesSettings,
+  getSectionValue: <T>(
+    sectionKey: string,
+    bankValue: T | undefined,
+    draftValue: T | undefined,
+    defaultValue?: T,
+  ) => T | undefined,
+) => {
+  const servicesRecord = isRecord(servicesSource)
+    ? (servicesSource as Record<string, unknown>)
+    : undefined;
+  const content = servicesRecord?.content as
+    | Record<string, unknown>
+    | undefined;
+  const appearance = servicesRecord?.appearance as
+    | Record<string, unknown>
+    | undefined;
+  const cardConfig = servicesRecord?.cardConfig as
+    | Record<string, unknown>
+    | undefined;
+  const itemsStyle = servicesRecord?.itemsStyle as
+    | Record<string, unknown>
+    | undefined;
+
+  const contentCardBg =
+    (content?.cardBgColor as string) ||
+    (content?.cardBackgroundColor as string) ||
+    (content?.card_background_color as string) ||
+    "";
+  const appearanceCardBg =
+    (appearance?.cardBgColor as string) ||
+    (appearance?.cardBackgroundColor as string) ||
+    "";
+  const cardConfigBg =
+    (cardConfig?.cardBgColor as string) ||
+    (cardConfig?.cardBackgroundColor as string) ||
+    (cardConfig?.backgroundColor as string) ||
+    (cardConfig?.card_bg_color as string) ||
+    (cardConfig?.background_color as string) ||
+    "";
+  const itemsStyleCardBg = (itemsStyle?.itemBackgroundColor as string) || "";
+
+  const resolvedCardBg =
+    (servicesRecord?.cardBgColor as string | undefined) ||
+    (servicesRecord?.cardBackgroundColor as string | undefined) ||
+    ((servicesRecord as Record<string, unknown>).card_background_color as
+      | string
+      | undefined) ||
+    contentCardBg ||
+    appearanceCardBg ||
+    cardConfigBg ||
+    itemsStyleCardBg ||
+    "";
+
+  const resolvedCardTitleColor =
+    (servicesRecord?.cardTitleColor as string | undefined) ||
+    (content?.cardTitleColor as string) ||
+    (appearance?.cardTitleColor as string) ||
+    (cardConfig?.cardTitleColor as string) ||
+    (cardConfig?.titleColor as string) ||
+    "";
+  const resolvedCardDescriptionColor =
+    (servicesRecord?.cardDescriptionColor as string | undefined) ||
+    (content?.cardDescriptionColor as string) ||
+    (appearance?.cardDescriptionColor as string) ||
+    (cardConfig?.cardDescriptionColor as string) ||
+    (cardConfig?.descriptionColor as string) ||
+    "";
+  const resolvedCardPriceColor =
+    (servicesRecord?.cardPriceColor as string | undefined) ||
+    (content?.cardPriceColor as string) ||
+    (appearance?.cardPriceColor as string) ||
+    (cardConfig?.cardPriceColor as string) ||
+    (cardConfig?.priceColor as string) ||
+    "";
+  const resolvedCardIconColor =
+    (servicesRecord?.cardIconColor as string | undefined) ||
+    (content?.cardIconColor as string) ||
+    (appearance?.cardIconColor as string) ||
+    (cardConfig?.cardIconColor as string) ||
+    (cardConfig?.iconColor as string) ||
+    "";
+
+  const servicesSourceWithCardData =
+    resolvedCardBg ||
+    resolvedCardTitleColor ||
+    resolvedCardDescriptionColor ||
+    resolvedCardPriceColor ||
+    resolvedCardIconColor
+      ? {
+          ...servicesRecord,
+          cardBgColor: resolvedCardBg,
+          cardBackgroundColor: resolvedCardBg,
+          cardTitleColor: resolvedCardTitleColor,
+          cardDescriptionColor: resolvedCardDescriptionColor,
+          cardPriceColor: resolvedCardPriceColor,
+          cardIconColor: resolvedCardIconColor,
+        }
+      : servicesRecord || defaultValue;
+
+  const base = normalizeSection(
+    getSectionValue(
+      "servicesSettings",
+      servicesSourceWithCardData as ServicesSettings,
+      draftValue,
+      defaultValue,
+    ),
+    defaultValue,
+  );
+
+  const sourceBgColor =
+    (servicesRecord?.bgColor as string | undefined) ||
+    (servicesRecord?.backgroundColor as string | undefined) ||
+    (appearance?.backgroundColor as string);
+
+  const hasExplicitBg = Boolean(
+    sourceBgColor && sourceBgColor !== resolvedCardBg,
+  );
+
+  const baseAppearance =
+    base && isRecord(base.appearance) ? base.appearance : {};
+
+  if (
+    !hasExplicitBg &&
+    base?.cardBgColor &&
+    base.bgColor === base.cardBgColor
+  ) {
+    return {
+      ...base,
+      bgColor: "",
+      backgroundColor: "",
+      appearance: {
+        ...baseAppearance,
+        backgroundColor: "",
+        bgColor: "",
+      },
     };
   }
 
@@ -615,33 +760,14 @@ export function useEditorConfigLoader({
           ),
           defaultTestimonialsSettings,
         ),
-        services: normalizeSection(
-          getSectionValue(
-            "servicesSettings",
-            (() => {
-              const servicesSource = (home?.servicesSection ||
-                home?.services ||
-                layoutGlobal?.services ||
-                baseConfig.services) as ServicesSettings;
-
-              const cardConfig = (servicesSource as Record<string, unknown>)
-                ?.cardConfig as Record<string, unknown>;
-              if (cardConfig) {
-                return {
-                  ...servicesSource,
-                  cardBgColor:
-                    (cardConfig.cardBackgroundColor as string) ||
-                    (cardConfig.backgroundColor as string) ||
-                    ((servicesSource as Record<string, unknown>)
-                      .cardBgColor as string),
-                };
-              }
-              return servicesSource;
-            })(),
-            drafts.servicesSettings as ServicesSettings,
-            defaultServicesSettings,
-          ),
+        services: normalizeServicesSettings(
+          (home?.servicesSection ||
+            home?.services ||
+            layoutGlobal?.services ||
+            baseConfig.services) as ServicesSettings,
+          drafts.servicesSettings as ServicesSettings,
           defaultServicesSettings,
+          getSectionValue,
         ),
         homeValuesSettings: normalizeValuesSettings(
           (home?.valuesSection ||
@@ -678,8 +804,8 @@ export function useEditorConfigLoader({
             force && bankValue
               ? (bankValue as Record<string, boolean>)
               : (drafts.visibleSections as Record<string, boolean>) ||
-              (bankValue as Record<string, boolean>) ||
-              {};
+                (bankValue as Record<string, boolean>) ||
+                {};
 
           const resolvedAboutValues =
             base["about-values"] ?? base.values ?? true;
@@ -702,9 +828,9 @@ export function useEditorConfigLoader({
           }
           return base["about-values"] === undefined
             ? {
-              ...base,
-              "about-values": resolvedAboutValues,
-            }
+                ...base,
+                "about-values": resolvedAboutValues,
+              }
             : base;
         })(),
         pageVisibility: (() => {
@@ -717,8 +843,8 @@ export function useEditorConfigLoader({
           return force && bankValue
             ? (bankValue as Record<string, boolean>)
             : (drafts.pageVisibility as Record<string, boolean>) ||
-            (bankValue as Record<string, boolean>) ||
-            {};
+                (bankValue as Record<string, boolean>) ||
+                {};
         })(),
         galleryPreviewSettings: normalizeSection(
           getSectionValue(
@@ -1004,11 +1130,11 @@ export function useEditorConfigLoader({
       );
       processSection(
         "servicesSettings",
-        ((home?.servicesSection ||
+        (home?.servicesSection ||
           home?.services ||
           layoutGlobal?.services ||
           data.services ||
-          baseConfig.services) as ServicesSettings),
+          baseConfig.services) as ServicesSettings,
         setServicesSettings,
         setLastSavedServices,
         setLastAppliedServices,
@@ -1309,24 +1435,24 @@ export function useEditorConfigLoader({
         testimonialsSettings: data.testimonials || defaultTestimonialsSettings,
         fontSettings:
           (data as Record<string, unknown>).theme &&
-            typeof (data as Record<string, unknown>).theme === "object" &&
-            Object.keys((data as Record<string, unknown>).theme as object)
-              .length > 0
+          typeof (data as Record<string, unknown>).theme === "object" &&
+          Object.keys((data as Record<string, unknown>).theme as object)
+            .length > 0
             ? ((data as Record<string, unknown>).theme as FontSettings)
             : data.font &&
-              typeof data.font === "object" &&
-              Object.keys(data.font).length > 0
+                typeof data.font === "object" &&
+                Object.keys(data.font).length > 0
               ? (data.font as FontSettings)
               : defaultFontSettings,
         colorSettings:
           (data as Record<string, unknown>).colors &&
-            typeof (data as Record<string, unknown>).colors === "object" &&
-            Object.keys((data as Record<string, unknown>).colors as object)
-              .length > 0
+          typeof (data as Record<string, unknown>).colors === "object" &&
+          Object.keys((data as Record<string, unknown>).colors as object)
+            .length > 0
             ? ((data as Record<string, unknown>).colors as ColorSettings)
             : data.color &&
-              typeof data.color === "object" &&
-              Object.keys(data.color).length > 0
+                typeof data.color === "object" &&
+                Object.keys(data.color).length > 0
               ? (data.color as ColorSettings)
               : defaultColorSettings,
         servicesSettings: data.services || defaultServicesSettings,
@@ -1349,29 +1475,29 @@ export function useEditorConfigLoader({
               unknown
             >
           )?.service &&
-            typeof (
+          typeof (
+            (data as Record<string, unknown>).bookingSteps as Record<
+              string,
+              unknown
+            >
+          ).service === "object" &&
+          Object.keys(
+            (
               (data as Record<string, unknown>).bookingSteps as Record<
                 string,
                 unknown
               >
-            ).service === "object" &&
-            Object.keys(
-              (
+            ).service as object,
+          ).length > 0
+            ? ((
                 (data as Record<string, unknown>).bookingSteps as Record<
                   string,
                   unknown
                 >
-              ).service as object,
-            ).length > 0
-            ? ((
-              (data as Record<string, unknown>).bookingSteps as Record<
-                string,
-                unknown
-              >
-            ).service as BookingStepSettings)
+              ).service as BookingStepSettings)
             : data.bookingService &&
-              typeof data.bookingService === "object" &&
-              Object.keys(data.bookingService).length > 0
+                typeof data.bookingService === "object" &&
+                Object.keys(data.bookingService).length > 0
               ? (data.bookingService as BookingStepSettings)
               : defaultBookingServiceSettings,
         bookingDateSettings:
@@ -1381,29 +1507,29 @@ export function useEditorConfigLoader({
               unknown
             >
           )?.date &&
-            typeof (
+          typeof (
+            (data as Record<string, unknown>).bookingSteps as Record<
+              string,
+              unknown
+            >
+          ).date === "object" &&
+          Object.keys(
+            (
               (data as Record<string, unknown>).bookingSteps as Record<
                 string,
                 unknown
               >
-            ).date === "object" &&
-            Object.keys(
-              (
+            ).date as object,
+          ).length > 0
+            ? ((
                 (data as Record<string, unknown>).bookingSteps as Record<
                   string,
                   unknown
                 >
-              ).date as object,
-            ).length > 0
-            ? ((
-              (data as Record<string, unknown>).bookingSteps as Record<
-                string,
-                unknown
-              >
-            ).date as BookingStepSettings)
+              ).date as BookingStepSettings)
             : data.bookingDate &&
-              typeof data.bookingDate === "object" &&
-              Object.keys(data.bookingDate).length > 0
+                typeof data.bookingDate === "object" &&
+                Object.keys(data.bookingDate).length > 0
               ? (data.bookingDate as BookingStepSettings)
               : defaultBookingDateSettings,
         bookingTimeSettings:
@@ -1413,29 +1539,29 @@ export function useEditorConfigLoader({
               unknown
             >
           )?.time &&
-            typeof (
+          typeof (
+            (data as Record<string, unknown>).bookingSteps as Record<
+              string,
+              unknown
+            >
+          ).time === "object" &&
+          Object.keys(
+            (
               (data as Record<string, unknown>).bookingSteps as Record<
                 string,
                 unknown
               >
-            ).time === "object" &&
-            Object.keys(
-              (
+            ).time as object,
+          ).length > 0
+            ? ((
                 (data as Record<string, unknown>).bookingSteps as Record<
                   string,
                   unknown
                 >
-              ).time as object,
-            ).length > 0
-            ? ((
-              (data as Record<string, unknown>).bookingSteps as Record<
-                string,
-                unknown
-              >
-            ).time as BookingStepSettings)
+              ).time as BookingStepSettings)
             : data.bookingTime &&
-              typeof data.bookingTime === "object" &&
-              Object.keys(data.bookingTime).length > 0
+                typeof data.bookingTime === "object" &&
+                Object.keys(data.bookingTime).length > 0
               ? (data.bookingTime as BookingStepSettings)
               : defaultBookingTimeSettings,
         bookingFormSettings:
@@ -1445,29 +1571,29 @@ export function useEditorConfigLoader({
               unknown
             >
           )?.form &&
-            typeof (
+          typeof (
+            (data as Record<string, unknown>).bookingSteps as Record<
+              string,
+              unknown
+            >
+          ).form === "object" &&
+          Object.keys(
+            (
               (data as Record<string, unknown>).bookingSteps as Record<
                 string,
                 unknown
               >
-            ).form === "object" &&
-            Object.keys(
-              (
+            ).form as object,
+          ).length > 0
+            ? ((
                 (data as Record<string, unknown>).bookingSteps as Record<
                   string,
                   unknown
                 >
-              ).form as object,
-            ).length > 0
-            ? ((
-              (data as Record<string, unknown>).bookingSteps as Record<
-                string,
-                unknown
-              >
-            ).form as BookingStepSettings)
+              ).form as BookingStepSettings)
             : data.bookingForm &&
-              typeof data.bookingForm === "object" &&
-              Object.keys(data.bookingForm).length > 0
+                typeof data.bookingForm === "object" &&
+                Object.keys(data.bookingForm).length > 0
               ? (data.bookingForm as BookingStepSettings)
               : defaultBookingFormSettings,
         bookingConfirmationSettings:
@@ -1477,29 +1603,29 @@ export function useEditorConfigLoader({
               unknown
             >
           )?.confirmation &&
-            typeof (
+          typeof (
+            (data as Record<string, unknown>).bookingSteps as Record<
+              string,
+              unknown
+            >
+          ).confirmation === "object" &&
+          Object.keys(
+            (
               (data as Record<string, unknown>).bookingSteps as Record<
                 string,
                 unknown
               >
-            ).confirmation === "object" &&
-            Object.keys(
-              (
+            ).confirmation as object,
+          ).length > 0
+            ? ((
                 (data as Record<string, unknown>).bookingSteps as Record<
                   string,
                   unknown
                 >
-              ).confirmation as object,
-            ).length > 0
-            ? ((
-              (data as Record<string, unknown>).bookingSteps as Record<
-                string,
-                unknown
-              >
-            ).confirmation as BookingStepSettings)
+              ).confirmation as BookingStepSettings)
             : data.bookingConfirmation &&
-              typeof data.bookingConfirmation === "object" &&
-              Object.keys(data.bookingConfirmation).length > 0
+                typeof data.bookingConfirmation === "object" &&
+                Object.keys(data.bookingConfirmation).length > 0
               ? (data.bookingConfirmation as BookingStepSettings)
               : defaultBookingConfirmationSettings,
         pageVisibility: data.pageVisibility || {},

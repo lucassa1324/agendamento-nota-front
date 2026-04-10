@@ -150,10 +150,9 @@ export function ServicesSection() {
       const pickFirstDefined = (...values: unknown[]) =>
         values.find((value) => value !== undefined && value !== null);
 
-      const rawBgImage =
-        ((sanitized.bgImage as string) ||
-          (appearance.backgroundImageUrl as string) ||
-          "") as string;
+      const rawBgImage = ((sanitized.bgImage as string) ||
+        (appearance.backgroundImageUrl as string) ||
+        "") as string;
       const hasBgImage = rawBgImage.trim().length > 0;
       const rawBgType = pickFirstDefined(sanitized.bgType, appearance.bgType);
       const resolvedBgType =
@@ -210,29 +209,51 @@ export function ServicesSection() {
             (content.cardBgColor as string) ||
             (itemsStyle.itemBackgroundColor as string) ||
             ((sanitized.cardConfig as Record<string, unknown>)
+              ?.cardBgColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
               ?.cardBackgroundColor as string) ||
             ((sanitized.cardConfig as Record<string, unknown>)
-              ?.backgroundColor as string),
+              ?.backgroundColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.card_bg_color as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.background_color as string),
         ),
         cardTitleColor: sanitizeColor(
           (sanitized.cardTitleColor as string) ||
             (appearance.cardTitleColor as string) ||
-            (content.cardTitleColor as string),
+            (content.cardTitleColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.cardTitleColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.titleColor as string),
         ),
         cardDescriptionColor: sanitizeColor(
           (sanitized.cardDescriptionColor as string) ||
             (appearance.cardDescriptionColor as string) ||
-            (content.cardDescriptionColor as string),
+            (content.cardDescriptionColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.cardDescriptionColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.descriptionColor as string),
         ),
         cardPriceColor: sanitizeColor(
           (sanitized.cardPriceColor as string) ||
             (appearance.cardPriceColor as string) ||
-            (content.cardPriceColor as string),
+            (content.cardPriceColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.cardPriceColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.priceColor as string),
         ),
         cardIconColor: sanitizeColor(
           (sanitized.cardIconColor as string) ||
             (appearance.cardIconColor as string) ||
-            (content.cardIconColor as string),
+            (content.cardIconColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.cardIconColor as string) ||
+            ((sanitized.cardConfig as Record<string, unknown>)
+              ?.iconColor as string),
         ),
         bgImage: resolvedBgType === "image" ? rawBgImage : "",
         bgColor: normalizedBgColor,
@@ -572,10 +593,12 @@ export function ServicesSection() {
                 key={
                   service?.id ? `${service.id}-${index}` : `service-${index}`
                 }
-                className="border-border hover:border-accent transition-all duration-300 overflow-hidden"
+                className={cn(
+                  "border-border hover:border-accent transition-all duration-300 overflow-hidden",
+                  !settings?.cardBgColor && "bg-card",
+                )}
                 style={{
-                  backgroundColor:
-                    settings?.cardBgColor || "var(--card, white)",
+                  backgroundColor: settings?.cardBgColor || undefined,
                   borderRadius: settings?.cardBorderRadius || "0.75rem",
                   borderWidth: settings?.cardBorderWidth || "1px",
                   borderColor: settings?.cardBorderColor || "var(--border)",
@@ -586,7 +609,13 @@ export function ServicesSection() {
                     className="w-12 h-12 rounded-full flex items-center justify-center mb-4 transition-colors"
                     style={{
                       backgroundColor: settings?.cardIconColor
-                        ? `${settings.cardIconColor}1a`
+                        ? settings.cardIconColor.startsWith("#")
+                          ? `${settings.cardIconColor}1a`
+                          : settings.cardIconColor.startsWith("rgb")
+                            ? settings.cardIconColor
+                                .replace("rgb", "rgba")
+                                .replace(")", ", 0.1)")
+                            : "var(--primary-muted, rgba(0, 0, 0, 0.05))"
                         : "var(--primary-muted, rgba(0, 0, 0, 0.05))",
                     }}
                   >
@@ -636,7 +665,14 @@ export function ServicesSection() {
                     >
                       R$ {renderSafeText(service?.price) || "0,00"}
                     </span>
-                    <span className="text-xs text-muted-foreground">
+                    <span
+                      className="text-xs opacity-70"
+                      style={{
+                        color:
+                          settings?.cardDescriptionColor ||
+                          "var(--muted-foreground)",
+                      }}
+                    >
                       {renderSafeText(service?.duration) || "0"} min
                     </span>
                   </div>
