@@ -652,12 +652,12 @@ export function InventoryManager() {
               <Package className="w-3 h-3 sm:w-5 sm:h-5" />
               Inventário
             </CardTitle>
-            <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto">
+            <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-end sm:items-center">
               <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Buscar..."
-                  className="pl-7 w-full h-7 text-[10px] sm:text-sm"
+                  className="pl-9 w-full h-7 sm:h-9 text-[10px] sm:text-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -668,7 +668,7 @@ export function InventoryManager() {
                   setSortBy(value)
                 }
               >
-                <SelectTrigger className="w-full sm:w-48 h-7 text-[10px] sm:text-sm">
+                <SelectTrigger className="w-full sm:w-48 h-7 sm:h-9 text-[10px] sm:text-sm">
                   <SelectValue placeholder="Ordenar" />
                 </SelectTrigger>
                 <SelectContent>

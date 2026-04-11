@@ -54,15 +54,9 @@ export function Navigation({
   const studioId = studio?.id;
   const studioName = studio?.name;
   const studioLogoUrl = studio?.logoUrl;
-  const studioHeaderConfig = studio?.config?.header;
+  const studioHeaderConfig = (studio?.config as any)?.sections?.[SECTION_IDS.layoutHeader] || studio?.config?.header;
 
   const loadData = useCallback(() => {
-    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
-    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-      console.log("[Navigation] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
-      return;
-    }
-
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     const baseProfile = getSiteProfile();
     if (studioId) {
@@ -104,10 +98,8 @@ export function Navigation({
   }, [externalHeaderSettings]);
 
   useEffect(() => {
-    // Só carrega os dados iniciais se não houver um preview ativo ou se não estiver no iframe
-    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
-      loadData();
-    }
+    // Sempre carrega os dados iniciais para garantir sincronia
+    loadData();
 
     // Notificar o pai (admin) que o componente de navegação está pronto
     if (window.self !== window.top) {
@@ -137,17 +129,20 @@ export function Navigation({
 
         if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
           const siteData = event.data.data as Record<string, unknown>;
-          rawHeader = siteData.header as Record<string, unknown>;
+          const sections = (siteData as any).sections as Record<string, unknown> | undefined;
+          rawHeader = (sections?.[SECTION_IDS.layoutHeader] || siteData.header) as Record<string, unknown>;
         } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
           const siteConfig = event.data.config as Record<string, unknown>;
-          rawHeader = siteConfig.header as Record<string, unknown>;
+          const sections = (siteConfig as any).sections as Record<string, unknown> | undefined;
+          rawHeader = (sections?.[SECTION_IDS.layoutHeader] || siteConfig.header) as Record<string, unknown>;
         } else {
           rawHeader = event.data.settings as Record<string, unknown>;
         }
 
-        if (rawHeader) {
-          const appearance =
-            (rawHeader.appearance as Record<string, unknown>) || {};
+        if (rawHeader && typeof rawHeader === "object" && !Array.isArray(rawHeader)) {
+          const appearance = (rawHeader.appearance && typeof rawHeader.appearance === "object" && !Array.isArray(rawHeader.appearance)
+            ? (rawHeader.appearance as Record<string, unknown>)
+            : {}) as Record<string, unknown>;
           const normalizedHeader = {
             ...rawHeader,
             ...appearance,
@@ -192,9 +187,7 @@ export function Navigation({
     };
 
     const handleDataReady = () => {
-      if (!hasLivePreviewUpdateRef.current) {
-        loadData();
-      }
+      loadData();
     };
 
     window.addEventListener("message", handleMessage);

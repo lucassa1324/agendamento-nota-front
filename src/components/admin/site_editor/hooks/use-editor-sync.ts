@@ -498,7 +498,63 @@ export function useEditorSync({
       bookingServiceSettings,
       lastSavedBookingService,
     ) as typeof bookingServiceSettings & Record<string, unknown>;
-    return normalizeStepSettings(merged);
+
+    const mergedRecord = merged as Record<string, unknown>;
+    const mergedCardConfig = (mergedRecord.cardConfig as
+      | Record<string, unknown>
+      | undefined) || {};
+    const mergedContent = (mergedRecord.content as
+      | Record<string, unknown>
+      | undefined) || {};
+    const previewAppearance = (mergedRecord.appearance as
+      | Record<string, unknown>
+      | undefined) || {};
+
+    const resolvedCardBgColor =
+      sanitizeColor(
+        (merged.cardBgColor as string | undefined) ||
+        (mergedRecord.cardBackgroundColor as string | undefined) ||
+        (mergedRecord.card_background_color as string | undefined) ||
+        (mergedCardConfig.cardBgColor as string | undefined) ||
+        (mergedCardConfig.cardBackgroundColor as string | undefined) ||
+        (mergedCardConfig.backgroundColor as string | undefined) ||
+        (mergedCardConfig.card_bg_color as string | undefined) ||
+        (mergedCardConfig.background_color as string | undefined) ||
+        (mergedContent.cardBgColor as string | undefined) ||
+        (mergedContent.cardBackgroundColor as string | undefined) ||
+        (previewAppearance.cardBgColor as string | undefined) ||
+        (previewAppearance.cardBackgroundColor as string | undefined) ||
+        (mergedRecord.card_bg_color as string | undefined),
+      ) || "";
+
+    const resolvedCardConfig = {
+      ...mergedCardConfig,
+      ...(resolvedCardBgColor
+        ? {
+          cardBgColor: resolvedCardBgColor,
+          cardBackgroundColor: resolvedCardBgColor,
+          backgroundColor: resolvedCardBgColor,
+          card_bg_color: resolvedCardBgColor,
+          background_color: resolvedCardBgColor,
+          card_background_color: resolvedCardBgColor,
+        }
+        : {}),
+    };
+
+    return {
+      ...merged,
+      cardBgColor: resolvedCardBgColor,
+      card_bg_color: resolvedCardBgColor,
+      cardBackgroundColor: resolvedCardBgColor,
+      card_background_color: resolvedCardBgColor,
+      cardConfig: resolvedCardConfig,
+      appearance: {
+        ...previewAppearance,
+        cardBgColor: resolvedCardBgColor,
+        cardBackgroundColor: resolvedCardBgColor,
+        cardConfig: resolvedCardConfig,
+      },
+    };
   }, [lastSavedBookingService, bookingServiceSettings, buildPreviewSection]);
 
   const previewBookingDateSettings = useMemo(() => {

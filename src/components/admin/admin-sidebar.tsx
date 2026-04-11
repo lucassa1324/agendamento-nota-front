@@ -217,7 +217,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
       </div>
 
       {/* Sidebar Navigation */}
-      <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
+      <nav className="flex-1 p-4 pb-24 space-y-6 overflow-y-auto">
         {ADMIN_NAVIGATION.map((group) => (
           <div key={group.group} className="space-y-1">
             <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">

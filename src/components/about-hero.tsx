@@ -10,6 +10,7 @@ import {
   type HeroSettings,
   sanitizeColor,
   sanitizeSection,
+  SECTION_IDS,
 } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import {
@@ -17,6 +18,7 @@ import {
   type SectionBackgroundSettings,
 } from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
+import type { SiteConfigData, SectionsMap } from "./admin/site_editor/hooks/use-site-editor";
 
 export function AboutHero() {
   const { studio } = useStudio();
@@ -40,23 +42,34 @@ export function AboutHero() {
     layoutGlobal?.hero;
 
   const loadData = useCallback(() => {
-    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
-    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-      console.log("[AboutHero] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
-      return;
-    }
-
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
-    if (aboutHeroConfig) {
-      const rawAboutHero = aboutHeroConfig as Record<string, unknown>;
-      const content = (rawAboutHero.content as Record<string, unknown>) || {};
-      const appearance =
-        (rawAboutHero.appearance as Record<string, unknown>) || {};
+    const config = studio?.config as SiteConfigData | undefined;
+    const sections = config?.sections as SectionsMap | undefined;
+    const home = config?.home as Record<string, unknown> | undefined;
+    const layoutGlobal = (config?.layoutGlobal ||
+      config?.layout_global) as
+      | Record<string, unknown>
+      | undefined;
+    
+    const rawAboutHero = (sections?.[SECTION_IDS.aboutHero] ||
+      home?.aboutHero ||
+      config?.aboutHero ||
+      layoutGlobal?.aboutHero ||
+      layoutGlobal?.hero) as Record<string, unknown> | undefined;
+
+    if (rawAboutHero) {
+      const content = (rawAboutHero.content && typeof rawAboutHero.content === "object" && !Array.isArray(rawAboutHero.content)
+        ? (rawAboutHero.content as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
+      
+      const appearance = (rawAboutHero.appearance && typeof rawAboutHero.appearance === "object" && !Array.isArray(rawAboutHero.appearance)
+        ? (rawAboutHero.appearance as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
 
       const normalizedAboutHero = {
         ...rawAboutHero,
-        ...content,
-        ...appearance,
+        ...(typeof rawAboutHero.content === "object" ? content : {}),
+        ...(typeof rawAboutHero.appearance === "object" ? appearance : {}),
         title: (content.title as string) ?? (rawAboutHero.title as string),
         subtitle:
           (content.subtitle as string) ?? (rawAboutHero.subtitle as string),
@@ -145,15 +158,12 @@ export function AboutHero() {
     } else {
       setSettings(getAboutHeroSettings());
     }
-  }, [aboutHeroConfig]);
+  }, [studio?.config]);
 
   useEffect(() => {
     setIsInsideIframe(window.self !== window.top);
 
-    // Só carrega os dados iniciais se não houver um preview ativo ou se não estiver no iframe
-    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
-      loadData();
-    }
+    loadData();
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
@@ -169,14 +179,18 @@ export function AboutHero() {
 
         if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
           const siteData = event.data.data as Record<string, unknown>;
-          rawSettings = (siteData.aboutHero ||
+          const sections = siteData.sections as SectionsMap | undefined;
+          rawSettings = (sections?.[SECTION_IDS.aboutHero] ||
+            siteData.aboutHero ||
             siteData.hero) as Record<string, unknown>;
         } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
           const siteConfig = event.data.config as Record<string, unknown>;
+          const sections = siteConfig.sections as SectionsMap | undefined;
           const homeConfig = siteConfig.home as Record<string, unknown>;
           const layoutConfig = (siteConfig.layoutGlobal ||
             siteConfig.layout_global) as Record<string, unknown>;
-          rawSettings = (homeConfig?.aboutHero ||
+          rawSettings = (sections?.[SECTION_IDS.aboutHero] ||
+            homeConfig?.aboutHero ||
             siteConfig.aboutHero ||
             layoutConfig?.aboutHero ||
             layoutConfig?.hero) as Record<string, unknown>;
@@ -187,14 +201,18 @@ export function AboutHero() {
         if (!rawSettings || typeof rawSettings !== "object") return;
 
         // Sanitize colors in real-time update
-        const content = (rawSettings.content as Record<string, unknown>) || {};
-        const appearance =
-          (rawSettings.appearance as Record<string, unknown>) || {};
+        const content = (rawSettings.content && typeof rawSettings.content === "object" && !Array.isArray(rawSettings.content)
+          ? (rawSettings.content as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
+        
+        const appearance = (rawSettings.appearance && typeof rawSettings.appearance === "object" && !Array.isArray(rawSettings.appearance)
+          ? (rawSettings.appearance as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
 
         const updatedSettings = {
           ...rawSettings,
-          ...content,
-          ...appearance,
+          ...(typeof rawSettings.content === "object" ? content : {}),
+          ...(typeof rawSettings.appearance === "object" ? appearance : {}),
           title: (content.title as string) ?? (rawSettings.title as string),
           subtitle:
             (content.subtitle as string) ?? (rawSettings.subtitle as string),

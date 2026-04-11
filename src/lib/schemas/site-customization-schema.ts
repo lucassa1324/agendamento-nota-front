@@ -65,6 +65,11 @@ export const SectionSchema = z
 // Schema para os Steps de Agendamento (Onde o editor quebrou recentemente)
 export const BookingStepSchema = z
   .object({
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    titleColor: ColorSchema,
+    subtitleColor: ColorSchema,
+    accentColor: ColorSchema,
     cardBgColor: ColorSchema,
     bgColor: ColorSchema,
     appearance: AppearanceSchema.optional(),

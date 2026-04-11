@@ -43,12 +43,6 @@ export function TestimonialsSection() {
   }, [studioConfig]);
 
   const loadData = useCallback(() => {
-    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
-    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-      console.log("[TestimonialsSection] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
-      return;
-    }
-
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     if (studioId) {
       const config = studioConfig as SiteConfigData | undefined;
@@ -61,19 +55,24 @@ export function TestimonialsSection() {
         (config as Record<string, unknown>)?.layout_global;
       const home = config?.home;
       const rawTestimonials =
+        ((config as any)?.sections?.[SECTION_IDS.homeTestimonials] as Record<string, unknown>) ||
         (home?.testimonialsSection as Record<string, unknown>) ||
         (config?.testimonials as Record<string, unknown>) ||
         (layoutGlobal as Record<string, unknown>)?.testimonials;
 
       if (rawTestimonials) {
-        const content =
-          (rawTestimonials.content as Record<string, unknown>) || {};
-        const appearance =
-          (rawTestimonials.appearance as Record<string, unknown>) || {};
+        const content = (rawTestimonials.content && typeof rawTestimonials.content === "object" && !Array.isArray(rawTestimonials.content)
+          ? (rawTestimonials.content as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
+        const appearance = (rawTestimonials.appearance && typeof rawTestimonials.appearance === "object" && !Array.isArray(rawTestimonials.appearance)
+          ? (rawTestimonials.appearance as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
 
         // MAPEAMENTO PLANO: Prioriza a raiz (que vem do banco) sobre content/appearance
         const testimonialsSettings = {
-          ...rawTestimonials,
+          ...(rawTestimonials && typeof rawTestimonials === "object" && !Array.isArray(rawTestimonials)
+            ? (rawTestimonials as Record<string, unknown>)
+            : {}),
           ...content,
           ...appearance,
           title: (rawTestimonials.title as string) || (content.title as string),
@@ -186,7 +185,9 @@ export function TestimonialsSection() {
           const layoutGlobal = (siteData.layoutGlobal ||
             siteData.layout_global) as Record<string, unknown> | undefined;
           const home = siteData.home as Record<string, unknown> | undefined;
-          rawTestimonials = (home?.testimonialsSection ||
+          const sections = (siteData as any).sections as Record<string, unknown> | undefined;
+          rawTestimonials = (sections?.[SECTION_IDS.homeTestimonials] ||
+            home?.testimonialsSection ||
             siteData.testimonials ||
             layoutGlobal?.testimonials) as Record<string, unknown>;
         }
@@ -199,12 +200,17 @@ export function TestimonialsSection() {
           return;
         }
 
-        const content = (rawTestimonials.content as Record<string, unknown>) || {};
-        const appearance =
-          (rawTestimonials.appearance as Record<string, unknown>) || {};
+        const content = (rawTestimonials.content && typeof rawTestimonials.content === "object" && !Array.isArray(rawTestimonials.content)
+          ? (rawTestimonials.content as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
+        const appearance = (rawTestimonials.appearance && typeof rawTestimonials.appearance === "object" && !Array.isArray(rawTestimonials.appearance)
+          ? (rawTestimonials.appearance as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
 
         const normalizedTestimonials = {
-          ...rawTestimonials,
+          ...(rawTestimonials && typeof rawTestimonials === "object" && !Array.isArray(rawTestimonials)
+            ? (rawTestimonials as Record<string, unknown>)
+            : {}),
           ...content,
           ...appearance,
           title: (rawTestimonials.title as string) || (content.title as string),

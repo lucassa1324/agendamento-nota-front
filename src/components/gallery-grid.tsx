@@ -83,41 +83,48 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
             unknown
           >;
           if (pageGallery) {
+            const safePageGallery =
+              typeof pageGallery === "object" &&
+              pageGallery !== null &&
+              !Array.isArray(pageGallery)
+                ? (pageGallery as Record<string, unknown>)
+                : {};
+
             const appearance =
-              (pageGallery.appearance as Record<string, unknown>) || {};
+              (safePageGallery.appearance as Record<string, unknown>) || {};
             const resolvedBgColor =
               sanitizeColor(
-                (pageGallery.bgColor as string) ||
-                  (pageGallery.backgroundColor as string) ||
-                  (pageGallery.bg_color as string) ||
-                  (pageGallery.background_color as string) ||
+                (safePageGallery.bgColor as string) ||
+                  (safePageGallery.backgroundColor as string) ||
+                  (safePageGallery.bg_color as string) ||
+                  (safePageGallery.background_color as string) ||
                   (appearance.backgroundColor as string) ||
                   (appearance.bgColor as string),
               ) || "";
 
             const resolvedCardBgColor =
               sanitizeColor(
-                (pageGallery.cardBgColor as string) ||
-                  (pageGallery.cardBackgroundColor as string) ||
-                  (pageGallery.card_background_color as string) ||
-                  (pageGallery.card_bg_color as string) ||
+                (safePageGallery.cardBgColor as string) ||
+                  (safePageGallery.cardBackgroundColor as string) ||
+                  (safePageGallery.card_background_color as string) ||
+                  (safePageGallery.card_bg_color as string) ||
                   (appearance.cardBgColor as string) ||
                   (appearance.cardBackgroundColor as string),
               ) || "";
 
             setSettings({
               ...defaultGallerySettings,
-              ...(pageGallery as unknown as GallerySettings),
+              ...(safePageGallery as unknown as GallerySettings),
               bgColor: resolvedBgColor,
               cardBgColor: resolvedCardBgColor,
               buttonColor:
                 sanitizeColor(
-                  (pageGallery.buttonColor as string) ||
+                  (safePageGallery.buttonColor as string) ||
                     (appearance.buttonColor as string),
                 ) || "",
               buttonTextColor:
                 sanitizeColor(
-                  (pageGallery.buttonTextColor as string) ||
+                  (safePageGallery.buttonTextColor as string) ||
                     (appearance.buttonTextColor as string),
                 ) || "",
             });
@@ -165,42 +172,49 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
 
       const applyGallerySettings = (sectionData: Record<string, unknown>) => {
         hasLivePreviewUpdateRef.current = true;
+        const safeSectionData =
+          typeof sectionData === "object" &&
+          sectionData !== null &&
+          !Array.isArray(sectionData)
+            ? sectionData
+            : {};
+
         const appearance =
-          (sectionData.appearance as Record<string, unknown>) || {};
+          (safeSectionData.appearance as Record<string, unknown>) || {};
 
         const resolvedBgColor =
           sanitizeColor(
-            (sectionData.bgColor as string) ||
-              (sectionData.backgroundColor as string) ||
-              (sectionData.bg_color as string) ||
-              (sectionData.background_color as string) ||
+            (safeSectionData.bgColor as string) ||
+              (safeSectionData.backgroundColor as string) ||
+              (safeSectionData.bg_color as string) ||
+              (safeSectionData.background_color as string) ||
               (appearance.backgroundColor as string) ||
               (appearance.bgColor as string),
           ) || "";
 
         const resolvedCardBgColor =
           sanitizeColor(
-            (sectionData.cardBgColor as string) ||
-              (sectionData.cardBackgroundColor as string) ||
-              (sectionData.card_background_color as string) ||
-              (sectionData.card_bg_color as string) ||
+            (safeSectionData.cardBgColor as string) ||
+              (safeSectionData.cardBackgroundColor as string) ||
+              (safeSectionData.card_background_color as string) ||
+              (safeSectionData.card_bg_color as string) ||
               (appearance.cardBgColor as string) ||
               (appearance.cardBackgroundColor as string),
           ) || "";
 
         setSettings({
           ...defaultGallerySettings,
-          ...(sectionData as unknown as GallerySettings),
+          ...(safeSectionData as unknown as GallerySettings),
           bgColor: resolvedBgColor,
           cardBgColor: resolvedCardBgColor,
           buttonColor:
             sanitizeColor(
-              (sectionData.buttonColor as string) ||
+              (safeSectionData.buttonColor as string) ||
                 (appearance.buttonColor as string),
             ) || "",
           buttonTextColor:
             sanitizeColor(
-              (sectionData.buttonTextColor as string) ||
+              (safeSectionData.buttonTextColor as string) ||
                 (appearance.buttonTextColor as string),
             ) || "",
         });
@@ -245,12 +259,6 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
   }, []);
 
   useEffect(() => {
-    // Se estivermos no iframe e já recebemos um update via Live Preview,
-    // não rodamos o loadData inicial para não resetar o estado
-    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-      return;
-    }
-
     loadData();
     window.addEventListener("galleryUpdated", loadData);
     window.addEventListener("studioSettingsUpdated", loadData);

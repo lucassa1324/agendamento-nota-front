@@ -304,7 +304,7 @@ export const SidebarContent = memo(
     return (
       <div className="flex flex-col h-full text-[clamp(0.7rem,1vw,0.875rem)]">
         <div className="p-2 sm:p-3 xl:p-6 pb-2 sm:pb-3 border-b border-border/50 shrink-0">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 pr-10 lg:pr-0">
             <div className="flex items-center gap-1.5 text-primary font-bold">
               <Settings2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 xl:w-5 xl:h-5" />
               <span className="text-[9px] sm:text-[10px] xl:text-sm tracking-wide uppercase">
@@ -352,7 +352,7 @@ export const SidebarContent = memo(
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 xl:p-6 custom-scrollbar min-w-0">
           {activeSection ? (
             <div className="space-y-3 sm:space-y-4 xl:space-y-6">
-              <div className="flex items-center gap-2 mb-2 sm:mb-3 xl:mb-4">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 xl:mb-4 pr-10 lg:pr-0">
                 <Button
                   type="button"
                   variant="ghost"

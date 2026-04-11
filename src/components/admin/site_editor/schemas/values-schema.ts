@@ -30,6 +30,41 @@ export function normalizeValuesSchema(
     (itemsStyle.itemBackgroundColor as string) ||
     defaultValue.cardBgColor || "";
 
+  const resolvedTitleColor =
+    (valuesRecord.titleColor as string) ||
+    (content.titleColor as string) ||
+    (appearance.titleColor as string) ||
+    defaultValue.titleColor || "";
+
+  const resolvedSubtitleColor =
+    (valuesRecord.subtitleColor as string) ||
+    (content.subtitleColor as string) ||
+    (appearance.subtitleColor as string) ||
+    defaultValue.subtitleColor || "";
+
+  const resolvedCardTitleColor =
+    (valuesRecord.cardTitleColor as string) ||
+    (content.cardTitleColor as string) ||
+    (appearance.cardTitleColor as string) ||
+    defaultValue.cardTitleColor || "";
+
+  const resolvedCardDescriptionColor =
+    (valuesRecord.cardDescriptionColor as string) ||
+    (content.cardDescriptionColor as string) ||
+    (appearance.cardDescriptionColor as string) ||
+    defaultValue.cardDescriptionColor || "";
+
+  const resolvedCardIconColor =
+    (valuesRecord.cardIconColor as string) ||
+    (content.cardIconColor as string) ||
+    (appearance.cardIconColor as string) ||
+    defaultValue.cardIconColor || "";
+
+  const resolvedBgColor =
+    (valuesRecord.bgColor as string) ||
+    (appearance.backgroundColor as string) ||
+    defaultValue.bgColor || "";
+
   return {
     ...defaultValue,
     ...valuesRecord,
@@ -38,5 +73,23 @@ export function normalizeValuesSchema(
     items: Array.isArray(valuesRecord.items) ? valuesRecord.items : defaultValue.items,
     cardBgColor: resolvedCardBg,
     cardBackgroundColor: resolvedCardBg,
+    titleColor: resolvedTitleColor,
+    subtitleColor: resolvedSubtitleColor,
+    cardTitleColor: resolvedCardTitleColor,
+    cardDescriptionColor: resolvedCardDescriptionColor,
+    cardIconColor: resolvedCardIconColor,
+    bgColor: resolvedBgColor,
+    appearance: {
+      ...defaultValue.appearance,
+      ...(valuesRecord.appearance as any),
+      cardBgColor: resolvedCardBg,
+      cardBackgroundColor: resolvedCardBg,
+      titleColor: resolvedTitleColor,
+      subtitleColor: resolvedSubtitleColor,
+      cardTitleColor: resolvedCardTitleColor,
+      cardDescriptionColor: resolvedCardDescriptionColor,
+      cardIconColor: resolvedCardIconColor,
+      backgroundColor: resolvedBgColor,
+    }
   } as ValuesSettings;
 }

@@ -39,12 +39,6 @@ export function TeamSection() {
   }, [studioConfig]);
 
   const loadData = useCallback(() => {
-    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
-    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-      console.log("[TeamSection] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
-      return;
-    }
-
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     const config = studioConfig as SiteConfigData | undefined;
     const siteCustomization =
@@ -55,19 +49,26 @@ export function TeamSection() {
       (config as Record<string, unknown>)?.layoutGlobal ||
       (config as Record<string, unknown>)?.layout_global;
     const home = config?.home;
-    const rawTeam = (home?.teamSection ||
+    const rawTeam = ((config as any)?.sections?.[SECTION_IDS.homeTeam] ||
+      home?.teamSection ||
       config?.team ||
       (layoutGlobal as Record<string, unknown>)?.team) as
       | Record<string, unknown>
       | undefined;
 
     if (rawTeam) {
-      const content = (rawTeam.content as Record<string, unknown>) || {};
-      const appearance = (rawTeam.appearance as Record<string, unknown>) || {};
+      const content = (rawTeam.content && typeof rawTeam.content === "object" && !Array.isArray(rawTeam.content)
+        ? (rawTeam.content as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
+      const appearance = (rawTeam.appearance && typeof rawTeam.appearance === "object" && !Array.isArray(rawTeam.appearance)
+        ? (rawTeam.appearance as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
 
       // MAPEAMENTO PLANO: Prioriza a raiz (que vem do banco) sobre content/appearance
       const normalizedTeam = {
-        ...rawTeam,
+        ...(rawTeam && typeof rawTeam === "object" && !Array.isArray(rawTeam)
+          ? (rawTeam as Record<string, unknown>)
+          : {}),
         ...content,
         ...appearance,
         title: (rawTeam.title as string) || (content.title as string),
@@ -167,7 +168,9 @@ export function TeamSection() {
           const layoutGlobal = (siteData.layoutGlobal ||
             siteData.layout_global) as Record<string, unknown> | undefined;
           const home = siteData.home as Record<string, unknown> | undefined;
-          rawTeam = (home?.teamSection ||
+          const sections = (siteData as any).sections as Record<string, unknown> | undefined;
+          rawTeam = (sections?.[SECTION_IDS.homeTeam] ||
+            home?.teamSection ||
             siteData.team ||
             layoutGlobal?.team) as Record<string, unknown>;
         }
@@ -176,11 +179,17 @@ export function TeamSection() {
           return;
         }
 
-        const content = (rawTeam.content as Record<string, unknown>) || {};
-        const appearance = (rawTeam.appearance as Record<string, unknown>) || {};
+        const content = (rawTeam.content && typeof rawTeam.content === "object" && !Array.isArray(rawTeam.content)
+          ? (rawTeam.content as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
+        const appearance = (rawTeam.appearance && typeof rawTeam.appearance === "object" && !Array.isArray(rawTeam.appearance)
+          ? (rawTeam.appearance as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
 
         const normalizedTeam = {
-          ...rawTeam,
+          ...(rawTeam && typeof rawTeam === "object" && !Array.isArray(rawTeam)
+            ? (rawTeam as Record<string, unknown>)
+            : {}),
           ...content,
           ...appearance,
           title: (rawTeam.title as string) || (content.title as string),

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { unstable_batchedUpdates } from "react-dom";
 import { useToast } from "@/hooks/use-toast";
 import type {
   BookingStepSettings,
@@ -18,6 +19,7 @@ import type {
 import {
   normalizePayload as normalizePayloadData,
   normalizePersistenceData,
+  normalizeStepSettings,
   SECTION_IDS,
   sanitizeColor,
   sanitizeSection,
@@ -232,11 +234,15 @@ const normalizeSectionStatePayload = (
   const fallbackAppearance =
     (fallbackRecord.appearance as Record<string, unknown>) || {};
   const sourceStyles = (sourceRecord.styles as Record<string, unknown>) || {};
-  const fallbackStyles = (fallbackRecord.styles as Record<string, unknown>) || {};
+  const fallbackStyles =
+    (fallbackRecord.styles as Record<string, unknown>) || {};
   const sourceContent = (sourceRecord.content as Record<string, unknown>) || {};
-  const fallbackContent = (fallbackRecord.content as Record<string, unknown>) || {};
-  const sourceCardConfig = (sourceRecord.cardConfig as Record<string, unknown>) || {};
-  const fallbackCardConfig = (fallbackRecord.cardConfig as Record<string, unknown>) || {};
+  const fallbackContent =
+    (fallbackRecord.content as Record<string, unknown>) || {};
+  const sourceCardConfig =
+    (sourceRecord.cardConfig as Record<string, unknown>) || {};
+  const fallbackCardConfig =
+    (fallbackRecord.cardConfig as Record<string, unknown>) || {};
 
   const resolvedBackgroundColor =
     sanitizeColor(
@@ -323,13 +329,15 @@ const normalizeSectionStatePayload = (
 
     if (result.appearance) {
       (result.appearance as any).cardBgColor = resolvedCardBackgroundColor;
-      (result.appearance as any).cardBackgroundColor = resolvedCardBackgroundColor;
+      (result.appearance as any).cardBackgroundColor =
+        resolvedCardBackgroundColor;
       (result.appearance as any).card_bg_color = resolvedCardBackgroundColor;
-      (result.appearance as any).card_background_color = resolvedCardBackgroundColor;
+      (result.appearance as any).card_background_color =
+        resolvedCardBackgroundColor;
     }
 
     (result as any).cardConfig = {
-      ...(result as any).cardConfig || {},
+      ...((result as any).cardConfig || {}),
       backgroundColor: resolvedCardBackgroundColor,
       cardBackgroundColor: resolvedCardBackgroundColor,
       background_color: resolvedCardBackgroundColor,
@@ -489,6 +497,7 @@ export function useEditorApi({
       const homeValuesLegacyAboutBg = (
         settings.homeValuesSettings as Record<string, unknown>
       ).about_values_bg as string | undefined;
+
       const homeValuesBg =
         sanitizeColor(
           settings.homeValuesSettings.appearance?.backgroundColor ||
@@ -496,12 +505,56 @@ export function useEditorApi({
           homeValuesLegacyBg ||
           homeValuesLegacyAboutBg,
         ) || "";
+
       const homeValuesCardBg =
         sanitizeColor(
           settings.homeValuesSettings.cardBgColor ||
           settings.homeValuesSettings.appearance?.cardBackgroundColor ||
           settings.homeValuesSettings.appearance?.cardBgColor,
         ) || "";
+
+      const titleColor =
+        sanitizeColor(
+          settings.homeValuesSettings.titleColor ||
+          settings.homeValuesSettings.appearance?.titleColor,
+        ) || "";
+
+      const subtitleColor =
+        sanitizeColor(
+          settings.homeValuesSettings.subtitleColor ||
+          settings.homeValuesSettings.appearance?.subtitleColor,
+        ) || "";
+
+      const cardTitleColor =
+        sanitizeColor(
+          settings.homeValuesSettings.cardTitleColor ||
+          settings.homeValuesSettings.appearance?.cardTitleColor,
+        ) || "";
+
+      const cardDescriptionColor =
+        sanitizeColor(
+          settings.homeValuesSettings.cardDescriptionColor ||
+          settings.homeValuesSettings.appearance?.cardDescriptionColor,
+        ) || "";
+
+      const cardIconColor =
+        sanitizeColor(
+          settings.homeValuesSettings.cardIconColor ||
+          settings.homeValuesSettings.appearance?.cardIconColor,
+        ) || "";
+
+      const cardConfig = {
+        backgroundColor: homeValuesCardBg,
+        cardBackgroundColor: homeValuesCardBg,
+        cardBgColor: homeValuesCardBg,
+        titleColor: cardTitleColor,
+        cardTitleColor: cardTitleColor,
+        descriptionColor: cardDescriptionColor,
+        cardDescriptionColor: cardDescriptionColor,
+        iconColor: cardIconColor,
+        cardIconColor: cardIconColor,
+      };
+
       changes.homeValuesSettings = {
         ...settings.homeValuesSettings,
         ...(homeValuesBg
@@ -518,6 +571,11 @@ export function useEditorApi({
             cardBackgroundColor: homeValuesCardBg,
           }
           : {}),
+        titleColor,
+        subtitleColor,
+        cardTitleColor,
+        cardDescriptionColor,
+        cardIconColor,
         appearance: {
           ...settings.homeValuesSettings.appearance,
           ...(homeValuesBg
@@ -533,8 +591,15 @@ export function useEditorApi({
               cardBackgroundColor: homeValuesCardBg,
             }
             : {}),
+          titleColor,
+          subtitleColor,
+          cardTitleColor,
+          cardDescriptionColor,
+          cardIconColor,
         },
       };
+      (changes.homeValuesSettings as Record<string, unknown>).cardConfig =
+        cardConfig;
       (changes.homeValuesSettings as Record<string, unknown>).values_bg =
         homeValuesBg;
       (changes.homeValuesSettings as Record<string, unknown>).about_values_bg =
@@ -552,6 +617,7 @@ export function useEditorApi({
       const aboutValuesLegacyValuesBg = (
         settings.aboutUsValuesSettings as Record<string, unknown>
       ).values_bg as string | undefined;
+
       const aboutValuesBg =
         sanitizeColor(
           settings.aboutUsValuesSettings.appearance?.backgroundColor ||
@@ -559,16 +625,65 @@ export function useEditorApi({
           aboutValuesLegacyBg ||
           aboutValuesLegacyValuesBg,
         ) || "";
+
       const aboutValuesCardBg =
         sanitizeColor(
           settings.aboutUsValuesSettings.cardBgColor ||
           settings.aboutUsValuesSettings.appearance?.cardBackgroundColor ||
           settings.aboutUsValuesSettings.appearance?.cardBgColor,
         ) || "";
+
+      const titleColor =
+        sanitizeColor(
+          settings.aboutUsValuesSettings.titleColor ||
+          settings.aboutUsValuesSettings.appearance?.titleColor,
+        ) || "";
+
+      const subtitleColor =
+        sanitizeColor(
+          settings.aboutUsValuesSettings.subtitleColor ||
+          settings.aboutUsValuesSettings.appearance?.subtitleColor,
+        ) || "";
+
+      const cardTitleColor =
+        sanitizeColor(
+          settings.aboutUsValuesSettings.cardTitleColor ||
+          settings.aboutUsValuesSettings.appearance?.cardTitleColor,
+        ) || "";
+
+      const cardDescriptionColor =
+        sanitizeColor(
+          settings.aboutUsValuesSettings.cardDescriptionColor ||
+          settings.aboutUsValuesSettings.appearance?.cardDescriptionColor,
+        ) || "";
+
+      const cardIconColor =
+        sanitizeColor(
+          settings.aboutUsValuesSettings.cardIconColor ||
+          settings.aboutUsValuesSettings.appearance?.cardIconColor,
+        ) || "";
+
+      const cardConfig = {
+        backgroundColor: aboutValuesCardBg,
+        cardBackgroundColor: aboutValuesCardBg,
+        cardBgColor: aboutValuesCardBg,
+        titleColor: cardTitleColor,
+        cardTitleColor: cardTitleColor,
+        descriptionColor: cardDescriptionColor,
+        cardDescriptionColor: cardDescriptionColor,
+        iconColor: cardIconColor,
+        cardIconColor: cardIconColor,
+      };
+
       changes.aboutUsValuesSettings = {
         ...settings.aboutUsValuesSettings,
         ...(aboutValuesBg
-          ? { bgType: "color", bgColor: aboutValuesBg, bgImage: "" }
+          ? {
+            bgType: "color",
+            bgColor: aboutValuesBg,
+            backgroundColor: aboutValuesBg,
+            bgImage: "",
+          }
           : {}),
         ...(aboutValuesCardBg
           ? {
@@ -576,6 +691,11 @@ export function useEditorApi({
             cardBackgroundColor: aboutValuesCardBg,
           }
           : {}),
+        titleColor,
+        subtitleColor,
+        cardTitleColor,
+        cardDescriptionColor,
+        cardIconColor,
         appearance: {
           ...settings.aboutUsValuesSettings.appearance,
           ...(aboutValuesBg
@@ -591,8 +711,15 @@ export function useEditorApi({
               cardBackgroundColor: aboutValuesCardBg,
             }
             : {}),
+          titleColor,
+          subtitleColor,
+          cardTitleColor,
+          cardDescriptionColor,
+          cardIconColor,
         },
       };
+      (changes.aboutUsValuesSettings as Record<string, unknown>).cardConfig =
+        cardConfig;
       (changes.aboutUsValuesSettings as Record<string, unknown>).values_bg =
         aboutValuesBg;
       (
@@ -734,23 +861,39 @@ export function useEditorApi({
       saved: BookingStepSettings,
     ) => {
       if (JSON.stringify(current) === JSON.stringify(saved)) return undefined;
+      const currentRecord = current as Record<string, unknown>;
+      const currentAppearance =
+        (current.appearance as Record<string, unknown> | undefined) || {};
+      const currentCardConfig =
+        (currentRecord.cardConfig as Record<string, unknown> | undefined) || {};
 
       const bg =
         sanitizeColor(
           current.appearance?.backgroundColor ||
           current.bgColor ||
-          (current as Record<string, unknown>).backgroundColor,
+          currentRecord.backgroundColor,
         ) || "";
 
       const cardBg =
         sanitizeColor(
           current.cardBgColor ||
+          currentRecord.card_bg_color ||
+          currentRecord.cardBackgroundColor ||
+          currentRecord.card_background_color ||
           current.appearance?.cardBackgroundColor ||
           current.appearance?.cardBgColor ||
-          (current as Record<string, unknown>).cardBackgroundColor,
+          currentAppearance.card_background_color ||
+          currentAppearance.card_bg_color ||
+          currentCardConfig.cardBgColor ||
+          currentCardConfig.cardBackgroundColor ||
+          currentCardConfig.backgroundColor ||
+          currentCardConfig.card_bg_color ||
+          currentCardConfig.card_background_color ||
+          currentCardConfig.background_color,
         ) || "";
 
       const cardConfig = {
+        ...currentCardConfig,
         backgroundColor: cardBg,
         cardBackgroundColor: cardBg,
         background_color: cardBg,
@@ -761,6 +904,10 @@ export function useEditorApi({
 
       const processed = {
         ...current,
+        cardBgColor: cardBg,
+        card_bg_color: cardBg,
+        cardBackgroundColor: cardBg,
+        card_background_color: cardBg,
         cardConfig,
         ...(bg
           ? {
@@ -770,16 +917,13 @@ export function useEditorApi({
             bgImage: "",
           }
           : {}),
-        ...(cardBg
-          ? {
-            cardBgColor: cardBg,
-            cardBackgroundColor: cardBg,
-            card_bg_color: cardBg,
-            card_background_color: cardBg,
-          }
-          : {}),
         appearance: {
           ...current.appearance,
+          cardBgColor: cardBg,
+          cardBackgroundColor: cardBg,
+          card_bg_color: cardBg,
+          card_background_color: cardBg,
+          cardConfig,
           ...(bg
             ? {
               backgroundColor: bg,
@@ -787,27 +931,16 @@ export function useEditorApi({
               backgroundImageUrl: "",
             }
             : {}),
-          ...(cardBg
-            ? {
-              cardBgColor: cardBg,
-              cardBackgroundColor: cardBg,
-              cardConfig,
-            }
-            : {}),
         },
         content: {
-          ...(((current as Record<string, unknown>).content as
+          ...((currentRecord.content as
             | Record<string, unknown>
             | undefined) || {}),
-          ...(cardBg
-            ? {
-              cardBgColor: cardBg,
-              cardBackgroundColor: cardBg,
-              card_bg_color: cardBg,
-              card_background_color: cardBg,
-              cardConfig,
-            }
-            : {}),
+          cardBgColor: cardBg,
+          cardBackgroundColor: cardBg,
+          card_bg_color: cardBg,
+          card_background_color: cardBg,
+          cardConfig,
         },
       };
 
@@ -1074,15 +1207,18 @@ export function useEditorApi({
         settings.servicesSettings,
         lastSaved.lastSavedServices,
       );
-      const sanitizedServicesRecord =
-        sanitizedServicesDraft as Record<string, unknown>;
+      const sanitizedServicesRecord = sanitizedServicesDraft as Record<
+        string,
+        unknown
+      >;
       const servicesAppearance =
         (sanitizedServicesRecord.appearance as
           | Record<string, unknown>
           | undefined) || {};
       const servicesContent =
-        (sanitizedServicesRecord.content as Record<string, unknown> | undefined) ||
-        {};
+        (sanitizedServicesRecord.content as
+          | Record<string, unknown>
+          | undefined) || {};
       const servicesCardConfig =
         (sanitizedServicesRecord.cardConfig as
           | Record<string, unknown>
@@ -1205,17 +1341,115 @@ export function useEditorApi({
       const normalizeValuesAppearance = (section: Record<string, unknown>) => {
         const appearance =
           (section.appearance as Record<string, unknown> | undefined) || {};
+        const content =
+          (section.content as Record<string, unknown> | undefined) || {};
+        const cardConfig =
+          (section.cardConfig as Record<string, unknown> | undefined) || {};
         const backgroundColor =
-          (appearance.backgroundColor as string) ||
-          (section.backgroundColor as string) ||
-          (section.bgColor as string) ||
-          "";
+          sanitizeColor(
+            (appearance.backgroundColor as string) ||
+            (appearance.bgColor as string) ||
+            (section.backgroundColor as string) ||
+            (section.bgColor as string) ||
+            (section.values_bg as string) ||
+            (section.about_values_bg as string),
+          ) || "";
+        const cardBackgroundColor =
+          sanitizeColor(
+            (section.cardBgColor as string) ||
+            (section.cardBackgroundColor as string) ||
+            (appearance.cardBgColor as string) ||
+            (appearance.cardBackgroundColor as string) ||
+            (content.cardBgColor as string) ||
+            (content.cardBackgroundColor as string) ||
+            (cardConfig.backgroundColor as string) ||
+            (cardConfig.cardBackgroundColor as string) ||
+            (cardConfig.cardBgColor as string),
+          ) || "";
+        const titleColor =
+          sanitizeColor(
+            (section.titleColor as string) ||
+            (appearance.titleColor as string) ||
+            (content.titleColor as string),
+          ) || "";
+        const subtitleColor =
+          sanitizeColor(
+            (section.subtitleColor as string) ||
+            (appearance.subtitleColor as string) ||
+            (content.subtitleColor as string),
+          ) || "";
+        const cardTitleColor =
+          sanitizeColor(
+            (section.cardTitleColor as string) ||
+            (appearance.cardTitleColor as string) ||
+            (content.cardTitleColor as string) ||
+            (cardConfig.titleColor as string) ||
+            (cardConfig.cardTitleColor as string),
+          ) || "";
+        const cardDescriptionColor =
+          sanitizeColor(
+            (section.cardDescriptionColor as string) ||
+            (appearance.cardDescriptionColor as string) ||
+            (content.cardDescriptionColor as string) ||
+            (cardConfig.descriptionColor as string) ||
+            (cardConfig.cardDescriptionColor as string),
+          ) || "";
+        const cardIconColor =
+          sanitizeColor(
+            (section.cardIconColor as string) ||
+            (appearance.cardIconColor as string) ||
+            (content.cardIconColor as string) ||
+            (cardConfig.iconColor as string) ||
+            (cardConfig.cardIconColor as string),
+          ) || "";
         return {
           ...section,
+          bgColor: backgroundColor,
           backgroundColor,
+          values_bg:
+            (section.values_bg as string | undefined) ?? backgroundColor,
+          about_values_bg:
+            (section.about_values_bg as string | undefined) ?? backgroundColor,
+          cardBgColor: cardBackgroundColor,
+          cardBackgroundColor: cardBackgroundColor,
+          titleColor,
+          subtitleColor,
+          cardTitleColor,
+          cardDescriptionColor,
+          cardIconColor,
+          cardConfig: {
+            ...cardConfig,
+            backgroundColor: cardBackgroundColor,
+            cardBackgroundColor: cardBackgroundColor,
+            cardBgColor: cardBackgroundColor,
+            titleColor: cardTitleColor,
+            cardTitleColor: cardTitleColor,
+            descriptionColor: cardDescriptionColor,
+            cardDescriptionColor: cardDescriptionColor,
+            iconColor: cardIconColor,
+            cardIconColor: cardIconColor,
+          },
           appearance: {
             ...appearance,
             backgroundColor,
+            bgColor: backgroundColor,
+            cardBgColor: cardBackgroundColor,
+            cardBackgroundColor: cardBackgroundColor,
+            titleColor,
+            subtitleColor,
+            cardTitleColor,
+            cardDescriptionColor,
+            cardIconColor,
+          },
+          content: {
+            ...content,
+            cardBgColor: cardBackgroundColor,
+            cardBackgroundColor: cardBackgroundColor,
+            titleColor,
+            subtitleColor,
+            cardTitleColor,
+            cardDescriptionColor,
+            cardIconColor,
           },
         };
       };
@@ -1268,8 +1502,31 @@ export function useEditorApi({
         ),
       };
 
+      const normalizedBookingSteps = {
+        service: normalizeStepSettings(
+          sanitizedBookingSteps.service as Record<string, unknown>,
+          settings.bookingServiceSettings,
+        ),
+        date: normalizeStepSettings(
+          sanitizedBookingSteps.date as Record<string, unknown>,
+          settings.bookingDateSettings,
+        ),
+        time: normalizeStepSettings(
+          sanitizedBookingSteps.time as Record<string, unknown>,
+          settings.bookingTimeSettings,
+        ),
+        form: normalizeStepSettings(
+          sanitizedBookingSteps.form as Record<string, unknown>,
+          settings.bookingFormSettings,
+        ),
+        confirmation: normalizeStepSettings(
+          sanitizedBookingSteps.confirmation as Record<string, unknown>,
+          settings.bookingConfirmationSettings,
+        ),
+      };
+
       const cleanBookingSteps = normalizePersistenceData(
-        sanitizedBookingSteps,
+        normalizedBookingSteps,
       ) as Record<string, BookingStepSettings>;
 
       const galleryBackgroundColor =
@@ -1301,8 +1558,9 @@ export function useEditorApi({
           sanitizedGalleryPage.bgColor ||
           ((sanitizedGalleryPage as Record<string, unknown>)
             .backgroundColor as string | undefined) ||
-          ((sanitizedGalleryPage as Record<string, unknown>)
-            .bg_color as string | undefined) ||
+          ((sanitizedGalleryPage as Record<string, unknown>).bg_color as
+            | string
+            | undefined) ||
           ((sanitizedGalleryPage as Record<string, unknown>)
             .background_color as string | undefined),
         ) || "";
@@ -1663,6 +1921,26 @@ export function useEditorApi({
                         bgColor: sectionBackgroundColor,
                         cardBgColor: sectionCardBackgroundColor,
                         cardBackgroundColor: sectionCardBackgroundColor,
+                        titleColor:
+                          sectionData.titleColor ||
+                          appearance.titleColor ||
+                          "",
+                        subtitleColor:
+                          sectionData.subtitleColor ||
+                          appearance.subtitleColor ||
+                          "",
+                        cardTitleColor:
+                          sectionData.cardTitleColor ||
+                          appearance.cardTitleColor ||
+                          "",
+                        cardDescriptionColor:
+                          sectionData.cardDescriptionColor ||
+                          appearance.cardDescriptionColor ||
+                          "",
+                        cardIconColor:
+                          sectionData.cardIconColor ||
+                          appearance.cardIconColor ||
+                          "",
                       },
                     }
                     : {}),
@@ -1677,6 +1955,26 @@ export function useEditorApi({
                         bgColor: sectionBackgroundColor,
                         cardBgColor: sectionCardBackgroundColor,
                         cardBackgroundColor: sectionCardBackgroundColor,
+                        titleColor:
+                          sectionData.titleColor ||
+                          appearance.titleColor ||
+                          "",
+                        subtitleColor:
+                          sectionData.subtitleColor ||
+                          appearance.subtitleColor ||
+                          "",
+                        cardTitleColor:
+                          sectionData.cardTitleColor ||
+                          appearance.cardTitleColor ||
+                          "",
+                        cardDescriptionColor:
+                          sectionData.cardDescriptionColor ||
+                          appearance.cardDescriptionColor ||
+                          "",
+                        cardIconColor:
+                          sectionData.cardIconColor ||
+                          appearance.cardIconColor ||
+                          "",
                       },
                     }
                     : {}),
@@ -1790,10 +2088,36 @@ export function useEditorApi({
 
                     // Suporte para cardConfig exigido pelo backend
                     const cardConfig = {
-                      backgroundColor: sectionData.cardBgColor || "",
-                      cardBackgroundColor: sectionData.cardBgColor || "",
-                      background_color: sectionData.cardBgColor || "",
-                      card_background_color: sectionData.cardBgColor || "",
+                      backgroundColor: sectionCardBackgroundColor,
+                      cardBackgroundColor: sectionCardBackgroundColor,
+                      background_color: sectionCardBackgroundColor,
+                      card_background_color: sectionCardBackgroundColor,
+                      cardBgColor: sectionCardBackgroundColor,
+                      card_bg_color: sectionCardBackgroundColor,
+                      titleColor:
+                        sectionData.cardTitleColor ||
+                        (appearance.cardTitleColor as string) ||
+                        "",
+                      cardTitleColor:
+                        sectionData.cardTitleColor ||
+                        (appearance.cardTitleColor as string) ||
+                        "",
+                      descriptionColor:
+                        sectionData.cardDescriptionColor ||
+                        (appearance.cardDescriptionColor as string) ||
+                        "",
+                      cardDescriptionColor:
+                        sectionData.cardDescriptionColor ||
+                        (appearance.cardDescriptionColor as string) ||
+                        "",
+                      iconColor:
+                        sectionData.cardIconColor ||
+                        (appearance.cardIconColor as string) ||
+                        "",
+                      cardIconColor:
+                        sectionData.cardIconColor ||
+                        (appearance.cardIconColor as string) ||
+                        "",
                     };
                     subObj.cardConfig = cardConfig;
                     (sectionData as Record<string, unknown>).cardConfig =
@@ -1984,14 +2308,18 @@ export function useEditorApi({
                   service: {
                     ...cleanBookingSteps.service,
                     // Mapeamento de Dualidade (camelCase -> snake_case)
+                    cardBgColor: cleanBookingSteps.service.cardBgColor,
                     card_bg_color: cleanBookingSteps.service.cardBgColor,
                     card_background_color:
                       cleanBookingSteps.service.cardBgColor,
                     cardBackgroundColor:
                       cleanBookingSteps.service.cardBgColor,
+                    bgColor: cleanBookingSteps.service.bgColor,
+                    backgroundColor: cleanBookingSteps.service.bgColor,
                     button_color: cleanBookingSteps.service.buttonColor,
                     title_color: cleanBookingSteps.service.titleColor,
                     subtitle_color: cleanBookingSteps.service.subtitleColor,
+                    accentColor: cleanBookingSteps.service.accentColor,
                     accent_color: cleanBookingSteps.service.accentColor,
                     bg_color: cleanBookingSteps.service.bgColor,
                     // Suporte para cardConfig exigido pelo backend no fluxo de agendamento
@@ -2124,21 +2452,43 @@ export function useEditorApi({
             >;
             const serviceCardBg =
               cleanBookingSteps.service.cardBgColor || "#ffffff";
-            const existingStep1 =
-              (appointmentFlow.step1Services as Record<string, unknown>) || {};
-            appointmentFlow.step1Services = {
-              ...existingStep1,
+            const serviceBg = cleanBookingSteps.service.bgColor || "";
+            const serviceAccent = cleanBookingSteps.service.accentColor || "";
+            const existingStep1Services =
+              (appointmentFlow.step1Services as Record<string, unknown>) ||
+              (appointmentFlow.step1_services as Record<string, unknown>) ||
+              {};
+            const existingStep1ServicesSnake =
+              (appointmentFlow.step1_services as Record<string, unknown>) ||
+              (appointmentFlow.step1Services as Record<string, unknown>) ||
+              {};
+            const step1Payload = {
               ...cleanBookingSteps.service,
+              cardBgColor: serviceCardBg,
               card_bg_color: serviceCardBg,
+              card_background_color: serviceCardBg,
               cardBackgroundColor: serviceCardBg,
-              bg_color: cleanBookingSteps.service.bgColor,
-              accent_color: cleanBookingSteps.service.accentColor,
+              bgColor: serviceBg,
+              backgroundColor: serviceBg,
+              bg_color: serviceBg,
+              accentColor: serviceAccent,
+              accent_color: serviceAccent,
               cardConfig: {
                 backgroundColor: serviceCardBg,
                 cardBackgroundColor: serviceCardBg,
                 background_color: serviceCardBg,
                 card_background_color: serviceCardBg,
+                cardBgColor: serviceCardBg,
+                card_bg_color: serviceCardBg,
               },
+            };
+            appointmentFlow.step1Services = {
+              ...existingStep1Services,
+              ...step1Payload,
+            };
+            appointmentFlow.step1_services = {
+              ...existingStep1ServicesSnake,
+              ...step1Payload,
             };
           }
 
@@ -2188,48 +2538,83 @@ export function useEditorApi({
                   : {};
               const freshSections =
                 (freshConfig.sections as Record<string, unknown>) || {};
-              const freshHome = (freshConfig.home as Record<string, unknown>) || {};
-              const freshLayout = (freshConfig.layoutGlobal as Record<string, unknown>) || {};
+              const freshHome =
+                (freshConfig.home as Record<string, unknown>) || {};
+              const freshLayout =
+                (freshConfig.layoutGlobal as Record<string, unknown>) || {};
 
               // --- NORMALIZAÇÃO DE TODAS AS SEÇÕES PARA EVITAR "RETURN LEAK" ---
               const normalizedSavedHero = normalizeSectionStatePayload(
-                freshSections[SECTION_IDS.homeHero] || freshHome.heroBanner || freshHome.hero || freshConfig.hero || sanitizedHero,
-                sanitizedHero as Record<string, unknown>
+                freshSections[SECTION_IDS.homeHero] ||
+                freshHome.heroBanner ||
+                freshHome.hero ||
+                freshConfig.hero ||
+                sanitizedHero,
+                sanitizedHero as Record<string, unknown>,
               ) as HeroSettings;
 
               const normalizedSavedAboutHero = normalizeSectionStatePayload(
-                freshSections[SECTION_IDS.aboutHero] || (freshConfig.about as any)?.heroSection || freshConfig.aboutHero || sanitizedAboutHero,
-                sanitizedAboutHero as Record<string, unknown>
+                freshSections[SECTION_IDS.aboutHero] ||
+                (freshConfig.about as any)?.heroSection ||
+                freshConfig.aboutHero ||
+                sanitizedAboutHero,
+                sanitizedAboutHero as Record<string, unknown>,
               ) as HeroSettings;
 
               const normalizedSavedStory = normalizeSectionStatePayload(
-                freshSections[SECTION_IDS.homeStory] || freshHome.storySection || freshHome.story || freshConfig.story || sanitizedStory,
-                sanitizedStory as Record<string, unknown>
+                freshSections[SECTION_IDS.homeStory] ||
+                freshHome.storySection ||
+                freshHome.story ||
+                freshConfig.story ||
+                sanitizedStory,
+                sanitizedStory as Record<string, unknown>,
               ) as StorySettings;
 
               const normalizedSavedTeam = normalizeSectionStatePayload(
-                freshSections[SECTION_IDS.homeTeam] || freshHome.teamSection || freshHome.team || freshConfig.team || sanitizedTeam,
-                sanitizedTeam as Record<string, unknown>
+                freshSections[SECTION_IDS.homeTeam] ||
+                freshHome.teamSection ||
+                freshHome.team ||
+                freshConfig.team ||
+                sanitizedTeam,
+                sanitizedTeam as Record<string, unknown>,
               ) as TeamSettings;
 
               const normalizedSavedTestimonials = normalizeSectionStatePayload(
-                freshSections[SECTION_IDS.homeTestimonials] || freshHome.testimonialsSection || freshHome.testimonials || freshConfig.testimonials || sanitizedTestimonials,
-                sanitizedTestimonials as Record<string, unknown>
+                freshSections[SECTION_IDS.homeTestimonials] ||
+                freshHome.testimonialsSection ||
+                freshHome.testimonials ||
+                freshConfig.testimonials ||
+                sanitizedTestimonials,
+                sanitizedTestimonials as Record<string, unknown>,
               ) as TestimonialsSettings;
 
               const normalizedSavedServices = normalizeSectionStatePayload(
-                freshSections[SECTION_IDS.homeServices] || freshHome.servicesSection || freshHome.services || freshConfig.services || sanitizedServices,
-                sanitizedServices as Record<string, unknown>
+                freshSections[SECTION_IDS.homeServices] ||
+                freshHome.servicesSection ||
+                freshHome.services ||
+                freshConfig.services ||
+                sanitizedServices,
+                sanitizedServices as Record<string, unknown>,
               ) as ServicesSettings;
 
               const normalizedSavedHomeValues = normalizeSectionStatePayload(
-                freshSections[SECTION_IDS.homeValues] || freshHome.homeValuesSettings || freshHome.valuesSection || freshHome.values || freshConfig.homeValuesSettings || freshConfig.values || sanitizedHomeValues,
-                sanitizedHomeValues as Record<string, unknown>
+                freshSections[SECTION_IDS.homeValues] ||
+                freshHome.homeValuesSettings ||
+                freshHome.valuesSection ||
+                freshHome.values ||
+                freshConfig.homeValuesSettings ||
+                freshConfig.values ||
+                sanitizedHomeValues,
+                sanitizedHomeValues as Record<string, unknown>,
               ) as ValuesSettings;
 
               const normalizedSavedAboutUsValues = normalizeSectionStatePayload(
-                freshSections[SECTION_IDS.aboutValues] || (freshConfig.about as any)?.aboutUsValuesSettings || freshConfig.aboutUsValuesSettings || freshConfig.about_us_values || sanitizedAboutUsValues,
-                sanitizedAboutUsValues as Record<string, unknown>
+                freshSections[SECTION_IDS.aboutValues] ||
+                (freshConfig.about as any)?.aboutUsValuesSettings ||
+                freshConfig.aboutUsValuesSettings ||
+                freshConfig.about_us_values ||
+                sanitizedAboutUsValues,
+                sanitizedAboutUsValues as Record<string, unknown>,
               ) as ValuesSettings;
 
               const normalizedSavedGallery = normalizeSectionStatePayload(
@@ -2251,18 +2636,28 @@ export function useEditorApi({
               ) as GallerySettings;
 
               const normalizedSavedCTA = normalizeSectionStatePayload(
-                freshSections[SECTION_IDS.homeCta] || freshHome.ctaSection || freshHome.cta || freshConfig.cta || sanitizedCta,
-                sanitizedCta as Record<string, unknown>
+                freshSections[SECTION_IDS.homeCta] ||
+                freshHome.ctaSection ||
+                freshHome.cta ||
+                freshConfig.cta ||
+                sanitizedCta,
+                sanitizedCta as Record<string, unknown>,
               ) as CTASettings;
 
               const normalizedSavedHeader = normalizeSectionStatePayload(
-                freshSections[SECTION_IDS.layoutHeader] || freshLayout.header || freshConfig.header || sanitizedHeader,
-                sanitizedHeader as Record<string, unknown>
+                freshSections[SECTION_IDS.layoutHeader] ||
+                freshLayout.header ||
+                freshConfig.header ||
+                sanitizedHeader,
+                sanitizedHeader as Record<string, unknown>,
               ) as HeaderSettings;
 
               const normalizedSavedFooter = normalizeSectionStatePayload(
-                freshSections[SECTION_IDS.layoutFooter] || freshLayout.footer || freshConfig.footer || sanitizedFooter,
-                sanitizedFooter as Record<string, unknown>
+                freshSections[SECTION_IDS.layoutFooter] ||
+                freshLayout.footer ||
+                freshConfig.footer ||
+                sanitizedFooter,
+                sanitizedFooter as Record<string, unknown>,
               ) as FooterSettings;
 
               const resolvedFont =
@@ -2273,33 +2668,86 @@ export function useEditorApi({
                 (freshConfig.colorSettings as ColorSettings) ||
                 (freshConfig.colors as ColorSettings) ||
                 settings.colorSettings;
-
-              setters.setLastSavedHero(normalizedSavedHero);
-              setters.setLastSavedAboutHero(normalizedSavedAboutHero);
-              setters.setLastSavedStory(normalizedSavedStory);
-              setters.setLastSavedTeam(normalizedSavedTeam);
-              setters.setLastSavedTestimonials(normalizedSavedTestimonials);
-              setters.setLastSavedFont(resolvedFont);
-              setters.setLastSavedColor(resolvedColor);
-              setters.setLastSavedServices(normalizedSavedServices);
-              setters.setLastSavedHomeValues(normalizedSavedHomeValues);
-              setters.setLastSavedAboutUsValues(normalizedSavedAboutUsValues);
-              setters.setLastSavedGallery(normalizedSavedGallery);
-              setters.setLastSavedGalleryPage(normalizedSavedGalleryPage);
-              setters.setLastSavedCTA(normalizedSavedCTA);
-              setters.setLastSavedHeader(normalizedSavedHeader);
-              setters.setLastSavedFooter(normalizedSavedFooter);
-              setters.setLastSavedPageVisibility(settings.pageVisibility);
-              setters.setLastSavedVisibleSections(settings.visibleSections);
-              setters.setLastSavedBookingService(cleanBookingSteps.service);
-              setters.setLastSavedBookingDate(cleanBookingSteps.date);
-              setters.setLastSavedBookingTime(cleanBookingSteps.time);
-              setters.setLastSavedBookingForm(cleanBookingSteps.form);
-              setters.setLastSavedBookingConfirmation(
+              const freshAppointmentFlow =
+                ((freshConfig.appointmentFlow as Record<string, unknown>) ||
+                  (freshConfig.appointment_flow as Record<string, unknown>) ||
+                  {}) as Record<string, unknown>;
+              const freshBookingSteps = ((freshConfig.bookingSteps as Record<
+                string,
+                unknown
+              >) ||
+                (freshConfig.booking_steps as Record<string, unknown>) ||
+                (freshAppointmentFlow.steps as Record<string, unknown>) ||
+                {}) as Record<string, unknown>;
+              const normalizedSavedBookingService = normalizeStepSettings(
+                ((freshAppointmentFlow.step1Services as Record<
+                  string,
+                  unknown
+                >) ||
+                  (freshAppointmentFlow.step1_services as Record<
+                    string,
+                    unknown
+                  >) ||
+                  (freshAppointmentFlow.step1_service as Record<
+                    string,
+                    unknown
+                  >) ||
+                  (freshBookingSteps.service as Record<string, unknown>) ||
+                  (cleanBookingSteps.service as Record<
+                    string,
+                    unknown
+                  >)) as Record<string, unknown>,
+                cleanBookingSteps.service,
+              );
+              const normalizedSavedBookingDate = normalizeStepSettings(
+                (freshBookingSteps.date as Record<string, unknown>) ||
+                (cleanBookingSteps.date as Record<string, unknown>),
+                cleanBookingSteps.date,
+              );
+              const normalizedSavedBookingTime = normalizeStepSettings(
+                (freshBookingSteps.time as Record<string, unknown>) ||
+                (cleanBookingSteps.time as Record<string, unknown>),
+                cleanBookingSteps.time,
+              );
+              const normalizedSavedBookingForm = normalizeStepSettings(
+                (freshBookingSteps.form as Record<string, unknown>) ||
+                (cleanBookingSteps.form as Record<string, unknown>),
+                cleanBookingSteps.form,
+              );
+              const normalizedSavedBookingConfirmation = normalizeStepSettings(
+                (freshBookingSteps.confirmation as Record<string, unknown>) ||
+                (cleanBookingSteps.confirmation as Record<string, unknown>),
                 cleanBookingSteps.confirmation,
               );
-
-              setIsDirty(false);
+              const applySavedState = () => {
+                setters.setLastSavedHero(normalizedSavedHero);
+                setters.setLastSavedAboutHero(normalizedSavedAboutHero);
+                setters.setLastSavedStory(normalizedSavedStory);
+                setters.setLastSavedTeam(normalizedSavedTeam);
+                setters.setLastSavedTestimonials(normalizedSavedTestimonials);
+                setters.setLastSavedFont(resolvedFont);
+                setters.setLastSavedColor(resolvedColor);
+                setters.setLastSavedServices(normalizedSavedServices);
+                setters.setLastSavedHomeValues(normalizedSavedHomeValues);
+                setters.setLastSavedAboutUsValues(normalizedSavedAboutUsValues);
+                setters.setLastSavedGallery(normalizedSavedGallery);
+                setters.setLastSavedGalleryPage(normalizedSavedGalleryPage);
+                setters.setLastSavedCTA(normalizedSavedCTA);
+                setters.setLastSavedHeader(normalizedSavedHeader);
+                setters.setLastSavedFooter(normalizedSavedFooter);
+                setters.setLastSavedPageVisibility(settings.pageVisibility);
+                setters.setLastSavedVisibleSections(settings.visibleSections);
+                setters.setLastSavedBookingService(
+                  normalizedSavedBookingService,
+                );
+                setters.setLastSavedBookingDate(normalizedSavedBookingDate);
+                setters.setLastSavedBookingTime(normalizedSavedBookingTime);
+                setters.setLastSavedBookingForm(normalizedSavedBookingForm);
+                setters.setLastSavedBookingConfirmation(
+                  normalizedSavedBookingConfirmation,
+                );
+                setIsDirty(false);
+              };
 
               // 5. ATUALIZAÇÃO DO CONTEXTO GLOBAL (Força re-render do site no editor)
               if (updateStudioInfo && fresh) {
@@ -2307,22 +2755,18 @@ export function useEditorApi({
                   ">>> [DEBUG_SAVE] Injetando no context - SanitizedServices:",
                   sanitizedServices,
                 );
-                const freshAppointmentFlow =
-                  ((freshConfig.appointmentFlow as Record<string, unknown>) ||
-                    (freshConfig.appointment_flow as Record<string, unknown>) ||
-                    {}) as Record<string, unknown>;
                 const incomingAppointmentFlow =
                   ((payload.appointmentFlow as Record<string, unknown>) ||
                     {}) as Record<string, unknown>;
                 const serviceCardBg =
-                  cleanBookingSteps.service?.cardBgColor || "";
-                const serviceBg = cleanBookingSteps.service?.bgColor || "";
+                  normalizedSavedBookingService?.cardBgColor || "";
+                const serviceBg = normalizedSavedBookingService?.bgColor || "";
                 const serviceAccent =
-                  cleanBookingSteps.service?.accentColor || "";
+                  normalizedSavedBookingService?.accentColor || "";
 
-                const serviceFullConfig = cleanBookingSteps.service
+                const serviceFullConfig = normalizedSavedBookingService
                   ? {
-                    ...cleanBookingSteps.service,
+                    ...normalizedSavedBookingService,
                     cardBgColor: serviceCardBg,
                     cardBackgroundColor: serviceCardBg,
                     card_bg_color: serviceCardBg,
@@ -2343,7 +2787,42 @@ export function useEditorApi({
                   }
                   : undefined;
 
-                const authoritativeConfig = {
+                const normalizedBookingStepsForContext = {
+                  service: normalizedSavedBookingService,
+                  date: normalizedSavedBookingDate,
+                  time: normalizedSavedBookingTime,
+                  form: normalizedSavedBookingForm,
+                  confirmation: normalizedSavedBookingConfirmation,
+                };
+                const incomingStep1Services =
+                  ((incomingAppointmentFlow.step1Services as Record<
+                    string,
+                    unknown
+                  >) ||
+                    (incomingAppointmentFlow.step1_services as Record<
+                      string,
+                      unknown
+                    >)) as Record<string, unknown> | undefined;
+                const freshStep1Services =
+                  ((freshAppointmentFlow.step1Services as Record<
+                    string,
+                    unknown
+                  >) ||
+                    (freshAppointmentFlow.step1_services as Record<
+                      string,
+                      unknown
+                    >)) as Record<string, unknown> | undefined;
+                const normalizedStep1ServicesForContext = normalizeStepSettings(
+                  (serviceFullConfig ||
+                    incomingStep1Services ||
+                    freshStep1Services ||
+                    (normalizedSavedBookingService as Record<string, unknown>)) as
+                  | Record<string, unknown>
+                  | undefined,
+                  normalizedSavedBookingService,
+                );
+
+                const baseAuthoritativeConfig = {
                   ...freshConfig,
                   sections: {
                     ...freshSections,
@@ -2360,6 +2839,12 @@ export function useEditorApi({
                     [SECTION_IDS.homeCta]: normalizedSavedCTA,
                     [SECTION_IDS.layoutHeader]: normalizedSavedHeader,
                     [SECTION_IDS.layoutFooter]: normalizedSavedFooter,
+                    [SECTION_IDS.bookingService]: normalizedSavedBookingService,
+                    [SECTION_IDS.bookingDate]: normalizedSavedBookingDate,
+                    [SECTION_IDS.bookingTime]: normalizedSavedBookingTime,
+                    [SECTION_IDS.bookingForm]: normalizedSavedBookingForm,
+                    [SECTION_IDS.bookingConfirmation]:
+                      normalizedSavedBookingConfirmation,
                     gallery: normalizedSavedGallery,
                     galleryPageSettings: normalizedSavedGalleryPage,
                   },
@@ -2367,7 +2852,7 @@ export function useEditorApi({
                     ...((freshConfig.bookingSteps as Record<string, unknown>) ||
                       (freshConfig.booking_steps as Record<string, unknown>) ||
                       {}),
-                    ...cleanBookingSteps,
+                    ...normalizedBookingStepsForContext,
                   },
                   booking_steps: {
                     ...((freshConfig.booking_steps as Record<
@@ -2376,37 +2861,47 @@ export function useEditorApi({
                     >) ||
                       (freshConfig.bookingSteps as Record<string, unknown>) ||
                       {}),
-                    ...cleanBookingSteps,
+                    ...normalizedBookingStepsForContext,
                   },
                   appointmentFlow: {
                     ...freshAppointmentFlow,
                     ...incomingAppointmentFlow,
-                    ...(serviceFullConfig
-                      ? {
-                        step1Services: {
-                          ...((freshAppointmentFlow.step1Services as Record<
-                            string,
-                            unknown
-                          >) || {}),
-                          ...serviceFullConfig,
-                        },
-                      }
-                      : {}),
+                    steps: {
+                      ...((freshAppointmentFlow.steps as Record<
+                        string,
+                        unknown
+                      >) || {}),
+                      ...normalizedBookingStepsForContext,
+                    },
+                    passos: {
+                      ...((freshAppointmentFlow.passos as Record<
+                        string,
+                        unknown
+                      >) || {}),
+                      ...normalizedBookingStepsForContext,
+                    },
+                    step1Services: normalizedStep1ServicesForContext,
+                    step1_services: normalizedStep1ServicesForContext,
                   },
                   appointment_flow: {
                     ...freshAppointmentFlow,
                     ...incomingAppointmentFlow,
-                    ...(serviceFullConfig
-                      ? {
-                        step1_services: {
-                          ...((freshAppointmentFlow.step1_services as Record<
-                            string,
-                            unknown
-                          >) || {}),
-                          ...serviceFullConfig,
-                        },
-                      }
-                      : {}),
+                    steps: {
+                      ...((freshAppointmentFlow.steps as Record<
+                        string,
+                        unknown
+                      >) || {}),
+                      ...normalizedBookingStepsForContext,
+                    },
+                    passos: {
+                      ...((freshAppointmentFlow.passos as Record<
+                        string,
+                        unknown
+                      >) || {}),
+                      ...normalizedBookingStepsForContext,
+                    },
+                    step1Services: normalizedStep1ServicesForContext,
+                    step1_services: normalizedStep1ServicesForContext,
                   },
                   layoutGlobal: {
                     ...((freshConfig.layoutGlobal as Record<string, unknown>) ||
@@ -2465,14 +2960,122 @@ export function useEditorApi({
                   colors: settings.colorSettings,
                   theme: settings.fontSettings,
                 };
+                const normalizedAuthoritativeConfig = normalizePayload(
+                  baseAuthoritativeConfig as SiteConfigData,
+                ) as Record<string, unknown>;
+                const normalizedAuthoritativeFlow =
+                  ((normalizedAuthoritativeConfig.appointmentFlow as Record<
+                    string,
+                    unknown
+                  >) ||
+                    (normalizedAuthoritativeConfig.appointment_flow as Record<
+                      string,
+                      unknown
+                    >) ||
+                    {}) as Record<string, unknown>;
+                const stabilizedStep1Services = normalizeStepSettings(
+                  ((normalizedAuthoritativeFlow.step1Services as Record<
+                    string,
+                    unknown
+                  >) ||
+                    (normalizedAuthoritativeFlow.step1_services as Record<
+                      string,
+                      unknown
+                    >)) as Record<string, unknown>,
+                  normalizedStep1ServicesForContext,
+                );
+                const authoritativeConfig = {
+                  ...normalizedAuthoritativeConfig,
+                  sections: {
+                    ...((normalizedAuthoritativeConfig.sections as Record<
+                      string,
+                      unknown
+                    >) || {}),
+                    [SECTION_IDS.bookingService]: normalizedSavedBookingService,
+                    [SECTION_IDS.bookingDate]: normalizedSavedBookingDate,
+                    [SECTION_IDS.bookingTime]: normalizedSavedBookingTime,
+                    [SECTION_IDS.bookingForm]: normalizedSavedBookingForm,
+                    [SECTION_IDS.bookingConfirmation]:
+                      normalizedSavedBookingConfirmation,
+                  },
+                  bookingSteps: {
+                    ...((normalizedAuthoritativeConfig.bookingSteps as Record<
+                      string,
+                      unknown
+                    >) ||
+                      (normalizedAuthoritativeConfig.booking_steps as Record<
+                        string,
+                        unknown
+                      >) ||
+                      {}),
+                    ...normalizedBookingStepsForContext,
+                  },
+                  booking_steps: {
+                    ...((normalizedAuthoritativeConfig.booking_steps as Record<
+                      string,
+                      unknown
+                    >) ||
+                      (normalizedAuthoritativeConfig.bookingSteps as Record<
+                        string,
+                        unknown
+                      >) ||
+                      {}),
+                    ...normalizedBookingStepsForContext,
+                  },
+                  appointmentFlow: {
+                    ...normalizedAuthoritativeFlow,
+                    steps: {
+                      ...((normalizedAuthoritativeFlow.steps as Record<
+                        string,
+                        unknown
+                      >) || {}),
+                      ...normalizedBookingStepsForContext,
+                    },
+                    passos: {
+                      ...((normalizedAuthoritativeFlow.passos as Record<
+                        string,
+                        unknown
+                      >) || {}),
+                      ...normalizedBookingStepsForContext,
+                    },
+                    step1Services: stabilizedStep1Services,
+                    step1_services: stabilizedStep1Services,
+                  },
+                  appointment_flow: {
+                    ...normalizedAuthoritativeFlow,
+                    steps: {
+                      ...((normalizedAuthoritativeFlow.steps as Record<
+                        string,
+                        unknown
+                      >) || {}),
+                      ...normalizedBookingStepsForContext,
+                    },
+                    passos: {
+                      ...((normalizedAuthoritativeFlow.passos as Record<
+                        string,
+                        unknown
+                      >) || {}),
+                      ...normalizedBookingStepsForContext,
+                    },
+                    step1Services: stabilizedStep1Services,
+                    step1_services: stabilizedStep1Services,
+                  },
+                };
 
                 console.log(
                   ">>> [ESTRUTURA INJETADA NO CONTEXT]",
                   JSON.parse(JSON.stringify(authoritativeConfig)),
                 );
 
-                updateStudioInfo({
-                  config: authoritativeConfig,
+                unstable_batchedUpdates(() => {
+                  applySavedState();
+                  updateStudioInfo({
+                    config: authoritativeConfig,
+                  });
+                });
+              } else {
+                unstable_batchedUpdates(() => {
+                  applySavedState();
                 });
               }
 
@@ -2492,11 +3095,11 @@ export function useEditorApi({
                 ctaSettings: normalizedSavedCTA,
                 headerSettings: normalizedSavedHeader,
                 footerSettings: normalizedSavedFooter,
-                bookingServiceSettings: cleanBookingSteps.service,
-                bookingDateSettings: cleanBookingSteps.date,
-                bookingTimeSettings: cleanBookingSteps.time,
-                bookingFormSettings: cleanBookingSteps.form,
-                bookingConfirmationSettings: cleanBookingSteps.confirmation,
+                bookingServiceSettings: normalizedSavedBookingService,
+                bookingDateSettings: normalizedSavedBookingDate,
+                bookingTimeSettings: normalizedSavedBookingTime,
+                bookingFormSettings: normalizedSavedBookingForm,
+                bookingConfirmationSettings: normalizedSavedBookingConfirmation,
                 pageVisibility: settings.pageVisibility,
                 visibleSections: settings.visibleSections,
               });
@@ -2524,8 +3127,6 @@ export function useEditorApi({
               console.log(">>> [SYNC] Estado LAST_SAVED atualizado.");
             }
           }
-
-          setIsSaving(false);
 
           // REMOVIDO DISPARO RECURSIVO: O estado lastSaved já foi atualizado,
           // o que forçará a reavaliação de hasUnsavedGlobalChanges naturalmente.

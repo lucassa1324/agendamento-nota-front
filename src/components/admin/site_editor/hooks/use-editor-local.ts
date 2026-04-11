@@ -93,10 +93,17 @@ export type EditorLocalDrafts = {
 export function useEditorLocal() {
   const hasLocalDraft = useCallback((key: string) => {
     if (!key) return false;
-    return false;
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(getStorageKey(key)) !== null;
   }, []);
 
   const loadLocalDrafts = useCallback((): EditorLocalDrafts => {
+    const rawDraftTimestamp = getDraftTimestamp();
+    const parsedDraftTimestamp = rawDraftTimestamp
+      ? /^\d+$/.test(rawDraftTimestamp)
+        ? Number(rawDraftTimestamp)
+        : Date.parse(rawDraftTimestamp)
+      : 0;
     return {
       heroSettings: getHeroSettings(),
       aboutHeroSettings: getAboutHeroSettings(),
@@ -120,7 +127,9 @@ export function useEditorLocal() {
       bookingConfirmationSettings: getBookingConfirmationSettings(),
       pageVisibility: getPageVisibility(),
       visibleSections: getVisibleSections(),
-      draftTimestamp: Number(getDraftTimestamp()) || 0,
+      draftTimestamp: Number.isFinite(parsedDraftTimestamp)
+        ? parsedDraftTimestamp
+        : 0,
     };
   }, []);
 

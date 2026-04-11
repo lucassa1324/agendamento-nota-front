@@ -564,13 +564,13 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         valuesData.cardBgColor ||
-          valuesData.cardBackgroundColor ||
-          valuesData.card_background_color ||
-          cardConfig.backgroundColor ||
-          cardConfig.cardBackgroundColor ||
-          content.cardBgColor ||
-          itemsStyle.itemBackgroundColor ||
-          appearance.cardBgColor,
+        valuesData.cardBackgroundColor ||
+        valuesData.card_background_color ||
+        cardConfig.backgroundColor ||
+        cardConfig.cardBackgroundColor ||
+        content.cardBgColor ||
+        itemsStyle.itemBackgroundColor ||
+        appearance.cardBgColor,
       );
 
       return {
@@ -586,20 +586,20 @@ export function useEditorState() {
         cardTitleColor:
           sanitizeColor(
             valuesData.cardTitleColor ||
-              appearance.cardTitleColor ||
-              content.cardTitleColor,
+            appearance.cardTitleColor ||
+            content.cardTitleColor,
           ) || defaultValuesSettings.cardTitleColor,
         cardDescriptionColor:
           sanitizeColor(
             valuesData.cardDescriptionColor ||
-              appearance.cardDescriptionColor ||
-              content.cardDescriptionColor,
+            appearance.cardDescriptionColor ||
+            content.cardDescriptionColor,
           ) || defaultValuesSettings.cardDescriptionColor,
         cardIconColor:
           sanitizeColor(
             valuesData.cardIconColor ||
-              appearance.cardIconColor ||
-              content.cardIconColor,
+            appearance.cardIconColor ||
+            content.cardIconColor,
           ) || defaultValuesSettings.cardIconColor,
         bgColor:
           sanitizeColor(appearance.backgroundColor || valuesData.bgColor) ||
@@ -618,18 +618,18 @@ export function useEditorState() {
           cardBgColor: cardBg,
           cardTitleColor: sanitizeColor(
             valuesData.cardTitleColor ||
-              appearance.cardTitleColor ||
-              content.cardTitleColor,
+            appearance.cardTitleColor ||
+            content.cardTitleColor,
           ),
           cardDescriptionColor: sanitizeColor(
             valuesData.cardDescriptionColor ||
-              appearance.cardDescriptionColor ||
-              content.cardDescriptionColor,
+            appearance.cardDescriptionColor ||
+            content.cardDescriptionColor,
           ),
           cardIconColor: sanitizeColor(
             valuesData.cardIconColor ||
-              appearance.cardIconColor ||
-              content.cardIconColor,
+            appearance.cardIconColor ||
+            content.cardIconColor,
           ),
           backgroundColor: sanitizeColor(
             appearance.backgroundColor || valuesData.bgColor,
@@ -916,32 +916,32 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         galleryData.cardBgColor ||
-          galleryData.cardBackgroundColor ||
-          galleryData.card_bg_color ||
-          galleryData.card_background_color ||
-          cardConfig.backgroundColor ||
-          cardConfig.cardBackgroundColor ||
-          cardConfig.card_bg_color ||
-          cardConfig.background_color ||
-          content.cardBgColor ||
-          content.cardBackgroundColor ||
-          content.card_bg_color ||
-          content.card_background_color ||
-          itemsStyle.itemBackgroundColor ||
-          itemsStyle.item_background_color ||
-          appearance.cardBackgroundColor ||
-          appearance.cardBgColor,
+        galleryData.cardBackgroundColor ||
+        galleryData.card_bg_color ||
+        galleryData.card_background_color ||
+        cardConfig.backgroundColor ||
+        cardConfig.cardBackgroundColor ||
+        cardConfig.card_bg_color ||
+        cardConfig.background_color ||
+        content.cardBgColor ||
+        content.cardBackgroundColor ||
+        content.card_bg_color ||
+        content.card_background_color ||
+        itemsStyle.itemBackgroundColor ||
+        itemsStyle.item_background_color ||
+        appearance.cardBackgroundColor ||
+        appearance.cardBgColor,
       );
 
       const resolvedBgColor =
         sanitizeColor(
           appearance.backgroundColor ||
-            appearance.background_color ||
-            appearance.bgColor ||
-            galleryData.bgColor ||
-            galleryData.bg_color ||
-            galleryData.backgroundColor ||
-            galleryData.background_color,
+          appearance.background_color ||
+          appearance.bgColor ||
+          galleryData.bgColor ||
+          galleryData.bg_color ||
+          galleryData.backgroundColor ||
+          galleryData.background_color,
         ) || defaultGallerySettings.bgColor;
 
       return {
@@ -1058,10 +1058,30 @@ export function useEditorState() {
 
   const normalizeStoryFromConfig = useCallback(
     (story: unknown): StorySettings => {
+      if (typeof story === "string") {
+        return {
+          ...defaultStorySettings,
+          content: story,
+        };
+      }
       if (!story || typeof story !== "object") return defaultStorySettings;
       const storyData = story as Record<string, unknown>;
       const appearance =
         (storyData.appearance as Record<string, unknown>) || {};
+      const contentData =
+        storyData.content &&
+          typeof storyData.content === "object" &&
+          !Array.isArray(storyData.content)
+          ? (storyData.content as Record<string, unknown>)
+          : {};
+      const normalizedContent =
+        typeof storyData.content === "string"
+          ? storyData.content
+          : typeof contentData.text === "string"
+            ? (contentData.text as string)
+            : typeof contentData.description === "string"
+              ? (contentData.description as string)
+              : defaultStorySettings.content;
       const storyImage =
         (storyData.bgImage as string) ||
         (appearance.backgroundImageUrl as string) ||
@@ -1073,6 +1093,7 @@ export function useEditorState() {
       return {
         ...defaultStorySettings,
         ...(story as Partial<StorySettings>),
+        content: normalizedContent,
         titleColor:
           sanitizeColor(storyData.titleColor || appearance.titleColor) ||
           defaultStorySettings.titleColor,
@@ -1510,7 +1531,7 @@ export function useEditorState() {
         lastSavedColor.text !== defaultColorSettings.text ||
         lastSavedColor.accent !== defaultColorSettings.accent ||
         lastSavedSpecialtyBadge.borderRadius !==
-          defaultColorSettings.specialtyBadge.borderRadius;
+        defaultColorSettings.specialtyBadge.borderRadius;
       const normalizeColor = (value?: string) =>
         sanitizeColor(value || "") || "";
       const isConfigAlignedWithLastSaved =
@@ -1518,15 +1539,15 @@ export function useEditorState() {
         (normalizeColor(resolvedColors.primary) ===
           normalizeColor(lastSavedColor.primary) &&
           normalizeColor(resolvedColors.secondary) ===
-            normalizeColor(lastSavedColor.secondary) &&
+          normalizeColor(lastSavedColor.secondary) &&
           normalizeColor(resolvedColors.background) ===
-            normalizeColor(lastSavedColor.background) &&
+          normalizeColor(lastSavedColor.background) &&
           normalizeColor(resolvedColors.text) ===
-            normalizeColor(lastSavedColor.text) &&
+          normalizeColor(lastSavedColor.text) &&
           normalizeColor(resolvedColors.accent || "") ===
-            normalizeColor(lastSavedColor.accent || "") &&
+          normalizeColor(lastSavedColor.accent || "") &&
           resolvedColors.specialtyBadge.borderRadius ===
-            lastSavedSpecialtyBadge.borderRadius);
+          lastSavedSpecialtyBadge.borderRadius);
       if (!isConfigAlignedWithLastSaved) {
         console.log(
           ">>> [SYNC] studio.config desatualizado em relação ao lastSaved. Ignorando sync.",
@@ -1547,7 +1568,7 @@ export function useEditorState() {
           normalizeColor(lastSavedHero.bgColor) &&
           (normalizedHeroGuard.bgType || "") === (lastSavedHero.bgType || "") &&
           (normalizedHeroGuard.bgImage || "") ===
-            (lastSavedHero.bgImage || ""));
+          (lastSavedHero.bgImage || ""));
       if (!isHeroAlignedWithLastSaved) {
         console.log(
           ">>> [SYNC] studio.config desatualizado para HERO em relação ao lastSaved. Ignorando sync.",
@@ -1570,7 +1591,7 @@ export function useEditorState() {
         (normalizeColor(normalizedValues.bgColor) ===
           normalizeColor(lastSavedHomeValues.bgColor) &&
           normalizeColor(normalizedValues.cardBgColor) ===
-            normalizeColor(lastSavedHomeValues.cardBgColor));
+          normalizeColor(lastSavedHomeValues.cardBgColor));
       if (!isValuesAlignedWithLastSaved) {
         console.log(
           ">>> [SYNC] studio.config desatualizado para VALUES em relação ao lastSaved. Ignorando sync para evitar tela branca.",
@@ -1599,20 +1620,20 @@ export function useEditorState() {
       const normalizedColorSettings =
         hasValidColors(siteColors) || hasValidColors(config.colors)
           ? ({
-              ...defaultColorSettings,
-              ...(config.colors || {}),
-              ...(siteColors || {}),
-            } as ColorSettings)
+            ...defaultColorSettings,
+            ...(config.colors || {}),
+            ...(siteColors || {}),
+          } as ColorSettings)
           : cloneSnapshot(baseSettingsRef.current.colorSettings);
 
       const normalizedFontSettings =
         siteFonts || config.typography || config.theme
           ? ({
-              ...defaultFontSettings,
-              ...(config.theme || {}),
-              ...(config.typography || {}),
-              ...(siteFonts || {}),
-            } as FontSettings)
+            ...defaultFontSettings,
+            ...(config.theme || {}),
+            ...(config.typography || {}),
+            ...(siteFonts || {}),
+          } as FontSettings)
           : cloneSnapshot(baseSettingsRef.current.fontSettings);
 
       setColorSettings(normalizedColorSettings);
@@ -1717,46 +1738,79 @@ export function useEditorState() {
         : cloneSnapshot(baseSettingsRef.current.footerSettings);
       setFooterSettings(normalizedFooter);
 
-      // Sincronizar bookingSteps se houver
-      const bookingSteps = (config.appointmentFlow || config.bookingSteps) as
+      // Sincronizar bookingSteps com blindagem para formatos legados
+      const configRecord = config as Record<string, unknown>;
+      const appointmentFlow = (config.appointmentFlow ||
+        configRecord.appointment_flow) as Record<string, unknown> | undefined;
+      const appointmentSteps = ((appointmentFlow?.steps ||
+        appointmentFlow?.passos) as
         | Record<string, BookingStepSettings | undefined>
-        | undefined;
+        | undefined);
+      const bookingSteps = ((config.bookingSteps ||
+        configRecord.booking_steps) as
+        | Record<string, BookingStepSettings | undefined>
+        | undefined);
 
       const bookingServiceSection =
         sections[SECTION_IDS.bookingService] ||
+        (appointmentFlow?.step1Services as SectionConfig | undefined) ||
+        (appointmentFlow?.step1_services as SectionConfig | undefined) ||
+        (appointmentFlow?.step1_service as SectionConfig | undefined) ||
+        (appointmentSteps?.service as SectionConfig | undefined) ||
         (bookingSteps?.service as SectionConfig | undefined);
       const normalizedBookingService = bookingServiceSection
-        ? normalizeStepSettings(bookingServiceSection as BookingStepSettings)
+        ? normalizeStepSettings(
+          bookingServiceSection as BookingStepSettings,
+          cloneSnapshot(baseSettingsRef.current.bookingServiceSettings),
+        )
         : cloneSnapshot(baseSettingsRef.current.bookingServiceSettings);
       setBookingServiceSettings(normalizedBookingService);
       const bookingDateSection =
         sections[SECTION_IDS.bookingDate] ||
+        (appointmentSteps?.date as SectionConfig | undefined) ||
+        (appointmentFlow?.date as SectionConfig | undefined) ||
         (bookingSteps?.date as SectionConfig | undefined);
       const normalizedBookingDate = bookingDateSection
-        ? normalizeStepSettings(bookingDateSection as BookingStepSettings)
+        ? normalizeStepSettings(
+          bookingDateSection as BookingStepSettings,
+          cloneSnapshot(baseSettingsRef.current.bookingDateSettings),
+        )
         : cloneSnapshot(baseSettingsRef.current.bookingDateSettings);
       setBookingDateSettings(normalizedBookingDate);
       const bookingTimeSection =
         sections[SECTION_IDS.bookingTime] ||
+        (appointmentSteps?.time as SectionConfig | undefined) ||
+        (appointmentFlow?.time as SectionConfig | undefined) ||
         (bookingSteps?.time as SectionConfig | undefined);
       const normalizedBookingTime = bookingTimeSection
-        ? normalizeStepSettings(bookingTimeSection as BookingStepSettings)
+        ? normalizeStepSettings(
+          bookingTimeSection as BookingStepSettings,
+          cloneSnapshot(baseSettingsRef.current.bookingTimeSettings),
+        )
         : cloneSnapshot(baseSettingsRef.current.bookingTimeSettings);
       setBookingTimeSettings(normalizedBookingTime);
       const bookingFormSection =
         sections[SECTION_IDS.bookingForm] ||
+        (appointmentSteps?.form as SectionConfig | undefined) ||
+        (appointmentFlow?.form as SectionConfig | undefined) ||
         (bookingSteps?.form as SectionConfig | undefined);
       const normalizedBookingForm = bookingFormSection
-        ? normalizeStepSettings(bookingFormSection as BookingStepSettings)
+        ? normalizeStepSettings(
+          bookingFormSection as BookingStepSettings,
+          cloneSnapshot(baseSettingsRef.current.bookingFormSettings),
+        )
         : cloneSnapshot(baseSettingsRef.current.bookingFormSettings);
       setBookingFormSettings(normalizedBookingForm);
       const bookingConfirmationSection =
         sections[SECTION_IDS.bookingConfirmation] ||
+        (appointmentSteps?.confirmation as SectionConfig | undefined) ||
+        (appointmentFlow?.confirmation as SectionConfig | undefined) ||
         (bookingSteps?.confirmation as SectionConfig | undefined);
       const normalizedBookingConfirmation = bookingConfirmationSection
         ? normalizeStepSettings(
-            bookingConfirmationSection as BookingStepSettings,
-          )
+          bookingConfirmationSection as BookingStepSettings,
+          cloneSnapshot(baseSettingsRef.current.bookingConfirmationSettings),
+        )
         : cloneSnapshot(baseSettingsRef.current.bookingConfirmationSettings);
       setBookingConfirmationSettings(normalizedBookingConfirmation);
 
@@ -2059,7 +2113,7 @@ export function useEditorState() {
         const resolvedBgColor =
           sanitizeColor(
             (updates.bgColor as string | undefined) ||
-              (updatesAppearance.backgroundColor as string | undefined),
+            (updatesAppearance.backgroundColor as string | undefined),
           ) || "";
         if (updates.bgColor !== undefined)
           newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
@@ -2125,7 +2179,7 @@ export function useEditorState() {
         const resolvedBgColor =
           sanitizeColor(
             (updates.bgColor as string | undefined) ||
-              (updatesAppearance.backgroundColor as string | undefined),
+            (updatesAppearance.backgroundColor as string | undefined),
           ) || "";
         if (updates.bgColor !== undefined)
           newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;

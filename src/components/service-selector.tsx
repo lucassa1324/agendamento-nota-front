@@ -367,46 +367,51 @@ export function ServiceSelector({
 
       {selected.length > 0 && (
         <Card
-          className="border-primary/20 sticky bottom-4 z-10 shadow-lg"
+          className="border-primary/20 sticky bottom-4 z-20 shadow-xl mx-4 sm:mx-0"
           style={{
             backgroundColor: cardBgColor !== "transparent" ? cardBgColor : "var(--background)",
             borderColor: accentColor
-              ? `${accentColor}33`
+              ? `${accentColor}40`
               : undefined,
           }}
         >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex flex-col">
-              <span
-                className="text-xs text-muted-foreground uppercase font-bold tracking-wider"
-                style={{ fontFamily: "var(--font-body)" }}
-              >
-                Total Selecionado
-              </span>
-              <div className="flex items-center gap-3">
+          <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center justify-between w-full sm:w-auto sm:justify-start gap-6">
+              <div className="flex flex-col">
                 <span
-                  className="text-lg font-bold"
-                  style={{
-                    color: "var(--foreground)",
-                    fontFamily: "var(--font-title)",
-                  }}
+                  className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1"
+                  style={{ fontFamily: "var(--font-body)" }}
                 >
-                  R${" "}
-                  {totalPrice.toLocaleString("pt-BR", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  Total Selecionado
                 </span>
-                <span className="text-muted-foreground text-sm flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {totalDuration} min
-                </span>
+                <div className="flex items-baseline gap-3">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-sm font-medium text-muted-foreground">R$</span>
+                    <span
+                      className="text-2xl font-bold tracking-tight"
+                      style={{
+                        color: "var(--foreground)",
+                        fontFamily: "var(--font-title)",
+                      }}
+                    >
+                      {totalPrice.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground text-xs font-medium">
+                    <Clock className="w-3 h-3" />
+                    <span>{totalDuration} min</span>
+                  </div>
+                </div>
               </div>
             </div>
             <Button
               onClick={onConfirm}
               style={{ backgroundColor: accentColor }}
               className={cn(
-                "w-full h-12 text-base font-bold",
+                "w-full sm:w-auto min-w-[200px] h-12 px-8 text-base font-bold shadow-lg hover:brightness-110 transition-all active:scale-[0.98] shrink-0",
                 !accentColor && "bg-primary",
               )}
             >

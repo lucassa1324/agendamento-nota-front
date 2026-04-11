@@ -32,13 +32,14 @@ import {
   Utensils,
   Wind,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import {
   type AppearanceSettings,
   getAboutUsValuesSettings,
   getHomeValuesSettings,
+  SECTION_IDS,
   sanitizeColor,
   type ValueItem,
   type ValuesSettings,
@@ -91,9 +92,7 @@ export function ValuesSection({
 }) {
   const { studio, isLoading } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
-  const [settings, setSettings] = useState<ValuesSettings | null>(
-    propSettings || null,
-  );
+  const [liveSettings, setLiveSettings] = useState<ValuesSettings | null>(null);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
   );
@@ -108,13 +107,6 @@ export function ValuesSection({
   const isInsideIframe =
     typeof window !== "undefined" && window.parent !== window;
   const hasLivePreviewUpdateRef = useRef(false);
-
-  // Atualiza o estado interno se a prop settings mudar
-  useEffect(() => {
-    if (propSettings && (!isInsideIframe || !hasLivePreviewUpdateRef.current)) {
-      setSettings(propSettings);
-    }
-  }, [isInsideIframe, propSettings]);
 
   const normalizeValues = useCallback((rawValues: Record<string, unknown>) => {
     const content = (rawValues.content as Record<string, unknown>) || {};
@@ -199,9 +191,19 @@ export function ValuesSection({
             : true;
 
     const normalized = {
-      ...rawValues,
-      ...content,
-      ...appearance,
+      ...(rawValues &&
+      typeof rawValues === "object" &&
+      !Array.isArray(rawValues)
+        ? (rawValues as Record<string, unknown>)
+        : {}),
+      ...(content && typeof content === "object" && !Array.isArray(content)
+        ? (content as Record<string, unknown>)
+        : {}),
+      ...(appearance &&
+      typeof appearance === "object" &&
+      !Array.isArray(appearance)
+        ? (appearance as Record<string, unknown>)
+        : {}),
       // EXTRAÇÃO DE HEADER E FALLBACKS (Solicitado pelo usuário)
       title:
         (rawValues.title as string) ||
@@ -331,110 +333,85 @@ export function ValuesSection({
     return normalized;
   }, []);
 
-  const loadData = useCallback(() => {
-    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
-    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-      console.log(
-        "[ValuesSection] Guard Logic: Ignorando loadData do banco (Preview Ativo)",
-      );
-      return;
+  const asRecord = useCallback((value: unknown) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return undefined;
     }
+    return value as Record<string, unknown>;
+  }, []);
 
-    // Se tivermos dados do studio via context (multi-tenant), usamos eles
+  const baseSettings = useMemo(() => {
+    if (propSettings) {
+      return normalizeValues(
+        propSettings as unknown as Record<string, unknown>,
+      );
+    }
     if (studioId) {
       const config = studioConfig as SiteConfigData | undefined;
-
-      // Sincroniza o array de visibilidade
-      const rawVisible =
-        config?.visibleSections ||
-        (config as Record<string, unknown>)?.visible_sections;
-      if (rawVisible) {
-        if (Array.isArray(rawVisible)) {
-          const mapped: Record<string, boolean> = {};
-          (rawVisible as string[]).forEach((id: string) => {
-            mapped[id] = true;
-          });
-          setVisibleSections(mapped);
-        } else {
-          setVisibleSections(rawVisible as Record<string, boolean>);
-        }
-      }
-
-      const layoutGlobal = (config?.layoutGlobal || config?.layout_global) as
-        | Record<string, unknown>
-        | undefined;
-      const home = (config?.home ||
-        (config as Record<string, unknown>)?.home_page) as
-        | Record<string, unknown>
-        | undefined;
-      const aboutUs = ((config as Record<string, unknown>)?.aboutUs ||
-        (config as Record<string, unknown>)?.about_us) as
-        | Record<string, unknown>
-        | undefined;
-      const rawValues =
-        source === "home"
-          ? ((config?.homeValuesSettings ||
-              config?.homeValues ||
-              config?.home_values ||
-              layoutGlobal?.homeValuesSettings ||
-              home?.valuesSection ||
-              home?.values ||
-              layoutGlobal?.values ||
-              config?.values ||
-              config?.valuesSection) as Record<string, unknown> | undefined)
-          : ((config?.aboutUsValuesSettings ||
-              config?.aboutUsValues ||
-              config?.about_us_values ||
-              layoutGlobal?.aboutUsValuesSettings ||
-              aboutUs?.valuesSection ||
-              aboutUs?.values ||
-              layoutGlobal?.values ||
-              config?.values ||
-              config?.valuesSection) as Record<string, unknown> | undefined);
-
-      if (rawValues) {
-        setSettings(normalizeValues(rawValues));
-      } else {
-        // PASSE O CONFIG PARA A FUNÇÃO LER OS DADOS! (Solicitado pelo usuário)
-        const fallback =
-          source === "home"
-            ? getHomeValuesSettings(config)
-            : getAboutUsValuesSettings(config);
-
-        // Se já temos um objeto ValuesSettings pronto do fallback, usamos ele diretamente
-        // ou normalizamos se necessário para garantir que as chaves de aparência existam.
-        setSettings(
-          normalizeValues(fallback as unknown as Record<string, unknown>),
-        );
-      }
-    } else {
-      const defaultSettings =
-        source === "home"
-          ? getHomeValuesSettings()
-          : getAboutUsValuesSettings();
-      setSettings(
-        normalizeValues(defaultSettings as unknown as Record<string, unknown>),
-      );
+      const targetId =
+        source === "home" ? SECTION_IDS.homeValues : SECTION_IDS.aboutValues;
+      const sections = (config as Record<string, unknown> | undefined)
+        ?.sections as Record<string, unknown> | undefined;
+      const fallback =
+        sections?.[targetId] ||
+        (source === "home"
+          ? getHomeValuesSettings(config)
+          : getAboutUsValuesSettings(config));
+      return normalizeValues(fallback as Record<string, unknown>);
     }
-  }, [isInsideIframe, normalizeValues, source, studioId, studioConfig]);
+    const defaults =
+      source === "home" ? getHomeValuesSettings() : getAboutUsValuesSettings();
+    return normalizeValues(defaults as unknown as Record<string, unknown>);
+  }, [normalizeValues, propSettings, source, studioConfig, studioId]);
 
-  // Efeito para sincronizar com mudanças no contexto global (Hydration/Post-Save)
-  useEffect(() => {
-    if (isMounted) {
-      // Só sincroniza se não estivermos no iframe ou se ainda não houve atualização de preview
-      if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
-        console.log(">>> [VALUES_SECTION] Syncing with studioConfig change...");
-        loadData();
-      }
+  const settings = useMemo(() => {
+    if (!liveSettings) return baseSettings;
+    const baseRecord = baseSettings as unknown as Record<string, unknown>;
+    const liveRecord = liveSettings as unknown as Record<string, unknown>;
+    const merged = {
+      ...baseRecord,
+      ...liveRecord,
+      appearance: {
+        ...((baseRecord.appearance as Record<string, unknown>) || {}),
+        ...((liveRecord.appearance as Record<string, unknown>) || {}),
+      },
+      content: {
+        ...((baseRecord.content as Record<string, unknown>) || {}),
+        ...((liveRecord.content as Record<string, unknown>) || {}),
+      },
+      cardConfig: {
+        ...((baseRecord.cardConfig as Record<string, unknown>) || {}),
+        ...((liveRecord.cardConfig as Record<string, unknown>) || {}),
+      },
+      items:
+        Array.isArray(liveRecord.items) && liveRecord.items.length > 0
+          ? liveRecord.items
+          : baseRecord.items,
+    };
+    return normalizeValues(merged);
+  }, [baseSettings, liveSettings, normalizeValues]);
+
+  const syncVisibleSectionsFromStudio = useCallback(() => {
+    if (!studioId) return;
+    const config = studioConfig as SiteConfigData | undefined;
+    const rawVisible =
+      config?.visibleSections ||
+      (config as Record<string, unknown> | undefined)?.visible_sections;
+    if (!rawVisible) return;
+    if (Array.isArray(rawVisible)) {
+      const mapped: Record<string, boolean> = {};
+      (rawVisible as string[]).forEach((id) => {
+        mapped[id] = true;
+      });
+      setVisibleSections(mapped);
+      return;
     }
-  }, [isMounted, loadData, isInsideIframe]);
+    setVisibleSections(rawVisible as Record<string, boolean>);
+  }, [studioConfig, studioId]);
 
   useEffect(() => {
     setIsMounted(true);
-    // Só carrega os dados iniciais se não houver um preview ativo ou se não estiver no iframe
-    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
-      loadData();
-    }
+    syncVisibleSectionsFromStudio();
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
@@ -484,26 +461,35 @@ export function ValuesSection({
             | undefined;
           const layoutGlobal = (siteData.layoutGlobal ||
             siteData.layout_global) as Record<string, unknown> | undefined;
-          rawValues =
-            source === "home"
-              ? ((siteData.homeValuesSettings ||
-                  siteData.homeValues ||
-                  siteData.home_values ||
-                  layoutGlobal?.homeValuesSettings ||
-                  homeData?.valuesSection ||
-                  homeData?.values ||
-                  layoutGlobal?.values ||
-                  siteData.valuesSection ||
-                  siteData.values) as Record<string, unknown> | undefined)
-              : ((siteData.aboutUsValuesSettings ||
-                  siteData.aboutUsValues ||
-                  siteData.about_us_values ||
-                  layoutGlobal?.aboutUsValuesSettings ||
-                  aboutData?.valuesSection ||
-                  aboutData?.values ||
-                  layoutGlobal?.values ||
-                  siteData.valuesSection ||
-                  siteData.values) as Record<string, unknown> | undefined);
+          const sections = siteData.sections as
+            | Record<string, unknown>
+            | undefined;
+
+          if (source === "home") {
+            rawValues =
+              asRecord(sections?.[SECTION_IDS.homeValues]) ||
+              asRecord(siteData.homeValuesSettings) ||
+              asRecord(siteData.homeValues) ||
+              asRecord(siteData.home_values) ||
+              asRecord(layoutGlobal?.homeValuesSettings) ||
+              asRecord(homeData?.valuesSection) ||
+              asRecord(homeData?.values) ||
+              asRecord(layoutGlobal?.values) ||
+              asRecord(siteData.valuesSection) ||
+              asRecord(siteData.values);
+          } else {
+            rawValues =
+              asRecord(sections?.[SECTION_IDS.aboutValues]) ||
+              asRecord(siteData.aboutUsValuesSettings) ||
+              asRecord(siteData.aboutUsValues) ||
+              asRecord(siteData.about_us_values) ||
+              asRecord(layoutGlobal?.aboutUsValuesSettings) ||
+              asRecord(aboutData?.valuesSection) ||
+              asRecord(aboutData?.values) ||
+              asRecord(layoutGlobal?.values) ||
+              asRecord(siteData.valuesSection) ||
+              asRecord(siteData.values);
+          }
         } else if (
           event.data.type === "UPDATE_SITE_CONFIG" &&
           event.data.config
@@ -520,24 +506,24 @@ export function ValuesSection({
             | undefined;
           rawValues =
             source === "home"
-              ? ((config.homeValuesSettings ||
-                  config.homeValues ||
-                  config.home_values ||
-                  layoutGlobal?.homeValuesSettings ||
-                  homeData?.valuesSection ||
-                  homeData?.values ||
-                  layoutGlobal?.values ||
-                  config.valuesSection ||
-                  config.values) as Record<string, unknown> | undefined)
-              : ((config.aboutUsValuesSettings ||
-                  config.aboutUsValues ||
-                  config.about_us_values ||
-                  layoutGlobal?.aboutUsValuesSettings ||
-                  aboutData?.valuesSection ||
-                  aboutData?.values ||
-                  layoutGlobal?.values ||
-                  config.valuesSection ||
-                  config.values) as Record<string, unknown> | undefined);
+              ? asRecord(config.homeValuesSettings) ||
+                asRecord(config.homeValues) ||
+                asRecord(config.home_values) ||
+                asRecord(layoutGlobal?.homeValuesSettings) ||
+                asRecord(homeData?.valuesSection) ||
+                asRecord(homeData?.values) ||
+                asRecord(layoutGlobal?.values) ||
+                asRecord(config.valuesSection) ||
+                asRecord(config.values)
+              : asRecord(config.aboutUsValuesSettings) ||
+                asRecord(config.aboutUsValues) ||
+                asRecord(config.about_us_values) ||
+                asRecord(layoutGlobal?.aboutUsValuesSettings) ||
+                asRecord(aboutData?.valuesSection) ||
+                asRecord(aboutData?.values) ||
+                asRecord(layoutGlobal?.values) ||
+                asRecord(config.valuesSection) ||
+                asRecord(config.values);
         } else {
           rawValues = event.data.settings as
             | Record<string, unknown>
@@ -545,7 +531,7 @@ export function ValuesSection({
         }
 
         if (rawValues) {
-          setSettings((prev) => {
+          setLiveSettings((prev) => {
             const incoming = rawValues as Record<string, unknown>;
             const incomingAppearance =
               (incoming.appearance as Record<string, unknown>) || {};
@@ -572,27 +558,15 @@ export function ValuesSection({
               ),
             };
 
-            // Se for um evento genérico (UPDATE_SITE_DATA), usamos o normalizeValues completo
-            if (isGenericSiteEvent) {
-              const normalized = normalizeValues(rawValues);
-              if (!prev) return normalized;
-              return {
-                ...prev,
-                ...normalized,
-                items:
-                  Array.isArray(normalized.items) && normalized.items.length > 0
-                    ? normalized.items
-                    : prev.items,
-              };
-            }
-
-            // Se for um evento específico (UPDATE_HOME_VALUES_SETTINGS), fazemos um merge cirúrgico
-            // para não perder o que já temos no estado (especialmente se o payload for parcial)
-            if (!prev) return normalizeValues(rawValues);
-
+            const normalizedIncoming = normalizeValues(rawValues);
+            const prevRecord = (prev || baseSettings) as unknown as Record<
+              string,
+              unknown
+            >;
             const merged = {
-              ...prev,
+              ...prevRecord,
               ...incoming,
+              ...normalizedIncoming,
               ...(sanitizedColors.bgColor
                 ? {
                     bgColor: sanitizedColors.bgColor,
@@ -611,7 +585,9 @@ export function ValuesSection({
 
             if (sanitizedColors.bgColor || sanitizedColors.cardBgColor) {
               const previousAppearance =
-                (prev.appearance as Record<string, unknown> | undefined) || {};
+                (prevRecord.appearance as
+                  | Record<string, unknown>
+                  | undefined) || {};
               const incomingAppearanceData =
                 (incoming.appearance as Record<string, unknown> | undefined) ||
                 {};
@@ -635,7 +611,6 @@ export function ValuesSection({
               };
             }
 
-            // Se o payload trouxe itens, atualizamos. Se não, mantemos os atuais.
             if (Array.isArray(incoming.items) && incoming.items.length > 0) {
               merged.items = incoming.items as ValueItem[];
             } else if (
@@ -643,9 +618,14 @@ export function ValuesSection({
               incomingContent.items.length > 0
             ) {
               merged.items = incomingContent.items as ValueItem[];
+            } else if (
+              Array.isArray(normalizedIncoming.items) &&
+              normalizedIncoming.items.length > 0
+            ) {
+              merged.items = normalizedIncoming.items as ValueItem[];
             }
 
-            return merged as ValuesSettings;
+            return normalizeValues(merged);
           });
         }
       }
@@ -673,21 +653,30 @@ export function ValuesSection({
       source === "home"
         ? "homeValuesSettingsUpdated"
         : "aboutUsValuesSettingsUpdated";
-    window.addEventListener(updateEvent, loadData);
+    window.addEventListener(updateEvent, syncVisibleSectionsFromStudio);
     const handleDataReady = () => {
-      if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-        return;
-      }
-      loadData();
+      syncVisibleSectionsFromStudio();
     };
     window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
-      window.removeEventListener(updateEvent, loadData);
+      window.removeEventListener(updateEvent, syncVisibleSectionsFromStudio);
       window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [isInsideIframe, loadData, normalizeValues, source]);
+  }, [
+    asRecord,
+    baseSettings,
+    normalizeValues,
+    source,
+    syncVisibleSectionsFromStudio,
+  ]);
+
+  useEffect(() => {
+    if (!isInsideIframe) {
+      setLiveSettings(null);
+    }
+  }, [isInsideIframe]);
 
   // Lógica interna de visibilidade para sincronizar com o que o Editor manda via PostMessage
   const isSectionVisible = (id: string) => {

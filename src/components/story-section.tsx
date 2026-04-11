@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStudio } from "@/context/studio-context";
+import type { SiteConfigData, SectionsMap } from "@/components/admin/site_editor/hooks/use-site-editor";
 import {
   getStorageKey,
   getStorySettings,
@@ -90,41 +91,50 @@ export function StorySection() {
   const hasLivePreviewUpdateRef = useRef(false);
 
   const loadData = useCallback(() => {
-    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
-    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-      console.log("[StorySection] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
-      return;
-    }
-
     // Se tivermos dados do studio via context (multi-tenant), usamos eles
     const config = studioConfig as SiteConfigData | undefined;
     const siteCustomization =
       config?.siteCustomization || config?.site_customization;
+    const sections = config?.sections as Record<string, any> | undefined;
     const layoutGlobal =
       siteCustomization?.layoutGlobal ||
       siteCustomization?.layout_global ||
       (config as Record<string, unknown>)?.layoutGlobal ||
       (config as Record<string, unknown>)?.layout_global;
     const home = config?.home;
-    const rawStory = (home?.storySection ||
+
+    const rawStory = (sections?.[SECTION_IDS.homeStory] ||
+      home?.storySection ||
       home?.historySection ||
       config?.story ||
       (layoutGlobal as Record<string, unknown>)?.story) as
       | Record<string, unknown>
       | undefined;
 
-    // Se tiver rawStory, mas ele estiver vazio ou apenas com lixo, ignoramos
-    const isEffectivelyEmpty = !rawStory || Object.keys(rawStory).length === 0 || 
-      (Object.keys(rawStory).length === 1 && rawStory.id);
+    console.log("[StorySection] loadData - rawStory:", {
+      found: !!rawStory,
+      source: sections?.[SECTION_IDS.homeStory] ? "sections" : (home?.storySection ? "home.storySection" : "other"),
+      hasContent: !!rawStory?.content
+    });
+
+    const isEffectivelyEmpty =
+      !rawStory ||
+      Object.keys(rawStory).length === 0 ||
+      (Object.keys(rawStory).length === 1 && (rawStory as any).id);
 
     if (rawStory && !isEffectivelyEmpty) {
-      const content = (rawStory.content as Record<string, unknown>) || {};
-      const appearance = (rawStory.appearance as Record<string, unknown>) || {};
+      const content = (rawStory.content && typeof rawStory.content === "object" && !Array.isArray(rawStory.content)
+        ? (rawStory.content as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
+      
+      const appearance = (rawStory.appearance && typeof rawStory.appearance === "object" && !Array.isArray(rawStory.appearance)
+        ? (rawStory.appearance as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
 
       const normalizedStory = {
         ...rawStory,
-        ...content,
-        ...appearance,
+        ...(typeof rawStory.content === "object" ? content : {}),
+        ...(typeof rawStory.appearance === "object" ? appearance : {}),
         title: safeString(
           content.title ?? rawStory.title ?? "",
           defaultStorySettings.title,
@@ -188,10 +198,12 @@ export function StorySection() {
         
         if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
           const siteData = event.data.data as Record<string, unknown>;
+          const sections = siteData.sections as Record<string, unknown> | undefined;
           const layoutGlobal = (siteData.layoutGlobal ||
             siteData.layout_global) as Record<string, unknown> | undefined;
           const home = siteData.home as Record<string, unknown> | undefined;
-          rawStory = (home?.storySection ||
+          rawStory = (sections?.[SECTION_IDS.homeStory] ||
+            home?.storySection ||
             home?.historySection ||
             siteData.story ||
             layoutGlobal?.story) as Record<string, unknown>;
@@ -212,14 +224,23 @@ export function StorySection() {
           return;
         }
 
-        const content = (rawStory.content as Record<string, unknown>) || {};
-        const appearance =
-          (rawStory.appearance as Record<string, unknown>) || {};
+        console.log("[StorySection] handleMessage - rawStory found:", {
+          type: event.data.type,
+          hasContent: !!rawStory.content
+        });
+
+        const content = (rawStory.content && typeof rawStory.content === "object" && !Array.isArray(rawStory.content)
+          ? (rawStory.content as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
+        
+        const appearance = (rawStory.appearance && typeof rawStory.appearance === "object" && !Array.isArray(rawStory.appearance)
+          ? (rawStory.appearance as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
 
         const normalizedStory = {
           ...rawStory,
-          ...content,
-          ...appearance,
+          ...(typeof rawStory.content === "object" ? content : {}),
+          ...(typeof rawStory.appearance === "object" ? appearance : {}),
           title: safeString(
             content.title ?? rawStory.title ?? "",
             defaultStorySettings.title,
@@ -228,39 +249,34 @@ export function StorySection() {
             content.content ?? rawStory.content ?? "",
             defaultStorySettings.content,
           ),
-          titleColor:
-            sanitizeColor(
-              (rawStory.titleColor as string) ||
-                (appearance.titleColor as string) ||
-                (content.titleColor as string),
-            ) || "",
-          titleFont: safeString(
+          titleColor: sanitizeColor(
+            (rawStory.titleColor as string) ||
+              (appearance.titleColor as string) ||
+              (content.titleColor as string),
+          ),
+          titleFont:
             (rawStory.titleFont as string) ||
-              (appearance.titleFont as string) ||
-              (content.titleFont as string),
+            (appearance.titleFont as string) ||
+            (content.titleFont as string),
+          contentColor: sanitizeColor(
+            (rawStory.contentColor as string) ||
+              (appearance.contentColor as string) ||
+              (content.contentColor as string),
           ),
-          contentColor:
-            sanitizeColor(
-              (rawStory.contentColor as string) ||
-                (appearance.contentColor as string) ||
-                (content.contentColor as string),
-            ) || "",
-          contentFont: safeString(
+          contentFont:
             (rawStory.contentFont as string) ||
-              (appearance.contentFont as string) ||
-              (content.contentFont as string),
-          ),
+            (appearance.contentFont as string) ||
+            (content.contentFont as string),
           bgImage:
             (rawStory.bgImage as string) ||
             (appearance.backgroundImageUrl as string) ||
             "",
-          bgColor:
-            sanitizeColor(
-              (rawStory.bgColor as string) ||
-                (rawStory.backgroundColor as string) ||
-                (appearance.backgroundColor as string) ||
-                "",
-            ) || "",
+          bgColor: sanitizeColor(
+            (rawStory.bgColor as string) ||
+              (rawStory.backgroundColor as string) ||
+              (appearance.backgroundColor as string) ||
+              "",
+          ),
         };
 
         setSettings((prev) =>

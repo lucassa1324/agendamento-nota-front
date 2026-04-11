@@ -27,7 +27,6 @@ import {
   normalizeStepSettings,
   parseDuration,
   type Service,
-  sanitizeColor,
   saveBlockedPeriods,
   saveWeekSchedule,
 } from "@/lib/booking-data";
@@ -83,20 +82,17 @@ export function BookingFlow() {
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(
     null,
   );
-  const [step1Styles, setStep1Styles] = useState<{
-    background: string;
-    cardBackground: string;
-    accent: string;
-    title: string;
-    subtitle: string;
-  } | null>(null);
   const [previewOverrides, setPreviewOverrides] = useState<
     Partial<Record<BookingStep, BookingStepSettings>>
   >({});
 
   // Debug visibility and state
   useEffect(() => {
-    const pageVisibility = (studio?.config as Record<string, unknown>)?.pageVisibility as Record<string, boolean> || {};
+    const pageVisibility =
+      ((studio?.config as Record<string, unknown>)?.pageVisibility as Record<
+        string,
+        boolean
+      >) || {};
     console.log(">>> [BOOKING_FLOW] Renderizando com:", {
       isLoading,
       hasStudio: !!studio,
@@ -104,69 +100,42 @@ export function BookingFlow() {
       currentStep,
       selectedServicesCount: selectedServices.length,
       pageVisibility,
-      agendarVisible: pageVisibility.agendar !== false
+      agendarVisible: pageVisibility.agendar !== false,
     });
   }, [isLoading, studio, only, currentStep, selectedServices.length]);
-
-  const resolveStep1Styles = useCallback((styles?: Record<string, unknown>) => {
-    const safeStyles = styles || {};
-    const cardConfig =
-      (safeStyles.cardConfig as Record<string, unknown> | undefined) ||
-      (safeStyles.card_config as Record<string, unknown> | undefined);
-    return {
-      background:
-        sanitizeColor(
-          (safeStyles.bgColor as string) ||
-            (safeStyles.bg_color as string) ||
-            (safeStyles.backgroundColor as string),
-        ) || "transparent",
-      cardBackground:
-        sanitizeColor(
-          (safeStyles.cardBgColor as string) ||
-            (safeStyles.cardBackgroundColor as string) ||
-            (safeStyles.card_bg_color as string) ||
-            (safeStyles.card_background_color as string) ||
-            (cardConfig?.cardBgColor as string) ||
-            (cardConfig?.cardBackgroundColor as string) ||
-            (cardConfig?.card_bg_color as string) ||
-            (cardConfig?.card_background_color as string) ||
-            (cardConfig?.backgroundColor as string) ||
-            (cardConfig?.background_color as string),
-        ) || "transparent",
-      accent:
-        sanitizeColor(
-          (safeStyles.accentColor as string) ||
-            (safeStyles.accent_color as string),
-        ) || "#000000",
-      title:
-        sanitizeColor(
-          (safeStyles.titleColor as string) ||
-            (safeStyles.title_color as string),
-        ) || "#000000",
-      subtitle:
-        sanitizeColor(
-          (safeStyles.subtitleColor as string) ||
-            (safeStyles.subtitle_color as string),
-        ) || "#666666",
-    };
-  }, []);
-
-  useEffect(() => {
-    const config = studio?.config as SiteConfigData | undefined;
-    const appointmentFlow = (config?.appointmentFlow ||
-      config?.appointment_flow) as Record<string, unknown> | undefined;
-    const step1Services =
-      (appointmentFlow?.step1Services as Record<string, unknown>) ||
-      (appointmentFlow?.step1_services as Record<string, unknown>) ||
-      (appointmentFlow?.step1_service as Record<string, unknown>);
-    if (step1Services) {
-      setStep1Styles(resolveStep1Styles(step1Services));
-    }
-  }, [resolveStep1Styles, studio?.config]);
 
   // Force re-render on storage or specific events
   const [tick, setTick] = useState(0);
   const handleRefresh = useCallback(() => setTick((t) => t + 1), []);
+  const relevantStorageSuffixes = useMemo(
+    () => [
+      "bookingServiceSettings",
+      "bookingDateSettings",
+      "bookingTimeSettings",
+      "bookingFormSettings",
+      "bookingConfirmationSettings",
+      "last_draft_update",
+      "layoutGlobal",
+      "current_admin_id",
+    ],
+    [],
+  );
+  const handleStorageRefresh = useCallback(
+    (event: StorageEvent) => {
+      const key = event.key || "";
+      if (!key) return;
+      if (key === "studio-preview-cache" || key === "studio-local-draft") {
+        return;
+      }
+      const shouldRefresh = relevantStorageSuffixes.some(
+        (suffix) => key === suffix || key.endsWith(`_${suffix}`),
+      );
+      if (shouldRefresh) {
+        handleRefresh();
+      }
+    },
+    [handleRefresh, relevantStorageSuffixes],
+  );
 
   const totalService = useMemo(() => {
     if (selectedServices.length === 0) {
@@ -218,15 +187,18 @@ export function BookingFlow() {
   // Settings states
   const globalColors = useMemo(() => {
     const config = studio?.config as SiteConfigData | undefined;
-    const siteCustomization = config?.siteCustomization || config?.site_customization;
+    const siteCustomization =
+      config?.siteCustomization || config?.site_customization;
     const layoutGlobal =
       siteCustomization?.layoutGlobal || siteCustomization?.layout_global;
     const siteColors = (layoutGlobal as Record<string, unknown>)?.siteColors as
       | Record<string, string>
       | undefined;
-    
-    const appointmentFlow = (config?.appointmentFlow || config?.appointment_flow) as Record<string, unknown> | undefined;
-    const appointmentFlowColors = (appointmentFlow?.colors || appointmentFlow?.cores) as Record<string, string> | undefined;
+
+    const appointmentFlow = (config?.appointmentFlow ||
+      config?.appointment_flow) as Record<string, unknown> | undefined;
+    const appointmentFlowColors = (appointmentFlow?.colors ||
+      appointmentFlow?.cores) as Record<string, string> | undefined;
 
     return {
       background:
@@ -236,9 +208,7 @@ export function BookingFlow() {
         config?.colors?.background ||
         defaultColorSettings.background,
       text:
-        siteColors?.text ||
-        config?.colors?.text ||
-        defaultColorSettings.text,
+        siteColors?.text || config?.colors?.text || defaultColorSettings.text,
     };
   }, [studio?.config]);
 
@@ -247,273 +217,93 @@ export function BookingFlow() {
       const appearance = settings.appearance || {};
       return {
         ...settings,
-        bgColor: settings.bgColor || appearance.backgroundColor || globalColors.background,
-        titleColor: settings.titleColor || appearance.titleColor || globalColors.text,
+        bgColor:
+          settings.bgColor ||
+          appearance.backgroundColor ||
+          globalColors.background,
+        titleColor:
+          settings.titleColor || appearance.titleColor || globalColors.text,
         subtitleColor:
-          settings.subtitleColor || appearance.subtitleColor || globalColors.text,
+          settings.subtitleColor ||
+          appearance.subtitleColor ||
+          globalColors.text,
         appearance: {
           ...appearance,
           backgroundColor:
-            appearance.backgroundColor || settings.bgColor || globalColors.background,
+            appearance.backgroundColor ||
+            settings.bgColor ||
+            globalColors.background,
           titleColor:
             appearance.titleColor || settings.titleColor || globalColors.text,
           subtitleColor:
-            appearance.subtitleColor || settings.subtitleColor || globalColors.text,
+            appearance.subtitleColor ||
+            settings.subtitleColor ||
+            globalColors.text,
         },
       };
     },
     [globalColors.background, globalColors.text],
   );
 
-  const normalizeBookingStep = useCallback(
-    (
-      stepKey: "service" | "date" | "time" | "form" | "confirmation",
-      defaults: BookingStepSettings,
-    ) => {
-      const config = studio?.config as SiteConfigData | undefined;
-      const appointmentFlow = (config?.appointmentFlow ||
-        config?.appointment_flow) as Record<string, unknown> | undefined;
-      const step1Services =
-        (appointmentFlow?.step1Services as Record<string, unknown>) ||
-        (appointmentFlow?.step1_services as Record<string, unknown>) ||
-        (appointmentFlow?.step1_service as Record<string, unknown>);
-      const step1CardConfig =
-        (step1Services?.cardConfig as Record<string, unknown>) ||
-        (step1Services?.card_config as Record<string, unknown>);
-      const cardBgFromFlow = sanitizeColor(
-        (step1CardConfig?.backgroundColor as string) ||
-          (step1CardConfig?.cardBackgroundColor as string) ||
-          (step1CardConfig?.background_color as string) ||
-          (step1CardConfig?.card_background_color as string),
-      );
-
-      const appointmentFlowSteps = (config?.appointmentFlow as {
-        steps?: Partial<Record<BookingStep, BookingStepSettings>>;
-      } | undefined)?.steps;
-      const appointmentFlowSnakeSteps = (config?.appointment_flow as {
-        steps?: Partial<Record<BookingStep, BookingStepSettings>>;
-      } | undefined)?.steps;
-
-      const stepConfig =
-        (stepKey === "service" ? step1Services : undefined) ||
-        config?.bookingSteps?.[stepKey] ||
-        appointmentFlowSteps?.[stepKey] ||
-        appointmentFlowSnakeSteps?.[stepKey] ||
-        (config?.appointmentFlow as Partial<
-          Record<BookingStep, BookingStepSettings>
-        > | undefined)?.[stepKey] ||
-        (config?.appointment_flow as Partial<
-          Record<BookingStep, BookingStepSettings>
-        > | undefined)?.[stepKey];
-
-      let base = { ...defaults };
-      if (stepConfig) {
-        const step = stepConfig as BookingStepSettings;
-        base = {
-          ...base,
-          ...step,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(step.appearance || {}),
-          },
-        };
-      }
-      return {
-        ...base,
-        titleColor:
-          sanitizeColor(
-            base.titleColor ||
-              base.appearance?.titleColor ||
-              defaults.titleColor,
-          ) || "",
-        subtitleColor:
-          sanitizeColor(
-            base.subtitleColor ||
-              base.appearance?.subtitleColor ||
-              defaults.subtitleColor,
-          ) || "",
-        titleFont:
-          base.titleFont || base.appearance?.titleFont || defaults.titleFont,
-        subtitleFont:
-          base.subtitleFont ||
-          base.appearance?.subtitleFont ||
-          defaults.subtitleFont,
-        cardBgColor:
-          sanitizeColor(
-            (stepKey === "service" ? cardBgFromFlow : undefined) ||
-              base.cardBgColor ||
-              (base as Record<string, unknown>).cardBackgroundColor as string ||
-              (base as Record<string, unknown>).card_bg_color as string ||
-              (base as Record<string, unknown>).card_background_color as string ||
-              base.appearance?.cardBgColor ||
-              (base.appearance as Record<string, unknown> | undefined)
-                ?.cardBackgroundColor as string ||
-              (base.appearance as Record<string, unknown> | undefined)
-                ?.card_bg_color as string ||
-              (base.appearance as Record<string, unknown> | undefined)
-                ?.card_background_color as string ||
-              defaults.cardBgColor,
-          ) || (stepKey === "service" ? "#ffffff" : ""),
-        accentColor:
-          sanitizeColor(
-            base.accentColor ||
-              base.appearance?.accentColor ||
-              defaults.accentColor,
-          ) || "",
-        bgColor:
-          sanitizeColor(
-            base.bgColor ||
-              base.appearance?.backgroundColor ||
-              defaults.bgColor,
-          ) || "",
-      };
-    },
-    [studio?.config],
-  );
-
   const serviceSettings = useMemo(() => {
     void tick;
-    const base = studio?.config
-      ? normalizeBookingStep("service", defaultBookingServiceSettings)
-      : getBookingServiceSettings(studio?.config);
+    const base = getBookingServiceSettings(
+      studio?.config as Record<string, unknown>,
+    );
     const override = previewOverrides.service;
     const merged = override
-      ? {
-          ...base,
-          ...override,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(override.appearance || {}),
-          },
-        }
+      ? normalizeStepSettings(override as Record<string, unknown>, base)
       : base;
     return applyGlobalFallbacks(merged);
-  }, [
-    studio?.config,
-    tick,
-    applyGlobalFallbacks,
-    normalizeBookingStep,
-    previewOverrides.service,
-  ]);
-
-  const effectiveServiceSettings = useMemo(() => {
-    if (!step1Styles) return serviceSettings;
-    return {
-      ...serviceSettings,
-      bgColor:
-        sanitizeColor(step1Styles.background) || serviceSettings.bgColor,
-      cardBgColor:
-        sanitizeColor(step1Styles.cardBackground) ||
-        serviceSettings.cardBgColor,
-      accentColor:
-        sanitizeColor(step1Styles.accent) || serviceSettings.accentColor,
-      titleColor:
-        sanitizeColor(step1Styles.title) || serviceSettings.titleColor,
-      subtitleColor:
-        sanitizeColor(step1Styles.subtitle) || serviceSettings.subtitleColor,
-    };
-  }, [serviceSettings, step1Styles]);
+  }, [studio?.config, tick, applyGlobalFallbacks, previewOverrides.service]);
 
   const dateSettings = useMemo(() => {
     void tick;
-    const base = studio?.config
-      ? normalizeBookingStep("date", defaultBookingDateSettings)
-      : getBookingDateSettings(studio?.config);
+    const base = getBookingDateSettings(studio?.config as SiteConfigData);
     const override = previewOverrides.date;
     const merged = override
-      ? {
-          ...base,
-          ...override,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(override.appearance || {}),
-          },
-        }
+      ? normalizeStepSettings(override as Record<string, unknown>, base)
       : base;
     return applyGlobalFallbacks(merged);
-  }, [
-    studio?.config,
-    tick,
-    applyGlobalFallbacks,
-    normalizeBookingStep,
-    previewOverrides.date,
-  ]);
+  }, [studio?.config, tick, applyGlobalFallbacks, previewOverrides.date]);
 
   const timeSettings = useMemo(() => {
     void tick;
-    const base = studio?.config
-      ? normalizeBookingStep("time", defaultBookingTimeSettings)
-      : getBookingTimeSettings(studio?.config);
+    const base = getBookingTimeSettings(studio?.config as SiteConfigData);
     const override = previewOverrides.time;
     const merged = override
-      ? {
-          ...base,
-          ...override,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(override.appearance || {}),
-          },
-        }
+      ? normalizeStepSettings(override as Record<string, unknown>, base)
       : base;
     if (studio?.config?.interval || studio?.config?.slotInterval) {
       merged.interval = studio.config.interval || studio.config.slotInterval;
     }
     return applyGlobalFallbacks(merged);
-  }, [
-    studio?.config,
-    tick,
-    applyGlobalFallbacks,
-    normalizeBookingStep,
-    previewOverrides.time,
-  ]);
+  }, [studio?.config, tick, applyGlobalFallbacks, previewOverrides.time]);
 
   const formSettings = useMemo(() => {
     void tick;
-    const base = studio?.config
-      ? normalizeBookingStep("form", defaultBookingFormSettings)
-      : getBookingFormSettings(studio?.config);
+    const base = getBookingFormSettings(studio?.config as SiteConfigData);
     const override = previewOverrides.form;
     const merged = override
-      ? {
-          ...base,
-          ...override,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(override.appearance || {}),
-          },
-        }
+      ? normalizeStepSettings(override as Record<string, unknown>, base)
       : base;
     return applyGlobalFallbacks(merged);
-  }, [
-    studio?.config,
-    tick,
-    applyGlobalFallbacks,
-    normalizeBookingStep,
-    previewOverrides.form,
-  ]);
+  }, [studio?.config, tick, applyGlobalFallbacks, previewOverrides.form]);
 
   const confirmationSettings = useMemo(() => {
     void tick;
-    const base = studio?.config
-      ? normalizeBookingStep("confirmation", defaultBookingConfirmationSettings)
-      : getBookingConfirmationSettings(studio?.config);
+    const base = getBookingConfirmationSettings(
+      studio?.config as SiteConfigData,
+    );
     const override = previewOverrides.confirmation;
     const merged = override
-      ? {
-          ...base,
-          ...override,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(override.appearance || {}),
-          },
-        }
+      ? normalizeStepSettings(override as Record<string, unknown>, base)
       : base;
     return applyGlobalFallbacks(merged);
   }, [
     studio?.config,
     tick,
     applyGlobalFallbacks,
-    normalizeBookingStep,
     previewOverrides.confirmation,
   ]);
 
@@ -658,7 +448,7 @@ export function BookingFlow() {
 
   // Load initial settings
   useEffect(() => {
-    window.addEventListener("storage", handleRefresh);
+    window.addEventListener("storage", handleStorageRefresh);
     window.addEventListener("bookingServiceSettingsUpdated", handleRefresh);
     window.addEventListener("bookingDateSettingsUpdated", handleRefresh);
     window.addEventListener("bookingTimeSettingsUpdated", handleRefresh);
@@ -669,8 +459,11 @@ export function BookingFlow() {
     );
 
     return () => {
-      window.removeEventListener("storage", handleRefresh);
-      window.removeEventListener("bookingServiceSettingsUpdated", handleRefresh);
+      window.removeEventListener("storage", handleStorageRefresh);
+      window.removeEventListener(
+        "bookingServiceSettingsUpdated",
+        handleRefresh,
+      );
       window.removeEventListener("bookingDateSettingsUpdated", handleRefresh);
       window.removeEventListener("bookingTimeSettingsUpdated", handleRefresh);
       window.removeEventListener("bookingFormSettingsUpdated", handleRefresh);
@@ -679,14 +472,16 @@ export function BookingFlow() {
         handleRefresh,
       );
     };
-  }, [handleRefresh]);
+  }, [handleRefresh, handleStorageRefresh]);
 
   // Listen for real-time updates from editor
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       console.log("[IFRAME_RECEIVER] Mensagem recebida:", event.data);
       if (event.data?.type === "UPDATE_BOOKING_SERVICE_SETTINGS") {
-        const settings = event.data.settings as Record<string, unknown> | undefined;
+        const settings = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
         if (settings) {
           const normalized = normalizeStepSettings(settings);
           setPreviewOverrides((prev) => {
@@ -696,7 +491,8 @@ export function BookingFlow() {
               ...normalized,
               appearance: {
                 ...(defaultBookingServiceSettings.appearance || {}),
-                ...((prev.service?.appearance || {}) as BookingStepSettings["appearance"]),
+                ...((prev.service?.appearance ||
+                  {}) as BookingStepSettings["appearance"]),
                 ...(normalized.appearance || {}),
               },
             };
@@ -708,26 +504,10 @@ export function BookingFlow() {
         }
         handleRefresh();
       }
-      if (event.data?.type === "UPDATE_BOOKING_STYLE") {
-        const payload = event.data?.payload as
-          | { section?: string; styles?: Record<string, unknown> }
-          | undefined;
-        if (payload?.section === "step1Services" && payload.styles) {
-          setStep1Styles((prev) => ({
-            ...(prev || {
-              background: "transparent",
-              cardBackground: "transparent",
-              accent: "#000000",
-              title: "#000000",
-              subtitle: "#666666",
-            }),
-            ...resolveStep1Styles(payload.styles),
-          }));
-        }
-        handleRefresh();
-      }
       if (event.data?.type === "UPDATE_BOOKING_DATE_SETTINGS") {
-        const settings = event.data.settings as Record<string, unknown> | undefined;
+        const settings = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
         if (settings) {
           const normalized = normalizeStepSettings(settings);
           setPreviewOverrides((prev) => ({
@@ -745,7 +525,9 @@ export function BookingFlow() {
         handleRefresh();
       }
       if (event.data?.type === "UPDATE_BOOKING_TIME_SETTINGS") {
-        const settings = event.data.settings as Record<string, unknown> | undefined;
+        const settings = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
         if (settings) {
           const normalized = normalizeStepSettings(settings);
           setPreviewOverrides((prev) => ({
@@ -763,7 +545,9 @@ export function BookingFlow() {
         handleRefresh();
       }
       if (event.data?.type === "UPDATE_BOOKING_FORM_SETTINGS") {
-        const settings = event.data.settings as Record<string, unknown> | undefined;
+        const settings = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
         if (settings) {
           const normalized = normalizeStepSettings(settings);
           setPreviewOverrides((prev) => ({
@@ -781,7 +565,9 @@ export function BookingFlow() {
         handleRefresh();
       }
       if (event.data?.type === "UPDATE_BOOKING_CONFIRMATION_SETTINGS") {
-        const settings = event.data.settings as Record<string, unknown> | undefined;
+        const settings = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
         if (settings) {
           const normalized = normalizeStepSettings(settings);
           setPreviewOverrides((prev) => ({
@@ -813,10 +599,7 @@ export function BookingFlow() {
     };
 
     window.addEventListener("message", handleMessage);
-    window.addEventListener(
-      "bookingServiceSettingsUpdated",
-      handleRefresh,
-    );
+    window.addEventListener("bookingServiceSettingsUpdated", handleRefresh);
     window.addEventListener("bookingDateSettingsUpdated", handleRefresh);
     window.addEventListener("bookingTimeSettingsUpdated", handleRefresh);
     window.addEventListener("bookingFormSettingsUpdated", handleRefresh);
@@ -836,24 +619,15 @@ export function BookingFlow() {
         "bookingServiceSettingsUpdated",
         handleRefresh,
       );
-      window.removeEventListener(
-        "bookingDateSettingsUpdated",
-        handleRefresh,
-      );
-      window.removeEventListener(
-        "bookingTimeSettingsUpdated",
-        handleRefresh,
-      );
-      window.removeEventListener(
-        "bookingFormSettingsUpdated",
-        handleRefresh,
-      );
+      window.removeEventListener("bookingDateSettingsUpdated", handleRefresh);
+      window.removeEventListener("bookingTimeSettingsUpdated", handleRefresh);
+      window.removeEventListener("bookingFormSettingsUpdated", handleRefresh);
       window.removeEventListener(
         "bookingConfirmationSettingsUpdated",
         handleRefresh,
       );
     };
-  }, [handleRefresh, resolveStep1Styles]);
+  }, [handleRefresh]);
 
   const steps = [
     { id: "service", label: "Serviço", completed: selectedServices.length > 0 },
@@ -908,7 +682,9 @@ export function BookingFlow() {
         const titleColor = appearance.titleColor || step.settings.titleColor;
 
         if (!bgColor && step.settings.bgType === "color") {
-          console.warn(`>>> [CONSISTENCY] bgColor/backgroundColor ausente em ${step.name}`);
+          console.warn(
+            `>>> [CONSISTENCY] bgColor/backgroundColor ausente em ${step.name}`,
+          );
         }
         if (!titleColor) {
           console.warn(`>>> [CONSISTENCY] titleColor ausente em ${step.name}`);
@@ -974,12 +750,18 @@ export function BookingFlow() {
 
   const renderStepHeader = (settings: BookingStepSettings) => {
     const appearance = settings.appearance || {};
-    
+
     // Prioridade: Custom Setting > Global Appearance > Default Fallback
-    const titleColor = settings.titleColor || appearance.titleColor || "var(--foreground)";
-    const subtitleColor = settings.subtitleColor || appearance.subtitleColor || "var(--muted-foreground)";
-    const titleFont = settings.titleFont || appearance.titleFont || "var(--font-title)";
-    const subtitleFont = settings.subtitleFont || appearance.subtitleFont || "var(--font-body)";
+    const titleColor =
+      settings.titleColor || appearance.titleColor || "var(--foreground)";
+    const subtitleColor =
+      settings.subtitleColor ||
+      appearance.subtitleColor ||
+      "var(--muted-foreground)";
+    const titleFont =
+      settings.titleFont || appearance.titleFont || "var(--font-title)";
+    const subtitleFont =
+      settings.subtitleFont || appearance.subtitleFont || "var(--font-body)";
 
     return (
       <div className="text-center mb-12">
@@ -1005,23 +787,19 @@ export function BookingFlow() {
     );
   };
 
-  const flowAccent = effectiveServiceSettings?.accentColor || "var(--primary)";
-  const flowCardBg = effectiveServiceSettings?.cardBgColor || "transparent";
+  const flowAccent = serviceSettings?.accentColor || "var(--primary)";
+  const flowCardBg = serviceSettings?.cardBgColor || "transparent";
   const showServiceSectionBackground = !(
-    effectiveServiceSettings?.bgType === "color" &&
-    effectiveServiceSettings?.bgColor
+    serviceSettings?.bgType === "color" && serviceSettings?.bgColor
   );
 
   return (
     <div
       id="booking"
-      key={step1Styles?.background || effectiveServiceSettings?.bgColor || "booking"}
+      key={serviceSettings?.bgColor || "booking"}
       className="min-h-screen w-full mx-auto transition-colors duration-300"
       style={{
-        backgroundColor:
-          step1Styles?.background ||
-          effectiveServiceSettings?.bgColor ||
-          "transparent",
+        backgroundColor: serviceSettings?.bgColor || "transparent",
       }}
     >
       {/* Progress Steps */}
@@ -1119,17 +897,17 @@ export function BookingFlow() {
           >
             {showServiceSectionBackground && (
               <SectionBackground
-                settings={effectiveServiceSettings as SectionBackgroundSettings}
+                settings={serviceSettings as SectionBackgroundSettings}
               />
             )}
             <div className="container mx-auto px-4 relative z-10">
-              {renderStepHeader(effectiveServiceSettings)}
+              {renderStepHeader(serviceSettings)}
               <div className="max-w-4xl mx-auto">
                 <ServiceSelector
                   onSelect={handleServiceSelect}
                   onConfirm={handleServiceConfirm}
                   selectedServices={selectedServices}
-                  settings={effectiveServiceSettings}
+                  settings={serviceSettings}
                 />
               </div>
             </div>
@@ -1141,7 +919,9 @@ export function BookingFlow() {
             id="booking-date"
             className="relative py-12 md:py-20 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
           >
-            <SectionBackground settings={dateSettings as SectionBackgroundSettings} />
+            <SectionBackground
+              settings={dateSettings as SectionBackgroundSettings}
+            />
             <div className="container mx-auto px-4 relative z-10">
               {renderStepHeader(dateSettings)}
               <div className="max-w-4xl mx-auto">
@@ -1160,7 +940,9 @@ export function BookingFlow() {
             id="booking-time"
             className="relative py-12 md:py-20 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
           >
-            <SectionBackground settings={timeSettings as SectionBackgroundSettings} />
+            <SectionBackground
+              settings={timeSettings as SectionBackgroundSettings}
+            />
             <div className="container mx-auto px-4 relative z-10">
               {renderStepHeader(timeSettings)}
               <div className="max-w-4xl mx-auto">
@@ -1185,7 +967,9 @@ export function BookingFlow() {
               id="booking-form"
               className="relative py-12 md:py-20 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
             >
-              <SectionBackground settings={formSettings as SectionBackgroundSettings} />
+              <SectionBackground
+                settings={formSettings as SectionBackgroundSettings}
+              />
               <div className="container mx-auto px-4 relative z-10">
                 {renderStepHeader(formSettings)}
                 <div className="max-w-2xl mx-auto">
@@ -1213,7 +997,9 @@ export function BookingFlow() {
             id="booking-confirmation"
             className="relative py-12 md:py-20 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4"
           >
-            <SectionBackground settings={confirmationSettings as SectionBackgroundSettings} />
+            <SectionBackground
+              settings={confirmationSettings as SectionBackgroundSettings}
+            />
             <div className="container mx-auto px-4 relative z-10">
               {renderStepHeader(confirmationSettings)}
               <div className="max-w-4xl mx-auto">

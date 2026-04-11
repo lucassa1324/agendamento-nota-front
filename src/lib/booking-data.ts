@@ -274,6 +274,10 @@ export const sanitizeSection = (
 
   if (typeof currentData === "string") {
     const trimmed = currentData.trim();
+    const fallbackContent = fallback.content;
+    const fallbackUsesContent =
+      fallbackContent !== undefined ||
+      (fallback.title === undefined && fallback.subtitle === undefined);
     if (
       (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
       (trimmed.startsWith("[") && trimmed.endsWith("]"))
@@ -284,10 +288,14 @@ export const sanitizeSection = (
           return { ...fallback, ...(parsed as Record<string, unknown>) };
         }
       } catch (_e) {
-        return { ...fallback, title: currentData };
+        return fallbackUsesContent
+          ? { ...fallback, content: currentData }
+          : { ...fallback, title: currentData };
       }
     }
-    return { ...fallback, title: currentData };
+    return fallbackUsesContent
+      ? { ...fallback, content: currentData }
+      : { ...fallback, title: currentData };
   }
 
   if (
@@ -358,6 +366,8 @@ export const sanitizeSection = (
       !Array.isArray(record.content)
       ? (record.content as Record<string, unknown>)
       : {};
+  const recordContentString =
+    typeof record.content === "string" ? record.content : undefined;
 
   // Se o recordContent ou recordAppearance tiverem valores, eles devem estar no root para compatibilidade
   for (const [key, value] of Object.entries(recordContent)) {
@@ -385,6 +395,8 @@ export const sanitizeSection = (
       !Array.isArray(fallback.content)
       ? (fallback.content as Record<string, unknown>)
       : {};
+  const fallbackContentString =
+    typeof fallback.content === "string" ? fallback.content : undefined;
 
   const finalAppearance: Record<string, unknown> = { ...recordAppearance };
   Object.entries(fallbackAppearance).forEach(([key, value]) => {
@@ -400,10 +412,21 @@ export const sanitizeSection = (
     }
   });
 
+  const resolvedContent =
+    recordContentString !== undefined
+      ? recordContentString
+      : typeof mergedRoot.content === "string"
+        ? (mergedRoot.content as string)
+        : fallbackContentString !== undefined
+          ? fallbackContentString
+          : Object.keys(finalContent).length > 0
+            ? finalContent
+            : mergedRoot.content;
+
   return {
     ...mergedRoot,
     appearance: finalAppearance,
-    content: finalContent,
+    ...(resolvedContent !== undefined ? { content: resolvedContent } : {}),
   };
 };
 
@@ -435,17 +458,44 @@ export const SECTION_IDS = {
 export type SectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
 
 const normalizeSectionConfig = <T extends Record<string, unknown>>(
-  raw: T | undefined,
+  raw: T | string | undefined,
   defaults: T,
 ) => {
   // Se não tem dados brutos, retorna o padrão
   if (!raw) return defaults;
 
+  // Se o dado bruto for uma string, tentamos converter para objeto
+  let actualRaw: Record<string, unknown>;
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          actualRaw = parsed as Record<string, unknown>;
+        } else {
+          actualRaw = { content: raw };
+        }
+      } catch (_e) {
+        actualRaw = { content: raw };
+      }
+    } else {
+      // Se for uma string pura, assumimos que é o conteúdo principal
+      actualRaw = { content: raw };
+    }
+  } else {
+    actualRaw = raw as Record<string, unknown>;
+  }
+
   // PILAR: Prioridade Invertida e Limpeza
   // O que vem do "raw" (banco ou editor) deve ter prioridade TOTAL sobre o defaults.
   // Começamos com raw e preenchemos apenas o estritamente necessário dos defaults.
   const merged: Record<string, unknown> = {
-    ...raw,
+    ...actualRaw,
   };
 
   const CORE_FIELDS = [
@@ -472,7 +522,7 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
   });
 
   // O mesmo para content
-  const rawContent = raw.content;
+  const rawContent = actualRaw.content;
   let normalizedContent: Record<string, unknown> | undefined;
 
   if (typeof rawContent === "string") {
@@ -505,44 +555,68 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
     normalizedContent = rawContent as Record<string, unknown>;
   }
 
+  const isDefaultContentString = typeof defaults.content === "string";
+
   if (normalizedContent) {
-    merged.content = {
-      ...(defaults.content as Record<string, unknown> | undefined),
-      ...normalizedContent,
-    };
-  } else if (defaults.content) {
-    merged.content = defaults.content as Record<string, unknown>;
+    if (isDefaultContentString) {
+      // Se o default é string, tentamos manter como string se for um objeto {text: ...} ou {value: ...}
+      merged.content =
+        normalizedContent.text ||
+        normalizedContent.value ||
+        (Object.keys(normalizedContent).length === 0 ? "" : normalizedContent);
+    } else {
+      const safeDefaultContent =
+        defaults.content &&
+          typeof defaults.content === "object" &&
+          !Array.isArray(defaults.content)
+          ? (defaults.content as Record<string, unknown>)
+          : {};
+
+      merged.content = {
+        ...safeDefaultContent,
+        ...normalizedContent,
+      };
+    }
+  } else if (defaults.content !== undefined) {
+    merged.content = defaults.content;
   }
 
-  if (typeof merged.content === "string") {
-    const trimmed = merged.content.trim();
-    if (!trimmed || trimmed === "{}" || trimmed === "[]") {
-      delete merged.content;
-    } else if (
-      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
-      (trimmed.startsWith("[") && trimmed.endsWith("]"))
-    ) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          merged.content = parsed as Record<string, unknown>;
-        } else {
+  // Só forçamos objeto se o default NÃO for string
+  if (!isDefaultContentString) {
+    if (typeof merged.content === "string") {
+      const trimmed = (merged.content as string).trim();
+      if (!trimmed || trimmed === "{}" || trimmed === "[]") {
+        delete merged.content;
+      } else if (
+        (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+        (trimmed.startsWith("[") && trimmed.endsWith("]"))
+      ) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            merged.content = parsed as Record<string, unknown>;
+          } else {
+            merged.content = { text: merged.content };
+          }
+        } catch (_e) {
           merged.content = { text: merged.content };
         }
-      } catch (_e) {
+      } else {
         merged.content = { text: merged.content };
       }
-    } else {
-      merged.content = { text: merged.content };
+    } else if (Array.isArray(merged.content)) {
+      merged.content = { items: merged.content };
+    } else if (
+      merged.content &&
+      typeof merged.content !== "object" &&
+      merged.content !== null
+    ) {
+      merged.content = { value: merged.content };
     }
-  } else if (Array.isArray(merged.content)) {
-    merged.content = { items: merged.content };
-  } else if (merged.content && typeof merged.content !== "object") {
-    merged.content = { value: merged.content };
   }
 
   // O mesmo para appearance
-  const rawAppearance = raw.appearance;
+  const rawAppearance = actualRaw.appearance;
   let normalizedAppearance: Record<string, unknown> | undefined;
 
   if (typeof rawAppearance === "string") {
@@ -566,39 +640,58 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
     normalizedAppearance = rawAppearance as Record<string, unknown>;
   }
 
+  const isDefaultAppearanceString = typeof defaults.appearance === "string";
+
   if (normalizedAppearance) {
-    merged.appearance = {
-      ...(defaults.appearance as Record<string, unknown> | undefined),
-      ...normalizedAppearance,
-    };
-  } else if (defaults.appearance) {
-    merged.appearance = defaults.appearance as Record<string, unknown>;
+    if (isDefaultAppearanceString) {
+      merged.appearance = normalizedAppearance;
+    } else {
+      const safeDefaultAppearance =
+        defaults.appearance &&
+          typeof defaults.appearance === "object" &&
+          !Array.isArray(defaults.appearance)
+          ? (defaults.appearance as Record<string, unknown>)
+          : {};
+
+      merged.appearance = {
+        ...safeDefaultAppearance,
+        ...normalizedAppearance,
+      };
+    }
+  } else if (defaults.appearance !== undefined) {
+    merged.appearance = defaults.appearance;
   }
 
-  if (typeof merged.appearance === "string") {
-    const trimmed = merged.appearance.trim();
-    if (trimmed && trimmed !== "{}" && trimmed !== "[]") {
-      if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-            merged.appearance = parsed as Record<string, unknown>;
-          } else {
+  if (!isDefaultAppearanceString) {
+    if (typeof merged.appearance === "string") {
+      const trimmed = (merged.appearance as string).trim();
+      if (trimmed && trimmed !== "{}" && trimmed !== "[]") {
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+              merged.appearance = parsed as Record<string, unknown>;
+            } else {
+              delete merged.appearance;
+            }
+          } catch (_e) {
             delete merged.appearance;
           }
-        } catch (_e) {
+        } else {
           delete merged.appearance;
         }
       } else {
         delete merged.appearance;
       }
-    } else {
+    } else if (Array.isArray(merged.appearance)) {
+      delete merged.appearance;
+    } else if (
+      merged.appearance &&
+      typeof merged.appearance !== "object" &&
+      merged.appearance !== null
+    ) {
       delete merged.appearance;
     }
-  } else if (Array.isArray(merged.appearance)) {
-    delete merged.appearance;
-  } else if (merged.appearance && typeof merged.appearance !== "object") {
-    delete merged.appearance;
   }
 
   // 1. Pilar 3: Reidratação de Cores (Recuperar de qualquer chave possível)
@@ -1821,6 +1914,7 @@ export interface BookingConfig {
     form?: BookingStepSettings;
     confirmation?: BookingStepSettings;
   };
+  appointment_flow?: BookingConfig["appointmentFlow"];
   bookingSteps?: {
     service?: BookingStepSettings;
     date?: BookingStepSettings;
@@ -1836,35 +1930,36 @@ export function getBookingServiceSettings(
   const flow = (studio?.appointmentFlow || studio?.appointment_flow) as
     | Record<string, unknown>
     | undefined;
-  const step1 = (flow?.step1Services || {}) as Record<string, unknown>;
+  const step1 = (flow?.step1Services ||
+    flow?.step1_services ||
+    flow?.step1_service ||
+    (studio?.bookingSteps as Record<string, unknown> | undefined)?.service ||
+    {}) as Record<string, unknown>;
+
+  let normalized = normalizeStepSettings(step1, defaultBookingServiceSettings);
+
+  // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingServiceSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        normalized = normalizeStepSettings(saved, normalized);
+      } catch (e) {
+        console.error("Erro ao parsear bookingServiceSettings:", e);
+      }
+    }
+  }
 
   return {
-    ...(step1 as unknown as BookingStepSettings),
-    title: (step1.title as string) || "Escolha seus Serviços",
+    ...normalized,
+    title: normalized.title || "Escolha seus Serviços",
     subtitle:
-      (step1.subtitle as string) ||
+      normalized.subtitle ||
       "Selecione um ou mais serviços para o seu agendamento",
-    bgColor:
-      sanitizeColor(
-        (step1.bgColor as string) ||
-        (step1.bg_color as string) ||
-        (step1.backgroundColor as string) ||
-        (studio?.bgColor as string) ||
-        (studio?.backgroundColor as string) ||
-        "#ffffff",
-      ) || "#ffffff",
-    cardBgColor: sanitizeColor(
-      (step1.cardBgColor as string) ||
-      (step1.cardBackgroundColor as string) ||
-      (step1.card_bg_color as string) ||
-      (step1.backgroundColor as string) ||
-      "rgba(255,255,255,0.6)",
-    ),
-    accentColor: sanitizeColor(
-      (step1.accentColor as string) ||
-      (step1.accent_color as string) ||
-      "#000000",
-    ),
+    bgColor: normalized.bgColor || "#ffffff",
+    cardBgColor: normalized.cardBgColor || "rgba(255,255,255,0.6)",
+    accentColor: normalized.accentColor || "#000000",
   };
 }
 
@@ -1884,83 +1979,32 @@ export function saveBookingServiceSettings(
 export function getBookingDateSettings(
   config?: BookingConfig,
 ): BookingStepSettings {
-  let base = { ...defaultBookingDateSettings };
   const stepConfig =
-    config?.bookingSteps?.date ||
-    config?.appointmentFlow?.steps?.date ||
-    config?.appointmentFlow?.date;
+    (config?.bookingSteps?.date as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.steps?.date as Record<string, unknown> | undefined) ||
+    (config?.appointment_flow?.steps?.date as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.date as Record<string, unknown> | undefined) ||
+    (config?.appointment_flow?.date as Record<string, unknown> | undefined);
 
-  if (stepConfig) {
-    base = {
-      ...base,
-      ...(stepConfig as BookingStepSettings),
-      appearance: {
-        ...(base.appearance || {}),
-        ...((stepConfig as BookingStepSettings).appearance || {}),
-      },
-    };
-  }
-  // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  let base = normalizeStepSettings(
+    stepConfig as Record<string, unknown> | undefined,
+    defaultBookingDateSettings,
+  );
+
+  // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
     const settings = localStorage.getItem(getStorageKey("bookingDateSettings"));
     if (settings) {
       try {
         const saved = JSON.parse(settings);
-        base = {
-          ...base,
-          ...saved,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(saved.appearance || {}),
-          },
-        };
+        base = normalizeStepSettings(saved, base);
       } catch (e) {
         console.error("Erro ao parsear bookingDateSettings:", e);
       }
     }
   }
 
-  return {
-    ...base,
-    titleColor:
-      sanitizeColor(
-        base.titleColor ||
-        base.appearance?.titleColor ||
-        defaultBookingDateSettings.titleColor,
-      ) || "",
-    subtitleColor:
-      sanitizeColor(
-        base.subtitleColor ||
-        base.appearance?.subtitleColor ||
-        defaultBookingDateSettings.subtitleColor,
-      ) || "",
-    titleFont:
-      base.titleFont ||
-      base.appearance?.titleFont ||
-      defaultBookingDateSettings.titleFont,
-    subtitleFont:
-      base.subtitleFont ||
-      base.appearance?.subtitleFont ||
-      defaultBookingDateSettings.subtitleFont,
-    cardBgColor:
-      sanitizeColor(
-        base.cardBgColor ||
-        base.appearance?.cardBgColor ||
-        defaultBookingDateSettings.cardBgColor,
-      ) || "",
-    accentColor:
-      sanitizeColor(
-        base.accentColor ||
-        base.appearance?.accentColor ||
-        defaultBookingDateSettings.accentColor,
-      ) || "",
-    bgColor:
-      sanitizeColor(
-        base.bgColor ||
-        base.appearance?.backgroundColor ||
-        defaultBookingDateSettings.bgColor,
-      ) || "",
-  };
+  return base;
 }
 
 export function saveBookingDateSettings(settings: BookingStepSettings): void {
@@ -1977,83 +2021,32 @@ export function saveBookingDateSettings(settings: BookingStepSettings): void {
 export function getBookingTimeSettings(
   config?: BookingConfig,
 ): BookingStepSettings {
-  let base = { ...defaultBookingTimeSettings };
   const stepConfig =
-    config?.bookingSteps?.time ||
-    config?.appointmentFlow?.steps?.time ||
-    config?.appointmentFlow?.time;
+    (config?.bookingSteps?.time as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.steps?.time as Record<string, unknown> | undefined) ||
+    (config?.appointment_flow?.steps?.time as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.time as Record<string, unknown> | undefined) ||
+    (config?.appointment_flow?.time as Record<string, unknown> | undefined);
 
-  if (stepConfig) {
-    base = {
-      ...base,
-      ...(stepConfig as BookingStepSettings),
-      appearance: {
-        ...(base.appearance || {}),
-        ...((stepConfig as BookingStepSettings).appearance || {}),
-      },
-    };
-  }
-  // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  let base = normalizeStepSettings(
+    stepConfig as Record<string, unknown> | undefined,
+    defaultBookingTimeSettings,
+  );
+
+  // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
     const settings = localStorage.getItem(getStorageKey("bookingTimeSettings"));
     if (settings) {
       try {
         const saved = JSON.parse(settings);
-        base = {
-          ...base,
-          ...saved,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(saved.appearance || {}),
-          },
-        };
+        base = normalizeStepSettings(saved, base);
       } catch (e) {
         console.error("Erro ao parsear bookingTimeSettings:", e);
       }
     }
   }
 
-  return {
-    ...base,
-    titleColor:
-      sanitizeColor(
-        base.titleColor ||
-        base.appearance?.titleColor ||
-        defaultBookingTimeSettings.titleColor,
-      ) || "",
-    subtitleColor:
-      sanitizeColor(
-        base.subtitleColor ||
-        base.appearance?.subtitleColor ||
-        defaultBookingTimeSettings.subtitleColor,
-      ) || "",
-    titleFont:
-      base.titleFont ||
-      base.appearance?.titleFont ||
-      defaultBookingTimeSettings.titleFont,
-    subtitleFont:
-      base.subtitleFont ||
-      base.appearance?.subtitleFont ||
-      defaultBookingTimeSettings.subtitleFont,
-    cardBgColor:
-      sanitizeColor(
-        base.cardBgColor ||
-        base.appearance?.cardBgColor ||
-        defaultBookingTimeSettings.cardBgColor,
-      ) || "",
-    accentColor:
-      sanitizeColor(
-        base.accentColor ||
-        base.appearance?.accentColor ||
-        defaultBookingTimeSettings.accentColor,
-      ) || "",
-    bgColor:
-      sanitizeColor(
-        base.bgColor ||
-        base.appearance?.backgroundColor ||
-        defaultBookingTimeSettings.bgColor,
-      ) || "",
-  };
+  return base;
 }
 
 export function saveBookingTimeSettings(settings: BookingStepSettings): void {
@@ -2070,83 +2063,32 @@ export function saveBookingTimeSettings(settings: BookingStepSettings): void {
 export function getBookingFormSettings(
   config?: BookingConfig,
 ): BookingStepSettings {
-  let base = { ...defaultBookingFormSettings };
   const stepConfig =
-    config?.bookingSteps?.form ||
-    config?.appointmentFlow?.steps?.form ||
-    config?.appointmentFlow?.form;
+    (config?.bookingSteps?.form as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.steps?.form as Record<string, unknown> | undefined) ||
+    (config?.appointment_flow?.steps?.form as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.form as Record<string, unknown> | undefined) ||
+    (config?.appointment_flow?.form as Record<string, unknown> | undefined);
 
-  if (stepConfig) {
-    base = {
-      ...base,
-      ...(stepConfig as BookingStepSettings),
-      appearance: {
-        ...(base.appearance || {}),
-        ...((stepConfig as BookingStepSettings).appearance || {}),
-      },
-    };
-  }
-  // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  let base = normalizeStepSettings(
+    stepConfig as Record<string, unknown> | undefined,
+    defaultBookingFormSettings,
+  );
+
+  // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
     const settings = localStorage.getItem(getStorageKey("bookingFormSettings"));
     if (settings) {
       try {
         const saved = JSON.parse(settings);
-        base = {
-          ...base,
-          ...saved,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(saved.appearance || {}),
-          },
-        };
+        base = normalizeStepSettings(saved, base);
       } catch (e) {
         console.error("Erro ao parsear bookingFormSettings:", e);
       }
     }
   }
 
-  return {
-    ...base,
-    titleColor:
-      sanitizeColor(
-        base.titleColor ||
-        base.appearance?.titleColor ||
-        defaultBookingFormSettings.titleColor,
-      ) || "",
-    subtitleColor:
-      sanitizeColor(
-        base.subtitleColor ||
-        base.appearance?.subtitleColor ||
-        defaultBookingFormSettings.subtitleColor,
-      ) || "",
-    titleFont:
-      base.titleFont ||
-      base.appearance?.titleFont ||
-      defaultBookingFormSettings.titleFont,
-    subtitleFont:
-      base.subtitleFont ||
-      base.appearance?.subtitleFont ||
-      defaultBookingFormSettings.subtitleFont,
-    cardBgColor:
-      sanitizeColor(
-        base.cardBgColor ||
-        base.appearance?.cardBgColor ||
-        defaultBookingFormSettings.cardBgColor,
-      ) || "",
-    accentColor:
-      sanitizeColor(
-        base.accentColor ||
-        base.appearance?.accentColor ||
-        defaultBookingFormSettings.accentColor,
-      ) || "",
-    bgColor:
-      sanitizeColor(
-        base.bgColor ||
-        base.appearance?.backgroundColor ||
-        defaultBookingFormSettings.bgColor,
-      ) || "",
-  };
+  return base;
 }
 
 export function saveBookingFormSettings(settings: BookingStepSettings): void {
@@ -2163,23 +2105,19 @@ export function saveBookingFormSettings(settings: BookingStepSettings): void {
 export function getBookingConfirmationSettings(
   config?: BookingConfig,
 ): BookingStepSettings {
-  let base = { ...defaultBookingConfirmationSettings };
   const stepConfig =
-    config?.bookingSteps?.confirmation ||
-    config?.appointmentFlow?.steps?.confirmation ||
-    config?.appointmentFlow?.confirmation;
+    (config?.bookingSteps?.confirmation as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.steps?.confirmation as Record<string, unknown> | undefined) ||
+    (config?.appointment_flow?.steps?.confirmation as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.confirmation as Record<string, unknown> | undefined) ||
+    (config?.appointment_flow?.confirmation as Record<string, unknown> | undefined);
 
-  if (stepConfig) {
-    base = {
-      ...base,
-      ...(stepConfig as BookingStepSettings),
-      appearance: {
-        ...(base.appearance || {}),
-        ...((stepConfig as BookingStepSettings).appearance || {}),
-      },
-    };
-  }
-  // 3. Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  let base = normalizeStepSettings(
+    stepConfig as Record<string, unknown> | undefined,
+    defaultBookingConfirmationSettings,
+  );
+
+  // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
     const settings = localStorage.getItem(
       getStorageKey("bookingConfirmationSettings"),
@@ -2187,61 +2125,14 @@ export function getBookingConfirmationSettings(
     if (settings) {
       try {
         const saved = JSON.parse(settings);
-        base = {
-          ...base,
-          ...saved,
-          appearance: {
-            ...(base.appearance || {}),
-            ...(saved.appearance || {}),
-          },
-        };
+        base = normalizeStepSettings(saved, base);
       } catch (e) {
         console.error("Erro ao parsear bookingConfirmationSettings:", e);
       }
     }
   }
 
-  return {
-    ...base,
-    titleColor:
-      sanitizeColor(
-        base.titleColor ||
-        base.appearance?.titleColor ||
-        defaultBookingConfirmationSettings.titleColor,
-      ) || "",
-    subtitleColor:
-      sanitizeColor(
-        base.subtitleColor ||
-        base.appearance?.subtitleColor ||
-        defaultBookingConfirmationSettings.subtitleColor,
-      ) || "",
-    titleFont:
-      base.titleFont ||
-      base.appearance?.titleFont ||
-      defaultBookingConfirmationSettings.titleFont,
-    subtitleFont:
-      base.subtitleFont ||
-      base.appearance?.subtitleFont ||
-      defaultBookingConfirmationSettings.subtitleFont,
-    cardBgColor:
-      sanitizeColor(
-        base.cardBgColor ||
-        base.appearance?.cardBgColor ||
-        defaultBookingConfirmationSettings.cardBgColor,
-      ) || "",
-    accentColor:
-      sanitizeColor(
-        base.accentColor ||
-        base.appearance?.accentColor ||
-        defaultBookingConfirmationSettings.accentColor,
-      ) || "",
-    bgColor:
-      sanitizeColor(
-        base.bgColor ||
-        base.appearance?.backgroundColor ||
-        defaultBookingConfirmationSettings.bgColor,
-      ) || "",
-  };
+  return base;
 }
 
 export function saveBookingConfirmationSettings(
@@ -2521,11 +2412,12 @@ export const services: Service[] = [];
 // Helper para normalizar configurações (usado tanto no load inicial quanto no preview)
 export const normalizeStepSettings = (
   stepData: Record<string, unknown> | undefined,
+  defaults?: BookingStepSettings,
 ): BookingStepSettings => {
-  if (!stepData) return {} as BookingStepSettings;
+  if (!stepData && !defaults) return {} as BookingStepSettings;
+  if (!stepData) return defaults as BookingStepSettings;
 
   // 1. Resolver cor do CARD
-  // Prioridade para configurações específicas de card, com fallback para backgroundColor legado
   const cardConfig = (stepData.cardConfig ||
     stepData.card_config ||
     {}) as Record<string, unknown>;
@@ -2540,6 +2432,8 @@ export const normalizeStepSettings = (
     (stepData.card_bg_color as string) ||
     (stepData.cardBackgroundColor as string) ||
     (stepData.card_background_color as string) ||
+    (cardConfig.cardBgColor as string) ||
+    (cardConfig.card_bg_color as string) ||
     (cardConfig.cardBackgroundColor as string) ||
     (cardConfig.backgroundColor as string) ||
     (cardConfig.card_background_color as string) ||
@@ -2556,8 +2450,20 @@ export const normalizeStepSettings = (
 
   const finalCardColor = sanitizeColor(rawCardColor);
 
+  // Criar um cardConfig unificado para evitar perdas
+  const unifiedCardConfig = {
+    ...cardConfig,
+    ...(finalCardColor ? {
+      cardBgColor: finalCardColor,
+      card_bg_color: finalCardColor,
+      cardBackgroundColor: finalCardColor,
+      card_background_color: finalCardColor,
+      backgroundColor: finalCardColor,
+      background_color: finalCardColor,
+    } : {})
+  };
+
   // 2. Resolver cor do FUNDO DA SEÇÃO
-  // NÃO usar rawCardColor como fallback para evitar que a cor do card pinte o fundo
   const rawBgColor =
     (stepData.bgColor as string) ||
     (stepData.bg_color as string) ||
@@ -2573,21 +2479,46 @@ export const normalizeStepSettings = (
   };
 
   // 4. Blindagem: Se o stepData já tiver propriedades que o normalizeStepSettings não conhece, preserve-as!
-  // Isso evita regressões quando novas funcionalidades são adicionadas em outros setores.
   const final = {
-    ...stepData, // Spread do original PRIMEIRO
-    cardBgColor:
-      finalCardColor ||
-      (stepData.cardBgColor as string) ||
-      (stepData.card_bg_color as string) ||
-      "",
+    ...defaults, // Inicia com defaults se fornecido
+    ...stepData, // Spread do original (sobrescreve defaults)
+    titleColor:
+      sanitizeColor(
+        (stepData.titleColor as string) ||
+        (appearanceRaw.titleColor as string) ||
+        (defaults?.titleColor as string),
+      ) || "",
+    subtitleColor:
+      sanitizeColor(
+        (stepData.subtitleColor as string) ||
+        (appearanceRaw.subtitleColor as string) ||
+        (defaults?.subtitleColor as string),
+      ) || "",
+    accentColor:
+      sanitizeColor(
+        (stepData.accentColor as string) ||
+        (appearanceRaw.accentColor as string) ||
+        (defaults?.accentColor as string),
+      ) || "",
+    cardBgColor: finalCardColor || defaults?.cardBgColor || "",
+    card_bg_color: finalCardColor || (defaults as any)?.card_bg_color || "",
+    cardBackgroundColor: finalCardColor || (defaults as any)?.cardBackgroundColor || "",
+    card_background_color: finalCardColor || (defaults as any)?.card_background_color || "",
+    cardConfig: unifiedCardConfig,
     bgColor:
       finalBgColor ||
-      (stepData.bgColor as string) ||
-      (stepData.bg_color as string) ||
+      sanitizeColor(
+        (stepData.bgColor as string) ||
+        (stepData.bg_color as string) ||
+        (defaults?.bgColor as string),
+      ) ||
       "transparent",
     appearance: {
+      ...(defaults?.appearance || {}),
       ...appearance,
+      cardBgColor: finalCardColor || (defaults?.appearance as any)?.cardBgColor || "",
+      cardBackgroundColor: finalCardColor || (defaults?.appearance as any)?.cardBackgroundColor || "",
+      cardConfig: unifiedCardConfig,
       backgroundColor:
         (appearance.backgroundColor as string) ||
         (appearance.background_color as string) ||

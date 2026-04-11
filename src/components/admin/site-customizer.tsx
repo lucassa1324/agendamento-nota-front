@@ -223,11 +223,16 @@ export function SiteCustomizer() {
     })();
   };
 
-  const handleToggleStatus = async () => {
+  const handleToggleStatus = async (checked: boolean) => {
     const business = businesses[0];
     if (!business || !business.id) return;
-
-    const newStatus = !business.active;
+    const newStatus = checked;
+    if (business.active && !newStatus) {
+      const confirmed = window.confirm(
+        "Isso vai bloquear o acesso ao estúdio para o usuário comum. Deseja desativar mesmo assim?",
+      );
+      if (!confirmed) return;
+    }
     setIsUpdatingStatus(true);
 
     try {

@@ -34,7 +34,7 @@ import {
   SectionBackground,
   type SectionBackgroundSettings,
 } from "./admin/site_editor/components/SectionBackground";
-import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
+import type { SiteConfigData, SectionsMap } from "./admin/site_editor/hooks/use-site-editor";
 
 const iconMap: Record<string, LucideIcon> = {
   Sparkles,
@@ -77,19 +77,13 @@ export function HeroSection() {
   const loadData = useCallback(() => {
     if (!config) return;
 
-    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
-    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-      console.log(
-        "[HeroSection] Guard Logic: Ignorando loadData do banco (Preview Ativo)",
-      );
-      return;
-    }
-
+    const sections = config?.sections as SectionsMap | undefined;
     const home = config?.home as Record<string, unknown> | undefined;
     const layoutGlobal = (config?.layoutGlobal || config?.layout_global) as
       | Record<string, unknown>
       | undefined;
-    const rawHero = (home?.heroBanner ||
+    const rawHero = (sections?.[SECTION_IDS.homeHero] ||
+      home?.heroBanner ||
       home?.hero ||
       config?.heroBanner ||
       config?.hero ||
@@ -97,13 +91,18 @@ export function HeroSection() {
       layoutGlobal?.hero) as Record<string, unknown> | undefined;
 
     if (rawHero) {
-      const content = (rawHero.content as Record<string, unknown>) || {};
-      const appearance = (rawHero.appearance as Record<string, unknown>) || {};
+      const content = (rawHero.content && typeof rawHero.content === "object" && !Array.isArray(rawHero.content)
+        ? (rawHero.content as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
+      
+      const appearance = (rawHero.appearance && typeof rawHero.appearance === "object" && !Array.isArray(rawHero.appearance)
+        ? (rawHero.appearance as Record<string, unknown>)
+        : {}) as Record<string, unknown>;
 
       const normalizedHero = {
         ...rawHero,
-        ...content,
-        ...appearance,
+        ...(typeof rawHero.content === "object" ? content : {}),
+        ...(typeof rawHero.appearance === "object" ? appearance : {}),
         title: content.title ?? rawHero.title,
         subtitle: content.subtitle ?? rawHero.subtitle,
         showTitle:
@@ -213,14 +212,9 @@ export function HeroSection() {
     }
   }, [config, isInsideIframe]);
 
-  // Sincronização Unificada: O estado customStyles agora é derivado DIRETAMENTE do StudioContext.
-  // Isso resolve a divergência entre editor e preview, pois ambos passam a beber da mesma fonte.
   useEffect(() => {
-    // Só sincroniza se não estivermos no iframe ou se ainda não houve atualização de preview
-    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
-      loadData();
-    }
-  }, [loadData, isInsideIframe]);
+    loadData();
+  }, [loadData]);
 
   // Log de depuração solicitado para verificar a estrutura dos dados
   useEffect(() => {
@@ -253,16 +247,16 @@ export function HeroSection() {
         // Marcamos que houve uma atualização do editor de forma SÍNCRONA
         hasLivePreviewUpdateRef.current = true;
 
-        let rawHero = event.data.settings as
-          | Record<string, unknown>
-          | undefined;
+        let rawHero: Record<string, unknown> | undefined;
 
         if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
           const siteData = event.data.data as Record<string, unknown>;
+          const sections = siteData.sections as SectionsMap | undefined;
           const layoutGlobal = (siteData.layoutGlobal ||
             siteData.layout_global) as Record<string, unknown> | undefined;
           const home = siteData.home as Record<string, unknown> | undefined;
-          rawHero = (home?.heroBanner ||
+          rawHero = (sections?.[SECTION_IDS.homeHero] ||
+            home?.heroBanner ||
             home?.hero ||
             siteData.hero ||
             layoutGlobal?.hero) as Record<string, unknown>;
@@ -271,24 +265,32 @@ export function HeroSection() {
           event.data.config
         ) {
           const siteConfig = event.data.config as Record<string, unknown>;
+          const sections = siteConfig.sections as SectionsMap | undefined;
           const layoutGlobal = (siteConfig.layoutGlobal ||
             siteConfig.layout_global) as Record<string, unknown> | undefined;
           const home = siteConfig.home as Record<string, unknown> | undefined;
-          rawHero = (home?.heroBanner ||
+          rawHero = (sections?.[SECTION_IDS.homeHero] ||
+            home?.heroBanner ||
             home?.hero ||
             siteConfig.hero ||
-            layoutGlobal?.hero) as Record<string, unknown>;
+            layoutConfig?.hero) as Record<string, unknown>;
+        } else {
+          rawHero = event.data.settings as Record<string, unknown>;
         }
 
         if (rawHero) {
-          const content = (rawHero.content as Record<string, unknown>) || {};
-          const appearance =
-            (rawHero.appearance as Record<string, unknown>) || {};
+          const content = (rawHero.content && typeof rawHero.content === "object" && !Array.isArray(rawHero.content)
+            ? (rawHero.content as Record<string, unknown>)
+            : {}) as Record<string, unknown>;
+          
+          const appearance = (rawHero.appearance && typeof rawHero.appearance === "object" && !Array.isArray(rawHero.appearance)
+            ? (rawHero.appearance as Record<string, unknown>)
+            : {}) as Record<string, unknown>;
 
           const normalizedHero = {
             ...rawHero,
-            ...content,
-            ...appearance,
+            ...(typeof rawHero.content === "object" ? content : {}),
+            ...(typeof rawHero.appearance === "object" ? appearance : {}),
             title: content.title ?? rawHero.title,
             subtitle: content.subtitle ?? rawHero.subtitle,
             showTitle:

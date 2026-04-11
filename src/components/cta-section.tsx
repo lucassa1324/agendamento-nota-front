@@ -40,12 +40,6 @@ export function CTASection() {
   const hasLivePreviewUpdateRef = useRef(false);
 
   const loadData = useCallback(() => {
-    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
-    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-      console.log("[CTASection] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
-      return;
-    }
-
     // Tenta carregar do Storage primeiro (Rascunho)
     const localDraft = getCTASettings();
     const storageKey = `agendamento_nota_ctaSettings`;
@@ -62,16 +56,23 @@ export function CTASection() {
 
       // Buscar CTA no config ou no layoutGlobal
       const home = config?.home as Record<string, unknown> | undefined;
-      const rawCTA = (home?.ctaSection ||
+      const rawCTA = ((config as any)?.sections?.[SECTION_IDS.homeCTA] ||
+        home?.ctaSection ||
         home?.cta ||
         config?.cta ||
         layoutGlobal?.cta) as Record<string, unknown> | undefined;
 
       if (rawCTA) {
-        const content = (rawCTA.content as Record<string, unknown>) || {};
-        const appearance = (rawCTA.appearance as Record<string, unknown>) || {};
+        const content = (rawCTA.content && typeof rawCTA.content === "object" && !Array.isArray(rawCTA.content)
+          ? (rawCTA.content as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
+        const appearance = (rawCTA.appearance && typeof rawCTA.appearance === "object" && !Array.isArray(rawCTA.appearance)
+          ? (rawCTA.appearance as Record<string, unknown>)
+          : {}) as Record<string, unknown>;
         const normalizedCTA = {
-          ...rawCTA,
+          ...(rawCTA && typeof rawCTA === "object" && !Array.isArray(rawCTA)
+            ? (rawCTA as Record<string, unknown>)
+            : {}),
           ...content,
           ...appearance,
           title: (content.title as string) ?? (rawCTA.title as string),
@@ -167,7 +168,9 @@ export function CTASection() {
           const layoutGlobal = (siteData.layoutGlobal ||
             siteData.layout_global) as Record<string, unknown> | undefined;
           const home = siteData.home as Record<string, unknown> | undefined;
-          rawCTA = (home?.ctaSection ||
+          const sections = (siteData as any).sections as Record<string, unknown> | undefined;
+          rawCTA = (sections?.[SECTION_IDS.homeCTA] ||
+            home?.ctaSection ||
             home?.cta ||
             siteData.cta ||
             layoutGlobal?.cta) as Record<string, unknown>;
@@ -176,17 +179,25 @@ export function CTASection() {
           const layoutGlobal = (siteConfig.layoutGlobal ||
             siteConfig.layout_global) as Record<string, unknown> | undefined;
           const home = siteConfig.home as Record<string, unknown> | undefined;
-          rawCTA = (home?.ctaSection ||
+          const sections = (siteConfig as any).sections as Record<string, unknown> | undefined;
+          rawCTA = (sections?.[SECTION_IDS.homeCTA] ||
+            home?.ctaSection ||
             home?.cta ||
             siteConfig.cta ||
             layoutGlobal?.cta) as Record<string, unknown>;
         }
 
         if (rawCTA) {
-          const content = (rawCTA.content as Record<string, unknown>) || {};
-          const appearance = (rawCTA.appearance as Record<string, unknown>) || {};
+          const content = (rawCTA.content && typeof rawCTA.content === "object" && !Array.isArray(rawCTA.content)
+            ? (rawCTA.content as Record<string, unknown>)
+            : {}) as Record<string, unknown>;
+          const appearance = (rawCTA.appearance && typeof rawCTA.appearance === "object" && !Array.isArray(rawCTA.appearance)
+            ? (rawCTA.appearance as Record<string, unknown>)
+            : {}) as Record<string, unknown>;
           const normalizedCTA = {
-            ...rawCTA,
+            ...(rawCTA && typeof rawCTA === "object" && !Array.isArray(rawCTA)
+              ? (rawCTA as Record<string, unknown>)
+              : {}),
             ...content,
             ...appearance,
             title: (content.title as string) ?? (rawCTA.title as string),

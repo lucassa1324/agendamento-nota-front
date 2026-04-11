@@ -67,8 +67,8 @@ export function Footer({
   const studioEmail = studio?.email;
   const studioAddress = studio?.address;
   const studioContact = studio?.contact;
-  const studioFooterConfig = studio?.config?.footer;
-  const studioInstagram = studio?.instagram;
+  const studioFooterConfig = (studio?.config as any)?.sections?.[SECTION_IDS.layoutFooter] || studio?.config?.footer;
+    const studioInstagram = studio?.instagram;
   const studioFacebook = studio?.facebook;
   const studioWhatsapp = studio?.whatsapp;
   const studioTiktok = studio?.tiktok;
@@ -84,14 +84,6 @@ export function Footer({
   const studioShowX = studio?.showX;
 
   const loadData = useCallback(() => {
-    // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
-    if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-      console.log(
-        "[Footer] Guard Logic: Ignorando loadData do banco (Preview Ativo)",
-      );
-      return;
-    }
-
     // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
     const baseProfile = getSiteProfile();
 
@@ -199,10 +191,8 @@ export function Footer({
   }, [externalFooterSettings]);
 
   useEffect(() => {
-    // Só carrega os dados iniciais se não houver um preview ativo ou se não estiver no iframe
-    if (!isInsideIframe || !hasLivePreviewUpdateRef.current) {
-      loadData();
-    }
+    // Sempre carrega os dados iniciais para garantir sincronia
+    loadData();
 
     // Notificar o pai (admin) que o componente de rodapé está pronto
     if (window.self !== window.top) {
@@ -232,17 +222,20 @@ export function Footer({
 
         if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
           const siteData = event.data.data as Record<string, unknown>;
-          rawFooter = siteData.footer as Record<string, unknown>;
+          const sections = (siteData as any).sections as Record<string, unknown> | undefined;
+          rawFooter = (sections?.[SECTION_IDS.layoutFooter] || siteData.footer) as Record<string, unknown>;
         } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
           const siteConfig = event.data.config as Record<string, unknown>;
-          rawFooter = siteConfig.footer as Record<string, unknown>;
+          const sections = (siteConfig as any).sections as Record<string, unknown> | undefined;
+          rawFooter = (sections?.[SECTION_IDS.layoutFooter] || siteConfig.footer) as Record<string, unknown>;
         } else {
           rawFooter = event.data.settings as Record<string, unknown>;
         }
 
-        if (rawFooter) {
-          const appearance =
-            (rawFooter.appearance as Record<string, unknown>) || {};
+        if (rawFooter && typeof rawFooter === "object" && !Array.isArray(rawFooter)) {
+          const appearance = (rawFooter.appearance && typeof rawFooter.appearance === "object" && !Array.isArray(rawFooter.appearance)
+            ? (rawFooter.appearance as Record<string, unknown>)
+            : {}) as Record<string, unknown>;
           const normalizedFooter = {
             ...rawFooter,
             ...appearance,
@@ -279,9 +272,7 @@ export function Footer({
     };
 
     const handleDataReady = () => {
-      if (!hasLivePreviewUpdateRef.current) {
-        loadData();
-      }
+      loadData();
     };
 
     window.addEventListener("message", handleMessage);

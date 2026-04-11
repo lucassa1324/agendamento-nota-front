@@ -111,26 +111,48 @@ export function GalleryPreview() {
 
   const normalizeGallerySettings = useCallback(
     (configGallery: Record<string, unknown>): GallerySettings => {
-      const content = (configGallery.content as Record<string, unknown>) || {};
+      const safeConfig =
+        typeof configGallery === "object" &&
+        configGallery !== null &&
+        !Array.isArray(configGallery)
+          ? configGallery
+          : {};
+
+      const content =
+        safeConfig.content &&
+        typeof safeConfig.content === "object" &&
+        !Array.isArray(safeConfig.content)
+          ? (safeConfig.content as Record<string, unknown>)
+          : {};
+
       const appearance =
-        (configGallery.appearance as Record<string, unknown>) || {};
+        safeConfig.appearance &&
+        typeof safeConfig.appearance === "object" &&
+        !Array.isArray(safeConfig.appearance)
+          ? (safeConfig.appearance as Record<string, unknown>)
+          : {};
+
       const cardConfig =
-        (configGallery.cardConfig as Record<string, unknown>) || {};
+        safeConfig.cardConfig &&
+        typeof safeConfig.cardConfig === "object" &&
+        !Array.isArray(safeConfig.cardConfig)
+          ? (safeConfig.cardConfig as Record<string, unknown>)
+          : {};
 
       const resolvedBgColor = sanitizeColor(
         (appearance.backgroundColor as string) ||
-          (configGallery.bgColor as string) ||
-          (configGallery.backgroundColor as string) ||
-          (configGallery.bg_color as string) ||
-          (configGallery.background_color as string) ||
+          (safeConfig.bgColor as string) ||
+          (safeConfig.backgroundColor as string) ||
+          (safeConfig.bg_color as string) ||
+          (safeConfig.background_color as string) ||
           "",
       );
 
       const resolvedCardBgColor = sanitizeColor(
-        (configGallery.cardBgColor as string) ||
-          (configGallery.cardBackgroundColor as string) ||
-          (configGallery.card_background_color as string) ||
-          (configGallery.card_bg_color as string) ||
+        (safeConfig.cardBgColor as string) ||
+          (safeConfig.cardBackgroundColor as string) ||
+          (safeConfig.card_background_color as string) ||
+          (safeConfig.card_bg_color as string) ||
           (cardConfig.cardBackgroundColor as string) ||
           (cardConfig.backgroundColor as string) ||
           (appearance.cardBgColor as string) ||
@@ -140,46 +162,45 @@ export function GalleryPreview() {
       );
 
       return {
-        ...configGallery,
-        ...content,
-        ...appearance,
-        title: (content.title as string) ?? (configGallery.title as string),
-        subtitle:
-          (content.subtitle as string) ?? (configGallery.subtitle as string),
+        ...safeConfig,
+        ...(typeof safeConfig.content === "object" ? content : {}),
+        ...(typeof safeConfig.appearance === "object" ? appearance : {}),
+        title: (content.title as string) ?? (safeConfig.title as string),
+        subtitle: (content.subtitle as string) ?? (safeConfig.subtitle as string),
         titleColor: sanitizeColor(
-          (configGallery.titleColor as string) ||
+          (safeConfig.titleColor as string) ||
             (appearance.titleColor as string) ||
             (content.titleColor as string),
         ),
         subtitleColor: sanitizeColor(
-          (configGallery.subtitleColor as string) ||
+          (safeConfig.subtitleColor as string) ||
             (appearance.subtitleColor as string) ||
             (content.subtitleColor as string),
         ),
         titleFont:
-          (configGallery.titleFont as string) ||
+          (safeConfig.titleFont as string) ||
           (appearance.titleFont as string) ||
           (content.titleFont as string),
         subtitleFont:
-          (configGallery.subtitleFont as string) ||
+          (safeConfig.subtitleFont as string) ||
           (appearance.subtitleFont as string) ||
           (content.subtitleFont as string),
         buttonColor: sanitizeColor(
-          (configGallery.buttonColor as string) ||
+          (safeConfig.buttonColor as string) ||
             (appearance.buttonColor as string) ||
             (content.buttonColor as string),
         ),
         buttonTextColor: sanitizeColor(
-          (configGallery.buttonTextColor as string) ||
+          (safeConfig.buttonTextColor as string) ||
             (appearance.buttonTextColor as string) ||
             (content.buttonTextColor as string),
         ),
         buttonLink:
           (content.buttonLink as string) ||
-          (configGallery.buttonLink as string) ||
+          (safeConfig.buttonLink as string) ||
           "",
         bgImage:
-          (configGallery.bgImage as string) ||
+          (safeConfig.bgImage as string) ||
           (appearance.backgroundImageUrl as string) ||
           "",
         bgColor: resolvedBgColor,
@@ -209,13 +230,6 @@ export function GalleryPreview() {
 
   const loadData = useCallback(
     async (force = false) => {
-      // Blindagem Absoluta: Se já recebemos atualização do editor, ignoramos o banco
-      const isInsideIframe = typeof window !== "undefined" && window.parent !== window;
-      if (isInsideIframe && hasLivePreviewUpdateRef.current && !force) {
-        console.log("[GalleryPreview] Guard Logic: Ignorando loadData do banco (Preview Ativo)");
-        return;
-      }
-
       const now = Date.now();
       // Evita chamadas simultâneas ou muito próximas (menos de 1s entre elas)
       // a menos que seja forçado (ex: clique manual ou salvamento)
@@ -370,11 +384,7 @@ export function GalleryPreview() {
       typeof window !== "undefined" &&
       window.location.search.includes("preview=true");
 
-    // Se já temos configurações no modo preview, bloqueamos o loadData inicial
-    // para evitar que os dados do banco sobrescrevam os dados do editor.
-    if (!isPreview || !settingsRef.current) {
-      loadData();
-    }
+    loadData();
 
     const handleMessage = (event: MessageEvent) => {
       if (!event.data || typeof event.data !== "object") return;
@@ -409,9 +419,6 @@ export function GalleryPreview() {
           event.data.type === "UPDATE_SITE_CONFIG") &&
         event.data.data
       ) {
-        if (isPreview && hasLivePreviewUpdateRef.current) {
-          return;
-        }
         const siteData = normalizePayload(
           event.data.data as Record<string, unknown>,
         ) as Record<string, unknown>;
@@ -431,17 +438,6 @@ export function GalleryPreview() {
           event.data.type,
         );
         if (isPreview) {
-          // Se for DataReady no preview, NÃO chamamos loadData se já temos configurações via Live Update,
-          // pois isso causaria o reset/flicker.
-          if (
-            event.data.type === "DataReady" &&
-            hasLivePreviewUpdateRef.current
-          ) {
-            console.log(
-              "[GALLERY_SYNC] Modo Preview detectado. Bloqueando sobreposição pelo banco.",
-            );
-            return;
-          }
           loadData(true);
         }
       }

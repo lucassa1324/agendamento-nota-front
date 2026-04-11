@@ -179,9 +179,9 @@ export function ServicesSection() {
       // PILAR: Unificação e Robustez
       // Começamos com um merge de tudo para não perder nenhuma propriedade nova (passthrough)
       const merged = {
-        ...appearance,
-        ...content,
-        ...itemsStyle,
+        ...(appearance && typeof appearance === "object" ? appearance : {}),
+        ...(content && typeof content === "object" ? content : {}),
+        ...(itemsStyle && typeof itemsStyle === "object" ? itemsStyle : {}),
         ...sanitized,
       };
 
@@ -282,13 +282,6 @@ export function ServicesSection() {
 
   const loadData = useCallback(
     (forceRevalidate = false) => {
-      if (isInsideIframe && hasLivePreviewUpdateRef.current) {
-        console.log(
-          "[ServicesSection] Guard Logic: Ignorando loadData do banco (Preview Ativo mantido).",
-        );
-        return;
-      }
-
       // Tenta pegar do cache primeiro para ser instantâneo
       const cachedStudioStr = localStorage.getItem("studio_data");
       const settingsFromStorage = getSettingsFromStorage();
@@ -368,9 +361,11 @@ export function ServicesSection() {
       const homeServicesSection = (home?.servicesSection ||
         home?.services_section) as Record<string, unknown> | undefined;
 
-      const configServices = (homeServicesSection ||
+      const configServices = ((currentConfig as any)?.sections?.[SECTION_IDS.homeServices] ||
+        homeServicesSection ||
         home?.services ||
         currentConfig?.services ||
+        layoutGlobal?.servicesSection ||
         layoutGlobal?.services) as Record<string, unknown> | undefined;
 
       const finalConfigServices = configServices
@@ -446,10 +441,13 @@ export function ServicesSection() {
         const home = siteData.home as Record<string, unknown> | undefined;
         const homeServicesSection = (home?.servicesSection ||
           home?.services_section) as Record<string, unknown> | undefined;
+        const sections = (siteData as any).sections as Record<string, unknown> | undefined;
         const siteServices =
+          sections?.[SECTION_IDS.homeServices] ||
           homeServicesSection ||
           (home?.services as Record<string, unknown> | undefined) ||
           (siteData.services as Record<string, unknown> | undefined) ||
+          (layoutGlobal?.servicesSection as Record<string, unknown> | undefined) ||
           (layoutGlobal?.services as Record<string, unknown> | undefined);
         if (siteServices) {
           setSettings(normalizeConfigServices(siteServices));
