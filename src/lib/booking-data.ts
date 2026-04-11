@@ -1938,6 +1938,10 @@ export function getBookingServiceSettings(
 
   let normalized = normalizeStepSettings(step1, defaultBookingServiceSettings);
 
+  if (normalized.bgColor && normalized.bgColor !== "transparent" && !normalized.bgImage) {
+    normalized.bgType = "color";
+  }
+
   // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
     const settings = localStorage.getItem(getStorageKey("bookingServiceSettings"));
@@ -1945,6 +1949,10 @@ export function getBookingServiceSettings(
       try {
         const saved = JSON.parse(settings);
         normalized = normalizeStepSettings(saved, normalized);
+
+        if (normalized.bgColor && normalized.bgColor !== "transparent" && !normalized.bgImage) {
+          normalized.bgType = "color";
+        }
       } catch (e) {
         console.error("Erro ao parsear bookingServiceSettings:", e);
       }
@@ -1991,6 +1999,10 @@ export function getBookingDateSettings(
     defaultBookingDateSettings,
   );
 
+  if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+    base.bgType = "color";
+  }
+
   // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
     const settings = localStorage.getItem(getStorageKey("bookingDateSettings"));
@@ -1998,6 +2010,10 @@ export function getBookingDateSettings(
       try {
         const saved = JSON.parse(settings);
         base = normalizeStepSettings(saved, base);
+
+        if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+          base.bgType = "color";
+        }
       } catch (e) {
         console.error("Erro ao parsear bookingDateSettings:", e);
       }
@@ -2033,6 +2049,10 @@ export function getBookingTimeSettings(
     defaultBookingTimeSettings,
   );
 
+  if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+    base.bgType = "color";
+  }
+
   // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
     const settings = localStorage.getItem(getStorageKey("bookingTimeSettings"));
@@ -2040,6 +2060,10 @@ export function getBookingTimeSettings(
       try {
         const saved = JSON.parse(settings);
         base = normalizeStepSettings(saved, base);
+
+        if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+          base.bgType = "color";
+        }
       } catch (e) {
         console.error("Erro ao parsear bookingTimeSettings:", e);
       }
@@ -2075,6 +2099,10 @@ export function getBookingFormSettings(
     defaultBookingFormSettings,
   );
 
+  if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+    base.bgType = "color";
+  }
+
   // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
     const settings = localStorage.getItem(getStorageKey("bookingFormSettings"));
@@ -2082,6 +2110,10 @@ export function getBookingFormSettings(
       try {
         const saved = JSON.parse(settings);
         base = normalizeStepSettings(saved, base);
+
+        if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+          base.bgType = "color";
+        }
       } catch (e) {
         console.error("Erro ao parsear bookingFormSettings:", e);
       }
@@ -2117,6 +2149,10 @@ export function getBookingConfirmationSettings(
     defaultBookingConfirmationSettings,
   );
 
+  if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+    base.bgType = "color";
+  }
+
   // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
     const settings = localStorage.getItem(
@@ -2126,6 +2162,10 @@ export function getBookingConfirmationSettings(
       try {
         const saved = JSON.parse(settings);
         base = normalizeStepSettings(saved, base);
+
+        if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+          base.bgType = "color";
+        }
       } catch (e) {
         console.error("Erro ao parsear bookingConfirmationSettings:", e);
       }

@@ -929,7 +929,12 @@ export function useEditorSync({
         type === "UPDATE_GALLERY_SETTINGS" ||
         type === "UPDATE_GALLERY_PAGE_SETTINGS" ||
         type === "UPDATE_GALLERY_PREVIEW" ||
-        type === "UPDATE_GALLERY_PAGE"
+        type === "UPDATE_GALLERY_PAGE" ||
+        type === "UPDATE_BOOKING_SERVICE_SETTINGS" ||
+        type === "UPDATE_BOOKING_DATE_SETTINGS" ||
+        type === "UPDATE_BOOKING_TIME_SETTINGS" ||
+        type === "UPDATE_BOOKING_FORM_SETTINGS" ||
+        type === "UPDATE_BOOKING_CONFIRMATION_SETTINGS"
       ) {
         const isValuesType =
           type === "UPDATE_HOME_VALUES_SETTINGS" ||
@@ -939,6 +944,7 @@ export function useEditorSync({
           type === "UPDATE_GALLERY_PAGE_SETTINGS" ||
           type === "UPDATE_GALLERY_PREVIEW" ||
           type === "UPDATE_GALLERY_PAGE";
+        const isBookingType = type.startsWith("UPDATE_BOOKING_");
         const appearance =
           (sanitizedSettings.appearance as
             | Record<string, unknown>
@@ -971,7 +977,9 @@ export function useEditorSync({
           ...sanitizedSettings,
           ...(syncColor
             ? {
-              ...(isValuesType || isGalleryType ? { bgType: "color" } : {}),
+              ...(isValuesType || isGalleryType || isBookingType
+                ? { bgType: "color" }
+                : {}),
               bgColor: syncColor,
               backgroundColor: syncColor,
               bg_color: syncColor,
@@ -996,7 +1004,7 @@ export function useEditorSync({
                 bgColor: syncColor,
                 bg_color: syncColor,
                 background_color: syncColor,
-                ...(isValuesType || isGalleryType
+                ...(isValuesType || isGalleryType || isBookingType
                   ? { bgType: "color", backgroundImageUrl: "" }
                   : {}),
               }
@@ -1012,7 +1020,7 @@ export function useEditorSync({
           },
         };
 
-        if (isGalleryType && syncCardBgColor) {
+        if ((isGalleryType || isBookingType) && syncCardBgColor) {
           payloadSettings.cardConfig = {
             ...((sanitizedSettings.cardConfig as Record<string, unknown>) || {}),
             cardBgColor: syncCardBgColor,
