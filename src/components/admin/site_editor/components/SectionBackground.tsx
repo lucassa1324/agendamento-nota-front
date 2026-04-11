@@ -56,6 +56,7 @@ export function normalizeSectionBackgroundData<
       (section.bgColor as string) ||
         (section.bg_color as string) ||
         (section.backgroundColor as string) ||
+        (section.background_color as string) ||
         (appearance.backgroundColor as string) ||
         (appearance.bgColor as string) ||
         "",
@@ -97,6 +98,8 @@ export function normalizeSectionBackgroundData<
     bgImage,
     bgColor,
     backgroundColor: bgColor,
+    bg_color: bgColor,
+    background_color: bgColor,
     bgType,
     imageOpacity,
     overlayOpacity,
@@ -106,6 +109,9 @@ export function normalizeSectionBackgroundData<
     appearance: {
       ...appearance,
       backgroundColor: bgColor,
+      bgColor: bgColor,
+      bg_color: bgColor,
+      background_color: bgColor,
       backgroundImageUrl: bgImage,
       bgType,
       imageOpacity,

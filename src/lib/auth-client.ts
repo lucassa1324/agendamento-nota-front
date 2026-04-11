@@ -94,37 +94,10 @@ export const authClient = createAuthClient({
         hasJsonProp: !!(context.options as { json?: unknown })?.json,
       });
 
-      // Se tiver propriedade 'json', o better-fetch vai serializar automaticamente depois deste interceptor
       if ((context?.options as { json?: unknown })?.json) {
         console.log(
           ">>> [AUTH_CLIENT] Propriedade 'json' detectada. Better-fetch cuidará da serialização.",
         );
-        return;
-      }
-
-      // Se o body for um objeto e o método não for GET/HEAD, forçamos o stringify
-      // Isso corrige o erro onde o browser envia [object Object]
-      if (
-        !bodyIsString &&
-        context?.options?.body &&
-        typeof context?.options?.body === "object" &&
-        !["GET", "HEAD"].includes(context?.request?.method || "")
-      ) {
-        console.warn(">>> [AUTH_CLIENT] FORÇANDO JSON.stringify NO BODY!");
-        try {
-          context.options.body = JSON.stringify(context.options.body);
-
-          // Garante o header Content-Type APENAS quando nós mesmos serializamos
-          context.options.headers = {
-            ...context.options.headers,
-            "Content-Type": "application/json",
-          };
-        } catch (e) {
-          console.error(
-            ">>> [AUTH_CLIENT] Erro ao fazer JSON.stringify do body:",
-            e,
-          );
-        }
       }
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
@@ -195,6 +168,7 @@ let sessionPromise: Promise<string | null> | null = null;
 let lastToken: string | null = null;
 let lastFetchTime = 0;
 const CACHE_TTL = 30000; // 30 segundos
+const SESSION_FETCH_TIMEOUT_MS = 2500;
 
 export const getSessionToken = async (): Promise<string | null> => {
   const now = Date.now();
@@ -219,13 +193,20 @@ export const getSessionToken = async (): Promise<string | null> => {
 
       console.log(`>>> [AUTH_CLIENT] Buscando sessão em: ${fetchUrl}`);
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        SESSION_FETCH_TIMEOUT_MS,
+      );
+
       const resp = await fetch(fetchUrl, {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
         credentials: "include",
-      });
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
 
       if (resp.ok) {
         try {
@@ -247,6 +228,9 @@ export const getSessionToken = async (): Promise<string | null> => {
       }
       return null;
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return null;
+      }
       console.error(">>> [AUTH_CLIENT] Erro CRÍTICO ao obter sessão:", error);
       return null;
     } finally {

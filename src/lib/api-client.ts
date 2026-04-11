@@ -1,6 +1,20 @@
 import { API_BASE_URL, getSessionToken } from "./auth-client";
 
 let billingGuardActive = false;
+const SESSION_TOKEN_TIMEOUT_MS = 2500;
+
+async function getSessionTokenWithTimeout() {
+  try {
+    return await Promise.race([
+      getSessionToken(),
+      new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), SESSION_TOKEN_TIMEOUT_MS),
+      ),
+    ]);
+  } catch {
+    return null;
+  }
+}
 
 function createBillingRequiredResponse() {
   return new Response(
@@ -34,7 +48,7 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     }
   }
 
-  const sessionToken = await getSessionToken();
+  const sessionToken = await getSessionTokenWithTimeout();
 
   // Construir URL completa se for relativa
   let fullUrl = url;

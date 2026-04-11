@@ -114,6 +114,31 @@ export function GalleryPreview() {
       const content = (configGallery.content as Record<string, unknown>) || {};
       const appearance =
         (configGallery.appearance as Record<string, unknown>) || {};
+      const cardConfig =
+        (configGallery.cardConfig as Record<string, unknown>) || {};
+
+      const resolvedBgColor = sanitizeColor(
+        (appearance.backgroundColor as string) ||
+          (configGallery.bgColor as string) ||
+          (configGallery.backgroundColor as string) ||
+          (configGallery.bg_color as string) ||
+          (configGallery.background_color as string) ||
+          "",
+      );
+
+      const resolvedCardBgColor = sanitizeColor(
+        (configGallery.cardBgColor as string) ||
+          (configGallery.cardBackgroundColor as string) ||
+          (configGallery.card_background_color as string) ||
+          (configGallery.card_bg_color as string) ||
+          (cardConfig.cardBackgroundColor as string) ||
+          (cardConfig.backgroundColor as string) ||
+          (appearance.cardBgColor as string) ||
+          (appearance.cardBackgroundColor as string) ||
+          (content.cardBgColor as string) ||
+          "",
+      );
+
       return {
         ...configGallery,
         ...content,
@@ -157,24 +182,16 @@ export function GalleryPreview() {
           (configGallery.bgImage as string) ||
           (appearance.backgroundImageUrl as string) ||
           "",
-        bgColor: sanitizeColor(
-          (appearance.backgroundColor as string) ||
-            (configGallery.bgColor as string) ||
-            (configGallery.backgroundColor as string) ||
-            "",
-        ),
-        cardBgColor: sanitizeColor(
-          (configGallery.cardBgColor as string) ||
-            (configGallery.cardBackgroundColor as string) ||
-            (configGallery.card_background_color as string) ||
-            ((configGallery.cardConfig as Record<string, unknown>)
-              ?.cardBackgroundColor as string) ||
-            ((configGallery.cardConfig as Record<string, unknown>)
-              ?.backgroundColor as string) ||
-            (appearance.cardBgColor as string) ||
-            (content.cardBgColor as string),
-        ),
-      } as GallerySettings;
+        bgColor: resolvedBgColor,
+        backgroundColor: resolvedBgColor,
+        cardBgColor: resolvedCardBgColor,
+        cardBackgroundColor: resolvedCardBgColor,
+        appearance: {
+          ...appearance,
+          backgroundColor: resolvedBgColor,
+          cardBgColor: resolvedCardBgColor,
+        },
+      } as unknown as GallerySettings;
     },
     [],
   );
@@ -372,59 +389,15 @@ export function GalleryPreview() {
           | Record<string, unknown>
           | undefined;
         if (incoming) {
-          const incomingAppearance =
-            (incoming.appearance as Record<string, unknown>) || {};
-          const incomingContent =
-            (incoming.content as Record<string, unknown>) || {};
-
-          const sanitized = {
-            ...incoming,
-            bgColor:
-              sanitizeColor(
-                (incoming.bgColor as string) ||
-                  (incomingAppearance.backgroundColor as string),
-              ) || "",
-            titleColor:
-              sanitizeColor(
-                (incoming.titleColor as string) ||
-                  (incomingAppearance.titleColor as string) ||
-                  (incomingContent.titleColor as string),
-              ) || "",
-            subtitleColor:
-              sanitizeColor(
-                (incoming.subtitleColor as string) ||
-                  (incomingAppearance.subtitleColor as string) ||
-                  (incomingContent.subtitleColor as string),
-              ) || "",
-            buttonColor:
-              sanitizeColor(
-                (incoming.buttonColor as string) ||
-                  (incomingAppearance.buttonColor as string) ||
-                  (incomingContent.buttonColor as string),
-              ) || "",
-            buttonTextColor:
-              sanitizeColor(
-                (incoming.buttonTextColor as string) ||
-                  (incomingAppearance.buttonTextColor as string) ||
-                  (incomingContent.buttonTextColor as string),
-              ) || "",
-            cardBgColor:
-              sanitizeColor(
-                (incoming.cardBgColor as string) ||
-                  (incomingAppearance.cardBgColor as string) ||
-                  (incomingAppearance.cardBackgroundColor as string) ||
-                  (incomingContent.cardBgColor as string),
-              ) || "",
-          };
-
+          const normalized = normalizeGallerySettings(incoming);
           setSettings((prev) =>
             prev
               ? {
                   ...prev,
-                  ...sanitized,
+                  ...normalized,
                 }
               : {
-                  ...(sanitized as GallerySettings),
+                  ...normalized,
                 },
           );
         }

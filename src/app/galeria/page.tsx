@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import {
   SectionBackground,
   type SectionBackgroundSettings,
@@ -39,6 +39,7 @@ export default function GaleriaPage({
   const [gallerySettings, setGallerySettings] = useState<GallerySettings>(
     defaultGallerySettings,
   );
+  const hasLivePreviewUpdateRef = useRef(false);
   const sanitizeGallerySettings = useCallback(
     (incoming: Record<string, unknown>) => {
       const incomingAppearance =
@@ -163,11 +164,19 @@ export default function GaleriaPage({
           event.data?.type === "UPDATE_GALLERY_PAGE_SETTINGS") &&
         event.data.settings
       ) {
+        hasLivePreviewUpdateRef.current = true;
         setGallerySettings(
           sanitizeGallerySettings(event.data.settings as Record<string, unknown>),
         );
       }
-      if (event.data?.type === "UPDATE_SITE_DATA" && event.data.data) {
+      if (
+        (event.data?.type === "UPDATE_SITE_DATA" ||
+          event.data?.type === "UPDATE_SITE_CONFIG") &&
+        event.data.data
+      ) {
+        if (isPreview && hasLivePreviewUpdateRef.current) {
+          return;
+        }
         const siteData = event.data.data as Record<string, unknown>;
         const configGallery = siteData.galleryPageSettings as
           | Record<string, unknown>
@@ -185,7 +194,14 @@ export default function GaleriaPage({
       setVisibleSections(getVisibleSections());
     };
     const handleGalleryPageSettingsUpdate = () => {
-      setGallerySettings(getGalleryPageSettings());
+      if (isPreview && hasLivePreviewUpdateRef.current) {
+        return;
+      }
+      setGallerySettings(
+        sanitizeGallerySettings(
+          getGalleryPageSettings() as unknown as Record<string, unknown>,
+        ),
+      );
     };
 
     window.addEventListener("message", handleMessage);

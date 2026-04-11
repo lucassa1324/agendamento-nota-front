@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type {
   BookingStepSettings,
   ColorSettings,
@@ -33,6 +33,7 @@ import {
   defaultTeamSettings,
   defaultTestimonialsSettings,
   defaultValuesSettings,
+  sanitizeColor,
 } from "@/lib/booking-data";
 import { siteCustomizerService } from "@/lib/site-customizer-service";
 import type { BackgroundSettings } from "../components/BackgroundEditor";
@@ -85,6 +86,66 @@ const applyDefaultVisuals = <T extends Record<string, unknown>>(
   }
 
   return next as T;
+};
+
+const cloneValue = <T>(value: T): T =>
+  typeof structuredClone === "function"
+    ? structuredClone(value)
+    : JSON.parse(JSON.stringify(value));
+
+const normalizeGalleryForPersistence = (
+  rawSettings: GallerySettings,
+): GallerySettings => {
+  const rawRecord = rawSettings as Record<string, unknown>;
+  const appearance =
+    (rawRecord.appearance as Record<string, unknown> | undefined) || {};
+  const bgColor =
+    sanitizeColor(
+      rawSettings.bgColor ||
+        (rawRecord.backgroundColor as string | undefined) ||
+        (rawRecord.bg_color as string | undefined) ||
+        (rawRecord.background_color as string | undefined) ||
+        (appearance.backgroundColor as string | undefined) ||
+        (appearance.bgColor as string | undefined),
+    ) || "";
+  const cardBgColor =
+    sanitizeColor(
+      rawSettings.cardBgColor ||
+        (rawRecord.cardBackgroundColor as string | undefined) ||
+        (rawRecord.card_bg_color as string | undefined) ||
+        (rawRecord.card_background_color as string | undefined) ||
+        (appearance.cardBgColor as string | undefined) ||
+        (appearance.cardBackgroundColor as string | undefined),
+    ) || "";
+
+  const normalized = {
+    ...rawSettings,
+    bgColor,
+    cardBgColor,
+    appearance: {
+      ...appearance,
+      backgroundColor: bgColor,
+      bgColor,
+      ...(cardBgColor
+        ? {
+            cardBgColor,
+            cardBackgroundColor: cardBgColor,
+          }
+        : {}),
+    },
+  } as GallerySettings;
+
+  const normalizedRecord = normalized as Record<string, unknown>;
+  normalizedRecord.backgroundColor = bgColor;
+  normalizedRecord.bg_color = bgColor;
+  normalizedRecord.background_color = bgColor;
+  if (cardBgColor) {
+    normalizedRecord.cardBackgroundColor = cardBgColor;
+    normalizedRecord.card_bg_color = cardBgColor;
+    normalizedRecord.card_background_color = cardBgColor;
+  }
+
+  return normalized;
 };
 
 export function useEditorActions({
@@ -178,22 +239,78 @@ export function useEditorActions({
     setLastAppliedBookingConfirmation,
     setLastSavedHomeValues,
     setLastSavedAboutUsValues,
+    baseSettingsRef,
   } = state;
 
   const saveTimersRef = useRef<Record<string, number>>({});
+  const latestSettingsRef = useRef({
+    heroSettings,
+    aboutHeroSettings,
+    storySettings,
+    teamSettings,
+    testimonialsSettings,
+    fontSettings,
+    colorSettings,
+    servicesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
+    gallerySettings,
+    galleryPageSettings,
+    ctaSettings,
+    headerSettings,
+    footerSettings,
+    bookingServiceSettings,
+    bookingDateSettings,
+    bookingTimeSettings,
+    bookingFormSettings,
+    bookingConfirmationSettings,
+  });
 
-  const scheduleDraftSave = useCallback((key: string, saveFn: () => void) => {
-    if (typeof window === "undefined") return;
-    const timers = saveTimersRef.current;
-    if (timers[key]) {
-      window.clearTimeout(timers[key]);
-    }
-    timers[key] = window.setTimeout(() => {
-      saveFn();
-      window.dispatchEvent(new Event("local_draft_changed"));
-      delete timers[key];
-    }, 1000);
-  }, []);
+  useEffect(() => {
+    latestSettingsRef.current = {
+      heroSettings,
+      aboutHeroSettings,
+      storySettings,
+      teamSettings,
+      testimonialsSettings,
+      fontSettings,
+      colorSettings,
+      servicesSettings,
+      homeValuesSettings,
+      aboutUsValuesSettings,
+      gallerySettings,
+      galleryPageSettings,
+      ctaSettings,
+      headerSettings,
+      footerSettings,
+      bookingServiceSettings,
+      bookingDateSettings,
+      bookingTimeSettings,
+      bookingFormSettings,
+      bookingConfirmationSettings,
+    };
+  }, [
+    heroSettings,
+    aboutHeroSettings,
+    storySettings,
+    teamSettings,
+    testimonialsSettings,
+    fontSettings,
+    colorSettings,
+    servicesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
+    gallerySettings,
+    galleryPageSettings,
+    ctaSettings,
+    headerSettings,
+    footerSettings,
+    bookingServiceSettings,
+    bookingDateSettings,
+    bookingTimeSettings,
+    bookingFormSettings,
+    bookingConfirmationSettings,
+  ]);
 
   const deleteOrphanImage = useCallback(
     async (url?: string) => {
@@ -230,6 +347,84 @@ export function useEditorActions({
     saveBookingFormSettings,
     saveBookingConfirmationSettings,
   } = local;
+
+  const persistDraftByKey = useCallback(
+    (key: string) => {
+      const latest = latestSettingsRef.current;
+      const saveMap: Record<string, () => void> = {
+        heroSettings: () => saveHeroSettings(latest.heroSettings),
+        aboutHeroSettings: () =>
+          saveAboutHeroSettings(latest.aboutHeroSettings),
+        storySettings: () => saveStorySettings(latest.storySettings),
+        teamSettings: () => saveTeamSettings(latest.teamSettings),
+        testimonialsSettings: () =>
+          saveTestimonialsSettings(latest.testimonialsSettings),
+        fontSettings: () => saveFontSettings(latest.fontSettings),
+        colorSettings: () => saveColorSettings(latest.colorSettings),
+        servicesSettings: () => saveServicesSettings(latest.servicesSettings),
+        homeValuesSettings: () =>
+          saveHomeValuesSettings(latest.homeValuesSettings),
+        aboutUsValuesSettings: () =>
+          saveAboutUsValuesSettings(latest.aboutUsValuesSettings),
+        gallerySettings: () => saveGallerySettings(latest.gallerySettings),
+        galleryPageSettings: () =>
+          saveGalleryPageSettings(latest.galleryPageSettings),
+        ctaSettings: () => saveCTASettings(latest.ctaSettings),
+        headerSettings: () => saveHeaderSettings(latest.headerSettings),
+        footerSettings: () => saveFooterSettings(latest.footerSettings),
+        bookingServiceSettings: () =>
+          saveBookingServiceSettings(latest.bookingServiceSettings),
+        bookingDateSettings: () =>
+          saveBookingDateSettings(latest.bookingDateSettings),
+        bookingTimeSettings: () =>
+          saveBookingTimeSettings(latest.bookingTimeSettings),
+        bookingFormSettings: () =>
+          saveBookingFormSettings(latest.bookingFormSettings),
+        bookingConfirmationSettings: () =>
+          saveBookingConfirmationSettings(latest.bookingConfirmationSettings),
+      };
+
+      saveMap[key]?.();
+    },
+    [
+      saveHeroSettings,
+      saveAboutHeroSettings,
+      saveStorySettings,
+      saveTeamSettings,
+      saveTestimonialsSettings,
+      saveFontSettings,
+      saveColorSettings,
+      saveServicesSettings,
+      saveHomeValuesSettings,
+      saveAboutUsValuesSettings,
+      saveGallerySettings,
+      saveGalleryPageSettings,
+      saveCTASettings,
+      saveHeaderSettings,
+      saveFooterSettings,
+      saveBookingServiceSettings,
+      saveBookingDateSettings,
+      saveBookingTimeSettings,
+      saveBookingFormSettings,
+      saveBookingConfirmationSettings,
+    ],
+  );
+
+  const scheduleDraftSave = useCallback(
+    (key: string) => {
+      if (typeof window === "undefined") return;
+      const timers = saveTimersRef.current;
+      if (timers[key]) {
+        window.clearTimeout(timers[key]);
+      }
+      timers[key] = window.setTimeout(() => {
+        persistDraftByKey(key);
+        window.dispatchEvent(new Event("local_draft_changed"));
+        delete timers[key];
+      }, 1000);
+    },
+    [persistDraftByKey],
+  );
 
   const handleApplyHero = useCallback(() => {
     setLastAppliedHero(heroSettings);
@@ -341,10 +536,13 @@ export function useEditorActions({
   }, [aboutUsValuesSettings, setLastAppliedAboutUsValues, toast]);
 
   const handleApplyGallery = useCallback(() => {
+    const normalizedGallery = normalizeGalleryForPersistence(gallerySettings);
+    const normalizedGalleryPage =
+      normalizeGalleryForPersistence(galleryPageSettings);
     if (activeSectionId === "gallery-grid") {
-      setLastAppliedGalleryPage(galleryPageSettings);
+      setLastAppliedGalleryPage(normalizedGalleryPage);
     } else {
-      setLastAppliedGallery(gallerySettings);
+      setLastAppliedGallery(normalizedGallery);
     }
     toast({
       title: "Sucesso",
@@ -660,12 +858,17 @@ export function useEditorActions({
         currentSettings?.appearance?.backgroundImageUrl ||
         currentSettings?.bgImage;
       const currentBgType = currentSettings?.bgType;
-      const normalizedUpdates = { ...updates } as any;
+      const currentSettingsRecord = currentSettings as unknown as
+        | Record<string, unknown>
+        | undefined;
+      const updatesRecord = updates as unknown as Record<string, unknown>;
+      const normalizedUpdates: Partial<BackgroundSettings> &
+        Record<string, unknown> = { ...updates };
 
       // Garantia para seções de "Values": preservar cardBgColor se não enviado explicitamente
       if (targetSectionId.includes("values")) {
         normalizedUpdates.cardBgColor =
-          (updates as any).cardBgColor || (currentSettings as any)?.cardBgColor;
+          updatesRecord.cardBgColor || currentSettingsRecord?.cardBgColor;
       }
 
       if (
@@ -725,85 +928,34 @@ export function useEditorActions({
       handleUpdateBackgroundState(normalizedUpdates, targetSectionId);
 
       const currentSettingsMap: Record<string, BackgroundSettings | undefined> =
-      {
-        hero: heroSettings,
-        "home-hero": heroSettings,
-        "about-hero": aboutHeroSettings,
-        story: storySettings,
-        "home-story": storySettings,
-        team: teamSettings,
-        "home-team": teamSettings,
-        testimonials: testimonialsSettings,
-        "home-testimonials": testimonialsSettings,
-        services: servicesSettings,
-        "home-services": servicesSettings,
-        "home-values": homeValuesSettings,
-        "about-values": aboutUsValuesSettings,
-        "about-us-values": aboutUsValuesSettings,
-        gallery: gallerySettings,
-        "home-gallery": gallerySettings,
-        "gallery-preview": gallerySettings,
-        "page-gallery": galleryPageSettings,
-        "gallery-grid": galleryPageSettings,
-        cta: ctaSettings,
-        "home-cta": ctaSettings,
-        "booking-service": bookingServiceSettings,
-        "booking-date": bookingDateSettings,
-        "booking-time": bookingTimeSettings,
-        "booking-form": bookingFormSettings,
-        "booking-confirmation": bookingConfirmationSettings,
-      };
-
-      const saveFnMap: Record<
-        string,
-        (u: Partial<BackgroundSettings>) => void
-      > = {
-        hero: (u) => saveHeroSettings({ ...heroSettings, ...u }),
-        "home-hero": (u) => saveHeroSettings({ ...heroSettings, ...u }),
-        "about-hero": (u) =>
-          saveAboutHeroSettings({ ...aboutHeroSettings, ...u }),
-        story: (u) => saveStorySettings({ ...storySettings, ...u }),
-        "home-story": (u) => saveStorySettings({ ...storySettings, ...u }),
-        team: (u) => saveTeamSettings({ ...teamSettings, ...u }),
-        "home-team": (u) => saveTeamSettings({ ...teamSettings, ...u }),
-        testimonials: (u) =>
-          saveTestimonialsSettings({ ...testimonialsSettings, ...u }),
-        "home-testimonials": (u) =>
-          saveTestimonialsSettings({ ...testimonialsSettings, ...u }),
-        services: (u) => saveServicesSettings({ ...servicesSettings, ...u }),
-        "home-services": (u) =>
-          saveServicesSettings({ ...servicesSettings, ...u }),
-        "home-values": (u) =>
-          saveHomeValuesSettings({ ...homeValuesSettings, ...u }),
-        "about-values": (u) =>
-          saveAboutUsValuesSettings({ ...aboutUsValuesSettings, ...u }),
-        "about-us-values": (u) =>
-          saveAboutUsValuesSettings({ ...aboutUsValuesSettings, ...u }),
-        gallery: (u) => saveGallerySettings({ ...gallerySettings, ...u }),
-        "home-gallery": (u) =>
-          saveGallerySettings({ ...gallerySettings, ...u }),
-        "gallery-preview": (u) =>
-          saveGallerySettings({ ...gallerySettings, ...u }),
-        "page-gallery": (u) =>
-          saveGalleryPageSettings({ ...galleryPageSettings, ...u }),
-        "gallery-grid": (u) =>
-          saveGalleryPageSettings({ ...galleryPageSettings, ...u }),
-        cta: (u) => saveCTASettings({ ...ctaSettings, ...u }),
-        "home-cta": (u) => saveCTASettings({ ...ctaSettings, ...u }),
-        "booking-service": (u) =>
-          saveBookingServiceSettings({ ...bookingServiceSettings, ...u }),
-        "booking-date": (u) =>
-          saveBookingDateSettings({ ...bookingDateSettings, ...u }),
-        "booking-time": (u) =>
-          saveBookingTimeSettings({ ...bookingTimeSettings, ...u }),
-        "booking-form": (u) =>
-          saveBookingFormSettings({ ...bookingFormSettings, ...u }),
-        "booking-confirmation": (u) =>
-          saveBookingConfirmationSettings({
-            ...bookingConfirmationSettings,
-            ...u,
-          }),
-      };
+        {
+          hero: heroSettings,
+          "home-hero": heroSettings,
+          "about-hero": aboutHeroSettings,
+          story: storySettings,
+          "home-story": storySettings,
+          team: teamSettings,
+          "home-team": teamSettings,
+          testimonials: testimonialsSettings,
+          "home-testimonials": testimonialsSettings,
+          services: servicesSettings,
+          "home-services": servicesSettings,
+          "home-values": homeValuesSettings,
+          "about-values": aboutUsValuesSettings,
+          "about-us-values": aboutUsValuesSettings,
+          gallery: gallerySettings,
+          "home-gallery": gallerySettings,
+          "gallery-preview": gallerySettings,
+          "page-gallery": galleryPageSettings,
+          "gallery-grid": galleryPageSettings,
+          cta: ctaSettings,
+          "home-cta": ctaSettings,
+          "booking-service": bookingServiceSettings,
+          "booking-date": bookingDateSettings,
+          "booking-time": bookingTimeSettings,
+          "booking-form": bookingFormSettings,
+          "booking-confirmation": bookingConfirmationSettings,
+        };
 
       const saveKeyMap: Record<string, string> = {
         hero: "heroSettings",
@@ -834,8 +986,8 @@ export function useEditorActions({
         "booking-confirmation": "bookingConfirmationSettings",
       };
 
-      const saveFn = saveFnMap[targetSectionId];
-      if (saveFn) {
+      const saveKey = saveKeyMap[targetSectionId] || targetSectionId;
+      if (saveKey) {
         const currentSettings = currentSettingsMap[targetSectionId];
         const merged = currentSettings
           ? { ...currentSettings, ...normalizedUpdates }
@@ -862,8 +1014,7 @@ export function useEditorActions({
         }
         */
 
-        const saveKey = saveKeyMap[targetSectionId] || targetSectionId;
-        scheduleDraftSave(saveKey, () => saveFn(merged));
+        scheduleDraftSave(saveKey);
       }
     },
     [
@@ -885,22 +1036,6 @@ export function useEditorActions({
       bookingFormSettings,
       bookingConfirmationSettings,
       handleUpdateBackgroundState,
-      saveHeroSettings,
-      saveAboutHeroSettings,
-      saveStorySettings,
-      saveTeamSettings,
-      saveTestimonialsSettings,
-      saveServicesSettings,
-      saveHomeValuesSettings,
-      saveAboutUsValuesSettings,
-      saveGallerySettings,
-      saveGalleryPageSettings,
-      saveCTASettings,
-      saveBookingServiceSettings,
-      saveBookingDateSettings,
-      saveBookingTimeSettings,
-      saveBookingFormSettings,
-      saveBookingConfirmationSettings,
       deleteOrphanImage,
       scheduleDraftSave,
     ],
@@ -909,181 +1044,105 @@ export function useEditorActions({
   const handleUpdateFont = useCallback(
     (updates: Partial<FontSettings>) => {
       handleUpdateFontState(updates);
-      scheduleDraftSave("fontSettings", () =>
-        saveFontSettings({ ...fontSettings, ...updates }),
-      );
+      scheduleDraftSave("fontSettings");
     },
-    [handleUpdateFontState, scheduleDraftSave, saveFontSettings, fontSettings],
+    [handleUpdateFontState, scheduleDraftSave],
   );
 
   const handleUpdateColors = useCallback(
     (updates: Partial<ColorSettings>) => {
       handleUpdateColorsState(updates);
-      scheduleDraftSave("colorSettings", () =>
-        saveColorSettings({ ...colorSettings, ...updates }),
-      );
+      scheduleDraftSave("colorSettings");
     },
-    [
-      handleUpdateColorsState,
-      scheduleDraftSave,
-      saveColorSettings,
-      colorSettings,
-    ],
+    [handleUpdateColorsState, scheduleDraftSave],
   );
 
   const handleUpdateHero = useCallback(
     (updates: Partial<HeroSettings>) => {
       handleUpdateHeroState(updates);
-      scheduleDraftSave("heroSettings", () =>
-        saveHeroSettings({ ...heroSettings, ...updates }),
-      );
+      scheduleDraftSave("heroSettings");
     },
-    [handleUpdateHeroState, scheduleDraftSave, saveHeroSettings, heroSettings],
+    [handleUpdateHeroState, scheduleDraftSave],
   );
 
   const handleUpdateAboutHero = useCallback(
     (updates: Partial<HeroSettings>) => {
       handleUpdateAboutHeroState(updates);
-      scheduleDraftSave("aboutHeroSettings", () =>
-        saveAboutHeroSettings({ ...aboutHeroSettings, ...updates }),
-      );
+      scheduleDraftSave("aboutHeroSettings");
     },
-    [
-      handleUpdateAboutHeroState,
-      scheduleDraftSave,
-      saveAboutHeroSettings,
-      aboutHeroSettings,
-    ],
+    [handleUpdateAboutHeroState, scheduleDraftSave],
   );
 
   const handleUpdateStory = useCallback(
     (updates: Partial<StorySettings>) => {
       handleUpdateStoryState(updates);
-      scheduleDraftSave("storySettings", () =>
-        saveStorySettings({ ...storySettings, ...updates }),
-      );
+      scheduleDraftSave("storySettings");
     },
-    [
-      handleUpdateStoryState,
-      scheduleDraftSave,
-      saveStorySettings,
-      storySettings,
-    ],
+    [handleUpdateStoryState, scheduleDraftSave],
   );
 
   const handleUpdateTeam = useCallback(
     (updates: Partial<TeamSettings>) => {
       handleUpdateTeamState(updates);
-      scheduleDraftSave("teamSettings", () =>
-        saveTeamSettings({ ...teamSettings, ...updates }),
-      );
+      scheduleDraftSave("teamSettings");
     },
-    [handleUpdateTeamState, scheduleDraftSave, saveTeamSettings, teamSettings],
+    [handleUpdateTeamState, scheduleDraftSave],
   );
 
   const handleUpdateTestimonials = useCallback(
     (updates: Partial<TestimonialsSettings>) => {
       handleUpdateTestimonialsState(updates);
-      scheduleDraftSave("testimonialsSettings", () =>
-        saveTestimonialsSettings({ ...testimonialsSettings, ...updates }),
-      );
+      scheduleDraftSave("testimonialsSettings");
     },
-    [
-      handleUpdateTestimonialsState,
-      scheduleDraftSave,
-      saveTestimonialsSettings,
-      testimonialsSettings,
-    ],
+    [handleUpdateTestimonialsState, scheduleDraftSave],
   );
 
   const handleUpdateServices = useCallback(
     (updates: Partial<ServicesSettings>) => {
       handleUpdateServicesState(updates);
-      scheduleDraftSave("servicesSettings", () =>
-        saveServicesSettings({ ...servicesSettings, ...updates }),
-      );
+      scheduleDraftSave("servicesSettings");
     },
-    [
-      handleUpdateServicesState,
-      scheduleDraftSave,
-      saveServicesSettings,
-      servicesSettings,
-    ],
+    [handleUpdateServicesState, scheduleDraftSave],
   );
 
   const handleUpdateGallery = useCallback(
     (updates: Partial<GallerySettings>) => {
       handleUpdateGalleryPreviewState(updates);
-      scheduleDraftSave("gallerySettings", () =>
-        saveGallerySettings({ ...gallerySettings, ...updates }),
-      );
+      scheduleDraftSave("gallerySettings");
     },
-    [
-      handleUpdateGalleryPreviewState,
-      scheduleDraftSave,
-      saveGallerySettings,
-      gallerySettings,
-    ],
+    [handleUpdateGalleryPreviewState, scheduleDraftSave],
   );
 
   const handleUpdateGalleryPage = useCallback(
     (updates: Partial<GallerySettings>) => {
       handleUpdateGalleryPageState(updates);
-      scheduleDraftSave("galleryPageSettings", () =>
-        saveGalleryPageSettings({ ...galleryPageSettings, ...updates }),
-      );
+      scheduleDraftSave("galleryPageSettings");
     },
-    [
-      handleUpdateGalleryPageState,
-      scheduleDraftSave,
-      saveGalleryPageSettings,
-      galleryPageSettings,
-    ],
+    [handleUpdateGalleryPageState, scheduleDraftSave],
   );
 
   const handleUpdateHeader = useCallback(
     (updates: Partial<HeaderSettings>) => {
       handleUpdateHeaderState(updates);
-      scheduleDraftSave("headerSettings", () =>
-        saveHeaderSettings({ ...headerSettings, ...updates }),
-      );
+      scheduleDraftSave("headerSettings");
     },
-    [
-      handleUpdateHeaderState,
-      scheduleDraftSave,
-      saveHeaderSettings,
-      headerSettings,
-    ],
+    [handleUpdateHeaderState, scheduleDraftSave],
   );
 
   const handleUpdateFooter = useCallback(
     (updates: Partial<FooterSettings>) => {
       handleUpdateFooterState(updates);
-      scheduleDraftSave("footerSettings", () =>
-        saveFooterSettings({ ...footerSettings, ...updates }),
-      );
+      scheduleDraftSave("footerSettings");
     },
-    [
-      handleUpdateFooterState,
-      scheduleDraftSave,
-      saveFooterSettings,
-      footerSettings,
-    ],
+    [handleUpdateFooterState, scheduleDraftSave],
   );
 
   const handleUpdateBookingService = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       handleUpdateBookingServiceState(updates);
-      scheduleDraftSave("bookingServiceSettings", () =>
-        saveBookingServiceSettings({ ...bookingServiceSettings, ...updates }),
-      );
+      scheduleDraftSave("bookingServiceSettings");
     },
-    [
-      handleUpdateBookingServiceState,
-      scheduleDraftSave,
-      saveBookingServiceSettings,
-      bookingServiceSettings,
-    ],
+    [handleUpdateBookingServiceState, scheduleDraftSave],
   );
 
   const handleUpdateHomeValues = useCallback(
@@ -1118,15 +1177,12 @@ export function useEditorActions({
       });
 
       setLastSavedHomeValues(updatedSettings);
-      scheduleDraftSave("homeValuesSettings", () =>
-        saveHomeValuesSettings(updatedSettings),
-      );
+      scheduleDraftSave("homeValuesSettings");
     },
     [
       handleUpdateHomeValuesState,
       setLastSavedHomeValues,
       scheduleDraftSave,
-      saveHomeValuesSettings,
       homeValuesSettings,
     ],
   );
@@ -1163,15 +1219,12 @@ export function useEditorActions({
       });
 
       setLastSavedAboutUsValues(updatedSettings);
-      scheduleDraftSave("aboutUsValuesSettings", () =>
-        saveAboutUsValuesSettings(updatedSettings),
-      );
+      scheduleDraftSave("aboutUsValuesSettings");
     },
     [
       handleUpdateAboutUsValuesState,
       setLastSavedAboutUsValues,
       scheduleDraftSave,
-      saveAboutUsValuesSettings,
       aboutUsValuesSettings,
     ],
   );
@@ -1179,74 +1232,41 @@ export function useEditorActions({
   const handleUpdateCTA = useCallback(
     (updates: Partial<CTASettings>) => {
       handleUpdateCTAState(updates);
-      scheduleDraftSave("ctaSettings", () =>
-        saveCTASettings({ ...ctaSettings, ...updates }),
-      );
+      scheduleDraftSave("ctaSettings");
     },
-    [handleUpdateCTAState, scheduleDraftSave, saveCTASettings, ctaSettings],
+    [handleUpdateCTAState, scheduleDraftSave],
   );
 
   const handleUpdateBookingDate = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       handleUpdateBookingDateState(updates);
-      scheduleDraftSave("bookingDateSettings", () =>
-        saveBookingDateSettings({ ...bookingDateSettings, ...updates }),
-      );
+      scheduleDraftSave("bookingDateSettings");
     },
-    [
-      handleUpdateBookingDateState,
-      scheduleDraftSave,
-      saveBookingDateSettings,
-      bookingDateSettings,
-    ],
+    [handleUpdateBookingDateState, scheduleDraftSave],
   );
 
   const handleUpdateBookingTime = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       handleUpdateBookingTimeState(updates);
-      scheduleDraftSave("bookingTimeSettings", () =>
-        saveBookingTimeSettings({ ...bookingTimeSettings, ...updates }),
-      );
+      scheduleDraftSave("bookingTimeSettings");
     },
-    [
-      handleUpdateBookingTimeState,
-      scheduleDraftSave,
-      saveBookingTimeSettings,
-      bookingTimeSettings,
-    ],
+    [handleUpdateBookingTimeState, scheduleDraftSave],
   );
 
   const handleUpdateBookingForm = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       handleUpdateBookingFormState(updates);
-      scheduleDraftSave("bookingFormSettings", () =>
-        saveBookingFormSettings({ ...bookingFormSettings, ...updates }),
-      );
+      scheduleDraftSave("bookingFormSettings");
     },
-    [
-      handleUpdateBookingFormState,
-      scheduleDraftSave,
-      saveBookingFormSettings,
-      bookingFormSettings,
-    ],
+    [handleUpdateBookingFormState, scheduleDraftSave],
   );
 
   const handleUpdateBookingConfirmation = useCallback(
     (updates: Partial<BookingStepSettings>) => {
       handleUpdateBookingConfirmationState(updates);
-      scheduleDraftSave("bookingConfirmationSettings", () =>
-        saveBookingConfirmationSettings({
-          ...bookingConfirmationSettings,
-          ...updates,
-        }),
-      );
+      scheduleDraftSave("bookingConfirmationSettings");
     },
-    [
-      handleUpdateBookingConfirmationState,
-      scheduleDraftSave,
-      saveBookingConfirmationSettings,
-      bookingConfirmationSettings,
-    ],
+    [handleUpdateBookingConfirmationState, scheduleDraftSave],
   );
 
   const handleSectionReset = useCallback(
@@ -1254,30 +1274,30 @@ export function useEditorActions({
       const targetSectionId = sectionId || activeSectionId;
 
       // Mapa de defaults por seção
-      const defaultsMap: Record<string, unknown> = {
-        hero: defaultHeroSettings,
-        "about-hero": defaultAboutHeroSettings,
-        story: defaultStorySettings,
-        team: defaultTeamSettings,
-        testimonials: defaultTestimonialsSettings,
-        services: defaultServicesSettings,
-        values: defaultValuesSettings,
-        "home-values": defaultValuesSettings,
-        "about-values": defaultValuesSettings,
-        "about-us-values": defaultValuesSettings,
-        gallery: defaultGallerySettings,
-        "gallery-preview": defaultGallerySettings,
-        "gallery-grid": defaultGallerySettings,
-        cta: defaultCTASettings,
-        header: defaultHeaderSettings,
-        footer: defaultFooterSettings,
-        typography: defaultFontSettings,
-        colors: defaultColorSettings,
-        "booking-service": defaultBookingServiceSettings,
-        "booking-date": defaultBookingDateSettings,
-        "booking-time": defaultBookingTimeSettings,
-        "booking-form": defaultBookingFormSettings,
-        "booking-confirmation": defaultBookingConfirmationSettings,
+      const defaultsMap: Record<string, string> = {
+        hero: "heroSettings",
+        "about-hero": "aboutHeroSettings",
+        story: "storySettings",
+        team: "teamSettings",
+        testimonials: "testimonialsSettings",
+        services: "servicesSettings",
+        values: "homeValuesSettings",
+        "home-values": "homeValuesSettings",
+        "about-values": "aboutUsValuesSettings",
+        "about-us-values": "aboutUsValuesSettings",
+        gallery: "gallerySettings",
+        "gallery-preview": "gallerySettings",
+        "gallery-grid": "galleryPageSettings",
+        cta: "ctaSettings",
+        header: "headerSettings",
+        footer: "footerSettings",
+        typography: "fontSettings",
+        colors: "colorSettings",
+        "booking-service": "bookingServiceSettings",
+        "booking-date": "bookingDateSettings",
+        "booking-time": "bookingTimeSettings",
+        "booking-form": "bookingFormSettings",
+        "booking-confirmation": "bookingConfirmationSettings",
       };
 
       // Mapa de setters de estado
@@ -1392,21 +1412,22 @@ export function useEditorActions({
         "booking-confirmation": bookingConfirmationSettings,
       };
 
-      const defaults = defaultsMap[targetSectionId];
+      const baseKey = defaultsMap[targetSectionId];
       const setter = setterMap[targetSectionId];
       const saveFn = saveFnMap[targetSectionId];
       const saveKey = saveKeyMap[targetSectionId];
       const current = currentSettingsMap[targetSectionId];
 
-      if (defaults && setter && saveFn && saveKey && current) {
-        const reseted =
-          typeof structuredClone === "function"
-            ? structuredClone(defaults)
-            : JSON.parse(JSON.stringify(defaults));
+      if (baseKey && setter && saveFn && saveKey && current) {
+        const resetSource =
+          baseSettingsRef.current[
+            baseKey as keyof typeof baseSettingsRef.current
+          ];
+        const reseted = cloneValue(resetSource);
 
         setter(reseted);
         saveFn(reseted);
-        scheduleDraftSave(saveKey, () => saveFn(reseted));
+        scheduleDraftSave(saveKey);
 
         toast({
           title: "Seção Resetada",
@@ -1476,6 +1497,7 @@ export function useEditorActions({
       saveBookingTimeSettings,
       saveBookingFormSettings,
       saveBookingConfirmationSettings,
+      baseSettingsRef,
       scheduleDraftSave,
       toast,
     ],

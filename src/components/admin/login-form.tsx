@@ -3,7 +3,7 @@
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,8 +38,18 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const hasCheckedSession = useRef(false);
 
   const isVerified = searchParams.get("verified") === "true";
+
+  const getSessionWithTimeout = useCallback(async () => {
+    return await Promise.race([
+      getSession(),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("SESSION_TIMEOUT")), 6000);
+      }),
+    ]);
+  }, []);
 
   // Função auxiliar para redirecionar baseada na role (Regra de Ouro)
   const handleRoleRedirection = useCallback(
@@ -106,6 +116,11 @@ export function LoginForm() {
 
   // Verifica se já existe sessão ao carregar a página
   useEffect(() => {
+    if (hasCheckedSession.current) {
+      return;
+    }
+    hasCheckedSession.current = true;
+
     const checkSession = async () => {
       if (isVerified) {
         toast({
@@ -115,8 +130,7 @@ export function LoginForm() {
       }
 
       try {
-        // Se veio do redirect de verificação, forçamos a busca da sessão sem cache
-        const { data } = await getSession();
+        const { data } = await getSessionWithTimeout();
         if (data?.session) {
           console.log(
             ">>> [LOGIN_FORM] Sessão ativa encontrada. Redirecionando...",
@@ -129,11 +143,15 @@ export function LoginForm() {
           }
         }
       } catch (err) {
+        if (err instanceof Error && err.message === "SESSION_TIMEOUT") {
+          console.warn(">>> [ADMIN_WARN] Timeout ao verificar sessão.");
+          return;
+        }
         console.warn(">>> [ADMIN_WARN] Erro ao verificar sessão:", err);
       }
     };
     checkSession();
-  }, [handleRoleRedirection, isVerified, toast]);
+  }, [getSessionWithTimeout, handleRoleRedirection, isVerified, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,7 +191,7 @@ export function LoginForm() {
         let resolvedUser = userData;
         if (typeof userData.emailVerified === "undefined") {
           try {
-            const { data: sessionData } = await getSession();
+            const { data: sessionData } = await getSessionWithTimeout();
             if (sessionData?.user) {
               resolvedUser = sessionData.user as AuthUser;
             }

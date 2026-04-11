@@ -85,14 +85,31 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
           if (pageGallery) {
             const appearance =
               (pageGallery.appearance as Record<string, unknown>) || {};
+            const resolvedBgColor =
+              sanitizeColor(
+                (pageGallery.bgColor as string) ||
+                  (pageGallery.backgroundColor as string) ||
+                  (pageGallery.bg_color as string) ||
+                  (pageGallery.background_color as string) ||
+                  (appearance.backgroundColor as string) ||
+                  (appearance.bgColor as string),
+              ) || "";
+
+            const resolvedCardBgColor =
+              sanitizeColor(
+                (pageGallery.cardBgColor as string) ||
+                  (pageGallery.cardBackgroundColor as string) ||
+                  (pageGallery.card_background_color as string) ||
+                  (pageGallery.card_bg_color as string) ||
+                  (appearance.cardBgColor as string) ||
+                  (appearance.cardBackgroundColor as string),
+              ) || "";
+
             setSettings({
               ...defaultGallerySettings,
               ...(pageGallery as unknown as GallerySettings),
-              bgColor:
-                sanitizeColor(
-                  (pageGallery.bgColor as string) ||
-                    (appearance.backgroundColor as string),
-                ) || "",
+              bgColor: resolvedBgColor,
+              cardBgColor: resolvedCardBgColor,
               buttonColor:
                 sanitizeColor(
                   (pageGallery.buttonColor as string) ||
@@ -151,15 +168,31 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
         const appearance =
           (sectionData.appearance as Record<string, unknown>) || {};
 
+        const resolvedBgColor =
+          sanitizeColor(
+            (sectionData.bgColor as string) ||
+              (sectionData.backgroundColor as string) ||
+              (sectionData.bg_color as string) ||
+              (sectionData.background_color as string) ||
+              (appearance.backgroundColor as string) ||
+              (appearance.bgColor as string),
+          ) || "";
+
+        const resolvedCardBgColor =
+          sanitizeColor(
+            (sectionData.cardBgColor as string) ||
+              (sectionData.cardBackgroundColor as string) ||
+              (sectionData.card_background_color as string) ||
+              (sectionData.card_bg_color as string) ||
+              (appearance.cardBgColor as string) ||
+              (appearance.cardBackgroundColor as string),
+          ) || "";
+
         setSettings({
           ...defaultGallerySettings,
           ...(sectionData as unknown as GallerySettings),
-          bgColor:
-            sanitizeColor(
-              (sectionData.bgColor as string) ||
-                (appearance.backgroundColor as string) ||
-                (sectionData.backgroundColor as string),
-            ) || "",
+          bgColor: resolvedBgColor,
+          cardBgColor: resolvedCardBgColor,
           buttonColor:
             sanitizeColor(
               (sectionData.buttonColor as string) ||
@@ -236,10 +269,22 @@ export function GalleryGrid({ settings: propsSettings }: GalleryGridProps) {
       : images.filter((img) => img.category === selectedCategory);
 
   const background =
-    settings.bgColor ||
-    (settings as unknown as Record<string, { backgroundColor: string }>)
-      .appearance?.backgroundColor ||
-    "transparent";
+    sanitizeColor(
+      settings.bgColor ||
+        (settings as unknown as Record<string, unknown>).backgroundColor ||
+        (settings as unknown as Record<string, unknown>).bg_color ||
+        (settings as unknown as Record<string, unknown>).background_color ||
+        (
+          (settings as unknown as Record<string, unknown>).appearance as
+            | Record<string, unknown>
+            | undefined
+        )?.backgroundColor ||
+        (
+          (settings as unknown as Record<string, unknown>).appearance as
+            | Record<string, unknown>
+            | undefined
+        )?.bgColor,
+    ) || "transparent";
 
   return (
     <div

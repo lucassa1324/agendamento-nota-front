@@ -24,6 +24,7 @@ import {
   getBookingTimeSettings,
   getColorSettings,
   getCTASettings,
+  getDraftTimestamp,
   getFontSettings,
   getFooterSettings,
   getGalleryPageSettings,
@@ -85,6 +86,7 @@ export type EditorLocalDrafts = {
   bookingConfirmationSettings: BookingStepSettings;
   pageVisibility: Record<string, boolean>;
   visibleSections: Record<string, boolean>;
+  draftTimestamp?: number;
   [key: string]: unknown;
 };
 
@@ -118,6 +120,7 @@ export function useEditorLocal() {
       bookingConfirmationSettings: getBookingConfirmationSettings(),
       pageVisibility: getPageVisibility(),
       visibleSections: getVisibleSections(),
+      draftTimestamp: Number(getDraftTimestamp()) || 0,
     };
   }, []);
 
