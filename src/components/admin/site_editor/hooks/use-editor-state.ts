@@ -512,6 +512,16 @@ export function useEditorState() {
       heroData.bgType ?? appearance.bgType,
       heroImage,
     );
+
+    const finalBgColor = sanitizeColor(heroData.bgColor ?? appearance.backgroundColor) ||
+      defaultHeroSettings.bgColor;
+
+    // Enforcement robusto: Se temos cor e não temos imagem, forçamos "color"
+    let enforcedBgType = heroBgType;
+    if (finalBgColor && finalBgColor !== "transparent" && !heroImage) {
+      enforcedBgType = "color";
+    }
+
     return {
       ...defaultHeroSettings,
       ...(hero as Partial<HeroSettings>),
@@ -521,11 +531,9 @@ export function useEditorState() {
       subtitleColor:
         sanitizeColor(heroData.subtitleColor ?? appearance.subtitleColor) ||
         defaultHeroSettings.subtitleColor,
-      bgColor:
-        sanitizeColor(heroData.bgColor ?? appearance.backgroundColor) ||
-        defaultHeroSettings.bgColor,
+      bgColor: finalBgColor,
       bgImage: heroImage,
-      bgType: heroBgType,
+      bgType: enforcedBgType,
       appearance: {
         ...defaultHeroSettings.appearance,
         ...appearance,
@@ -533,11 +541,9 @@ export function useEditorState() {
         subtitleColor: sanitizeColor(
           heroData.subtitleColor ?? appearance.subtitleColor,
         ),
-        backgroundColor: sanitizeColor(
-          heroData.bgColor ?? appearance.backgroundColor,
-        ),
+        backgroundColor: finalBgColor,
         backgroundImageUrl: heroImage,
-        bgType: heroBgType,
+        bgType: enforcedBgType,
       },
     };
   }, []);

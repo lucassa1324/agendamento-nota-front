@@ -193,12 +193,23 @@ export function HeroSection() {
               (appearance.bgColor as string) ||
               "",
           ) || "",
-        bgType: (rawHero.bgType ||
-          appearance.bgType ||
-          (rawHero.bgImage || appearance.backgroundImageUrl
-            ? "image"
-            : "color")) as "color" | "image",
       };
+
+      // Determinar bgType com enforcement para cor se necessário
+      const finalBgImage = normalizedHero.bgImage;
+      const finalBgColor = normalizedHero.bgColor;
+      
+      let resolvedBgType = (rawHero.bgType ||
+        appearance.bgType ||
+        (finalBgImage ? "image" : "color")) as "color" | "image";
+
+      // Blindagem: Se temos uma cor válida e NENHUMA imagem, o tipo DEVE ser "color"
+      if (finalBgColor && finalBgColor !== "transparent" && !finalBgImage) {
+        resolvedBgType = "color";
+      }
+
+      normalizedHero.bgType = resolvedBgType;
+
       console.log("[HeroSection] loadData: Dados normalizados com sucesso", {
         bgColor: normalizedHero.bgColor,
         bgType: normalizedHero.bgType,
@@ -391,17 +402,28 @@ export function HeroSection() {
                   (appearance.backgroundColor as string) ||
                   "",
               ) || "",
-            bgType: (rawHero.bgType ||
-              appearance.bgType ||
-              (rawHero.bgImage || appearance.backgroundImageUrl
-                ? "image"
-                : "color")) as "color" | "image",
           };
+
+          // Determinar bgType com enforcement para cor se necessário
+          const finalBgImage = (normalizedHero as any).bgImage;
+          const finalBgColor = (normalizedHero as any).bgColor;
+          
+          let resolvedBgType = (rawHero.bgType ||
+            appearance.bgType ||
+            (finalBgImage ? "image" : "color")) as "color" | "image";
+
+          // Blindagem: Se temos uma cor válida e NENHUMA imagem, o tipo DEVE ser "color"
+          if (finalBgColor && finalBgColor !== "transparent" && !finalBgImage) {
+            resolvedBgType = "color";
+          }
+
+          (normalizedHero as any).bgType = resolvedBgType;
 
           console.log(
             "[HeroSection] handleMessage: Aplicando atualização do editor",
             {
-              bgColor: normalizedHero.bgColor,
+              bgColor: (normalizedHero as any).bgColor,
+              bgType: (normalizedHero as any).bgType,
               type: event.data.type,
             },
           );

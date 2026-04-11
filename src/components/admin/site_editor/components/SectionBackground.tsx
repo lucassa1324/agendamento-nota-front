@@ -61,7 +61,14 @@ export function normalizeSectionBackgroundData<
         (appearance.bgColor as string) ||
         "",
     ) || "";
-  const bgType = resolveBgType(section.bgType ?? appearance.bgType, bgImage);
+  let bgType = resolveBgType(section.bgType ?? appearance.bgType, bgImage);
+
+  // Blindagem Global: Se temos uma cor de fundo válida e NENHUMA imagem, 
+  // o tipo DEVE ser "color", independentemente do que venha no config.
+  if (bgColor && bgColor !== "transparent" && !bgImage) {
+    bgType = "color";
+  }
+
   const imageOpacity =
     typeof section.imageOpacity === "number"
       ? section.imageOpacity
