@@ -361,7 +361,9 @@ export function ServicesSection() {
       const homeServicesSection = (home?.servicesSection ||
         home?.services_section) as Record<string, unknown> | undefined;
 
-      const configServices = ((currentConfig as any)?.sections?.[SECTION_IDS.homeServices] ||
+      const configServices = ((currentConfig as any)?.sections?.[
+        SECTION_IDS.homeServices
+      ] ||
         homeServicesSection ||
         home?.services ||
         currentConfig?.services ||
@@ -441,16 +443,26 @@ export function ServicesSection() {
         const home = siteData.home as Record<string, unknown> | undefined;
         const homeServicesSection = (home?.servicesSection ||
           home?.services_section) as Record<string, unknown> | undefined;
-        const sections = (siteData as any).sections as Record<string, unknown> | undefined;
+        const sections = (siteData as any).sections as
+          | Record<string, unknown>
+          | undefined;
         const siteServices =
           sections?.[SECTION_IDS.homeServices] ||
           homeServicesSection ||
           (home?.services as Record<string, unknown> | undefined) ||
           (siteData.services as Record<string, unknown> | undefined) ||
-          (layoutGlobal?.servicesSection as Record<string, unknown> | undefined) ||
+          (layoutGlobal?.servicesSection as
+            | Record<string, unknown>
+            | undefined) ||
           (layoutGlobal?.services as Record<string, unknown> | undefined);
-        if (siteServices) {
-          setSettings(normalizeConfigServices(siteServices));
+        const siteServicesRecord =
+          siteServices &&
+          typeof siteServices === "object" &&
+          !Array.isArray(siteServices)
+            ? (siteServices as Record<string, unknown>)
+            : null;
+        if (siteServicesRecord) {
+          setSettings(normalizeConfigServices(siteServicesRecord));
         }
       }
 

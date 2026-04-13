@@ -225,6 +225,21 @@ export const sanitizeColor = (color: unknown): string | undefined => {
   return trimmed;
 };
 
+export const sanitizeFont = (font: unknown): string | undefined => {
+  if (!font) return undefined;
+  if (typeof font === "string") {
+    const trimmed = font.trim();
+    if (trimmed && trimmed !== "{}" && trimmed !== "[]") return trimmed;
+  }
+  if (typeof font === "object" && font !== null) {
+    const fontObj = font as Record<string, unknown>;
+    if (typeof fontObj.family === "string") return fontObj.family;
+    if (typeof fontObj.name === "string") return fontObj.name;
+    if (typeof fontObj.value === "string") return fontObj.value;
+  }
+  return undefined;
+};
+
 /**
  * Função de utilidade que limpa o objeto de configurações antes de qualquer operação
  * de persistência ou renderização, garantindo que "lixo" de UI não chegue ao estado global.
@@ -330,11 +345,17 @@ export const sanitizeSection = (
     "background_color",
     "titleColor",
     "subtitleColor",
+    "titleFont",
+    "subtitleFont",
+    "contentFont",
     "cardBgColor",
     "cardTitleColor",
     "cardDescriptionColor",
     "cardPriceColor",
     "cardIconColor",
+    "cardTitleFont",
+    "cardDescriptionFont",
+    "cardPriceFont",
   ];
 
   // Só adicionamos do fallback o que for estritamente necessário e não estiver no record
@@ -369,15 +390,24 @@ export const sanitizeSection = (
   const recordContentString =
     typeof record.content === "string" ? record.content : undefined;
 
-  // Se o recordContent ou recordAppearance tiverem valores, eles devem estar no root para compatibilidade
+  // Se o recordContent ou recordAppearance tiverem valores, eles devem estar no root para compatibilidade.
+  // Importante: nunca sobrescrever valores explícitos já presentes no root (ex.: title/subtitle recém-digitados).
   for (const [key, value] of Object.entries(recordContent)) {
-    if (value !== undefined && value !== null) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      (mergedRoot[key] === undefined || mergedRoot[key] === null)
+    ) {
       mergedRoot[key] = value;
     }
   }
 
   for (const [key, value] of Object.entries(recordAppearance)) {
-    if (value !== undefined && value !== null) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      (mergedRoot[key] === undefined || mergedRoot[key] === null)
+    ) {
       mergedRoot[key] = value;
     }
   }
@@ -669,7 +699,11 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
         if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
           try {
             const parsed = JSON.parse(trimmed);
-            if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            if (
+              parsed &&
+              typeof parsed === "object" &&
+              !Array.isArray(parsed)
+            ) {
               merged.appearance = parsed as Record<string, unknown>;
             } else {
               delete merged.appearance;
@@ -871,6 +905,98 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
     merged.cardPriceColor = sectionCardPriceColor;
     cardConfig.cardPriceColor = sectionCardPriceColor;
     cardConfig.priceColor = sectionCardPriceColor;
+  }
+
+  // Reidratação de Fontes
+  const sectionTitleFont = sanitizeFont(
+    merged.titleFont ||
+    (merged.appearance as Record<string, unknown> | undefined)?.titleFont ||
+    (merged.content as Record<string, unknown> | undefined)?.titleFont ||
+    (raw as Record<string, unknown>).titleFont ||
+    (raw as Record<string, unknown>).title_font,
+  );
+
+  const sectionContentFont = sanitizeFont(
+    merged.contentFont ||
+    (merged.appearance as Record<string, unknown> | undefined)?.contentFont ||
+    (merged.content as Record<string, unknown> | undefined)?.contentFont ||
+    (raw as Record<string, unknown>).contentFont ||
+    (raw as Record<string, unknown>).content_font,
+  );
+
+  if (sectionTitleFont) {
+    merged.titleFont = sectionTitleFont;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).titleFont =
+        sectionTitleFont;
+    }
+    if (merged.content && typeof merged.content === "object") {
+      (merged.content as Record<string, unknown>).titleFont = sectionTitleFont;
+    }
+  }
+
+  if (sectionContentFont) {
+    merged.contentFont = sectionContentFont;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).contentFont =
+        sectionContentFont;
+    }
+    if (merged.content && typeof merged.content === "object") {
+      (merged.content as Record<string, unknown>).contentFont =
+        sectionContentFont;
+    }
+  }
+
+  const sectionCardTitleFont = sanitizeFont(
+    merged.cardTitleFont ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.cardTitleFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.cardTitleFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.titleFont ||
+    (raw as Record<string, unknown>).cardTitleFont ||
+    (raw as Record<string, unknown>).card_title_font,
+  );
+
+  const sectionCardDescriptionFont = sanitizeFont(
+    merged.cardDescriptionFont ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.cardDescriptionFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.cardDescriptionFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.descriptionFont ||
+    (raw as Record<string, unknown>).cardDescriptionFont ||
+    (raw as Record<string, unknown>).card_description_font,
+  );
+
+  const sectionCardPriceFont = sanitizeFont(
+    merged.cardPriceFont ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.cardPriceFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.cardPriceFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.priceFont ||
+    (raw as Record<string, unknown>).cardPriceFont ||
+    (raw as Record<string, unknown>).card_price_font,
+  );
+
+  if (sectionCardTitleFont) {
+    merged.cardTitleFont = sectionCardTitleFont;
+    cardConfig.cardTitleFont = sectionCardTitleFont;
+    cardConfig.titleFont = sectionCardTitleFont;
+  }
+
+  if (sectionCardDescriptionFont) {
+    merged.cardDescriptionFont = sectionCardDescriptionFont;
+    cardConfig.cardDescriptionFont = sectionCardDescriptionFont;
+    cardConfig.descriptionFont = sectionCardDescriptionFont;
+  }
+
+  if (sectionCardPriceFont) {
+    merged.cardPriceFont = sectionCardPriceFont;
+    cardConfig.cardPriceFont = sectionCardPriceFont;
+    cardConfig.priceFont = sectionCardPriceFont;
   }
 
   if (Object.keys(cardConfig).length > 0) {
@@ -1938,19 +2064,29 @@ export function getBookingServiceSettings(
 
   let normalized = normalizeStepSettings(step1, defaultBookingServiceSettings);
 
-  if (normalized.bgColor && normalized.bgColor !== "transparent" && !normalized.bgImage) {
+  if (
+    normalized.bgColor &&
+    normalized.bgColor !== "transparent" &&
+    !normalized.bgImage
+  ) {
     normalized.bgType = "color";
   }
 
   // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
   if (typeof window !== "undefined") {
-    const settings = localStorage.getItem(getStorageKey("bookingServiceSettings"));
+    const settings = localStorage.getItem(
+      getStorageKey("bookingServiceSettings"),
+    );
     if (settings) {
       try {
         const saved = JSON.parse(settings);
         normalized = normalizeStepSettings(saved, normalized);
 
-        if (normalized.bgColor && normalized.bgColor !== "transparent" && !normalized.bgImage) {
+        if (
+          normalized.bgColor &&
+          normalized.bgColor !== "transparent" &&
+          !normalized.bgImage
+        ) {
           normalized.bgType = "color";
         }
       } catch (e) {
@@ -1989,8 +2125,12 @@ export function getBookingDateSettings(
 ): BookingStepSettings {
   const stepConfig =
     (config?.bookingSteps?.date as Record<string, unknown> | undefined) ||
-    (config?.appointmentFlow?.steps?.date as Record<string, unknown> | undefined) ||
-    (config?.appointment_flow?.steps?.date as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.steps?.date as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointment_flow?.steps?.date as
+      | Record<string, unknown>
+      | undefined) ||
     (config?.appointmentFlow?.date as Record<string, unknown> | undefined) ||
     (config?.appointment_flow?.date as Record<string, unknown> | undefined);
 
@@ -2039,8 +2179,12 @@ export function getBookingTimeSettings(
 ): BookingStepSettings {
   const stepConfig =
     (config?.bookingSteps?.time as Record<string, unknown> | undefined) ||
-    (config?.appointmentFlow?.steps?.time as Record<string, unknown> | undefined) ||
-    (config?.appointment_flow?.steps?.time as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.steps?.time as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointment_flow?.steps?.time as
+      | Record<string, unknown>
+      | undefined) ||
     (config?.appointmentFlow?.time as Record<string, unknown> | undefined) ||
     (config?.appointment_flow?.time as Record<string, unknown> | undefined);
 
@@ -2089,8 +2233,12 @@ export function getBookingFormSettings(
 ): BookingStepSettings {
   const stepConfig =
     (config?.bookingSteps?.form as Record<string, unknown> | undefined) ||
-    (config?.appointmentFlow?.steps?.form as Record<string, unknown> | undefined) ||
-    (config?.appointment_flow?.steps?.form as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.steps?.form as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointment_flow?.steps?.form as
+      | Record<string, unknown>
+      | undefined) ||
     (config?.appointmentFlow?.form as Record<string, unknown> | undefined) ||
     (config?.appointment_flow?.form as Record<string, unknown> | undefined);
 
@@ -2138,11 +2286,21 @@ export function getBookingConfirmationSettings(
   config?: BookingConfig,
 ): BookingStepSettings {
   const stepConfig =
-    (config?.bookingSteps?.confirmation as Record<string, unknown> | undefined) ||
-    (config?.appointmentFlow?.steps?.confirmation as Record<string, unknown> | undefined) ||
-    (config?.appointment_flow?.steps?.confirmation as Record<string, unknown> | undefined) ||
-    (config?.appointmentFlow?.confirmation as Record<string, unknown> | undefined) ||
-    (config?.appointment_flow?.confirmation as Record<string, unknown> | undefined);
+    (config?.bookingSteps?.confirmation as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointmentFlow?.steps?.confirmation as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointment_flow?.steps?.confirmation as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointmentFlow?.confirmation as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointment_flow?.confirmation as
+      | Record<string, unknown>
+      | undefined);
 
   let base = normalizeStepSettings(
     stepConfig as Record<string, unknown> | undefined,
@@ -2493,14 +2651,16 @@ export const normalizeStepSettings = (
   // Criar um cardConfig unificado para evitar perdas
   const unifiedCardConfig = {
     ...cardConfig,
-    ...(finalCardColor ? {
-      cardBgColor: finalCardColor,
-      card_bg_color: finalCardColor,
-      cardBackgroundColor: finalCardColor,
-      card_background_color: finalCardColor,
-      backgroundColor: finalCardColor,
-      background_color: finalCardColor,
-    } : {})
+    ...(finalCardColor
+      ? {
+        cardBgColor: finalCardColor,
+        card_bg_color: finalCardColor,
+        cardBackgroundColor: finalCardColor,
+        card_background_color: finalCardColor,
+        backgroundColor: finalCardColor,
+        background_color: finalCardColor,
+      }
+      : {}),
   };
 
   // 2. Resolver cor do FUNDO DA SEÇÃO
@@ -2541,9 +2701,23 @@ export const normalizeStepSettings = (
         (defaults?.accentColor as string),
       ) || "",
     cardBgColor: finalCardColor || defaults?.cardBgColor || "",
-    card_bg_color: finalCardColor || (defaults as any)?.card_bg_color || "",
-    cardBackgroundColor: finalCardColor || (defaults as any)?.cardBackgroundColor || "",
-    card_background_color: finalCardColor || (defaults as any)?.card_background_color || "",
+    card_bg_color:
+      finalCardColor ||
+      ((defaults as Record<string, unknown> | undefined)?.card_bg_color as
+        | string
+        | undefined) ||
+      "",
+    cardBackgroundColor:
+      finalCardColor ||
+      ((defaults as Record<string, unknown> | undefined)?.cardBackgroundColor as
+        | string
+        | undefined) ||
+      "",
+    card_background_color:
+      finalCardColor ||
+      ((defaults as Record<string, unknown> | undefined)
+        ?.card_background_color as string | undefined) ||
+      "",
     cardConfig: unifiedCardConfig,
     bgColor:
       finalBgColor ||
@@ -2556,8 +2730,16 @@ export const normalizeStepSettings = (
     appearance: {
       ...(defaults?.appearance || {}),
       ...appearance,
-      cardBgColor: finalCardColor || (defaults?.appearance as any)?.cardBgColor || "",
-      cardBackgroundColor: finalCardColor || (defaults?.appearance as any)?.cardBackgroundColor || "",
+      cardBgColor:
+        finalCardColor ||
+        ((defaults?.appearance as Record<string, unknown> | undefined)
+          ?.cardBgColor as string | undefined) ||
+        "",
+      cardBackgroundColor:
+        finalCardColor ||
+        ((defaults?.appearance as Record<string, unknown> | undefined)
+          ?.cardBackgroundColor as string | undefined) ||
+        "",
       cardConfig: unifiedCardConfig,
       backgroundColor:
         (appearance.backgroundColor as string) ||
@@ -3479,28 +3661,24 @@ export function saveGoogleCalendarSettings(
 }
 
 export function getSiteProfile(): SiteProfile {
-  // O Banco de Dados é a única fonte da verdade no F5.
-  return defaultSiteProfile;
-  /*
   if (typeof window === "undefined") return defaultSiteProfile;
   const profile = localStorage.getItem(getStorageKey("siteProfile"));
-  return profile
-    ? { ...defaultSiteProfile, ...JSON.parse(profile) }
-    : defaultSiteProfile;
-  */
+  if (!profile) return defaultSiteProfile;
+  try {
+    const parsed = JSON.parse(profile);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return { ...defaultSiteProfile, ...(parsed as Record<string, unknown>) };
+    }
+  } catch (_e) { }
+  return defaultSiteProfile;
 }
 
-export function saveSiteProfile(_profile: SiteProfile): void {
-  // const storageKey = getStorageKey("siteProfile");
-  // console.log(
-  //   `>>> [booking-data] Salvando siteProfile em ${storageKey}:`,
-  //   profile,
-  // );
-  // localStorage.setItem(storageKey, JSON.stringify(profile));
-  // Dispatch custom event so components can update immediately
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("siteProfileUpdated"));
-  }
+export function saveSiteProfile(profile: SiteProfile): void {
+  if (typeof window === "undefined") return;
+  const storageKey = getStorageKey("siteProfile");
+  localStorage.setItem(storageKey, JSON.stringify(profile));
+  updateDraftTimestamp();
+  window.dispatchEvent(new Event("siteProfileUpdated"));
 }
 
 export function getHeroSettings(): HeroSettings {

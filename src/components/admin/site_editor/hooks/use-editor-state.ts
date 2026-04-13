@@ -267,6 +267,13 @@ export function useEditorState() {
         nextAppearance.subtitleFont = prvs.subtitleFont;
       }
 
+      if (upds.contentFont !== undefined) {
+        nextAppearance.contentFont = upds.contentFont;
+        state.contentFont = upds.contentFont;
+      } else if (prvs.contentFont !== undefined) {
+        nextAppearance.contentFont = prvs.contentFont;
+      }
+
       // Card Styles Sync
       syncColor(
         "cardBgColor",
@@ -513,10 +520,10 @@ export function useEditorState() {
       heroImage,
     );
 
-    const finalBgColor = sanitizeColor(heroData.bgColor ?? appearance.backgroundColor) ||
+    const finalBgColor =
+      sanitizeColor(heroData.bgColor ?? appearance.backgroundColor) ||
       defaultHeroSettings.bgColor;
 
-    // Enforcement robusto: Se temos cor e não temos imagem, forçamos "color"
     let enforcedBgType = heroBgType;
     if (finalBgColor && finalBgColor !== "transparent" && !heroImage) {
       enforcedBgType = "color";
@@ -672,11 +679,7 @@ export function useEditorState() {
       );
 
       const titleColor = resolveColorFromAliases(
-        [
-          servicesData.titleColor,
-          content.titleColor,
-          appearance.titleColor,
-        ],
+        [servicesData.titleColor, content.titleColor, appearance.titleColor],
         fallback.titleColor,
       );
       const subtitleColor = resolveColorFromAliases(
@@ -1106,6 +1109,16 @@ export function useEditorState() {
         contentColor:
           sanitizeColor(storyData.contentColor) ||
           defaultStorySettings.contentColor,
+        titleFont:
+          (storyData.titleFont as string) ||
+          (appearance.titleFont as string) ||
+          (contentData.titleFont as string) ||
+          defaultStorySettings.titleFont,
+        contentFont:
+          (storyData.contentFont as string) ||
+          (appearance.contentFont as string) ||
+          (contentData.contentFont as string) ||
+          defaultStorySettings.contentFont,
         bgColor:
           sanitizeColor(appearance.backgroundColor || storyData.bgColor) ||
           defaultStorySettings.bgColor,
@@ -1117,6 +1130,11 @@ export function useEditorState() {
           titleColor: sanitizeColor(
             storyData.titleColor || appearance.titleColor,
           ),
+          titleFont:
+            (storyData.titleFont as string) || (appearance.titleFont as string),
+          contentFont:
+            (storyData.contentFont as string) ||
+            (appearance.contentFont as string),
           backgroundColor: sanitizeColor(
             appearance.backgroundColor || storyData.bgColor,
           ),
@@ -1748,14 +1766,14 @@ export function useEditorState() {
       const configRecord = config as Record<string, unknown>;
       const appointmentFlow = (config.appointmentFlow ||
         configRecord.appointment_flow) as Record<string, unknown> | undefined;
-      const appointmentSteps = ((appointmentFlow?.steps ||
+      const appointmentSteps = (appointmentFlow?.steps ||
         appointmentFlow?.passos) as
         | Record<string, BookingStepSettings | undefined>
-        | undefined);
-      const bookingSteps = ((config.bookingSteps ||
+        | undefined;
+      const bookingSteps = (config.bookingSteps ||
         configRecord.booking_steps) as
         | Record<string, BookingStepSettings | undefined>
-        | undefined);
+        | undefined;
 
       const bookingServiceSection =
         sections[SECTION_IDS.bookingService] ||

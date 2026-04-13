@@ -25,16 +25,17 @@ import {
   getStorageKey,
   type HeroSettings,
   SECTION_IDS,
+  type SectionsMap,
   type SiteProfile,
   sanitizeColor,
   sanitizeSection,
 } from "@/lib/booking-data";
+import type { SiteConfigData } from "@/lib/site-config-types";
 import { cn, renderSafeText } from "@/lib/utils";
 import {
   SectionBackground,
   type SectionBackgroundSettings,
 } from "./admin/site_editor/components/SectionBackground";
-import type { SiteConfigData, SectionsMap } from "./admin/site_editor/hooks/use-site-editor";
 
 const iconMap: Record<string, LucideIcon> = {
   Sparkles,
@@ -73,6 +74,7 @@ export function HeroSection() {
   const isInsideIframe =
     typeof window !== "undefined" && window.parent !== window;
   const hasLivePreviewUpdateRef = useRef(false);
+  const hasRequestedIframeSyncRef = useRef(false);
 
   const loadData = useCallback(() => {
     if (!config) return;
@@ -91,20 +93,49 @@ export function HeroSection() {
       layoutGlobal?.hero) as Record<string, unknown> | undefined;
 
     if (rawHero) {
-      const content = (rawHero.content && typeof rawHero.content === "object" && !Array.isArray(rawHero.content)
-        ? (rawHero.content as Record<string, unknown>)
-        : {}) as Record<string, unknown>;
-      
-      const appearance = (rawHero.appearance && typeof rawHero.appearance === "object" && !Array.isArray(rawHero.appearance)
-        ? (rawHero.appearance as Record<string, unknown>)
-        : {}) as Record<string, unknown>;
+      const content = (
+        rawHero.content &&
+        typeof rawHero.content === "object" &&
+        !Array.isArray(rawHero.content)
+          ? (rawHero.content as Record<string, unknown>)
+          : {}
+      ) as Record<string, unknown>;
+
+      const appearance = (
+        rawHero.appearance &&
+        typeof rawHero.appearance === "object" &&
+        !Array.isArray(rawHero.appearance)
+          ? (rawHero.appearance as Record<string, unknown>)
+          : {}
+      ) as Record<string, unknown>;
+
+      const bgImage =
+        (rawHero.bgImage as string) ||
+        (appearance.backgroundImageUrl as string) ||
+        "";
+      const bgColor =
+        sanitizeColor(
+          (rawHero.bgColor as string) ||
+            (rawHero.bg_color as string) ||
+            (rawHero.backgroundColor as string) ||
+            (appearance.backgroundColor as string) ||
+            (appearance.bgColor as string) ||
+            "",
+        ) || "";
+      let bgType = (rawHero.bgType ||
+        appearance.bgType ||
+        (bgImage ? "image" : "color")) as "color" | "image";
+      if (bgColor && bgColor !== "transparent" && !bgImage) {
+        bgType = "color";
+      }
 
       const normalizedHero = {
         ...rawHero,
         ...(typeof rawHero.content === "object" ? content : {}),
         ...(typeof rawHero.appearance === "object" ? appearance : {}),
-        title: content.title ?? rawHero.title,
-        subtitle: content.subtitle ?? rawHero.subtitle,
+        title: rawHero.title !== undefined ? rawHero.title : content.title,
+        subtitle:
+          rawHero.subtitle !== undefined ? rawHero.subtitle : content.subtitle,
         showTitle:
           content.showTitle !== undefined
             ? content.showTitle
@@ -183,32 +214,74 @@ export function HeroSection() {
           rawHero.subtitleFont ||
           appearance.subtitleFont ||
           content.subtitleFont,
-        bgImage: rawHero.bgImage || appearance.backgroundImageUrl || "",
-        bgColor:
-          sanitizeColor(
-            (rawHero.bgColor as string) ||
-              (rawHero.bg_color as string) ||
-              (rawHero.backgroundColor as string) ||
-              (appearance.backgroundColor as string) ||
-              (appearance.bgColor as string) ||
-              "",
-          ) || "",
+        bgImage,
+        bgColor,
+        bgType,
       };
 
-      // Determinar bgType com enforcement para cor se necessário
-      const finalBgImage = normalizedHero.bgImage;
-      const finalBgColor = normalizedHero.bgColor;
-      
-      let resolvedBgType = (rawHero.bgType ||
-        appearance.bgType ||
-        (finalBgImage ? "image" : "color")) as "color" | "image";
+      if (isInsideIframe && typeof window !== "undefined") {
+        const draftRaw = localStorage.getItem(getStorageKey("heroSettings"));
+        if (draftRaw) {
+          try {
+            const draftParsed = JSON.parse(draftRaw);
+            if (
+              draftParsed &&
+              typeof draftParsed === "object" &&
+              !Array.isArray(draftParsed)
+            ) {
+              const mergedFromDraft = sanitizeSection(
+                draftParsed,
+                normalizedHero,
+              ) as Record<string, unknown>;
+              const mergedAppearance =
+                (mergedFromDraft.appearance as
+                  | Record<string, unknown>
+                  | undefined) || {};
+              const mergedBgImage =
+                (mergedFromDraft.bgImage as string) ||
+                (mergedAppearance.backgroundImageUrl as string) ||
+                "";
+              const mergedBgColor =
+                sanitizeColor(
+                  (mergedFromDraft.bgColor as string) ||
+                    (mergedFromDraft.bg_color as string) ||
+                    (mergedFromDraft.backgroundColor as string) ||
+                    (mergedFromDraft.background_color as string) ||
+                    (mergedAppearance.backgroundColor as string) ||
+                    (mergedAppearance.bgColor as string) ||
+                    "",
+                ) || "";
+              const enforcedBgType =
+                mergedBgColor &&
+                mergedBgColor !== "transparent" &&
+                !mergedBgImage
+                  ? "color"
+                  : (mergedFromDraft.bgType as "color" | "image" | undefined) ||
+                    (mergedAppearance.bgType as
+                      | "color"
+                      | "image"
+                      | undefined) ||
+                    (mergedBgImage ? "image" : "color");
 
-      // Blindagem: Se temos uma cor válida e NENHUMA imagem, o tipo DEVE ser "color"
-      if (finalBgColor && finalBgColor !== "transparent" && !finalBgImage) {
-        resolvedBgType = "color";
+              const heroFromDraft = {
+                ...mergedFromDraft,
+                bgImage: mergedBgImage,
+                bgColor: mergedBgColor,
+                bgType: enforcedBgType,
+                appearance: {
+                  ...mergedAppearance,
+                  backgroundColor: mergedBgColor,
+                  backgroundImageUrl: mergedBgImage,
+                  bgType: enforcedBgType,
+                },
+              } as HeroSettings;
+
+              setCustomStyles(heroFromDraft);
+              return;
+            }
+          } catch (_e) {}
+        }
       }
-
-      normalizedHero.bgType = resolvedBgType;
 
       console.log("[HeroSection] loadData: Dados normalizados com sucesso", {
         bgColor: normalizedHero.bgColor,
@@ -227,7 +300,6 @@ export function HeroSection() {
     loadData();
   }, [loadData]);
 
-  // Log de depuração solicitado para verificar a estrutura dos dados
   useEffect(() => {
     if (config) {
       // console.log(">>> [HERO_RENDER_DEBUG]", config);
@@ -255,7 +327,6 @@ export function HeroSection() {
         event.data.type === "UPDATE_SITE_DATA" ||
         event.data.type === "UPDATE_SITE_CONFIG"
       ) {
-        // Marcamos que houve uma atualização do editor de forma SÍNCRONA
         hasLivePreviewUpdateRef.current = true;
 
         let rawHero: Record<string, unknown> | undefined;
@@ -284,26 +355,72 @@ export function HeroSection() {
             home?.heroBanner ||
             home?.hero ||
             siteConfig.hero ||
-            layoutConfig?.hero) as Record<string, unknown>;
+            layoutGlobal?.hero) as Record<string, unknown>;
         } else {
           rawHero = event.data.settings as Record<string, unknown>;
         }
 
         if (rawHero) {
-          const content = (rawHero.content && typeof rawHero.content === "object" && !Array.isArray(rawHero.content)
-            ? (rawHero.content as Record<string, unknown>)
-            : {}) as Record<string, unknown>;
-          
-          const appearance = (rawHero.appearance && typeof rawHero.appearance === "object" && !Array.isArray(rawHero.appearance)
-            ? (rawHero.appearance as Record<string, unknown>)
-            : {}) as Record<string, unknown>;
+          const incomingContent =
+            rawHero.content &&
+            typeof rawHero.content === "object" &&
+            !Array.isArray(rawHero.content)
+              ? (rawHero.content as Record<string, unknown>)
+              : {};
+          console.log(">>> IFRAME_RECEIVE:", {
+            type: event.data.type,
+            title: rawHero.title,
+            subtitle: rawHero.subtitle,
+            contentTitle: incomingContent.title,
+            contentSubtitle: incomingContent.subtitle,
+          });
+
+          const content = (
+            rawHero.content &&
+            typeof rawHero.content === "object" &&
+            !Array.isArray(rawHero.content)
+              ? (rawHero.content as Record<string, unknown>)
+              : {}
+          ) as Record<string, unknown>;
+
+          const appearance = (
+            rawHero.appearance &&
+            typeof rawHero.appearance === "object" &&
+            !Array.isArray(rawHero.appearance)
+              ? (rawHero.appearance as Record<string, unknown>)
+              : {}
+          ) as Record<string, unknown>;
+
+          const bgImage =
+            (rawHero.bgImage as string) ||
+            (appearance.backgroundImageUrl as string) ||
+            "";
+          const bgColor =
+            sanitizeColor(
+              (rawHero.bgColor as string) ||
+                (rawHero.bg_color as string) ||
+                (rawHero.backgroundColor as string) ||
+                (rawHero.background_color as string) ||
+                (appearance.backgroundColor as string) ||
+                (appearance.bgColor as string) ||
+                "",
+            ) || "";
+          let bgType = (rawHero.bgType ||
+            appearance.bgType ||
+            (bgImage ? "image" : "color")) as "color" | "image";
+          if (bgColor && bgColor !== "transparent" && !bgImage) {
+            bgType = "color";
+          }
 
           const normalizedHero = {
             ...rawHero,
             ...(typeof rawHero.content === "object" ? content : {}),
             ...(typeof rawHero.appearance === "object" ? appearance : {}),
-            title: content.title ?? rawHero.title,
-            subtitle: content.subtitle ?? rawHero.subtitle,
+            title: rawHero.title !== undefined ? rawHero.title : content.title,
+            subtitle:
+              rawHero.subtitle !== undefined
+                ? rawHero.subtitle
+                : content.subtitle,
             showTitle:
               content.showTitle !== undefined
                 ? content.showTitle
@@ -394,36 +511,22 @@ export function HeroSection() {
               rawHero.subtitleFont ||
               appearance.subtitleFont ||
               content.subtitleFont,
-            bgImage: rawHero.bgImage || appearance.backgroundImageUrl || "",
-            bgColor:
-              sanitizeColor(
-                (rawHero.bgColor as string) ||
-                  (rawHero.backgroundColor as string) ||
-                  (appearance.backgroundColor as string) ||
-                  "",
-              ) || "",
+            bgImage,
+            bgColor,
+            bgType,
+            appearance: {
+              ...appearance,
+              backgroundColor: bgColor,
+              backgroundImageUrl: bgImage,
+              bgType,
+            },
           };
-
-          // Determinar bgType com enforcement para cor se necessário
-          const finalBgImage = (normalizedHero as any).bgImage;
-          const finalBgColor = (normalizedHero as any).bgColor;
-          
-          let resolvedBgType = (rawHero.bgType ||
-            appearance.bgType ||
-            (finalBgImage ? "image" : "color")) as "color" | "image";
-
-          // Blindagem: Se temos uma cor válida e NENHUMA imagem, o tipo DEVE ser "color"
-          if (finalBgColor && finalBgColor !== "transparent" && !finalBgImage) {
-            resolvedBgType = "color";
-          }
-
-          (normalizedHero as any).bgType = resolvedBgType;
 
           console.log(
             "[HeroSection] handleMessage: Aplicando atualização do editor",
             {
-              bgColor: (normalizedHero as any).bgColor,
-              bgType: (normalizedHero as any).bgType,
+              bgColor: normalizedHero.bgColor,
+              bgType: normalizedHero.bgType,
               type: event.data.type,
             },
           );
@@ -466,6 +569,11 @@ export function HeroSection() {
     );
     window.addEventListener("siteProfileUpdated", handleProfileUpdate);
     window.addEventListener("DataReady", handleDataReady);
+
+    if (isInsideIframe && !hasRequestedIframeSyncRef.current) {
+      hasRequestedIframeSyncRef.current = true;
+      window.parent.postMessage({ type: "IFRAME_READY" }, "*");
+    }
 
     return () => {
       window.removeEventListener("message", handleMessage);

@@ -9,8 +9,8 @@ import {
   type CTASettings,
   getCTASettings,
   getPageVisibility,
-  sanitizeColor,
   SECTION_IDS,
+  sanitizeColor,
 } from "@/lib/booking-data";
 import { cn, renderSafeText } from "@/lib/utils";
 import {
@@ -44,31 +44,41 @@ export function CTASection() {
     const localDraft = getCTASettings();
     const storageKey = `agendamento_nota_ctaSettings`;
     const hasDraft =
-      typeof window !== "undefined" && localStorage.getItem(storageKey) !== null;
+      typeof window !== "undefined" &&
+      localStorage.getItem(storageKey) !== null;
 
     if (hasDraft && localDraft) {
       setSettings(localDraft);
     } else if (studioConfig) {
       // Só usa o studioConfig se não houver nada no storage e não estivermos editando
       const config = studioConfig as Record<string, unknown>;
-      const layoutGlobal = (config?.layoutGlobal ||
-        config?.layout_global) as Record<string, unknown> | undefined;
+      const layoutGlobal = (config?.layoutGlobal || config?.layout_global) as
+        | Record<string, unknown>
+        | undefined;
 
       // Buscar CTA no config ou no layoutGlobal
       const home = config?.home as Record<string, unknown> | undefined;
-      const rawCTA = ((config as any)?.sections?.[SECTION_IDS.homeCTA] ||
+      const rawCTA = ((config as any)?.sections?.[SECTION_IDS.homeCta] ||
         home?.ctaSection ||
         home?.cta ||
         config?.cta ||
         layoutGlobal?.cta) as Record<string, unknown> | undefined;
 
       if (rawCTA) {
-        const content = (rawCTA.content && typeof rawCTA.content === "object" && !Array.isArray(rawCTA.content)
-          ? (rawCTA.content as Record<string, unknown>)
-          : {}) as Record<string, unknown>;
-        const appearance = (rawCTA.appearance && typeof rawCTA.appearance === "object" && !Array.isArray(rawCTA.appearance)
-          ? (rawCTA.appearance as Record<string, unknown>)
-          : {}) as Record<string, unknown>;
+        const content = (
+          rawCTA.content &&
+          typeof rawCTA.content === "object" &&
+          !Array.isArray(rawCTA.content)
+            ? (rawCTA.content as Record<string, unknown>)
+            : {}
+        ) as Record<string, unknown>;
+        const appearance = (
+          rawCTA.appearance &&
+          typeof rawCTA.appearance === "object" &&
+          !Array.isArray(rawCTA.appearance)
+            ? (rawCTA.appearance as Record<string, unknown>)
+            : {}
+        ) as Record<string, unknown>;
         const normalizedCTA = {
           ...(rawCTA && typeof rawCTA === "object" && !Array.isArray(rawCTA)
             ? (rawCTA as Record<string, unknown>)
@@ -168,19 +178,26 @@ export function CTASection() {
           const layoutGlobal = (siteData.layoutGlobal ||
             siteData.layout_global) as Record<string, unknown> | undefined;
           const home = siteData.home as Record<string, unknown> | undefined;
-          const sections = (siteData as any).sections as Record<string, unknown> | undefined;
-          rawCTA = (sections?.[SECTION_IDS.homeCTA] ||
+          const sections = (siteData as any).sections as
+            | Record<string, unknown>
+            | undefined;
+          rawCTA = (sections?.[SECTION_IDS.homeCta] ||
             home?.ctaSection ||
             home?.cta ||
             siteData.cta ||
             layoutGlobal?.cta) as Record<string, unknown>;
-        } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
+        } else if (
+          event.data.type === "UPDATE_SITE_CONFIG" &&
+          event.data.config
+        ) {
           const siteConfig = event.data.config as Record<string, unknown>;
           const layoutGlobal = (siteConfig.layoutGlobal ||
             siteConfig.layout_global) as Record<string, unknown> | undefined;
           const home = siteConfig.home as Record<string, unknown> | undefined;
-          const sections = (siteConfig as any).sections as Record<string, unknown> | undefined;
-          rawCTA = (sections?.[SECTION_IDS.homeCTA] ||
+          const sections = (siteConfig as any).sections as
+            | Record<string, unknown>
+            | undefined;
+          rawCTA = (sections?.[SECTION_IDS.homeCta] ||
             home?.ctaSection ||
             home?.cta ||
             siteConfig.cta ||
@@ -188,12 +205,20 @@ export function CTASection() {
         }
 
         if (rawCTA) {
-          const content = (rawCTA.content && typeof rawCTA.content === "object" && !Array.isArray(rawCTA.content)
-            ? (rawCTA.content as Record<string, unknown>)
-            : {}) as Record<string, unknown>;
-          const appearance = (rawCTA.appearance && typeof rawCTA.appearance === "object" && !Array.isArray(rawCTA.appearance)
-            ? (rawCTA.appearance as Record<string, unknown>)
-            : {}) as Record<string, unknown>;
+          const content = (
+            rawCTA.content &&
+            typeof rawCTA.content === "object" &&
+            !Array.isArray(rawCTA.content)
+              ? (rawCTA.content as Record<string, unknown>)
+              : {}
+          ) as Record<string, unknown>;
+          const appearance = (
+            rawCTA.appearance &&
+            typeof rawCTA.appearance === "object" &&
+            !Array.isArray(rawCTA.appearance)
+              ? (rawCTA.appearance as Record<string, unknown>)
+              : {}
+          ) as Record<string, unknown>;
           const normalizedCTA = {
             ...(rawCTA && typeof rawCTA === "object" && !Array.isArray(rawCTA)
               ? (rawCTA as Record<string, unknown>)
@@ -201,7 +226,8 @@ export function CTASection() {
             ...content,
             ...appearance,
             title: (content.title as string) ?? (rawCTA.title as string),
-            subtitle: (content.subtitle as string) ?? (rawCTA.subtitle as string),
+            subtitle:
+              (content.subtitle as string) ?? (rawCTA.subtitle as string),
             titleColor: sanitizeColor(
               (rawCTA.titleColor as string) ||
                 (appearance.titleColor as string) ||
@@ -295,50 +321,50 @@ export function CTASection() {
             "ring-4 ring-primary ring-inset z-50",
         )}
       >
-      <SectionBackground settings={settings as SectionBackgroundSettings} />
+        <SectionBackground settings={settings as SectionBackgroundSettings} />
 
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl p-8 md:p-16 text-center border border-border/50 shadow-xl">
-          <Calendar
-            className="w-16 h-16 mx-auto mb-6"
-            style={{ color: settings.buttonColor || "var(--primary)" }}
-          />
-          <h2
-            className="text-3xl md:text-5xl font-bold mb-4 text-balance"
-            style={{
-              fontFamily: settings.titleFont || "var(--font-title)",
-              color: settings.titleColor || "var(--foreground)",
-            }}
-          >
-            {renderSafeText(settings.title || "")}
-          </h2>
-          <p
-            className="text-lg mb-8 text-pretty leading-relaxed max-w-2xl mx-auto"
-            style={{
-              fontFamily: settings.subtitleFont || "var(--font-subtitle)",
-              color: settings.subtitleColor || "var(--foreground)",
-            }}
-          >
-            {renderSafeText(settings.subtitle || "")}
-          </p>
-          <Button
-            asChild
-            size="lg"
-            className="text-lg px-8 shadow-lg transition-all duration-300 hover:scale-105"
-            style={{
-              fontFamily: settings.buttonFont || "var(--font-body)",
-              backgroundColor: settings.buttonColor || "var(--primary)",
-              color: settings.buttonTextColor || "#ffffff",
-              boxShadow: `0 10px 15px -3px ${settings.buttonColor ? `${settings.buttonColor}40` : 'rgba(var(--primary), 0.25)'}`,
-            }}
-          >
-            <Link href={settings.buttonLink || "/agendamento"}>
-              {renderSafeText(settings.buttonText || "Agendar Horário")}
-            </Link>
-          </Button>
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-4xl mx-auto bg-card/50 backdrop-blur-sm rounded-2xl p-8 md:p-16 text-center border border-border/50 shadow-xl">
+            <Calendar
+              className="w-16 h-16 mx-auto mb-6"
+              style={{ color: settings.buttonColor || "var(--primary)" }}
+            />
+            <h2
+              className="text-3xl md:text-5xl font-bold mb-4 text-balance"
+              style={{
+                fontFamily: settings.titleFont || "var(--font-title)",
+                color: settings.titleColor || "var(--foreground)",
+              }}
+            >
+              {renderSafeText(settings.title || "")}
+            </h2>
+            <p
+              className="text-lg mb-8 text-pretty leading-relaxed max-w-2xl mx-auto"
+              style={{
+                fontFamily: settings.subtitleFont || "var(--font-subtitle)",
+                color: settings.subtitleColor || "var(--foreground)",
+              }}
+            >
+              {renderSafeText(settings.subtitle || "")}
+            </p>
+            <Button
+              asChild
+              size="lg"
+              className="text-lg px-8 shadow-lg transition-all duration-300 hover:scale-105"
+              style={{
+                fontFamily: settings.buttonFont || "var(--font-body)",
+                backgroundColor: settings.buttonColor || "var(--primary)",
+                color: settings.buttonTextColor || "#ffffff",
+                boxShadow: `0 10px 15px -3px ${settings.buttonColor ? `${settings.buttonColor}40` : "rgba(var(--primary), 0.25)"}`,
+              }}
+            >
+              <Link href={settings.buttonLink || "/agendamento"}>
+                {renderSafeText(settings.buttonText || "Agendar Horário")}
+              </Link>
+            </Button>
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
     </SessionWrapper>
   );
 }

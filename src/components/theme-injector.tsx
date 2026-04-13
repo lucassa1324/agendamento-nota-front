@@ -138,6 +138,17 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
         extraFonts.add(galleryPageSettings.subtitleFont);
       if (storySettings?.titleFont) extraFonts.add(storySettings.titleFont);
       if (storySettings?.contentFont) extraFonts.add(storySettings.contentFont);
+      const storyTypography =
+        storySettings &&
+          typeof storySettings === "object" &&
+          !Array.isArray(storySettings)
+          ? ((storySettings as unknown as Record<string, unknown>).typography as
+            | Record<string, unknown>
+            | undefined)
+          : undefined;
+      if (typeof storyTypography?.fontFamily === "string") {
+        extraFonts.add(storyTypography.fontFamily);
+      }
 
       const sectionStyles: Record<string, string> = {};
       if (heroSettings?.titleColor)
@@ -249,6 +260,17 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
         extraFonts.add(galleryPageSettings.subtitleFont);
       if (storySettings?.titleFont) extraFonts.add(storySettings.titleFont);
       if (storySettings?.contentFont) extraFonts.add(storySettings.contentFont);
+      const storyTypography =
+        storySettings &&
+          typeof storySettings === "object" &&
+          !Array.isArray(storySettings)
+          ? ((storySettings as unknown as Record<string, unknown>).typography as
+            | Record<string, unknown>
+            | undefined)
+          : undefined;
+      if (typeof storyTypography?.fontFamily === "string") {
+        extraFonts.add(storyTypography.fontFamily);
+      }
 
       const sectionStyles: Record<string, string> = {};
       if (heroSettings?.titleColor)
@@ -651,6 +673,17 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
           if (settings.linksFont) newExtras.add(settings.linksFont);
           if (settings.bodyFont) newExtras.add(settings.bodyFont);
           if (settings.contentFont) newExtras.add(settings.contentFont);
+          const settingsTypography =
+            settings &&
+              typeof settings === "object" &&
+              !Array.isArray(settings)
+              ? ((settings as Record<string, unknown>).typography as
+                | Record<string, unknown>
+                | undefined)
+              : undefined;
+          if (typeof settingsTypography?.fontFamily === "string") {
+            newExtras.add(settingsTypography.fontFamily);
+          }
 
           return { ...current, extraFonts: Array.from(newExtras) };
         });

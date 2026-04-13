@@ -3,23 +3,23 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useStudio } from "@/context/studio-context";
-import type { SiteConfigData, SectionsMap } from "@/components/admin/site_editor/hooks/use-site-editor";
 import {
+  defaultStorySettings,
   getStorageKey,
   getStorySettings,
-  defaultStorySettings,
   SECTION_IDS,
+  type SectionsMap,
   type StorySettings,
   sanitizeColor,
   sanitizeSection,
 } from "@/lib/booking-data";
+import type { SiteConfigData } from "@/lib/site-config-types";
 import { cn } from "@/lib/utils";
 import {
   SectionBackground,
   type SectionBackgroundSettings,
 } from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
-import type { SiteConfigData } from "./admin/site_editor/hooks/use-site-editor";
 
 const safeString = (val: unknown, defaultStr: string = ""): string => {
   if (val === null || val === undefined) return defaultStr;
@@ -66,8 +66,8 @@ const safeString = (val: unknown, defaultStr: string = ""): string => {
     try {
       const stringified = JSON.stringify(val);
       if (stringified === "{}" || stringified === "[]") return defaultStr;
-      
-      // Se o stringify resultou em algo que contém objetos vazios em campos chave, 
+
+      // Se o stringify resultou em algo que contém objetos vazios em campos chave,
       // podemos ter problemas. Mas geralmente o safeString é chamado recursivamente.
       return stringified;
     } catch (_e) {
@@ -76,6 +76,69 @@ const safeString = (val: unknown, defaultStr: string = ""): string => {
   }
 
   return String(val);
+};
+
+const toFontFamily = (value: unknown): string => {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "default") return "";
+  return trimmed;
+};
+
+const resolveStoryFonts = (
+  story: Record<string, unknown>,
+  appearance: Record<string, unknown>,
+  content: Record<string, unknown>,
+): { titleFont: string; contentFont: string } => {
+  const typography =
+    story.typography &&
+      typeof story.typography === "object" &&
+      !Array.isArray(story.typography)
+      ? (story.typography as Record<string, unknown>)
+      : {};
+
+  const fallbackFamily = toFontFamily(
+    typography.fontFamily ?? appearance.fontFamily ?? content.fontFamily,
+  );
+
+  const titleFont = toFontFamily(
+    story.titleFont ?? appearance.titleFont ?? content.titleFont,
+  );
+  const contentFont = toFontFamily(
+    story.contentFont ??
+      appearance.contentFont ??
+      content.contentFont ??
+      fallbackFamily,
+  );
+
+  return { titleFont, contentFont };
+};
+
+const ensureFontsLoadedInIframe = (fonts: string[]) => {
+  if (typeof document === "undefined") return;
+  const uniqueFonts = Array.from(
+    new Set(
+      fonts
+        .map((font) => toFontFamily(font))
+        .filter((font) => !!font && font !== "Inter" && font !== "Playfair Display"),
+    ),
+  );
+  if (uniqueFonts.length === 0) return;
+
+  const families = uniqueFonts.map((font) => font.replace(/\s+/g, "+"));
+  const href = `https://fonts.googleapis.com/css2?${families.map((f) => `family=${f}:wght@400;500;600;700;800;900`).join("&")}&display=swap`;
+  let link = document.getElementById(
+    "story-dynamic-google-fonts",
+  ) as HTMLLinkElement | null;
+  if (!link) {
+    link = document.createElement("link");
+    link.id = "story-dynamic-google-fonts";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+  }
+  if (link.href !== href) {
+    link.href = href;
+  }
 };
 
 export function StorySection() {
@@ -113,8 +176,12 @@ export function StorySection() {
 
     console.log("[StorySection] loadData - rawStory:", {
       found: !!rawStory,
-      source: sections?.[SECTION_IDS.homeStory] ? "sections" : (home?.storySection ? "home.storySection" : "other"),
-      hasContent: !!rawStory?.content
+      source: sections?.[SECTION_IDS.homeStory]
+        ? "sections"
+        : home?.storySection
+          ? "home.storySection"
+          : "other",
+      hasContent: !!rawStory?.content,
     });
 
     const isEffectivelyEmpty =
@@ -123,14 +190,23 @@ export function StorySection() {
       (Object.keys(rawStory).length === 1 && (rawStory as any).id);
 
     if (rawStory && !isEffectivelyEmpty) {
-      const content = (rawStory.content && typeof rawStory.content === "object" && !Array.isArray(rawStory.content)
-        ? (rawStory.content as Record<string, unknown>)
-        : {}) as Record<string, unknown>;
-      
-      const appearance = (rawStory.appearance && typeof rawStory.appearance === "object" && !Array.isArray(rawStory.appearance)
-        ? (rawStory.appearance as Record<string, unknown>)
-        : {}) as Record<string, unknown>;
+      const content = (
+        rawStory.content &&
+        typeof rawStory.content === "object" &&
+        !Array.isArray(rawStory.content)
+          ? (rawStory.content as Record<string, unknown>)
+          : {}
+      ) as Record<string, unknown>;
 
+      const appearance = (
+        rawStory.appearance &&
+        typeof rawStory.appearance === "object" &&
+        !Array.isArray(rawStory.appearance)
+          ? (rawStory.appearance as Record<string, unknown>)
+          : {}
+      ) as Record<string, unknown>;
+
+      const resolvedFonts = resolveStoryFonts(rawStory, appearance, content);
       const normalizedStory = {
         ...rawStory,
         ...(typeof rawStory.content === "object" ? content : {}),
@@ -148,19 +224,13 @@ export function StorySection() {
             (appearance.titleColor as string) ||
             (content.titleColor as string),
         ),
-        titleFont:
-          (rawStory.titleFont as string) ||
-          (appearance.titleFont as string) ||
-          (content.titleFont as string),
+        titleFont: resolvedFonts.titleFont,
         contentColor: sanitizeColor(
           (rawStory.contentColor as string) ||
             (appearance.contentColor as string) ||
             (content.contentColor as string),
         ),
-        contentFont:
-          (rawStory.contentFont as string) ||
-          (appearance.contentFont as string) ||
-          (content.contentFont as string),
+        contentFont: resolvedFonts.contentFont,
         bgImage:
           (rawStory.bgImage as string) ||
           (appearance.backgroundImageUrl as string) ||
@@ -172,6 +242,74 @@ export function StorySection() {
             "",
         ),
       };
+
+      if (isInsideIframe && typeof window !== "undefined") {
+        const draftRaw = localStorage.getItem(getStorageKey("storySettings"));
+        if (draftRaw) {
+          try {
+            const draftParsed = JSON.parse(draftRaw);
+            if (
+              draftParsed &&
+              typeof draftParsed === "object" &&
+              !Array.isArray(draftParsed)
+            ) {
+              const mergedFromDraft = sanitizeSection(
+                draftParsed,
+                normalizedStory,
+              ) as Record<string, unknown>;
+
+              const draftContent = (
+                mergedFromDraft.content &&
+                typeof mergedFromDraft.content === "object" &&
+                !Array.isArray(mergedFromDraft.content)
+                  ? (mergedFromDraft.content as Record<string, unknown>)
+                  : {}
+              ) as Record<string, unknown>;
+
+              const draftAppearance = (
+                mergedFromDraft.appearance &&
+                typeof mergedFromDraft.appearance === "object" &&
+                !Array.isArray(mergedFromDraft.appearance)
+                  ? (mergedFromDraft.appearance as Record<string, unknown>)
+                  : {}
+              ) as Record<string, unknown>;
+
+              const storyFromDraft = {
+                ...mergedFromDraft,
+                ...(typeof mergedFromDraft.content === "object"
+                  ? draftContent
+                  : {}),
+                ...(typeof mergedFromDraft.appearance === "object"
+                  ? draftAppearance
+                  : {}),
+                ...resolveStoryFonts(mergedFromDraft, draftAppearance, draftContent),
+                titleColor: sanitizeColor(
+                  (mergedFromDraft.titleColor as string) ||
+                    (draftAppearance.titleColor as string) ||
+                    (draftContent.titleColor as string),
+                ),
+                contentColor: sanitizeColor(
+                  (mergedFromDraft.contentColor as string) ||
+                    (draftAppearance.contentColor as string) ||
+                    (draftContent.contentColor as string),
+                ),
+              };
+
+              ensureFontsLoadedInIframe([
+                storyFromDraft.titleFont as string,
+                storyFromDraft.contentFont as string,
+              ]);
+              setSettings(storyFromDraft as unknown as StorySettings);
+              return;
+            }
+          } catch (_e) {}
+        }
+      }
+
+      ensureFontsLoadedInIframe([
+        normalizedStory.titleFont as string,
+        normalizedStory.contentFont as string,
+      ]);
       setSettings(normalizedStory as unknown as StorySettings);
     } else {
       setSettings(getStorySettings());
@@ -193,12 +331,16 @@ export function StorySection() {
         event.data.type === "UPDATE_SITE_CONFIG"
       ) {
         hasLivePreviewUpdateRef.current = true;
-        
-        let rawStory = event.data.settings as Record<string, unknown> | undefined;
-        
+
+        let rawStory = event.data.settings as
+          | Record<string, unknown>
+          | undefined;
+
         if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
           const siteData = event.data.data as Record<string, unknown>;
-          const sections = siteData.sections as Record<string, unknown> | undefined;
+          const sections = siteData.sections as
+            | Record<string, unknown>
+            | undefined;
           const layoutGlobal = (siteData.layoutGlobal ||
             siteData.layout_global) as Record<string, unknown> | undefined;
           const home = siteData.home as Record<string, unknown> | undefined;
@@ -226,17 +368,26 @@ export function StorySection() {
 
         console.log("[StorySection] handleMessage - rawStory found:", {
           type: event.data.type,
-          hasContent: !!rawStory.content
+          hasContent: !!rawStory.content,
         });
 
-        const content = (rawStory.content && typeof rawStory.content === "object" && !Array.isArray(rawStory.content)
-          ? (rawStory.content as Record<string, unknown>)
-          : {}) as Record<string, unknown>;
-        
-        const appearance = (rawStory.appearance && typeof rawStory.appearance === "object" && !Array.isArray(rawStory.appearance)
-          ? (rawStory.appearance as Record<string, unknown>)
-          : {}) as Record<string, unknown>;
+        const content = (
+          rawStory.content &&
+          typeof rawStory.content === "object" &&
+          !Array.isArray(rawStory.content)
+            ? (rawStory.content as Record<string, unknown>)
+            : {}
+        ) as Record<string, unknown>;
 
+        const appearance = (
+          rawStory.appearance &&
+          typeof rawStory.appearance === "object" &&
+          !Array.isArray(rawStory.appearance)
+            ? (rawStory.appearance as Record<string, unknown>)
+            : {}
+        ) as Record<string, unknown>;
+
+        const resolvedFonts = resolveStoryFonts(rawStory, appearance, content);
         const normalizedStory = {
           ...rawStory,
           ...(typeof rawStory.content === "object" ? content : {}),
@@ -249,36 +400,37 @@ export function StorySection() {
             content.content ?? rawStory.content ?? "",
             defaultStorySettings.content,
           ),
-          titleColor: sanitizeColor(
-            (rawStory.titleColor as string) ||
-              (appearance.titleColor as string) ||
-              (content.titleColor as string),
-          ),
-          titleFont:
-            (rawStory.titleFont as string) ||
-            (appearance.titleFont as string) ||
-            (content.titleFont as string),
-          contentColor: sanitizeColor(
-            (rawStory.contentColor as string) ||
-              (appearance.contentColor as string) ||
-              (content.contentColor as string),
-          ),
-          contentFont:
-            (rawStory.contentFont as string) ||
-            (appearance.contentFont as string) ||
-            (content.contentFont as string),
+          titleColor:
+            sanitizeColor(
+              (rawStory.titleColor as string) ||
+                (appearance.titleColor as string) ||
+                (content.titleColor as string),
+            ) || "",
+          titleFont: resolvedFonts.titleFont,
+          contentColor:
+            sanitizeColor(
+              (rawStory.contentColor as string) ||
+                (appearance.contentColor as string) ||
+                (content.contentColor as string),
+            ) || "",
+          contentFont: resolvedFonts.contentFont,
           bgImage:
             (rawStory.bgImage as string) ||
             (appearance.backgroundImageUrl as string) ||
             "",
-          bgColor: sanitizeColor(
-            (rawStory.bgColor as string) ||
-              (rawStory.backgroundColor as string) ||
-              (appearance.backgroundColor as string) ||
-              "",
-          ),
+          bgColor:
+            sanitizeColor(
+              (rawStory.bgColor as string) ||
+                (rawStory.backgroundColor as string) ||
+                (appearance.backgroundColor as string) ||
+                "",
+            ) || "",
         };
 
+        ensureFontsLoadedInIframe([
+          normalizedStory.titleFont as string,
+          normalizedStory.contentFont as string,
+        ]);
         setSettings((prev) =>
           prev
             ? { ...prev, ...normalizedStory }
@@ -306,6 +458,66 @@ export function StorySection() {
             const merged = prev
               ? sanitizeSection(parsed, prev)
               : sanitizeSection(parsed, {});
+            const mergedRecord = merged as Record<string, unknown>;
+            const mergedContent =
+              mergedRecord.content &&
+                typeof mergedRecord.content === "object" &&
+                !Array.isArray(mergedRecord.content)
+                ? (mergedRecord.content as Record<string, unknown>)
+                : {};
+            const mergedAppearance =
+              mergedRecord.appearance &&
+                typeof mergedRecord.appearance === "object" &&
+                !Array.isArray(mergedRecord.appearance)
+                ? (mergedRecord.appearance as Record<string, unknown>)
+                : {};
+            const resolvedFonts = resolveStoryFonts(
+              mergedRecord,
+              mergedAppearance,
+              mergedContent,
+            );
+            ensureFontsLoadedInIframe([
+              resolvedFonts.titleFont,
+              resolvedFonts.contentFont,
+            ]);
+            return merged as StorySettings;
+          });
+        }
+      } catch (_e) {}
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== getStorageKey("storySettings")) return;
+      if (!event.newValue) return;
+      try {
+        const parsed = JSON.parse(event.newValue);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          setSettings((prev) => {
+            const merged = prev
+              ? sanitizeSection(parsed, prev)
+              : sanitizeSection(parsed, defaultStorySettings);
+            const mergedRecord = merged as Record<string, unknown>;
+            const mergedContent =
+              mergedRecord.content &&
+                typeof mergedRecord.content === "object" &&
+                !Array.isArray(mergedRecord.content)
+                ? (mergedRecord.content as Record<string, unknown>)
+                : {};
+            const mergedAppearance =
+              mergedRecord.appearance &&
+                typeof mergedRecord.appearance === "object" &&
+                !Array.isArray(mergedRecord.appearance)
+                ? (mergedRecord.appearance as Record<string, unknown>)
+                : {};
+            const resolvedFonts = resolveStoryFonts(
+              mergedRecord,
+              mergedAppearance,
+              mergedContent,
+            );
+            ensureFontsLoadedInIframe([
+              resolvedFonts.titleFont,
+              resolvedFonts.contentFont,
+            ]);
             return merged as StorySettings;
           });
         }
@@ -321,18 +533,33 @@ export function StorySection() {
 
     window.addEventListener("message", handleMessage);
     window.addEventListener("storySettingsUpdated", handleUpdate);
+    window.addEventListener("storage", handleStorage);
     window.addEventListener("DataReady", handleDataReady);
 
     return () => {
       window.removeEventListener("message", handleMessage);
       window.removeEventListener("storySettingsUpdated", handleUpdate);
+      window.removeEventListener("storage", handleStorage);
       window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [isInsideIframe, studioConfig, loadData]);
+  }, [isInsideIframe, loadData]);
 
   if (!settings) return null;
 
   const contentText = safeString(settings.content);
+  const settingsRecord = settings as unknown as Record<string, unknown>;
+  const settingsTypography =
+    settingsRecord.typography &&
+      typeof settingsRecord.typography === "object" &&
+      !Array.isArray(settingsRecord.typography)
+      ? (settingsRecord.typography as Record<string, unknown>)
+      : {};
+  const fallbackTypographyFont = toFontFamily(settingsTypography.fontFamily);
+  const resolvedTitleFont = toFontFamily(settings.titleFont) || "var(--font-title)";
+  const resolvedContentFont =
+    toFontFamily(settings.contentFont) ||
+    fallbackTypographyFont ||
+    "var(--font-body)";
 
   return (
     <SessionWrapper appearance={settings?.appearance}>
@@ -362,7 +589,7 @@ export function StorySection() {
                 className="font-serif text-4xl md:text-5xl font-bold mb-6 text-balance transition-all duration-300"
                 style={{
                   color: settings.titleColor || "var(--foreground)",
-                  fontFamily: settings.titleFont || "var(--font-title)",
+                  fontFamily: resolvedTitleFont,
                 }}
               >
                 {settings.title}
@@ -371,7 +598,7 @@ export function StorySection() {
                 className="space-y-4 leading-relaxed transition-all duration-300"
                 style={{
                   color: settings.contentColor || "var(--foreground)",
-                  fontFamily: settings.contentFont || "var(--font-body)",
+                  fontFamily: resolvedContentFont,
                 }}
               >
                 {typeof contentText === "string" && contentText.split ? (

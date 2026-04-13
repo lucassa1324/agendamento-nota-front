@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useEffect, useMemo } from "react";
+import { type RefObject, useCallback, useEffect, useMemo, useRef } from "react";
 import type { SectionConfig, SectionsMap } from "@/lib/booking-data";
 import {
   defaultAboutHeroSettings,
@@ -19,6 +19,7 @@ import {
   defaultTeamSettings,
   defaultTestimonialsSettings,
   defaultValuesSettings,
+  getStorageKey,
   normalizeStepSettings,
   SECTION_IDS,
   sanitizeColor,
@@ -40,6 +41,7 @@ export function useEditorSync({
   pageVisibility,
   visibleSections,
 }: UseEditorSyncProps) {
+  const lastSyncedWindowRef = useRef<Window | null>(null);
   const sanitizeSectionData = useCallback(
     (current: unknown, fallback: unknown): Record<string, unknown> =>
       sanitizeSection(current, fallback),
@@ -500,15 +502,12 @@ export function useEditorSync({
     ) as typeof bookingServiceSettings & Record<string, unknown>;
 
     const mergedRecord = merged as Record<string, unknown>;
-    const mergedCardConfig = (mergedRecord.cardConfig as
-      | Record<string, unknown>
-      | undefined) || {};
-    const mergedContent = (mergedRecord.content as
-      | Record<string, unknown>
-      | undefined) || {};
-    const previewAppearance = (mergedRecord.appearance as
-      | Record<string, unknown>
-      | undefined) || {};
+    const mergedCardConfig =
+      (mergedRecord.cardConfig as Record<string, unknown> | undefined) || {};
+    const mergedContent =
+      (mergedRecord.content as Record<string, unknown> | undefined) || {};
+    const previewAppearance =
+      (mergedRecord.appearance as Record<string, unknown> | undefined) || {};
 
     const resolvedCardBgColor =
       sanitizeColor(
@@ -916,11 +915,192 @@ export function useEditorSync({
 
   const syncToIframe = useCallback(
     (type: string, settings: Record<string, unknown> | null | undefined) => {
+      const sourceSettings =
+        settings && typeof settings === "object" && !Array.isArray(settings)
+          ? (settings as Record<string, unknown>)
+          : {};
       const sanitizedSettings = sanitizeSettings(
         settings,
         defaultSettingsMap[type] || {},
       );
       let payloadSettings: Record<string, unknown> = { ...sanitizedSettings };
+
+      if (
+        type === "UPDATE_HERO_SETTINGS" ||
+        type === "UPDATE_ABOUT_HERO_SETTINGS"
+      ) {
+        const sourceContent =
+          sourceSettings.content &&
+            typeof sourceSettings.content === "object" &&
+            !Array.isArray(sourceSettings.content)
+            ? (sourceSettings.content as Record<string, unknown>)
+            : {};
+        const payloadContent =
+          payloadSettings.content &&
+            typeof payloadSettings.content === "object" &&
+            !Array.isArray(payloadSettings.content)
+            ? (payloadSettings.content as Record<string, unknown>)
+            : {};
+
+        const liveTitle =
+          sourceSettings.title ?? sourceContent.title ?? payloadSettings.title;
+        const liveSubtitle =
+          sourceSettings.subtitle ??
+          sourceContent.subtitle ??
+          payloadSettings.subtitle;
+
+        payloadSettings = {
+          ...payloadSettings,
+          ...(liveTitle !== undefined ? { title: liveTitle } : {}),
+          ...(liveSubtitle !== undefined ? { subtitle: liveSubtitle } : {}),
+          content: {
+            ...payloadContent,
+            ...(liveTitle !== undefined ? { title: liveTitle } : {}),
+            ...(liveSubtitle !== undefined ? { subtitle: liveSubtitle } : {}),
+          },
+        };
+      }
+
+      if (type === "UPDATE_STORY_SETTINGS") {
+        const sourceContent =
+          sourceSettings.content &&
+            typeof sourceSettings.content === "object" &&
+            !Array.isArray(sourceSettings.content)
+            ? (sourceSettings.content as Record<string, unknown>)
+            : {};
+        const sourceAppearance =
+          sourceSettings.appearance &&
+            typeof sourceSettings.appearance === "object" &&
+            !Array.isArray(sourceSettings.appearance)
+            ? (sourceSettings.appearance as Record<string, unknown>)
+            : {};
+        const sourceTypography =
+          sourceSettings.typography &&
+            typeof sourceSettings.typography === "object" &&
+            !Array.isArray(sourceSettings.typography)
+            ? (sourceSettings.typography as Record<string, unknown>)
+            : {};
+        const payloadContent =
+          payloadSettings.content &&
+            typeof payloadSettings.content === "object" &&
+            !Array.isArray(payloadSettings.content)
+            ? (payloadSettings.content as Record<string, unknown>)
+            : {};
+        const payloadAppearance =
+          payloadSettings.appearance &&
+            typeof payloadSettings.appearance === "object" &&
+            !Array.isArray(payloadSettings.appearance)
+            ? (payloadSettings.appearance as Record<string, unknown>)
+            : {};
+
+        // Mirroring de todos os campos críticos da História para garantir sync no iframe
+        const liveTitle =
+          sourceSettings.title ?? sourceContent.title ?? payloadSettings.title;
+        const liveText =
+          sourceSettings.content ??
+          sourceContent.content ??
+          sourceContent.text ??
+          payloadSettings.content;
+        const liveTitleFont =
+          sourceSettings.titleFont ??
+          sourceAppearance.titleFont ??
+          sourceContent.titleFont ??
+          payloadSettings.titleFont;
+        const liveContentFont =
+          sourceSettings.contentFont ??
+          sourceAppearance.contentFont ??
+          sourceContent.contentFont ??
+          payloadSettings.contentFont;
+        const liveTitleColor =
+          sourceSettings.titleColor ??
+          sourceAppearance.titleColor ??
+          sourceContent.titleColor ??
+          payloadSettings.titleColor;
+        const liveContentColor =
+          sourceSettings.contentColor ??
+          sourceAppearance.contentColor ??
+          sourceContent.contentColor ??
+          payloadSettings.contentColor;
+        const liveFontFamily =
+          sourceSettings.fontFamily ??
+          sourceTypography.fontFamily ??
+          sourceContent.fontFamily ??
+          sourceAppearance.fontFamily;
+
+        payloadSettings = {
+          ...payloadSettings,
+          ...(liveTitle !== undefined ? { title: liveTitle } : {}),
+          ...(liveText !== undefined ? { content: liveText } : {}),
+          ...(liveTitleFont !== undefined ? { titleFont: liveTitleFont } : {}),
+          ...(liveContentFont !== undefined
+            ? { contentFont: liveContentFont }
+            : {}),
+          ...(liveTitleColor !== undefined
+            ? { titleColor: liveTitleColor }
+            : {}),
+          ...(liveContentColor !== undefined
+            ? { contentColor: liveContentColor }
+            : {}),
+          ...(liveFontFamily !== undefined ? { fontFamily: liveFontFamily } : {}),
+          content: {
+            ...payloadContent,
+            ...(liveTitle !== undefined ? { title: liveTitle } : {}),
+            ...(liveText !== undefined ? { content: liveText } : {}),
+            ...(liveTitleFont !== undefined ? { titleFont: liveTitleFont } : {}),
+            ...(liveContentFont !== undefined
+              ? { contentFont: liveContentFont }
+              : {}),
+            ...(liveTitleColor !== undefined
+              ? { titleColor: liveTitleColor }
+              : {}),
+            ...(liveContentColor !== undefined
+              ? { contentColor: liveContentColor }
+              : {}),
+            ...(liveFontFamily !== undefined
+              ? { fontFamily: liveFontFamily }
+              : {}),
+          },
+          appearance: {
+            ...payloadAppearance,
+            ...(liveTitleFont !== undefined ? { titleFont: liveTitleFont } : {}),
+            ...(liveContentFont !== undefined
+              ? { contentFont: liveContentFont }
+              : {}),
+            ...(liveTitleColor !== undefined
+              ? { titleColor: liveTitleColor }
+              : {}),
+            ...(liveContentColor !== undefined
+              ? { contentColor: liveContentColor }
+              : {}),
+            ...(liveFontFamily !== undefined
+              ? { fontFamily: liveFontFamily }
+              : {}),
+          },
+          ...(liveFontFamily !== undefined
+            ? {
+              typography: {
+                fontFamily: liveFontFamily,
+              },
+            }
+            : {}),
+        };
+
+        if (liveFontFamily !== undefined) {
+          const payloadTypography =
+            payloadSettings.typography &&
+              typeof payloadSettings.typography === "object" &&
+              !Array.isArray(payloadSettings.typography)
+              ? (payloadSettings.typography as Record<string, unknown>)
+              : {};
+          payloadSettings = {
+            ...payloadSettings,
+            typography: {
+              ...payloadTypography,
+              fontFamily: liveFontFamily,
+            },
+          };
+        }
+      }
 
       if (
         type === "UPDATE_SERVICES_SETTINGS" ||
@@ -973,6 +1153,42 @@ export function useEditorSync({
             (appearance.card_background_color as string | undefined),
           ) || "";
 
+        const syncTitleFont =
+          (sanitizedSettings.titleFont as string | undefined) ||
+          (appearance.titleFont as string | undefined) ||
+          ((sanitizedSettings.content as Record<string, unknown> | undefined)
+            ?.titleFont as string | undefined);
+
+        const syncContentFont =
+          (sanitizedSettings.contentFont as string | undefined) ||
+          (appearance.contentFont as string | undefined) ||
+          ((sanitizedSettings.content as Record<string, unknown> | undefined)
+            ?.contentFont as string | undefined);
+
+        const syncCardTitleFont =
+          (sanitizedSettings.cardTitleFont as string | undefined) ||
+          (appearance.cardTitleFont as string | undefined) ||
+          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
+            ?.cardTitleFont as string | undefined) ||
+          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
+            ?.titleFont as string | undefined);
+
+        const syncCardDescriptionFont =
+          (sanitizedSettings.cardDescriptionFont as string | undefined) ||
+          (appearance.cardDescriptionFont as string | undefined) ||
+          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
+            ?.cardDescriptionFont as string | undefined) ||
+          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
+            ?.descriptionFont as string | undefined);
+
+        const syncCardPriceFont =
+          (sanitizedSettings.cardPriceFont as string | undefined) ||
+          (appearance.cardPriceFont as string | undefined) ||
+          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
+            ?.cardPriceFont as string | undefined) ||
+          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
+            ?.priceFont as string | undefined);
+
         payloadSettings = {
           ...sanitizedSettings,
           ...(syncColor
@@ -996,6 +1212,13 @@ export function useEditorSync({
               card_background_color: syncCardBgColor,
             }
             : {}),
+          ...(syncTitleFont ? { titleFont: syncTitleFont } : {}),
+          ...(syncContentFont ? { contentFont: syncContentFont } : {}),
+          ...(syncCardTitleFont ? { cardTitleFont: syncCardTitleFont } : {}),
+          ...(syncCardDescriptionFont
+            ? { cardDescriptionFont: syncCardDescriptionFont }
+            : {}),
+          ...(syncCardPriceFont ? { cardPriceFont: syncCardPriceFont } : {}),
           appearance: {
             ...appearance,
             ...(syncColor
@@ -1017,18 +1240,48 @@ export function useEditorSync({
                 card_background_color: syncCardBgColor,
               }
               : {}),
+            ...(syncTitleFont ? { titleFont: syncTitleFont } : {}),
+            ...(syncContentFont ? { contentFont: syncContentFont } : {}),
+            ...(syncCardTitleFont ? { cardTitleFont: syncCardTitleFont } : {}),
+            ...(syncCardDescriptionFont
+              ? { cardDescriptionFont: syncCardDescriptionFont }
+              : {}),
+            ...(syncCardPriceFont ? { cardPriceFont: syncCardPriceFont } : {}),
           },
         };
 
-        if ((isGalleryType || isBookingType) && syncCardBgColor) {
+        if (
+          (isGalleryType || isBookingType) &&
+          (syncCardBgColor ||
+            syncCardTitleFont ||
+            syncCardDescriptionFont ||
+            syncCardPriceFont)
+        ) {
           payloadSettings.cardConfig = {
-            ...((sanitizedSettings.cardConfig as Record<string, unknown>) || {}),
-            cardBgColor: syncCardBgColor,
-            cardBackgroundColor: syncCardBgColor,
-            backgroundColor: syncCardBgColor,
-            background_color: syncCardBgColor,
-            card_bg_color: syncCardBgColor,
-            card_background_color: syncCardBgColor,
+            ...((sanitizedSettings.cardConfig as Record<string, unknown>) ||
+              {}),
+            ...(syncCardBgColor
+              ? {
+                cardBgColor: syncCardBgColor,
+                cardBackgroundColor: syncCardBgColor,
+                backgroundColor: syncCardBgColor,
+                background_color: syncCardBgColor,
+                card_bg_color: syncCardBgColor,
+                card_background_color: syncCardBgColor,
+              }
+              : {}),
+            ...(syncCardTitleFont
+              ? { cardTitleFont: syncCardTitleFont, titleFont: syncCardTitleFont }
+              : {}),
+            ...(syncCardDescriptionFont
+              ? {
+                cardDescriptionFont: syncCardDescriptionFont,
+                descriptionFont: syncCardDescriptionFont,
+              }
+              : {}),
+            ...(syncCardPriceFont
+              ? { cardPriceFont: syncCardPriceFont, priceFont: syncCardPriceFont }
+              : {}),
           };
         }
 
@@ -1051,6 +1304,15 @@ export function useEditorSync({
           bgColor: payloadSettings.bgColor,
           appearanceBg: payloadAppearance.backgroundColor,
         });
+      }
+
+      if (type === "UPDATE_STORY_SETTINGS" && typeof window !== "undefined") {
+        try {
+          localStorage.setItem(
+            getStorageKey("storySettings"),
+            JSON.stringify(payloadSettings),
+          );
+        } catch (_e) { }
       }
 
       iframeRef.current?.contentWindow?.postMessage(
@@ -1327,197 +1589,197 @@ export function useEditorSync({
     syncToIframe("UPDATE_VISIBLE_SECTIONS", visibleSections);
   }, [visibleSections, syncToIframe]);
 
+  const sendFullSync = useCallback(
+    (win: Window) => {
+      win.postMessage(
+        { type: "UPDATE_COLORS", settings: previewColorSettings },
+        "*",
+      );
+      win.postMessage(
+        { type: "UPDATE_TYPOGRAPHY", settings: previewFontSettings },
+        "*",
+      );
+
+      win.postMessage(
+        { type: "UPDATE_PAGE_VISIBILITY", settings: pageVisibility },
+        "*",
+      );
+      win.postMessage(
+        { type: "UPDATE_VISIBLE_SECTIONS", settings: visibleSections },
+        "*",
+      );
+
+      win.postMessage(
+        { type: "UPDATE_HERO_SETTINGS", settings: previewHeroSettings },
+        "*",
+      );
+      win.postMessage(
+        {
+          type: "UPDATE_ABOUT_HERO_SETTINGS",
+          settings: previewAboutHeroSettings,
+        },
+        "*",
+      );
+      win.postMessage(
+        { type: "UPDATE_STORY_SETTINGS", settings: previewStorySettings },
+        "*",
+      );
+      win.postMessage(
+        { type: "UPDATE_TEAM_SETTINGS", settings: previewTeamSettings },
+        "*",
+      );
+      win.postMessage(
+        {
+          type: "UPDATE_TESTIMONIALS_SETTINGS",
+          settings: previewTestimonialsSettings,
+        },
+        "*",
+      );
+      win.postMessage(
+        { type: "UPDATE_SERVICES_SETTINGS", settings: previewServicesSettings },
+        "*",
+      );
+      win.postMessage(
+        {
+          type: "UPDATE_HOME_VALUES_SETTINGS",
+          settings: previewHomeValuesSettings,
+        },
+        "*",
+      );
+      win.postMessage(
+        {
+          type: "UPDATE_ABOUT_US_VALUES_SETTINGS",
+          settings: previewAboutUsValuesSettings,
+        },
+        "*",
+      );
+      win.postMessage(
+        { type: "UPDATE_GALLERY_PREVIEW", settings: previewGallerySettings },
+        "*",
+      );
+      win.postMessage(
+        { type: "UPDATE_GALLERY_PAGE", settings: previewGalleryPageSettings },
+        "*",
+      );
+      win.postMessage(
+        { type: "UPDATE_CTA_SETTINGS", settings: previewCTASettings },
+        "*",
+      );
+      win.postMessage(
+        { type: "UPDATE_HEADER_SETTINGS", settings: previewHeaderSettings },
+        "*",
+      );
+      win.postMessage(
+        { type: "UPDATE_FOOTER_SETTINGS", settings: previewFooterSettings },
+        "*",
+      );
+
+      win.postMessage(
+        {
+          type: "UPDATE_BOOKING_SERVICE_SETTINGS",
+          settings: previewBookingServiceSettings,
+        },
+        "*",
+      );
+      win.postMessage(
+        {
+          type: "UPDATE_BOOKING_STYLE",
+          payload: {
+            section: "step1Services",
+            styles: previewBookingServiceSettings,
+          },
+        },
+        "*",
+      );
+      win.postMessage(
+        {
+          type: "UPDATE_BOOKING_DATE_SETTINGS",
+          settings: previewBookingDateSettings,
+        },
+        "*",
+      );
+      win.postMessage(
+        {
+          type: "UPDATE_BOOKING_TIME_SETTINGS",
+          settings: previewBookingTimeSettings,
+        },
+        "*",
+      );
+      win.postMessage(
+        {
+          type: "UPDATE_BOOKING_FORM_SETTINGS",
+          settings: previewBookingFormSettings,
+        },
+        "*",
+      );
+      win.postMessage(
+        {
+          type: "UPDATE_BOOKING_CONFIRMATION_SETTINGS",
+          settings: previewBookingConfirmationSettings,
+        },
+        "*",
+      );
+
+      win.postMessage(
+        { type: "UPDATE_SITE_DATA", data: sanitizedSiteCustomization },
+        "*",
+      );
+    },
+    [
+      pageVisibility,
+      previewAboutHeroSettings,
+      previewAboutUsValuesSettings,
+      previewBookingConfirmationSettings,
+      previewBookingDateSettings,
+      previewBookingFormSettings,
+      previewBookingServiceSettings,
+      previewBookingTimeSettings,
+      previewCTASettings,
+      previewColorSettings,
+      previewFooterSettings,
+      previewFontSettings,
+      previewGalleryPageSettings,
+      previewGallerySettings,
+      previewHeaderSettings,
+      previewHeroSettings,
+      previewHomeValuesSettings,
+      previewServicesSettings,
+      previewStorySettings,
+      previewTeamSettings,
+      previewTestimonialsSettings,
+      sanitizedSiteCustomization,
+      visibleSections,
+    ],
+  );
+
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (
         event.data?.type === "BOOKING_FLOW_READY" ||
         event.data?.type === "IFRAME_READY"
       ) {
-        console.log(
-          `>>> [EDITOR] ${event.data.type} recebido, enviando todas as configurações...`,
-        );
-        if (iframeRef.current?.contentWindow) {
-          const win = iframeRef.current.contentWindow;
-
-          // Enviar configurações globais de tema
-          win.postMessage(
-            { type: "UPDATE_COLORS", settings: previewColorSettings },
-            "*",
-          );
-          win.postMessage(
-            { type: "UPDATE_TYPOGRAPHY", settings: previewFontSettings },
-            "*",
-          );
-
-          // Enviar visibilidade
-          win.postMessage(
-            { type: "UPDATE_PAGE_VISIBILITY", settings: pageVisibility },
-            "*",
-          );
-          win.postMessage(
-            { type: "UPDATE_VISIBLE_SECTIONS", settings: visibleSections },
-            "*",
-          );
-
-          // Enviar configurações de cada seção
-          win.postMessage(
-            { type: "UPDATE_HERO_SETTINGS", settings: previewHeroSettings },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_ABOUT_HERO_SETTINGS",
-              settings: previewAboutHeroSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            { type: "UPDATE_STORY_SETTINGS", settings: previewStorySettings },
-            "*",
-          );
-          win.postMessage(
-            { type: "UPDATE_TEAM_SETTINGS", settings: previewTeamSettings },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_TESTIMONIALS_SETTINGS",
-              settings: previewTestimonialsSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_SERVICES_SETTINGS",
-              settings: previewServicesSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_HOME_VALUES_SETTINGS",
-              settings: previewHomeValuesSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_ABOUT_US_VALUES_SETTINGS",
-              settings: previewAboutUsValuesSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_GALLERY_PREVIEW",
-              settings: previewGallerySettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_GALLERY_PAGE",
-              settings: previewGalleryPageSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            { type: "UPDATE_CTA_SETTINGS", settings: previewCTASettings },
-            "*",
-          );
-          win.postMessage(
-            { type: "UPDATE_HEADER_SETTINGS", settings: previewHeaderSettings },
-            "*",
-          );
-          win.postMessage(
-            { type: "UPDATE_FOOTER_SETTINGS", settings: previewFooterSettings },
-            "*",
-          );
-
-          // Enviar configurações de agendamento
-          win.postMessage(
-            {
-              type: "UPDATE_BOOKING_SERVICE_SETTINGS",
-              settings: previewBookingServiceSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_BOOKING_STYLE",
-              payload: {
-                section: "step1Services",
-                styles: previewBookingServiceSettings,
-              },
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_BOOKING_DATE_SETTINGS",
-              settings: previewBookingDateSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_BOOKING_TIME_SETTINGS",
-              settings: previewBookingTimeSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_BOOKING_FORM_SETTINGS",
-              settings: previewBookingFormSettings,
-            },
-            "*",
-          );
-          win.postMessage(
-            {
-              type: "UPDATE_BOOKING_CONFIRMATION_SETTINGS",
-              settings: previewBookingConfirmationSettings,
-            },
-            "*",
-          );
-
-          // Dados do site completo (fallback)
-          win.postMessage(
-            { type: "UPDATE_SITE_DATA", data: sanitizedSiteCustomization },
-            "*",
-          );
+        const win = iframeRef.current?.contentWindow;
+        if (win) {
+          lastSyncedWindowRef.current = win;
+          sendFullSync(win);
         }
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [
-    previewHeroSettings,
-    previewAboutHeroSettings,
-    previewStorySettings,
-    previewTeamSettings,
-    previewTestimonialsSettings,
-    previewServicesSettings,
-    previewHomeValuesSettings,
-    previewAboutUsValuesSettings,
-    previewGallerySettings,
-    previewGalleryPageSettings,
-    previewCTASettings,
-    previewHeaderSettings,
-    previewFooterSettings,
-    previewBookingServiceSettings,
-    previewBookingDateSettings,
-    previewBookingTimeSettings,
-    previewBookingFormSettings,
-    previewBookingConfirmationSettings,
-    previewColorSettings,
-    previewFontSettings,
-    pageVisibility,
-    visibleSections,
-    sanitizedSiteCustomization,
-    iframeRef,
-  ]);
+  }, [iframeRef, sendFullSync]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      const win = iframeRef.current?.contentWindow;
+      if (!win) return;
+      if (lastSyncedWindowRef.current === win) return;
+      lastSyncedWindowRef.current = win;
+      sendFullSync(win);
+    }, 200);
+    return () => window.clearInterval(interval);
+  }, [iframeRef, sendFullSync]);
 
   return {
     previewHeroSettings,

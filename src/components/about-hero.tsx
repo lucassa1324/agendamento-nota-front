@@ -8,17 +8,18 @@ import {
   getAboutHeroSettings,
   getStorageKey,
   type HeroSettings,
+  SECTION_IDS,
+  type SectionsMap,
   sanitizeColor,
   sanitizeSection,
-  SECTION_IDS,
 } from "@/lib/booking-data";
+import type { SiteConfigData } from "@/lib/site-config-types";
 import { cn } from "@/lib/utils";
 import {
   SectionBackground,
   type SectionBackgroundSettings,
 } from "./admin/site_editor/components/SectionBackground";
 import { SessionWrapper } from "./admin/site_editor/components/SessionWrapper";
-import type { SiteConfigData, SectionsMap } from "./admin/site_editor/hooks/use-site-editor";
 
 export function AboutHero() {
   const { studio } = useStudio();
@@ -32,9 +33,7 @@ export function AboutHero() {
 
   const home = studio?.config?.home as Record<string, unknown> | undefined;
   const layoutGlobal = (studio?.config?.layoutGlobal ||
-    studio?.config?.layout_global) as
-    | Record<string, unknown>
-    | undefined;
+    studio?.config?.layout_global) as Record<string, unknown> | undefined;
   const aboutHeroConfig =
     home?.aboutHero ||
     studio?.config?.aboutHero ||
@@ -46,11 +45,10 @@ export function AboutHero() {
     const config = studio?.config as SiteConfigData | undefined;
     const sections = config?.sections as SectionsMap | undefined;
     const home = config?.home as Record<string, unknown> | undefined;
-    const layoutGlobal = (config?.layoutGlobal ||
-      config?.layout_global) as
+    const layoutGlobal = (config?.layoutGlobal || config?.layout_global) as
       | Record<string, unknown>
       | undefined;
-    
+
     const rawAboutHero = (sections?.[SECTION_IDS.aboutHero] ||
       home?.aboutHero ||
       config?.aboutHero ||
@@ -58,13 +56,21 @@ export function AboutHero() {
       layoutGlobal?.hero) as Record<string, unknown> | undefined;
 
     if (rawAboutHero) {
-      const content = (rawAboutHero.content && typeof rawAboutHero.content === "object" && !Array.isArray(rawAboutHero.content)
-        ? (rawAboutHero.content as Record<string, unknown>)
-        : {}) as Record<string, unknown>;
-      
-      const appearance = (rawAboutHero.appearance && typeof rawAboutHero.appearance === "object" && !Array.isArray(rawAboutHero.appearance)
-        ? (rawAboutHero.appearance as Record<string, unknown>)
-        : {}) as Record<string, unknown>;
+      const content = (
+        rawAboutHero.content &&
+        typeof rawAboutHero.content === "object" &&
+        !Array.isArray(rawAboutHero.content)
+          ? (rawAboutHero.content as Record<string, unknown>)
+          : {}
+      ) as Record<string, unknown>;
+
+      const appearance = (
+        rawAboutHero.appearance &&
+        typeof rawAboutHero.appearance === "object" &&
+        !Array.isArray(rawAboutHero.appearance)
+          ? (rawAboutHero.appearance as Record<string, unknown>)
+          : {}
+      ) as Record<string, unknown>;
 
       const normalizedAboutHero = {
         ...rawAboutHero,
@@ -183,7 +189,10 @@ export function AboutHero() {
           rawSettings = (sections?.[SECTION_IDS.aboutHero] ||
             siteData.aboutHero ||
             siteData.hero) as Record<string, unknown>;
-        } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
+        } else if (
+          event.data.type === "UPDATE_SITE_CONFIG" &&
+          event.data.config
+        ) {
           const siteConfig = event.data.config as Record<string, unknown>;
           const sections = siteConfig.sections as SectionsMap | undefined;
           const homeConfig = siteConfig.home as Record<string, unknown>;
@@ -201,13 +210,21 @@ export function AboutHero() {
         if (!rawSettings || typeof rawSettings !== "object") return;
 
         // Sanitize colors in real-time update
-        const content = (rawSettings.content && typeof rawSettings.content === "object" && !Array.isArray(rawSettings.content)
-          ? (rawSettings.content as Record<string, unknown>)
-          : {}) as Record<string, unknown>;
-        
-        const appearance = (rawSettings.appearance && typeof rawSettings.appearance === "object" && !Array.isArray(rawSettings.appearance)
-          ? (rawSettings.appearance as Record<string, unknown>)
-          : {}) as Record<string, unknown>;
+        const content = (
+          rawSettings.content &&
+          typeof rawSettings.content === "object" &&
+          !Array.isArray(rawSettings.content)
+            ? (rawSettings.content as Record<string, unknown>)
+            : {}
+        ) as Record<string, unknown>;
+
+        const appearance = (
+          rawSettings.appearance &&
+          typeof rawSettings.appearance === "object" &&
+          !Array.isArray(rawSettings.appearance)
+            ? (rawSettings.appearance as Record<string, unknown>)
+            : {}
+        ) as Record<string, unknown>;
 
         const updatedSettings = {
           ...rawSettings,
@@ -309,7 +326,7 @@ export function AboutHero() {
       window.removeEventListener("aboutHeroSettingsUpdated", handleUpdate);
       window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [isInsideIframe, aboutHeroConfig, loadData]);
+  }, [isInsideIframe, loadData]);
 
   if (!settings) return null;
 
@@ -329,104 +346,114 @@ export function AboutHero() {
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
       >
-      <SectionBackground settings={settings as SectionBackgroundSettings} />
+        <SectionBackground settings={settings as SectionBackgroundSettings} />
 
-      <div className="container relative z-10 mx-auto px-4 py-20">
-        <div className="max-w-3xl mx-auto text-center">
-          {settings.showBadge !== false && (
-            <div
+        <div className="container relative z-10 mx-auto px-4 py-20">
+          <div className="max-w-3xl mx-auto text-center">
+            {settings.showBadge !== false && (
+              <div
+                className={cn(
+                  "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6",
+                  getHighlightClass("about-hero-badge"),
+                )}
+                style={{
+                  fontFamily: settings.badgeFont || "var(--font-body)",
+                  color:
+                    settings.badgeTextColor ||
+                    settings.badgeColor ||
+                    "rgba(var(--accent), 0.8)",
+                  borderColor:
+                    settings.badgeColor || "rgba(var(--accent), 0.2)",
+                  backgroundColor: settings.badgeColor
+                    ? `${settings.badgeColor}22`
+                    : "rgba(var(--accent), 0.1)",
+                }}
+              >
+                <span className="text-sm font-medium">
+                  {settings.badge || "Sobre Nós"}
+                </span>
+              </div>
+            )}
+
+            <h1
               className={cn(
-                "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6",
-                getHighlightClass("about-hero-badge"),
+                "font-serif text-5xl md:text-7xl font-bold mb-6 text-balance leading-tight transition-all duration-300",
+                getHighlightClass("about-hero-title"),
               )}
               style={{
-                fontFamily: settings.badgeFont || "var(--font-body)",
-                color: settings.badgeTextColor || settings.badgeColor || "rgba(var(--accent), 0.8)",
-                borderColor: settings.badgeColor || "rgba(var(--accent), 0.2)",
-                backgroundColor: settings.badgeColor
-                  ? `${settings.badgeColor}22`
-                  : "rgba(var(--accent), 0.1)",
+                fontFamily: settings.titleFont || "var(--font-title)",
+                color: settings.titleColor || "var(--foreground)",
               }}
             >
-              <span className="text-sm font-medium">
-                {settings.badge || "Sobre Nós"}
-              </span>
+              {settings.title}
+            </h1>
+
+            <p
+              className={cn(
+                "text-lg md:text-xl mb-8 text-pretty leading-relaxed max-w-2xl mx-auto transition-all duration-300",
+                !settings.subtitleColor && "text-muted-foreground",
+                getHighlightClass("about-hero-subtitle"),
+              )}
+              style={{
+                fontFamily: settings.subtitleFont || "var(--font-subtitle)",
+                color: settings.subtitleColor || "var(--foreground)",
+              }}
+            >
+              {settings.subtitle}
+            </p>
+
+            <div
+              className={cn(
+                "flex flex-col sm:flex-row items-center justify-center gap-4 transition-all duration-300",
+                getHighlightClass("about-hero-buttons"),
+              )}
+            >
+              {settings.primaryButton && (
+                <Button
+                  asChild
+                  size="lg"
+                  className="h-14 px-8 text-base font-bold rounded-full shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                  style={{
+                    backgroundColor:
+                      settings.primaryButtonColor || "var(--primary)",
+                    color: settings.primaryButtonTextColor || "#ffffff",
+                    fontFamily:
+                      settings.primaryButtonFont || "var(--font-body)",
+                    boxShadow: `0 10px 15px -3px ${settings.primaryButtonColor ? `${settings.primaryButtonColor}40` : "rgba(var(--primary), 0.25)"}`,
+                  }}
+                >
+                  <Link href={settings.primaryButtonLink || "/agendamento"}>
+                    {settings.primaryButton || "Nossos Serviços"}
+                  </Link>
+                </Button>
+              )}
+
+              {settings.secondaryButton && (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="h-14 px-8 text-base font-bold rounded-full border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] backdrop-blur-sm"
+                  style={{
+                    borderColor:
+                      settings.secondaryButtonColor || "var(--primary)",
+                    color:
+                      settings.secondaryButtonTextColor ||
+                      settings.secondaryButtonColor ||
+                      "var(--primary)",
+                    fontFamily:
+                      settings.secondaryButtonFont || "var(--font-body)",
+                  }}
+                >
+                  <Link href={settings.secondaryButtonLink || "/sobre"}>
+                    {settings.secondaryButton || "Saiba Mais"}
+                  </Link>
+                </Button>
+              )}
             </div>
-          )}
-
-          <h1
-            className={cn(
-              "font-serif text-5xl md:text-7xl font-bold mb-6 text-balance leading-tight transition-all duration-300",
-              getHighlightClass("about-hero-title"),
-            )}
-            style={{
-              fontFamily: settings.titleFont || "var(--font-title)",
-              color: settings.titleColor || "var(--foreground)",
-            }}
-          >
-            {settings.title}
-          </h1>
-
-          <p
-            className={cn(
-              "text-lg md:text-xl mb-8 text-pretty leading-relaxed max-w-2xl mx-auto transition-all duration-300",
-              !settings.subtitleColor && "text-muted-foreground",
-              getHighlightClass("about-hero-subtitle"),
-            )}
-            style={{
-              fontFamily: settings.subtitleFont || "var(--font-subtitle)",
-              color: settings.subtitleColor || "var(--foreground)",
-            }}
-          >
-            {settings.subtitle}
-          </p>
-
-          <div
-            className={cn(
-              "flex flex-col sm:flex-row items-center justify-center gap-4 transition-all duration-300",
-              getHighlightClass("about-hero-buttons"),
-            )}
-          >
-            {settings.primaryButton && (
-              <Button
-                asChild
-                size="lg"
-                className="h-14 px-8 text-base font-bold rounded-full shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-                style={{
-                  backgroundColor:
-                    settings.primaryButtonColor || "var(--primary)",
-                  color: settings.primaryButtonTextColor || "#ffffff",
-                  fontFamily: settings.primaryButtonFont || "var(--font-body)",
-                  boxShadow: `0 10px 15px -3px ${settings.primaryButtonColor ? `${settings.primaryButtonColor}40` : 'rgba(var(--primary), 0.25)'}`,
-                }}
-              >
-                <Link href={settings.primaryButtonLink || "/agendamento"}>
-                  {settings.primaryButton || "Nossos Serviços"}
-                </Link>
-              </Button>
-            )}
-
-            {settings.secondaryButton && (
-              <Button
-                asChild
-                variant="outline"
-                size="lg"
-                className="h-14 px-8 text-base font-bold rounded-full border-2 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] backdrop-blur-sm"
-                style={{
-                  borderColor: settings.secondaryButtonColor || "var(--primary)",
-                  color: settings.secondaryButtonTextColor || (settings.secondaryButtonColor || "var(--primary)"),
-                  fontFamily: settings.secondaryButtonFont || "var(--font-body)",
-                }}
-              >
-                <Link href={settings.secondaryButtonLink || "/sobre"}>
-                  {settings.secondaryButton || "Saiba Mais"}
-                </Link>
-              </Button>
-            )}
           </div>
         </div>
-      </div>
-    </section>
+      </section>
     </SessionWrapper>
   );
 }
