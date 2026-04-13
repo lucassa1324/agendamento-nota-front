@@ -102,20 +102,20 @@ const normalizeGalleryForPersistence = (
   const bgColor =
     sanitizeColor(
       rawSettings.bgColor ||
-        (rawRecord.backgroundColor as string | undefined) ||
-        (rawRecord.bg_color as string | undefined) ||
-        (rawRecord.background_color as string | undefined) ||
-        (appearance.backgroundColor as string | undefined) ||
-        (appearance.bgColor as string | undefined),
+      (rawRecord.backgroundColor as string | undefined) ||
+      (rawRecord.bg_color as string | undefined) ||
+      (rawRecord.background_color as string | undefined) ||
+      (appearance.backgroundColor as string | undefined) ||
+      (appearance.bgColor as string | undefined),
     ) || "";
   const cardBgColor =
     sanitizeColor(
       rawSettings.cardBgColor ||
-        (rawRecord.cardBackgroundColor as string | undefined) ||
-        (rawRecord.card_bg_color as string | undefined) ||
-        (rawRecord.card_background_color as string | undefined) ||
-        (appearance.cardBgColor as string | undefined) ||
-        (appearance.cardBackgroundColor as string | undefined),
+      (rawRecord.cardBackgroundColor as string | undefined) ||
+      (rawRecord.card_bg_color as string | undefined) ||
+      (rawRecord.card_background_color as string | undefined) ||
+      (appearance.cardBgColor as string | undefined) ||
+      (appearance.cardBackgroundColor as string | undefined),
     ) || "";
 
   const normalized = {
@@ -128,9 +128,9 @@ const normalizeGalleryForPersistence = (
       bgColor,
       ...(cardBgColor
         ? {
-            cardBgColor,
-            cardBackgroundColor: cardBgColor,
-          }
+          cardBgColor,
+          cardBackgroundColor: cardBgColor,
+        }
         : {}),
     },
   } as GallerySettings;
@@ -928,34 +928,34 @@ export function useEditorActions({
       handleUpdateBackgroundState(normalizedUpdates, targetSectionId);
 
       const currentSettingsMap: Record<string, BackgroundSettings | undefined> =
-        {
-          hero: heroSettings,
-          "home-hero": heroSettings,
-          "about-hero": aboutHeroSettings,
-          story: storySettings,
-          "home-story": storySettings,
-          team: teamSettings,
-          "home-team": teamSettings,
-          testimonials: testimonialsSettings,
-          "home-testimonials": testimonialsSettings,
-          services: servicesSettings,
-          "home-services": servicesSettings,
-          "home-values": homeValuesSettings,
-          "about-values": aboutUsValuesSettings,
-          "about-us-values": aboutUsValuesSettings,
-          gallery: gallerySettings,
-          "home-gallery": gallerySettings,
-          "gallery-preview": gallerySettings,
-          "page-gallery": galleryPageSettings,
-          "gallery-grid": galleryPageSettings,
-          cta: ctaSettings,
-          "home-cta": ctaSettings,
-          "booking-service": bookingServiceSettings,
-          "booking-date": bookingDateSettings,
-          "booking-time": bookingTimeSettings,
-          "booking-form": bookingFormSettings,
-          "booking-confirmation": bookingConfirmationSettings,
-        };
+      {
+        hero: heroSettings,
+        "home-hero": heroSettings,
+        "about-hero": aboutHeroSettings,
+        story: storySettings,
+        "home-story": storySettings,
+        team: teamSettings,
+        "home-team": teamSettings,
+        testimonials: testimonialsSettings,
+        "home-testimonials": testimonialsSettings,
+        services: servicesSettings,
+        "home-services": servicesSettings,
+        "home-values": homeValuesSettings,
+        "about-values": aboutUsValuesSettings,
+        "about-us-values": aboutUsValuesSettings,
+        gallery: gallerySettings,
+        "home-gallery": gallerySettings,
+        "gallery-preview": gallerySettings,
+        "page-gallery": galleryPageSettings,
+        "gallery-grid": galleryPageSettings,
+        cta: ctaSettings,
+        "home-cta": ctaSettings,
+        "booking-service": bookingServiceSettings,
+        "booking-date": bookingDateSettings,
+        "booking-time": bookingTimeSettings,
+        "booking-form": bookingFormSettings,
+        "booking-confirmation": bookingConfirmationSettings,
+      };
 
       const saveKeyMap: Record<string, string> = {
         hero: "heroSettings",
@@ -1275,22 +1275,19 @@ export function useEditorActions({
 
       // Mapa de defaults por seção
       const defaultsMap: Record<string, string> = {
-        hero: "heroSettings",
+        "home-hero": "heroSettings",
         "about-hero": "aboutHeroSettings",
-        story: "storySettings",
-        team: "teamSettings",
-        testimonials: "testimonialsSettings",
-        services: "servicesSettings",
-        values: "homeValuesSettings",
+        "home-story": "storySettings",
+        "home-team": "teamSettings",
+        "home-testimonials": "testimonialsSettings",
+        "home-services": "servicesSettings",
         "home-values": "homeValuesSettings",
         "about-values": "aboutUsValuesSettings",
-        "about-us-values": "aboutUsValuesSettings",
-        gallery: "gallerySettings",
-        "gallery-preview": "gallerySettings",
-        "gallery-grid": "galleryPageSettings",
-        cta: "ctaSettings",
-        header: "headerSettings",
-        footer: "footerSettings",
+        "home-gallery": "gallerySettings",
+        "page-gallery": "galleryPageSettings",
+        "home-cta": "ctaSettings",
+        "layout-header": "headerSettings",
+        "layout-footer": "footerSettings",
         typography: "fontSettings",
         colors: "colorSettings",
         "booking-service": "bookingServiceSettings",
@@ -1302,22 +1299,19 @@ export function useEditorActions({
 
       // Mapa de setters de estado
       const setterMap: Record<string, (u: unknown) => void> = {
-        hero: setHeroSettings as (u: unknown) => void,
+        "home-hero": setHeroSettings as (u: unknown) => void,
         "about-hero": setAboutHeroSettings as (u: unknown) => void,
-        story: setStorySettings as (u: unknown) => void,
-        team: setTeamSettings as (u: unknown) => void,
-        testimonials: setTestimonialsSettings as (u: unknown) => void,
-        services: setServicesSettings as (u: unknown) => void,
-        values: setHomeValuesSettings as (u: unknown) => void,
+        "home-story": setStorySettings as (u: unknown) => void,
+        "home-team": setTeamSettings as (u: unknown) => void,
+        "home-testimonials": setTestimonialsSettings as (u: unknown) => void,
+        "home-services": setServicesSettings as (u: unknown) => void,
         "home-values": setHomeValuesSettings as (u: unknown) => void,
         "about-values": setAboutUsValuesSettings as (u: unknown) => void,
-        "about-us-values": setAboutUsValuesSettings as (u: unknown) => void,
-        gallery: setGallerySettings as (u: unknown) => void,
-        "gallery-preview": setGallerySettings as (u: unknown) => void,
-        "gallery-grid": setGalleryPageSettings as (u: unknown) => void,
-        cta: setCTASettings as (u: unknown) => void,
-        header: setHeaderSettings as (u: unknown) => void,
-        footer: setFooterSettings as (u: unknown) => void,
+        "home-gallery": setGallerySettings as (u: unknown) => void,
+        "page-gallery": setGalleryPageSettings as (u: unknown) => void,
+        "home-cta": setCTASettings as (u: unknown) => void,
+        "layout-header": setHeaderSettings as (u: unknown) => void,
+        "layout-footer": setFooterSettings as (u: unknown) => void,
         typography: setFontSettings as (u: unknown) => void,
         colors: setColorSettings as (u: unknown) => void,
         "booking-service": setBookingServiceSettings as (u: unknown) => void,
@@ -1331,22 +1325,19 @@ export function useEditorActions({
 
       // Mapa de funções de salvamento (localStorage)
       const saveFnMap: Record<string, (u: unknown) => void> = {
-        hero: saveHeroSettings as (u: unknown) => void,
+        "home-hero": saveHeroSettings as (u: unknown) => void,
         "about-hero": saveAboutHeroSettings as (u: unknown) => void,
-        story: saveStorySettings as (u: unknown) => void,
-        team: saveTeamSettings as (u: unknown) => void,
-        testimonials: saveTestimonialsSettings as (u: unknown) => void,
-        services: saveServicesSettings as (u: unknown) => void,
-        values: saveHomeValuesSettings as (u: unknown) => void,
+        "home-story": saveStorySettings as (u: unknown) => void,
+        "home-team": saveTeamSettings as (u: unknown) => void,
+        "home-testimonials": saveTestimonialsSettings as (u: unknown) => void,
+        "home-services": saveServicesSettings as (u: unknown) => void,
         "home-values": saveHomeValuesSettings as (u: unknown) => void,
         "about-values": saveAboutUsValuesSettings as (u: unknown) => void,
-        "about-us-values": saveAboutUsValuesSettings as (u: unknown) => void,
-        gallery: saveGallerySettings as (u: unknown) => void,
-        "gallery-preview": saveGallerySettings as (u: unknown) => void,
-        "gallery-grid": saveGalleryPageSettings as (u: unknown) => void,
-        cta: saveCTASettings as (u: unknown) => void,
-        header: saveHeaderSettings as (u: unknown) => void,
-        footer: saveFooterSettings as (u: unknown) => void,
+        "home-gallery": saveGallerySettings as (u: unknown) => void,
+        "page-gallery": saveGalleryPageSettings as (u: unknown) => void,
+        "home-cta": saveCTASettings as (u: unknown) => void,
+        "layout-header": saveHeaderSettings as (u: unknown) => void,
+        "layout-footer": saveFooterSettings as (u: unknown) => void,
         typography: saveFontSettings as (u: unknown) => void,
         colors: saveColorSettings as (u: unknown) => void,
         "booking-service": saveBookingServiceSettings as (u: unknown) => void,
@@ -1360,22 +1351,19 @@ export function useEditorActions({
 
       // Mapa de chaves para o draft
       const saveKeyMap: Record<string, string> = {
-        hero: "heroSettings",
+        "home-hero": "heroSettings",
         "about-hero": "aboutHeroSettings",
-        story: "storySettings",
-        team: "teamSettings",
-        testimonials: "testimonialsSettings",
-        services: "servicesSettings",
-        values: "homeValuesSettings",
+        "home-story": "storySettings",
+        "home-team": "teamSettings",
+        "home-testimonials": "testimonialsSettings",
+        "home-services": "servicesSettings",
         "home-values": "homeValuesSettings",
         "about-values": "aboutUsValuesSettings",
-        "about-us-values": "aboutUsValuesSettings",
-        gallery: "gallerySettings",
-        "gallery-preview": "gallerySettings",
-        "gallery-grid": "galleryPageSettings",
-        cta: "ctaSettings",
-        header: "headerSettings",
-        footer: "footerSettings",
+        "home-gallery": "gallerySettings",
+        "page-gallery": "galleryPageSettings",
+        "home-cta": "ctaSettings",
+        "layout-header": "headerSettings",
+        "layout-footer": "footerSettings",
         typography: "fontSettings",
         colors: "colorSettings",
         "booking-service": "bookingServiceSettings",
@@ -1387,22 +1375,19 @@ export function useEditorActions({
 
       // Mapa de configurações atuais
       const currentSettingsMap: Record<string, unknown> = {
-        hero: heroSettings,
+        "home-hero": heroSettings,
         "about-hero": aboutHeroSettings,
-        story: storySettings,
-        team: teamSettings,
-        testimonials: testimonialsSettings,
-        services: servicesSettings,
-        values: homeValuesSettings,
+        "home-story": storySettings,
+        "home-team": teamSettings,
+        "home-testimonials": testimonialsSettings,
+        "home-services": servicesSettings,
         "home-values": homeValuesSettings,
         "about-values": aboutUsValuesSettings,
-        "about-us-values": aboutUsValuesSettings,
-        gallery: gallerySettings,
-        "gallery-preview": gallerySettings,
-        "gallery-grid": galleryPageSettings,
-        cta: ctaSettings,
-        header: headerSettings,
-        footer: footerSettings,
+        "home-gallery": gallerySettings,
+        "page-gallery": galleryPageSettings,
+        "home-cta": ctaSettings,
+        "layout-header": headerSettings,
+        "layout-footer": footerSettings,
         typography: fontSettings,
         colors: colorSettings,
         "booking-service": bookingServiceSettings,
@@ -1421,7 +1406,7 @@ export function useEditorActions({
       if (baseKey && setter && saveFn && saveKey && current) {
         const resetSource =
           baseSettingsRef.current[
-            baseKey as keyof typeof baseSettingsRef.current
+          baseKey as keyof typeof baseSettingsRef.current
           ];
         const reseted = cloneValue(resetSource);
 

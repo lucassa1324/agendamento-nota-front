@@ -32,17 +32,36 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useStudio } from "@/context/studio-context";
 import type { Testimonial, TestimonialsSettings } from "@/lib/booking-data";
+import { defaultTestimonialsSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { ImageUploader } from "../../components/ImageUploader";
+import { ResetSectionVisuals } from "../../components/ResetSectionVisuals";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
+
+const isVisualKey = (key: string) => {
+  const k = key.toLowerCase();
+  return (
+    k.includes("color") ||
+    k.includes("font") ||
+    k.includes("bg") ||
+    k.includes("opacity") ||
+    k.includes("scale") ||
+    k.includes("image") ||
+    k.includes("icon") ||
+    k.includes("shadow") ||
+    k.includes("radius") ||
+    k === "appearance"
+  );
+};
 
 interface TestimonialsEditorProps {
   settings: TestimonialsSettings;
   onUpdate: (updates: Partial<TestimonialsSettings>) => void;
   onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
+  onReset?: () => void;
   onSave?: () => void;
   hasChanges?: boolean;
   isSaving?: boolean;
@@ -52,6 +71,7 @@ export function TestimonialsEditor({
   settings,
   onUpdate,
   onUpdateBackground,
+  onReset,
   onSave: externalOnSave,
   hasChanges,
   isSaving: externalIsSaving,
@@ -104,8 +124,25 @@ export function TestimonialsEditor({
     if (onUpdate) onUpdate(updates);
   };
 
+  const handleResetVisuals = () => {
+    const updates: Partial<TestimonialsSettings> = {};
+    for (const [key, value] of Object.entries(defaultTestimonialsSettings)) {
+      if (isVisualKey(key)) {
+        (updates as Record<string, unknown>)[key] = value;
+      }
+    }
+    onUpdate(updates);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+      {onReset && (
+        <ResetSectionVisuals
+          label="Resetar Estilo dos Depoimentos"
+          description="Restaura cores, fontes e estilo dos cards de depoimentos."
+          onReset={handleResetVisuals}
+        />
+      )}
       <Accordion
         type="multiple"
         defaultValue={["title"]}

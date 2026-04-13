@@ -24,11 +24,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CTASettings } from "@/lib/booking-data";
+import { defaultCTASettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { ResetSectionVisuals } from "../../components/ResetSectionVisuals";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
+
+const isVisualKey = (key: string) => {
+  const k = key.toLowerCase();
+  return (
+    k.includes("color") ||
+    k.includes("font") ||
+    k.includes("bg") ||
+    k.includes("opacity") ||
+    k.includes("scale") ||
+    k.includes("image") ||
+    k.includes("icon") ||
+    k.includes("shadow") ||
+    k.includes("radius") ||
+    k === "appearance"
+  );
+};
 
 interface CTAEditorProps {
   settings: CTASettings;
@@ -62,8 +80,23 @@ export function CTAEditor({
     }
   };
 
+  const handleResetVisuals = () => {
+    const updates: Partial<CTASettings> = {};
+    for (const [key, value] of Object.entries(defaultCTASettings)) {
+      if (isVisualKey(key)) {
+        (updates as Record<string, unknown>)[key] = value;
+      }
+    }
+    onUpdate(updates);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+      <ResetSectionVisuals
+        label="Resetar Estilo do CTA"
+        description="Restaura cores, fontes e estilo do botão."
+        onReset={handleResetVisuals}
+      />
       <Accordion
         type="multiple"
         defaultValue={["title"]}

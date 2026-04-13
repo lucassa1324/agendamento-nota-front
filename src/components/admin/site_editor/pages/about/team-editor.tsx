@@ -31,17 +31,36 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useStudio } from "@/context/studio-context";
 import type { TeamMember, TeamSettings } from "@/lib/booking-data";
+import { defaultTeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { ImageUploader } from "../../components/ImageUploader";
+import { ResetSectionVisuals } from "../../components/ResetSectionVisuals";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
+
+const isVisualKey = (key: string) => {
+  const k = key.toLowerCase();
+  return (
+    k.includes("color") ||
+    k.includes("font") ||
+    k.includes("bg") ||
+    k.includes("opacity") ||
+    k.includes("scale") ||
+    k.includes("image") ||
+    k.includes("icon") ||
+    k.includes("shadow") ||
+    k.includes("radius") ||
+    k === "appearance"
+  );
+};
 
 interface TeamEditorProps {
   settings: TeamSettings;
   onUpdate: (updates: Partial<TeamSettings>) => void;
   onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
+  onReset?: () => void;
   onSave?: () => void;
   hasChanges?: boolean;
   isSaving?: boolean;
@@ -51,6 +70,7 @@ export function TeamEditor({
   settings,
   onUpdate,
   onUpdateBackground,
+  onReset,
   onSave: externalOnSave,
   hasChanges,
   isSaving,
@@ -67,6 +87,16 @@ export function TeamEditor({
     } finally {
       setLocalIsSaving(false);
     }
+  };
+
+  const handleResetVisuals = () => {
+    const updates: Partial<TeamSettings> = {};
+    for (const [key, value] of Object.entries(defaultTeamSettings)) {
+      if (isVisualKey(key)) {
+        (updates as Record<string, unknown>)[key] = value;
+      }
+    }
+    onUpdate(updates);
   };
 
   const addItem = () => {
@@ -98,6 +128,13 @@ export function TeamEditor({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+      {onReset && (
+        <ResetSectionVisuals
+          label="Resetar Estilo da Equipe"
+          description="Restaura cores, fontes e estilo dos cards de membros."
+          onReset={handleResetVisuals}
+        />
+      )}
       <Accordion
         type="multiple"
         defaultValue={["title"]}

@@ -370,21 +370,9 @@ export const SidebarContent = memo(
                 >
                   <ArrowLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5 xl:w-4 xl:h-4" />
                 </Button>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-[11px] sm:text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
-                    {activeSectionData?.name || "Seção"}
-                  </h3>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onSectionReset(activeSection)}
-                    className="h-5 w-5 sm:h-6 sm:w-6 xl:h-7 xl:w-7 rounded-lg transition-all text-muted-foreground hover:bg-background/80"
-                    title="Resetar seção"
-                  >
-                    <RotateCcw className="w-3 sm:w-3.5 h-3 sm:h-3.5 xl:w-4 xl:h-4" />
-                  </Button>
-                </div>
+                <h3 className="text-[11px] sm:text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
+                  {activeSectionData?.name || "Seção"}
+                </h3>
               </div>
 
               <div className="space-y-2 sm:space-y-3 xl:space-y-4 p-2 sm:p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
@@ -456,6 +444,7 @@ export const SidebarContent = memo(
                     settings={storySettings}
                     onUpdate={onUpdateStory}
                     onUpdateBackground={onUpdateBackground}
+                    onReset={() => onSectionReset("home-story")}
                     hasChanges={hasStoryChanges}
                     onSave={onSaveStory}
                     isSaving={isSaving}
@@ -477,6 +466,7 @@ export const SidebarContent = memo(
                     <AboutValuesEditor
                       settings={aboutUsValuesSettings}
                       onUpdate={onUpdateAboutUsValues}
+                      onReset={() => onSectionReset("about-values")}
                       onSave={onSaveAboutUsValues}
                       hasChanges={hasAboutUsValuesChanges}
                       isSaving={isSaving}
@@ -496,6 +486,7 @@ export const SidebarContent = memo(
                     settings={teamSettings}
                     onUpdate={onUpdateTeam}
                     onUpdateBackground={onUpdateBackground}
+                    onReset={() => onSectionReset("home-team")}
                     hasChanges={hasTeamChanges}
                     onSave={onSaveTeam}
                     isSaving={isSaving}
@@ -507,6 +498,7 @@ export const SidebarContent = memo(
                     settings={testimonialsSettings}
                     onUpdate={onUpdateTestimonials}
                     onUpdateBackground={onUpdateBackground}
+                    onReset={() => onSectionReset("home-testimonials")}
                     onSave={onSaveTestimonials}
                     hasChanges={hasTestimonialsChanges}
                     isSaving={isSaving}
@@ -543,6 +535,7 @@ export const SidebarContent = memo(
                     settings={bookingServiceSettings}
                     onUpdate={onUpdateBookingService}
                     onUpdateBackground={onUpdateBackground}
+                    onReset={() => onSectionReset("booking-service")}
                     onSave={onSaveBookingService}
                     hasChanges={hasBookingServiceChanges}
                     onHighlight={onHighlight}
@@ -556,6 +549,7 @@ export const SidebarContent = memo(
                     settings={bookingDateSettings}
                     onUpdate={onUpdateBookingDate}
                     onUpdateBackground={onUpdateBackground}
+                    onReset={() => onSectionReset("booking-date")}
                     onSave={onSaveBookingDate}
                     hasChanges={hasBookingDateChanges}
                     onHighlight={onHighlight}
@@ -569,6 +563,7 @@ export const SidebarContent = memo(
                     settings={bookingTimeSettings}
                     onUpdate={onUpdateBookingTime}
                     onUpdateBackground={onUpdateBackground}
+                    onReset={() => onSectionReset("booking-time")}
                     onSave={onSaveBookingTime}
                     hasChanges={hasBookingTimeChanges}
                     onHighlight={onHighlight}
@@ -582,6 +577,7 @@ export const SidebarContent = memo(
                     settings={bookingFormSettings}
                     onUpdate={onUpdateBookingForm}
                     onUpdateBackground={onUpdateBackground}
+                    onReset={() => onSectionReset("booking-form")}
                     onSave={onSaveBookingForm}
                     hasChanges={hasBookingFormChanges}
                     onHighlight={onHighlight}

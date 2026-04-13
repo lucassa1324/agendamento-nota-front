@@ -1511,6 +1511,7 @@ export type AppearanceSettings = {
   subtitleColor?: string;
   titleFont?: string;
   subtitleFont?: string;
+  contentFont?: string;
   cardBgColor?: string;
   cardBackgroundColor?: string;
   cardTitleColor?: string;

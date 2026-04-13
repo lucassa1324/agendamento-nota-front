@@ -18,12 +18,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ServicesSettings } from "@/lib/booking-data";
+import { defaultServicesSettings, type ServicesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { ResetSectionVisuals } from "../../components/ResetSectionVisuals";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
+
+const isVisualKey = (key: string) => {
+  const k = key.toLowerCase();
+  return (
+    k.includes("color") ||
+    k.includes("font") ||
+    k.includes("bg") ||
+    k.includes("opacity") ||
+    k.includes("scale") ||
+    k.includes("image") ||
+    k.includes("icon") ||
+    k.includes("shadow") ||
+    k.includes("radius") ||
+    k === "appearance"
+  );
+};
 
 interface ServicesEditorProps {
   settings: ServicesSettings;
@@ -39,7 +56,7 @@ export function ServicesEditor({
   settings,
   onUpdate,
   onUpdateBackground,
-  onReset: _onReset,
+  onReset,
   onSave: externalOnSave,
   hasChanges,
   isSaving,
@@ -59,8 +76,25 @@ export function ServicesEditor({
     }
   };
 
+  const handleResetVisuals = () => {
+    const updates: Partial<ServicesSettings> = {};
+    for (const [key, value] of Object.entries(defaultServicesSettings)) {
+      if (isVisualKey(key)) {
+        (updates as Record<string, unknown>)[key] = value;
+      }
+    }
+    onUpdate(updates);
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+      {onReset && (
+        <ResetSectionVisuals
+          label="Resetar Estilo dos Serviços"
+          description="Restaura cores, fontes, fundo e estilo dos cards sem alterar os textos."
+          onReset={handleResetVisuals}
+        />
+      )}
       <Accordion
         type="multiple"
         defaultValue={["title"]}

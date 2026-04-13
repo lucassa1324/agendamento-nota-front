@@ -174,13 +174,12 @@ export function SidebarNav({
                         </div>
 
                         <div className="flex items-center gap-0.5 xl:gap-1 relative z-10">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
+                          <div
+                            role="button"
+                            tabIndex={0}
                             title="Resetar seção"
                             className={cn(
-                              "h-5 w-5 sm:h-6 sm:w-6 xl:h-7 xl:w-7 rounded-lg transition-all",
+                              "h-5 w-5 sm:h-6 sm:w-6 xl:h-7 xl:w-7 rounded-lg transition-all inline-flex items-center justify-center cursor-pointer",
                               isSectionActive
                                 ? "text-primary-foreground hover:bg-white/20"
                                 : "text-muted-foreground hover:bg-background/80",
@@ -189,9 +188,16 @@ export function SidebarNav({
                               e.stopPropagation();
                               onSectionReset(section.id);
                             }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onSectionReset(section.id);
+                              }
+                            }}
                           >
                             <RotateCcw className="w-3 sm:w-3.5 h-3 sm:h-3.5 xl:w-4 xl:h-4" />
-                          </Button>
+                          </div>
                           <Button
                             type="button"
                             variant="ghost"

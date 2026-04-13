@@ -598,15 +598,15 @@ export function StorySection() {
     toFontFamily(settings.contentFont) ||
     toFontFamily(settings.titleFont);
   const fontUrl = fontToUse ? buildSingleFontGoogleUrl(fontToUse) : null;
-  const sectionStyles: CSSProperties | undefined = fontToUse
-    ? {
+  const sectionStyles = fontToUse
+    ? ({
       fontFamily: `"${fontToUse}", sans-serif`,
       ["--font-sans" as "--font-sans"]: `"${fontToUse}", sans-serif`,
       ["--font-body" as "--font-body"]: `"${fontToUse}", sans-serif`,
       ["--font-heading" as "--font-heading"]: `"${fontToUse}", sans-serif`,
       ["--font-title" as "--font-title"]: `"${fontToUse}", sans-serif`,
       ["--font-serif" as "--font-serif"]: `"${fontToUse}", sans-serif`,
-    }
+    } as CSSProperties)
     : undefined;
 
   return (
@@ -653,13 +653,15 @@ export function StorySection() {
               </h2>
               <div
                 className="space-y-4 leading-relaxed transition-all duration-300"
-                style={{
-                  color: settings.contentColor || "var(--foreground)",
-                  fontFamily: contentFontStyle,
-                  ["--tw-prose-body" as "--tw-prose-body"]: "inherit",
-                  ["--tw-prose-headings" as "--tw-prose-headings"]: "inherit",
-                  ["--tw-prose-links" as "--tw-prose-links"]: "inherit",
-                }}
+                style={
+                  {
+                    color: settings.contentColor || "var(--foreground)",
+                    fontFamily: contentFontStyle,
+                    ["--tw-prose-body" as "--tw-prose-body"]: "inherit",
+                    ["--tw-prose-headings" as "--tw-prose-headings"]: "inherit",
+                    ["--tw-prose-links" as "--tw-prose-links"]: "inherit",
+                  } as CSSProperties
+                }
               >
                 {typeof contentText === "string" && contentText.split ? (
                   contentText

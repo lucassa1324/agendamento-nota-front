@@ -26,11 +26,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { GallerySettings } from "@/lib/booking-data";
+import { defaultGallerySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { ResetSectionVisuals } from "../../components/ResetSectionVisuals";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
+
+const isVisualKey = (key: string) => {
+  const k = key.toLowerCase();
+  return (
+    k.includes("color") ||
+    k.includes("font") ||
+    k.includes("bg") ||
+    k.includes("opacity") ||
+    k.includes("scale") ||
+    k.includes("image") ||
+    k.includes("icon") ||
+    k.includes("shadow") ||
+    k.includes("radius") ||
+    k === "appearance"
+  );
+};
 
 interface GalleryEditorProps {
   settings: GallerySettings;
@@ -69,8 +87,25 @@ export function GalleryEditor({
 
   if (!settings) return null;
 
+  const handleResetVisuals = () => {
+    const updates: Partial<GallerySettings> = {};
+    for (const [key, value] of Object.entries(defaultGallerySettings)) {
+      if (isVisualKey(key)) {
+        (updates as Record<string, unknown>)[key] = value;
+      }
+    }
+    onUpdate(updates);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+      {onReset && (
+        <ResetSectionVisuals
+          label="Resetar Estilo da Galeria"
+          description="Restaura cores, fontes e estilo da galeria."
+          onReset={handleResetVisuals}
+        />
+      )}
       <Accordion
         type="multiple"
         defaultValue={["title"]}
@@ -394,19 +429,6 @@ export function GalleryEditor({
       </Accordion>
 
       <div className="pt-2 flex flex-col gap-3">
-        {onReset && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onReset}
-            className="w-full h-9 text-[10px] uppercase font-bold border-dashed hover:border-destructive hover:text-destructive transition-all"
-          >
-            <RotateCcw className="w-3 h-3 mr-2" />
-            Resetar Estilo da Seção
-          </Button>
-        )}
-
         <Button
           type="button"
           disabled={!hasChanges || isLoading}

@@ -20,15 +20,34 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useStudio } from "@/context/studio-context";
 import type { StorySettings } from "@/lib/booking-data";
+import { defaultStorySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { ImageUploader } from "../../components/ImageUploader";
+import { ResetSectionVisuals } from "../../components/ResetSectionVisuals";
+
+const isVisualKey = (key: string) => {
+  const k = key.toLowerCase();
+  return (
+    k.includes("color") ||
+    k.includes("font") ||
+    k.includes("bg") ||
+    k.includes("opacity") ||
+    k.includes("scale") ||
+    k.includes("image") ||
+    k.includes("icon") ||
+    k.includes("shadow") ||
+    k.includes("radius") ||
+    k === "appearance"
+  );
+};
 
 interface HistoryEditorProps {
   settings?: StorySettings;
   onUpdate?: (updates: Partial<StorySettings>) => void;
   onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
+  onReset?: () => void;
   onSave?: () => void;
   isSaving?: boolean;
   hasChanges?: boolean;
@@ -38,6 +57,7 @@ export function HistoryEditor({
   settings,
   onUpdate,
   onUpdateBackground,
+  onReset,
   onSave: externalOnSave,
   isSaving,
   hasChanges,
@@ -63,8 +83,26 @@ export function HistoryEditor({
     if (onUpdate) onUpdate(updates);
   };
 
+  const handleResetVisuals = () => {
+    if (!onUpdate) return;
+    const updates: Partial<StorySettings> = {};
+    for (const [key, value] of Object.entries(defaultStorySettings)) {
+      if (isVisualKey(key)) {
+        (updates as Record<string, unknown>)[key] = value;
+      }
+    }
+    onUpdate(updates);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+      {onReset && (
+        <ResetSectionVisuals
+          label="Resetar Estilo da História"
+          description="Restaura cores, fontes e estilo da seção história."
+          onReset={handleResetVisuals}
+        />
+      )}
       <Accordion
         type="multiple"
         defaultValue={["title", "content", "image"]}
