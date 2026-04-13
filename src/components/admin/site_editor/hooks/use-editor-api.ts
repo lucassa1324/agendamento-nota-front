@@ -350,6 +350,129 @@ const normalizeSectionStatePayload = (
   return result;
 };
 
+const resolveFontCandidate = (...candidates: unknown[]): string | undefined => {
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
+    const trimmed = candidate.trim();
+    if (
+      trimmed &&
+      trimmed !== "default" &&
+      trimmed !== "{}" &&
+      trimmed !== "[]"
+    ) {
+      return trimmed;
+    }
+  }
+  return undefined;
+};
+
+const normalizeStoryFontState = (
+  source: Record<string, unknown>,
+  fallback: Record<string, unknown>,
+): Record<string, unknown> => {
+  const sourceAppearance =
+    source.appearance &&
+      typeof source.appearance === "object" &&
+      !Array.isArray(source.appearance)
+      ? (source.appearance as Record<string, unknown>)
+      : {};
+  const fallbackAppearance =
+    fallback.appearance &&
+      typeof fallback.appearance === "object" &&
+      !Array.isArray(fallback.appearance)
+      ? (fallback.appearance as Record<string, unknown>)
+      : {};
+  const sourceContent =
+    source.content &&
+      typeof source.content === "object" &&
+      !Array.isArray(source.content)
+      ? (source.content as Record<string, unknown>)
+      : {};
+  const fallbackContent =
+    fallback.content &&
+      typeof fallback.content === "object" &&
+      !Array.isArray(fallback.content)
+      ? (fallback.content as Record<string, unknown>)
+      : {};
+  const sourceTypography =
+    source.typography &&
+      typeof source.typography === "object" &&
+      !Array.isArray(source.typography)
+      ? (source.typography as Record<string, unknown>)
+      : {};
+  const fallbackTypography =
+    fallback.typography &&
+      typeof fallback.typography === "object" &&
+      !Array.isArray(fallback.typography)
+      ? (fallback.typography as Record<string, unknown>)
+      : {};
+
+  const resolvedTitleFont = resolveFontCandidate(
+    source.titleFont,
+    sourceAppearance.titleFont,
+    sourceContent.titleFont,
+    sourceTypography.titleFont,
+    fallback.titleFont,
+    fallbackAppearance.titleFont,
+    fallbackContent.titleFont,
+    fallbackTypography.titleFont,
+  );
+  const resolvedContentFont = resolveFontCandidate(
+    source.contentFont,
+    sourceAppearance.contentFont,
+    sourceContent.contentFont,
+    sourceTypography.contentFont,
+    sourceTypography.fontFamily,
+    source.fontFamily,
+    fallback.contentFont,
+    fallbackAppearance.contentFont,
+    fallbackContent.contentFont,
+    fallbackTypography.contentFont,
+    fallbackTypography.fontFamily,
+    fallback.fontFamily,
+  );
+
+  const next = { ...source };
+  if (resolvedTitleFont) {
+    next.titleFont = resolvedTitleFont;
+  }
+  if (resolvedContentFont) {
+    next.contentFont = resolvedContentFont;
+    next.fontFamily = resolvedContentFont;
+  }
+
+  next.appearance = {
+    ...fallbackAppearance,
+    ...sourceAppearance,
+    ...(resolvedTitleFont ? { titleFont: resolvedTitleFont } : {}),
+    ...(resolvedContentFont
+      ? { contentFont: resolvedContentFont, fontFamily: resolvedContentFont }
+      : {}),
+  };
+
+  if (Object.keys(sourceContent).length > 0 || Object.keys(fallbackContent).length > 0) {
+    next.content = {
+      ...fallbackContent,
+      ...sourceContent,
+      ...(resolvedTitleFont ? { titleFont: resolvedTitleFont } : {}),
+      ...(resolvedContentFont
+        ? { contentFont: resolvedContentFont, fontFamily: resolvedContentFont }
+        : {}),
+    };
+  }
+
+  next.typography = {
+    ...fallbackTypography,
+    ...sourceTypography,
+    ...(resolvedTitleFont ? { titleFont: resolvedTitleFont } : {}),
+    ...(resolvedContentFont
+      ? { contentFont: resolvedContentFont, fontFamily: resolvedContentFont }
+      : {}),
+  };
+
+  return next;
+};
+
 export function useEditorApi({
   loadExternalConfig,
   settings,
@@ -1191,10 +1314,14 @@ export function useEditorApi({
         settings.aboutHeroSettings,
         lastSaved.lastSavedAboutHero,
       );
-      const sanitizedStory = sanitizeSectionData(
+      const sanitizedStoryDraft = sanitizeSectionData(
         settings.storySettings,
         lastSaved.lastSavedStory,
       );
+      const sanitizedStory = normalizeStoryFontState(
+        sanitizedStoryDraft as Record<string, unknown>,
+        lastSaved.lastSavedStory as unknown as Record<string, unknown>,
+      ) as StorySettings;
       const sanitizedTeam = sanitizeSectionData(
         settings.teamSettings,
         lastSaved.lastSavedTeam,
@@ -2561,13 +2688,17 @@ export function useEditorApi({
                 sanitizedAboutHero as Record<string, unknown>,
               ) as HeroSettings;
 
-              const normalizedSavedStory = normalizeSectionStatePayload(
+              const normalizedSavedStoryDraft = normalizeSectionStatePayload(
                 freshSections[SECTION_IDS.homeStory] ||
                 freshHome.storySection ||
                 freshHome.story ||
                 freshConfig.story ||
                 sanitizedStory,
                 sanitizedStory as Record<string, unknown>,
+              ) as Record<string, unknown>;
+              const normalizedSavedStory = normalizeStoryFontState(
+                normalizedSavedStoryDraft,
+                sanitizedStory as unknown as Record<string, unknown>,
               ) as StorySettings;
 
               const normalizedSavedTeam = normalizeSectionStatePayload(

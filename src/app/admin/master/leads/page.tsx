@@ -61,6 +61,7 @@ export interface Prospect {
   name: string;
   phone: string;
   establishmentName: string;
+  city?: string;
   instagramLink?: string;
   category: string;
   status: 'NOT_CONTACTED' | 'CONTACTED' | 'IN_NEGOTIATION' | 'CONVERTED' | 'REJECTED';
@@ -70,6 +71,7 @@ export interface Prospect {
 
 interface ImportLead extends Omit<Prospect, 'createdAt'> {
   address?: string;
+  city?: string;
 }
 
 const INITIAL_CATEGORIES = [
@@ -106,7 +108,10 @@ export default function LeadsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("ALL");
   const [filterCategory, setFilterCategory] = useState<string>("ALL");
+  const [filterCity, setFilterCity] = useState<string>("ALL");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  const cities = Array.from(new Set(prospects.map(p => p.city).filter(Boolean))).sort() as string[];
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importingLeads, setImportingLeads] = useState<ImportLead[]>([]);
@@ -121,6 +126,7 @@ export default function LeadsPage() {
     name: "",
     phone: "",
     establishmentName: "",
+    city: "",
     instagramLink: "",
     category: INITIAL_CATEGORIES[0],
     status: "NOT_CONTACTED" as Prospect["status"],
@@ -217,6 +223,7 @@ export default function LeadsPage() {
           name: "",
           phone: "",
           establishmentName: "",
+          city: "",
           instagramLink: "",
           category: INITIAL_CATEGORIES[0],
           status: "NOT_CONTACTED",
@@ -367,12 +374,25 @@ export default function LeadsPage() {
               const address = row['W4Efsd 3'] || row.endereço || row.Endereço || row.address || "";
               const phone = row.telefone || row.Telefone || row.phone || "";
               const instagram = row.Instagram || row.instagram || row.Website || row.website || row.site || row.Site || row.Link || row.link || "";
+              
+              // Extrair cidade da coluna específica ou tentar do endereço
+              let city = row.cidade || row.Cidade || row.city || row.City || "";
+              if (!city && address) {
+                // Tenta extrair do formato comum "Rua, Numero - Cidade, Estado" ou "Rua, Numero, Cidade"
+                const parts = address.split(/[,\-]/).map(p => p.trim());
+                if (parts.length >= 3) {
+                  // Assume que a penúltima ou antepenúltima parte pode ser a cidade
+                  // Isso é uma heurística simples, pode precisar de ajuste
+                  city = parts[parts.length - 2];
+                }
+              }
 
               return {
                 id: `temp-${idx}`,
                 name: name.trim(),
                 phone: phone,
                 establishmentName: name.trim(),
+                city: city,
                 category: category || INITIAL_CATEGORIES[0],
                 address: address,
                 instagramLink: instagram,
@@ -422,11 +442,22 @@ export default function LeadsPage() {
               const phone = String(row.telefone || row.Telefone || row.phone || "");
               const instagram = String(row.Instagram || row.instagram || row.Website || row.website || row.site || row.Site || row.Link || row.link || "");
 
+              // Extrair cidade da coluna específica ou tentar do endereço
+              let city = String(row.cidade || row.Cidade || row.city || row.City || "");
+              if ((!city || city === "undefined") && address && address !== "undefined") {
+                const parts = address.split(/[,\-]/).map(p => p.trim());
+                if (parts.length >= 3) {
+                  city = parts[parts.length - 2];
+                }
+              }
+              if (city === "undefined") city = "";
+
               return {
                 id: `temp-${idx}`,
                 name: name.trim(),
                 phone: phone,
                 establishmentName: name.trim(),
+                city: city,
                 category: category || INITIAL_CATEGORIES[0],
                 address: address,
                 instagramLink: instagram,
@@ -512,8 +543,9 @@ export default function LeadsPage() {
 
     const matchesStatus = filterStatus === "ALL" || p.status === filterStatus;
     const matchesCategory = filterCategory === "ALL" || p.category === filterCategory;
+    const matchesCity = filterCity === "ALL" || p.city === filterCity;
 
-    return matchesSearch && matchesStatus && matchesCategory;
+    return matchesSearch && matchesStatus && matchesCategory && matchesCity;
   });
 
   const getStatusBadge = (status: Prospect["status"]) => {
@@ -598,6 +630,15 @@ export default function LeadsPage() {
                   placeholder="Ex: Studio Bela Face"
                   value={newProspect.establishmentName}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProspect({ ...newProspect, establishmentName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="city">Cidade</Label>
+                <Input
+                  id="city"
+                  placeholder="Ex: Sousa"
+                  value={newProspect.city}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewProspect({ ...newProspect, city: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
@@ -717,6 +758,7 @@ export default function LeadsPage() {
                         <TableHead className="w-50">Nome/Estabelecimento</TableHead>
                         <TableHead className="w-45">Categoria</TableHead>
                         <TableHead className="w-37.5">Telefone</TableHead>
+                        <TableHead className="w-40">Cidade</TableHead>
                         <TableHead className="w-62.5">Endereço</TableHead>
                         <TableHead className="w-50">Instagram</TableHead>
                         <TableHead className="w-75">Observações</TableHead>
@@ -764,6 +806,17 @@ export default function LeadsPage() {
                               onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                 const newLeads = [...importingLeads];
                                 newLeads[idx].phone = e.target.value;
+                                setImportingLeads(newLeads);
+                              }}
+                            />
+                          </TableCell>
+                          <TableCell className="p-2">
+                            <Input 
+                              className="h-8"
+                              value={lead.city} 
+                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                const newLeads = [...importingLeads];
+                                newLeads[idx].city = e.target.value;
                                 setImportingLeads(newLeads);
                               }}
                             />
@@ -876,6 +929,14 @@ export default function LeadsPage() {
                     id="edit-business"
                     value={editingProspect.establishmentName}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingProspect({ ...editingProspect, establishmentName: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-city">Cidade</Label>
+                  <Input
+                    id="edit-city"
+                    value={editingProspect.city || ""}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingProspect({ ...editingProspect, city: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -1009,13 +1070,30 @@ export default function LeadsPage() {
                 </Select>
               </div>
 
-              {(filterStatus !== "ALL" || filterCategory !== "ALL" || searchTerm !== "") && (
+              <div className="w-48">
+                <Select value={filterCity} onValueChange={(v: string) => setFilterCity(v)}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Cidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">Todas as Cidades</SelectItem>
+                    {cities.map((city) => (
+                      <SelectItem key={city} value={city}>
+                        {city}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(filterStatus !== "ALL" || filterCategory !== "ALL" || filterCity !== "ALL" || searchTerm !== "") && (
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   onClick={() => {
                     setFilterStatus("ALL");
                     setFilterCategory("ALL");
+                    setFilterCity("ALL");
                     setSearchTerm("");
                   }}
                   className="text-xs h-8"
@@ -1034,6 +1112,7 @@ export default function LeadsPage() {
                   <TableHead className="font-bold">Estabelecimento</TableHead>
                   <TableHead className="font-bold">Contato</TableHead>
                   <TableHead className="font-bold">Categoria</TableHead>
+                  <TableHead className="font-bold">Cidade</TableHead>
                   <TableHead className="font-bold">Status</TableHead>
                   <TableHead className="font-bold text-right">Ações</TableHead>
                 </TableRow>
@@ -1086,6 +1165,9 @@ export default function LeadsPage() {
                         <Badge variant="secondary" className="font-normal">
                           {prospect.category}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm">{prospect.city || "-"}</div>
                       </TableCell>
                       <TableCell>
                         <Select

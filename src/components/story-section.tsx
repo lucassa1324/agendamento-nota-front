@@ -1,7 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { useStudio } from "@/context/studio-context";
 import {
   defaultStorySettings,
@@ -85,6 +91,14 @@ const toFontFamily = (value: unknown): string => {
   return trimmed;
 };
 
+const pickFirstValidFont = (...values: unknown[]): string => {
+  for (const value of values) {
+    const font = toFontFamily(value);
+    if (font) return font;
+  }
+  return "";
+};
+
 const resolveStoryFonts = (
   story: Record<string, unknown>,
   appearance: Record<string, unknown>,
@@ -97,18 +111,22 @@ const resolveStoryFonts = (
       ? (story.typography as Record<string, unknown>)
       : {};
 
-  const fallbackFamily = toFontFamily(
-    typography.fontFamily ?? appearance.fontFamily ?? content.fontFamily,
+  const fallbackFamily = pickFirstValidFont(
+    typography.fontFamily,
+    appearance.fontFamily,
+    content.fontFamily,
   );
 
-  const titleFont = toFontFamily(
-    story.titleFont ?? appearance.titleFont ?? content.titleFont,
+  const titleFont = pickFirstValidFont(
+    story.titleFont,
+    appearance.titleFont,
+    content.titleFont,
   );
-  const contentFont = toFontFamily(
-    story.contentFont ??
-      appearance.contentFont ??
-      content.contentFont ??
-      fallbackFamily,
+  const contentFont = pickFirstValidFont(
+    story.contentFont,
+    appearance.contentFont,
+    content.contentFont,
+    fallbackFamily,
   );
 
   return { titleFont, contentFont };
@@ -139,6 +157,13 @@ const ensureFontsLoadedInIframe = (fonts: string[]) => {
   if (link.href !== href) {
     link.href = href;
   }
+};
+
+const buildSingleFontGoogleUrl = (font: string): string | null => {
+  const safeFont = toFontFamily(font);
+  if (!safeFont) return null;
+  const family = encodeURIComponent(safeFont).replace(/%20/g, "+");
+  return `https://fonts.googleapis.com/css2?family=${family}:wght@300;400;500;600;700&display=swap`;
 };
 
 export function StorySection() {
@@ -560,9 +585,40 @@ export function StorySection() {
     toFontFamily(settings.contentFont) ||
     fallbackTypographyFont ||
     "var(--font-body)";
+  const titleFontStyle =
+    resolvedTitleFont.startsWith("var(")
+      ? resolvedTitleFont
+      : `"${resolvedTitleFont}", var(--font-title), serif`;
+  const contentFontStyle =
+    resolvedContentFont.startsWith("var(")
+      ? resolvedContentFont
+      : `"${resolvedContentFont}", var(--font-body), sans-serif`;
+  const fontToUse =
+    toFontFamily(settingsTypography.fontFamily) ||
+    toFontFamily(settings.contentFont) ||
+    toFontFamily(settings.titleFont);
+  const fontUrl = fontToUse ? buildSingleFontGoogleUrl(fontToUse) : null;
+  const sectionStyles: CSSProperties | undefined = fontToUse
+    ? {
+      fontFamily: `"${fontToUse}", sans-serif`,
+      ["--font-sans" as "--font-sans"]: `"${fontToUse}", sans-serif`,
+      ["--font-body" as "--font-body"]: `"${fontToUse}", sans-serif`,
+      ["--font-heading" as "--font-heading"]: `"${fontToUse}", sans-serif`,
+      ["--font-title" as "--font-title"]: `"${fontToUse}", sans-serif`,
+      ["--font-serif" as "--font-serif"]: `"${fontToUse}", sans-serif`,
+    }
+    : undefined;
 
   return (
     <SessionWrapper appearance={settings?.appearance}>
+      {fontUrl ? (
+        <link
+          id="story-section-font"
+          rel="stylesheet"
+          href={fontUrl}
+          data-story-font={fontToUse}
+        />
+      ) : null}
       <section
         id={SECTION_IDS.homeStory}
         className={cn(
@@ -570,6 +626,7 @@ export function StorySection() {
           highlightedElement === SECTION_IDS.homeStory &&
             "ring-8 ring-inset ring-primary/30 bg-primary/5",
         )}
+        style={sectionStyles}
       >
         <SectionBackground settings={settings as SectionBackgroundSettings} />
         <div className="container mx-auto px-4 relative z-10">
@@ -589,7 +646,7 @@ export function StorySection() {
                 className="font-serif text-4xl md:text-5xl font-bold mb-6 text-balance transition-all duration-300"
                 style={{
                   color: settings.titleColor || "var(--foreground)",
-                  fontFamily: resolvedTitleFont,
+                  fontFamily: titleFontStyle,
                 }}
               >
                 {settings.title}
@@ -598,7 +655,10 @@ export function StorySection() {
                 className="space-y-4 leading-relaxed transition-all duration-300"
                 style={{
                   color: settings.contentColor || "var(--foreground)",
-                  fontFamily: resolvedContentFont,
+                  fontFamily: contentFontStyle,
+                  ["--tw-prose-body" as "--tw-prose-body"]: "inherit",
+                  ["--tw-prose-headings" as "--tw-prose-headings"]: "inherit",
+                  ["--tw-prose-links" as "--tw-prose-links"]: "inherit",
                 }}
               >
                 {typeof contentText === "string" && contentText.split ? (
@@ -606,12 +666,17 @@ export function StorySection() {
                     .split("\n")
                     .filter((p) => p && p.trim() !== "")
                     .map((paragraph, index) => (
-                      <p key={`${paragraph.slice(0, 20)}-${index}`}>
+                      <p
+                        key={`${paragraph.slice(0, 20)}-${index}`}
+                        style={{ fontFamily: "inherit" }}
+                      >
                         {paragraph}
                       </p>
                     ))
                 ) : (
-                  <p>{String(contentText || "")}</p>
+                  <p style={{ fontFamily: "inherit" }}>
+                    {String(contentText || "")}
+                  </p>
                 )}
               </div>
             </div>

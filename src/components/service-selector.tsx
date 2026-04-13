@@ -411,7 +411,7 @@ export function ServiceSelector({
               onClick={onConfirm}
               style={{ backgroundColor: accentColor }}
               className={cn(
-                "w-full sm:w-auto min-w-[200px] h-12 px-8 text-base font-bold shadow-lg hover:brightness-110 transition-all active:scale-[0.98] shrink-0",
+                "w-full sm:w-auto min-w-50 h-12 px-8 text-base font-bold shadow-lg hover:brightness-110 transition-all active:scale-[0.98] shrink-0",
                 !accentColor && "bg-primary",
               )}
             >

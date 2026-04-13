@@ -962,6 +962,21 @@ export function useEditorSync({
       }
 
       if (type === "UPDATE_STORY_SETTINGS") {
+        const resolveFontValue = (...candidates: unknown[]): string | undefined => {
+          for (const candidate of candidates) {
+            if (typeof candidate !== "string") continue;
+            const trimmed = candidate.trim();
+            if (
+              trimmed &&
+              trimmed !== "default" &&
+              trimmed !== "{}" &&
+              trimmed !== "[]"
+            ) {
+              return trimmed;
+            }
+          }
+          return undefined;
+        };
         const sourceContent =
           sourceSettings.content &&
             typeof sourceSettings.content === "object" &&
@@ -1001,16 +1016,20 @@ export function useEditorSync({
           sourceContent.content ??
           sourceContent.text ??
           payloadSettings.content;
-        const liveTitleFont =
-          sourceSettings.titleFont ??
-          sourceAppearance.titleFont ??
-          sourceContent.titleFont ??
-          payloadSettings.titleFont;
-        const liveContentFont =
-          sourceSettings.contentFont ??
-          sourceAppearance.contentFont ??
-          sourceContent.contentFont ??
-          payloadSettings.contentFont;
+        const liveTitleFont = resolveFontValue(
+          sourceSettings.titleFont,
+          sourceAppearance.titleFont,
+          sourceContent.titleFont,
+          payloadSettings.titleFont,
+        );
+        const liveContentFont = resolveFontValue(
+          sourceSettings.contentFont,
+          sourceAppearance.contentFont,
+          sourceContent.contentFont,
+          sourceTypography.contentFont,
+          sourceTypography.fontFamily,
+          payloadSettings.contentFont,
+        );
         const liveTitleColor =
           sourceSettings.titleColor ??
           sourceAppearance.titleColor ??
@@ -1021,19 +1040,22 @@ export function useEditorSync({
           sourceAppearance.contentColor ??
           sourceContent.contentColor ??
           payloadSettings.contentColor;
-        const liveFontFamily =
-          sourceSettings.fontFamily ??
-          sourceTypography.fontFamily ??
-          sourceContent.fontFamily ??
-          sourceAppearance.fontFamily;
+        const liveFontFamily = resolveFontValue(
+          sourceSettings.fontFamily,
+          sourceTypography.fontFamily,
+          sourceContent.fontFamily,
+          sourceAppearance.fontFamily,
+        );
+        const resolvedLiveContentFont = liveContentFont ?? liveFontFamily;
+        const resolvedLiveFontFamily = liveFontFamily ?? resolvedLiveContentFont;
 
         payloadSettings = {
           ...payloadSettings,
           ...(liveTitle !== undefined ? { title: liveTitle } : {}),
           ...(liveText !== undefined ? { content: liveText } : {}),
           ...(liveTitleFont !== undefined ? { titleFont: liveTitleFont } : {}),
-          ...(liveContentFont !== undefined
-            ? { contentFont: liveContentFont }
+          ...(resolvedLiveContentFont !== undefined
+            ? { contentFont: resolvedLiveContentFont }
             : {}),
           ...(liveTitleColor !== undefined
             ? { titleColor: liveTitleColor }
@@ -1041,14 +1063,16 @@ export function useEditorSync({
           ...(liveContentColor !== undefined
             ? { contentColor: liveContentColor }
             : {}),
-          ...(liveFontFamily !== undefined ? { fontFamily: liveFontFamily } : {}),
+          ...(resolvedLiveFontFamily !== undefined
+            ? { fontFamily: resolvedLiveFontFamily }
+            : {}),
           content: {
             ...payloadContent,
             ...(liveTitle !== undefined ? { title: liveTitle } : {}),
             ...(liveText !== undefined ? { content: liveText } : {}),
             ...(liveTitleFont !== undefined ? { titleFont: liveTitleFont } : {}),
-            ...(liveContentFont !== undefined
-              ? { contentFont: liveContentFont }
+            ...(resolvedLiveContentFont !== undefined
+              ? { contentFont: resolvedLiveContentFont }
               : {}),
             ...(liveTitleColor !== undefined
               ? { titleColor: liveTitleColor }
@@ -1056,15 +1080,15 @@ export function useEditorSync({
             ...(liveContentColor !== undefined
               ? { contentColor: liveContentColor }
               : {}),
-            ...(liveFontFamily !== undefined
-              ? { fontFamily: liveFontFamily }
+            ...(resolvedLiveFontFamily !== undefined
+              ? { fontFamily: resolvedLiveFontFamily }
               : {}),
           },
           appearance: {
             ...payloadAppearance,
             ...(liveTitleFont !== undefined ? { titleFont: liveTitleFont } : {}),
-            ...(liveContentFont !== undefined
-              ? { contentFont: liveContentFont }
+            ...(resolvedLiveContentFont !== undefined
+              ? { contentFont: resolvedLiveContentFont }
               : {}),
             ...(liveTitleColor !== undefined
               ? { titleColor: liveTitleColor }
@@ -1072,20 +1096,23 @@ export function useEditorSync({
             ...(liveContentColor !== undefined
               ? { contentColor: liveContentColor }
               : {}),
-            ...(liveFontFamily !== undefined
-              ? { fontFamily: liveFontFamily }
+            ...(resolvedLiveFontFamily !== undefined
+              ? { fontFamily: resolvedLiveFontFamily }
               : {}),
           },
-          ...(liveFontFamily !== undefined
+          ...(resolvedLiveFontFamily !== undefined
             ? {
               typography: {
-                fontFamily: liveFontFamily,
+                fontFamily: resolvedLiveFontFamily,
+                ...(resolvedLiveContentFont !== undefined
+                  ? { contentFont: resolvedLiveContentFont }
+                  : {}),
               },
             }
             : {}),
         };
 
-        if (liveFontFamily !== undefined) {
+        if (resolvedLiveFontFamily !== undefined) {
           const payloadTypography =
             payloadSettings.typography &&
               typeof payloadSettings.typography === "object" &&
@@ -1096,7 +1123,10 @@ export function useEditorSync({
             ...payloadSettings,
             typography: {
               ...payloadTypography,
-              fontFamily: liveFontFamily,
+              fontFamily: resolvedLiveFontFamily,
+              ...(resolvedLiveContentFont !== undefined
+                ? { contentFont: resolvedLiveContentFont }
+                : {}),
             },
           };
         }

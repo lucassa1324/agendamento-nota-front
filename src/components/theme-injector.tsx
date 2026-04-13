@@ -540,7 +540,15 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
   useEffect(() => {
     const { colors: c, fonts: f, sectionStyles: s } = loadSettings();
     setColors(c);
-    setFonts(f);
+    setFonts((prev) => {
+      if (!prev) return f;
+      return {
+        ...f,
+        extraFonts: Array.from(
+          new Set([...(prev.extraFonts || []), ...(f.extraFonts || [])]),
+        ),
+      };
+    });
     setSectionStyles(s);
   }, [loadSettings]);
 
@@ -567,7 +575,15 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
         sectionStyles: newSectionStyles,
       } = loadSettings();
       setColors(newColors);
-      setFonts(newFonts);
+      setFonts((prev) => {
+        if (!prev) return newFonts;
+        return {
+          ...newFonts,
+          extraFonts: Array.from(
+            new Set([...(prev.extraFonts || []), ...(newFonts.extraFonts || [])]),
+          ),
+        };
+      });
       setSectionStyles(newSectionStyles);
     };
 

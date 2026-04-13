@@ -356,6 +356,7 @@ export const sanitizeSection = (
     "cardTitleFont",
     "cardDescriptionFont",
     "cardPriceFont",
+    "typography",
   ];
 
   // Só adicionamos do fallback o que for estritamente necessário e não estiver no record
@@ -912,6 +913,7 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
     merged.titleFont ||
     (merged.appearance as Record<string, unknown> | undefined)?.titleFont ||
     (merged.content as Record<string, unknown> | undefined)?.titleFont ||
+    (merged.typography as Record<string, unknown> | undefined)?.titleFont ||
     (raw as Record<string, unknown>).titleFont ||
     (raw as Record<string, unknown>).title_font,
   );
@@ -920,6 +922,8 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
     merged.contentFont ||
     (merged.appearance as Record<string, unknown> | undefined)?.contentFont ||
     (merged.content as Record<string, unknown> | undefined)?.contentFont ||
+    (merged.typography as Record<string, unknown> | undefined)?.fontFamily ||
+    (merged.typography as Record<string, unknown> | undefined)?.contentFont ||
     (raw as Record<string, unknown>).contentFont ||
     (raw as Record<string, unknown>).content_font,
   );
