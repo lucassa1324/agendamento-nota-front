@@ -87,47 +87,18 @@ export const authClient = createAuthClient({
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onRequest: async (context: any) => {
-      // PROTEÇÃO CONTRA UNDEFINED - Solicitado pelo usuário
-      // Mas se não houver context ou options, apenas retornamos para deixar o better-fetch seguir seu curso padrão
-      if (!context || !context.options) {
-        return;
-      }
+      if (!context || !context.options) return;
 
-      // DEBUG CRÍTICO: Verificar se o body já foi stringify
       const bodyIsString = typeof context.options.body === "string";
-
-      console.log(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR BODY CHECK:", {
+      console.log(">>> [AUTH_CLIENT] REQUEST:", {
         url: context?.request?.url,
         method: context?.request?.method,
-        bodyType: typeof context.options.body,
         bodyIsString,
-        bodyContentSnippet: bodyIsString
-          ? (context.options.body as string).substring(0, 50)
-          : context.options.body
-            ? "Object"
-            : "Empty/Null",
-        hasJsonProp: !!(context.options as { json?: unknown })?.json,
       });
-
-      if ((context?.options as { json?: unknown })?.json) {
-        console.log(
-          ">>> [AUTH_CLIENT] Propriedade 'json' detectada. Better-fetch cuidará da serialização.",
-        );
-      }
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onResponse: async (context: any) => {
-      if (context.response.status >= 400) {
-        try {
-          const clonedResponse = context.response.clone();
-          const text = await clonedResponse.text();
-          console.error(`>>> [AUTH_CLIENT] ERROR RESPONSE (${context.response.status}):`, text);
-        } catch (e) {
-          console.error(">>> [AUTH_CLIENT] Erro ao ler resposta de erro:", e);
-        }
-      }
-
-      console.log(">>> [AUTH_CLIENT] RESPONSE INTERCEPTOR:", {
+      console.log(">>> [AUTH_CLIENT] RESPONSE:", {
         status: context?.response?.status,
         url: context?.response?.url,
       });

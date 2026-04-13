@@ -7,10 +7,13 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("push", (event) => {
+  console.log("[Service Worker] Push Event received", event);
   let payload = {};
   try {
     payload = event.data ? event.data.json() : {};
-  } catch {
+    console.log("[Service Worker] Payload JSON:", payload);
+  } catch (err) {
+    console.log("[Service Worker] Payload parse error, using text:", err);
     payload = {
       title: "Notificação",
       body: event.data ? event.data.text() : "",
@@ -20,14 +23,18 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "Notificação";
   const options = {
     body: payload.body || "",
-    icon: payload.icon || "/icons/icon-192x192.png",
-    badge: payload.badge || "/icons/icon-192x192.png",
     data: { url: payload.url || "/admin/dashboard" },
     vibrate: [100, 50, 100],
     actions: payload.actions || [],
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  console.log("[Service Worker] Showing notification:", title, options);
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+      .then(() => console.log("[Service Worker] Notification shown successfully"))
+      .catch((err) => console.error("[Service Worker] Error showing notification:", err))
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {

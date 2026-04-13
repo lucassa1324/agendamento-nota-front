@@ -94,7 +94,24 @@ export function usePushNotifications() {
         return { ok: false, error: "registration_failed" };
       }
 
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
+      // Buscar a chave pública do backend para garantir que estamos usando a correta
+      let vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
+
+      try {
+        const keyRes = await customFetch("/api/push/public-key");
+        if (keyRes.ok) {
+          const { publicKey } = await keyRes.json();
+          if (publicKey) {
+            console.log("[usePushNotifications] VAPID Key obtida do backend:", publicKey);
+            vapidKey = publicKey;
+          }
+        }
+      } catch (err) {
+        console.warn("[usePushNotifications] Erro ao buscar VAPID key do backend, usando env:", err);
+      }
+
+      console.log("[usePushNotifications] VAPID Key final utilizada:", vapidKey);
+
       if (!vapidKey) {
         setIsRegistering(false);
         return { ok: false, error: "missing_vapid_key" };
@@ -113,7 +130,7 @@ export function usePushNotifications() {
 
       const res = await customFetch("/api/push/subscriptions", {
         method: "POST",
-        body: JSON.stringify(sub.toJSON()),
+        body: JSON.stringify({ subscription: sub.toJSON() }),
       });
 
       if (!res.ok) {
