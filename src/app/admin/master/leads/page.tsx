@@ -379,7 +379,7 @@ export default function LeadsPage() {
               let city = row.cidade || row.Cidade || row.city || row.City || "";
               if (!city && address) {
                 // Tenta extrair do formato comum "Rua, Numero - Cidade, Estado" ou "Rua, Numero, Cidade"
-                const parts = address.split(/[,\-]/).map(p => p.trim());
+                const parts = address.split(/[,-]/).map(p => p.trim());
                 if (parts.length >= 3) {
                   // Assume que a penúltima ou antepenúltima parte pode ser a cidade
                   // Isso é uma heurística simples, pode precisar de ajuste
@@ -427,13 +427,13 @@ export default function LeadsPage() {
       const reader = new FileReader();
       reader.onload = (evt) => {
         try {
-          const bstr = evt.target?.result;
-          const wb = XLSX.read(bstr, { type: 'binary' });
+          const arrayBuffer = evt.target?.result;
+          const wb = XLSX.read(arrayBuffer, { type: 'array' });
           const wsname = wb.SheetNames[0];
           const ws = wb.Sheets[wsname];
-          const data = XLSX.utils.sheet_to_json(ws) as Record<string, string | number | boolean | null>[];
+          const excelData = XLSX.utils.sheet_to_json(ws) as Record<string, string | number | boolean | null>[];
 
-          const mappedData: ImportLead[] = data
+          const mappedData: ImportLead[] = excelData
             .map((row, idx) => {
               // Tenta mapear pelos nomes de colunas do Google Maps ou nomes amigáveis
               const name = String(row.qBF1Pd || row['Nome do estabelecimento'] || row.Nome || row.Estabelecimento || row.name || "");
@@ -445,7 +445,7 @@ export default function LeadsPage() {
               // Extrair cidade da coluna específica ou tentar do endereço
               let city = String(row.cidade || row.Cidade || row.city || row.City || "");
               if ((!city || city === "undefined") && address && address !== "undefined") {
-                const parts = address.split(/[,\-]/).map(p => p.trim());
+                const parts = address.split(/[,-]/).map(p => p.trim());
                 if (parts.length >= 3) {
                   city = parts[parts.length - 2];
                 }
@@ -487,7 +487,7 @@ export default function LeadsPage() {
           });
         }
       };
-      reader.readAsBinaryString(file);
+      reader.readAsArrayBuffer(file);
     } else {
       toast({
         title: "Formato inválido",

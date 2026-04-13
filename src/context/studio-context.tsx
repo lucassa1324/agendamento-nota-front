@@ -289,8 +289,8 @@ export function StudioProvider({
             case "SYNC_UPDATE":
               // Protocolo Unificado (Pilar 3) + Blindagem Deep Merge (Pilar 2)
               if (path && typeof path === "string") {
-                const currentVal = (updatedConfig as any)[path];
-                (updatedConfig as any)[path] = deepMerge(currentVal, settings);
+                const currentVal = (updatedConfig as Record<string, unknown>)[path];
+                (updatedConfig as Record<string, unknown>)[path] = deepMerge(currentVal, settings);
               }
               break;
             case "UPDATE_HERO_SETTINGS":
@@ -711,18 +711,21 @@ export function StudioProvider({
         layoutGlobal?.services) as ServicesSettings | undefined;
 
       const homeValuesSource = ((config as Record<string, unknown>)?.homeValuesSettings ||
-        (config as Record<string, unknown>)?.values ||
+        (home as Record<string, unknown>)?.homeValuesSettings ||
         (home as Record<string, unknown>)?.valuesSection ||
         (home as Record<string, unknown>)?.values ||
-        (layoutGlobal as Record<string, unknown>)?.homeValuesSettings) as
+        (layoutGlobal as Record<string, unknown>)?.homeValuesSettings ||
+        (layoutGlobal as Record<string, unknown>)?.values ||
+        (config as Record<string, unknown>)?.values) as
         | ValuesSettings
         | undefined;
 
       const aboutUsValuesSource = ((config as Record<string, unknown>)?.aboutUsValuesSettings ||
-        (config as Record<string, unknown>)?.values ||
         aboutUs?.valuesSection ||
         aboutUs?.values ||
-        (layoutGlobal as Record<string, unknown>)?.aboutUsValuesSettings) as
+        (layoutGlobal as Record<string, unknown>)?.aboutUsValuesSettings ||
+        (layoutGlobal as Record<string, unknown>)?.values ||
+        (config as Record<string, unknown>)?.values) as
         | ValuesSettings
         | undefined;
 
@@ -1702,7 +1705,15 @@ export function StudioProvider({
     return () => {
       controller.abort();
     };
-  }, [slug, businessId, isPreview, isAdminPath, refreshTrigger, mapConfig]);
+  }, [
+    slug,
+    businessId,
+    isPreview,
+    isAdminPath,
+    refreshTrigger,
+    mapConfig,
+    lastSaveTimestamp,
+  ]);
 
   useEffect(() => {
     // REMOVIDO: Redirecionamento automático para /404 ou home
