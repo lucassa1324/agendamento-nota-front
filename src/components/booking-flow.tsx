@@ -878,7 +878,6 @@ export function BookingFlow() {
                   onConfirm={handleServiceConfirm}
                   selectedServices={selectedServices}
                   settings={serviceSettings}
-                  showTitle={false}
                 />
               </div>
             </div>

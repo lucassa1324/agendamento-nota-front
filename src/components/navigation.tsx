@@ -220,7 +220,7 @@ export function Navigation({
   const isActive = (path: string) => pathname === path;
 
   const allNavLinks = [
-    { id: "inicio", href: "/", label: "Início" },
+    { id: "inicio", href: "/home", label: "Início" },
     { id: "galeria", href: "/galeria", label: "Galeria" },
     { id: "sobre", href: "/sobre", label: "Sobre Nós" },
     { id: "agendar", href: "/agendamento", label: "Agendar" },
@@ -273,7 +273,7 @@ export function Navigation({
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <Link
-            href="/"
+            href="/home"
             className="font-serif text-xl lg:text-2xl font-bold flex items-center gap-2 lg:gap-3"
             style={titleStyle}
           >

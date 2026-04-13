@@ -18,7 +18,6 @@ type ServiceSelectorProps = {
   selectedServices?: Service[];
   settings?: BookingStepSettings;
   bypassConflicts?: boolean;
-  showTitle?: boolean;
 };
 
 export function ServiceSelector({
@@ -27,7 +26,6 @@ export function ServiceSelector({
   selectedServices: initialSelected = [],
   settings,
   bypassConflicts = false,
-  showTitle = true,
 }: ServiceSelectorProps) {
   const { studio } = useStudio();
   const [services, setServices] = useState<Service[]>([]);
@@ -243,28 +241,26 @@ export function ServiceSelector({
   return (
     <div className="w-full bg-transparent">
       <div className="space-y-6 p-4 transition-colors duration-300">
-      {showTitle && (
-        <div className="text-center">
-          <h2
-            className="text-2xl font-bold mb-2 transition-all duration-300"
-            style={{
-              color: titleColor,
-              fontFamily: titleFont,
-            }}
-          >
-            {settings?.title || "Escolha os Serviços"}
-          </h2>
-          <p
-            className="text-muted-foreground transition-all duration-300"
-            style={{
-              color: subtitleColor,
-              fontFamily: subtitleFont,
-            }}
-          >
-            {settings?.subtitle || "Você pode selecionar mais de um serviço"}
-          </p>
-        </div>
-      )}
+      <div className="text-center">
+        <h2
+          className="text-2xl font-bold mb-2 transition-all duration-300"
+          style={{
+            color: titleColor,
+            fontFamily: titleFont,
+          }}
+        >
+          {settings?.title || "Escolha os Serviços"}
+        </h2>
+        <p
+          className="text-muted-foreground transition-all duration-300"
+          style={{
+            color: subtitleColor,
+            fontFamily: subtitleFont,
+          }}
+        >
+          {settings?.subtitle || "Você pode selecionar mais de um serviço"}
+        </p>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         {services.map((service, index) => {

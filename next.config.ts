@@ -3,6 +3,15 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   // reactCompiler: true,
+  async redirects() {
+    return [
+      {
+        source: "/",
+        destination: "/home",
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     const configuredTargetUrl =
       process.env.API_PROXY_TARGET_URL || "http://localhost:3001";

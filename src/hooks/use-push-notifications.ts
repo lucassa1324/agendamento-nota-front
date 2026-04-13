@@ -118,7 +118,7 @@ export function usePushNotifications() {
 
       if (!res.ok) {
         if (res.status === 401) {
-          window.location.href = "/login"; // Redirecionar para login
+          window.location.href = "/admin";
           return { ok: false, error: "unauthorized" };
         }
         setIsRegistering(false);

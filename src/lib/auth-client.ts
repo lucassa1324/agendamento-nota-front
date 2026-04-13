@@ -60,7 +60,22 @@ const getBaseDomain = () => {
 };
 
 export const BASE_DOMAIN = cleanUrl(getBaseDomain());
-export const ADMIN_URL = cleanUrl(process.env.NEXT_PUBLIC_ADMIN_URL);
+
+// ADMIN_URL: Deve sempre apontar para o dashboard administrativo
+// Adicionamos lógica para garantir que termine em /admin e não apenas no domínio
+export const ADMIN_URL = (() => {
+  const envUrl = cleanUrl(process.env.NEXT_PUBLIC_ADMIN_URL);
+
+  // Se tivermos a URL no env, garantimos que ela termine em /admin
+  if (envUrl) {
+    return envUrl.endsWith("/admin") ? envUrl : `${envUrl}/admin`;
+  }
+
+  // Caso contrário, usamos o window.location.origin em tempo de execução
+  return typeof window !== "undefined"
+    ? `${window.location.origin}/admin`
+    : "http://localhost:3000/admin";
+})();
 
 export const authClient = createAuthClient({
   baseURL: AUTH_BASE_URL,

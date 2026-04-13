@@ -2,6 +2,7 @@
 
 import {
   CheckCircle2,
+  Copy,
   ExternalLink,
   FileUp,
   Filter,
@@ -758,7 +759,33 @@ export default function LeadsPage() {
                         <TableHead className="w-50">Nome/Estabelecimento</TableHead>
                         <TableHead className="w-45">Categoria</TableHead>
                         <TableHead className="w-37.5">Telefone</TableHead>
-                        <TableHead className="w-40">Cidade</TableHead>
+                        <TableHead className="w-40">
+                          <div className="flex items-center gap-2">
+                            Cidade
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6"
+                              title="Replicar a primeira cidade para todos"
+                              onClick={() => {
+                                if (importingLeads.length > 0) {
+                                  const firstCity = importingLeads[0].city || "";
+                                  const newLeads = importingLeads.map(lead => ({
+                                    ...lead,
+                                    city: firstCity
+                                  }));
+                                  setImportingLeads(newLeads);
+                                  toast({
+                                    title: "Cidades replicadas",
+                                    description: `A cidade "${firstCity}" foi aplicada a todos os leads.`,
+                                  });
+                                }
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableHead>
                         <TableHead className="w-62.5">Endereço</TableHead>
                         <TableHead className="w-50">Instagram</TableHead>
                         <TableHead className="w-75">Observações</TableHead>
