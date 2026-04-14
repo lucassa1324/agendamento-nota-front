@@ -137,6 +137,14 @@ export function SubscriptionBlockScreen({
   };
 
   const handleSubscribe = async () => {
+    const user = session?.user as { cpfCnpj?: string } | undefined;
+    const customerCpfCnpj = (user?.cpfCnpj || "").replace(/\D/g, "");
+
+    if (!customerCpfCnpj) {
+      toast.error("CPF necessário. Por favor, acesse 'Minha Conta' e preencha seu CPF antes de assinar.");
+      return;
+    }
+
     if (!session?.user?.email) {
       toast.error("Erro ao identificar usuário.");
       return;
@@ -154,9 +162,7 @@ export function SubscriptionBlockScreen({
         console.warn("Falha ao obter IP público:", e);
       }
 
-      const customerCpfCnpj = (
-        (session.user as { cpfCnpj?: string }).cpfCnpj || ""
-      ).replace(/\D/g, "");
+      const businessId = (session?.user as { businessId?: string })?.businessId;
 
       const response = await fetch("/api/asaas/create-payment-link", {
         method: "POST",
@@ -165,10 +171,10 @@ export function SubscriptionBlockScreen({
           "x-client-ip": clientIp,
         },
         body: JSON.stringify({
-          customerEmail: session.user.email,
-          customerName: session.user.name,
+          customerEmail: session?.user?.email,
+          customerName: session?.user?.name,
           customerCpfCnpj,
-          businessId: (session.user as { businessId?: string }).businessId,
+          businessId,
         }),
       });
 
@@ -261,6 +267,10 @@ export function SubscriptionBlockScreen({
   const info = getStatusMessage(status);
   const Icon = info.icon;
 
+  const user = session?.user as { cpfCnpj?: string } | undefined;
+  const customerCpfCnpj = (user?.cpfCnpj || "").replace(/\D/g, "");
+  const isCpfMissing = !customerCpfCnpj;
+
   return (
     <div className="w-full flex flex-col items-center justify-center bg-background/50 backdrop-blur-sm p-4 rounded-xl border border-dashed border-destructive/30 my-4 py-8">
       <Card className="w-full max-w-md shadow-lg border-destructive/20 bg-card/80">
@@ -273,7 +283,17 @@ export function SubscriptionBlockScreen({
             {info.description}
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 pt-2">
+        <CardContent className="space-y-4 pt-2">
+          {isCpfMissing && (
+            <div className="bg-destructive/10 border border-destructive/20 p-3 rounded-lg text-xs text-destructive flex items-start gap-2 animate-in fade-in slide-in-from-top-1 duration-300">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-bold">CPF/CNPJ Faltando</p>
+                <p>Para gerar cobranças, é necessário preencher seu CPF ou CNPJ em <strong>Minha Conta</strong>.</p>
+              </div>
+            </div>
+          )}
+
           <div className="bg-muted/50 p-3 rounded-lg text-sm text-center">
             <p className="font-medium mb-0.5 text-xs text-muted-foreground uppercase tracking-wider">
               Valor da Assinatura

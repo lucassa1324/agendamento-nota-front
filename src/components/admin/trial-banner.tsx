@@ -45,6 +45,7 @@ export function TrialBanner() {
   const user = session?.user as
     | {
         role?: string;
+        cpfCnpj?: string;
         business?: {
           slug?: string;
           subscriptionStatus?: string;
@@ -147,19 +148,30 @@ export function TrialBanner() {
     ? "text-red-700 underline hover:text-red-800"
     : "text-yellow-700 underline hover:text-yellow-800";
 
+  const customerCpfCnpj = (user?.cpfCnpj || "").replace(/\D/g, "");
+  const isCpfMissing = !customerCpfCnpj;
+
   const handleSubscribe = async () => {
-    if (!session?.user?.email) {
+    const user = session?.user as
+      | { email?: string; name?: string; cpfCnpj?: string; businessId?: string }
+      | undefined;
+
+    if (!user?.email) {
       toast.error("Erro ao identificar usuário.");
+      return;
+    }
+
+    const customerCpfCnpj = (user.cpfCnpj || "").replace(/\D/g, "");
+    if (!customerCpfCnpj) {
+      toast.error(
+        "CPF necessário. Acesse 'Minha Conta' e preencha seu CPF antes de assinar.",
+      );
       return;
     }
 
     setIsLoading(true);
     try {
-      const customerCpfCnpj = (
-        (session.user as { cpfCnpj?: string }).cpfCnpj || ""
-      ).replace(/\D/g, "");
-      const businessId =
-        (session.user as { businessId?: string }).businessId || studio?.id;
+      const businessId = user.businessId || studio?.id;
 
       // 1. Obter IP
       let clientIp = "127.0.0.1";
@@ -178,8 +190,8 @@ export function TrialBanner() {
           "x-client-ip": clientIp,
         },
         body: JSON.stringify({
-          customerEmail: session.user.email,
-          customerName: session.user.name,
+          customerEmail: user.email,
+          customerName: user.name,
           customerCpfCnpj,
           businessId,
         }),
@@ -208,8 +220,14 @@ export function TrialBanner() {
 
   return (
     <div
-      className={`border-l-4 p-4 mb-6 mx-4 lg:mx-6 mt-4 rounded-r shadow-sm transition-colors ${containerClasses}`}
+      className={`border-l-4 p-4 mb-6 mx-4 lg:mx-6 mt-4 rounded-r shadow-sm transition-colors flex flex-col gap-3 ${containerClasses}`}
     >
+      {isCpfMissing && (
+        <div className="flex items-center gap-2 text-xs font-bold border-b border-current pb-2 mb-1 animate-pulse">
+          <AlertTriangle className="h-3.5 w-3.5" />
+          <span>⚠️ CPF/CNPJ NECESSÁRIO: Preencha em "Minha Conta" para poder assinar.</span>
+        </div>
+      )}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center">
           <div className="shrink-0">

@@ -272,13 +272,17 @@ function AdminLayoutContent({
             ? "O estúdio especificado na URL não foi encontrado."
             : `Houve um problema ao carregar os dados: ${studioError}`}
         </p>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
-        >
-          Tentar novamente
-        </button>
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            onClick={() => window.location.reload()}
+          >
+            Tentar novamente
+          </Button>
+          <Button type="button" variant="outline" onClick={handleLogout}>
+            Voltar para login
+          </Button>
+        </div>
       </div>
     );
   }

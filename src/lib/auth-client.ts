@@ -123,6 +123,11 @@ export const authClient = createAuthClient({
       businessId: {
         type: "string",
       },
+      cpfCnpj: {
+        type: "string",
+        input: true,
+        returned: true,
+      },
       business: {
         type: "object",
       },

@@ -55,7 +55,6 @@ export async function POST(req: Request) {
       customerName,
       customerCpfCnpj,
       businessId,
-      planPrice,
       planName,
     } = await req.json();
 
@@ -183,22 +182,24 @@ export async function POST(req: Request) {
       customerId = newCustomer.id;
     }
 
-    // 3. Buscar preço dinâmico do backend se não for informado pelo front
-    let subscriptionValue = planPrice || 49.9; // Valor informado ou padrão
-    if (!planPrice) {
-      try {
-        const pricingResponse = await fetch(
-          `${targetUrl}/api/business/settings/pricing`,
-        );
-        if (pricingResponse.ok) {
-          const pricingData = await pricingResponse.json();
-          if (pricingData.price) {
-            subscriptionValue = pricingData.price;
-          }
+    // 3. Buscar sempre o preço oficial configurado no painel Master (evita valor hardcoded no front)
+    let subscriptionValue = 49.9;
+    try {
+      const pricingResponse = await fetch(
+        `${targetUrl}/api/business/settings/pricing`,
+        {
+          method: "GET",
+          cache: "no-store",
+        },
+      );
+      if (pricingResponse.ok) {
+        const pricingData = await pricingResponse.json();
+        if (pricingData.price) {
+          subscriptionValue = pricingData.price;
         }
-      } catch (error) {
-        console.error("Erro ao buscar preço dinâmico para Asaas:", error);
       }
+    } catch (error) {
+      console.error("Erro ao buscar preço dinâmico para Asaas:", error);
     }
 
     // 4. Criar Assinatura (Subscription)
