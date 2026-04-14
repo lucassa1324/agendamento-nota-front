@@ -30,8 +30,9 @@ function MobileNav({
   adminUser: { name: string; username: string } | null;
   handleLogout: () => void;
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button
           id="mobile-menu-btn"
@@ -47,7 +48,10 @@ function MobileNav({
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-64 border-r-0">
         <SheetTitle className="hidden">Menu de Navegação</SheetTitle>
-        <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
+        <AdminSidebar
+          adminUser={adminUser}
+          handleLogout={handleLogout}
+        />
       </SheetContent>
     </Sheet>
   );

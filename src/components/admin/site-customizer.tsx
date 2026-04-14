@@ -582,11 +582,13 @@ export function SiteCustomizer() {
       <header className="h-14 border-b border-border bg-card flex items-center justify-between px-2 sm:px-4 shrink-0 z-30 shadow-sm gap-2 overflow-hidden">
         <div className="flex items-center gap-1 sm:gap-2 min-w-0">
           <Button
-            variant="ghost"
-            size="icon"
+            variant="default"
+            size="default"
             className={cn(
-              "h-9 w-9 text-muted-foreground hover:text-foreground md:w-auto md:px-3 md:gap-1.5 transition-colors 2xl:hidden",
-              isNavOpen && "bg-accent text-accent-foreground",
+              "h-9 px-2 sm:px-4 rounded-lg shadow-md transition-all active:scale-95 shrink-0 flex items-center gap-2 border border-slate-700",
+              isNavOpen
+                ? "bg-slate-200 text-slate-900 hover:bg-slate-300"
+                : "bg-slate-800 text-white hover:bg-slate-900 ring-2 ring-slate-500/20",
             )}
             title={
               isNavOpen ? "Fechar Menu de Navegação" : "Abrir Menu de Navegação"
@@ -594,12 +596,12 @@ export function SiteCustomizer() {
             onClick={() => setIsNavOpen(!isNavOpen)}
           >
             {isNavOpen ? (
-              <X className="w-5 h-5" />
+              <PanelLeftClose className="w-4 h-4 sm:w-5 sm:h-5" />
             ) : (
-              <LayoutDashboard className="w-5 h-5" />
+              <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
-            <span className="hidden md:inline text-xs font-medium uppercase tracking-tight">
-              {isNavOpen ? "Fechar" : "Navegação"}
+            <span className="text-xs sm:text-sm font-bold uppercase tracking-wide">
+              {isNavOpen ? "FECHAR MENU" : "MENU"}
             </span>
           </Button>
 
@@ -693,16 +695,24 @@ export function SiteCustomizer() {
             <SheetHeader className="sr-only">
               <SheetTitle>Menu de Navegação</SheetTitle>
             </SheetHeader>
-            <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
+            <AdminSidebar 
+              adminUser={adminUser} 
+              handleLogout={handleLogout} 
+              onClose={() => setIsNavOpen(false)} 
+            />
           </SheetContent>
         </Sheet>
 
+        {/* Dashboard Navigation Sidebar (Desktop) */}
         <div className={cn(
-          "hidden shrink-0 border-r border-border bg-card shadow-lg transition-all duration-300",
-          "2xl:block",
-          isNavOpen ? "lg:block" : "lg:hidden"
+          "shrink-0 border-r border-border bg-card shadow-lg transition-all duration-300",
+          isNavOpen ? "flex" : "hidden"
         )}>
-          <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
+          <AdminSidebar 
+            adminUser={adminUser} 
+            handleLogout={handleLogout} 
+            onClose={() => setIsNavOpen(false)}
+          />
         </div>
 
         {/* Mobile Sidebar (Editor Tools) */}

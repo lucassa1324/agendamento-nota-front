@@ -21,6 +21,7 @@ import {
   PieChart,
   // Plug,
   User,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -151,9 +152,10 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
 interface AdminSidebarProps {
   adminUser: { name: string; username: string } | null;
   handleLogout: () => void;
+  onClose?: () => void;
 }
 
-export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
+export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const params = useParams();
   const { studio } = useStudio();
