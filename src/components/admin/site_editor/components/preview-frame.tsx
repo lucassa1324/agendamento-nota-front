@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import type { PageItem } from "./editor-constants";
 
 interface PreviewFrameProps {
-  iframeRef: RefObject<HTMLIFrameElement | null>;
+  iframeRef: RefObject<HTMLIFrameElement>;
   previewMode: "desktop" | "mobile";
   currentWidth: number;
   mobileScale: number;
@@ -22,7 +22,7 @@ interface PreviewFrameProps {
   previewUrl: string;
   previewKey: number;
   activePageData: PageItem | undefined;
-  containerRef: RefObject<HTMLDivElement | null>;
+  containerRef: RefObject<HTMLDivElement>;
   isMobile?: boolean;
 }
 
