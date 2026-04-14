@@ -60,22 +60,7 @@ const getBaseDomain = () => {
 };
 
 export const BASE_DOMAIN = cleanUrl(getBaseDomain());
-
-// ADMIN_URL: Deve sempre apontar para o dashboard administrativo
-// Adicionamos lógica para garantir que termine em /admin e não apenas no domínio
-export const ADMIN_URL = (() => {
-  const envUrl = cleanUrl(process.env.NEXT_PUBLIC_ADMIN_URL);
-
-  // Se tivermos a URL no env, garantimos que ela termine em /admin
-  if (envUrl) {
-    return envUrl.endsWith("/admin") ? envUrl : `${envUrl}/admin`;
-  }
-
-  // Caso contrário, usamos o window.location.origin em tempo de execução
-  return typeof window !== "undefined"
-    ? `${window.location.origin}/admin`
-    : "http://localhost:3000/admin";
-})();
+export const ADMIN_URL = cleanUrl(process.env.NEXT_PUBLIC_ADMIN_URL);
 
 export const authClient = createAuthClient({
   baseURL: AUTH_BASE_URL,
@@ -87,18 +72,47 @@ export const authClient = createAuthClient({
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onRequest: async (context: any) => {
-      if (!context || !context.options) return;
+      // PROTEÇÃO CONTRA UNDEFINED - Solicitado pelo usuário
+      // Mas se não houver context ou options, apenas retornamos para deixar o better-fetch seguir seu curso padrão
+      if (!context || !context.options) {
+        return;
+      }
 
+      // DEBUG CRÍTICO: Verificar se o body já foi stringify
       const bodyIsString = typeof context.options.body === "string";
-      console.log(">>> [AUTH_CLIENT] REQUEST:", {
+
+      console.log(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR BODY CHECK:", {
         url: context?.request?.url,
         method: context?.request?.method,
+        bodyType: typeof context.options.body,
         bodyIsString,
+        bodyContentSnippet: bodyIsString
+          ? (context.options.body as string).substring(0, 50)
+          : context.options.body
+            ? "Object"
+            : "Empty/Null",
+        hasJsonProp: !!(context.options as { json?: unknown })?.json,
       });
+
+      if ((context?.options as { json?: unknown })?.json) {
+        console.log(
+          ">>> [AUTH_CLIENT] Propriedade 'json' detectada. Better-fetch cuidará da serialização.",
+        );
+      }
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onResponse: async (context: any) => {
-      console.log(">>> [AUTH_CLIENT] RESPONSE:", {
+      if (context.response.status >= 400) {
+        try {
+          const clonedResponse = context.response.clone();
+          const text = await clonedResponse.text();
+          console.error(`>>> [AUTH_CLIENT] ERROR RESPONSE (${context.response.status}):`, text);
+        } catch (e) {
+          console.error(">>> [AUTH_CLIENT] Erro ao ler resposta de erro:", e);
+        }
+      }
+
+      console.log(">>> [AUTH_CLIENT] RESPONSE INTERCEPTOR:", {
         status: context?.response?.status,
         url: context?.response?.url,
       });
@@ -114,6 +128,9 @@ export const authClient = createAuthClient({
   // Tipagem para os campos customizados do usuário (slug, businessId, role)
   user: {
     additionalFields: {
+      cpfCnpj: {
+        type: "string",
+      },
       slug: {
         type: "string",
       },
@@ -122,11 +139,6 @@ export const authClient = createAuthClient({
       },
       businessId: {
         type: "string",
-      },
-      cpfCnpj: {
-        type: "string",
-        input: true,
-        returned: true,
       },
       business: {
         type: "object",

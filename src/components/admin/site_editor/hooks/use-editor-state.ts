@@ -267,13 +267,6 @@ export function useEditorState() {
         nextAppearance.subtitleFont = prvs.subtitleFont;
       }
 
-      if (upds.contentFont !== undefined) {
-        nextAppearance.contentFont = upds.contentFont;
-        state.contentFont = upds.contentFont;
-      } else if (prvs.contentFont !== undefined) {
-        nextAppearance.contentFont = prvs.contentFont;
-      }
-
       // Card Styles Sync
       syncColor(
         "cardBgColor",
@@ -577,13 +570,13 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         valuesData.cardBgColor ||
-        valuesData.cardBackgroundColor ||
-        valuesData.card_background_color ||
-        cardConfig.backgroundColor ||
-        cardConfig.cardBackgroundColor ||
-        content.cardBgColor ||
-        itemsStyle.itemBackgroundColor ||
-        appearance.cardBgColor,
+          valuesData.cardBackgroundColor ||
+          valuesData.card_background_color ||
+          cardConfig.backgroundColor ||
+          cardConfig.cardBackgroundColor ||
+          content.cardBgColor ||
+          itemsStyle.itemBackgroundColor ||
+          appearance.cardBgColor,
       );
 
       return {
@@ -599,20 +592,20 @@ export function useEditorState() {
         cardTitleColor:
           sanitizeColor(
             valuesData.cardTitleColor ||
-            appearance.cardTitleColor ||
-            content.cardTitleColor,
+              appearance.cardTitleColor ||
+              content.cardTitleColor,
           ) || defaultValuesSettings.cardTitleColor,
         cardDescriptionColor:
           sanitizeColor(
             valuesData.cardDescriptionColor ||
-            appearance.cardDescriptionColor ||
-            content.cardDescriptionColor,
+              appearance.cardDescriptionColor ||
+              content.cardDescriptionColor,
           ) || defaultValuesSettings.cardDescriptionColor,
         cardIconColor:
           sanitizeColor(
             valuesData.cardIconColor ||
-            appearance.cardIconColor ||
-            content.cardIconColor,
+              appearance.cardIconColor ||
+              content.cardIconColor,
           ) || defaultValuesSettings.cardIconColor,
         bgColor:
           sanitizeColor(appearance.backgroundColor || valuesData.bgColor) ||
@@ -631,18 +624,18 @@ export function useEditorState() {
           cardBgColor: cardBg,
           cardTitleColor: sanitizeColor(
             valuesData.cardTitleColor ||
-            appearance.cardTitleColor ||
-            content.cardTitleColor,
+              appearance.cardTitleColor ||
+              content.cardTitleColor,
           ),
           cardDescriptionColor: sanitizeColor(
             valuesData.cardDescriptionColor ||
-            appearance.cardDescriptionColor ||
-            content.cardDescriptionColor,
+              appearance.cardDescriptionColor ||
+              content.cardDescriptionColor,
           ),
           cardIconColor: sanitizeColor(
             valuesData.cardIconColor ||
-            appearance.cardIconColor ||
-            content.cardIconColor,
+              appearance.cardIconColor ||
+              content.cardIconColor,
           ),
           backgroundColor: sanitizeColor(
             appearance.backgroundColor || valuesData.bgColor,
@@ -925,32 +918,32 @@ export function useEditorState() {
 
       const cardBg = sanitizeColor(
         galleryData.cardBgColor ||
-        galleryData.cardBackgroundColor ||
-        galleryData.card_bg_color ||
-        galleryData.card_background_color ||
-        cardConfig.backgroundColor ||
-        cardConfig.cardBackgroundColor ||
-        cardConfig.card_bg_color ||
-        cardConfig.background_color ||
-        content.cardBgColor ||
-        content.cardBackgroundColor ||
-        content.card_bg_color ||
-        content.card_background_color ||
-        itemsStyle.itemBackgroundColor ||
-        itemsStyle.item_background_color ||
-        appearance.cardBackgroundColor ||
-        appearance.cardBgColor,
+          galleryData.cardBackgroundColor ||
+          galleryData.card_bg_color ||
+          galleryData.card_background_color ||
+          cardConfig.backgroundColor ||
+          cardConfig.cardBackgroundColor ||
+          cardConfig.card_bg_color ||
+          cardConfig.background_color ||
+          content.cardBgColor ||
+          content.cardBackgroundColor ||
+          content.card_bg_color ||
+          content.card_background_color ||
+          itemsStyle.itemBackgroundColor ||
+          itemsStyle.item_background_color ||
+          appearance.cardBackgroundColor ||
+          appearance.cardBgColor,
       );
 
       const resolvedBgColor =
         sanitizeColor(
           appearance.backgroundColor ||
-          appearance.background_color ||
-          appearance.bgColor ||
-          galleryData.bgColor ||
-          galleryData.bg_color ||
-          galleryData.backgroundColor ||
-          galleryData.background_color,
+            appearance.background_color ||
+            appearance.bgColor ||
+            galleryData.bgColor ||
+            galleryData.bg_color ||
+            galleryData.backgroundColor ||
+            galleryData.background_color,
         ) || defaultGallerySettings.bgColor;
 
       return {
@@ -1079,8 +1072,8 @@ export function useEditorState() {
         (storyData.appearance as Record<string, unknown>) || {};
       const contentData =
         storyData.content &&
-          typeof storyData.content === "object" &&
-          !Array.isArray(storyData.content)
+        typeof storyData.content === "object" &&
+        !Array.isArray(storyData.content)
           ? (storyData.content as Record<string, unknown>)
           : {};
       const normalizedContent =
@@ -1109,16 +1102,6 @@ export function useEditorState() {
         contentColor:
           sanitizeColor(storyData.contentColor) ||
           defaultStorySettings.contentColor,
-        titleFont:
-          (storyData.titleFont as string) ||
-          (appearance.titleFont as string) ||
-          (contentData.titleFont as string) ||
-          defaultStorySettings.titleFont,
-        contentFont:
-          (storyData.contentFont as string) ||
-          (appearance.contentFont as string) ||
-          (contentData.contentFont as string) ||
-          defaultStorySettings.contentFont,
         bgColor:
           sanitizeColor(appearance.backgroundColor || storyData.bgColor) ||
           defaultStorySettings.bgColor,
@@ -1130,11 +1113,6 @@ export function useEditorState() {
           titleColor: sanitizeColor(
             storyData.titleColor || appearance.titleColor,
           ),
-          titleFont:
-            (storyData.titleFont as string) || (appearance.titleFont as string),
-          contentFont:
-            (storyData.contentFont as string) ||
-            (appearance.contentFont as string),
           backgroundColor: sanitizeColor(
             appearance.backgroundColor || storyData.bgColor,
           ),
@@ -1555,7 +1533,7 @@ export function useEditorState() {
         lastSavedColor.text !== defaultColorSettings.text ||
         lastSavedColor.accent !== defaultColorSettings.accent ||
         lastSavedSpecialtyBadge.borderRadius !==
-        defaultColorSettings.specialtyBadge.borderRadius;
+          defaultColorSettings.specialtyBadge.borderRadius;
       const normalizeColor = (value?: string) =>
         sanitizeColor(value || "") || "";
       const isConfigAlignedWithLastSaved =
@@ -1563,15 +1541,15 @@ export function useEditorState() {
         (normalizeColor(resolvedColors.primary) ===
           normalizeColor(lastSavedColor.primary) &&
           normalizeColor(resolvedColors.secondary) ===
-          normalizeColor(lastSavedColor.secondary) &&
+            normalizeColor(lastSavedColor.secondary) &&
           normalizeColor(resolvedColors.background) ===
-          normalizeColor(lastSavedColor.background) &&
+            normalizeColor(lastSavedColor.background) &&
           normalizeColor(resolvedColors.text) ===
-          normalizeColor(lastSavedColor.text) &&
+            normalizeColor(lastSavedColor.text) &&
           normalizeColor(resolvedColors.accent || "") ===
-          normalizeColor(lastSavedColor.accent || "") &&
+            normalizeColor(lastSavedColor.accent || "") &&
           resolvedColors.specialtyBadge.borderRadius ===
-          lastSavedSpecialtyBadge.borderRadius);
+            lastSavedSpecialtyBadge.borderRadius);
       if (!isConfigAlignedWithLastSaved) {
         console.log(
           ">>> [SYNC] studio.config desatualizado em relação ao lastSaved. Ignorando sync.",
@@ -1592,7 +1570,7 @@ export function useEditorState() {
           normalizeColor(lastSavedHero.bgColor) &&
           (normalizedHeroGuard.bgType || "") === (lastSavedHero.bgType || "") &&
           (normalizedHeroGuard.bgImage || "") ===
-          (lastSavedHero.bgImage || ""));
+            (lastSavedHero.bgImage || ""));
       if (!isHeroAlignedWithLastSaved) {
         console.log(
           ">>> [SYNC] studio.config desatualizado para HERO em relação ao lastSaved. Ignorando sync.",
@@ -1615,7 +1593,7 @@ export function useEditorState() {
         (normalizeColor(normalizedValues.bgColor) ===
           normalizeColor(lastSavedHomeValues.bgColor) &&
           normalizeColor(normalizedValues.cardBgColor) ===
-          normalizeColor(lastSavedHomeValues.cardBgColor));
+            normalizeColor(lastSavedHomeValues.cardBgColor));
       if (!isValuesAlignedWithLastSaved) {
         console.log(
           ">>> [SYNC] studio.config desatualizado para VALUES em relação ao lastSaved. Ignorando sync para evitar tela branca.",
@@ -1644,20 +1622,20 @@ export function useEditorState() {
       const normalizedColorSettings =
         hasValidColors(siteColors) || hasValidColors(config.colors)
           ? ({
-            ...defaultColorSettings,
-            ...(config.colors || {}),
-            ...(siteColors || {}),
-          } as ColorSettings)
+              ...defaultColorSettings,
+              ...(config.colors || {}),
+              ...(siteColors || {}),
+            } as ColorSettings)
           : cloneSnapshot(baseSettingsRef.current.colorSettings);
 
       const normalizedFontSettings =
         siteFonts || config.typography || config.theme
           ? ({
-            ...defaultFontSettings,
-            ...(config.theme || {}),
-            ...(config.typography || {}),
-            ...(siteFonts || {}),
-          } as FontSettings)
+              ...defaultFontSettings,
+              ...(config.theme || {}),
+              ...(config.typography || {}),
+              ...(siteFonts || {}),
+            } as FontSettings)
           : cloneSnapshot(baseSettingsRef.current.fontSettings);
 
       setColorSettings(normalizedColorSettings);
@@ -1784,9 +1762,9 @@ export function useEditorState() {
         (bookingSteps?.service as SectionConfig | undefined);
       const normalizedBookingService = bookingServiceSection
         ? normalizeStepSettings(
-          bookingServiceSection as BookingStepSettings,
-          cloneSnapshot(baseSettingsRef.current.bookingServiceSettings),
-        )
+            bookingServiceSection as BookingStepSettings,
+            cloneSnapshot(baseSettingsRef.current.bookingServiceSettings),
+          )
         : cloneSnapshot(baseSettingsRef.current.bookingServiceSettings);
       setBookingServiceSettings(normalizedBookingService);
       const bookingDateSection =
@@ -1796,9 +1774,9 @@ export function useEditorState() {
         (bookingSteps?.date as SectionConfig | undefined);
       const normalizedBookingDate = bookingDateSection
         ? normalizeStepSettings(
-          bookingDateSection as BookingStepSettings,
-          cloneSnapshot(baseSettingsRef.current.bookingDateSettings),
-        )
+            bookingDateSection as BookingStepSettings,
+            cloneSnapshot(baseSettingsRef.current.bookingDateSettings),
+          )
         : cloneSnapshot(baseSettingsRef.current.bookingDateSettings);
       setBookingDateSettings(normalizedBookingDate);
       const bookingTimeSection =
@@ -1808,9 +1786,9 @@ export function useEditorState() {
         (bookingSteps?.time as SectionConfig | undefined);
       const normalizedBookingTime = bookingTimeSection
         ? normalizeStepSettings(
-          bookingTimeSection as BookingStepSettings,
-          cloneSnapshot(baseSettingsRef.current.bookingTimeSettings),
-        )
+            bookingTimeSection as BookingStepSettings,
+            cloneSnapshot(baseSettingsRef.current.bookingTimeSettings),
+          )
         : cloneSnapshot(baseSettingsRef.current.bookingTimeSettings);
       setBookingTimeSettings(normalizedBookingTime);
       const bookingFormSection =
@@ -1820,9 +1798,9 @@ export function useEditorState() {
         (bookingSteps?.form as SectionConfig | undefined);
       const normalizedBookingForm = bookingFormSection
         ? normalizeStepSettings(
-          bookingFormSection as BookingStepSettings,
-          cloneSnapshot(baseSettingsRef.current.bookingFormSettings),
-        )
+            bookingFormSection as BookingStepSettings,
+            cloneSnapshot(baseSettingsRef.current.bookingFormSettings),
+          )
         : cloneSnapshot(baseSettingsRef.current.bookingFormSettings);
       setBookingFormSettings(normalizedBookingForm);
       const bookingConfirmationSection =
@@ -1832,9 +1810,9 @@ export function useEditorState() {
         (bookingSteps?.confirmation as SectionConfig | undefined);
       const normalizedBookingConfirmation = bookingConfirmationSection
         ? normalizeStepSettings(
-          bookingConfirmationSection as BookingStepSettings,
-          cloneSnapshot(baseSettingsRef.current.bookingConfirmationSettings),
-        )
+            bookingConfirmationSection as BookingStepSettings,
+            cloneSnapshot(baseSettingsRef.current.bookingConfirmationSettings),
+          )
         : cloneSnapshot(baseSettingsRef.current.bookingConfirmationSettings);
       setBookingConfirmationSettings(normalizedBookingConfirmation);
 
@@ -2137,7 +2115,7 @@ export function useEditorState() {
         const resolvedBgColor =
           sanitizeColor(
             (updates.bgColor as string | undefined) ||
-            (updatesAppearance.backgroundColor as string | undefined),
+              (updatesAppearance.backgroundColor as string | undefined),
           ) || "";
         if (updates.bgColor !== undefined)
           newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;
@@ -2203,7 +2181,7 @@ export function useEditorState() {
         const resolvedBgColor =
           sanitizeColor(
             (updates.bgColor as string | undefined) ||
-            (updatesAppearance.backgroundColor as string | undefined),
+              (updatesAppearance.backgroundColor as string | undefined),
           ) || "";
         if (updates.bgColor !== undefined)
           newState.bgColor = sanitizeColor(updates.bgColor) || prev.bgColor;

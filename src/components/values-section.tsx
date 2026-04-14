@@ -122,15 +122,11 @@ export function ValuesSection({
     // PADRONIZAÇÃO DE CHAVES (Solicitado pelo usuário)
     // Prioriza o nível superior (rawValues) antes de buscar fallbacks em appearance/itemsStyle
     const resolvedCardBgColor = sanitizeColor(
-      (rawValues.cardBgColor as string) ||
-        (rawValues.cardBackgroundColor as string) ||
+      (rawValues.cardBackgroundColor as string) ||
+        (rawValues.cardBgColor as string) ||
         (rawValues.card_background_color as string) ||
         ((rawValues.cardConfig as Record<string, unknown>)
-          ?.cardBgColor as string) ||
-        ((rawValues.cardConfig as Record<string, unknown>)
           ?.cardBackgroundColor as string) ||
-        ((rawValues.cardConfig as Record<string, unknown>)
-          ?.card_background_color as string) ||
         ((rawValues.cardConfig as Record<string, unknown>)
           ?.backgroundColor as string) ||
         (content.cardBgColor as string) ||
@@ -352,38 +348,12 @@ export function ValuesSection({
     }
     if (studioId) {
       const config = studioConfig as SiteConfigData | undefined;
-      const configRecord = (config as Record<string, unknown> | undefined) || {};
-      const homeData =
-        asRecord(configRecord.home) || asRecord(configRecord.home_page);
-      const aboutData =
-        asRecord(configRecord.aboutUs) || asRecord(configRecord.about_us);
-      const layoutGlobal =
-        asRecord(configRecord.layoutGlobal) || asRecord(configRecord.layout_global);
       const targetId =
         source === "home" ? SECTION_IDS.homeValues : SECTION_IDS.aboutValues;
       const sections = (config as Record<string, unknown> | undefined)
         ?.sections as Record<string, unknown> | undefined;
-      const sourceSpecificRaw =
-        source === "home"
-          ? asRecord(configRecord.homeValuesSettings) ||
-            asRecord(configRecord.homeValues) ||
-            asRecord(configRecord.home_values) ||
-            asRecord(homeData?.homeValuesSettings) ||
-            asRecord(homeData?.valuesSection) ||
-            asRecord(homeData?.values) ||
-            asRecord(layoutGlobal?.homeValuesSettings) ||
-            asRecord(layoutGlobal?.values)
-          : asRecord(configRecord.aboutUsValuesSettings) ||
-            asRecord(configRecord.aboutUsValues) ||
-            asRecord(configRecord.about_us_values) ||
-            asRecord(aboutData?.aboutUsValuesSettings) ||
-            asRecord(aboutData?.valuesSection) ||
-            asRecord(aboutData?.values) ||
-            asRecord(layoutGlobal?.aboutUsValuesSettings) ||
-            asRecord(layoutGlobal?.values);
       const fallback =
-        sourceSpecificRaw ||
-        asRecord(sections?.[targetId]) ||
+        sections?.[targetId] ||
         (source === "home"
           ? getHomeValuesSettings(config)
           : getAboutUsValuesSettings(config));
@@ -392,7 +362,7 @@ export function ValuesSection({
     const defaults =
       source === "home" ? getHomeValuesSettings() : getAboutUsValuesSettings();
     return normalizeValues(defaults as unknown as Record<string, unknown>);
-  }, [asRecord, normalizeValues, propSettings, source, studioConfig, studioId]);
+  }, [normalizeValues, propSettings, source, studioConfig, studioId]);
 
   const settings = useMemo(() => {
     if (!liveSettings) return baseSettings;

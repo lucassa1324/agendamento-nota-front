@@ -69,25 +69,12 @@ export default function Home({
 
   useEffect(() => {
     if (studioLoading || slug || isPreview) return;
-
-    // Se estivermos na home do domínio base (sem slug)
-    if (typeof window !== "undefined") {
-      const currentOrigin = window.location.origin;
-      const cleanLandingUrl = LANDING_PAGE_URL ? LANDING_PAGE_URL.replace(/\/$/, "") : "";
-      
-      // Só redireciona para a landing page se ela for diferente da URL atual para evitar loop
-      if (cleanLandingUrl && cleanLandingUrl !== currentOrigin && cleanLandingUrl !== `${currentOrigin}/home`) {
-        console.log("Redirecting to landing page:", cleanLandingUrl);
-        window.location.replace(cleanLandingUrl);
-        return;
-      }
-      
-      // Caso contrário, se não temos slug e não temos landing page externa, vai para o admin
-      // Mas evitamos redirecionar se já estivermos no processo de ir para o admin
-      if (window.location.pathname !== "/admin") {
-        router.replace("/admin");
-      }
+    if (LANDING_PAGE_URL && typeof window !== "undefined") {
+      console.log("Redirecting to landing page:", LANDING_PAGE_URL);
+      window.location.replace(LANDING_PAGE_URL);
+      return;
     }
+    router.replace("/admin");
   }, [slug, studioLoading, isPreview, router]);
 
   useEffect(() => {

@@ -53,15 +53,16 @@ export function PushNotificationSettings() {
         const response = await customFetch("/api/user/preferences");
         if (response.ok) {
           const data = await response.json();
-          const notifications = data?.notifications || {};
-          setPreferences({
-            notifyNewAppointments: notifications.newAppointments ?? true,
-            notifyCancellations: notifications.cancellations ?? true,
-            notifyInventoryAlerts: notifications.inventoryAlerts ?? false,
-          });
+          if (data) {
+            setPreferences({
+              notifyNewAppointments: data.notifyNewAppointments ?? true,
+              notifyCancellations: data.notifyCancellations ?? true,
+              notifyInventoryAlerts: data.notifyInventoryAlerts ?? false,
+            });
+          }
         } else if (response.status === 401) {
           // Tratamento de 401: Redirecionar para login
-          window.location.href = "/admin";
+          window.location.href = "/login";
         }
       } catch (error) {
         console.error("Erro ao carregar preferências:", error);
@@ -82,13 +83,11 @@ export function PushNotificationSettings() {
     // Atualização otimista
     setPreferences(newPreferences);
 
-    // Backend espera payload em notifications com campos camelCase
+    // Mapear para snake_case para o backend
     const payload = {
-      notifications: {
-        newAppointments: newPreferences.notifyNewAppointments,
-        cancellations: newPreferences.notifyCancellations,
-        inventoryAlerts: newPreferences.notifyInventoryAlerts,
-      },
+      notify_new_appointments: newPreferences.notifyNewAppointments,
+      notify_cancellations: newPreferences.notifyCancellations,
+      notify_inventory_alerts: newPreferences.notifyInventoryAlerts,
     };
 
     try {
@@ -99,7 +98,7 @@ export function PushNotificationSettings() {
 
       if (!response.ok) {
         if (response.status === 401) {
-          window.location.href = "/admin";
+          window.location.href = "/login";
           return;
         }
         throw new Error("Falha ao salvar preferências");

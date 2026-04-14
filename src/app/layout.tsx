@@ -7,7 +7,6 @@ import { FaviconUpdater } from "@/components/favicon-updater";
 import { LayoutClientWrapper } from "@/components/layout-client-wrapper";
 import { ThemeInjectorClient } from "@/components/theme-injector-client";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { StudioProvider } from "@/context/studio-context";
 import { API_BASE_URL } from "@/lib/auth-client";
 import "./globals.css";
@@ -30,8 +29,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
   if (!slug) {
     return {
-      title: "StudioManager | Gestão e Agendamentos",
-      description: "A plataforma completa para gestão do seu studio.",
+      title: "Aura Manager | Gestão e Agendamentos",
+      description: "A plataforma completa para gestão do seu negócio.",
     };
   }
 
@@ -53,7 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 
   return {
-    title: "StudioManager | Agendamento Online",
+    title: "Aura Manager | Agendamento Online",
     description: "Agende seu horário e realce sua beleza natural.",
   };
 }
@@ -78,7 +77,6 @@ export default async function RootLayout({
           <FaviconUpdater />
           <LayoutClientWrapper>{children}</LayoutClientWrapper>
           <Toaster />
-          <SonnerToaster position="top-center" richColors closeButton />
           <Analytics />
         </StudioProvider>
       </body>

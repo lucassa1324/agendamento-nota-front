@@ -55,7 +55,7 @@ export default function OnboardingPage() {
       toast({
         title: "Erro de inicialização",
         description:
-          "Os dados do estúdio não foram carregados. Tente recarregar a página.",
+          "Os dados do negócio não foram carregados. Tente recarregar a página.",
         variant: "destructive",
       });
       return;
@@ -130,7 +130,7 @@ export default function OnboardingPage() {
 
       toast({
         title: "Configuração concluída",
-        description: "Seu estúdio está pronto para receber agendamentos.",
+        description: "Seu negócio está pronto para receber agendamentos.",
       });
 
       window.location.assign(targetOverviewPath);

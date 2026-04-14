@@ -12,6 +12,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { TutorialContextualLink } from "@/components/admin/tutorial-reminder";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import { cn } from "@/lib/utils";
@@ -190,15 +191,20 @@ export function HeaderControls({
       <div className="w-px h-3 sm:h-4 bg-border mx-0.5 sm:mx-1" />
 
       <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="rounded-full w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8"
-        onClick={handleReload}
-        title="Recarregar Preview"
-      >
-        <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
-      </Button>
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="rounded-full w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8"
+          onClick={handleReload}
+          title="Recarregar Visualização"
+        >
+          <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
+        </Button>
+      </div>
+
+      <div className="hidden sm:block ml-2">
+        <TutorialContextualLink />
+      </div>
     </div>
   );
 }

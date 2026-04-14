@@ -711,21 +711,18 @@ export function StudioProvider({
         layoutGlobal?.services) as ServicesSettings | undefined;
 
       const homeValuesSource = ((config as Record<string, unknown>)?.homeValuesSettings ||
-        (home as Record<string, unknown>)?.homeValuesSettings ||
+        (config as Record<string, unknown>)?.values ||
         (home as Record<string, unknown>)?.valuesSection ||
         (home as Record<string, unknown>)?.values ||
-        (layoutGlobal as Record<string, unknown>)?.homeValuesSettings ||
-        (layoutGlobal as Record<string, unknown>)?.values ||
-        (config as Record<string, unknown>)?.values) as
+        (layoutGlobal as Record<string, unknown>)?.homeValuesSettings) as
         | ValuesSettings
         | undefined;
 
       const aboutUsValuesSource = ((config as Record<string, unknown>)?.aboutUsValuesSettings ||
+        (config as Record<string, unknown>)?.values ||
         aboutUs?.valuesSection ||
         aboutUs?.values ||
-        (layoutGlobal as Record<string, unknown>)?.aboutUsValuesSettings ||
-        (layoutGlobal as Record<string, unknown>)?.values ||
-        (config as Record<string, unknown>)?.values) as
+        (layoutGlobal as Record<string, unknown>)?.aboutUsValuesSettings) as
         | ValuesSettings
         | undefined;
 

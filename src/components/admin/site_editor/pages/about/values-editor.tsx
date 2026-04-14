@@ -59,7 +59,6 @@ import type { ValueItem, ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
-import { ResetSectionVisuals } from "../../components/ResetSectionVisuals";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -98,7 +97,6 @@ const icons = [
 interface ValuesEditorProps {
   settings: ValuesSettings;
   onUpdate: (updates: Partial<ValuesSettings>) => void;
-  onReset?: () => void;
   onSave?: () => void;
   hasChanges?: boolean;
   isSaving?: boolean;
@@ -107,7 +105,6 @@ interface ValuesEditorProps {
 export function ValuesEditor({
   settings,
   onUpdate,
-  onReset,
   onSave: externalOnSave,
   hasChanges,
   isSaving: externalIsSaving,
@@ -153,13 +150,6 @@ export function ValuesEditor({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
-      {onReset && (
-        <ResetSectionVisuals
-          label="Resetar Estilo dos Valores"
-          description="Restaura os estilos de valores para o padrão da seção."
-          onReset={onReset}
-        />
-      )}
       <Accordion
         type="multiple"
         defaultValue={["title"]}

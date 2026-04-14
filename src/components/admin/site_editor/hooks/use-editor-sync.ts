@@ -19,7 +19,6 @@ import {
   defaultTeamSettings,
   defaultTestimonialsSettings,
   defaultValuesSettings,
-  getStorageKey,
   normalizeStepSettings,
   SECTION_IDS,
   sanitizeColor,
@@ -961,177 +960,6 @@ export function useEditorSync({
         };
       }
 
-      if (type === "UPDATE_STORY_SETTINGS") {
-        const resolveFontValue = (...candidates: unknown[]): string | undefined => {
-          for (const candidate of candidates) {
-            if (typeof candidate !== "string") continue;
-            const trimmed = candidate.trim();
-            if (
-              trimmed &&
-              trimmed !== "default" &&
-              trimmed !== "{}" &&
-              trimmed !== "[]"
-            ) {
-              return trimmed;
-            }
-          }
-          return undefined;
-        };
-        const sourceContent =
-          sourceSettings.content &&
-            typeof sourceSettings.content === "object" &&
-            !Array.isArray(sourceSettings.content)
-            ? (sourceSettings.content as Record<string, unknown>)
-            : {};
-        const sourceAppearance =
-          sourceSettings.appearance &&
-            typeof sourceSettings.appearance === "object" &&
-            !Array.isArray(sourceSettings.appearance)
-            ? (sourceSettings.appearance as Record<string, unknown>)
-            : {};
-        const sourceTypography =
-          sourceSettings.typography &&
-            typeof sourceSettings.typography === "object" &&
-            !Array.isArray(sourceSettings.typography)
-            ? (sourceSettings.typography as Record<string, unknown>)
-            : {};
-        const payloadContent =
-          payloadSettings.content &&
-            typeof payloadSettings.content === "object" &&
-            !Array.isArray(payloadSettings.content)
-            ? (payloadSettings.content as Record<string, unknown>)
-            : {};
-        const payloadAppearance =
-          payloadSettings.appearance &&
-            typeof payloadSettings.appearance === "object" &&
-            !Array.isArray(payloadSettings.appearance)
-            ? (payloadSettings.appearance as Record<string, unknown>)
-            : {};
-
-        // Mirroring de todos os campos críticos da História para garantir sync no iframe
-        const liveTitle =
-          sourceSettings.title ?? sourceContent.title ?? payloadSettings.title;
-        const liveText =
-          sourceSettings.content ??
-          sourceContent.content ??
-          sourceContent.text ??
-          payloadSettings.content;
-        const liveTitleFont = resolveFontValue(
-          sourceSettings.titleFont,
-          sourceAppearance.titleFont,
-          sourceContent.titleFont,
-          payloadSettings.titleFont,
-        );
-        const liveContentFont = resolveFontValue(
-          sourceSettings.contentFont,
-          sourceAppearance.contentFont,
-          sourceContent.contentFont,
-          sourceTypography.contentFont,
-          sourceTypography.fontFamily,
-          payloadSettings.contentFont,
-        );
-        const liveTitleColor =
-          sourceSettings.titleColor ??
-          sourceAppearance.titleColor ??
-          sourceContent.titleColor ??
-          payloadSettings.titleColor;
-        const liveContentColor =
-          sourceSettings.contentColor ??
-          sourceAppearance.contentColor ??
-          sourceContent.contentColor ??
-          payloadSettings.contentColor;
-        const liveFontFamily = resolveFontValue(
-          sourceSettings.fontFamily,
-          sourceTypography.fontFamily,
-          sourceContent.fontFamily,
-          sourceAppearance.fontFamily,
-        );
-        const resolvedLiveContentFont = liveContentFont ?? liveFontFamily;
-        const resolvedLiveFontFamily = liveFontFamily ?? resolvedLiveContentFont;
-
-        payloadSettings = {
-          ...payloadSettings,
-          ...(liveTitle !== undefined ? { title: liveTitle } : {}),
-          ...(liveText !== undefined ? { content: liveText } : {}),
-          ...(liveTitleFont !== undefined ? { titleFont: liveTitleFont } : {}),
-          ...(resolvedLiveContentFont !== undefined
-            ? { contentFont: resolvedLiveContentFont }
-            : {}),
-          ...(liveTitleColor !== undefined
-            ? { titleColor: liveTitleColor }
-            : {}),
-          ...(liveContentColor !== undefined
-            ? { contentColor: liveContentColor }
-            : {}),
-          ...(resolvedLiveFontFamily !== undefined
-            ? { fontFamily: resolvedLiveFontFamily }
-            : {}),
-          content: {
-            ...payloadContent,
-            ...(liveTitle !== undefined ? { title: liveTitle } : {}),
-            ...(liveText !== undefined ? { content: liveText } : {}),
-            ...(liveTitleFont !== undefined ? { titleFont: liveTitleFont } : {}),
-            ...(resolvedLiveContentFont !== undefined
-              ? { contentFont: resolvedLiveContentFont }
-              : {}),
-            ...(liveTitleColor !== undefined
-              ? { titleColor: liveTitleColor }
-              : {}),
-            ...(liveContentColor !== undefined
-              ? { contentColor: liveContentColor }
-              : {}),
-            ...(resolvedLiveFontFamily !== undefined
-              ? { fontFamily: resolvedLiveFontFamily }
-              : {}),
-          },
-          appearance: {
-            ...payloadAppearance,
-            ...(liveTitleFont !== undefined ? { titleFont: liveTitleFont } : {}),
-            ...(resolvedLiveContentFont !== undefined
-              ? { contentFont: resolvedLiveContentFont }
-              : {}),
-            ...(liveTitleColor !== undefined
-              ? { titleColor: liveTitleColor }
-              : {}),
-            ...(liveContentColor !== undefined
-              ? { contentColor: liveContentColor }
-              : {}),
-            ...(resolvedLiveFontFamily !== undefined
-              ? { fontFamily: resolvedLiveFontFamily }
-              : {}),
-          },
-          ...(resolvedLiveFontFamily !== undefined
-            ? {
-              typography: {
-                fontFamily: resolvedLiveFontFamily,
-                ...(resolvedLiveContentFont !== undefined
-                  ? { contentFont: resolvedLiveContentFont }
-                  : {}),
-              },
-            }
-            : {}),
-        };
-
-        if (resolvedLiveFontFamily !== undefined) {
-          const payloadTypography =
-            payloadSettings.typography &&
-              typeof payloadSettings.typography === "object" &&
-              !Array.isArray(payloadSettings.typography)
-              ? (payloadSettings.typography as Record<string, unknown>)
-              : {};
-          payloadSettings = {
-            ...payloadSettings,
-            typography: {
-              ...payloadTypography,
-              fontFamily: resolvedLiveFontFamily,
-              ...(resolvedLiveContentFont !== undefined
-                ? { contentFont: resolvedLiveContentFont }
-                : {}),
-            },
-          };
-        }
-      }
-
       if (
         type === "UPDATE_SERVICES_SETTINGS" ||
         type === "UPDATE_HOME_VALUES_SETTINGS" ||
@@ -1183,42 +1011,6 @@ export function useEditorSync({
             (appearance.card_background_color as string | undefined),
           ) || "";
 
-        const syncTitleFont =
-          (sanitizedSettings.titleFont as string | undefined) ||
-          (appearance.titleFont as string | undefined) ||
-          ((sanitizedSettings.content as Record<string, unknown> | undefined)
-            ?.titleFont as string | undefined);
-
-        const syncContentFont =
-          (sanitizedSettings.contentFont as string | undefined) ||
-          (appearance.contentFont as string | undefined) ||
-          ((sanitizedSettings.content as Record<string, unknown> | undefined)
-            ?.contentFont as string | undefined);
-
-        const syncCardTitleFont =
-          (sanitizedSettings.cardTitleFont as string | undefined) ||
-          (appearance.cardTitleFont as string | undefined) ||
-          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
-            ?.cardTitleFont as string | undefined) ||
-          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
-            ?.titleFont as string | undefined);
-
-        const syncCardDescriptionFont =
-          (sanitizedSettings.cardDescriptionFont as string | undefined) ||
-          (appearance.cardDescriptionFont as string | undefined) ||
-          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
-            ?.cardDescriptionFont as string | undefined) ||
-          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
-            ?.descriptionFont as string | undefined);
-
-        const syncCardPriceFont =
-          (sanitizedSettings.cardPriceFont as string | undefined) ||
-          (appearance.cardPriceFont as string | undefined) ||
-          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
-            ?.cardPriceFont as string | undefined) ||
-          ((sanitizedSettings.cardConfig as Record<string, unknown> | undefined)
-            ?.priceFont as string | undefined);
-
         payloadSettings = {
           ...sanitizedSettings,
           ...(syncColor
@@ -1242,13 +1034,6 @@ export function useEditorSync({
               card_background_color: syncCardBgColor,
             }
             : {}),
-          ...(syncTitleFont ? { titleFont: syncTitleFont } : {}),
-          ...(syncContentFont ? { contentFont: syncContentFont } : {}),
-          ...(syncCardTitleFont ? { cardTitleFont: syncCardTitleFont } : {}),
-          ...(syncCardDescriptionFont
-            ? { cardDescriptionFont: syncCardDescriptionFont }
-            : {}),
-          ...(syncCardPriceFont ? { cardPriceFont: syncCardPriceFont } : {}),
           appearance: {
             ...appearance,
             ...(syncColor
@@ -1270,48 +1055,19 @@ export function useEditorSync({
                 card_background_color: syncCardBgColor,
               }
               : {}),
-            ...(syncTitleFont ? { titleFont: syncTitleFont } : {}),
-            ...(syncContentFont ? { contentFont: syncContentFont } : {}),
-            ...(syncCardTitleFont ? { cardTitleFont: syncCardTitleFont } : {}),
-            ...(syncCardDescriptionFont
-              ? { cardDescriptionFont: syncCardDescriptionFont }
-              : {}),
-            ...(syncCardPriceFont ? { cardPriceFont: syncCardPriceFont } : {}),
           },
         };
 
-        if (
-          (isGalleryType || isBookingType) &&
-          (syncCardBgColor ||
-            syncCardTitleFont ||
-            syncCardDescriptionFont ||
-            syncCardPriceFont)
-        ) {
+        if ((isGalleryType || isBookingType) && syncCardBgColor) {
           payloadSettings.cardConfig = {
             ...((sanitizedSettings.cardConfig as Record<string, unknown>) ||
               {}),
-            ...(syncCardBgColor
-              ? {
-                cardBgColor: syncCardBgColor,
-                cardBackgroundColor: syncCardBgColor,
-                backgroundColor: syncCardBgColor,
-                background_color: syncCardBgColor,
-                card_bg_color: syncCardBgColor,
-                card_background_color: syncCardBgColor,
-              }
-              : {}),
-            ...(syncCardTitleFont
-              ? { cardTitleFont: syncCardTitleFont, titleFont: syncCardTitleFont }
-              : {}),
-            ...(syncCardDescriptionFont
-              ? {
-                cardDescriptionFont: syncCardDescriptionFont,
-                descriptionFont: syncCardDescriptionFont,
-              }
-              : {}),
-            ...(syncCardPriceFont
-              ? { cardPriceFont: syncCardPriceFont, priceFont: syncCardPriceFont }
-              : {}),
+            cardBgColor: syncCardBgColor,
+            cardBackgroundColor: syncCardBgColor,
+            backgroundColor: syncCardBgColor,
+            background_color: syncCardBgColor,
+            card_bg_color: syncCardBgColor,
+            card_background_color: syncCardBgColor,
           };
         }
 
@@ -1334,15 +1090,6 @@ export function useEditorSync({
           bgColor: payloadSettings.bgColor,
           appearanceBg: payloadAppearance.backgroundColor,
         });
-      }
-
-      if (type === "UPDATE_STORY_SETTINGS" && typeof window !== "undefined") {
-        try {
-          localStorage.setItem(
-            getStorageKey("storySettings"),
-            JSON.stringify(payloadSettings),
-          );
-        } catch (_e) { }
       }
 
       iframeRef.current?.contentWindow?.postMessage(

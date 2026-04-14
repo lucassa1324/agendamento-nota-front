@@ -83,7 +83,7 @@ export function LoginForm() {
       }
 
       // PRIORIDADE MÁXIMA: SUPER_ADMIN ou Email do Proprietário (Lucas)
-      // Usamos um "Hard Redirect" para limpar contextos de estúdio/tenant
+      // Usamos um "Hard Redirect" para limpar contextos de negócio/tenant
       if (
         user.role === "SUPER_ADMIN" ||
         user.email === "lucassa1324@gmail.com"
@@ -95,7 +95,7 @@ export function LoginForm() {
         return true;
       }
 
-      // 2º Lugar: Verificação de Administrador de Estúdio (Multi-tenant)
+      // 2º Lugar: Verificação de Administrador de Negócio (Multi-tenant)
       const businessSlug = user?.slug || user?.business?.slug;
       if (user.role?.toLowerCase() === "admin" && businessSlug) {
         console.log(
@@ -105,7 +105,7 @@ export function LoginForm() {
         return true;
       }
 
-      // 3º Lugar: Usuário sem estúdio ou sem role definida (Fallback)
+      // 3º Lugar: Usuário sem negócio ou sem role definida (Fallback)
       console.warn(
         ">>> [LOGIN_FLOW] Usuário sem role ADMIN/SUPER_ADMIN ou sem slug.",
       );

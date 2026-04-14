@@ -356,7 +356,6 @@ export const sanitizeSection = (
     "cardTitleFont",
     "cardDescriptionFont",
     "cardPriceFont",
-    "typography",
   ];
 
   // Só adicionamos do fallback o que for estritamente necessário e não estiver no record
@@ -913,7 +912,6 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
     merged.titleFont ||
     (merged.appearance as Record<string, unknown> | undefined)?.titleFont ||
     (merged.content as Record<string, unknown> | undefined)?.titleFont ||
-    (merged.typography as Record<string, unknown> | undefined)?.titleFont ||
     (raw as Record<string, unknown>).titleFont ||
     (raw as Record<string, unknown>).title_font,
   );
@@ -922,8 +920,6 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
     merged.contentFont ||
     (merged.appearance as Record<string, unknown> | undefined)?.contentFont ||
     (merged.content as Record<string, unknown> | undefined)?.contentFont ||
-    (merged.typography as Record<string, unknown> | undefined)?.fontFamily ||
-    (merged.typography as Record<string, unknown> | undefined)?.contentFont ||
     (raw as Record<string, unknown>).contentFont ||
     (raw as Record<string, unknown>).content_font,
   );
@@ -1511,7 +1507,6 @@ export type AppearanceSettings = {
   subtitleColor?: string;
   titleFont?: string;
   subtitleFont?: string;
-  contentFont?: string;
   cardBgColor?: string;
   cardBackgroundColor?: string;
   cardTitleColor?: string;
@@ -3758,31 +3753,14 @@ export function saveStorySettings(settings: StorySettings): void {
 export function getHomeValuesSettings(data?: unknown): ValuesSettings {
   const root =
     data && typeof data === "object" ? (data as Record<string, unknown>) : {};
-  const home =
-    (root.home as Record<string, unknown> | undefined) ||
-    (root.home_page as Record<string, unknown> | undefined) ||
-    {};
-  const layoutGlobal =
-    (root.layoutGlobal as Record<string, unknown> | undefined) ||
-    (root.layout_global as Record<string, unknown> | undefined) ||
-    {};
   const values =
-    (root[SECTION_IDS.homeValues] as Record<string, unknown> | undefined) ||
-    (root.homeValuesSettings as Record<string, unknown> | undefined) ||
     (root.homeValues as Record<string, unknown> | undefined) ||
     (root.home_values as Record<string, unknown> | undefined) ||
-    (home.homeValuesSettings as Record<string, unknown> | undefined) ||
-    (root.valuesSection as Record<string, unknown> | undefined) ||
-    (home.valuesSection as Record<string, unknown> | undefined) ||
-    (home.values as Record<string, unknown> | undefined) ||
-    (layoutGlobal.homeValuesSettings as Record<string, unknown> | undefined) ||
-    (layoutGlobal.values as Record<string, unknown> | undefined) ||
-    (root.values as Record<string, unknown> | undefined) ||
     {};
   const appearance = values.appearance as Record<string, unknown> | undefined;
   const title =
-    typeof values.title === "string" ? values.title : defaultValuesSettings.title;
-  const subtitle = typeof values.subtitle === "string" ? values.subtitle : defaultValuesSettings.subtitle;
+    typeof values.title === "string" ? values.title : "Nossos Valores";
+  const subtitle = typeof values.subtitle === "string" ? values.subtitle : "";
   const items = Array.isArray(values.items)
     ? values.items
     : defaultValuesSettings.items || [];
@@ -3791,31 +3769,27 @@ export function getHomeValuesSettings(data?: unknown): ValuesSettings {
     (typeof values.bgColor === "string" && values.bgColor) ||
     (typeof appearance?.backgroundColor === "string" &&
       appearance.backgroundColor) ||
-    (values.values_bg as string) ||
-    defaultValuesSettings.backgroundColor;
+    "transparent";
   const bgColor =
     (typeof values.bgColor === "string" && values.bgColor) ||
     (typeof values.backgroundColor === "string" && values.backgroundColor) ||
-    (values.values_bg as string) ||
-    defaultValuesSettings.bgColor;
+    "transparent";
   const cardBgColor =
     (typeof values.cardBgColor === "string" && values.cardBgColor) ||
     (typeof values.cardBackgroundColor === "string" &&
       values.cardBackgroundColor) ||
-    defaultValuesSettings.cardBgColor;
+    "#ffffff";
   const cardTextColor =
     (typeof values.cardTextColor === "string" && values.cardTextColor) ||
-    defaultValuesSettings.cardTextColor;
+    "#000000";
   const iconColor =
-    (typeof values.iconColor === "string" && values.iconColor) ||
-    defaultValuesSettings.iconColor;
+    (typeof values.iconColor === "string" && values.iconColor) || "#000000";
   const borderRadius =
     (typeof values.borderRadius === "string" && values.borderRadius) ||
-    defaultValuesSettings.borderRadius;
+    "0.5rem";
 
   return {
     ...defaultValuesSettings,
-    ...values,
     title,
     subtitle,
     items,
@@ -3843,43 +3817,39 @@ export function getAboutUsValuesSettings(data?: unknown): ValuesSettings {
   const root =
     data && typeof data === "object" ? (data as Record<string, unknown>) : {};
   const values =
-    (root[SECTION_IDS.aboutValues] as Record<string, unknown> | undefined) ||
-    (root.aboutUsValuesSettings as Record<string, unknown> | undefined) ||
     (root.aboutUsValues as Record<string, unknown> | undefined) ||
     (root.about_us_values as Record<string, unknown> | undefined) ||
     {};
   const title =
-    typeof values.title === "string" ? values.title : defaultValuesSettings.title;
-  const subtitle = typeof values.subtitle === "string" ? values.subtitle : defaultValuesSettings.subtitle;
+    typeof values.title === "string" ? values.title : "Nossos Valores";
+  const subtitle = typeof values.subtitle === "string" ? values.subtitle : "";
   const items = Array.isArray(values.items)
     ? values.items
     : defaultValuesSettings.items || [];
   const backgroundColor =
     (typeof values.backgroundColor === "string" && values.backgroundColor) ||
     (typeof values.bgColor === "string" && values.bgColor) ||
-    defaultValuesSettings.backgroundColor;
+    "transparent";
   const bgColor =
     (typeof values.bgColor === "string" && values.bgColor) ||
     (typeof values.backgroundColor === "string" && values.backgroundColor) ||
-    defaultValuesSettings.bgColor;
+    "transparent";
   const cardBgColor =
     (typeof values.cardBgColor === "string" && values.cardBgColor) ||
     (typeof values.cardBackgroundColor === "string" &&
       values.cardBackgroundColor) ||
-    defaultValuesSettings.cardBgColor;
+    "#ffffff";
   const cardTextColor =
     (typeof values.cardTextColor === "string" && values.cardTextColor) ||
-    defaultValuesSettings.cardTextColor;
+    "#000000";
   const iconColor =
-    (typeof values.iconColor === "string" && values.iconColor) ||
-    defaultValuesSettings.iconColor;
+    (typeof values.iconColor === "string" && values.iconColor) || "#000000";
   const borderRadius =
     (typeof values.borderRadius === "string" && values.borderRadius) ||
-    defaultValuesSettings.borderRadius;
+    "0.5rem";
 
   return {
     ...defaultValuesSettings,
-    ...values,
     title,
     subtitle,
     items,

@@ -15,7 +15,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { BookingStepSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
-import { ResetSectionVisuals } from "../../components/ResetSectionVisuals";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -23,7 +22,6 @@ interface BookingStepEditorProps {
   settings: BookingStepSettings;
   onUpdate: (updates: Partial<BookingStepSettings>) => void;
   onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
-  onReset?: () => void;
   onHighlight?: (sectionId: string) => void;
   hasChanges?: boolean;
   onSave?: () => void;
@@ -35,7 +33,6 @@ export function BookingStepEditor({
   settings,
   onUpdate,
   onUpdateBackground,
-  onReset,
   onHighlight,
   hasChanges,
   onSave: externalOnSave,
@@ -83,13 +80,6 @@ export function BookingStepEditor({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      {onReset && (
-        <ResetSectionVisuals
-          label={`Resetar Estilo do ${title}`}
-          description="Restaura cores, fontes e fundo para o padrão da seção."
-          onReset={onReset}
-        />
-      )}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       </div>

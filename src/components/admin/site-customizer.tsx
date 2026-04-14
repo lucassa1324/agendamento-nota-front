@@ -3,6 +3,7 @@
 import { LayoutDashboard, PanelLeftClose, Save, Settings2, X } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Joyride, { type CallBackProps, STATUS, type Step } from "react-joyride";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { ThemeInjectorClient } from "@/components/theme-injector-client";
 
@@ -63,6 +64,7 @@ export function SiteCustomizer() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isTourRunning, setIsTourRunning] = useState(false);
 
   const { businessId: studioId } = useStudio();
   const {
@@ -163,6 +165,22 @@ export function SiteCustomizer() {
     isPublishing,
     setActiveSectionId,
   } = useSiteEditor(iframeRef);
+
+  useEffect(() => {
+    const hasSeenCustomizerTour = localStorage.getItem("tour_customizer_v1");
+    if (hasSeenCustomizerTour === "true") return;
+    const timer = window.setTimeout(() => {
+      setIsTourRunning(true);
+    }, 600);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const handleTourCallback = (data: CallBackProps) => {
+    if (data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED) {
+      localStorage.setItem("tour_customizer_v1", "true");
+      setIsTourRunning(false);
+    }
+  };
 
   // Use a ref to store the latest fetchCustomization function to break the dependency loop
   const fetchCustomizationRef = useRef(fetchCustomization);
@@ -515,6 +533,51 @@ export function SiteCustomizer() {
 
   return (
     <div className="flex flex-col h-screen w-full overflow-hidden overflow-x-hidden bg-background">
+      <Joyride
+        run={isTourRunning}
+        continuous
+        showProgress
+        showSkipButton
+        disableOverlayClose
+        callback={handleTourCallback}
+        locale={{
+          back: "Voltar",
+          close: "Fechar",
+          last: "Concluir",
+          next: "Próximo",
+          skip: "Pular",
+        }}
+        steps={
+          [
+            {
+              target: '[data-tour="customizer-tools-button"]',
+              content:
+                "Comece por aqui para abrir as ferramentas de edição do seu site.",
+              placement: "bottom",
+            },
+            {
+              target: '[data-tour="customizer-tools-sidebar"]',
+              content:
+                "Nesta lateral você escolhe a seção da página e altera textos, cores e visibilidade.",
+            },
+            {
+              target: '[data-tour="customizer-preview-controls"]',
+              content:
+                "Use estes controles para alternar o preview entre desktop e mobile.",
+            },
+            {
+              target: '[data-tour="customizer-preview-area"]',
+              content:
+                "Aqui você acompanha as alterações em tempo real antes de publicar.",
+            },
+          ] satisfies Step[]
+        }
+        styles={{
+          options: {
+            zIndex: 10000,
+          },
+        }}
+      />
       {/* Top Header */}
       <header className="h-14 border-b border-border bg-card flex items-center justify-between px-2 sm:px-4 shrink-0 z-30 shadow-sm gap-2 overflow-hidden">
         <div className="flex items-center gap-1 sm:gap-2 min-w-0">

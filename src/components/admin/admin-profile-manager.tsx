@@ -10,7 +10,6 @@ import {
   Loader2,
   Mail,
   User,
-  Building2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -24,36 +23,23 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
-import { signOut, updateUser, useSession, authClient } from "@/lib/auth-client";
+import { customFetch } from "@/lib/api-client";
+import { signOut, updateUser, useSession } from "@/lib/auth-client";
 import { SubscriptionCancellationModal } from "./subscription-cancellation-modal";
 
-const maskCpf = (v: string) => {
-  v = v.replace(/\D/g, "");
-  if (v.length > 11) v = v.substring(0, 11);
-  return v
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-};
-
-const maskCnpj = (v: string) => {
-  v = v.replace(/\D/g, "");
-  if (v.length > 14) v = v.substring(0, 14);
-  return v
-    .replace(/^(\d{2})(\d)/, "$1.$2")
-    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-    .replace(/\.(\d{3})(\d)/, ".$1/$2")
-    .replace(/(\d{4})(\d)/, "$1-$2");
-};
+interface UserWithBusiness {
+  business?: {
+    subscriptionId?: string;
+  };
+}
 
 export function AdminProfileManager() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const { data: session } = useSession();
+  const { data: session, refetch } = useSession();
   const {
     studio,
     isLoading: isLoadingStudio,
@@ -61,21 +47,28 @@ export function AdminProfileManager() {
   } = useStudio();
   const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
-  const [docType, setDocType] = useState<"cpf" | "cnpj">("cpf");
+  const [isSavingCpfCnpj, setIsSavingCpfCnpj] = useState(false);
+  const [cpfCnpj, setCpfCnpj] = useState("");
 
-  const handleSubscribe = async () => {
-    const user = session?.user as { cpfCnpj?: string } | undefined;
-    const customerCpfCnpj = (user?.cpfCnpj || "").replace(/\D/g, "");
+  const normalizeCpfCnpj = (value: string) => value.replace(/\D/g, "");
 
-    if (!customerCpfCnpj) {
-      toast({
-        title: "Documento necessário",
-        description: "Por favor, preencha seu CPF ou CNPJ no formulário de perfil abaixo antes de realizar a assinatura.",
-        variant: "destructive",
-      });
-      return;
+  const formatCpfCnpj = (value: string) => {
+    const numbers = normalizeCpfCnpj(value).slice(0, 14);
+    if (numbers.length <= 11) {
+      return numbers
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
     }
 
+    return numbers
+      .replace(/^(\d{2})(\d)/, "$1.$2")
+      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/\.(\d{3})(\d)/, ".$1/$2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
+  };
+
+  const handleSubscribe = async () => {
     if (!session?.user?.email) {
       toast({
         title: "Erro",
@@ -88,12 +81,23 @@ export function AdminProfileManager() {
     const planToUse = {
       id: "pro",
       name: "Pro",
+      price: 49.9,
     };
 
     setIsSubscribing(true);
     try {
+      const customerCpfCnpj = normalizeCpfCnpj(cpfCnpj);
+      if (customerCpfCnpj.length !== 11 && customerCpfCnpj.length !== 14) {
+        toast({
+          title: "CPF/CNPJ obrigatório",
+          description:
+            "Cadastre seu CPF/CNPJ na aba Minha Conta para continuar com o pagamento.",
+          variant: "destructive",
+        });
+        return;
+      }
       const businessId =
-        (session?.user as { businessId?: string })?.businessId || studio?.id;
+        (session.user as { businessId?: string }).businessId || studio?.id;
 
       // 1. Obter IP (Opcional, mas Asaas costuma pedir se for cartão)
       let clientIp = "127.0.0.1";
@@ -112,10 +116,11 @@ export function AdminProfileManager() {
           "x-client-ip": clientIp,
         },
         body: JSON.stringify({
-          customerEmail: session?.user?.email,
-          customerName: session?.user?.name,
+          customerEmail: session.user.email,
+          customerName: session.user.name,
           customerCpfCnpj,
           businessId,
+          planPrice: planToUse.price,
           planName: planToUse.name,
         }),
       });
@@ -148,7 +153,7 @@ export function AdminProfileManager() {
   const [profile, setProfile] = useState({
     name: "",
     email: "",
-    cpfCnpj: "",
+    // phone: "", // Better-auth user object doesn't have phone by default unless customized
   });
 
   const [passwords, setPasswords] = useState({
@@ -163,36 +168,54 @@ export function AdminProfileManager() {
 
   useEffect(() => {
     if (session?.user) {
-      const rawDoc = (session.user as any).cpfCnpj || "";
-      const isCnpj = rawDoc.replace(/\D/g, "").length > 11;
-      const newDocType = isCnpj ? "cnpj" : "cpf";
-      const maskedDoc = isCnpj ? maskCnpj(rawDoc) : maskCpf(rawDoc);
-      
-      // Só atualiza se for diferente para evitar loops ou sobrescrever o que o usuário está digitando
-      // Adicionalmente, se o valor na sessão for vazio e o local tiver algo, não sobrescrevemos
-      // para evitar que o campo suma durante o processo de salvamento/atualização da sessão
-      const sessionName = session.user.name || "";
-      const sessionEmail = session.user.email || "";
-
-      const shouldUpdateName = profile.name !== sessionName && sessionName !== "";
-      const shouldUpdateEmail = profile.email !== sessionEmail && sessionEmail !== "";
-      const shouldUpdateCpf = profile.cpfCnpj !== maskedDoc && maskedDoc !== "";
-
-      // Se o estado local estiver vazio (primeira carga), sempre atualizamos
-      const isInitialLoad = profile.name === "" && profile.cpfCnpj === "";
-
-      if (isInitialLoad || shouldUpdateName || shouldUpdateEmail || shouldUpdateCpf) {
-        if (maskedDoc !== "") {
-          setDocType(newDocType);
-        }
-        setProfile({
-          name: sessionName || profile.name,
-          email: sessionEmail || profile.email,
-          cpfCnpj: maskedDoc || profile.cpfCnpj,
-        });
-      }
+      setProfile({
+        name: session.user.name || "",
+        email: session.user.email || "",
+      });
+      setCpfCnpj(formatCpfCnpj((session.user as { cpfCnpj?: string }).cpfCnpj || ""));
     }
   }, [session]);
+
+  const handleSaveCpfCnpj = async () => {
+    const normalizedCpfCnpj = normalizeCpfCnpj(cpfCnpj);
+    if (normalizedCpfCnpj.length !== 11 && normalizedCpfCnpj.length !== 14) {
+      toast({
+        title: "CPF/CNPJ inválido",
+        description: "Informe um CPF (11 dígitos) ou CNPJ (14 dígitos).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingCpfCnpj(true);
+    try {
+      const response = await customFetch("/users/me/cpf-cnpj", {
+        method: "PATCH",
+        body: JSON.stringify({ cpfCnpj: normalizedCpfCnpj }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Não foi possível salvar o CPF/CNPJ.");
+      }
+
+      setCpfCnpj(formatCpfCnpj(data?.cpfCnpj || normalizedCpfCnpj));
+      await refetch();
+      toast({
+        title: "CPF/CNPJ salvo",
+        description: "Seu documento foi atualizado com sucesso.",
+      });
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível salvar seu CPF/CNPJ.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingCpfCnpj(false);
+    }
+  };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,16 +224,9 @@ export function AdminProfileManager() {
     try {
       const { error } = await updateUser({
         name: profile.name,
-        // @ts-ignore - Better Auth doesn't know about cpfCnpj in types yet
-        cpfCnpj: profile.cpfCnpj.replace(/\D/g, ""),
       });
 
-      if (error) {
-        throw error;
-      }
-
-      // Força a atualização da sessão para que as mudanças apareçam imediatamente
-      await authClient.getSession();
+      if (error) throw error;
 
       toast({
         title: "Sucesso!",
@@ -322,53 +338,33 @@ export function AdminProfileManager() {
     }
   };
 
-  const getNextInvoiceDate = (dateString: string | Date) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    // Cria data para este mês com o mesmo dia
-    const nextInvoice = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      date.getDate(),
-    );
-
-    // Se a data deste mês já passou, avança para o próximo mês
-    if (nextInvoice < today) {
-      nextInvoice.setMonth(nextInvoice.getMonth() + 1);
-    }
-    return nextInvoice;
-  };
-
-  const getBillingCycleDates = () => {
-    const nextDueRaw =
+  const resolveBillingDates = () => {
+    const businessStatus = (session?.user as any)?.business?.subscriptionStatus;
+    const businessTrialEndsAt =
       (session?.user as any)?.business?.trialEndsAt || studio?.trialEndsAt;
 
-    if (nextDueRaw) {
-      const nextDueDate = new Date(nextDueRaw);
-      if (!Number.isNaN(nextDueDate.getTime())) {
-        const cycleStartDate = new Date(nextDueDate);
-        cycleStartDate.setMonth(cycleStartDate.getMonth() - 1);
-        return {
-          cycleStartDate,
-          nextDueDate,
-        };
-      }
+    if (
+      businessTrialEndsAt &&
+      ["active", "past_due", "unpaid", "canceled"].includes(businessStatus)
+    ) {
+      const planEnd = new Date(businessTrialEndsAt);
+      const planStart = new Date(planEnd);
+      planStart.setMonth(planStart.getMonth() - 1);
+      return { planStart, nextInvoice: planEnd };
     }
 
-    if (studio?.createdAt) {
-      const createdAtDate = new Date(studio.createdAt);
-      if (!Number.isNaN(createdAtDate.getTime())) {
-        return {
-          cycleStartDate: createdAtDate,
-          nextDueDate: getNextInvoiceDate(createdAtDate),
-        };
-      }
+    if (!studio?.createdAt) {
+      return null;
     }
 
-    return null;
+    const start = new Date(studio.createdAt);
+    const nextInvoice = new Date(start);
+    nextInvoice.setMonth(nextInvoice.getMonth() + 1);
+    return { planStart: start, nextInvoice };
   };
 
-  const billingCycleDates = getBillingCycleDates();
+  const billingDates = resolveBillingDates();
+  const hasValidCpfCnpj = [11, 14].includes(normalizeCpfCnpj(cpfCnpj).length);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -402,48 +398,6 @@ export function AdminProfileManager() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="cpfCnpj">Documento (Obrigatório para pagamentos)</Label>
-                <Tabs 
-                  value={docType} 
-                  onValueChange={(v) => {
-                    const newType = v as "cpf" | "cnpj";
-                    setDocType(newType);
-                    // Aplica a nova máscara ao valor atual
-                    const rawValue = profile.cpfCnpj.replace(/\D/g, "");
-                    setProfile({
-                      ...profile,
-                      cpfCnpj: newType === "cpf" ? maskCpf(rawValue) : maskCnpj(rawValue)
-                    });
-                  }} 
-                  className="h-8"
-                >
-                  <TabsList className="h-8 p-0.5 bg-muted/50">
-                    <TabsTrigger value="cpf" className="h-7 text-[10px] px-2">CPF</TabsTrigger>
-                    <TabsTrigger value="cnpj" className="h-7 text-[10px] px-2">CNPJ</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-              <div className="relative">
-                <CreditCard className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="cpfCnpj"
-                  className="pl-10"
-                  placeholder={docType === "cpf" ? "000.000.000-00" : "00.000.000/0000-00"}
-                  value={profile.cpfCnpj}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setProfile({ 
-                      ...profile, 
-                      cpfCnpj: docType === "cpf" ? maskCpf(val) : maskCnpj(val) 
-                    });
-                  }}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="email">E-mail de Login</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
@@ -458,6 +412,38 @@ export function AdminProfileManager() {
               <p className="text-[10px] text-muted-foreground">
                 O e-mail de login não pode ser alterado diretamente aqui.
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cpf-cnpj">CPF/CNPJ para cobrança</Label>
+              <Input
+                id="cpf-cnpj"
+                value={cpfCnpj}
+                onChange={(e) => setCpfCnpj(formatCpfCnpj(e.target.value))}
+                placeholder="Digite seu CPF ou CNPJ"
+                autoComplete="off"
+                required
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Esse documento é obrigatório para liberar a assinatura e gerar o
+                boleto.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleSaveCpfCnpj}
+                disabled={isSavingCpfCnpj}
+              >
+                {isSavingCpfCnpj ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Salvando CPF/CNPJ...
+                  </>
+                ) : (
+                  "Salvar CPF/CNPJ"
+                )}
+              </Button>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>
@@ -657,16 +643,14 @@ export function AdminProfileManager() {
                     </div>
                   </div>
 
-                  {billingCycleDates && (
+                  {billingDates && (
                     <>
                       <div className="space-y-1">
                         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Início do Ciclo
+                          Início do Plano
                         </p>
                         <p className="text-sm font-semibold">
-                          {billingCycleDates.cycleStartDate.toLocaleDateString(
-                            "pt-BR",
-                          )}
+                          {billingDates.planStart.toLocaleDateString("pt-BR")}
                         </p>
                       </div>
                       <div className="space-y-1">
@@ -674,9 +658,7 @@ export function AdminProfileManager() {
                           Próxima Fatura
                         </p>
                         <p className="text-sm font-semibold">
-                          {billingCycleDates.nextDueDate.toLocaleDateString(
-                            "pt-BR",
-                          )}
+                          {billingDates.nextInvoice.toLocaleDateString("pt-BR")}
                         </p>
                       </div>
                     </>
@@ -699,10 +681,16 @@ export function AdminProfileManager() {
                             ? "Sua assinatura está com pagamento pendente. Regularize agora para evitar interrupções no serviço."
                             : "Seu período de teste está ativo. Assine agora para garantir a continuidade do seu acesso e aproveitar todos os recursos."}
                         </p>
+                        {!hasValidCpfCnpj && (
+                          <p className="text-xs text-red-600 mt-2">
+                            Cadastre seu CPF/CNPJ na seção de dados pessoais
+                            para liberar o pagamento.
+                          </p>
+                        )}
                       </div>
                       <Button
                         onClick={() => handleSubscribe()}
-                        disabled={isSubscribing}
+                        disabled={isSubscribing || !hasValidCpfCnpj}
                         className="w-full sm:w-auto bg-primary hover:bg-primary/90 min-w-50 shadow-sm"
                       >
                         {isSubscribing ? (
@@ -766,7 +754,8 @@ export function AdminProfileManager() {
         isOpen={isCancellationModalOpen}
         onClose={() => setIsCancellationModalOpen(false)}
         subscriptionId={
-          (session?.user as any)?.business?.subscriptionId
+          (session?.user as unknown as UserWithBusiness)?.business
+            ?.subscriptionId
         }
       />
     </div>

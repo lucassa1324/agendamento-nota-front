@@ -26,13 +26,11 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { defaultHeroSettings } from "@/lib/booking-data";
 import { renderSafeText } from "@/lib/utils";
 import {
   BackgroundEditor,
   type BackgroundSettings,
 } from "../site_editor/components/BackgroundEditor";
-import { ResetSectionVisuals } from "../site_editor/components/ResetSectionVisuals";
 import { SectionSubtitleEditor } from "../site_editor/components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../site_editor/components/SectionTitleEditor";
 
@@ -114,7 +112,7 @@ export function HeroEditor({
   settings,
   onUpdate,
   onUpdateBackground,
-  onReset,
+  onReset: _onReset,
   hasChanges,
   onSave: externalOnSave,
   isSaving,
@@ -132,14 +130,6 @@ export function HeroEditor({
     }
   };
 
-  const handleResetToBase = () => {
-    const baseSettings =
-      typeof structuredClone === "function"
-        ? structuredClone(defaultHeroSettings)
-        : JSON.parse(JSON.stringify(defaultHeroSettings));
-    onUpdate(baseSettings);
-  };
-
   // Helper to ensure updates are propagated correctly
   const handleUpdate = (updates: Partial<HeroEditorProps["settings"]>) => {
     console.log(">>> [HeroEditor] handleUpdate chamado com:", updates);
@@ -154,13 +144,6 @@ export function HeroEditor({
 
   return (
     <div className="space-y-4 sm:space-y-6 relative">
-      {onReset && (
-        <ResetSectionVisuals
-          label="Resetar Seção do Banner Principal"
-          description="Restaura o Banner Principal para o padrão da seção."
-          onReset={handleResetToBase}
-        />
-      )}
       <Tabs defaultValue="content" className="w-full">
         <TabsList className="grid w-full grid-cols-2 h-8 sm:h-9 mb-3 sm:mb-4">
           <TabsTrigger value="content" className="text-[11px] sm:text-xs">

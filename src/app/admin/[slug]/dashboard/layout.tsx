@@ -7,6 +7,7 @@ import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { BackendTrigger } from "@/components/admin/BackendTrigger";
 import { SubscriptionBlockScreen } from "@/components/admin/subscription-block-screen";
 import { TrialBanner } from "@/components/admin/trial-banner";
+import { TutorialReminder } from "@/components/admin/tutorial-reminder";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { Button } from "@/components/ui/button";
 import {
@@ -272,17 +273,13 @@ function AdminLayoutContent({
             ? "O estúdio especificado na URL não foi encontrado."
             : `Houve um problema ao carregar os dados: ${studioError}`}
         </p>
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            onClick={() => window.location.reload()}
-          >
-            Tentar novamente
-          </Button>
-          <Button type="button" variant="outline" onClick={handleLogout}>
-            Voltar para login
-          </Button>
-        </div>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
+        >
+          Tentar novamente
+        </button>
       </div>
     );
   }
@@ -337,6 +334,7 @@ function AdminLayoutContent({
         >
           <BackendTrigger />
           <TrialBanner />
+          <TutorialReminder />
           {shouldBlockAccess ? (
             <SubscriptionBlockScreen status={blockStatus} />
           ) : (

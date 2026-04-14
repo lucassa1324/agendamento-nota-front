@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
   Bell,
+  BookOpen,
   Briefcase,
   CalendarDays,
   CalendarIcon,
@@ -13,7 +14,6 @@ import {
   Globe,
   ImageIcon,
   LayoutDashboard,
-
   ListTodo,
   LogOut,
   Package,
@@ -29,7 +29,7 @@ import { PushNotificationsButton } from "@/components/admin/push-notifications-b
 import { SystemNotifications } from "@/components/admin/system-notifications";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
-import { BASE_DOMAIN } from "@/lib/auth-client";
+import { BASE_DOMAIN, LANDING_PAGE_URL } from "@/lib/auth-client";
 import { cn, getFullImageUrl } from "@/lib/utils";
 
 interface AdminNavItem {
@@ -135,6 +135,16 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
       { title: "Galeria", href: "/admin/dashboard/galeria", icon: ImageIcon },
     ],
   },
+  {
+    group: "Ajuda e Suporte",
+    items: [
+      {
+        title: "Tutoriais",
+        href: `${LANDING_PAGE_URL}/tutorials`,
+        icon: BookOpen,
+      },
+    ],
+  },
 ];
 
 
@@ -176,7 +186,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
           <div className="relative w-full max-w-45 h-15 flex items-center justify-center">
             <Image
               src={getFullImageUrl(studio.logoUrl)}
-              alt="Logo do Studio"
+              alt="Logo do Negócio"
               fill
               className="object-contain rounded-none"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -225,6 +235,30 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
             </p>
             {group.items.map((item) => {
               const dynamicHref = getDynamicHref(item.href);
+              const isExternal = item.href.startsWith("http");
+              
+              const content = (
+                <>
+                  <item.icon className="w-4 h-4" />
+                  {item.title}
+                  {isExternal && <ExternalLink className="w-3 h-3 ml-auto opacity-50" />}
+                </>
+              );
+
+              if (isExternal) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  >
+                    {content}
+                  </a>
+                );
+              }
+
               return (
                 <Link
                   key={item.href}
@@ -236,8 +270,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
                       : "text-foreground hover:bg-accent hover:text-accent-foreground",
                   )}
                 >
-                  <item.icon className="w-4 h-4" />
-                  {item.title}
+                  {content}
                 </Link>
               );
             })}

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import Joyride, { type CallBackProps, STATUS, type Step } from "react-joyride";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import { appointmentService } from "@/lib/api-appointments";
@@ -25,6 +26,7 @@ export function DashboardStats() {
   const pathname = usePathname();
   const { studio } = useStudio();
   const { data: session } = useSession();
+  const [isTourRunning, setIsTourRunning] = useState(false);
   const [sessionData, setSessionData] = useState<
     typeof authClient.$Infer.Session | null
   >(null);
@@ -176,6 +178,23 @@ export function DashboardStats() {
     loadStats();
   }, [loadStats]);
 
+  useEffect(() => {
+    if (!pathname?.includes("/dashboard/overview")) return;
+    const hasSeenOverviewTour = localStorage.getItem("tour_overview_v1");
+    if (hasSeenOverviewTour === "true") return;
+    const timer = window.setTimeout(() => {
+      setIsTourRunning(true);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
+
+  const handleTourCallback = (data: CallBackProps) => {
+    if (data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED) {
+      localStorage.setItem("tour_overview_v1", "true");
+      setIsTourRunning(false);
+    }
+  };
+
   // Busca dados atualizados da sessão para garantir que temos o status mais recente (Igual ao TrialBanner)
   useEffect(() => {
     const fetchSession = async () => {
@@ -285,6 +304,51 @@ export function DashboardStats() {
 
   return (
     <div className="space-y-4">
+      <Joyride
+        run={isTourRunning}
+        continuous
+        showProgress
+        showSkipButton
+        disableOverlayClose
+        callback={handleTourCallback}
+        locale={{
+          back: "Voltar",
+          close: "Fechar",
+          last: "Concluir",
+          next: "Próximo",
+          skip: "Pular",
+        }}
+        steps={
+          [
+            {
+              target: '[data-tour="overview-title"]',
+              content:
+                "Aqui você acompanha o resumo geral do seu negócio em tempo real.",
+              placement: "bottom",
+            },
+            {
+              target: '[data-tour="overview-card-today"]',
+              content:
+                "Este card mostra quantos agendamentos você tem hoje para organizar sua operação.",
+            },
+            {
+              target: '[data-tour="overview-card-revenue"]',
+              content:
+                "Aqui você vê o faturamento do mês com base nos atendimentos concluídos.",
+            },
+            {
+              target: '[data-tour="overview-card-status"]',
+              content:
+                "Use este indicador para conferir se a agenda está aberta ou fechada.",
+            },
+          ] satisfies Step[]
+        }
+        styles={{
+          options: {
+            zIndex: 10000,
+          },
+        }}
+      />
       {stats.totalBookings === 0 && !billingError && (
         <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
           Você ainda não tem agendamentos neste período.
