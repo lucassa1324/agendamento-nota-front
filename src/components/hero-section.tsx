@@ -31,6 +31,7 @@ import {
   sanitizeSection,
 } from "@/lib/booking-data";
 import type { SiteConfigData } from "@/lib/site-config-types";
+import type { HeroTemplateTitleSize } from "@/components/admin/site_editor/editor";
 import { cn, renderSafeText } from "@/lib/utils";
 import {
   SectionBackground,
@@ -48,6 +49,13 @@ const iconMap: Record<string, LucideIcon> = {
   Gem,
   Smile,
   Award,
+};
+
+const heroTitleSizeClassMap: Record<HeroTemplateTitleSize, string> = {
+  sm: "text-4xl md:text-5xl",
+  md: "text-5xl md:text-7xl",
+  lg: "text-6xl md:text-8xl",
+  xl: "text-7xl md:text-9xl",
 };
 
 export function HeroSection() {
@@ -181,6 +189,9 @@ export function HeroSection() {
             appearance.primaryButtonTextColor ||
             content.primaryButtonTextColor,
         ),
+        primaryButtonTransparent:
+          (rawHero.primaryButtonTransparent ??
+            content.primaryButtonTransparent) === true,
         primaryButtonLink:
           rawHero.primaryButtonLink ?? content.primaryButtonLink,
         secondaryButton: rawHero.secondaryButton ?? content.secondaryButton,
@@ -198,6 +209,9 @@ export function HeroSection() {
             appearance.secondaryButtonTextColor ||
             content.secondaryButtonTextColor,
         ),
+        secondaryButtonTransparent:
+          (rawHero.secondaryButtonTransparent ??
+            content.secondaryButtonTransparent) !== false,
         secondaryButtonLink:
           rawHero.secondaryButtonLink ?? content.secondaryButtonLink,
         titleColor: sanitizeColor(
@@ -210,6 +224,10 @@ export function HeroSection() {
         ),
         titleFont:
           rawHero.titleFont || appearance.titleFont || content.titleFont,
+        titleSize:
+          (rawHero.titleSize ||
+            content.titleSize ||
+            defaultHeroSettings.titleSize) as HeroTemplateTitleSize,
         subtitleFont:
           rawHero.subtitleFont ||
           appearance.subtitleFont ||
@@ -472,6 +490,9 @@ export function HeroSection() {
                   appearance.primaryButtonTextColor ||
                   content.primaryButtonTextColor,
               ) || "",
+            primaryButtonTransparent:
+              (rawHero.primaryButtonTransparent ??
+                content.primaryButtonTransparent) === true,
             primaryButtonLink:
               rawHero.primaryButtonLink ?? content.primaryButtonLink,
             secondaryButton: rawHero.secondaryButton ?? content.secondaryButton,
@@ -491,6 +512,9 @@ export function HeroSection() {
                   appearance.secondaryButtonTextColor ||
                   content.secondaryButtonTextColor,
               ) || "",
+            secondaryButtonTransparent:
+              (rawHero.secondaryButtonTransparent ??
+                content.secondaryButtonTransparent) !== false,
             secondaryButtonLink:
               rawHero.secondaryButtonLink ?? content.secondaryButtonLink,
             titleColor:
@@ -507,6 +531,10 @@ export function HeroSection() {
               ) || "",
             titleFont:
               rawHero.titleFont || appearance.titleFont || content.titleFont,
+            titleSize:
+              (rawHero.titleSize ||
+                content.titleSize ||
+                defaultHeroSettings.titleSize) as HeroTemplateTitleSize,
             subtitleFont:
               rawHero.subtitleFont ||
               appearance.subtitleFont ||
@@ -664,6 +692,10 @@ export function HeroSection() {
     secondaryValue === undefined || secondaryValue === null
       ? defaultHeroSettings.secondaryButton
       : renderSafeText(secondaryValue);
+  const titleSize = (customStyles.titleSize || "md") as HeroTemplateTitleSize;
+  const titleSizeClass = heroTitleSizeClassMap[titleSize] || heroTitleSizeClassMap.md;
+  const isPrimaryTransparent = customStyles.primaryButtonTransparent === true;
+  const isSecondaryTransparent = customStyles.secondaryButtonTransparent !== false;
 
   return (
     <section
@@ -721,7 +753,8 @@ export function HeroSection() {
           {customStyles.showTitle !== false && titleText.trim().length > 0 && (
             <h1
               className={cn(
-                "font-serif text-5xl md:text-7xl font-bold mb-6 text-balance leading-tight transition-all duration-300",
+                "font-serif font-bold mb-6 text-balance leading-tight transition-all duration-300",
+                titleSizeClass,
                 getHighlightClass("hero-title"),
               )}
               style={{
@@ -767,15 +800,23 @@ export function HeroSection() {
                   size="lg"
                   className={cn(
                     "h-14 px-8 text-base font-bold rounded-full shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                    isPrimaryTransparent && "shadow-none",
                     getHighlightClass("hero-primary-button"),
                   )}
                   style={{
-                    backgroundColor:
-                      customStyles.primaryButtonColor || "var(--primary)",
-                    color: customStyles.primaryButtonTextColor || "#ffffff",
+                    backgroundColor: isPrimaryTransparent
+                      ? "transparent"
+                      : customStyles.primaryButtonColor || "var(--primary)",
+                    borderColor: customStyles.primaryButtonColor || "var(--primary)",
+                    borderWidth: "1px",
+                    color: isPrimaryTransparent
+                      ? customStyles.primaryButtonColor || "var(--primary)"
+                      : customStyles.primaryButtonTextColor || "#ffffff",
                     fontFamily:
                       customStyles.primaryButtonFont || "var(--font-body)",
-                    boxShadow: `0 10px 15px -3px ${customStyles.primaryButtonColor ? `${customStyles.primaryButtonColor}40` : "rgba(var(--primary), 0.25)"}`,
+                    boxShadow: isPrimaryTransparent
+                      ? "none"
+                      : `0 10px 15px -3px ${customStyles.primaryButtonColor ? `${customStyles.primaryButtonColor}40` : "rgba(var(--primary), 0.25)"}`,
                   }}
                 >
                   <Link href={customStyles.primaryButtonLink || "/agendamento"}>
@@ -790,17 +831,23 @@ export function HeroSection() {
                   variant="outline"
                   size="lg"
                   className={cn(
-                    "h-14 px-8 text-base font-bold rounded-full bg-background/50 backdrop-blur-sm border-border hover:bg-background/80 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                    "h-14 px-8 text-base font-bold rounded-full backdrop-blur-sm border-border transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                    isSecondaryTransparent
+                      ? "bg-background/50 hover:bg-background/80"
+                      : "hover:opacity-90",
                     getHighlightClass("hero-secondary-button"),
                   )}
                   style={{
-                    color:
-                      customStyles.secondaryButtonTextColor ||
-                      customStyles.secondaryButtonColor ||
-                      "var(--primary)",
+                    color: isSecondaryTransparent
+                      ? customStyles.secondaryButtonTextColor ||
+                        customStyles.secondaryButtonColor ||
+                        "var(--primary)"
+                      : customStyles.secondaryButtonTextColor || "#ffffff",
                     borderColor:
                       customStyles.secondaryButtonColor || "var(--primary)",
-                    backgroundColor: "transparent",
+                    backgroundColor: isSecondaryTransparent
+                      ? "transparent"
+                      : customStyles.secondaryButtonColor || "var(--primary)",
                     fontFamily:
                       customStyles.secondaryButtonFont || "var(--font-body)",
                   }}

@@ -5,6 +5,7 @@ import {
   SectionSchema,
 } from "./schemas/site-customization-schema";
 import type { SiteConfigData } from "./site-config-types";
+import type { HeroTemplateTitleSize } from "@/components/admin/site_editor/editor";
 
 // --- Sincronização Global entre Abas via LocalStorage ---
 if (typeof window !== "undefined") {
@@ -1560,12 +1561,15 @@ export type HeroSettings = {
   imageX: number;
   imageY: number;
   titleFont: string;
+  titleSize?: HeroTemplateTitleSize;
   subtitleFont: string;
   badgeFont: string;
   primaryButtonColor: string;
   secondaryButtonColor: string;
   primaryButtonTextColor: string;
+  primaryButtonTransparent?: boolean;
   secondaryButtonTextColor: string;
+  secondaryButtonTransparent?: boolean;
   titleColor: string;
   subtitleColor: string;
   primaryButtonFont: string;
@@ -2916,12 +2920,15 @@ export const defaultHeroSettings: HeroSettings = {
   imageX: 50,
   imageY: 50,
   titleFont: "",
+  titleSize: "md",
   subtitleFont: "",
   badgeFont: "",
   primaryButtonColor: "#000000",
   secondaryButtonColor: "",
   primaryButtonTextColor: "#FFFFFF",
+  primaryButtonTransparent: false,
   secondaryButtonTextColor: "",
+  secondaryButtonTransparent: true,
   titleColor: "#000000",
   subtitleColor: "#000000",
   primaryButtonFont: "",

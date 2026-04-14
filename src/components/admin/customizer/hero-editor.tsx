@@ -2,11 +2,13 @@
 
 import {
   Award,
+  CheckCircle2,
   Crown,
   Flower2,
   Gem,
   Heart,
   Loader2,
+  type LucideIcon,
   Moon,
   Smile,
   Sparkles,
@@ -15,6 +17,13 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -26,7 +35,12 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { renderSafeText } from "@/lib/utils";
+import {
+  homeHeroTemplates,
+  type HeroTemplatePreset,
+  type HeroTemplateTitleSize,
+} from "@/components/admin/site_editor/editor";
+import { cn, renderSafeText } from "@/lib/utils";
 import {
   BackgroundEditor,
   type BackgroundSettings,
@@ -47,6 +61,207 @@ const iconOptions = [
   { name: "Award", icon: Award },
 ];
 
+const iconMap: Record<string, LucideIcon> = {
+  Sparkles,
+  Star,
+  Heart,
+  Crown,
+  Flower2,
+  Moon,
+  Sun,
+  Gem,
+  Smile,
+  Award,
+};
+
+const fontFamilyMap: Record<NonNullable<HeroTemplatePreset["fontFamily"]>, string> = {
+  sans: "Inter",
+  serif: "Playfair Display",
+  montserrat: "Montserrat",
+  lora: "Lora",
+  syne: "Syne",
+  bebas: "Bebas Neue",
+  space: "Space Grotesk",
+  poppins: "Poppins",
+  cinzel: "Cinzel",
+};
+
+const titleSizeClassMap: Record<HeroTemplateTitleSize, string> = {
+  sm: "text-sm",
+  md: "text-base",
+  lg: "text-lg",
+  xl: "text-xl",
+};
+
+type HeroTemplateCardProps = {
+  template: HeroTemplatePreset;
+  selected: boolean;
+  onClick: () => void;
+  onUseTemplate?: () => void;
+  compact?: boolean;
+};
+
+function HeroTemplateCard({
+  template,
+  selected,
+  onClick,
+  onUseTemplate,
+  compact = true,
+}: HeroTemplateCardProps) {
+  const [imageError, setImageError] = useState(false);
+  const BadgeIcon = template.badgeIcon ? iconMap[template.badgeIcon] : null;
+
+  return (
+    <div
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className={cn(
+        "text-left rounded-xl border overflow-hidden transition-all bg-background group/card cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+        selected
+          ? "border-primary shadow-md ring-1 ring-primary/40"
+          : "border-border hover:border-primary/40 hover:shadow-sm",
+      )}
+    >
+      <div className={cn("relative", compact ? "aspect-video" : "aspect-16/10")}>
+        {template.bgType === "image" && !imageError ? (
+          <>
+            <img
+              src={template.bgImage}
+              alt={template.variationName || template.niche}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover/card:scale-105"
+              onError={() => setImageError(true)}
+            />
+            <div className="absolute inset-0 bg-black/55" />
+          </>
+        ) : (
+          <div
+            className="absolute inset-0 transition-colors duration-500 group-hover/card:bg-opacity-80"
+            style={{ backgroundColor: template.bgColor || "#111827" }}
+          />
+        )}
+
+        <div
+          className={cn(
+            "absolute inset-0 flex flex-col justify-between",
+            compact ? "p-3" : "p-6 sm:p-10 text-center items-center",
+          )}
+        >
+          <div className={cn(!compact && "flex flex-col items-center")}>
+            {!compact && selected && (
+              <div className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-primary text-primary-foreground px-2 py-1 text-[11px] font-semibold">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Selecionado
+              </div>
+            )}
+            <div
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full font-bold uppercase tracking-wide",
+                compact ? "px-2 py-0.5 text-[9px]" : "px-3 py-1 text-[11px]",
+              )}
+              style={{
+                backgroundColor: template.badgeColor || "rgba(255,255,255,0.14)",
+                color: template.badgeTextColor || "#ffffff",
+              }}
+            >
+              {BadgeIcon && (
+                <BadgeIcon className={cn(compact ? "h-2.5 w-2.5" : "h-3.5 w-3.5")} />
+              )}
+              <span>{template.badge}</span>
+            </div>
+            <h4
+              className={cn(
+                "font-bold leading-tight line-clamp-2",
+                compact ? "mt-2" : "mt-4 max-w-2xl",
+                compact
+                  ? titleSizeClassMap[template.titleSize || "md"]
+                  : "text-2xl sm:text-3xl md:text-4xl",
+              )}
+              style={{ color: template.titleColor || "#ffffff" }}
+            >
+              {template.title}
+            </h4>
+            {!compact && (
+              <p
+                className="mt-3 text-sm sm:text-base line-clamp-3 max-w-xl opacity-90"
+                style={{ color: template.subtitleColor || "#f3f4f6" }}
+              >
+                {template.subtitle}
+              </p>
+            )}
+          </div>
+
+          <div className={cn("flex items-center", compact ? "gap-2" : "gap-4 justify-center")}>
+            <div
+              className={cn(
+                "rounded-full font-bold transition-transform hover:scale-105",
+                compact ? "px-2 py-1 text-[9px]" : "px-5 py-2.5 text-sm",
+              )}
+              style={{
+                backgroundColor: template.primaryButtonTransparent
+                  ? "transparent"
+                  : template.primaryButtonColor || "#ffffff",
+                border: `1px solid ${template.primaryButtonColor || "#ffffff"}`,
+                color: template.primaryButtonTransparent
+                  ? template.primaryButtonColor || "#ffffff"
+                  : template.primaryButtonTextColor || "#111827",
+              }}
+            >
+              {template.primaryButton}
+            </div>
+            <div
+              className={cn(
+                "rounded-full font-bold bg-transparent transition-transform hover:scale-105",
+                compact ? "px-2 py-1 text-[9px]" : "px-5 py-2.5 text-sm",
+              )}
+              style={{
+                border: `1px solid ${template.secondaryButtonColor || "#ffffff"}`,
+                color: template.secondaryButtonTextColor || "#ffffff",
+              }}
+            >
+              {template.secondaryButton}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className={cn("border-t border-border/60 bg-background", compact ? "p-2" : "p-4 flex flex-col items-center text-center")}>
+        <p className={cn("font-bold leading-tight", compact ? "text-[11px]" : "text-base text-foreground")}>
+          {template.variationName || "Variacao"}
+        </p>
+        <p className={cn("text-muted-foreground", compact ? "text-[10px]" : "text-sm mt-0.5")}>
+          {template.niche}
+        </p>
+        {!compact && onUseTemplate && (
+          <Button
+            type="button"
+            className="mt-4 h-10 w-full max-w-60 font-bold"
+            variant={selected ? "default" : "outline"}
+            onClick={(event) => {
+              event.stopPropagation();
+              onUseTemplate();
+            }}
+          >
+            {selected ? (
+              <span className="flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Template Aplicado
+              </span>
+            ) : (
+              "Usar este template"
+            )}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export interface HeroEditorProps {
   settings: {
     // Badge Fields
@@ -60,6 +275,7 @@ export interface HeroEditorProps {
     title: string;
     titleFont: string;
     titleColor: string;
+    titleSize?: HeroTemplateTitleSize;
 
     // Subtitle Fields
     subtitle: string;
@@ -70,9 +286,11 @@ export interface HeroEditorProps {
     primaryButton?: string;
     primaryButtonColor?: string;
     primaryButtonTextColor?: string;
+    primaryButtonTransparent?: boolean;
     secondaryButton?: string;
     secondaryButtonColor?: string;
     secondaryButtonTextColor?: string;
+    secondaryButtonTransparent?: boolean;
 
     // Background Fields
     bgType: "color" | "image";
@@ -106,6 +324,7 @@ export interface HeroEditorProps {
   hasChanges?: boolean;
   onSave?: () => void;
   isSaving?: boolean;
+  showTemplateSelector?: boolean;
 }
 
 export function HeroEditor({
@@ -116,15 +335,20 @@ export function HeroEditor({
   hasChanges,
   onSave: externalOnSave,
   isSaving,
+  showTemplateSelector = false,
 }: HeroEditorProps) {
   const [localIsSaving, setLocalIsSaving] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState(
+    homeHeroTemplates[0]?.id ?? "",
+  );
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const isLoading = isSaving || localIsSaving;
 
   const handleSave = async () => {
     if (!externalOnSave || isLoading) return;
     setLocalIsSaving(true);
     try {
-      await externalOnSave();
+      externalOnSave();
     } finally {
       setLocalIsSaving(false);
     }
@@ -138,6 +362,62 @@ export function HeroEditor({
       settings,
     );
     onUpdate({ ...settings, ...updates });
+  };
+
+  const handleApplyTemplate = (templateId = selectedTemplateId) => {
+    const selectedTemplate = homeHeroTemplates.find((template) => template.id === templateId);
+    if (!selectedTemplate) return;
+
+    const mappedFont = selectedTemplate.fontFamily
+      ? fontFamilyMap[selectedTemplate.fontFamily]
+      : settings.titleFont;
+
+    handleUpdate({
+      showBadge: true,
+      badge: selectedTemplate.badge,
+      badgeIcon: selectedTemplate.badgeIcon,
+      title: selectedTemplate.title,
+      subtitle: selectedTemplate.subtitle,
+      primaryButton: selectedTemplate.primaryButton,
+      secondaryButton: selectedTemplate.secondaryButton,
+      titleSize: selectedTemplate.titleSize ?? settings.titleSize ?? "md",
+      primaryButtonTransparent:
+        selectedTemplate.primaryButtonTransparent ??
+        settings.primaryButtonTransparent ??
+        false,
+      secondaryButtonTransparent:
+        selectedTemplate.secondaryButtonTransparent ??
+        settings.secondaryButtonTransparent ??
+        true,
+      bgType: selectedTemplate.bgType,
+      bgImage: selectedTemplate.bgImage,
+      ...(selectedTemplate.bgColor !== undefined && {
+        bgColor: selectedTemplate.bgColor,
+      }),
+      titleFont: mappedFont,
+      subtitleFont: mappedFont,
+      badgeFont: mappedFont,
+      titleColor: selectedTemplate.titleColor ?? settings.titleColor,
+      subtitleColor: selectedTemplate.subtitleColor ?? settings.subtitleColor,
+      badgeColor: selectedTemplate.badgeColor ?? settings.badgeColor,
+      badgeTextColor: selectedTemplate.badgeTextColor ?? settings.badgeTextColor,
+      primaryButtonColor:
+        selectedTemplate.primaryButtonColor ?? settings.primaryButtonColor,
+      primaryButtonTextColor:
+        selectedTemplate.primaryButtonTextColor ??
+        settings.primaryButtonTextColor,
+      secondaryButtonColor:
+        selectedTemplate.secondaryButtonColor ?? settings.secondaryButtonColor,
+      secondaryButtonTextColor:
+        selectedTemplate.secondaryButtonTextColor ??
+        settings.secondaryButtonTextColor,
+      ...(selectedTemplate.bgType === "image"
+        ? {
+            imageOpacity: settings.imageOpacity || 1,
+            overlayOpacity: settings.overlayOpacity || 0.45,
+          }
+        : {}),
+    });
   };
 
   console.log(">>> [HeroEditor] RENDER: settings.bgImage =", settings.bgImage);
@@ -158,6 +438,73 @@ export function HeroEditor({
           value="content"
           className="space-y-3 sm:space-y-4 mt-0 relative z-10"
         >
+          {showTemplateSelector && (
+            <Button
+              type="button"
+              className="w-full h-10 shadow-sm font-bold flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground transition-all active:scale-95 mb-4"
+              onClick={() => setIsTemplateModalOpen(true)}
+            >
+              <Sparkles className="w-4 h-4 fill-current" />
+              Trocar Template
+            </Button>
+          )}
+
+          <Dialog open={isTemplateModalOpen} onOpenChange={setIsTemplateModalOpen}>
+            <DialogContent className="w-[98vw] max-w-[98vw] sm:max-w-[95vw] xl:max-w-350 h-[92vh] p-0 overflow-hidden flex flex-col border-none shadow-2xl">
+              <div className="flex-none px-6 py-5 border-b bg-background/50 backdrop-blur-sm relative z-20">
+                <DialogHeader className="gap-1">
+                  <DialogTitle className="text-xl font-bold">Galeria de Templates do Banner</DialogTitle>
+                  <DialogDescription className="text-sm">
+                    Escolha visualmente um template, clique em aplicar e continue editando normalmente.
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 bg-muted/20 scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-10">
+                  {homeHeroTemplates.map((template) => (
+                    <HeroTemplateCard
+                      key={template.id}
+                      template={template}
+                      selected={template.id === selectedTemplateId}
+                      onClick={() => setSelectedTemplateId(template.id)}
+                      onUseTemplate={() => {
+                        setSelectedTemplateId(template.id);
+                        handleApplyTemplate(template.id);
+                        setIsTemplateModalOpen(false);
+                      }}
+                      compact={false}
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              <div className="flex-none px-6 py-4 border-t bg-background flex justify-end gap-3 items-center relative z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                <p className="mr-auto text-xs text-muted-foreground hidden sm:block">
+                  {homeHeroTemplates.length} templates disponíveis
+                </p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setIsTemplateModalOpen(false)}
+                  className="h-10 px-6"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  className="h-10 px-8 font-bold shadow-md"
+                  onClick={() => {
+                    handleApplyTemplate();
+                    setIsTemplateModalOpen(false);
+                  }}
+                >
+                  Aplicar Selecionado
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
           {/* Badge Editor */}
           <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
             <div className="flex items-center justify-between">
@@ -287,6 +634,36 @@ export function HeroEditor({
             }
           />
 
+          <div className="space-y-1.5 p-4 border rounded-lg bg-muted/30">
+            <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+              Tamanho do Título
+            </Label>
+            <Select
+              value={settings.titleSize || "md"}
+              onValueChange={(value) =>
+                handleUpdate({ titleSize: value as HeroTemplateTitleSize })
+              }
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Selecione o tamanho" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sm" className="text-xs">
+                  Pequeno
+                </SelectItem>
+                <SelectItem value="md" className="text-xs">
+                  Médio
+                </SelectItem>
+                <SelectItem value="lg" className="text-xs">
+                  Grande
+                </SelectItem>
+                <SelectItem value="xl" className="text-xs">
+                  Extra Grande
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <SectionSubtitleEditor
             subtitle={settings.subtitle}
             font={settings.subtitleFont}
@@ -327,6 +704,17 @@ export function HeroEditor({
                       handleUpdate({ primaryButton: e.target.value })
                     }
                     className="h-8 text-xs"
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-border/60 bg-background/70 px-3 py-2">
+                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                    Botão Transparente
+                  </Label>
+                  <Switch
+                    checked={settings.primaryButtonTransparent === true}
+                    onCheckedChange={(checked) =>
+                      handleUpdate({ primaryButtonTransparent: checked })
+                    }
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -397,6 +785,17 @@ export function HeroEditor({
                       handleUpdate({ secondaryButton: e.target.value })
                     }
                     className="h-8 text-xs"
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-md border border-border/60 bg-background/70 px-3 py-2">
+                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                    Botão Transparente
+                  </Label>
+                  <Switch
+                    checked={settings.secondaryButtonTransparent !== false}
+                    onCheckedChange={(checked) =>
+                      handleUpdate({ secondaryButtonTransparent: checked })
+                    }
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">

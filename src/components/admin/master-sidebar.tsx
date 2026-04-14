@@ -5,6 +5,7 @@ import {
   BarChart3,
   Bug,
   Code2,
+  LayoutGrid,
   LogOut,
   Store,
   User,
@@ -54,6 +55,11 @@ const MASTER_NAVIGATION: MasterNavGroup[] = [
         title: "Possíveis Clientes",
         href: "/admin/master/leads",
         icon: Users,
+      },
+      {
+        title: "Templates",
+        href: "/admin/master/templates",
+        icon: LayoutGrid,
       },
       {
         title: "Área do Desenvolvedor",

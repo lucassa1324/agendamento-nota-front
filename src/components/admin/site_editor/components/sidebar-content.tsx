@@ -437,6 +437,7 @@ export const SidebarContent = memo(
                     hasChanges={hasHeroChanges}
                     onSave={onSaveHero}
                     isSaving={isSaving}
+                    showTemplateSelector
                   />
                 )}
                 {activeSection === "about-hero" && (
