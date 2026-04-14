@@ -161,6 +161,9 @@ export const EDITOR_FONTS = [
   { name: "Inter", type: "sans" },
   { name: "Montserrat", type: "sans" },
   { name: "Poppins", type: "sans" },
+  { name: "Syne", type: "sans" },
+  { name: "Bebas Neue", type: "sans" },
+  { name: "Space Grotesk", type: "sans" },
   { name: "Roboto", type: "sans" },
   { name: "Open Sans", type: "sans" },
 ];
