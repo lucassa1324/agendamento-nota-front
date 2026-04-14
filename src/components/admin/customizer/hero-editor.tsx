@@ -15,7 +15,7 @@ import {
   Star,
   Sun,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -47,6 +47,8 @@ import {
 } from "../site_editor/components/BackgroundEditor";
 import { SectionSubtitleEditor } from "../site_editor/components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../site_editor/components/SectionTitleEditor";
+import { customFetch } from "@/lib/api-client";
+import { API_BASE_URL } from "@/lib/auth-client";
 
 const iconOptions = [
   { name: "Sparkles", icon: Sparkles },
@@ -342,7 +344,44 @@ export function HeroEditor({
     homeHeroTemplates[0]?.id ?? "",
   );
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [dbTemplates, setDbTemplates] = useState<HeroTemplatePreset[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   const isLoading = isSaving || localIsSaving;
+
+  // Busca templates do banco quando o modal abre
+  useEffect(() => {
+    const loadDbTemplates = async () => {
+      if (!isTemplateModalOpen) return;
+      
+      setIsLoadingTemplates(true);
+      try {
+        const response = await customFetch(`${API_BASE_URL}/api/admin/master/templates`);
+        if (response.ok) {
+          const data = await response.json();
+          // Pega apenas a seção de banner (hero)
+          if (data && data.banner) {
+            setDbTemplates(data.banner);
+          }
+        }
+      } catch (error) {
+        console.error("Erro ao carregar templates do banco:", error);
+      } finally {
+        setIsLoadingTemplates(false);
+      }
+    };
+
+    loadDbTemplates();
+  }, [isTemplateModalOpen]);
+
+  // Combina templates estáticos com os do banco (priorizando banco se houver conflito de ID)
+  const allTemplates = useMemo(() => {
+    if (dbTemplates.length === 0) return homeHeroTemplates;
+    
+    const dbIds = new Set(dbTemplates.map(t => t.id));
+    const uniqueStatic = homeHeroTemplates.filter(t => !dbIds.has(t.id));
+    
+    return [...dbTemplates, ...uniqueStatic];
+  }, [dbTemplates]);
 
   const handleSave = async () => {
     if (!externalOnSave || isLoading) return;
@@ -365,7 +404,7 @@ export function HeroEditor({
   };
 
   const handleApplyTemplate = (templateId = selectedTemplateId) => {
-    const selectedTemplate = homeHeroTemplates.find((template) => template.id === templateId);
+    const selectedTemplate = allTemplates.find((template) => template.id === templateId);
     if (!selectedTemplate) return;
 
     const mappedFont = selectedTemplate.fontFamily
@@ -461,27 +500,34 @@ export function HeroEditor({
               </div>
               
               <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-8 bg-muted/20 scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-10">
-                  {homeHeroTemplates.map((template) => (
-                    <HeroTemplateCard
-                      key={template.id}
-                      template={template}
-                      selected={template.id === selectedTemplateId}
-                      onClick={() => setSelectedTemplateId(template.id)}
-                      onUseTemplate={() => {
-                        setSelectedTemplateId(template.id);
-                        handleApplyTemplate(template.id);
-                        setIsTemplateModalOpen(false);
-                      }}
-                      compact={false}
-                    />
-                  ))}
-                </div>
+                {isLoadingTemplates ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-3 py-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground animate-pulse">Carregando templates do banco...</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-10">
+                    {allTemplates.map((template) => (
+                      <HeroTemplateCard
+                        key={template.id}
+                        template={template}
+                        selected={template.id === selectedTemplateId}
+                        onClick={() => setSelectedTemplateId(template.id)}
+                        onUseTemplate={() => {
+                          setSelectedTemplateId(template.id);
+                          handleApplyTemplate(template.id);
+                          setIsTemplateModalOpen(false);
+                        }}
+                        compact={false}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
               
               <div className="flex-none px-6 py-4 border-t bg-background flex justify-end gap-3 items-center relative z-20 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
                 <p className="mr-auto text-xs text-muted-foreground hidden sm:block">
-                  {homeHeroTemplates.length} templates disponíveis
+                  {allTemplates.length} templates disponíveis
                 </p>
                 <Button
                   type="button"

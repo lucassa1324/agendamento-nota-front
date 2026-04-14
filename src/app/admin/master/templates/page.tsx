@@ -1,14 +1,9 @@
 "use client";
 
 import { LayoutGrid, Search, Filter, Eye, Sparkles } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  homeHeroTemplates,
-  homeServicesTemplates,
-  historyTemplates,
-  teamTemplates,
   type HeroTemplatePreset,
-  type HeroTemplateTitleSize,
   type ServicesTemplatePreset,
 } from "@/components/admin/site_editor/editor";
 import { Button } from "@/components/ui/button";
@@ -24,6 +19,8 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import * as LucideIcons from "lucide-react";
+import { customFetch } from "@/lib/api-client";
+import { API_BASE_URL } from "@/lib/auth-client";
 
 // Reaproveitando a lógica de ícones e fontes do hero-editor.tsx
 const iconMap: Record<string, any> = {
@@ -39,12 +36,12 @@ const iconMap: Record<string, any> = {
   Award: LucideIcons.Award,
 };
 
-const titleSizeClassMap: Record<HeroTemplateTitleSize, string> = {
-  sm: "text-sm",
-  md: "text-base",
-  lg: "text-lg",
-  xl: "text-xl",
-};
+interface MasterTemplatesResponse {
+  banner: HeroTemplatePreset[];
+  servicos: ServicesTemplatePreset[];
+  historia: HeroTemplatePreset[];
+  equipe: HeroTemplatePreset[];
+}
 
 function TemplatePreviewCard({ template, onPreview }: { template: HeroTemplatePreset, onPreview: (t: HeroTemplatePreset) => void }) {
   const [imageError, setImageError] = useState(false);
@@ -210,19 +207,69 @@ export default function MasterTemplatesPage() {
   const [activeTab, setActiveTab] = useState("banner");
   const [selectedNiche, setSelectedNiche] = useState("Todos");
   const [selectedTemplate, setSelectedTemplate] = useState<HeroTemplatePreset | ServicesTemplatePreset | null>(null);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(true);
+  const [templatesError, setTemplatesError] = useState<string | null>(null);
+  const [templatesData, setTemplatesData] = useState<MasterTemplatesResponse>({
+    banner: [],
+    servicos: [],
+    historia: [],
+    equipe: [],
+  });
+
+  useEffect(() => {
+    const loadTemplates = async () => {
+      setIsLoadingTemplates(true);
+      setTemplatesError(null);
+      try {
+        const response = await customFetch(
+          `${API_BASE_URL}/api/admin/master/templates`,
+          { credentials: "include" },
+        );
+
+        if (!response.ok) {
+          throw new Error(`Falha ao carregar templates (${response.status})`);
+        }
+
+        const data = await response.json();
+        setTemplatesData({
+          banner: Array.isArray(data?.banner) ? data.banner : [],
+          servicos: Array.isArray(data?.servicos) ? data.servicos : [],
+          historia: Array.isArray(data?.historia) ? data.historia : [],
+          equipe: Array.isArray(data?.equipe) ? data.equipe : [],
+        });
+      } catch (error) {
+        setTemplatesError("Não foi possível carregar os templates do banco.");
+        setTemplatesData({
+          banner: [],
+          servicos: [],
+          historia: [],
+          equipe: [],
+        });
+      } finally {
+        setIsLoadingTemplates(false);
+      }
+    };
+
+    loadTemplates();
+  }, []);
 
   const niches = useMemo(() => {
-    const allTemplates = [...homeHeroTemplates, ...homeServicesTemplates, ...historyTemplates, ...teamTemplates];
+    const allTemplates = [
+      ...templatesData.banner,
+      ...templatesData.servicos,
+      ...templatesData.historia,
+      ...templatesData.equipe,
+    ];
     const uniqueNiches = Array.from(new Set(allTemplates.map(t => t.niche)));
     return ["Todos", ...uniqueNiches.sort()];
-  }, []);
+  }, [templatesData]);
 
   const filteredTemplates = useMemo(() => {
     let currentTemplates: (HeroTemplatePreset | ServicesTemplatePreset)[] = [];
     
-    if (activeTab === "banner") currentTemplates = homeHeroTemplates;
-    else if (activeTab === "servicos") currentTemplates = homeServicesTemplates;
-    else if (activeTab === "sobre") currentTemplates = [...historyTemplates, ...teamTemplates];
+    if (activeTab === "banner") currentTemplates = templatesData.banner;
+    else if (activeTab === "servicos") currentTemplates = templatesData.servicos;
+    else if (activeTab === "sobre") currentTemplates = [...templatesData.historia, ...templatesData.equipe];
 
     return currentTemplates.filter(t => {
       const matchesSearch = 
@@ -234,11 +281,16 @@ export default function MasterTemplatesPage() {
       
       return matchesSearch && matchesNiche;
     });
-  }, [searchTerm, selectedNiche, activeTab]);
+  }, [searchTerm, selectedNiche, activeTab, templatesData]);
 
   const totalTemplates = useMemo(() => {
-      return homeHeroTemplates.length + homeServicesTemplates.length + historyTemplates.length + teamTemplates.length;
-  }, []);
+      return (
+        templatesData.banner.length +
+        templatesData.servicos.length +
+        templatesData.historia.length +
+        templatesData.equipe.length
+      );
+  }, [templatesData]);
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-50/50">
@@ -314,19 +366,28 @@ export default function MasterTemplatesPage() {
             <div className="flex items-center justify-between mb-6">
               <TabsList className="bg-slate-100 p-1 rounded-xl h-auto">
                 <TabsTrigger value="banner" className="rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider">
-                  Banner Principal ({homeHeroTemplates.length})
+                  Banner Principal ({templatesData.banner.length})
                 </TabsTrigger>
                 <TabsTrigger value="servicos" className="rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider">
-                  Nossos Serviços ({homeServicesTemplates.length})
+                  Nossos Serviços ({templatesData.servicos.length})
                 </TabsTrigger>
                 <TabsTrigger value="sobre" className="rounded-lg py-2 px-6 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm font-bold text-xs uppercase tracking-wider">
-                  Páginas Internas ({historyTemplates.length + teamTemplates.length})
+                  Páginas Internas ({templatesData.historia.length + templatesData.equipe.length})
                 </TabsTrigger>
               </TabsList>
             </div>
 
             <TabsContent value="banner" className="mt-0">
-              {filteredTemplates.length > 0 ? (
+              {isLoadingTemplates ? (
+                <div className="flex items-center justify-center py-20 bg-white rounded-3xl border border-slate-200">
+                  <p className="text-sm text-slate-500">Carregando templates do banco...</p>
+                </div>
+              ) : templatesError ? (
+                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border-2 border-dashed border-red-200 text-center">
+                  <h3 className="text-lg font-bold text-slate-900">Falha ao carregar</h3>
+                  <p className="text-slate-500 text-sm max-w-xs mx-auto mt-1">{templatesError}</p>
+                </div>
+              ) : filteredTemplates.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {filteredTemplates.map((template) => (
                     <TemplatePreviewCard 
@@ -357,7 +418,16 @@ export default function MasterTemplatesPage() {
             </TabsContent>
             
             <TabsContent value="servicos" className="mt-0">
-              {filteredTemplates.length > 0 ? (
+              {isLoadingTemplates ? (
+                <div className="flex items-center justify-center py-20 bg-white rounded-3xl border border-slate-200">
+                  <p className="text-sm text-slate-500">Carregando templates do banco...</p>
+                </div>
+              ) : templatesError ? (
+                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border-2 border-dashed border-red-200 text-center">
+                  <h3 className="text-lg font-bold text-slate-900">Falha ao carregar</h3>
+                  <p className="text-slate-500 text-sm max-w-xs mx-auto mt-1">{templatesError}</p>
+                </div>
+              ) : filteredTemplates.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {filteredTemplates.map((template) => (
                     <ServiceTemplatePreviewCard 
@@ -388,7 +458,16 @@ export default function MasterTemplatesPage() {
             </TabsContent>
             
             <TabsContent value="sobre" className="mt-0">
-              {filteredTemplates.length > 0 ? (
+              {isLoadingTemplates ? (
+                <div className="flex items-center justify-center py-20 bg-white rounded-3xl border border-slate-200">
+                  <p className="text-sm text-slate-500">Carregando templates do banco...</p>
+                </div>
+              ) : templatesError ? (
+                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border-2 border-dashed border-red-200 text-center">
+                  <h3 className="text-lg font-bold text-slate-900">Falha ao carregar</h3>
+                  <p className="text-slate-500 text-sm max-w-xs mx-auto mt-1">{templatesError}</p>
+                </div>
+              ) : filteredTemplates.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                   {filteredTemplates.map((template) => (
                     <TemplatePreviewCard 
