@@ -146,6 +146,12 @@ export const authClient = createAuthClient({
       hasCompletedOnboarding: {
         type: "boolean",
       },
+      acceptedTerms: {
+        type: "boolean",
+      },
+      acceptedTermsAt: {
+        type: "string",
+      },
     },
   },
 });

@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getSession, signIn } from "@/lib/auth-client";
+import { getSession, signIn, LANDING_PAGE_URL } from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthUser {
@@ -313,14 +313,20 @@ export function LoginForm() {
             <p className="text-sm text-muted-foreground">
               Não tem uma conta?{" "}
               <Button
+                type="button"
                 variant="link"
                 className="p-0 h-auto"
-                onClick={() =>
-                  router.push(
-                    process.env.NEXT_PUBLIC_LANDING_PAGE_URL ||
-                      "/admin/register",
-                  )
-                }
+                onClick={() => {
+                  const url = LANDING_PAGE_URL 
+                    ? `${LANDING_PAGE_URL}/register`
+                    : "/admin/register";
+                  
+                  if (url.startsWith("http")) {
+                    window.location.href = url;
+                  } else {
+                    router.push(url);
+                  }
+                }}
               >
                 Cadastre-se
               </Button>

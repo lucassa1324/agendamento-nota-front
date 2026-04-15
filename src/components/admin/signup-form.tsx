@@ -1,6 +1,7 @@
 "use client";
 
 import { Eye, EyeOff, Lock, Mail, Phone, User } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type React from "react";
 import { useState } from "react";
@@ -12,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signUp } from "@/lib/auth-client";
@@ -23,6 +25,7 @@ export function SignUpForm() {
   const [phone, setPhone] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [studioName, setStudioName] = useState("");
+  const [acceptedLegalTerms, setAcceptedLegalTerms] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -31,8 +34,10 @@ export function SignUpForm() {
     const numbers = value.replace(/\D/g, "");
     if (numbers.length <= 11) {
       if (numbers.length <= 2) return numbers;
-      if (numbers.length <= 6) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-      if (numbers.length <= 10) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
+      if (numbers.length <= 6)
+        return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+      if (numbers.length <= 10)
+        return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`;
       return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
     }
     return value.slice(0, 15);
@@ -46,6 +51,14 @@ export function SignUpForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+
+    if (!acceptedLegalTerms) {
+      setError(
+        "Você precisa aceitar os Termos de Uso e a Política de Privacidade para continuar.",
+      );
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -56,6 +69,8 @@ export function SignUpForm() {
         // @ts-expect-error - studioName e phone são campos customizados suportados pelo nosso backend
         studioName,
         phone,
+        acceptedTerms: true,
+        acceptedTermsAt: new Date().toISOString(),
         callbackURL: `${window.location.origin}/admin/email-verified`,
       });
 
@@ -188,6 +203,42 @@ export function SignUpForm() {
                 )}
               </button>
             </div>
+          </div>
+
+          <div className="flex items-start gap-3 rounded-md border p-3">
+            <Checkbox
+              id="acceptedLegalTerms"
+              checked={acceptedLegalTerms}
+              onCheckedChange={(checked) =>
+                setAcceptedLegalTerms(checked === true)
+              }
+              disabled={isLoading}
+              aria-label="Aceito os Termos de Uso e a Política de Privacidade"
+            />
+            <Label
+              htmlFor="acceptedLegalTerms"
+              className="block cursor-pointer text-sm font-normal leading-relaxed text-muted-foreground"
+            >
+              Eu li e aceito os{" "}
+              <Link
+                href="/termos-de-uso"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary underline underline-offset-4 hover:opacity-80"
+              >
+                Termos de Uso
+              </Link>{" "}
+              e a{" "}
+              <Link
+                href="/politica-de-privacidade"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary underline underline-offset-4 hover:opacity-80"
+              >
+                Política de Privacidade
+              </Link>
+              .
+            </Label>
           </div>
 
           {error && (

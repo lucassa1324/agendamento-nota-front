@@ -307,7 +307,7 @@ export function Navigation({
               </Link>
             ))}
             <Link
-              href={ADMIN_URL}
+              href={ADMIN_URL || "/admin"}
               className="text-xs lg:text-sm font-medium opacity-70 transition-colors hover:opacity-100 whitespace-nowrap"
               style={linksStyle}
             >
@@ -355,7 +355,7 @@ export function Navigation({
                 </Link>
               ))}
               <Link
-                href={ADMIN_URL}
+                href={ADMIN_URL || "/admin"}
                 className="text-lg font-medium opacity-70"
                 style={linksStyle}
                 onClick={() => setMobileMenuOpen(false)}
