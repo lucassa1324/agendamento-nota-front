@@ -53,11 +53,11 @@ export function PushNotificationSettings() {
         const response = await customFetch("/api/user/preferences");
         if (response.ok) {
           const data = await response.json();
-          if (data) {
+          if (data && data.notifications) {
             setPreferences({
-              notifyNewAppointments: data.notifyNewAppointments ?? true,
-              notifyCancellations: data.notifyCancellations ?? true,
-              notifyInventoryAlerts: data.notifyInventoryAlerts ?? false,
+              notifyNewAppointments: data.notifications.newAppointments ?? true,
+              notifyCancellations: data.notifications.cancellations ?? true,
+              notifyInventoryAlerts: data.notifications.inventoryAlerts ?? false,
             });
           }
         } else if (response.status === 401) {
@@ -73,6 +73,43 @@ export function PushNotificationSettings() {
     loadPreferences();
   }, []);
 
+  const [testing, setTesting] = useState(false);
+
+  const testNotification = async () => {
+    if (!isSubscribed) {
+      toast({
+        title: "Não inscrito",
+        description: "Ative as notificações antes de testar.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setTesting(true);
+    try {
+      const response = await customFetch("/api/push/test", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Teste enviado",
+          description: "Você deve receber uma notificação em instantes.",
+        });
+      } else {
+        throw new Error("Falha ao enviar teste");
+      }
+    } catch (error) {
+      toast({
+        title: "Erro no teste",
+        description: "Não foi possível enviar a notificação de teste.",
+        variant: "destructive",
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const handleToggle = async (key: keyof UserPreferences) => {
     if (updating[key]) return;
 
@@ -83,11 +120,13 @@ export function PushNotificationSettings() {
     // Atualização otimista
     setPreferences(newPreferences);
 
-    // Mapear para snake_case para o backend
+    // Mapear para a estrutura esperada pelo backend
     const payload = {
-      notify_new_appointments: newPreferences.notifyNewAppointments,
-      notify_cancellations: newPreferences.notifyCancellations,
-      notify_inventory_alerts: newPreferences.notifyInventoryAlerts,
+      notifications: {
+        newAppointments: newPreferences.notifyNewAppointments,
+        cancellations: newPreferences.notifyCancellations,
+        inventoryAlerts: newPreferences.notifyInventoryAlerts,
+      }
     };
 
     try {
@@ -316,14 +355,14 @@ export function PushNotificationSettings() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <>
+            <div className="flex flex-col gap-6">
               <div className="flex items-center justify-between space-x-2">
                 <div className="flex flex-col space-y-1">
                   <Label htmlFor="new-appointments" className="font-medium">
                     Novos Agendamentos
                   </Label>
                   <span className="text-sm text-muted-foreground">
-                    Receber aviso quando um cliente agendar um serviço.
+                    Receba avisos imediatos quando um cliente agendar um serviço.
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -336,7 +375,7 @@ export function PushNotificationSettings() {
                     onCheckedChange={() =>
                       handleToggle("notifyNewAppointments")
                     }
-                    disabled={updating.notifyNewAppointments}
+                    disabled={updating.notifyNewAppointments || !isSubscribed}
                   />
                 </div>
               </div>
@@ -358,7 +397,7 @@ export function PushNotificationSettings() {
                     id="cancellations"
                     checked={preferences.notifyCancellations}
                     onCheckedChange={() => handleToggle("notifyCancellations")}
-                    disabled={updating.notifyCancellations}
+                    disabled={updating.notifyCancellations || !isSubscribed}
                   />
                 </div>
               </div>
@@ -382,11 +421,33 @@ export function PushNotificationSettings() {
                     onCheckedChange={() =>
                       handleToggle("notifyInventoryAlerts")
                     }
-                    disabled={updating.notifyInventoryAlerts}
+                    disabled={updating.notifyInventoryAlerts || !isSubscribed}
                   />
                 </div>
               </div>
-            </>
+
+              <div className="pt-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={testNotification}
+                  disabled={testing || !isSubscribed}
+                  className="w-full sm:w-auto"
+                >
+                  {testing ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Bell className="w-4 h-4 mr-2" />
+                  )}
+                  Enviar Notificação de Teste
+                </Button>
+                {!isSubscribed && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Ative as notificações acima para habilitar o teste.
+                  </p>
+                )}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

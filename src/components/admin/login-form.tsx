@@ -71,9 +71,19 @@ export function LoginForm() {
         user.role !== "SUPER_ADMIN" &&
         user.email !== "lucassa1324@gmail.com"
       ) {
-        console.log(">>> [LOGIN_FLOW] E-mail não verificado. Redirecionando para pendência.");
-        localStorage.setItem("pending_verification_email", user.email || "");
-        router.push("/admin/pending-verification");
+        console.log(">>> [LOGIN_FLOW] E-mail consta como não verificado. Fazendo check final antes de redirecionar...");
+        
+        // Check final para evitar loops se a sessão estiver levemente desatualizada
+        getSession().then(({ data }) => {
+          if (data?.user?.emailVerified) {
+             console.log(">>> [LOGIN_FLOW] Check final revelou e-mail JÁ VERIFICADO. Prosseguindo...");
+             handleRoleRedirection(data.user as AuthUser);
+          } else {
+             console.log(">>> [LOGIN_FLOW] E-mail realmente não verificado. Redirecionando para pendência.");
+             localStorage.setItem("pending_verification_email", user.email || "");
+             router.push("/admin/pending-verification");
+          }
+        });
         return true;
       }
 

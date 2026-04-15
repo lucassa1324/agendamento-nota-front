@@ -56,7 +56,7 @@ export function SignUpForm() {
         // @ts-expect-error - studioName e phone são campos customizados suportados pelo nosso backend
         studioName,
         phone,
-        callbackURL: "/email-verified",
+        callbackURL: `${window.location.origin}/admin/email-verified`,
       });
 
       if (authError) {

@@ -186,6 +186,12 @@ export default function MasterDeveloperAreaPage() {
       icon: ShieldBan,
       color: "text-red-600",
     },
+    {
+      id: "reset-billing-lock",
+      label: "Reset Trava Cobrança",
+      icon: RefreshCw,
+      color: "text-purple-600",
+    },
   ];
 
   // Carregar configurações do localStorage
@@ -229,6 +235,7 @@ export default function MasterDeveloperAreaPage() {
   >(null);
   const [expiringId, setExpiringId] = useState<string | null>(null);
   const [vencendoId, setVencendoId] = useState<string | null>(null);
+  const [resettingLockId, setResettingLockId] = useState<string | null>(null);
 
   // Estados para o diálogo de reset
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -569,6 +576,42 @@ export default function MasterDeveloperAreaPage() {
     }
   };
 
+  const handleResetBillingLock = async (companyId: string) => {
+    setResettingLockId(companyId);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/companies/${companyId}/billing-day/reset-lock`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Falha ao resetar trava");
+      }
+
+      toast({
+        title: "Trava resetada",
+        description: data.message,
+      });
+
+      fetchCompanies();
+      fetchLogs();
+    } catch (error) {
+      console.error("Erro ao resetar trava de cobrança:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível resetar a trava de cobrança.",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingLockId(null);
+    }
+  };
+
   const resolveErrorLocation = useCallback(
     (route: string, httpStatus: number | null, errorMessage: string) => {
       const routeLower = route.toLowerCase();
@@ -859,6 +902,13 @@ export default function MasterDeveloperAreaPage() {
           checkName: "Buscar Empresa por ID (Público)",
           method: "GET",
           route: `/api/business/${setupPayload.companyId}`,
+        });
+
+        await runCheck({
+          id: "master-reset-billing-day-lock",
+          checkName: "Resetar Trava de Dia de Cobrança (Master)",
+          method: "POST",
+          route: `/api/admin/master/companies/${setupPayload.companyId}/billing-day/reset-lock`,
         });
 
         await runCheck({
@@ -1417,6 +1467,32 @@ export default function MasterDeveloperAreaPage() {
                                 </Button>
                               )}
 
+                              {pinnedActions.includes("reset-billing-lock") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-purple-600 border-purple-200 hover:bg-purple-50"
+                                  title="Resetar Trava de Cobrança"
+                                  onClick={() =>
+                                    handleResetBillingLock(company.id)
+                                  }
+                                  disabled={
+                                    resettingLockId === company.id ||
+                                    syncingId === company.id ||
+                                    simulatingId === company.id ||
+                                    vencendoId === company.id ||
+                                    expiringId === company.id
+                                  }
+                                >
+                                  {resettingLockId === company.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                                  )}
+                                  Reset Trava
+                                </Button>
+                              )}
+
                               {/* Menu "+" para as ações não pinned */}
                               {pinnedActions.length < ALL_ACTIONS.length && (
                                 <DropdownMenu>
@@ -1587,6 +1663,29 @@ export default function MasterDeveloperAreaPage() {
                                         Bloquear Empresa
                                       </DropdownMenuItem>
                                     )}
+
+                                    {!pinnedActions.includes("reset-billing-lock") && (
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleResetBillingLock(company.id)
+                                        }
+                                        disabled={
+                                          resettingLockId === company.id ||
+                                          syncingId === company.id ||
+                                          simulatingId === company.id ||
+                                          vencendoId === company.id ||
+                                          expiringId === company.id
+                                        }
+                                        className="text-purple-600 focus:text-purple-600"
+                                      >
+                                        {resettingLockId === company.id ? (
+                                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        ) : (
+                                          <RefreshCw className="w-4 h-4 mr-2" />
+                                        )}
+                                        Reset Trava Cobrança
+                                      </DropdownMenuItem>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               )}
@@ -1627,6 +1726,13 @@ export default function MasterDeveloperAreaPage() {
                   <div>
                     <strong>Bloqueio Completo:</strong> Desativa empresa/dono e
                     mata sessões.
+                  </div>
+                </div>
+                <div className="p-3 rounded-md border border-purple-200 bg-purple-50 text-purple-900 text-sm flex items-start gap-2">
+                  <RefreshCw className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    <strong>Reset Trava:</strong> Libera a alteração do dia de
+                    cobrança imediatamente, sem esperar 3 meses.
                   </div>
                 </div>
               </div>

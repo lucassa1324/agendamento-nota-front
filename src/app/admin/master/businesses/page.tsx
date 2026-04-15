@@ -13,6 +13,16 @@ import { AccessReleaseModal } from "@/components/admin/access-release-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -60,8 +70,11 @@ export default function MasterBusinessesPage() {
   const [accessFilter, setAccessFilter] = useState<string>("all");
   const [selectedCompany, setSelectedCompany] =
     useState<CompanyMasterData | null>(null);
+  const [companyToResetLock, setCompanyToResetLock] =
+    useState<CompanyMasterData | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [resettingLockId, setResettingLockId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchCompanies = useCallback(async () => {
@@ -155,6 +168,43 @@ export default function MasterBusinessesPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedCompany(null);
+  };
+
+  const handleResetBillingDayLock = async () => {
+    if (!companyToResetLock) return;
+
+    setResettingLockId(companyToResetLock.id);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/companies/${companyToResetLock.id}/billing-day/reset-lock`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.error || "Falha ao resetar trava.");
+      }
+
+      toast({
+        title: "Trava resetada",
+        description:
+          "A empresa já pode alterar novamente o dia de cobrança sem aguardar os 3 meses.",
+      });
+      fetchCompanies();
+    } catch (error) {
+      console.error("Erro ao resetar trava do dia de cobrança:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível resetar a trava do dia de cobrança.",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingLockId(null);
+      setCompanyToResetLock(null);
+    }
   };
 
   const filteredCompanies = companies
@@ -365,6 +415,17 @@ export default function MasterBusinessesPage() {
                               <ExternalLink className="w-4 h-4" />
                             </a>
                           </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setCompanyToResetLock(company)}
+                            disabled={resettingLockId === company.id}
+                          >
+                            {resettingLockId === company.id ? (
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : null}
+                            Resetar trava 3m
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -382,6 +443,29 @@ export default function MasterBusinessesPage() {
         onClose={handleCloseModal}
         onSuccess={fetchCompanies}
       />
+
+      <AlertDialog
+        open={!!companyToResetLock}
+        onOpenChange={(open) => {
+          if (!open) setCompanyToResetLock(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Reset da Trava</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso vai liberar imediatamente a alteração do dia de cobrança para{" "}
+              <strong>{companyToResetLock?.name}</strong>, sem esperar os 3 meses.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetBillingDayLock}>
+              Confirmar reset
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

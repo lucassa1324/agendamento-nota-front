@@ -15,6 +15,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -23,6 +33,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@/lib/api-client";
@@ -48,7 +63,11 @@ export function AdminProfileManager() {
   const [isCancellationModalOpen, setIsCancellationModalOpen] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isSavingCpfCnpj, setIsSavingCpfCnpj] = useState(false);
+  const [isSavingBillingDay, setIsSavingBillingDay] = useState(false);
+  const [isBillingConfirmOpen, setIsBillingConfirmOpen] = useState(false);
   const [cpfCnpj, setCpfCnpj] = useState("");
+  const [billingDayInput, setBillingDayInput] = useState("");
+  const [isBillingDayPickerOpen, setIsBillingDayPickerOpen] = useState(false);
 
   const normalizeCpfCnpj = (value: string) => value.replace(/\D/g, "");
 
@@ -168,13 +187,84 @@ export function AdminProfileManager() {
 
   useEffect(() => {
     if (session?.user) {
+      const business = (session.user as any)?.business;
       setProfile({
         name: session.user.name || "",
         email: session.user.email || "",
       });
       setCpfCnpj(formatCpfCnpj((session.user as { cpfCnpj?: string }).cpfCnpj || ""));
+      const anchorDay =
+        business?.billingAnchorDay ||
+        (business?.trialEndsAt ? new Date(business.trialEndsAt).getDate() : "");
+      setBillingDayInput(anchorDay ? String(anchorDay) : "");
     }
   }, [session]);
+
+  const handleSaveBillingDay = async () => {
+    const parsedDay = Number(billingDayInput);
+    if (!Number.isInteger(parsedDay) || parsedDay < 1 || parsedDay > 31) {
+      toast({
+        title: "Dia inválido",
+        description: "Informe um dia entre 1 e 31.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSavingBillingDay(true);
+    try {
+      const response = await customFetch("/api/business/billing/day", {
+        method: "PATCH",
+        body: JSON.stringify({ day: parsedDay }),
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        if (data?.error === "ALTERACAO_BLOQUEADA") {
+          const nextDate = data?.nextAllowedChangeAt
+            ? new Date(data.nextAllowedChangeAt).toLocaleDateString("pt-BR")
+            : "após o período de 3 meses";
+          throw new Error(
+            `Você só poderá alterar novamente em ${nextDate}.`,
+          );
+        }
+        throw new Error(
+          data?.message ||
+            data?.error ||
+            "Não foi possível alterar o dia de cobrança.",
+        );
+      }
+
+      await refetch();
+      toast({
+        title: "Dia de cobrança atualizado",
+        description:
+          "Novo dia salvo com sucesso. Uma nova alteração só poderá ser feita após 3 meses.",
+      });
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      toast({
+        title: "Erro",
+        description: error.message || "Falha ao atualizar o dia de cobrança.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingBillingDay(false);
+    }
+  };
+
+  const handleOpenBillingConfirm = () => {
+    const parsedDay = Number(billingDayInput);
+    if (!Number.isInteger(parsedDay) || parsedDay < 1 || parsedDay > 31) {
+      toast({
+        title: "Dia inválido",
+        description: "Selecione um dia entre 1 e 31.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsBillingConfirmOpen(true);
+  };
 
   const handleSaveCpfCnpj = async () => {
     const normalizedCpfCnpj = normalizeCpfCnpj(cpfCnpj);
@@ -345,7 +435,9 @@ export function AdminProfileManager() {
 
     if (
       businessTrialEndsAt &&
-      ["active", "past_due", "unpaid", "canceled"].includes(businessStatus)
+      ["active", "grace_period", "past_due", "unpaid", "canceled"].includes(
+        businessStatus,
+      )
     ) {
       const planEnd = new Date(businessTrialEndsAt);
       const planStart = new Date(planEnd);
@@ -365,6 +457,19 @@ export function AdminProfileManager() {
 
   const billingDates = resolveBillingDates();
   const hasValidCpfCnpj = [11, 14].includes(normalizeCpfCnpj(cpfCnpj).length);
+  const subscriptionStatus = (session?.user as any)?.business?.subscriptionStatus;
+  const isGracePeriod = subscriptionStatus === "grace_period";
+  const graceEndsAtRaw = (session?.user as any)?.business?.billingGraceEndsAt;
+  const graceEndsAt = graceEndsAtRaw ? new Date(graceEndsAtRaw) : null;
+  const billingAnchorDay = (session?.user as any)?.business?.billingAnchorDay;
+  const nextAllowedBillingChangeRaw = (session?.user as any)?.business
+    ?.billingDayLastChangedAt;
+  const nextAllowedBillingChangeAt = nextAllowedBillingChangeRaw
+    ? new Date(nextAllowedBillingChangeRaw)
+    : null;
+  const canChangeBillingDay =
+    !nextAllowedBillingChangeAt || nextAllowedBillingChangeAt <= new Date();
+  const billingDays = Array.from({ length: 31 }, (_, i) => i + 1);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -624,6 +729,11 @@ export function AdminProfileManager() {
                           Pagamento Pendente
                         </span>
                       ) : (session.user as any).business?.subscriptionStatus ===
+                        "grace_period" ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                          Em Carência (7 dias)
+                        </span>
+                      ) : (session.user as any).business?.subscriptionStatus ===
                         "active" ? (
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
                           Ativa
@@ -661,13 +771,105 @@ export function AdminProfileManager() {
                           {billingDates.nextInvoice.toLocaleDateString("pt-BR")}
                         </p>
                       </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Dia de Cobrança
+                        </p>
+                        <p className="text-sm font-semibold">
+                          Dia {billingAnchorDay || billingDates.nextInvoice.getDate()}
+                        </p>
+                      </div>
                     </>
                   )}
+                </div>
+                <div className="space-y-2 text-xs text-muted-foreground">
+                  <p>
+                    O vencimento mensal usa como referência o dia do seu primeiro pagamento confirmado.
+                    Se passar do vencimento sem pagar, sua conta entra em carência por 7 dias antes do bloqueio.
+                  </p>
+                  {isGracePeriod && graceEndsAt && (
+                    <p className="text-amber-700 font-medium">
+                      Carência ativa até {graceEndsAt.toLocaleDateString("pt-BR")}.
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end pt-3 border-t border-border">
+                  <div className="space-y-1 w-full sm:w-auto">
+                    <Label htmlFor="billing-day" className="text-xs">
+                      Alterar Dia de Cobrança (1 a 31)
+                    </Label>
+                    <Popover
+                      open={isBillingDayPickerOpen}
+                      onOpenChange={setIsBillingDayPickerOpen}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          id="billing-day"
+                          type="button"
+                          variant="outline"
+                          className="w-full sm:w-40 justify-start"
+                          disabled={!canChangeBillingDay || isSavingBillingDay}
+                        >
+                          {billingDayInput
+                            ? `Dia ${billingDayInput}`
+                            : "Selecionar dia"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-3">
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Selecione o dia de vencimento
+                        </p>
+                        <div className="grid grid-cols-7 gap-1">
+                          {billingDays.map((day) => (
+                            <Button
+                              key={day}
+                              type="button"
+                              size="sm"
+                              variant={
+                                Number(billingDayInput) === day
+                                  ? "default"
+                                  : "outline"
+                              }
+                              className="h-8 px-0"
+                              onClick={() => {
+                                setBillingDayInput(String(day));
+                                setIsBillingDayPickerOpen(false);
+                              }}
+                            >
+                              {day}
+                            </Button>
+                          ))}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleOpenBillingConfirm}
+                    disabled={!canChangeBillingDay || isSavingBillingDay}
+                  >
+                    {isSavingBillingDay ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      "Salvar Dia"
+                    )}
+                  </Button>
+                  <p className="text-xs text-muted-foreground">
+                    {canChangeBillingDay
+                      ? "Você pode alterar hoje. Após salvar, a próxima alteração só será liberada em 3 meses."
+                      : `Próxima alteração disponível em ${nextAllowedBillingChangeAt?.toLocaleDateString("pt-BR")}.`}
+                  </p>
                 </div>
 
                 {(studioError?.includes("(402)") ||
                   (session.user as any).business?.subscriptionStatus ===
                     "past_due" ||
+                  (session.user as any).business?.subscriptionStatus ===
+                    "grace_period" ||
                   ["trial", "trialing"].includes(
                     (session.user as any).business?.subscriptionStatus,
                   )) && (
@@ -679,6 +881,9 @@ export function AdminProfileManager() {
                           (session.user as any).business?.subscriptionStatus ===
                             "past_due"
                             ? "Sua assinatura está com pagamento pendente. Regularize agora para evitar interrupções no serviço."
+                            : (session.user as any).business
+                              ?.subscriptionStatus === "grace_period"
+                              ? "Seu vencimento passou e você está no período de carência de 7 dias. Pague agora para evitar bloqueio automático ao final da carência."
                             : "Seu período de teste está ativo. Assine agora para garantir a continuidade do seu acesso e aproveitar todos os recursos."}
                         </p>
                         {!hasValidCpfCnpj && (
@@ -703,7 +908,9 @@ export function AdminProfileManager() {
                             <CreditCard className="w-4 h-4 mr-2" />
                             {studioError?.includes("(402)") ||
                             (session.user as any).business
-                              ?.subscriptionStatus === "past_due"
+                              ?.subscriptionStatus === "past_due" ||
+                            (session.user as any).business
+                              ?.subscriptionStatus === "grace_period"
                               ? "Pagar Agora"
                               : "Assinar Plano Pro"}
                           </>
@@ -758,6 +965,33 @@ export function AdminProfileManager() {
             ?.subscriptionId
         }
       />
+
+      <AlertDialog
+        open={isBillingConfirmOpen}
+        onOpenChange={setIsBillingConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar Alteração</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está alterando seu dia de cobrança para o dia{" "}
+              {billingDayInput}. Após confirmar, uma nova alteração só poderá
+              ser feita em 3 meses.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setIsBillingConfirmOpen(false);
+                await handleSaveBillingDay();
+              }}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

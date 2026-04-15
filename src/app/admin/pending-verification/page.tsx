@@ -42,6 +42,26 @@ export default function PendingVerificationPage() {
     }
   }, [session]);
 
+  // Polling para verificar se o e-mail foi verificado (útil se verificado em outra aba/dispositivo)
+  useEffect(() => {
+    if (session?.user?.emailVerified) return;
+
+    const interval = setInterval(async () => {
+      console.log(">>> [PENDING_VERIFICATION] Verificando status de verificação...");
+      try {
+        const { data } = await getSession();
+        if (data?.user?.emailVerified) {
+          console.log(">>> [PENDING_VERIFICATION] E-mail verificado detectado via polling!");
+          router.replace("/admin?verified=true");
+        }
+      } catch (e) {
+        console.warn("Erro no polling de verificação:", e);
+      }
+    }, 5000); // Verifica a cada 5 segundos
+
+    return () => clearInterval(interval);
+  }, [session, router]);
+
   // Forçar uma verificação manual da sessão quando a página carrega
   useEffect(() => {
     const refreshSession = async () => {
@@ -56,6 +76,31 @@ export default function PendingVerificationPage() {
     };
     refreshSession();
   }, [router]);
+
+  const handleCheckStatus = async () => {
+    setIsLoading(true);
+    try {
+      console.log(">>> [PENDING_VERIFICATION] Verificação manual de status solicitada...");
+      const { data } = await getSession();
+      if (data?.user?.emailVerified) {
+        toast({
+          title: "Confirmado!",
+          description: "Sua conta já está verificada.",
+        });
+        router.replace("/admin?verified=true");
+      } else {
+        toast({
+          title: "Ainda pendente",
+          description: "Não detectamos a verificação ainda. Verifique seu e-mail ou aguarde um momento.",
+          variant: "destructive",
+        });
+      }
+    } catch (e) {
+      console.error("Erro ao verificar status:", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleResendEmail = async () => {
     const targetEmail = email || session?.user?.email;
@@ -147,19 +192,25 @@ export default function PendingVerificationPage() {
 
           <div className="space-y-3">
             <Button
+              onClick={handleCheckStatus}
+              disabled={isLoading}
+              className="w-full h-12 text-base font-semibold"
+            >
+              {isLoading ? (
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              ) : (
+                <CheckCircle2 className="mr-2 h-5 w-5" />
+              )}
+              Já verifiquei meu e-mail
+            </Button>
+
+            <Button
               onClick={handleResendEmail}
               disabled={isLoading}
               variant="outline"
               className="w-full"
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Aguarde para reenviar...
-                </>
-              ) : (
-                "Não recebeu o e-mail? Reenviar"
-              )}
+              Não recebeu o e-mail? Reenviar
             </Button>
 
             <Button asChild variant="ghost" className="w-full text-muted-foreground">

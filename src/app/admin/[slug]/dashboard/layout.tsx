@@ -2,7 +2,7 @@
 
 import { Menu } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, Suspense, use, useEffect, useState } from "react";
+import { type ReactNode, Suspense, use, useEffect, useRef, useState } from "react";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { BackendTrigger } from "@/components/admin/BackendTrigger";
 import { SubscriptionBlockScreen } from "@/components/admin/subscription-block-screen";
@@ -96,130 +96,174 @@ function AdminLayoutContent({
   } | null>(null);
   const [billingRequiredDetected, setBillingRequiredDetected] = useState(false);
   const isOnboarding = pathname?.includes("/dashboard/onboarding");
+  const redirectInFlightRef = useRef<string | null>(null);
+
+  const safeRedirect = (targetPath: string) => {
+    if (!targetPath || pathname === targetPath) return;
+    if (redirectInFlightRef.current === targetPath) return;
+    redirectInFlightRef.current = targetPath;
+    router.replace(targetPath);
+  };
 
   useEffect(() => {
-    // Só age quando o loading inicial do better-auth terminar
-    if (!isLoadingSession) {
-      console.log(">>> [DASHBOARD_LAYOUT] Estado da sessão:", {
-        hasSession: !!session,
-        sessionData: session,
-        currentSlug: slug,
-      });
+    let cancelled = false;
+    let sessionFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
-      // Diagnóstico adicional: verifica se os cookies estão sendo enviados para o backend
-      const checkBackendAuth = async () => {
-        try {
-          console.log(">>> [DASHBOARD_LAYOUT] Tentando getSession() manual...");
-          const manualSession = await getSession();
-          console.log(
-            ">>> [DASHBOARD_LAYOUT] Resultado getSession() manual:",
-            manualSession,
-          );
+    const runAccessValidation = async () => {
+      // Só age quando o loading inicial do better-auth terminar
+      if (!isLoadingSession) {
+        console.log(">>> [DASHBOARD_LAYOUT] Estado da sessão:", {
+          hasSession: !!session,
+          sessionData: session,
+          currentSlug: slug,
+        });
 
-          // Usando customFetch para o diagnóstico
-          // Comentado para evitar erros de console quando o backend está offline
-          /* 
-          const diagRes = await customFetch(
-            `${API_BASE_URL}/diagnostics/headers`,
-            {
-              credentials: "include",
-            },
-          );
-          if (diagRes.ok) {
-            const diagData = await diagRes.json();
+        // Diagnóstico adicional: verifica se os cookies estão sendo enviados para o backend
+        const checkBackendAuth = async () => {
+          try {
+            console.log(">>> [DASHBOARD_LAYOUT] Tentando getSession() manual...");
+            const manualSession = await getSession();
             console.log(
-              ">>> [DASHBOARD_LAYOUT] Diagnóstico do Backend:",
-              diagData,
+              ">>> [DASHBOARD_LAYOUT] Resultado getSession() manual:",
+              manualSession,
             );
+
+            // Usando customFetch para o diagnóstico
+            // Comentado para evitar erros de console quando o backend está offline
+            /* 
+            const diagRes = await customFetch(
+              `${API_BASE_URL}/diagnostics/headers`,
+              {
+                credentials: "include",
+              },
+            );
+            if (diagRes.ok) {
+              const diagData = await diagRes.json();
+              console.log(
+                ">>> [DASHBOARD_LAYOUT] Diagnóstico do Backend:",
+                diagData,
+              );
+            }
+            */
+          } catch (e) {
+            console.warn(">>> [ADMIN_WARN] Erro ao buscar diagnóstico:", e);
           }
-          */
-        } catch (e) {
-          console.warn(">>> [ADMIN_WARN] Erro ao buscar diagnóstico:", e);
+        };
+
+        if (!session) {
+          checkBackendAuth();
+          // Pequeno delay para evitar falsos negativos em transições rápidas
+          sessionFallbackTimer = setTimeout(() => {
+            if (cancelled) return;
+            console.warn(
+              ">>> [DASHBOARD_LAYOUT] Redirecionando por falta de sessão.",
+            );
+            safeRedirect("/admin");
+          }, 1000); // Aumentado para 1s para dar mais tempo ao diagnóstico
+          return;
         }
-      };
 
-      if (!session) {
-        checkBackendAuth();
-        // Pequeno delay para evitar falsos negativos em transições rápidas
-        const timer = setTimeout(() => {
+        let user = session.user as AuthUser;
+
+        // PROTEÇÃO CONTRA UNDEFINED: Garante que user existe antes de acessar propriedades
+        if (!user) {
           console.warn(
-            ">>> [DASHBOARD_LAYOUT] Redirecionando por falta de sessão.",
+            ">>> [DASHBOARD_LAYOUT] Sessão existe mas usuário é undefined.",
           );
-          router.push("/admin");
-        }, 1000); // Aumentado para 1s para dar mais tempo ao diagnóstico
-        return () => clearTimeout(timer);
-      }
+          return;
+        }
 
-      const user = session.user as AuthUser;
+        // NOVO: BLOQUEIO DE E-MAIL NÃO VERIFICADO
+        // Bloqueamos acesso ao dashboard se o e-mail não estiver verificado
+        // Exceção: Super Admin ou e-mail do proprietário
+        if (
+          user.emailVerified === false &&
+          user.role !== "SUPER_ADMIN" &&
+          user.email !== "lucassa1324@gmail.com"
+        ) {
+          try {
+            const latestSession = await getSession();
+            const latestUser = latestSession?.data?.user as AuthUser | undefined;
 
-      // PROTEÇÃO CONTRA UNDEFINED: Garante que user existe antes de acessar propriedades
-      if (!user) {
-        console.warn(
-          ">>> [DASHBOARD_LAYOUT] Sessão existe mas usuário é undefined.",
+            if (latestUser?.emailVerified) {
+              console.log(
+                ">>> [DASHBOARD_LAYOUT] Sessão atualizada detectou e-mail verificado. Prosseguindo no dashboard.",
+              );
+              user = {
+                ...user,
+                ...latestUser,
+                business: latestUser.business || user.business,
+              };
+            } else {
+              console.warn(
+                ">>> [DASHBOARD_LAYOUT] E-mail não verificado. Bloqueando acesso ao dashboard.",
+              );
+              localStorage.setItem("pending_verification_email", user.email || "");
+              safeRedirect("/admin/pending-verification");
+              return;
+            }
+          } catch {
+            // Em caso de falha de rede, mantém comportamento seguro e evita liberar dashboard indevidamente
+            localStorage.setItem("pending_verification_email", user.email || "");
+            safeRedirect("/admin/pending-verification");
+            return;
+          }
+        }
+
+        // Se for um Super Admin tentando acessar um dashboard de estúdio, permitimos?
+        // Pela regra de negócio, o Super Admin deve ir para /admin/master.
+        if (user.role === "SUPER_ADMIN") {
+          console.warn(
+            ">>> [DASHBOARD_LAYOUT] Super Admin acessando rota de estúdio. Redirecionando para Master.",
+          );
+          safeRedirect("/admin/master");
+          return;
+        }
+
+        const businessSlug = user?.business?.slug || user?.slug;
+
+        const hasCompletedOnboarding = Boolean(
+          (session.user as { hasCompletedOnboarding?: boolean })
+            ?.hasCompletedOnboarding,
         );
-        return;
+
+        if (!hasCompletedOnboarding && !isOnboarding && businessSlug) {
+          safeRedirect(`/admin/${businessSlug}/dashboard/onboarding`);
+          return;
+        }
+
+        if (hasCompletedOnboarding && isOnboarding && businessSlug) {
+          safeRedirect(`/admin/${businessSlug}/dashboard/overview`);
+          return;
+        }
+
+        if (businessSlug && businessSlug !== slug) {
+          console.warn(
+            `>>> [DASHBOARD_LAYOUT] Acesso negado. Redirecionando para o slug correto: ${businessSlug}`,
+          );
+          safeRedirect(`/admin/${businessSlug}/dashboard/overview`);
+          return;
+        }
+
+        console.log(">>> [DASHBOARD_LAYOUT] Sessão validada com sucesso.");
+        setIsAuthenticated(true);
+        setAdminUser({
+          name: user.name || "Administrador",
+          username: user.email,
+        });
+        setIsCheckingSession(false);
       }
+    };
 
-      // NOVO: BLOQUEIO DE E-MAIL NÃO VERIFICADO
-      // Bloqueamos acesso ao dashboard se o e-mail não estiver verificado
-      // Exceção: Super Admin ou e-mail do proprietário
-      if (
-        user.emailVerified === false &&
-        user.role !== "SUPER_ADMIN" &&
-        user.email !== "lucassa1324@gmail.com"
-      ) {
-        console.warn(
-          ">>> [DASHBOARD_LAYOUT] E-mail não verificado. Bloqueando acesso ao dashboard.",
-        );
-        localStorage.setItem("pending_verification_email", user.email || "");
-        router.push("/admin/pending-verification");
-        return;
+    runAccessValidation();
+
+    return () => {
+      cancelled = true;
+      if (sessionFallbackTimer) {
+        clearTimeout(sessionFallbackTimer);
       }
-
-      // Se for um Super Admin tentando acessar um dashboard de estúdio, permitimos?
-      // Pela regra de negócio, o Super Admin deve ir para /admin/master.
-      if (user.role === "SUPER_ADMIN") {
-        console.warn(
-          ">>> [DASHBOARD_LAYOUT] Super Admin acessando rota de estúdio. Redirecionando para Master.",
-        );
-        router.push("/admin/master");
-        return;
-      }
-
-      const businessSlug = user?.business?.slug || user?.slug;
-
-      const hasCompletedOnboarding = Boolean(
-        (session.user as { hasCompletedOnboarding?: boolean })
-          ?.hasCompletedOnboarding,
-      );
-
-      if (!hasCompletedOnboarding && !isOnboarding && businessSlug) {
-        router.push(`/admin/${businessSlug}/dashboard/onboarding`);
-        return;
-      }
-
-      if (hasCompletedOnboarding && isOnboarding && businessSlug) {
-        router.push(`/admin/${businessSlug}/dashboard/overview`);
-        return;
-      }
-
-      if (businessSlug && businessSlug !== slug) {
-        console.warn(
-          `>>> [DASHBOARD_LAYOUT] Acesso negado. Redirecionando para o slug correto: ${businessSlug}`,
-        );
-        router.push(`/admin/${businessSlug}/dashboard/overview`);
-        return;
-      }
-
-      console.log(">>> [DASHBOARD_LAYOUT] Sessão validada com sucesso.");
-      setIsAuthenticated(true);
-      setAdminUser({
-        name: user.name || "Administrador",
-        username: user.email,
-      });
-      setIsCheckingSession(false);
-    }
-  }, [session, isLoadingSession, slug, router, isOnboarding]);
+    };
+  }, [session, isLoadingSession, slug, isOnboarding, pathname, router]);
 
   const handleLogout = async () => {
     await signOut();
