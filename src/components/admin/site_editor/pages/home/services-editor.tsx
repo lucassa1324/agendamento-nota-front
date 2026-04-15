@@ -256,6 +256,72 @@ export function ServicesEditor({
                 </fieldset>
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <fieldset
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                    Formato do Card
+                  </legend>
+                  <Select
+                    value={settings.buttonShape || "square"}
+                    onValueChange={(v) =>
+                      onUpdate({
+                        buttonShape: v as "pill" | "square" | "sharp",
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Selecione o formato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pill" className="text-xs">
+                        Arredondado
+                      </SelectItem>
+                      <SelectItem value="square" className="text-xs">
+                        Cantos Suaves
+                      </SelectItem>
+                      <SelectItem value="sharp" className="text-xs">
+                        Totalmente Quadrado
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </fieldset>
+
+                <fieldset
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                    Formato do Ícone
+                  </legend>
+                  <Select
+                    value={settings.badgeShape || "square"}
+                    onValueChange={(v) =>
+                      onUpdate({
+                        badgeShape: v as "pill" | "square" | "sharp",
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Selecione o formato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pill" className="text-xs">
+                        Arredondado
+                      </SelectItem>
+                      <SelectItem value="square" className="text-xs">
+                        Cantos Suaves
+                      </SelectItem>
+                      <SelectItem value="sharp" className="text-xs">
+                        Totalmente Quadrado
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </fieldset>
+              </div>
+
               <div className="space-y-4 border-t pt-4">
                 <Label className="text-[11px] font-bold uppercase text-primary tracking-wider">
                   Título do Card

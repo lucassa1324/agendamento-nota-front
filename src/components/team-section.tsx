@@ -129,6 +129,14 @@ export function TeamSection() {
           (rawTeam.cardDescriptionFont as string) ||
           (appearance.cardDescriptionFont as string) ||
           (content.cardDescriptionFont as string),
+        buttonShape:
+          (rawTeam.buttonShape as "pill" | "square" | "sharp") ||
+          (appearance.buttonShape as "pill" | "square" | "sharp") ||
+          (content.buttonShape as "pill" | "square" | "sharp"),
+        badgeShape:
+          (rawTeam.badgeShape as "pill" | "square" | "sharp") ||
+          (appearance.badgeShape as "pill" | "square" | "sharp") ||
+          (content.badgeShape as "pill" | "square" | "sharp"),
         bgImage:
           (rawTeam.bgImage as string) || appearance.backgroundImageUrl || "",
         bgColor: sanitizeColor(
@@ -250,6 +258,14 @@ export function TeamSection() {
             (rawTeam.cardDescriptionFont as string) ||
             (appearance.cardDescriptionFont as string) ||
             (content.cardDescriptionFont as string),
+          buttonShape:
+            (rawTeam.buttonShape as "pill" | "square" | "sharp") ||
+            (appearance.buttonShape as "pill" | "square" | "sharp") ||
+            (content.buttonShape as "pill" | "square" | "sharp"),
+          badgeShape:
+            (rawTeam.badgeShape as "pill" | "square" | "sharp") ||
+            (appearance.badgeShape as "pill" | "square" | "sharp") ||
+            (content.badgeShape as "pill" | "square" | "sharp"),
           bgImage:
             (rawTeam.bgImage as string) || appearance.backgroundImageUrl || "",
           bgColor: sanitizeColor(
@@ -354,12 +370,24 @@ export function TeamSection() {
             {settings.members.map((member) => (
               <Card
                 key={member.id}
-                className="border-border overflow-hidden backdrop-blur-sm"
+                className={cn(
+                  "border-border overflow-hidden backdrop-blur-sm transition-all duration-300",
+                  settings.buttonShape === "pill" && "rounded-[2rem]",
+                  settings.buttonShape === "square" && "rounded-xl",
+                  settings.buttonShape === "sharp" && "rounded-none",
+                )}
                 style={{
                   backgroundColor: settings.cardBgColor || "transparent",
                 }}
               >
-                <div className="aspect-square relative overflow-hidden">
+                <div
+                  className={cn(
+                    "aspect-square relative overflow-hidden",
+                    settings.badgeShape === "pill" && "rounded-t-[2rem]",
+                    settings.badgeShape === "square" && "rounded-t-xl",
+                    settings.badgeShape === "sharp" && "rounded-none",
+                  )}
+                >
                   <Image
                     src={member.image}
                     alt={member.name}

@@ -255,6 +255,18 @@ export function ServicesSection() {
             ((sanitized.cardConfig as Record<string, unknown>)
               ?.iconColor as string),
         ),
+        buttonShape:
+          (sanitized.buttonShape as "pill" | "square" | "sharp") ||
+          (appearance.buttonShape as "pill" | "square" | "sharp") ||
+          (content.buttonShape as "pill" | "square" | "sharp") ||
+          (itemsStyle.buttonShape as "pill" | "square" | "sharp") ||
+          "square",
+        badgeShape:
+          (sanitized.badgeShape as "pill" | "square" | "sharp") ||
+          (appearance.badgeShape as "pill" | "square" | "sharp") ||
+          (content.badgeShape as "pill" | "square" | "sharp") ||
+          (itemsStyle.badgeShape as "pill" | "square" | "sharp") ||
+          "square",
         bgImage: resolvedBgType === "image" ? rawBgImage : "",
         bgColor: normalizedBgColor,
         bgType: resolvedBgType,
@@ -606,6 +618,9 @@ export function ServicesSection() {
                 className={cn(
                   "border-border hover:border-accent transition-all duration-300 overflow-hidden",
                   !settings?.cardBgColor && "bg-card",
+                  settings.buttonShape === "pill" && "rounded-3xl",
+                  settings.buttonShape === "square" && "rounded-xl",
+                  settings.buttonShape === "sharp" && "rounded-none",
                 )}
                 style={{
                   backgroundColor: settings?.cardBgColor || undefined,
@@ -616,7 +631,12 @@ export function ServicesSection() {
               >
                 <CardContent className="p-6">
                   <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center mb-4 transition-colors"
+                    className={cn(
+                      "w-12 h-12 flex items-center justify-center mb-4 transition-all duration-300",
+                      settings.badgeShape === "pill" && "rounded-full",
+                      settings.badgeShape === "square" && "rounded-lg",
+                      settings.badgeShape === "sharp" && "rounded-none",
+                    )}
                     style={{
                       backgroundColor: settings?.cardIconColor
                         ? settings.cardIconColor.startsWith("#")

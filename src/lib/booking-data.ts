@@ -1538,6 +1538,8 @@ export type AppearanceSettings = {
   imageScale?: number;
   imageX?: number;
   imageY?: number;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
 };
 
 export type HeroSettings = {
@@ -1576,6 +1578,8 @@ export type HeroSettings = {
   secondaryButtonFont: string;
   primaryButtonLink?: string;
   secondaryButtonLink?: string;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
   appearance?: AppearanceSettings;
 };
 
@@ -1596,6 +1600,7 @@ export type StorySettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  buttonShape?: "pill" | "square" | "sharp";
   appearance?: AppearanceSettings;
 };
 
@@ -1623,6 +1628,8 @@ export type ValuesSettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
   appearance?: AppearanceSettings;
   // Card specific styles
   cardBgColor: string;
@@ -1668,6 +1675,8 @@ export type ServicesSettings = {
   cardBorderRadius?: string;
   cardBorderWidth?: string;
   cardBorderColor?: string;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
 };
 
 export const defaultServicesSettings: ServicesSettings = {
@@ -1882,6 +1891,7 @@ export type CTASettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  buttonShape?: "pill" | "square" | "sharp";
   appearance?: AppearanceSettings;
 };
 
@@ -1912,6 +1922,8 @@ export type BookingStepSettings = {
     minimumBookingLeadMinutes?: number;
   };
   buttonColor?: string;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
   appearance?: AppearanceSettings;
 };
 
@@ -2426,6 +2438,8 @@ export type TeamSettings = {
   cardTitleFont: string;
   cardRoleFont: string;
   cardDescriptionFont: string;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
   appearance?: AppearanceSettings;
   members: TeamMember[];
 };

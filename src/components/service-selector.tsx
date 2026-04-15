@@ -216,6 +216,10 @@ export function ServiceSelector({
   const appearance = settings?.appearance || {};
   const settingsRecord = settings as Record<string, unknown> | undefined;
 
+  // Normalização de buttonShape e badgeShape
+  const buttonShape = settings?.buttonShape || appearance.buttonShape || "pill";
+  const badgeShape = settings?.badgeShape || appearance.badgeShape || "pill";
+
   // Prioridade: Custom Setting > Global Appearance > Default Fallback
   const accentColor =
     settings?.accentColor || appearance.accentColor || "var(--primary)";
@@ -307,6 +311,9 @@ export function ServiceSelector({
               }
               className={cn(
                 "border-border cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden shadow-none bg-transparent",
+                buttonShape === "pill" && "rounded-[2rem]",
+                buttonShape === "square" && "rounded-xl",
+                buttonShape === "sharp" && "rounded-none",
                 isSelected && "ring-1",
                 isConflicting &&
                   "opacity-40 grayscale cursor-not-allowed border-dashed pointer-events-none",
@@ -324,7 +331,10 @@ export function ServiceSelector({
                   backgroundColor: isSelected ? accentColor : "transparent",
                 }}
                 className={cn(
-                  "absolute top-0 right-0 p-1 rounded-full",
+                  "absolute top-0 right-0 p-1",
+                  badgeShape === "pill" && "rounded-full",
+                  badgeShape === "square" && "rounded-md",
+                  badgeShape === "sharp" && "rounded-none",
                   isSelected ? "text-white" : "border",
                 )}
               >
@@ -412,6 +422,9 @@ export function ServiceSelector({
               style={{ backgroundColor: accentColor }}
               className={cn(
                 "w-full sm:w-auto min-w-50 h-12 px-8 text-base font-bold shadow-lg hover:brightness-110 transition-all active:scale-[0.98] shrink-0",
+                buttonShape === "pill" && "rounded-full",
+                buttonShape === "square" && "rounded-xl",
+                buttonShape === "sharp" && "rounded-none",
                 !accentColor && "bg-primary",
               )}
             >

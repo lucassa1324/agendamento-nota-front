@@ -115,6 +115,10 @@ export function CTASection() {
               (appearance.buttonTextColor as string) ||
               (content.buttonTextColor as string),
           ),
+          buttonShape:
+            (rawCTA.buttonShape as "pill" | "square" | "sharp") ||
+            (appearance.buttonShape as "pill" | "square" | "sharp") ||
+            (content.buttonShape as "pill" | "square" | "sharp"),
           buttonLink:
             (content.buttonLink as string) ?? (rawCTA.buttonLink as string),
           bgImage:

@@ -164,8 +164,13 @@ function HeroTemplateCard({
             )}
             <div
               className={cn(
-                "inline-flex items-center gap-1 rounded-full font-bold uppercase tracking-wide",
+                "inline-flex items-center gap-1 font-bold uppercase tracking-wide",
                 compact ? "px-2 py-0.5 text-[9px]" : "px-3 py-1 text-[11px]",
+                template.badgeShape === "sharp"
+                  ? "rounded-none"
+                  : template.badgeShape === "square"
+                    ? "rounded-sm"
+                    : "rounded-full",
               )}
               style={{
                 backgroundColor: template.badgeColor || "rgba(255,255,255,0.14)",
@@ -202,7 +207,12 @@ function HeroTemplateCard({
           <div className={cn("flex items-center", compact ? "gap-2" : "gap-4 justify-center")}>
             <div
               className={cn(
-                "rounded-full font-bold transition-transform hover:scale-105",
+                "font-bold transition-transform hover:scale-105",
+                template.buttonShape === "sharp"
+                  ? "rounded-none"
+                  : template.buttonShape === "square"
+                    ? "rounded-sm"
+                    : "rounded-full",
                 compact ? "px-2 py-1 text-[9px]" : "px-5 py-2.5 text-sm",
               )}
               style={{
@@ -293,6 +303,8 @@ export interface HeroEditorProps {
     secondaryButtonColor?: string;
     secondaryButtonTextColor?: string;
     secondaryButtonTransparent?: boolean;
+    buttonShape?: "pill" | "square" | "sharp";
+    badgeShape?: "pill" | "square" | "sharp";
 
     // Background Fields
     bgType: "color" | "image";
@@ -373,14 +385,37 @@ export function HeroEditor({
     loadDbTemplates();
   }, [isTemplateModalOpen]);
 
-  // Combina templates estáticos com os do banco (priorizando banco se houver conflito de ID)
+  // Combina templates estáticos com os do banco sem perder campos novos do front
   const allTemplates = useMemo(() => {
-    if (dbTemplates.length === 0) return homeHeroTemplates;
-    
-    const dbIds = new Set(dbTemplates.map(t => t.id));
-    const uniqueStatic = homeHeroTemplates.filter(t => !dbIds.has(t.id));
-    
-    return [...dbTemplates, ...uniqueStatic];
+    if (dbTemplates.length === 0) {
+      return homeHeroTemplates;
+    }
+
+    const staticById = new Map(homeHeroTemplates.map((template) => [template.id, template]));
+
+    const mergedDbTemplates = dbTemplates.map((dbTemplate) => {
+      const staticTemplate = staticById.get(dbTemplate.id);
+      return {
+        ...(staticTemplate || {}),
+        ...dbTemplate,
+        buttonShape:
+          dbTemplate.buttonShape ??
+          staticTemplate?.buttonShape ??
+          "pill",
+        badgeShape:
+          dbTemplate.badgeShape ??
+          staticTemplate?.badgeShape ??
+          "pill",
+      } satisfies HeroTemplatePreset;
+    });
+
+    const dbIds = new Set(dbTemplates.map((template) => template.id));
+    const uniqueStatic = homeHeroTemplates.filter(
+      (template) => !dbIds.has(template.id),
+    );
+
+    const combined = [...mergedDbTemplates, ...uniqueStatic];
+    return combined;
   }, [dbTemplates]);
 
   const handleSave = async () => {
@@ -410,6 +445,13 @@ export function HeroEditor({
     const mappedFont = selectedTemplate.fontFamily
       ? fontFamilyMap[selectedTemplate.fontFamily]
       : settings.titleFont;
+    const titleFont = selectedTemplate.titleFont ?? mappedFont;
+    const subtitleFont = selectedTemplate.subtitleFont ?? settings.subtitleFont ?? mappedFont;
+    const badgeFont = selectedTemplate.badgeFont ?? settings.badgeFont ?? subtitleFont;
+    const primaryButtonFont =
+      selectedTemplate.primaryButtonFont ?? settings.primaryButtonFont ?? subtitleFont;
+    const secondaryButtonFont =
+      selectedTemplate.secondaryButtonFont ?? settings.secondaryButtonFont ?? subtitleFont;
 
     handleUpdate({
       showBadge: true,
@@ -422,38 +464,40 @@ export function HeroEditor({
       titleSize: selectedTemplate.titleSize ?? settings.titleSize ?? "md",
       primaryButtonTransparent:
         selectedTemplate.primaryButtonTransparent ??
-        settings.primaryButtonTransparent ??
         false,
       secondaryButtonTransparent:
         selectedTemplate.secondaryButtonTransparent ??
-        settings.secondaryButtonTransparent ??
-        true,
+        false,
       bgType: selectedTemplate.bgType,
       bgImage: selectedTemplate.bgImage,
       ...(selectedTemplate.bgColor !== undefined && {
         bgColor: selectedTemplate.bgColor,
       }),
-      titleFont: mappedFont,
-      subtitleFont: mappedFont,
-      badgeFont: mappedFont,
-      titleColor: selectedTemplate.titleColor ?? settings.titleColor,
-      subtitleColor: selectedTemplate.subtitleColor ?? settings.subtitleColor,
+      titleFont,
+      subtitleFont,
+      badgeFont,
+      primaryButtonFont,
+      secondaryButtonFont,
+      titleColor: selectedTemplate.titleColor ?? "#ffffff",
+      subtitleColor: selectedTemplate.subtitleColor ?? "#f3f4f6",
       badgeColor: selectedTemplate.badgeColor ?? settings.badgeColor,
       badgeTextColor: selectedTemplate.badgeTextColor ?? settings.badgeTextColor,
       primaryButtonColor:
-        selectedTemplate.primaryButtonColor ?? settings.primaryButtonColor,
+        selectedTemplate.primaryButtonColor ?? "#2c2c2c",
       primaryButtonTextColor:
         selectedTemplate.primaryButtonTextColor ??
-        settings.primaryButtonTextColor,
+        "#ffffff",
       secondaryButtonColor:
-        selectedTemplate.secondaryButtonColor ?? settings.secondaryButtonColor,
+        selectedTemplate.secondaryButtonColor ?? "#ffffff",
       secondaryButtonTextColor:
         selectedTemplate.secondaryButtonTextColor ??
-        settings.secondaryButtonTextColor,
+        "#ffffff",
+      buttonShape: selectedTemplate.buttonShape ?? settings.buttonShape ?? "pill",
+      badgeShape: selectedTemplate.badgeShape ?? settings.badgeShape ?? "pill",
       ...(selectedTemplate.bgType === "image"
         ? {
-            imageOpacity: settings.imageOpacity || 1,
-            overlayOpacity: settings.overlayOpacity || 0.45,
+            imageOpacity: selectedTemplate.imageOpacity ?? 1,
+            overlayOpacity: selectedTemplate.overlayOpacity ?? 0.55,
           }
         : {}),
     });
@@ -660,6 +704,27 @@ export function HeroEditor({
                       className="h-8 text-[10px] uppercase"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-1.5 p-3 rounded-lg border bg-background/50">
+                  <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                    Formato do Badge
+                  </Label>
+                  <Select
+                    value={settings.badgeShape || "pill"}
+                    onValueChange={(value) =>
+                      handleUpdate({ badgeShape: value as "pill" | "square" | "sharp" })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pill" className="text-xs">Arredondado</SelectItem>
+                      <SelectItem value="square" className="text-xs">Cantos Suaves</SelectItem>
+                      <SelectItem value="sharp" className="text-xs">Totalmente Quadrado</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             )}
@@ -896,6 +961,27 @@ export function HeroEditor({
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-1.5 p-3 rounded-lg border bg-background/50">
+                <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+                  Formato dos Botões
+                </Label>
+                <Select
+                  value={settings.buttonShape || "pill"}
+                  onValueChange={(value) =>
+                    handleUpdate({ buttonShape: value as "pill" | "square" | "sharp" })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pill" className="text-xs">Arredondado</SelectItem>
+                    <SelectItem value="square" className="text-xs">Cantos Suaves</SelectItem>
+                    <SelectItem value="sharp" className="text-xs">Totalmente Quadrado</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>

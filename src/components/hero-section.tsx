@@ -235,6 +235,8 @@ export function HeroSection() {
         bgImage,
         bgColor,
         bgType,
+        buttonShape: (rawHero.buttonShape || content.buttonShape || appearance.buttonShape) as "pill" | "square" | "sharp" | undefined,
+        badgeShape: (rawHero.badgeShape || content.badgeShape || appearance.badgeShape) as "pill" | "square" | "sharp" | undefined,
       };
 
       if (isInsideIframe && typeof window !== "undefined") {
@@ -542,6 +544,8 @@ export function HeroSection() {
             bgImage,
             bgColor,
             bgType,
+            buttonShape: (rawHero.buttonShape || content.buttonShape || appearance.buttonShape) as "pill" | "square" | "sharp" | undefined,
+            badgeShape: (rawHero.badgeShape || content.badgeShape || appearance.badgeShape) as "pill" | "square" | "sharp" | undefined,
             appearance: {
               ...appearance,
               backgroundColor: bgColor,
@@ -712,7 +716,12 @@ export function HeroSection() {
           {customStyles.showBadge !== false && badgeText.trim().length > 0 && (
             <div
               className={cn(
-                "inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 mb-6 animate-in fade-in zoom-in duration-500",
+                "inline-flex items-center gap-2 px-4 py-2 mb-6 animate-in fade-in zoom-in duration-500",
+                customStyles.badgeShape === "sharp"
+                  ? "rounded-none"
+                  : customStyles.badgeShape === "square"
+                    ? "rounded-sm"
+                    : "rounded-full",
                 getHighlightClass("hero-badge"),
               )}
               style={{
@@ -799,7 +808,12 @@ export function HeroSection() {
                   asChild
                   size="lg"
                   className={cn(
-                    "h-14 px-8 text-base font-bold rounded-full shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                    "h-14 px-8 text-base font-bold shadow-lg transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                    customStyles.buttonShape === "sharp"
+                      ? "rounded-none"
+                      : customStyles.buttonShape === "square"
+                        ? "rounded-sm"
+                        : "rounded-full",
                     isPrimaryTransparent && "shadow-none",
                     getHighlightClass("hero-primary-button"),
                   )}
@@ -831,7 +845,12 @@ export function HeroSection() {
                   variant="outline"
                   size="lg"
                   className={cn(
-                    "h-14 px-8 text-base font-bold rounded-full backdrop-blur-sm border-border transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                    "h-14 px-8 text-base font-bold backdrop-blur-sm border-border transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]",
+                    customStyles.buttonShape === "sharp"
+                      ? "rounded-none"
+                      : customStyles.buttonShape === "square"
+                        ? "rounded-sm"
+                        : "rounded-full",
                     isSecondaryTransparent
                       ? "bg-background/50 hover:bg-background/80"
                       : "hover:opacity-90",
