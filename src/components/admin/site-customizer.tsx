@@ -585,7 +585,8 @@ export function SiteCustomizer() {
             variant="default"
             size="default"
             className={cn(
-              "h-9 px-2 sm:px-4 rounded-lg shadow-md transition-all active:scale-95 shrink-0 flex items-center gap-2 border border-slate-700",
+              "h-9 rounded-lg shadow-md transition-all active:scale-95 shrink-0 flex items-center border border-slate-700",
+              isMobile ? "w-9 px-0 justify-center gap-0" : "px-2 sm:px-4 gap-2",
               isNavOpen
                 ? "bg-slate-200 text-slate-900 hover:bg-slate-300"
                 : "bg-slate-800 text-white hover:bg-slate-900 ring-2 ring-slate-500/20",
@@ -600,7 +601,12 @@ export function SiteCustomizer() {
             ) : (
               <LayoutDashboard className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
-            <span className="text-xs sm:text-sm font-bold uppercase tracking-wide">
+            <span
+              className={cn(
+                "text-xs sm:text-sm font-bold uppercase tracking-wide",
+                isMobile && "hidden",
+              )}
+            >
               {isNavOpen ? "FECHAR MENU" : "MENU"}
             </span>
           </Button>
@@ -749,6 +755,7 @@ export function SiteCustomizer() {
             mobileScale={mobileScale}
             desktopScale={desktopScale}
             isAutoZoom={isAutoZoom}
+            setIsAutoZoom={setIsAutoZoom}
             setManualWidth={setManualWidth}
             previewUrl={previewUrl}
             previewKey={previewKey}

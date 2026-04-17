@@ -204,16 +204,23 @@ function HeroTemplateCard({
             )}
           </div>
 
-          <div className={cn("flex items-center", compact ? "gap-2" : "gap-4 justify-center")}>
+          <div
+            className={cn(
+              "flex items-center",
+              compact ? "gap-2" : "w-full max-w-md gap-2 sm:gap-4 justify-center",
+            )}
+          >
             <div
               className={cn(
-                "font-bold transition-transform hover:scale-105",
+                "font-bold transition-transform hover:scale-105 text-center",
                 template.buttonShape === "sharp"
                   ? "rounded-none"
                   : template.buttonShape === "square"
                     ? "rounded-sm"
                     : "rounded-full",
-                compact ? "px-2 py-1 text-[9px]" : "px-5 py-2.5 text-sm",
+                compact
+                  ? "px-2 py-1 text-[9px]"
+                  : "flex-1 min-w-0 px-3 py-2 text-xs sm:px-5 sm:py-2.5 sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis leading-none",
               )}
               style={{
                 backgroundColor: template.primaryButtonTransparent
@@ -229,8 +236,10 @@ function HeroTemplateCard({
             </div>
             <div
               className={cn(
-                "rounded-full font-bold bg-transparent transition-transform hover:scale-105",
-                compact ? "px-2 py-1 text-[9px]" : "px-5 py-2.5 text-sm",
+                "rounded-full font-bold bg-transparent transition-transform hover:scale-105 text-center",
+                compact
+                  ? "px-2 py-1 text-[9px]"
+                  : "flex-1 min-w-0 px-3 py-2 text-xs sm:px-5 sm:py-2.5 sm:text-sm whitespace-nowrap overflow-hidden text-ellipsis leading-none",
               )}
               style={{
                 border: `1px solid ${template.secondaryButtonColor || "#ffffff"}`,
