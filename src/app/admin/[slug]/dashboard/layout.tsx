@@ -83,11 +83,24 @@ function AdminLayoutContent({
   const slug = propSlug;
 
   const { data: session, isPending: isLoadingSession } = useSession();
+  const user = session?.user as AuthUser | undefined;
+  const businessId = user?.business?.id || user?.businessId;
+
   const {
     studio,
     isLoading: isLoadingStudio,
     error: studioError,
+    setBusinessId: setRootBusinessId,
+    businessId: currentBusinessId,
   } = useStudio();
+
+  // Sincroniza o businessId da sessão com o StudioProvider raiz se necessário
+  useEffect(() => {
+    if (businessId && businessId !== currentBusinessId) {
+      console.log(">>> [DASHBOARD_LAYOUT] Sincronizando businessId com Provider raiz:", businessId);
+      setRootBusinessId(businessId);
+    }
+  }, [businessId, currentBusinessId, setRootBusinessId]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [adminUser, setAdminUser] = useState<{
@@ -437,11 +450,9 @@ export default function AdminLayout({
         </div>
       }
     >
-      <StudioProvider initialSlug={slug} initialId={businessId}>
-        <SidebarProvider>
-          <AdminLayoutContent slug={slug}>{children}</AdminLayoutContent>
-        </SidebarProvider>
-      </StudioProvider>
+      <SidebarProvider>
+        <AdminLayoutContent slug={slug}>{children}</AdminLayoutContent>
+      </SidebarProvider>
     </Suspense>
   );
 }

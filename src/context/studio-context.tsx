@@ -85,6 +85,7 @@ interface StudioContextType {
   error: string | null;
   slug: string | null;
   businessId: string | null;
+  setBusinessId: (id: string | null) => void;
   updateStudioInfo: (updates: Partial<Business>) => void;
   refreshData: () => void;
   refreshTrigger: number;
@@ -1070,22 +1071,25 @@ export function StudioProvider({
   // --- NOVO: Sincronização do Título da Página (Aba do Navegador) ---
   useEffect(() => {
     if (studio && typeof window !== "undefined") {
-      // Apenas acessando pathname para garantir que o efeito rode na troca de rota
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const siteName = studio.siteName || studio.name || "Agendamento";
       const suffix = studio.titleSuffix?.trim();
+      let newTitle = "";
 
       if (suffix) {
-        // Verifica se o sufixo já começa com separador comum
         const hasSeparator = /^[-|–—]/.test(suffix);
-        document.title = hasSeparator
+        newTitle = hasSeparator
           ? `${siteName} ${suffix}`
           : `${siteName} - ${suffix}`;
       } else {
-        document.title = siteName;
+        newTitle = siteName;
+      }
+
+      // Só atualiza se o título realmente for diferente para evitar oscilações desnecessárias
+      if (document.title !== newTitle) {
+        document.title = newTitle;
       }
     }
-  }, [studio]);
+  }, [studio?.siteName, studio?.name, studio?.titleSuffix]);
   // --------------------------------------------------------------------------
 
   useEffect(() => {
@@ -1131,10 +1135,10 @@ export function StudioProvider({
         const slugParam = urlParams.get("slug");
         const idParam = urlParams.get("businessId") || urlParams.get("id");
 
-        if (idParam) {
+        if (idParam && idParam !== currentId) {
           currentId = idParam;
           setBusinessId(currentId);
-        } else if (slugParam) {
+        } else if (slugParam && slugParam !== currentSlug) {
           currentSlug = slugParam;
           console.log(
             `>>> [StudioProvider] SLUG extraído dos QUERY PARAMS: ${currentSlug}`,
@@ -1151,48 +1155,32 @@ export function StudioProvider({
               segments[0] === "admin" &&
               segments[1] !== "master"
             ) {
-              currentSlug = segments[1];
-              console.log(
-                `>>> [StudioProvider] SLUG extraído do PATH (/admin/[slug]): ${currentSlug}`,
-              );
-              setSlug(currentSlug);
+              const pathSlug = segments[1];
+              if (pathSlug !== currentSlug) {
+                currentSlug = pathSlug;
+                console.log(
+                  `>>> [StudioProvider] SLUG extraído do PATH (/admin/[slug]): ${currentSlug}`,
+                );
+                setSlug(currentSlug);
+              }
             }
           }
 
           if (!currentSlug) {
             const host = window.location.host;
-            console.log(
-              `>>> [StudioProvider] Analisando HOST para extração de SLUG: ${host}`,
-            );
-
-            // Caso especial para desenvolvimento: subdomínio em localhost (ex: lucas-studio.localhost:3000)
+            // ... (restante da lógica de host simplificada abaixo)
+            let hostSlug = null;
             if (host.includes(".localhost")) {
               const parts = host.split(".");
-              if (parts.length > 1 && parts[0] !== "www") {
-                currentSlug = parts[0];
-                console.log(
-                  `>>> [StudioProvider] SLUG extraído do subdomínio LOCALHOST: ${currentSlug}`,
-                );
-                setSlug(currentSlug);
-              }
+              if (parts.length > 1 && parts[0] !== "www") hostSlug = parts[0];
+            } else if (BASE_DOMAIN && host.endsWith(BASE_DOMAIN) && host !== BASE_DOMAIN) {
+              hostSlug = host.replace(`.${BASE_DOMAIN}`, "").replace("www.", "");
             }
-            // Caso para produção: subdomínio do BASE_DOMAIN
-            else if (
-              BASE_DOMAIN &&
-              host.endsWith(BASE_DOMAIN) &&
-              host !== BASE_DOMAIN &&
-              host !== `www.${BASE_DOMAIN}`
-            ) {
-              const possibleSlug = host
-                .replace(`.${BASE_DOMAIN}`, "")
-                .replace("www.", "");
-              if (possibleSlug) {
-                currentSlug = possibleSlug;
-                console.log(
-                  `>>> [StudioProvider] SLUG extraído do subdomínio PRODUÇÃO: ${currentSlug}`,
-                );
-                setSlug(currentSlug);
-              }
+
+            if (hostSlug && hostSlug !== currentSlug) {
+              currentSlug = hostSlug;
+              console.log(`>>> [StudioProvider] SLUG extraído do HOST: ${currentSlug}`);
+              setSlug(currentSlug);
             }
           }
         }
@@ -1746,6 +1734,7 @@ export function StudioProvider({
       error,
       slug,
       businessId,
+      setBusinessId,
       updateStudioInfo,
       refreshData,
       refreshTrigger,
@@ -1756,6 +1745,7 @@ export function StudioProvider({
       error,
       slug,
       businessId,
+      setBusinessId,
       updateStudioInfo,
       refreshData,
       refreshTrigger,
