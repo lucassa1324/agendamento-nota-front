@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Clock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
@@ -30,10 +30,24 @@ export function ServiceSelector({
   const { studio } = useStudio();
   const [services, setServices] = useState<Service[]>([]);
   const [selected, setSelected] = useState<Service[]>(initialSelected);
+  const onSelectRef = useRef(onSelect);
+
+  const haveSameServiceIds = (a: Service[], b: Service[]) => {
+    if (a.length !== b.length) return false;
+    const aIds = a.map((s) => String(s.id)).sort();
+    const bIds = b.map((s) => String(s.id)).sort();
+    return aIds.every((id, index) => id === bIds[index]);
+  };
 
   useEffect(() => {
-    // Sincroniza o estado interno se initialSelected mudar (importante para reset)
-    setSelected(initialSelected);
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
+
+  useEffect(() => {
+    // Sincroniza o estado interno apenas quando houver mudança real de seleção.
+    setSelected((prev) =>
+      haveSameServiceIds(prev, initialSelected) ? prev : initialSelected,
+    );
   }, [initialSelected]);
 
   useEffect(() => {
@@ -204,8 +218,8 @@ export function ServiceSelector({
   };
 
   useEffect(() => {
-    onSelect(selected);
-  }, [selected, onSelect]);
+    onSelectRef.current(selected);
+  }, [selected]);
 
   const totalPrice = selected.reduce((acc, s) => acc + Number(s.price || 0), 0);
   const totalDuration = selected.reduce(

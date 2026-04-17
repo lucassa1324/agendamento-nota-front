@@ -25,6 +25,7 @@ type AdminBookingFormProps = {
   onConfirm: (booking: Booking) => void;
   onBack: () => void;
   initialBooking?: Booking;
+  mode?: "reschedule" | "edit";
   settings?: BookingStepSettings;
 };
 
@@ -35,6 +36,7 @@ export function AdminBookingForm({
   onConfirm,
   onBack,
   initialBooking,
+  mode = "reschedule",
   settings,
 }: AdminBookingFormProps) {
   const { studio } = useStudio();
@@ -109,29 +111,52 @@ export function AdminBookingForm({
         servicePriceSnapshot: Number(formData.price || 0).toFixed(2), // Preço editado pelo admin
         serviceDurationSnapshot: durationHHmm, // Soma das durações
         notes: "Agendado via Admin",
+        ignoreBusinessHoursValidation: true,
         items, // Nova tabela appointment_items
       };
 
-      const result = await appointmentService.create(appointmentData);
+      const isEditMode = mode === "edit" && Boolean(initialBooking?.id);
+      const isRescheduleMode = mode === "reschedule" && Boolean(initialBooking?.id);
+
+      const result = isEditMode
+        ? await appointmentService.update(initialBooking!.id, {
+          serviceId: serviceIds,
+          scheduledAt,
+          customerName: formData.name,
+          customerEmail: formData.email,
+          customerPhone: formData.phone,
+          servicePriceSnapshot: Number(formData.price || 0).toFixed(2),
+          notes: "Editado via Admin",
+          ignoreBusinessHoursValidation: true,
+        })
+        : isRescheduleMode
+          ? await appointmentService.reschedule(initialBooking!.id, scheduledAt)
+          : await appointmentService.create(appointmentData);
+
+      const resultDurationMinutes = result.serviceDurationSnapshot
+        ? parseDuration(result.serviceDurationSnapshot)
+        : totalDurationMinutes;
 
       const booking: Booking = {
         id: result.id,
         serviceId: serviceIds,
-        serviceName: serviceNames,
-        serviceDuration: totalDurationMinutes,
-        servicePrice: Number(formData.price),
+        serviceName: result.serviceNameSnapshot || serviceNames,
+        serviceDuration: resultDurationMinutes,
+        servicePrice: Number(result.servicePriceSnapshot || formData.price || 0),
         date,
         time,
-        clientName: formData.name,
-        clientEmail: formData.email,
-        clientPhone: formData.phone,
+        clientName: result.customerName || formData.name,
+        clientEmail: result.customerEmail || formData.email,
+        clientPhone: result.customerPhone || formData.phone,
         status: "pendente",
         createdAt: new Date().toISOString(),
         notificationsSent: { email: false, whatsapp: false },
       };
 
-      saveBookingToStorage(booking);
-      await sendBookingNotifications(booking);
+      if (!initialBooking) {
+        saveBookingToStorage(booking);
+        await sendBookingNotifications(booking);
+      }
       onConfirm(booking);
     } catch (error: unknown) {
       const err = error as Error;
@@ -139,7 +164,11 @@ export function AdminBookingForm({
       console.log("Pilha do erro:", err);
 
       toast({
-        title: "Erro ao criar agendamento",
+        title: initialBooking
+          ? mode === "edit"
+            ? "Erro ao editar agendamento"
+            : "Erro ao reagendar agendamento"
+          : "Erro ao criar agendamento",
         description: err.message || "Ocorreu um erro inesperado no servidor.",
         variant: "destructive",
       });

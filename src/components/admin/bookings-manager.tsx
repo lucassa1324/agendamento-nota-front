@@ -41,7 +41,6 @@ import { BookingEmptyState } from "./bookings/booking-empty-state";
 import { BookingFilters } from "./bookings/booking-filters";
 import { BookingPagination } from "./bookings/booking-pagination";
 import { BookingStatusTabs } from "./bookings/booking-status-tabs";
-import { EditBookingModal } from "./edit-booking-modal";
 
 // Helper para converter tipos de agendamento da API para o formato legado do Front
 const mapApiToBooking = (api: Appointment): Booking => {
@@ -461,7 +460,7 @@ export function BookingsManager() {
         )}
       </div>
       <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[98vw] max-w-[98vw] sm:max-w-[95vw] lg:max-w-325 max-h-[95vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Adiar Agendamento</DialogTitle>
             <DialogDescription>
@@ -481,23 +480,34 @@ export function BookingsManager() {
           )}
         </DialogContent>
       </Dialog>
-      <EditBookingModal
-        booking={bookingToEdit}
-        isOpen={isEditOpen}
-        onClose={() => {
-          setIsEditOpen(false);
-          setBookingToEdit(null);
+      <Dialog
+        open={isEditOpen}
+        onOpenChange={(open) => {
+          setIsEditOpen(open);
+          if (!open) setBookingToEdit(null);
         }}
-        onSuccess={() => {
-          setIsEditOpen(false);
-          setBookingToEdit(null);
-          loadBookings();
-          toast({
-            title: "Sucesso!",
-            description: "Agendamento atualizado com sucesso.",
-          });
-        }}
-      />
+      >
+        <DialogContent className="w-[98vw] max-w-[98vw] sm:max-w-[95vw] lg:max-w-325 max-h-[95vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Agendamento</DialogTitle>
+            <DialogDescription>
+              Atualize cliente, contato, procedimento, valor, data e horário de{" "}
+              {bookingToEdit?.clientName}.
+            </DialogDescription>
+          </DialogHeader>
+          {bookingToEdit && (
+            <AdminBookingFlow
+              initialBooking={bookingToEdit}
+              mode="edit"
+              onComplete={() => {
+                setIsEditOpen(false);
+                setBookingToEdit(null);
+                loadBookings();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={!!pendingReversion}

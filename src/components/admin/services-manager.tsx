@@ -1019,27 +1019,8 @@ export function ServicesManager() {
       setServiceForProducts(null);
       setInnerProductSearch("");
 
-      // Recarregar lista do banco
+      // Recarregar lista do banco já com mapeamento normalizado (resources -> products)
       await loadServices();
-
-      // Sincronizar localStorage
-      const syncUrl = `${API_URL}/company/${studio?.id}`.replace(
-        /([^:]\/)\/+/g,
-        "$1",
-      );
-      const responseGet = await customFetch(syncUrl);
-      if (responseGet.ok) {
-        const latestData = await responseGet.json();
-        const formattedForStorage = latestData.map((s: BackendService) => ({
-          ...s,
-          price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
-          duration:
-            typeof s.duration === "string"
-              ? parseInt(s.duration, 10)
-              : s.duration,
-        }));
-        saveSettings(formattedForStorage);
-      }
     } catch (error) {
       console.warn(">>> [ADMIN_WARN] Erro ao salvar produtos:", error);
       toast({
