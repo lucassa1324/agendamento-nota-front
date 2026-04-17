@@ -82,9 +82,9 @@ class BusinessService {
     });
 
     if (!response.ok) {
-      const msg = await response.text().catch(() => "");
-      throw new Error(
-        msg || `Falha ao salvar configurações (${response.status})`,
+      throw await buildHttpError(
+        response,
+        `Falha ao salvar configurações (${response.status})`,
       );
     }
 

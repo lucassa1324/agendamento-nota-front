@@ -55,6 +55,13 @@ export function ScheduleManager() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+    return fallback;
+  };
+
   const loadSchedule = useCallback(async () => {
     if (!studio?.id) return;
     setIsLoading(true);
@@ -87,7 +94,11 @@ export function ScheduleManager() {
         // Mapear do backend para o estado local
         const backendWeekly = settings.weekly;
 
-        const currentInterval = parseDuration(settings.interval);
+        const currentInterval = parseDuration(
+          settings.interval || settings.slotInterval,
+        );
+        const normalizedInterval =
+          currentInterval > 0 ? currentInterval : initialInterval;
         const currentLead = Number(settings.minimumBookingLeadMinutes || 0);
 
         finalSchedule = Array.from({ length: 7 }, (_, i) => {
@@ -101,7 +112,7 @@ export function ScheduleManager() {
               lunchStart: dayData.morningEnd || "12:00",
               lunchEnd: dayData.afternoonStart || "13:00",
               closeTime: dayData.afternoonEnd || "18:00",
-              interval: currentInterval,
+              interval: normalizedInterval,
             };
           }
           // Fallback para dia não encontrado no backend
@@ -113,12 +124,12 @@ export function ScheduleManager() {
             lunchStart: "12:00",
             lunchEnd: "13:00",
             closeTime: "18:00",
-            interval: currentInterval,
+            interval: normalizedInterval,
           };
         });
 
-        setGlobalInterval(currentInterval);
-        setInitialInterval(currentInterval);
+        setGlobalInterval(normalizedInterval);
+        setInitialInterval(normalizedInterval);
         setMinimumBookingLeadMinutes(currentLead);
         setInitialMinimumBookingLeadMinutes(currentLead);
       } else {
@@ -166,54 +177,93 @@ export function ScheduleManager() {
     loadSchedule();
   }, [loadSchedule]);
 
-  const saveInterval = () => {
+  const saveInterval = async () => {
     if (!studio?.id) return;
+    if (weekSchedule.length !== 7) {
+      toast({
+        title: "Erro ao salvar intervalo",
+        description:
+          "A grade semanal está incompleta. Recarregue a página e tente novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const updatedSchedule = weekSchedule.map((day) => ({
       ...day,
       interval: globalInterval,
     }));
-    saveWeekSchedule(updatedSchedule);
-    setWeekSchedule(updatedSchedule);
-    setInitialSchedule(JSON.stringify(updatedSchedule));
-    setInitialInterval(globalInterval);
-    setInitialMinimumBookingLeadMinutes(minimumBookingLeadMinutes);
 
-    businessService
-      .saveSettings({
+    try {
+      await businessService.saveSettings({
         companyId: studio.id,
         interval: minutesToHHmm(globalInterval),
         weekly: buildSchedulePayload(updatedSchedule),
         minimumBookingLeadMinutes,
-      })
-      .catch(() => {});
+      });
 
-    toast({
-      title: "Intervalo Atualizado!",
-      description: `Intervalo (${globalInterval} min) e antecedência mínima (${minimumBookingLeadMinutes} min) salvos.`,
-      className: "bg-blue-600 text-white border-none",
-    });
+      saveWeekSchedule(updatedSchedule);
+      setWeekSchedule(updatedSchedule);
+      setInitialSchedule(JSON.stringify(updatedSchedule));
+      setInitialInterval(globalInterval);
+      setInitialMinimumBookingLeadMinutes(minimumBookingLeadMinutes);
+
+      toast({
+        title: "Intervalo Atualizado!",
+        description: `Intervalo (${globalInterval} min) e antecedência mínima (${minimumBookingLeadMinutes} min) salvos.`,
+        className: "bg-blue-600 text-white border-none",
+      });
+    } catch (error: unknown) {
+      toast({
+        title: "Erro ao salvar intervalo",
+        description: getErrorMessage(
+          error,
+          "Não foi possível salvar as regras de horário.",
+        ),
+        variant: "destructive",
+      });
+    }
   };
 
-  const saveSchedule = () => {
+  const saveSchedule = async () => {
     if (!studio?.id) return;
-    saveWeekSchedule(weekSchedule);
-    setInitialSchedule(JSON.stringify(weekSchedule));
+    if (weekSchedule.length !== 7) {
+      toast({
+        title: "Erro ao salvar horários",
+        description:
+          "A grade semanal está incompleta. Recarregue a página e tente novamente.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    businessService
-      .saveSettings({
+    try {
+      await businessService.saveSettings({
         companyId: studio.id,
         interval: minutesToHHmm(globalInterval),
         weekly: buildSchedulePayload(weekSchedule),
         minimumBookingLeadMinutes,
-      })
-      .catch(() => {});
+      });
 
-    toast({
-      title: "Horários Salvos!",
-      description:
-        "As configurações de abertura e fechamento foram atualizadas.",
-      className: "bg-green-600 text-white border-none",
-    });
+      saveWeekSchedule(weekSchedule);
+      setInitialSchedule(JSON.stringify(weekSchedule));
+
+      toast({
+        title: "Horários Salvos!",
+        description:
+          "As configurações de abertura e fechamento foram atualizadas.",
+        className: "bg-green-600 text-white border-none",
+      });
+    } catch (error: unknown) {
+      toast({
+        title: "Erro ao salvar horários",
+        description: getErrorMessage(
+          error,
+          "Não foi possível salvar os horários semanais.",
+        ),
+        variant: "destructive",
+      });
+    }
   };
 
   const saveBlocked = () => {
@@ -253,7 +303,7 @@ export function ScheduleManager() {
     }
 
     try {
-      await businessService.createBlock({
+      const createdBlock = (await businessService.createBlock({
         companyId: studio.id,
         type,
         startDate: newBlocked.date,
@@ -261,15 +311,23 @@ export function ScheduleManager() {
         startTime: newBlocked.startTime,
         endTime: newBlocked.endTime,
         reason: newBlocked.reason,
-      });
+      })) as
+        | {
+            id?: string;
+            startDate?: string;
+            startTime?: string;
+            endTime?: string;
+            reason?: string;
+          }
+        | undefined;
 
       // Atualiza lista local
       const newBlockObj: BlockedPeriod = {
-        id: Math.random().toString(36).slice(2, 11),
-        date: newBlocked.date,
-        startTime: newBlocked.startTime,
-        endTime: newBlocked.endTime,
-        reason: newBlocked.reason,
+        id: createdBlock?.id || Math.random().toString(36).slice(2, 11),
+        date: createdBlock?.startDate || newBlocked.date,
+        startTime: createdBlock?.startTime || newBlocked.startTime,
+        endTime: createdBlock?.endTime || newBlocked.endTime,
+        reason: createdBlock?.reason || newBlocked.reason,
       };
 
       const updated = [...blockedPeriods, newBlockObj];
