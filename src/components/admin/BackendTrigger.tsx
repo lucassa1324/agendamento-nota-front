@@ -18,13 +18,14 @@ export function BackendTrigger() {
   useEffect(() => {
     if (!businessId || triggered) return;
 
-    // Verificar se já existe um rascunho de hero no localStorage
+    // Verificar se já existe um rascunho de hero no localStorage ou se já foi disparado nesta sessão
     const heroKey = getStorageKey("heroSettings");
+    const triggeredKey = `triggered_${businessId}`;
     const hasLocalDraft = typeof window !== "undefined" && 
-      localStorage.getItem(heroKey) !== null;
+      (localStorage.getItem(heroKey) !== null || sessionStorage.getItem(triggeredKey) !== null);
 
     if (hasLocalDraft) {
-      console.log(`>>> [BackendTrigger] Rascunho local de HERO detectado (chave: ${heroKey}). Ignorando trigger automático para não sobrescrever trabalho do usuário.`);
+      console.log(`>>> [BackendTrigger] Trigger ignorado: rascunho local ou já disparado nesta sessão.`);
       setTriggered(true);
       return;
     }
@@ -32,6 +33,7 @@ export function BackendTrigger() {
     async function runTrigger() {
       if (!businessId) return; // Re-verificar para o TS
       setTriggered(true);
+      sessionStorage.setItem(triggeredKey, "true");
       console.log(">>> [BackendTrigger] Iniciando ações automáticas para o backend...");
 
       try {

@@ -312,7 +312,6 @@ function AdminLayoutContent({
   // EXCEÇÃO: Se for erro 402 (Pagamento Necessário), deixamos o layout renderizar para mostrar a tela de bloqueio com link de pagamento
   const isBillingError = studioError?.includes("(402)");
 
-  const user = session?.user as AuthUser | undefined;
   const subscriptionStatus =
     user?.business?.subscriptionStatus ||
     studio?.subscriptionStatus ||
