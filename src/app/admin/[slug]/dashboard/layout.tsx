@@ -103,6 +103,13 @@ function AdminLayoutContent({
     if (redirectInFlightRef.current === targetPath) return;
     redirectInFlightRef.current = targetPath;
     router.replace(targetPath);
+
+    // Fallback para evitar tela de verificação infinita se a navegação SPA falhar
+    setTimeout(() => {
+      if (typeof window !== "undefined" && window.location.pathname !== targetPath) {
+        window.location.href = targetPath;
+      }
+    }, 150);
   };
 
   useEffect(() => {
@@ -170,6 +177,7 @@ function AdminLayoutContent({
           console.warn(
             ">>> [DASHBOARD_LAYOUT] Sessão existe mas usuário é undefined.",
           );
+          safeRedirect("/admin");
           return;
         }
 
@@ -264,6 +272,19 @@ function AdminLayoutContent({
       }
     };
   }, [session, isLoadingSession, slug, isOnboarding, pathname, router]);
+
+  useEffect(() => {
+    if (!isLoadingSession) return;
+
+    const timeoutId = setTimeout(() => {
+      console.warn(
+        ">>> [DASHBOARD_LAYOUT] Timeout ao validar sessão. Redirecionando para login.",
+      );
+      safeRedirect("/admin");
+    }, 5000);
+
+    return () => clearTimeout(timeoutId);
+  }, [isLoadingSession, pathname, router]);
 
   const handleLogout = async () => {
     await signOut();

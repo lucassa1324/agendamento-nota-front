@@ -62,8 +62,15 @@ export function LayoutClientWrapper({
 
   useEffect(() => {
     const onWindowError = (event: ErrorEvent) => {
+      const fallbackMessage =
+        event.error instanceof Error
+          ? event.error.message
+          : typeof event.error === "string"
+            ? event.error
+            : "Erro global de execução";
+
       captureAppError({
-        message: event.message || "Erro global de execução",
+        message: event.message || fallbackMessage,
         source: event.filename,
         stack: event.error?.stack,
         metadata: {

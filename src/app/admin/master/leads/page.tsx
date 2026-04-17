@@ -2088,7 +2088,7 @@ export default function LeadsPage() {
                 ) : (
                   paginatedProspects.map((prospect) => (
                     <TableRow 
-                      key={prospect.id} 
+                      key={prospect.id}
                       className={`hover:bg-muted/30 transition-colors ${selectedIds.includes(prospect.id) ? 'bg-primary/5' : ''}`}
                     >
                       <TableCell>
@@ -2139,23 +2139,21 @@ export default function LeadsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={prospect.status}
-                          onValueChange={(v) => handleUpdateStatus(prospect.id, v as Prospect["status"])}
-                        >
-                          <SelectTrigger className="h-auto w-fit border-none bg-transparent p-0 hover:bg-transparent focus:ring-0">
-                            <div className="cursor-pointer hover:opacity-80 transition-opacity">
-                              {getStatusBadge(prospect.status)}
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent>
+                        <div className="flex flex-col gap-1">
+                          {getStatusBadge(prospect.status)}
+                          <select
+                            value={prospect.status}
+                            onChange={(e) => handleUpdateStatus(prospect.id, e.target.value as Prospect["status"])}
+                            className="h-7 rounded border bg-background px-2 text-xs"
+                            aria-label={`Alterar status do lead ${prospect.establishmentName}`}
+                          >
                             {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                              <SelectItem key={value} value={value}>
+                              <option key={value} value={value}>
                                 {label}
-                              </SelectItem>
+                              </option>
                             ))}
-                          </SelectContent>
-                        </Select>
+                          </select>
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -2197,14 +2195,17 @@ export default function LeadsPage() {
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" asChild title="Chamar no WhatsApp">
-                            <a
-                              href={`https://wa.me/55${prospect.phone.replace(/\D/g, "")}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            title="Chamar no WhatsApp"
+                            onClick={() => {
+                              const phone = prospect.phone.replace(/\D/g, "");
+                              if (!phone) return;
+                              window.open(`https://wa.me/55${phone}`, "_blank", "noopener,noreferrer");
+                            }}
+                          >
+                            <ExternalLink className="w-4 h-4" />
                           </Button>
                           <Button 
                             size="icon" 

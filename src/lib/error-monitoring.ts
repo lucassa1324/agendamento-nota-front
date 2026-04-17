@@ -15,17 +15,35 @@ declare global {
 }
 
 export function captureAppError(payload: ErrorPayload) {
+  const normalizedPayload = {
+    message: payload?.message || "Erro não identificado",
+    source: payload?.source || "unknown",
+    stack: payload?.stack || "",
+    metadata: payload?.metadata || {},
+    timestamp: new Date().toISOString(),
+  };
+
   if (typeof window !== "undefined" && window.Sentry?.captureMessage) {
-    window.Sentry.captureMessage(payload.message, {
+    window.Sentry.captureMessage(normalizedPayload.message, {
       level: "error",
       extra: {
-        source: payload.source,
-        stack: payload.stack,
-        ...payload.metadata,
+        source: normalizedPayload.source,
+        stack: normalizedPayload.stack,
+        ...normalizedPayload.metadata,
+        timestamp: normalizedPayload.timestamp,
       },
     });
     return;
   }
 
-  console.error("[APP_ERROR_MONITOR]", payload);
+  // In dev, avoid triggering Next.js error overlay for telemetry-only logs.
+  if (process.env.NODE_ENV === "development") {
+    console.warn(
+      `[APP_ERROR_MONITOR] ${normalizedPayload.message}`,
+      normalizedPayload,
+    );
+    return;
+  }
+
+  console.error(`[APP_ERROR_MONITOR] ${normalizedPayload.message}`, normalizedPayload);
 }
