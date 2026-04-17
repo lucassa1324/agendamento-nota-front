@@ -366,9 +366,7 @@ export function TimeSlotSelector({
                 fontFamily: titleFont,
               }}
             >
-              {services.length > 1
-                ? `${services[0].name} + ${services.length - 1}`
-                : services[0]?.name}
+              {services.map((service) => service.name).join(", ")}
             </h3>
             <div
               className="text-base font-medium capitalize"
