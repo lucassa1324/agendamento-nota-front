@@ -57,6 +57,19 @@ export function usePushNotifications() {
     const current = await reg.pushManager.getSubscription();
     setSubscription(current);
     setIsSubscribed(!!current);
+
+    // Auto-sync with backend if we have a subscription
+    if (current) {
+      try {
+        await customFetch("/api/push/subscriptions", {
+          method: "POST",
+          body: JSON.stringify(current.toJSON()),
+        });
+        // console.log("[PUSH] Subscription synced with backend");
+      } catch (err) {
+        console.error("[PUSH] Error syncing subscription with backend:", err);
+      }
+    }
   }, [isSupported]);
 
   useEffect(() => {

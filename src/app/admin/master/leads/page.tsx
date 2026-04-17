@@ -2,22 +2,30 @@
 
 import {
   CheckCircle2,
+  Check,
+  ChevronDown,
   Copy,
   ExternalLink,
   FileUp,
+  FileDown,
   Filter,
   Instagram,
+  Download,
   Pencil,
   Plus,
   Search,
   Trash2,
-  UserPlus
+  UserPlus,
+  ChevronLeft,
+  ChevronRight,
+  X
 } from "lucide-react";
 import Papa from "papaparse";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import * as XLSX from "xlsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -25,6 +33,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +53,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
@@ -44,6 +66,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -56,6 +80,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 
 export interface Prospect {
   id: string;
@@ -67,12 +92,14 @@ export interface Prospect {
   category: string;
   status: 'NOT_CONTACTED' | 'CONTACTED' | 'IN_NEGOTIATION' | 'CONVERTED' | 'REJECTED';
   notes?: string;
+  address?: string;
+  mapsLink?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
-interface ImportLead extends Omit<Prospect, 'createdAt'> {
-  address?: string;
-  city?: string;
+interface ImportLead extends Omit<Prospect, 'id' | 'createdAt'> {
+  id: string; // ID temporário para a lista de preview
 }
 
 const INITIAL_CATEGORIES = [
@@ -107,16 +134,26 @@ export default function LeadsPage() {
   const [categories, setCategories] = useState<string[]>(INITIAL_CATEGORIES);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("ALL");
-  const [filterCategory, setFilterCategory] = useState<string>("ALL");
-  const [filterCity, setFilterCity] = useState<string>("ALL");
+  const [filterStatus, setFilterStatus] = useState<string[]>([]);
+  const [filterCategory, setFilterCategory] = useState<string[]>([]);
+  const [filterCity, setFilterCity] = useState<string[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
-  const cities = Array.from(new Set(prospects.map(p => p.city).filter(Boolean))).sort() as string[];
+  const cities = useMemo(() => 
+    Array.from(new Set(prospects.map(p => p.city).filter(Boolean))).sort() as string[]
+  , [prospects]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [importingLeads, setImportingLeads] = useState<ImportLead[]>([]);
+  const [bulkEditingLeads, setBulkEditingLeads] = useState<Prospect[]>([]);
   const [isSavingImport, setIsSavingImport] = useState(false);
+  const [isSavingBulkEdit, setIsSavingBulkEdit] = useState(false);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [editingProspect, setEditingProspect] = useState<Prospect | null>(null);
   const [newCategory, setNewCategory] = useState("");
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -178,13 +215,20 @@ export default function LeadsPage() {
 
   const handleAddCategory = () => {
     if (!newCategory.trim()) return;
-    if (categories.includes(newCategory.trim())) {
+    
+    const categoryExists = categories.some(
+      (cat) => cat.toLowerCase() === newCategory.trim().toLowerCase()
+    );
+
+    if (categoryExists) {
       toast({
         title: "Categoria já existe",
+        description: "Uma categoria com este nome já existe (independente de maiúsculas/minúsculas).",
         variant: "destructive",
       });
       return;
     }
+    
     const updatedCategories = [...categories, newCategory.trim()];
     setCategories(updatedCategories);
     localStorage.setItem("master_categories", JSON.stringify(updatedCategories));
@@ -232,7 +276,16 @@ export default function LeadsPage() {
         });
         fetchProspects();
       } else {
-        throw new Error("Falha ao salvar");
+        const errorData = await response.json();
+        if (response.status === 409) {
+          toast({
+            title: "Já existe",
+            description: errorData.error || "Este prospecto já está cadastrado.",
+            variant: "destructive",
+          });
+        } else {
+          throw new Error(errorData.error || "Falha ao salvar");
+        }
       }
     } catch (error) {
       console.error("Erro ao adicionar prospecto:", error);
@@ -269,9 +322,271 @@ export default function LeadsPage() {
     }
   };
 
+  const extractCity = (row: any, address: string) => {
+    let city = String(row.cidade || row.Cidade || row.city || row.City || "");
+    if ((!city || city === "undefined" || city === "") && address && address !== "undefined") {
+      const parts = address.split(/[,-]/).map(p => p.trim());
+      if (parts.length >= 3) {
+        city = parts[parts.length - 2];
+      } else if (parts.length === 2) {
+        city = parts[1];
+      }
+    }
+    return city === "undefined" ? "" : city.trim();
+  };
+
+  const getCellValue = (row: any, ...keys: string[]) => {
+    const rowKeys = Object.keys(row);
+    for (const key of keys) {
+      // Direct match
+      if (row[key] !== undefined && row[key] !== null) {
+        return String(row[key]).trim();
+      }
+      
+      // Case-insensitive match
+      const foundKey = rowKeys.find(rk => rk.toLowerCase() === key.toLowerCase());
+      if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
+        return String(row[foundKey]).trim();
+      }
+    }
+    return "";
+  };
+
+  const mapRowToLead = (row: any, idx: number): ImportLead => {
+    // Nomes de colunas baseados na imagem do usuário e padrões do Google Maps
+    const name = getCellValue(row, 'Nome do estabelecimento', 'qBF1Pd', 'Nome', 'Estabelecimento', 'name', 'Title', 'Título', 'Estabelecimento', 'Empresa').trim();
+    const category = getCellValue(row, 'categoria', 'W4Efsd', 'Categoria', 'category', 'Category', 'Tipo', 'Ramo', 'Segmento').trim();
+    const address = getCellValue(row, 'endereço', 'endereco', 'W4Efsd 3', 'Endereço', 'Endereco', 'address', 'Address', 'Localização', 'Location', 'Logradouro').trim();
+    const phone = getCellValue(row, 'telefone', 'Telefone', 'phone', 'Phone', 'Contato', 'Celular', 'WhatsApp', 'WhatsApp Link', 'Tel').trim();
+    const instagram = getCellValue(row, 'site/instagran', 'site/instagram', 'instagran/site', 'instagram/site', 'Instagram', 'instagram', 'Website', 'website', 'site', 'Site', 'Link', 'link', 'Social Link').trim();
+    const mapsLink = getCellValue(row, 'Link google', 'Link Google', 'Link do Google Maps', 'maps_link', 'Maps', 'Google Maps', 'Maps Link').trim();
+    const cityFromRow = getCellValue(row, 'Cidade', 'city', 'City', 'Município', 'Town').trim();
+
+    const city = cityFromRow || extractCity(row, address);
+
+    return {
+      id: `temp-${idx}-${Date.now()}`,
+      name: name || "Sem Nome",
+      phone: phone || "Sem Telefone",
+      establishmentName: name || "Sem Nome",
+      city,
+      category: category || INITIAL_CATEGORIES[0],
+      address,
+      instagramLink: instagram,
+      mapsLink,
+      notes: "",
+      status: "NOT_CONTACTED" as Prospect["status"],
+    };
+  };
+
+  const processImportedLeads = (leads: ImportLead[]) => {
+    const validLeads = leads.filter(lead => lead.name.length > 0 && lead.name !== "null" && lead.name !== "undefined");
+    
+    const newCategories = Array.from(new Set(validLeads.map(l => l.category)))
+      .filter(cat => {
+        if (!cat) return false;
+        // Busca insensível a maiúsculas/minúsculas para evitar duplicados como "Advocacia" e "advocacia"
+        return !categories.some(existingCat => existingCat.toLowerCase() === cat.toLowerCase());
+      });
+      
+    if (newCategories.length > 0) {
+      const updatedCategories = [...categories, ...newCategories];
+      setCategories(updatedCategories);
+      localStorage.setItem("master_categories", JSON.stringify(updatedCategories));
+    }
+
+    setImportingLeads(validLeads);
+    setIsImportModalOpen(true);
+  };
+
   const handleEditProspect = (prospect: Prospect) => {
     setEditingProspect(prospect);
     setIsEditModalOpen(true);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredProspects.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredProspects.map(p => p.id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    
+    if (!confirm(`Tem certeza que deseja excluir ${selectedIds.length} prospectos?`)) return;
+
+    try {
+      const response = await customFetch(`${API_BASE_URL}/api/admin/master/prospects/bulk`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds }),
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Sucesso",
+          description: `${selectedIds.length} prospectos excluídos.`,
+        });
+        setSelectedIds([]);
+        fetchProspects();
+      } else {
+        throw new Error("Falha ao excluir");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir em massa:", error);
+      toast({
+        title: "Erro ao excluir",
+        description: "Ocorreu um erro ao tentar excluir os prospectos.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBulkUpdateStatus = async (status: Prospect["status"]) => {
+    if (selectedIds.length === 0) return;
+
+    try {
+      const response = await customFetch(`${API_BASE_URL}/api/admin/master/prospects/bulk/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds, status }),
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Sucesso",
+          description: `Status de ${selectedIds.length} prospectos atualizado para ${STATUS_LABELS[status]}.`,
+        });
+        setSelectedIds([]);
+        fetchProspects();
+      } else {
+        throw new Error("Falha ao atualizar");
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar status em massa:", error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Ocorreu um erro ao tentar atualizar o status.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBulkUpdateCategory = async (category: string) => {
+    if (selectedIds.length === 0) return;
+
+    try {
+      const response = await customFetch(`${API_BASE_URL}/api/admin/master/prospects/bulk/category`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds, category }),
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Sucesso",
+          description: `Categoria de ${selectedIds.length} prospectos atualizada para ${category}.`,
+        });
+        setSelectedIds([]);
+        fetchProspects();
+      } else {
+        throw new Error("Falha ao atualizar");
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar categoria em massa:", error);
+      toast({
+        title: "Erro ao atualizar",
+        description: "Ocorreu um erro ao tentar atualizar a categoria.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenBulkEdit = () => {
+    if (selectedIds.length === 0) return;
+    const selectedLeads = prospects.filter((p) => selectedIds.includes(p.id));
+    setBulkEditingLeads(selectedLeads);
+    setIsBulkEditModalOpen(true);
+  };
+
+  const handleBulkEditFieldChange = (id: string, field: keyof Prospect, value: string) => {
+    setBulkEditingLeads((prev) =>
+      prev.map((lead) => (lead.id === id ? { ...lead, [field]: value } : lead))
+    );
+  };
+
+  const handleSaveBulkEdit = async () => {
+    if (bulkEditingLeads.length === 0) return;
+    setIsSavingBulkEdit(true);
+    try {
+      const results = await Promise.all(
+        bulkEditingLeads.map(async (lead) => {
+          // Destructuring para remover campos que não devem ser enviados no PATCH
+          const { id, createdAt, updatedAt, city, ...rest } = lead;
+          
+          // O backend espera 'location' em vez de 'city' no banco, 
+          // mas o schema do Elysia permite ambos para flexibilidade.
+          const payload = {
+            ...rest,
+            location: city || "",
+            city: city || "",
+          };
+
+          const response = await customFetch(`${API_BASE_URL}/api/admin/master/prospects/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            credentials: "include",
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error(`Erro ao salvar prospecto ${id}:`, {
+              status: response.status,
+              error: errorData,
+              payload
+            });
+            return { id, ok: false, status: response.status, error: errorData };
+          }
+
+          return { id, ok: true };
+        })
+      );
+
+      const failed = results.filter(r => !r.ok);
+      if (failed.length > 0) {
+        throw new Error(`Falha ao salvar ${failed.length} prospectos.`);
+      }
+
+      toast({
+        title: "Sucesso",
+        description: `${bulkEditingLeads.length} prospectos atualizados com sucesso.`,
+      });
+      setIsBulkEditModalOpen(false);
+      setBulkEditingLeads([]);
+      setSelectedIds([]);
+      fetchProspects();
+    } catch (error: any) {
+      console.error("Erro ao salvar edição em massa:", error);
+      toast({
+        title: "Erro ao salvar",
+        description: error.message || "Ocorreu um erro ao tentar salvar a edição em massa.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingBulkEdit(false);
+    }
   };
 
   const handleUpdateProspect = async () => {
@@ -285,11 +600,16 @@ export default function LeadsPage() {
     }
 
     try {
-      const { id, createdAt: _createdAt, ...updateData } = editingProspect;
+      const { id, createdAt, updatedAt, city, ...updateData } = editingProspect;
+      const payload = {
+        ...updateData,
+        location: city || "",
+        city: city || "",
+      };
       const response = await customFetch(`${API_BASE_URL}/api/admin/master/prospects/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updateData),
+        body: JSON.stringify(payload),
         credentials: "include",
       });
 
@@ -302,13 +622,15 @@ export default function LeadsPage() {
         setEditingProspect(null);
         fetchProspects();
       } else {
-        throw new Error("Falha ao salvar");
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Erro ao atualizar prospecto:", errorData);
+        throw new Error(errorData.error || "Falha ao salvar");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao atualizar prospecto:", error);
       toast({
         title: "Erro ao salvar",
-        description: "Ocorreu um erro ao tentar atualizar o prospecto.",
+        description: error.message || "Ocorreu um erro ao tentar atualizar o prospecto.",
         variant: "destructive",
       });
     }
@@ -339,160 +661,107 @@ export default function LeadsPage() {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'Nome do estabelecimento': 'Exemplo Loja ABC',
+        'Nome': 'João Silva',
+        'Telefone': '11999999999',
+        'Cidade': 'São Paulo',
+        'Categoria': 'Advocacia',
+        'Endereço': 'Rua Exemplo, 123',
+        'Instagram': 'instagram.com/exemplo',
+        'Status': 'Não Contatado',
+        'Notas': 'Lead interessado em agendamento.'
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template");
+    XLSX.writeFile(wb, "modelo_importacao_leads.xlsx");
+    
+    toast({
+      title: "Modelo baixado",
+      description: "Use este arquivo como base para sua importação.",
+    });
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const fileExtension = file.name.split('.').pop()?.toLowerCase();
 
-    if (fileExtension === 'csv') {
-      const scoreText = (value: string) => {
-        const replacement = (value.match(/�/g) || []).length;
-        const mojibake = (value.match(/[ÃÂ]/g) || []).length;
-        const accents = (value.match(/[áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]/g) || []).length;
-        return accents * 2 - replacement - mojibake;
-      };
+    try {
+      if (fileExtension === 'csv') {
+        const scoreText = (value: string) => {
+          const replacement = (value.match(/�/g) || []).length;
+          const mojibake = (value.match(/[ÃÂ]/g) || []).length;
+          const accents = (value.match(/[áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]/g) || []).length;
+          return accents * 2 - replacement - mojibake;
+        };
 
-      const decodeCsv = async () => {
+        const decodeCsv = async () => {
+          const buffer = await file.arrayBuffer();
+          const utf8Text = new TextDecoder("utf-8").decode(buffer);
+          const win1252Text = new TextDecoder("windows-1252").decode(buffer);
+          return scoreText(win1252Text) > scoreText(utf8Text)
+            ? win1252Text
+            : utf8Text;
+        };
+
+        const csvText = await decodeCsv();
+        Papa.parse<Record<string, string>>(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            const mappedData = (results.data as Record<string, string>[]).map((row, idx) => mapRowToLead(row, idx));
+            processImportedLeads(mappedData);
+            e.target.value = "";
+          },
+          error: (error: Error) => {
+            console.error("Erro ao processar CSV:", error);
+            toast({
+              title: "Erro no arquivo",
+              description: "Não foi possível processar o arquivo CSV.",
+              variant: "destructive",
+            });
+          }
+        });
+      } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
         const buffer = await file.arrayBuffer();
-        const utf8Text = new TextDecoder("utf-8").decode(buffer);
-        const win1252Text = new TextDecoder("windows-1252").decode(buffer);
-        return scoreText(win1252Text) > scoreText(utf8Text)
-          ? win1252Text
-          : utf8Text;
-      };
+        const wb = XLSX.read(buffer, { type: 'array' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        
+        // Usar raw: false para garantir que datas e números sejam formatados como string se necessário
+        const excelData = XLSX.utils.sheet_to_json(ws, { defval: "" }) as Record<string, any>[];
 
-      const csvText = await decodeCsv();
-      Papa.parse<Record<string, string>>(csvText, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          const mappedData: ImportLead[] = (results.data as Record<string, string>[])
-            .map((row, idx) => {
-              // Tenta mapear pelos nomes de colunas do Google Maps ou nomes amigáveis
-              const name = row.qBF1Pd || row['Nome do estabelecimento'] || row.Nome || row.Estabelecimento || row.name || "";
-              const category = row.W4Efsd || row.categoria || row.Categoria || row.category || "";
-              const address = row['W4Efsd 3'] || row.endereço || row.Endereço || row.address || "";
-              const phone = row.telefone || row.Telefone || row.phone || "";
-              const instagram = row.Instagram || row.instagram || row.Website || row.website || row.site || row.Site || row.Link || row.link || "";
-              
-              // Extrair cidade da coluna específica ou tentar do endereço
-              let city = row.cidade || row.Cidade || row.city || row.City || "";
-              if (!city && address) {
-                // Tenta extrair do formato comum "Rua, Numero - Cidade, Estado" ou "Rua, Numero, Cidade"
-                const parts = address.split(/[,-]/).map(p => p.trim());
-                if (parts.length >= 3) {
-                  // Assume que a penúltima ou antepenúltima parte pode ser a cidade
-                  // Isso é uma heurística simples, pode precisar de ajuste
-                  city = parts[parts.length - 2];
-                }
-              }
-
-              return {
-                id: `temp-${idx}`,
-                name: name.trim(),
-                phone: phone,
-                establishmentName: name.trim(),
-                city: city,
-                category: category || INITIAL_CATEGORIES[0],
-                address: address,
-                instagramLink: instagram,
-                notes: "",
-                status: "NOT_CONTACTED" as Prospect["status"],
-              };
-            })
-            .filter(lead => lead.name.length > 0); // Remove estabelecimentos sem nome
-
-          // Extrair novas categorias e adicionar à lista
-          const newCategories = Array.from(new Set(mappedData.map(l => l.category))).filter(cat => cat && !categories.includes(cat));
-          if (newCategories.length > 0) {
-            const updatedCategories = [...categories, ...newCategories];
-            setCategories(updatedCategories);
-            localStorage.setItem("master_categories", JSON.stringify(updatedCategories));
-          }
-
-          setImportingLeads(mappedData);
-          setIsImportModalOpen(true);
-          e.target.value = "";
-        },
-        error: (error: Error) => {
-          console.error("Erro ao processar CSV:", error);
+        if (excelData.length === 0) {
           toast({
-            title: "Erro no arquivo",
-            description: "Não foi possível processar o arquivo CSV.",
+            title: "Arquivo vazio",
+            description: "Não encontramos dados na primeira aba deste arquivo Excel.",
             variant: "destructive",
           });
+          return;
         }
-      });
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        try {
-          const arrayBuffer = evt.target?.result;
-          const wb = XLSX.read(arrayBuffer, { type: 'array' });
-          const wsname = wb.SheetNames[0];
-          const ws = wb.Sheets[wsname];
-          const excelData = XLSX.utils.sheet_to_json(ws) as Record<string, string | number | boolean | null>[];
 
-          const mappedData: ImportLead[] = excelData
-            .map((row, idx) => {
-              // Tenta mapear pelos nomes de colunas do Google Maps ou nomes amigáveis
-              const name = String(row.qBF1Pd || row['Nome do estabelecimento'] || row.Nome || row.Estabelecimento || row.name || "");
-              const category = String(row.W4Efsd || row.categoria || row.Categoria || row.category || "");
-              const address = String(row['W4Efsd 3'] || row.endereço || row.Endereço || row.address || "");
-              const phone = String(row.telefone || row.Telefone || row.phone || "");
-              const instagram = String(row.Instagram || row.instagram || row.Website || row.website || row.site || row.Site || row.Link || row.link || "");
-
-              // Extrair cidade da coluna específica ou tentar do endereço
-              let city = String(row.cidade || row.Cidade || row.city || row.City || "");
-              if ((!city || city === "undefined") && address && address !== "undefined") {
-                const parts = address.split(/[,-]/).map(p => p.trim());
-                if (parts.length >= 3) {
-                  city = parts[parts.length - 2];
-                }
-              }
-              if (city === "undefined") city = "";
-
-              return {
-                id: `temp-${idx}`,
-                name: name.trim(),
-                phone: phone,
-                establishmentName: name.trim(),
-                city: city,
-                category: category || INITIAL_CATEGORIES[0],
-                address: address,
-                instagramLink: instagram,
-                notes: "",
-                status: "NOT_CONTACTED" as Prospect["status"],
-              };
-            })
-            .filter(lead => lead.name.length > 0 && lead.name !== "null" && lead.name !== "undefined"); // Remove estabelecimentos sem nome ou junk
-
-          // Extrair novas categorias e adicionar à lista
-          const newCategories = Array.from(new Set(mappedData.map(l => l.category))).filter(cat => cat && !categories.includes(cat));
-          if (newCategories.length > 0) {
-            const updatedCategories = [...categories, ...newCategories];
-            setCategories(updatedCategories);
-            localStorage.setItem("master_categories", JSON.stringify(updatedCategories));
-          }
-
-          setImportingLeads(mappedData);
-          setIsImportModalOpen(true);
-          e.target.value = "";
-        } catch (error) {
-          console.error("Erro ao processar Excel:", error);
-          toast({
-            title: "Erro no arquivo",
-            description: "Não foi possível processar o arquivo Excel.",
-            variant: "destructive",
-          });
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
+        const mappedData = excelData.map((row, idx) => mapRowToLead(row, idx));
+        processImportedLeads(mappedData);
+        e.target.value = "";
+      } else {
+        toast({
+          title: "Formato inválido",
+          description: "Por favor, selecione um arquivo CSV ou XLSX.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao processar arquivo:", error);
       toast({
-        title: "Formato inválido",
-        description: "Por favor, selecione um arquivo CSV ou XLSX.",
+        title: "Erro no processamento",
+        description: "Ocorreu um erro ao tentar ler o arquivo.",
         variant: "destructive",
       });
     }
@@ -500,54 +769,173 @@ export default function LeadsPage() {
 
   const handleSaveImport = async () => {
     setIsSavingImport(true);
-    let successCount = 0;
-    let failCount = 0;
+    try {
+      // Remove campos temporários e IDs fakes antes de enviar
+      const leadsToSave = importingLeads.map(({ id: _id, ...leadData }) => leadData);
 
-    for (const lead of importingLeads) {
-      try {
-        const { id: _id, address: _address, ...leadData } = lead;
-        const response = await customFetch(`${API_BASE_URL}/api/admin/master/prospects`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(leadData),
-          credentials: "include",
+      const response = await customFetch(`${API_BASE_URL}/api/admin/master/prospects/bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(leadsToSave),
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast({
+          title: "Importação concluída",
+          description: result.skipped > 0 
+            ? `${result.count} leads importados. ${result.skipped} já existiam e foram ignorados.`
+            : `${result.count} leads importados com sucesso.`,
         });
-
-        if (response.ok) {
-          successCount++;
-        } else {
-          failCount++;
-        }
-      } catch (error) {
-        console.error("Erro ao importar lead:", error);
-        failCount++;
+        setIsImportModalOpen(false);
+        setImportingLeads([]);
+        fetchProspects();
+      } else {
+        throw new Error("Falha na importação");
       }
+    } catch (error) {
+      console.error("Erro ao importar leads:", error);
+      toast({
+        title: "Erro na importação",
+        description: "Ocorreu um erro ao tentar salvar os leads importados.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingImport(false);
+    }
+  };
+
+  const handleExport = () => {
+    if (filteredProspects.length === 0) {
+      toast({
+        title: "Nada para exportar",
+        description: "Não há prospectos filtrados para exportação.",
+        variant: "destructive",
+      });
+      return;
     }
 
-    setIsSavingImport(false);
-    setIsImportModalOpen(false);
-    setImportingLeads([]);
-    fetchProspects();
+    // Prepara os dados para exportação com nomes de colunas amigáveis e formatação
+    const dataToExport = filteredProspects.map(p => ({
+      'Estabelecimento': p.establishmentName,
+      'Contato': p.name,
+      'Telefone': p.phone,
+      'Categoria': p.category,
+      'Cidade': p.city || '-',
+      'Status': STATUS_LABELS[p.status],
+      'Instagram': p.instagramLink || '-',
+      'Endereço': p.address || '-',
+      'Link Maps': p.mapsLink || '-',
+      'Notas': p.notes || '-',
+      'Data de Cadastro': new Date(p.createdAt).toLocaleDateString('pt-BR'),
+    }));
 
+    // Cria a planilha Excel
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    
+    // Ajusta largura das colunas
+    const colWidths = [
+      { wch: 30 }, // Estabelecimento
+      { wch: 20 }, // Contato
+      { wch: 15 }, // Telefone
+      { wch: 20 }, // Categoria
+      { wch: 15 }, // Cidade
+      { wch: 15 }, // Status
+      { wch: 25 }, // Instagram
+      { wch: 40 }, // Endereço
+      { wch: 40 }, // Link Maps
+      { wch: 40 }, // Notas
+      { wch: 15 }, // Data
+    ];
+    ws['!cols'] = colWidths;
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Leads");
+    
+    // Nome do arquivo com data atual
+    const date = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `leads_export_${date}.xlsx`);
+    
     toast({
-      title: "Importação concluída",
-      description: `${successCount} leads importados com sucesso. ${failCount} falhas.`,
-      variant: successCount > 0 ? "default" : "destructive",
+      title: "Exportação concluída",
+      description: `${filteredProspects.length} leads exportados com sucesso.`,
     });
   };
 
-  const filteredProspects = prospects.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.establishmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchTerm.toLowerCase());
+  const handleExportCSV = () => {
+    if (filteredProspects.length === 0) {
+      toast({
+        title: "Nada para exportar",
+        description: "Não há prospectos filtrados para exportação.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const matchesStatus = filterStatus === "ALL" || p.status === filterStatus;
-    const matchesCategory = filterCategory === "ALL" || p.category === filterCategory;
-    const matchesCity = filterCity === "ALL" || p.city === filterCity;
+    // Prepara os dados para exportação CSV
+    const dataToExport = filteredProspects.map(p => ({
+      'Estabelecimento': p.establishmentName,
+      'Contato': p.name,
+      'Telefone': p.phone,
+      'Categoria': p.category,
+      'Cidade': p.city || '-',
+      'Status': STATUS_LABELS[p.status],
+      'Instagram': p.instagramLink || '-',
+      'Endereço': p.address || '-',
+      'Link Maps': p.mapsLink || '-',
+      'Notas': p.notes || '-',
+      'Data de Cadastro': new Date(p.createdAt).toLocaleDateString('pt-BR'),
+    }));
 
-    return matchesSearch && matchesStatus && matchesCategory && matchesCity;
-  });
+    // Gera o CSV usando PapaParse
+    const csv = Papa.unparse(dataToExport);
+    
+    // Cria um Blob e faz o download
+    const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const date = new Date().toISOString().split('T')[0];
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", `leads_export_${date}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Exportação CSV concluída",
+      description: `${filteredProspects.length} leads exportados com sucesso (formato leve).`,
+    });
+  };
+
+  const filteredProspects = useMemo(() => {
+    return prospects.filter((p) => {
+      const matchesSearch =
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.establishmentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        p.category.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesStatus = filterStatus.length === 0 || filterStatus.includes(p.status);
+      const matchesCategory = filterCategory.length === 0 || filterCategory.includes(p.category);
+      const matchesCity = filterCity.length === 0 || (p.city && filterCity.includes(p.city));
+
+      return matchesSearch && matchesStatus && matchesCategory && matchesCity;
+    });
+  }, [prospects, searchTerm, filterStatus, filterCategory, filterCity]);
+
+  const paginatedProspects = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredProspects.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredProspects, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredProspects.length / itemsPerPage);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterStatus, filterCategory, filterCity]);
 
   const getStatusBadge = (status: Prospect["status"]) => {
     switch (status) {
@@ -566,30 +954,138 @@ export default function LeadsPage() {
     }
   };
 
-  return (
-    <div className="space-y-8 max-w-7xl mx-auto">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Possíveis Clientes</h1>
-          <p className="text-muted-foreground">
-            Gerencie leads e prospecções para a plataforma.
-          </p>
+  const renderPagination = () => {
+    // Show pagination even if there's only one page if we have leads,
+    // so the user can still change itemsPerPage
+    if (filteredProspects.length === 0) return null;
+
+    return (
+      <div className="flex items-center justify-between px-2 py-4">
+        <div className="flex-1 text-sm text-muted-foreground">
+          Mostrando {Math.min(filteredProspects.length, (currentPage - 1) * itemsPerPage + 1)} a {Math.min(filteredProspects.length, currentPage * itemsPerPage)} de {filteredProspects.length} leads
         </div>
-        <div className="flex gap-2">
-          <div className="relative">
-            <input
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleFileUpload}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              title="Importar CSV ou Excel"
-            />
-            <Button variant="outline">
-              <FileUp className="w-4 h-4 mr-2" />
-              Importar CSV/Excel
+        <div className="flex items-center space-x-6 lg:space-x-8">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm font-medium">Itens por página</p>
+            <Select
+              value={`${itemsPerPage}`}
+              onValueChange={(value) => {
+                setItemsPerPage(Number(value));
+                setCurrentPage(1);
+              }}
+            >
+              <SelectTrigger className="h-8 w-17.5">
+                <SelectValue placeholder={itemsPerPage} />
+              </SelectTrigger>
+              <SelectContent align="end">
+                {[10, 20, 30, 40, 50].map((pageSize) => (
+                  <SelectItem key={pageSize} value={`${pageSize}`}>
+                    {pageSize}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex w-25 items-center justify-center text-sm font-medium">
+            Página {currentPage} de {Math.max(1, totalPages)}
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              <span className="sr-only">Página anterior</span>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              className="h-8 w-8 p-0"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages || totalPages === 0}
+            >
+              <span className="sr-only">Próxima página</span>
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-8 max-w-7xl mx-auto">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Possíveis Clientes</h1>
+        <p className="text-muted-foreground">
+          Gerencie leads e prospecções para a plataforma.
+        </p>
+      </div>
+
+      <Tabs defaultValue="base-leads" className="space-y-6">
+        <TabsList className="grid w-full max-w-95 grid-cols-2">
+          <TabsTrigger value="base-leads">Base de Leads</TabsTrigger>
+          <TabsTrigger value="lab-enriquecimento">Lab Enriquecimento</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="base-leads" className="space-y-8 mt-0">
+          <div className="flex justify-end items-end">
+            <div className="flex gap-2">
+              <div className="relative">
+                <input
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={handleFileUpload}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  title="Importar CSV ou Excel"
+                />
+                <Button variant="outline">
+                  <FileUp className="w-4 h-4 mr-2" />
+                  Importar CSV/Excel
+                </Button>
+              </div>
+              <Button variant="ghost" onClick={handleDownloadTemplate} title="Baixar Modelo de Importação" className="text-xs text-muted-foreground hover:text-primary h-10">
+                <Download className="w-3 h-3 mr-1" />
+                Baixar Modelo
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="w-4 h-4 mr-2" />
+                    Exportar Dados
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-56" align="end">
+                  <div className="grid gap-4">
+                    <div className="space-y-2">
+                      <h4 className="font-medium leading-none">Escolha o formato</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Excel para uso geral ou CSV para grandes volumes.
+                      </p>
+                    </div>
+                    <div className="grid gap-2">
+                      <Button
+                        variant="ghost"
+                        className="justify-start font-normal"
+                        onClick={handleExport}
+                      >
+                        <FileDown className="mr-2 h-4 w-4 text-green-600" />
+                        Excel (.xlsx)
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="justify-start font-normal"
+                        onClick={handleExportCSV}
+                      >
+                        <FileUp className="mr-2 h-4 w-4 text-blue-600" />
+                        CSV (Leve/Rápido)
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
             <DialogTrigger asChild>
               <Button className="bg-primary hover:bg-primary/90">
                 <Plus className="w-4 h-4 mr-2" />
@@ -736,7 +1232,9 @@ export default function LeadsPage() {
               <Button onClick={handleAddProspect}>Salvar Lead</Button>
             </DialogFooter>
           </DialogContent>
-        </Dialog>
+              </Dialog>
+            </div>
+          </div>
 
         {/* Modal de Preview de Importação */}
         <Dialog open={isImportModalOpen} onOpenChange={setIsImportModalOpen}>
@@ -921,6 +1419,167 @@ export default function LeadsPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Modal de Edição em Massa */}
+        <Dialog open={isBulkEditModalOpen} onOpenChange={setIsBulkEditModalOpen}>
+          <DialogContent className="max-w-[98vw] w-[98vw] sm:max-w-[95vw] lg:max-w-7xl max-h-[90vh] flex flex-col p-0">
+            <div className="p-6 pb-2">
+              <DialogHeader>
+                <DialogTitle>Edição em Massa</DialogTitle>
+                <DialogDescription>
+                  Edite os campos dos leads selecionados e clique em salvar para aplicar em lote.
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6" style={{ maxHeight: "calc(90vh - 200px)" }}>
+              <ScrollArea className="h-full w-full border rounded-md">
+                <div className="min-w-300">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-background z-10">
+                      <TableRow>
+                        <TableHead className="w-50">Estabelecimento</TableHead>
+                        <TableHead className="w-40">Contato</TableHead>
+                        <TableHead className="w-32">Telefone</TableHead>
+                        <TableHead className="w-32">
+                          <div className="flex items-center gap-2">
+                            Cidade
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-6 w-6"
+                              title="Replicar a primeira cidade para todos"
+                              onClick={() => {
+                                if (bulkEditingLeads.length > 0) {
+                                  const firstCity = bulkEditingLeads[0].city || "";
+                                  const newLeads = bulkEditingLeads.map(lead => ({
+                                    ...lead,
+                                    city: firstCity
+                                  }));
+                                  setBulkEditingLeads(newLeads);
+                                  toast({
+                                    title: "Cidades replicadas",
+                                    description: `A cidade "${firstCity}" foi aplicada a todos os leads selecionados.`,
+                                  });
+                                }
+                              }}
+                            >
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableHead>
+                        <TableHead className="w-40">Categoria</TableHead>
+                        <TableHead className="w-32">Status</TableHead>
+                        <TableHead className="w-48">Instagram/Site</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bulkEditingLeads.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-muted-foreground h-24">
+                            Nenhum lead selecionado para edição.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        bulkEditingLeads.map((lead) => (
+                          <TableRow key={lead.id}>
+                            <TableCell>
+                              <Input
+                                value={lead.establishmentName}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                  handleBulkEditFieldChange(lead.id, "establishmentName", e.target.value)
+                                }
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={lead.name}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                  handleBulkEditFieldChange(lead.id, "name", e.target.value)
+                                }
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={lead.phone}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                  handleBulkEditFieldChange(lead.id, "phone", e.target.value)
+                                }
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={lead.city || ""}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                  handleBulkEditFieldChange(lead.id, "city", e.target.value)
+                                }
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={lead.category}
+                                onValueChange={(v: string) => handleBulkEditFieldChange(lead.id, "category", v)}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Categoria" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {categories.map((cat) => (
+                                    <SelectItem key={cat} value={cat}>
+                                      {cat}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={lead.status}
+                                onValueChange={(v: string) =>
+                                  handleBulkEditFieldChange(lead.id, "status", v as Prospect["status"])
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                                    <SelectItem key={value} value={value}>
+                                      {label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={lead.instagramLink || ""}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                  handleBulkEditFieldChange(lead.id, "instagramLink", e.target.value)
+                                }
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </ScrollArea>
+            </div>
+
+            <div className="p-6 pt-4 border-t">
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsBulkEditModalOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSaveBulkEdit} disabled={isSavingBulkEdit || bulkEditingLeads.length === 0}>
+                  {isSavingBulkEdit ? "Salvando..." : `Salvar ${bulkEditingLeads.length} Edições`}
+                </Button>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         {/* Modal de Edição */}
         <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
           <DialogContent className="sm:max-w-125">
@@ -1035,8 +1694,6 @@ export default function LeadsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-    </div>
 
     <Card>
         <CardHeader>
@@ -1065,62 +1722,256 @@ export default function LeadsPage() {
                 Filtros:
               </div>
               
-              <div className="w-48">
-                <Select value={filterStatus} onValueChange={(v: string) => setFilterStatus(v)}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Todos os Status</SelectItem>
-                    {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex gap-2 flex-wrap">
+                {/* Filtro de Status */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 border-dashed">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Status
+                      {filterStatus.length > 0 && (
+                        <>
+                          <Separator orientation="vertical" className="mx-2 h-4" />
+                          <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
+                            {filterStatus.length}
+                          </Badge>
+                          <div className="hidden space-x-1 lg:flex">
+                            {filterStatus.length > 2 ? (
+                              <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                                {filterStatus.length} selecionados
+                              </Badge>
+                            ) : (
+                              Object.entries(STATUS_LABELS)
+                                .filter(([value]) => filterStatus.includes(value))
+                                .map(([value, label]) => (
+                                  <Badge variant="secondary" key={value} className="rounded-sm px-1 font-normal">
+                                    {label}
+                                  </Badge>
+                                ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                      <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Filtrar status..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhum status encontrado.</CommandEmpty>
+                        <CommandGroup>
+                          {Object.entries(STATUS_LABELS).map(([value, label]) => {
+                            const isSelected = filterStatus.includes(value);
+                            return (
+                              <CommandItem
+                                key={value}
+                                onSelect={() => {
+                                  if (isSelected) {
+                                    setFilterStatus(filterStatus.filter((s) => s !== value));
+                                  } else {
+                                    setFilterStatus([...filterStatus, value]);
+                                  }
+                                }}
+                              >
+                                <div className={cn(
+                                  "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                  isSelected ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                                )}>
+                                  <Check className={cn("h-4 w-4")} />
+                                </div>
+                                <span>{label}</span>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                        {filterStatus.length > 0 && (
+                          <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => setFilterStatus([])}
+                                className="justify-center text-center"
+                              >
+                                Limpar filtros
+                              </CommandItem>
+                            </CommandGroup>
+                          </>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Filtro de Categoria */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 border-dashed">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Categoria
+                      {filterCategory.length > 0 && (
+                        <>
+                          <Separator orientation="vertical" className="mx-2 h-4" />
+                          <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
+                            {filterCategory.length}
+                          </Badge>
+                          <div className="hidden space-x-1 lg:flex">
+                            {filterCategory.length > 1 ? (
+                              <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                                {filterCategory.length} selecionadas
+                              </Badge>
+                            ) : (
+                              filterCategory.map((cat) => (
+                                <Badge variant="secondary" key={cat} className="rounded-sm px-1 font-normal">
+                                  {cat}
+                                </Badge>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                      <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Filtrar categoria..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhuma categoria encontrada.</CommandEmpty>
+                        <CommandGroup>
+                          <ScrollArea className="h-72">
+                            {categories.map((cat) => {
+                              const isSelected = filterCategory.includes(cat);
+                              return (
+                                <CommandItem
+                                  key={cat}
+                                  onSelect={() => {
+                                    if (isSelected) {
+                                      setFilterCategory(filterCategory.filter((c) => c !== cat));
+                                    } else {
+                                      setFilterCategory([...filterCategory, cat]);
+                                    }
+                                  }}
+                                >
+                                  <div className={cn(
+                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                    isSelected ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                                  )}>
+                                    <Check className={cn("h-4 w-4")} />
+                                  </div>
+                                  <span>{cat}</span>
+                                </CommandItem>
+                              );
+                            })}
+                          </ScrollArea>
+                        </CommandGroup>
+                        {filterCategory.length > 0 && (
+                          <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => setFilterCategory([])}
+                                className="justify-center text-center"
+                              >
+                                Limpar filtros
+                              </CommandItem>
+                            </CommandGroup>
+                          </>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+
+                {/* Filtro de Cidade */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 border-dashed">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Cidade
+                      {filterCity.length > 0 && (
+                        <>
+                          <Separator orientation="vertical" className="mx-2 h-4" />
+                          <Badge variant="secondary" className="rounded-sm px-1 font-normal lg:hidden">
+                            {filterCity.length}
+                          </Badge>
+                          <div className="hidden space-x-1 lg:flex">
+                            {filterCity.length > 1 ? (
+                              <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+                                {filterCity.length} selecionadas
+                              </Badge>
+                            ) : (
+                              filterCity.map((city) => (
+                                <Badge variant="secondary" key={city} className="rounded-sm px-1 font-normal">
+                                  {city}
+                                </Badge>
+                              ))
+                            )}
+                          </div>
+                        </>
+                      )}
+                      <ChevronDown className="ml-2 h-4 w-4 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-56 p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Filtrar cidade..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhuma cidade encontrada.</CommandEmpty>
+                        <CommandGroup>
+                          <ScrollArea className={cn(cities.length > 10 ? "h-72" : "h-auto")}>
+                            {cities.map((city) => {
+                              const isSelected = filterCity.includes(city);
+                              return (
+                                <CommandItem
+                                  key={city}
+                                  onSelect={() => {
+                                    if (isSelected) {
+                                      setFilterCity(filterCity.filter((c) => c !== city));
+                                    } else {
+                                      setFilterCity([...filterCity, city]);
+                                    }
+                                  }}
+                                >
+                                  <div className={cn(
+                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                    isSelected ? "bg-primary text-primary-foreground" : "opacity-50 [&_svg]:invisible"
+                                  )}>
+                                    <Check className={cn("h-4 w-4")} />
+                                  </div>
+                                  <span>{city}</span>
+                                </CommandItem>
+                              );
+                            })}
+                          </ScrollArea>
+                        </CommandGroup>
+                        {filterCity.length > 0 && (
+                          <>
+                            <CommandSeparator />
+                            <CommandGroup>
+                              <CommandItem
+                                onSelect={() => setFilterCity([])}
+                                className="justify-center text-center"
+                              >
+                                Limpar filtros
+                              </CommandItem>
+                            </CommandGroup>
+                          </>
+                        )}
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              <div className="w-64">
-                <Select value={filterCategory} onValueChange={(v: string) => setFilterCategory(v)}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Todas as Categorias</SelectItem>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="w-48">
-                <Select value={filterCity} onValueChange={(v: string) => setFilterCity(v)}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Cidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">Todas as Cidades</SelectItem>
-                    {cities.map((city) => (
-                      <SelectItem key={city} value={city}>
-                        {city}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {(filterStatus !== "ALL" || filterCategory !== "ALL" || filterCity !== "ALL" || searchTerm !== "") && (
+              {(filterStatus.length > 0 || filterCategory.length > 0 || filterCity.length > 0 || searchTerm !== "") && (
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   onClick={() => {
-                    setFilterStatus("ALL");
-                    setFilterCategory("ALL");
-                    setFilterCity("ALL");
+                    setFilterStatus([]);
+                    setFilterCategory([]);
+                    setFilterCity([]);
                     setSearchTerm("");
                   }}
                   className="text-xs h-8"
@@ -1132,14 +1983,88 @@ export default function LeadsPage() {
           </div>
         </CardHeader>
         <CardContent>
+          {selectedIds.length > 0 && (
+            <div className="mb-4 p-4 bg-primary/5 border border-primary/10 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium">
+                  {selectedIds.length} selecionado(s)
+                </span>
+                <div className="h-4 w-px bg-border" />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    onClick={handleOpenBulkEdit}
+                  >
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Editar Selecionados
+                  </Button>
+
+                  <Select onValueChange={(v) => handleBulkUpdateStatus(v as Prospect["status"])}>
+                    <SelectTrigger className="h-8 w-40 text-xs">
+                      <SelectValue placeholder="Mudar Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select onValueChange={(v) => handleBulkUpdateCategory(v)}>
+                    <SelectTrigger className="h-8 w-40 text-xs">
+                      <SelectValue placeholder="Mudar Categoria" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="h-8"
+                    onClick={handleBulkDelete}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Excluir Selecionados
+                  </Button>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedIds([])}
+                className="text-xs"
+              >
+                Cancelar Seleção
+              </Button>
+            </div>
+          )}
+
+          {renderPagination()}
+
           <div className="rounded-md border overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="font-bold">Estabelecimento</TableHead>
-                  <TableHead className="font-bold">Contato</TableHead>
-                  <TableHead className="font-bold">Categoria</TableHead>
-                  <TableHead className="font-bold">Cidade</TableHead>
+                  <TableHead className="w-12">
+                    <Checkbox 
+                      checked={selectedIds.length === filteredProspects.length && filteredProspects.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </TableHead>
+                  <TableHead className="font-bold max-w-50 truncate">Estabelecimento</TableHead>
+                  <TableHead className="font-bold max-w-37.5 truncate">Contato</TableHead>
+                  <TableHead className="font-bold max-w-30 truncate">Categoria</TableHead>
+                  <TableHead className="font-bold max-w-25 truncate">Cidade</TableHead>
                   <TableHead className="font-bold">Status</TableHead>
                   <TableHead className="font-bold text-right">Ações</TableHead>
                 </TableRow>
@@ -1147,13 +2072,13 @@ export default function LeadsPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center">
+                    <TableCell colSpan={7} className="h-32 text-center">
                       Carregando prospectos...
                     </TableCell>
                   </TableRow>
                 ) : filteredProspects.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                    <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                       <div className="flex flex-col items-center gap-2">
                         <UserPlus className="h-8 w-8 opacity-20" />
                         <p>Nenhum lead encontrado.</p>
@@ -1161,40 +2086,57 @@ export default function LeadsPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredProspects.map((prospect) => (
-                    <TableRow key={prospect.id} className="hover:bg-muted/30 transition-colors">
+                  paginatedProspects.map((prospect) => (
+                    <TableRow 
+                      key={prospect.id} 
+                      className={`hover:bg-muted/30 transition-colors ${selectedIds.includes(prospect.id) ? 'bg-primary/5' : ''}`}
+                    >
                       <TableCell>
-                        <div className="font-semibold">{prospect.establishmentName}</div>
+                        <Checkbox 
+                          checked={selectedIds.includes(prospect.id)}
+                          onCheckedChange={() => toggleSelect(prospect.id)}
+                        />
+                      </TableCell>
+                      <TableCell className="max-w-62.5">
+                        <div className="font-semibold truncate" title={prospect.establishmentName}>
+                          {prospect.establishmentName}
+                        </div>
                         <div className="flex flex-col gap-1 mt-0.5">
                           {prospect.instagramLink && (
                             <a
                               href={prospect.instagramLink.startsWith("http") ? prospect.instagramLink : `https://${prospect.instagramLink}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                              className="text-xs text-primary hover:underline flex items-center gap-1 w-fit"
                             >
                               <Instagram className="w-3 h-3" />
                               Instagram
                             </a>
                           )}
                           {prospect.notes && (
-                            <p className="text-[10px] text-muted-foreground italic truncate max-w-50" title={prospect.notes}>
+                            <p className="text-[10px] text-muted-foreground italic truncate max-w-full" title={prospect.notes}>
                               "{prospect.notes}"
                             </p>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{prospect.name}</div>
-                        <div className="text-xs text-muted-foreground">{prospect.phone}</div>
+                      <TableCell className="max-w-37.5">
+                        <div className="text-sm truncate" title={prospect.name}>{prospect.name}</div>
+                        <div className="text-xs text-muted-foreground truncate" title={prospect.phone}>{prospect.phone}</div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="font-normal">
+                      <TableCell className="max-w-30">
+                        <Badge 
+                          variant="secondary" 
+                          className="font-normal truncate max-w-full block"
+                          title={prospect.category}
+                        >
                           {prospect.category}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="text-sm">{prospect.city || "-"}</div>
+                      <TableCell className="max-w-25">
+                        <div className="text-sm truncate" title={prospect.city || ""}>
+                          {prospect.city || "-"}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Select
@@ -1281,8 +2223,34 @@ export default function LeadsPage() {
               </TableBody>
             </Table>
           </div>
+          {renderPagination()}
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="lab-enriquecimento" className="mt-0">
+          <Card>
+            <CardHeader>
+              <CardTitle>Laboratório de Enriquecimento (QSA via CNPJ)</CardTitle>
+              <CardDescription>
+                Ambiente de testes para enriquecimento de leads sem poluir a aba principal de possíveis clientes.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Use o script Python em <code>back_end/scripts/enriquecimento_leads_qsa.py</code> para processar seu CSV:
+                Nome da Empresa + Cidade -&gt; CNPJ -&gt; QSA (sócios), e-mail societário e capital social.
+              </p>
+              <div className="rounded-md border bg-muted/40 p-3 text-sm font-mono">
+                python back_end/scripts/enriquecimento_leads_qsa.py --input leads.csv --sleep 1.2
+              </div>
+              <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                Saída padrão: <strong>leads_enriquecidos_decisores.csv</strong>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
