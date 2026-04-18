@@ -20,8 +20,10 @@ import {
   type FooterSettings,
   getFooterSettings,
   getPageVisibility,
+  getPageVisibilityFromConfig,
   getSiteProfile,
   getVisibleSections,
+  getVisibleSectionsFromConfig,
   sanitizeColor,
   type SiteProfile,
   SECTION_IDS,
@@ -140,9 +142,12 @@ export function Footer({
       setProfile(baseProfile);
     }
 
-    setPageVisibility(getPageVisibility());
+    const configPageVisibility = getPageVisibilityFromConfig(studio?.config);
+    setPageVisibility(configPageVisibility || getPageVisibility());
+
     // Forçar visibilidade do footer para teste
-    const currentVisible = getVisibleSections();
+    const currentVisible =
+      getVisibleSectionsFromConfig(studio?.config) || getVisibleSections();
     setVisibleSections({ ...currentVisible, [SECTION_IDS.layoutFooter]: true });
 
     if (!externalFooterSettings) {

@@ -14,7 +14,9 @@ import {
   type GallerySettings,
   getGalleryPageSettings,
   getPageVisibility,
+  getPageVisibilityFromConfig,
   getVisibleSections,
+  getVisibleSectionsFromConfig,
   SECTION_IDS,
   sanitizeColor,
 } from "@/lib/booking-data";
@@ -105,17 +107,18 @@ export default function GaleriaPage({
   useEffect(() => {
     if (studio?.config) {
       const config = studio.config as unknown as SiteConfigData;
-      if (config.visibleSections) {
-        setVisibleSections(config.visibleSections);
+      const configVisibleSections = getVisibleSectionsFromConfig(config);
+      const configPageVisibility = getPageVisibilityFromConfig(config);
+
+      if (configVisibleSections) {
+        setVisibleSections(configVisibleSections);
       }
 
-      if (config.pageVisibility) {
-        if (config.pageVisibility.galeria === false && !isPreview) {
-          setIsVisible(false);
-          router.push("/");
-        } else {
-          setIsVisible(true);
-        }
+      if (configPageVisibility?.galeria === false && !isPreview) {
+        setIsVisible(false);
+        router.push("/");
+      } else if (configPageVisibility) {
+        setIsVisible(true);
       }
 
       const pageGallery = config.galleryPageSettings as

@@ -5,7 +5,13 @@ import { Suspense, use, useEffect, useState } from "react";
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { BookingFlow } from "@/components/booking-flow";
 import { useStudio } from "@/context/studio-context";
-import { getPageVisibility, getVisibleSections, SECTION_IDS } from "@/lib/booking-data";
+import {
+  getPageVisibility,
+  getPageVisibilityFromConfig,
+  getVisibleSections,
+  getVisibleSectionsFromConfig,
+  SECTION_IDS,
+} from "@/lib/booking-data";
 
 export default function AgendamentoPage({
   searchParams: searchParamsPromise,
@@ -29,14 +35,16 @@ export default function AgendamentoPage({
   useEffect(() => {
     if (studio?.config) {
       const config = studio.config as unknown as SiteConfigData;
+      const configVisibleSections = getVisibleSectionsFromConfig(config);
+      const configPageVisibility = getPageVisibilityFromConfig(config);
 
       if (!isPreview) {
-        if (config.visibleSections) {
-          setVisibleSections(config.visibleSections);
+        if (configVisibleSections) {
+          setVisibleSections(configVisibleSections);
         }
 
-        if (config.pageVisibility) {
-          if (config.pageVisibility.agendar === false) {
+        if (configPageVisibility) {
+          if (configPageVisibility.agendar === false) {
             setIsVisible(false);
             router.push("/");
           } else {

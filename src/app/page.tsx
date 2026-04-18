@@ -9,8 +9,14 @@ import { HeroSection } from "@/components/hero-section";
 import { ServicesSection } from "@/components/services-section";
 import { ValuesSection } from "@/components/values-section";
 import { useStudio } from "@/context/studio-context";
+<<<<<<< HEAD
 import { BASE_DOMAIN, LANDING_PAGE_URL } from "@/lib/auth-client";
-import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
+import {
+  getPageVisibility,
+  getPageVisibilityFromConfig,
+  getVisibleSections,
+  getVisibleSectionsFromConfig,
+} from "@/lib/booking-data";
 
 export default function Home({
   searchParams,
@@ -54,14 +60,16 @@ export default function Home({
   useEffect(() => {
     if (studio?.config) {
       const config = studio.config as unknown as SiteConfigData;
+      const configVisibleSections = getVisibleSectionsFromConfig(config);
+      const configPageVisibility = getPageVisibilityFromConfig(config);
 
       // Priorizamos os dados do banco, mas permitimos que o preview (message) sobrescreva
       if (!isPreview) {
-        if (config.visibleSections) {
-          setVisibleSections(config.visibleSections);
+        if (configVisibleSections) {
+          setVisibleSections(configVisibleSections);
         }
-        if (config.pageVisibility) {
-          setPageVisibility(config.pageVisibility);
+        if (configPageVisibility) {
+          setPageVisibility(configPageVisibility);
         }
       }
     }

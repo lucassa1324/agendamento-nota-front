@@ -280,6 +280,8 @@ export function useEditorConfigLoader({
     setLastAppliedBookingTime,
     setLastAppliedBookingForm,
     setLastAppliedBookingConfirmation,
+    setLastAppliedPageVisibility,
+    setLastAppliedVisibleSections,
   } = state;
 
   const loadExternalConfig = useCallback(
@@ -1195,11 +1197,13 @@ export function useEditorConfigLoader({
 
       if (data.pageVisibility) {
         setLastSavedPageVisibility(data.pageVisibility);
+        setLastAppliedPageVisibility(data.pageVisibility);
         setPageVisibility(data.pageVisibility);
       }
 
       if (data.visibleSections) {
         setLastSavedVisibleSections(data.visibleSections);
+        setLastAppliedVisibleSections(data.visibleSections);
         setVisibleSections(data.visibleSections);
       }
 
@@ -1486,6 +1490,8 @@ export function useEditorConfigLoader({
       setLastAppliedBookingTime,
       setLastAppliedBookingForm,
       setLastAppliedBookingConfirmation,
+      setLastAppliedPageVisibility,
+      setLastAppliedVisibleSections,
       checkShouldRecoverDraft,
       slug,
     ],

@@ -1359,6 +1359,12 @@ export function useEditorState() {
     useState<BookingStepSettings>(defaultBookingFormSettings);
   const [lastAppliedBookingConfirmation, setLastAppliedBookingConfirmation] =
     useState<BookingStepSettings>(defaultBookingConfirmationSettings);
+  const [lastAppliedPageVisibility, setLastAppliedPageVisibility] = useState<
+    Record<string, boolean>
+  >({});
+  const [lastAppliedVisibleSections, setLastAppliedVisibleSections] = useState<
+    Record<string, boolean>
+  >({});
 
   const [lastSavedHero, setLastSavedHero] =
     useState<HeroSettings>(defaultHeroSettings);
@@ -2702,6 +2708,10 @@ export function useEditorState() {
     setLastAppliedBookingForm,
     lastAppliedBookingConfirmation,
     setLastAppliedBookingConfirmation,
+    lastAppliedPageVisibility,
+    setLastAppliedPageVisibility,
+    lastAppliedVisibleSections,
+    setLastAppliedVisibleSections,
     lastSavedHero,
     setLastSavedHero,
     lastSavedAboutHero,

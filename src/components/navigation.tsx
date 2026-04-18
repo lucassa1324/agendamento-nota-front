@@ -12,8 +12,10 @@ import {
   defaultHeaderSettings,
   getHeaderSettings,
   getPageVisibility,
+  getPageVisibilityFromConfig,
   getSiteProfile,
   getVisibleSections,
+  getVisibleSectionsFromConfig,
   type HeaderSettings,
   type SiteProfile,
   SECTION_IDS,
@@ -69,8 +71,10 @@ export function Navigation({
       setProfile(baseProfile);
     }
 
-    setPageVisibility(getPageVisibility());
-    setVisibleSections(getVisibleSections());
+    const configPageVisibility = getPageVisibilityFromConfig(studio?.config);
+    const configVisibleSections = getVisibleSectionsFromConfig(studio?.config);
+    setPageVisibility(configPageVisibility || getPageVisibility());
+    setVisibleSections(configVisibleSections || getVisibleSections());
 
     if (!externalHeaderSettings) {
       if (studioHeaderConfig) {

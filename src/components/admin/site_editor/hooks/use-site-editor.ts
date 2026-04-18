@@ -195,6 +195,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     lastAppliedBookingTime: state.lastAppliedBookingTime,
     lastAppliedBookingForm: state.lastAppliedBookingForm,
     lastAppliedBookingConfirmation: state.lastAppliedBookingConfirmation,
+    lastAppliedPageVisibility: state.lastAppliedPageVisibility,
+    lastAppliedVisibleSections: state.lastAppliedVisibleSections,
   };
 
   const setters = {
@@ -240,6 +242,8 @@ export function useSiteEditor(iframeRef: RefObject<HTMLIFrameElement | null>) {
     setLastAppliedBookingTime: state.setLastAppliedBookingTime,
     setLastAppliedBookingForm: state.setLastAppliedBookingForm,
     setLastAppliedBookingConfirmation: state.setLastAppliedBookingConfirmation,
+    setLastAppliedPageVisibility: state.setLastAppliedPageVisibility,
+    setLastAppliedVisibleSections: state.setLastAppliedVisibleSections,
   };
 
   const changes = useEditorChanges({ settings, lastApplied });

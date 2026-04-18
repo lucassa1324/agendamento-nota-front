@@ -99,6 +99,8 @@ type EditorAppliedState = {
   lastAppliedBookingTime: BookingStepSettings;
   lastAppliedBookingForm: BookingStepSettings;
   lastAppliedBookingConfirmation: BookingStepSettings;
+  lastAppliedPageVisibility: Record<string, boolean>;
+  lastAppliedVisibleSections: Record<string, boolean>;
 };
 
 type EditorStateSetters = {
@@ -144,6 +146,8 @@ type EditorStateSetters = {
   setLastAppliedBookingTime: (value: BookingStepSettings) => void;
   setLastAppliedBookingForm: (value: BookingStepSettings) => void;
   setLastAppliedBookingConfirmation: (value: BookingStepSettings) => void;
+  setLastAppliedPageVisibility: (value: Record<string, boolean>) => void;
+  setLastAppliedVisibleSections: (value: Record<string, boolean>) => void;
 };
 
 type UseEditorApiParams = {
@@ -1084,10 +1088,10 @@ export function useEditorApi({
       JSON.stringify(lastSaved.lastSavedBookingConfirmation);
 
     const pageVisibilityChanged =
-      JSON.stringify(settings.pageVisibility) !==
+      JSON.stringify(lastApplied.lastAppliedPageVisibility) !==
       JSON.stringify(lastSaved.lastSavedPageVisibility);
     const visibleSectionsChanged =
-      JSON.stringify(settings.visibleSections) !==
+      JSON.stringify(lastApplied.lastAppliedVisibleSections) !==
       JSON.stringify(lastSaved.lastSavedVisibleSections);
 
     return [
@@ -3265,6 +3269,8 @@ export function useEditorApi({
         setters.setLastAppliedBookingConfirmation(
           settings.bookingConfirmationSettings,
         );
+        setters.setLastAppliedPageVisibility(settings.pageVisibility);
+        setters.setLastAppliedVisibleSections(settings.visibleSections);
       } else {
         toast({
           title: "Erro ao publicar",

@@ -11,7 +11,9 @@ import { ValuesSection } from "@/components/values-section";
 import { useStudio } from "@/context/studio-context";
 import {
   getPageVisibility,
+  getPageVisibilityFromConfig,
   getVisibleSections,
+  getVisibleSectionsFromConfig,
   SECTION_IDS,
 } from "@/lib/booking-data";
 
@@ -37,15 +39,17 @@ export default function SobrePage({
   useEffect(() => {
     if (studio?.config) {
       const config = studio.config as unknown as SiteConfigData;
+      const configVisibleSections = getVisibleSectionsFromConfig(config);
+      const configPageVisibility = getPageVisibilityFromConfig(config);
 
       if (!isPreview) {
-        if (config.visibleSections) {
-          setVisibleSections(config.visibleSections);
+        if (configVisibleSections) {
+          setVisibleSections(configVisibleSections);
         }
 
-        if (config.pageVisibility) {
+        if (configPageVisibility) {
           // Reaproveita a lógica de checkVisibility do useEffect principal
-          if (config.pageVisibility.sobre === false) {
+          if (configPageVisibility.sobre === false) {
             setIsVisible(false);
             router.push("/");
           } else {

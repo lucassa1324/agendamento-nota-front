@@ -4083,6 +4083,76 @@ export function savePageVisibility(visibility: Record<string, boolean>): void {
   }
 }
 
+const toRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+};
+
+const resolveConfigRoot = (config: unknown): Record<string, unknown> => {
+  const root = toRecord(config);
+  if (!root) return {};
+
+  const hasDirectConfig =
+    "layoutGlobal" in root ||
+    "layout_global" in root ||
+    "home" in root ||
+    "aboutUs" in root ||
+    "appointmentFlow" in root;
+
+  if (hasDirectConfig) return root;
+
+  return (
+    toRecord(root.siteCustomization) ||
+    toRecord(root.site_customization) ||
+    root
+  );
+};
+
+const normalizeBooleanRecord = (
+  value: Record<string, unknown> | null,
+): Record<string, boolean> | undefined => {
+  if (!value) return undefined;
+  const normalized: Record<string, boolean> = {};
+
+  for (const [key, raw] of Object.entries(value)) {
+    if (typeof raw === "boolean") {
+      normalized[key] = raw;
+    }
+  }
+
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+};
+
+export function getPageVisibilityFromConfig(
+  config: unknown,
+): Record<string, boolean> | undefined {
+  const root = resolveConfigRoot(config);
+  const layoutGlobal =
+    toRecord(root.layoutGlobal) || toRecord(root.layout_global);
+
+  return normalizeBooleanRecord(
+    toRecord(root.pageVisibility) ||
+      toRecord(root.page_visibility) ||
+      toRecord(layoutGlobal?.pageVisibility) ||
+      toRecord(layoutGlobal?.page_visibility),
+  );
+}
+
+export function getVisibleSectionsFromConfig(
+  config: unknown,
+): Record<string, boolean> | undefined {
+  const root = resolveConfigRoot(config);
+  const layoutGlobal =
+    toRecord(root.layoutGlobal) || toRecord(root.layout_global);
+
+  return normalizeBooleanRecord(
+    toRecord(root.visibleSections) ||
+      toRecord(root.visible_sections) ||
+      toRecord(layoutGlobal?.visibleSections) ||
+      toRecord(layoutGlobal?.visible_sections),
+  );
+}
+
 export function getVisibleSections(): Record<string, boolean> {
   const defaultSections = {
     header: true,
