@@ -290,8 +290,13 @@ export function StudioProvider({
             case "SYNC_UPDATE":
               // Protocolo Unificado (Pilar 3) + Blindagem Deep Merge (Pilar 2)
               if (path && typeof path === "string") {
-                const currentVal = (updatedConfig as Record<string, unknown>)[path];
-                (updatedConfig as Record<string, unknown>)[path] = deepMerge(currentVal, settings);
+                const currentVal = (updatedConfig as Record<string, unknown>)[
+                  path
+                ];
+                (updatedConfig as Record<string, unknown>)[path] = deepMerge(
+                  currentVal,
+                  settings,
+                );
               }
               break;
             case "UPDATE_HERO_SETTINGS":
@@ -481,13 +486,15 @@ export function StudioProvider({
       if (!prev) return null;
 
       const prevConfig =
-        prev.config && typeof prev.config === "object" && !Array.isArray(prev.config)
+        prev.config &&
+        typeof prev.config === "object" &&
+        !Array.isArray(prev.config)
           ? (prev.config as Record<string, unknown>)
           : {};
       const incomingConfig =
         updates.config &&
-          typeof updates.config === "object" &&
-          !Array.isArray(updates.config)
+        typeof updates.config === "object" &&
+        !Array.isArray(updates.config)
           ? (updates.config as Record<string, unknown>)
           : {};
 
@@ -711,7 +718,8 @@ export function StudioProvider({
         home?.services ||
         layoutGlobal?.services) as ServicesSettings | undefined;
 
-      const homeValuesSource = ((config as Record<string, unknown>)?.homeValuesSettings ||
+      const homeValuesSource = ((config as Record<string, unknown>)
+        ?.homeValuesSettings ||
         (config as Record<string, unknown>)?.values ||
         (home as Record<string, unknown>)?.valuesSection ||
         (home as Record<string, unknown>)?.values ||
@@ -719,7 +727,8 @@ export function StudioProvider({
         | ValuesSettings
         | undefined;
 
-      const aboutUsValuesSource = ((config as Record<string, unknown>)?.aboutUsValuesSettings ||
+      const aboutUsValuesSource = ((config as Record<string, unknown>)
+        ?.aboutUsValuesSettings ||
         (config as Record<string, unknown>)?.values ||
         aboutUs?.valuesSection ||
         aboutUs?.values ||
@@ -734,9 +743,7 @@ export function StudioProvider({
         home?.values ||
         layoutGlobal?.values ||
         layoutGlobal?.values_section ||
-        layoutGlobal?.values_settings) as
-        | ValuesSettings
-        | undefined;
+        layoutGlobal?.values_settings) as ValuesSettings | undefined;
 
       return {
         ...config,
@@ -795,7 +802,9 @@ export function StudioProvider({
         visibleSections: (config.visibleSections ||
           config.visible_sections ||
           layoutGlobal?.visibleSections ||
-          layoutGlobal?.visible_sections) as Record<string, boolean> | undefined,
+          layoutGlobal?.visible_sections) as
+          | Record<string, boolean>
+          | undefined,
         pageVisibility: (config.pageVisibility ||
           config.page_visibility ||
           layoutGlobal?.pageVisibility ||
@@ -1173,20 +1182,37 @@ export function StudioProvider({
             if (host.includes(".localhost")) {
               const parts = host.split(".");
               if (parts.length > 1 && parts[0] !== "www") hostSlug = parts[0];
-            } else if (BASE_DOMAIN && host.endsWith(BASE_DOMAIN) && host !== BASE_DOMAIN) {
-              hostSlug = host.replace(`.${BASE_DOMAIN}`, "").replace("www.", "");
+            } else if (
+              BASE_DOMAIN &&
+              host.endsWith(BASE_DOMAIN) &&
+              host !== BASE_DOMAIN
+            ) {
+              hostSlug = host
+                .replace(`.${BASE_DOMAIN}`, "")
+                .replace("www.", "");
             }
 
             if (hostSlug && hostSlug !== currentSlug) {
+              // Ignora o slug 'app' pois é o subdomínio administrativo
+              if (hostSlug === "app") {
+                console.log(
+                  ">>> [StudioProvider] Subdomínio 'app' detectado. Ignorando busca de slug.",
+                );
+                setIsLoading(false);
+                return;
+              }
+
               currentSlug = hostSlug;
-              console.log(`>>> [StudioProvider] SLUG extraído do HOST: ${currentSlug}`);
+              console.log(
+                `>>> [StudioProvider] SLUG extraído do HOST: ${currentSlug}`,
+              );
               setSlug(currentSlug);
             }
           }
         }
       }
 
-      if (!currentId && !currentSlug) {
+      if (!currentId && (!currentSlug || currentSlug === "app")) {
         setIsLoading(false);
         return;
       }

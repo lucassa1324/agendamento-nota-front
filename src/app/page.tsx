@@ -9,7 +9,7 @@ import { HeroSection } from "@/components/hero-section";
 import { ServicesSection } from "@/components/services-section";
 import { ValuesSection } from "@/components/values-section";
 import { useStudio } from "@/context/studio-context";
-import { LANDING_PAGE_URL } from "@/lib/auth-client";
+import { BASE_DOMAIN, LANDING_PAGE_URL } from "@/lib/auth-client";
 import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
 
 export default function Home({
@@ -69,11 +69,30 @@ export default function Home({
 
   useEffect(() => {
     if (studioLoading || slug || isPreview) return;
-    if (LANDING_PAGE_URL && typeof window !== "undefined") {
-      console.log("Redirecting to landing page:", LANDING_PAGE_URL);
-      window.location.replace(LANDING_PAGE_URL);
-      return;
+
+    if (typeof window !== "undefined") {
+      const hostname = window.location.hostname;
+      // Se for o subdomínio 'app' do domínio base ou localhost, redireciona para /admin
+      const isAppSubdomain =
+        hostname === `app.${BASE_DOMAIN}` ||
+        hostname === "app.localhost" ||
+        (hostname.startsWith("app.") && hostname.includes(".localhost"));
+
+      if (isAppSubdomain) {
+        console.log(
+          ">>> [HOME] Subdomínio 'app' detectado. Redirecionando para /admin.",
+        );
+        router.replace("/admin");
+        return;
+      }
+
+      if (LANDING_PAGE_URL) {
+        console.log("Redirecting to landing page:", LANDING_PAGE_URL);
+        window.location.replace(LANDING_PAGE_URL);
+        return;
+      }
     }
+
     router.replace("/admin");
   }, [slug, studioLoading, isPreview, router]);
 
