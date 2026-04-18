@@ -9,7 +9,6 @@ import { HeroSection } from "@/components/hero-section";
 import { ServicesSection } from "@/components/services-section";
 import { ValuesSection } from "@/components/values-section";
 import { useStudio } from "@/context/studio-context";
-<<<<<<< HEAD
 import { BASE_DOMAIN, LANDING_PAGE_URL } from "@/lib/auth-client";
 import {
   getPageVisibility,
