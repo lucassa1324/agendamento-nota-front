@@ -67,11 +67,27 @@ export function ScheduleManager() {
     setIsLoading(true);
 
     try {
-      // 1. Tentar carregar do Backend
-      const [settings, blocks] = await Promise.all([
+      // 1. Tentar carregar do Backend sem deixar uma falha pontual derrubar tudo
+      const [settingsResult, blocksResult] = await Promise.allSettled([
         businessService.getSettings(studio.id),
         businessService.getBlocks(studio.id),
       ]);
+      const settings =
+        settingsResult.status === "fulfilled" ? settingsResult.value : null;
+      const blocks = blocksResult.status === "fulfilled" ? blocksResult.value : null;
+
+      if (settingsResult.status === "rejected") {
+        console.warn(
+          "ScheduleManager: falha ao carregar settings do backend.",
+          settingsResult.reason,
+        );
+      }
+      if (blocksResult.status === "rejected") {
+        console.warn(
+          "ScheduleManager: falha ao carregar bloqueios do backend.",
+          blocksResult.reason,
+        );
+      }
 
       console.log(
         "Intervalo vindo do banco:",
@@ -147,7 +163,7 @@ export function ScheduleManager() {
       setWeekSchedule(finalSchedule);
       setInitialSchedule(JSON.stringify(finalSchedule));
 
-      const finalBlocks = blocks || getBlockedPeriods();
+      const finalBlocks = blocks ?? getBlockedPeriods();
       setBlockedPeriods(finalBlocks);
       setInitialBlocked(JSON.stringify(finalBlocks));
     } catch (error: unknown) {
@@ -159,7 +175,7 @@ export function ScheduleManager() {
         console.error("Erro ao carregar dados do servidor:", error);
       }
       
-      // Fallback total para LocalStorage em caso de erro de conexão ou faturamento
+      // Fallback total para LocalStorage em caso de erro crítico
       const schedule = getWeekSchedule();
       const blocked = getBlockedPeriods();
       setWeekSchedule(schedule);
@@ -168,6 +184,12 @@ export function ScheduleManager() {
       setInitialBlocked(JSON.stringify(blocked));
       setMinimumBookingLeadMinutes(0);
       setInitialMinimumBookingLeadMinutes(0);
+
+      const firstOpenDay = schedule.find((d) => d.isOpen);
+      if (firstOpenDay) {
+        setGlobalInterval(firstOpenDay.interval);
+        setInitialInterval(firstOpenDay.interval);
+      }
     } finally {
       setIsLoading(false);
     }

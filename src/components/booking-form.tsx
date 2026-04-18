@@ -56,6 +56,23 @@ export function BookingForm({
     email: initialBooking?.clientEmail || "",
     phone: initialBooking?.clientPhone || "",
   });
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const validatePhone = (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    const hasValidLength = digits.length === 10 || digits.length === 11;
+    const allDigitsEqual = digits.length > 0 && /^(\d)\1+$/.test(digits);
+
+    if (!hasValidLength) {
+      return "Informe um telefone com DDD válido.";
+    }
+
+    if (allDigitsEqual) {
+      return "Informe um telefone real. Não use números repetidos.";
+    }
+
+    return null;
+  };
 
   const formattedDate = new Date(`${date}T00:00:00`).toLocaleDateString(
     "pt-BR",
@@ -76,6 +93,17 @@ export function BookingForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!studio?.id || isLoading || submitLockRef.current) return;
+
+    const phoneValidationError = validatePhone(formData.phone);
+    if (phoneValidationError) {
+      setPhoneError(phoneValidationError);
+      toast({
+        title: "Telefone inválido",
+        description: phoneValidationError,
+        variant: "destructive",
+      });
+      return;
+    }
 
     submitLockRef.current = true;
     setIsLoading(true);
@@ -337,11 +365,18 @@ export function BookingForm({
                 type="tel"
                 required
                 value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
+                onChange={(e) => {
+                  setFormData({ ...formData, phone: e.target.value });
+                  if (phoneError) {
+                    setPhoneError(null);
+                  }
+                }}
+                onBlur={() => {
+                  setPhoneError(validatePhone(formData.phone));
+                }}
                 placeholder="(00) 00000-0000"
-                className="focus-visible:ring-accent"
+                className={`focus-visible:ring-accent ${phoneError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                aria-invalid={!!phoneError}
                 style={
                   {
                     "--tw-ring-color": accentColor,
@@ -349,6 +384,9 @@ export function BookingForm({
                   } as React.CSSProperties
                 }
               />
+              {phoneError && (
+                <p className="text-sm text-red-600">{phoneError}</p>
+              )}
             </div>
 
             <Button
