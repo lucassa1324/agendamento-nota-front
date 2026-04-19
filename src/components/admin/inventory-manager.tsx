@@ -1350,6 +1350,7 @@ export function InventoryManager() {
                       <SelectItem value="un">Unidade (un)</SelectItem>
                       <SelectItem value="kg">Quilograma (kg)</SelectItem>
                       <SelectItem value="g">Grama (g)</SelectItem>
+                      <SelectItem value="mg">Miligrama (mg)</SelectItem>
                       <SelectItem value="lt">Litro (lt)</SelectItem>
                       <SelectItem value="ml">Mililitro (ml)</SelectItem>
                       <SelectItem value="pct">Pacote (pct)</SelectItem>
@@ -1390,6 +1391,7 @@ export function InventoryManager() {
                       <SelectItem value="un">Unidade (un)</SelectItem>
                       <SelectItem value="kg">Quilograma (kg)</SelectItem>
                       <SelectItem value="g">Grama (g)</SelectItem>
+                      <SelectItem value="mg">Miligrama (mg)</SelectItem>
                       <SelectItem value="lt">Litro (lt)</SelectItem>
                       <SelectItem value="ml">Mililitro (ml)</SelectItem>
                     </SelectContent>
