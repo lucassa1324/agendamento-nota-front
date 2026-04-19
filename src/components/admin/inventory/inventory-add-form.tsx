@@ -17,6 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { InventoryItem } from "@/lib/inventory-service";
 
 interface InventoryAddFormProps {
   newItem: {
@@ -39,16 +40,26 @@ interface InventoryAddFormProps {
     conversionFactor?: string;
     isShared?: boolean;
   }) => void;
+  onNameChange: (value: string) => void;
   handleAddItem: () => void;
   setShowAddForm: (show: boolean) => void;
+  matchingItems: InventoryItem[];
+  exactMatchItem: InventoryItem | null;
+  onOpenQuickEntry: (item: InventoryItem) => void;
+  isDuplicateBlocked: boolean;
   isLoading?: boolean;
 }
 
 export function InventoryAddForm({
   newItem,
   setNewItem,
+  onNameChange,
   handleAddItem,
   setShowAddForm,
+  matchingItems,
+  exactMatchItem,
+  onOpenQuickEntry,
+  isDuplicateBlocked,
   isLoading = false,
 }: InventoryAddFormProps) {
   return (
@@ -70,7 +81,7 @@ export function InventoryAddForm({
             </p>
             <p>
               2) Em <strong>Quantidade Inicial</strong>, informe o total nessa
-              mesma unidade.
+              unidade principal (se compra em caixa, informe em caixa).
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
@@ -88,15 +99,52 @@ export function InventoryAddForm({
                   </TooltipContent>
                 </Tooltip>
               </div>
-              <Input
-                id="name"
-                placeholder="Ex: Henna Profissional"
-                value={newItem.name ?? ""}
-                disabled={isLoading}
-                onChange={(e) =>
-                  setNewItem({ ...newItem, name: e.target.value })
-                }
-              />
+              <div className="relative">
+                <Input
+                  id="name"
+                  placeholder="Ex: Henna Profissional"
+                  value={newItem.name ?? ""}
+                  disabled={isLoading}
+                  onChange={(e) => onNameChange(e.target.value)}
+                />
+                {matchingItems.length > 0 && (
+                  <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-background shadow-lg">
+                    <div className="px-2 py-1.5 border-b text-xs font-medium">
+                      Produtos encontrados
+                    </div>
+                    <div className="max-h-40 overflow-y-auto p-1">
+                      <div className="space-y-1">
+                        {matchingItems.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            className="w-full text-left text-xs rounded border px-2 py-1 hover:bg-muted transition-colors"
+                            onClick={() => onOpenQuickEntry(item)}
+                            disabled={isLoading}
+                          >
+                            {item.name} ({item.unit})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+              {isDuplicateBlocked && exactMatchItem && (
+                <div className="rounded-md border border-red-300 bg-red-50 p-2 text-xs text-red-800">
+                  Produto já cadastrado: <strong>{exactMatchItem.name}</strong>.
+                  Para evitar duplicidade, faça a entrada rápida neste item.
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto p-0 ml-1 text-red-800 underline"
+                    onClick={() => onOpenQuickEntry(exactMatchItem)}
+                    disabled={isLoading}
+                  >
+                    Dar entrada neste produto
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
@@ -125,7 +173,7 @@ export function InventoryAddForm({
                 A quantidade inicial sempre usa a{" "}
                 <strong>Unidade Principal</strong>.
                 {newItem.unit
-                  ? ` Exemplo: ${newItem.quantity || "10"} ${newItem.unit}.`
+                  ? ` Exemplo: se você compra em ${newItem.unit}, informe em ${newItem.unit}.`
                   : ""}
               </p>
             </div>

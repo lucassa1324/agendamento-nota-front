@@ -224,6 +224,58 @@ export function InventoryManager() {
     isShared: false,
   });
 
+  const normalizeProductName = (name: string) =>
+    name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^\w\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const normalizedInputName = normalizeProductName(newItem.name || "");
+  const exactDuplicateItem =
+    normalizedInputName.length > 0
+      ? inventory.find(
+          (item) => normalizeProductName(item.name) === normalizedInputName,
+        ) || null
+      : null;
+  const isDuplicateBlocked = !!exactDuplicateItem;
+  const matchingItems = useMemo(() => {
+    if (normalizedInputName.length < 1) return [];
+    return inventory
+      .filter((item) =>
+        normalizeProductName(item.name).includes(normalizedInputName),
+      );
+  }, [inventory, normalizedInputName]);
+
+  const resetNewItemForm = () => {
+    setNewItem({
+      name: "",
+      quantity: "",
+      minQuantity: "",
+      unit: "un",
+      price: "",
+      secondaryUnit: "",
+      conversionFactor: "",
+      isShared: false,
+    });
+  };
+
+  const handleNewItemNameChange = (value: string) => {
+    setNewItem({ ...newItem, name: value });
+  };
+
+  const handleOpenQuickEntryFromDuplicate = (item: InventoryItem) => {
+    const parsedQuantity = Number(newItem.quantity);
+    setTransactionItem({ item, type: "entrada" });
+    setTransactionQuantity(
+      !Number.isNaN(parsedQuantity) && parsedQuantity > 0
+        ? String(parsedQuantity)
+        : "1",
+    );
+  };
+
   const handleAddItem = async () => {
     if (!newItem.name || !newItem.quantity || !newItem.price) {
       toast({
@@ -239,6 +291,16 @@ export function InventoryManager() {
         title: "Erro de identificação",
         description:
           "Não foi possível identificar sua empresa. Tente recarregar a página.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isDuplicateBlocked) {
+      toast({
+        title: "Produto já existe",
+        description:
+          "Esse nome já está cadastrado. Use a opção de vincular item existente.",
         variant: "destructive",
       });
       return;
@@ -281,24 +343,20 @@ export function InventoryManager() {
         description: `${newItem.name} foi adicionado ao estoque.`,
       });
 
-      setNewItem({
-        name: "",
-        quantity: "",
-        minQuantity: "",
-        unit: "un",
-        price: "",
-        secondaryUnit: "",
-        conversionFactor: "",
-        isShared: false,
-      });
+      resetNewItemForm();
       setShowAddForm(false);
       fetchInventory(); // Atualiza a lista
     } catch (error) {
       console.error("Erro ao adicionar produto:", error);
       const message =
-        error instanceof Error
+        (error &&
+          typeof error === "object" &&
+          "message" in error &&
+          typeof (error as { message?: unknown }).message === "string" &&
+          (error as { message: string }).message) ||
+        (error instanceof Error
           ? error.message
-          : "Ocorreu um erro ao tentar salvar o produto.";
+          : "Ocorreu um erro ao tentar salvar o produto.");
       toast({
         title: "Erro ao adicionar",
         description: message,
@@ -639,8 +697,13 @@ export function InventoryManager() {
         <InventoryAddForm
           newItem={newItem}
           setNewItem={setNewItem}
+          onNameChange={handleNewItemNameChange}
           handleAddItem={handleAddItem}
           setShowAddForm={setShowAddForm}
+          matchingItems={matchingItems}
+          exactMatchItem={exactDuplicateItem}
+          onOpenQuickEntry={handleOpenQuickEntryFromDuplicate}
+          isDuplicateBlocked={isDuplicateBlocked}
           isLoading={isSaving}
         />
       )}
