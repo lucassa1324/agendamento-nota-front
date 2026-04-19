@@ -1,6 +1,5 @@
 "use client";
 
-import { differenceInDays } from "date-fns";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -13,6 +12,7 @@ interface SessionPayload {
       slug?: string;
       subscriptionStatus?: string;
       trialEndsAt?: string;
+      billingGraceEndsAt?: string;
       daysLeft?: number;
     };
   };
@@ -49,6 +49,7 @@ export function TrialBanner() {
           slug?: string;
           subscriptionStatus?: string;
           trialEndsAt?: string;
+          billingGraceEndsAt?: string;
           daysLeft?: number;
         };
       }
@@ -100,25 +101,41 @@ export function TrialBanner() {
     isOwner && userBusiness?.trialEndsAt
       ? userBusiness.trialEndsAt
       : studio?.trialEndsAt;
+  const billingGraceEndsAt = userBusiness?.billingGraceEndsAt;
 
-  // Lógica de dias restantes: prioriza o campo `daysLeft` vindo do backend
+  const getRemainingDays = (endDateInput: Date | string) => {
+    const endDate = new Date(endDateInput);
+    const diffMs = endDate.getTime() - Date.now();
+    if (Number.isNaN(diffMs) || diffMs <= 0) return 0;
+    return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  };
+
+  // Lógica de dias restantes
   let displayDays = 0;
 
-  if (isOwner && typeof userBusiness?.daysLeft === "number") {
+  if (status === "grace_period") {
+    if (billingGraceEndsAt) {
+      displayDays = getRemainingDays(billingGraceEndsAt);
+    } else if (trialEndsAt) {
+      // Fallback: em carência, se não vier billingGraceEndsAt na sessão,
+      // usamos o vencimento + 7 dias.
+      const derivedGraceEnd = new Date(trialEndsAt);
+      derivedGraceEnd.setDate(derivedGraceEnd.getDate() + 7);
+      displayDays = getRemainingDays(derivedGraceEnd);
+    } else {
+      displayDays = 0;
+    }
+  } else if (isOwner && typeof userBusiness?.daysLeft === "number") {
     displayDays = userBusiness.daysLeft;
   } else if (trialEndsAt) {
-    // Cálculo baseado EXCLUSIVAMENTE em trialEndsAt
-    const endDate = new Date(trialEndsAt);
-    const today = new Date();
-    const diff = differenceInDays(endDate, today);
-    displayDays = diff < 0 ? 0 : diff;
+    // Trial: usa data final do trial
+    displayDays = getRemainingDays(trialEndsAt);
   } else {
-    // Se não tem trialEndsAt, não assumimos nada (pode ser um erro de dados ou estado inválido)
     displayDays = 0;
   }
 
   useEffect(() => {
-    if (status !== "trial" && status !== "trialing") return;
+    if (status !== "trial" && status !== "trialing" && status !== "grace_period") return;
 
     const hasPendingSync =
       typeof window !== "undefined" &&
@@ -138,19 +155,36 @@ export function TrialBanner() {
     }
   }, [status, tryAutoSyncSubscription, displayDays]);
 
-  // Aceita tanto "trial" quanto "trialing" para compatibilidade
-  if (status !== "trial" && status !== "trialing") return null;
+  // Aceita trial/trialing e também grace_period (inadimplência com prazo de carência)
+  if (status !== "trial" && status !== "trialing" && status !== "grace_period")
+    return null;
 
   // Lógica de Urgência (<= 3 dias)
   const isCritical = displayDays <= 3;
-  const containerClasses = isCritical
-    ? "bg-red-50 border-red-500 text-red-700"
-    : "bg-yellow-50 border-yellow-400 text-yellow-700";
+  const isGracePeriod = status === "grace_period";
+  const containerClasses = isGracePeriod
+    ? isCritical
+      ? "bg-red-50 border-red-500 text-red-700"
+      : "bg-orange-50 border-orange-400 text-orange-700"
+    : isCritical
+      ? "bg-red-50 border-red-500 text-red-700"
+      : "bg-yellow-50 border-yellow-400 text-yellow-700";
 
-  const iconColor = isCritical ? "text-red-500" : "text-yellow-400";
-  const buttonClasses = isCritical
-    ? "text-red-700 underline hover:text-red-800"
-    : "text-yellow-700 underline hover:text-yellow-800";
+  const iconColor = isGracePeriod
+    ? isCritical
+      ? "text-red-500"
+      : "text-orange-500"
+    : isCritical
+      ? "text-red-500"
+      : "text-yellow-400";
+
+  const buttonClasses = isGracePeriod
+    ? isCritical
+      ? "text-red-700 underline hover:text-red-800"
+      : "text-orange-700 underline hover:text-orange-800"
+    : isCritical
+      ? "text-red-700 underline hover:text-red-800"
+      : "text-yellow-700 underline hover:text-yellow-800";
 
   const handleSubscribe = async () => {
     if (!session?.user?.email) {
@@ -237,10 +271,17 @@ export function TrialBanner() {
           <div className="ml-3">
             <p className="text-sm font-medium flex items-center gap-2 flex-wrap">
               <span>
-                {displayDays === 0
-                  ? "Seu período de teste acabou!"
-                  : `Seu período de teste acaba em ${displayDays} dias.`}
+                {isGracePeriod
+                  ? displayDays === 0
+                    ? "Seu prazo de carência acabou! A plataforma pode ser bloqueada."
+                    : `Pagamento pendente: faltam ${displayDays} dias para o bloqueio da plataforma.`
+                  : displayDays === 0
+                    ? "Seu período de teste acabou!"
+                    : `Seu período de teste acaba em ${displayDays} dias.`}
               </span>
+            </p>
+            <p className="text-xs opacity-90 mt-1">
+              Dias restantes: <strong>{displayDays}</strong>
             </p>
           </div>
         </div>

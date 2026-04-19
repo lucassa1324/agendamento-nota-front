@@ -162,6 +162,12 @@ export default function MasterDeveloperAreaPage() {
       color: "text-orange-600",
     },
     {
+      id: "carencia",
+      label: "Carência (Auto)",
+      icon: Clock,
+      color: "text-emerald-600",
+    },
+    {
       id: "transicao",
       label: "Transição (Expira)",
       icon: Clock,
@@ -235,6 +241,7 @@ export default function MasterDeveloperAreaPage() {
   >(null);
   const [expiringId, setExpiringId] = useState<string | null>(null);
   const [vencendoId, setVencendoId] = useState<string | null>(null);
+  const [carenciaId, setCarenciaId] = useState<string | null>(null);
   const [resettingLockId, setResettingLockId] = useState<string | null>(null);
 
   // Estados para o diálogo de reset
@@ -573,6 +580,42 @@ export default function MasterDeveloperAreaPage() {
       });
     } finally {
       setVencendoId(null);
+    }
+  };
+
+  const handleSimulateGracePeriod = async (companyId: string) => {
+    setCarenciaId(companyId);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/admin/master/companies/${companyId}/simulate-grace-period`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Falha ao simular carência");
+      }
+
+      toast({
+        title: "Carência ativada",
+        description: data.message,
+      });
+
+      fetchCompanies();
+      fetchLogs();
+    } catch (error) {
+      console.error("Erro ao simular carência:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível colocar a empresa em carência.",
+        variant: "destructive",
+      });
+    } finally {
+      setCarenciaId(null);
     }
   };
 
@@ -1149,6 +1192,7 @@ export default function MasterDeveloperAreaPage() {
     active: "Ativo",
     trialing: "Trial",
     trial: "Trial",
+    grace_period: "Carência",
     past_due: "Vencido",
     extended_trial: "Trial Estendido",
     unpaid: "Não Pago",
@@ -1340,6 +1384,33 @@ export default function MasterDeveloperAreaPage() {
                                     <AlertTriangle className="w-3.5 h-3.5 mr-1" />
                                   )}
                                   Vencer
+                                </Button>
+                              )}
+
+                              {pinnedActions.includes("carencia") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+                                  title="Colocar em Carência (Modo Automático)"
+                                  onClick={() =>
+                                    handleSimulateGracePeriod(company.id)
+                                  }
+                                  disabled={
+                                    carenciaId === company.id ||
+                                    vencendoId === company.id ||
+                                    syncingId === company.id ||
+                                    simulatingId === company.id ||
+                                    expiringId === company.id ||
+                                    resettingEmailId === company.id
+                                  }
+                                >
+                                  {carenciaId === company.id ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                    <Clock className="w-3.5 h-3.5 mr-1" />
+                                  )}
+                                  Carência
                                 </Button>
                               )}
 
@@ -1553,6 +1624,30 @@ export default function MasterDeveloperAreaPage() {
                                       </DropdownMenuItem>
                                     )}
 
+                                    {!pinnedActions.includes("carencia") && (
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          handleSimulateGracePeriod(company.id)
+                                        }
+                                        disabled={
+                                          carenciaId === company.id ||
+                                          vencendoId === company.id ||
+                                          syncingId === company.id ||
+                                          simulatingId === company.id ||
+                                          expiringId === company.id ||
+                                          resettingEmailId === company.id
+                                        }
+                                        className="text-emerald-700 focus:text-emerald-700"
+                                      >
+                                        {carenciaId === company.id ? (
+                                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                        ) : (
+                                          <Clock className="w-4 h-4 mr-2" />
+                                        )}
+                                        Colocar em Carência
+                                      </DropdownMenuItem>
+                                    )}
+
                                     {!pinnedActions.includes("transicao") && (
                                       <DropdownMenuItem
                                         onClick={() =>
@@ -1711,6 +1806,14 @@ export default function MasterDeveloperAreaPage() {
                     <strong>Teste de Transição:</strong> Define acesso manual
                     expirado. Valida se o sistema volta para automático ao
                     acessar.
+                  </div>
+                </div>
+                <div className="p-3 rounded-md border border-emerald-200 bg-emerald-50 text-emerald-900 text-sm flex items-start gap-2">
+                  <Clock className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    <strong>Carência:</strong> Mantém acesso ativo com status
+                    de inadimplência temporária (grace_period), simulando conta
+                    sem pagamento ainda dentro do prazo de carência.
                   </div>
                 </div>
                 <div className="p-3 rounded-md border border-cyan-200 bg-cyan-50 text-cyan-900 text-sm flex items-start gap-2">
