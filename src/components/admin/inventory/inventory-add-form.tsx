@@ -60,6 +60,19 @@ export function InventoryAddForm({
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         <TooltipProvider>
+          <div className="mb-4 rounded-md border border-primary/20 bg-background p-3 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">
+              Dica rápida para preencher:
+            </p>
+            <p>
+              1) Escolha como você compra o produto em{" "}
+              <strong>Unidade Principal</strong> (ex: caixa, unidade, pacote).
+            </p>
+            <p>
+              2) Em <strong>Quantidade Inicial</strong>, informe o total nessa
+              mesma unidade.
+            </p>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
@@ -108,6 +121,13 @@ export function InventoryAddForm({
                   setNewItem({ ...newItem, quantity: e.target.value })
                 }
               />
+              <p className="text-xs text-muted-foreground">
+                A quantidade inicial sempre usa a{" "}
+                <strong>Unidade Principal</strong>.
+                {newItem.unit
+                  ? ` Exemplo: ${newItem.quantity || "10"} ${newItem.unit}.`
+                  : ""}
+              </p>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
@@ -206,6 +226,10 @@ export function InventoryAddForm({
                   <SelectItem value="cx">Caixa (cx)</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Exemplo: se você compra em caixa, selecione{" "}
+                <strong>Caixa (cx)</strong> e informe a quantidade em caixas.
+              </p>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
@@ -242,6 +266,10 @@ export function InventoryAddForm({
                   <SelectItem value="ml">Mililitro (ml)</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Opcional: use para controlar consumo em unidade menor (ex:
+                caixa -&gt; unidade, pacote -&gt; grama).
+              </p>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-1.5">
@@ -269,6 +297,9 @@ export function InventoryAddForm({
                   setNewItem({ ...newItem, conversionFactor: e.target.value })
                 }
               />
+              <p className="text-xs text-muted-foreground">
+                Exemplo: 1 caixa com 20 unidades = fator <strong>20</strong>.
+              </p>
             </div>
 
             <div className="space-y-2">
