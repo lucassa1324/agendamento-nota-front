@@ -349,14 +349,14 @@ export function InventoryManager() {
     } catch (error) {
       console.error("Erro ao adicionar produto:", error);
       const message =
-        (error &&
-          typeof error === "object" &&
-          "message" in error &&
-          typeof (error as { message?: unknown }).message === "string" &&
-          (error as { message: string }).message) ||
-        (error instanceof Error
+        error instanceof Error
           ? error.message
-          : "Ocorreu um erro ao tentar salvar o produto.");
+          : typeof error === "object" &&
+              error !== null &&
+              "message" in error &&
+              typeof (error as { message?: unknown }).message === "string"
+            ? (error as { message: string }).message
+            : "Ocorreu um erro ao tentar salvar o produto.";
       toast({
         title: "Erro ao adicionar",
         description: message,
