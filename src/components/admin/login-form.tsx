@@ -14,7 +14,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getSession, signIn, LANDING_PAGE_URL } from "@/lib/auth-client";
+import {
+  getSession,
+  signIn,
+  LANDING_PAGE_URL,
+  sendVerificationEmail,
+} from "@/lib/auth-client";
 import { useToast } from "@/hooks/use-toast";
 
 interface AuthUser {
@@ -39,6 +44,7 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const hasCheckedSession = useRef(false);
+  const lastAutoVerificationEmailAt = useRef(0);
 
   const isVerified = searchParams.get("verified") === "true";
 
@@ -80,6 +86,32 @@ export function LoginForm() {
              handleRoleRedirection(data.user as AuthUser);
           } else {
              console.log(">>> [LOGIN_FLOW] E-mail realmente não verificado. Redirecionando para pendência.");
+             const targetEmail = user.email || data?.user?.email;
+             const now = Date.now();
+             const canAutoSend =
+               !!targetEmail &&
+               now - lastAutoVerificationEmailAt.current > 60000;
+
+             if (canAutoSend) {
+               lastAutoVerificationEmailAt.current = now;
+               const callbackURL =
+                 typeof window !== "undefined"
+                   ? `${window.location.origin}/admin/email-verified`
+                   : "/admin/email-verified";
+
+               void sendVerificationEmail({
+                 email: targetEmail,
+                 callbackURL,
+               }).then(() => {
+                 console.log(">>> [LOGIN_FLOW] E-mail de verificação disparado automaticamente no login.");
+               }).catch((verificationError) => {
+                 console.warn(
+                   ">>> [LOGIN_FLOW] Falha ao disparar e-mail automático no login:",
+                   verificationError,
+                 );
+               });
+             }
+
              localStorage.setItem("pending_verification_email", user.email || "");
              router.push("/admin/pending-verification");
           }

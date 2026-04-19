@@ -16,7 +16,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { signUp } from "@/lib/auth-client";
+import { sendVerificationEmail, signUp } from "@/lib/auth-client";
 
 export function SignUpForm() {
   const [name, setName] = useState("");
@@ -84,6 +84,19 @@ export function SignUpForm() {
         console.log(
           ">>> [SIGNUP] Cadastro bem-sucedido, salvando e-mail e redirecionando para verificação...",
         );
+        try {
+          await sendVerificationEmail({
+            email,
+            callbackURL: `${window.location.origin}/admin/email-verified`,
+          });
+          console.log(">>> [SIGNUP] E-mail de verificação disparado após cadastro.");
+        } catch (verificationError) {
+          console.warn(
+            ">>> [SIGNUP] Falha ao disparar e-mail de verificação automático:",
+            verificationError,
+          );
+        }
+
         // Salva o e-mail para a tela de pendência de verificação usar
         localStorage.setItem("pending_verification_email", email);
         router.push("/admin/pending-verification");

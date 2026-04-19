@@ -1,7 +1,6 @@
 "use client";
 
 import { Mail, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react";
-import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { sendVerificationEmail, useSession, getSession } from "@/lib/auth-client";
+import {
+  sendVerificationEmail,
+  useSession,
+  getSession,
+  signOut,
+} from "@/lib/auth-client";
 
 export default function PendingVerificationPage() {
   const { data: session, isPending } = useSession();
@@ -116,9 +120,13 @@ export default function PendingVerificationPage() {
     setIsLoading(true);
     try {
       console.log(">>> [PENDING_VERIFICATION] Solicitando reenvio de e-mail para:", targetEmail);
+      const callbackURL =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/admin/email-verified`
+          : "/admin/email-verified";
       await sendVerificationEmail({
         email: targetEmail,
-        callbackURL: "/email-verified",
+        callbackURL,
       });
 
       toast({
@@ -157,6 +165,18 @@ export default function PendingVerificationPage() {
       setIsLoading(true);
       // Simula um delay para evitar spam de cliques
       setTimeout(() => setIsLoading(false), 5000);
+    }
+  };
+
+  const handleBackToLogin = async () => {
+    setIsLoading(true);
+    try {
+      localStorage.removeItem("pending_verification_email");
+      await signOut();
+    } catch (error) {
+      console.warn("Erro ao encerrar sessão antes de voltar ao login:", error);
+    } finally {
+      router.replace("/admin");
     }
   };
 
@@ -213,11 +233,14 @@ export default function PendingVerificationPage() {
               Não recebeu o e-mail? Reenviar
             </Button>
 
-            <Button asChild variant="ghost" className="w-full text-muted-foreground">
-              <Link href="/admin">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar para o Login
-              </Link>
+            <Button
+              onClick={handleBackToLogin}
+              disabled={isLoading}
+              variant="ghost"
+              className="w-full text-muted-foreground"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Voltar para o Login
             </Button>
           </div>
         </CardContent>

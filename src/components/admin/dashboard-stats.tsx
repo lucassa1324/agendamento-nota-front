@@ -39,6 +39,40 @@ export function DashboardStats() {
     agendaStatus: true,
   });
 
+  const describeError = (reason: unknown) => {
+    if (reason instanceof Error) {
+      return reason.message || reason.toString();
+    }
+    if (typeof reason === "string") {
+      return reason;
+    }
+    if (typeof reason === "object" && reason !== null) {
+      const candidate = reason as {
+        message?: unknown;
+        error?: unknown;
+        status?: unknown;
+        code?: unknown;
+      };
+      if (typeof candidate.message === "string" && candidate.message.trim()) {
+        return candidate.message;
+      }
+      if (typeof candidate.error === "string" && candidate.error.trim()) {
+        return candidate.error;
+      }
+      try {
+        return JSON.stringify({
+          status: candidate.status,
+          code: candidate.code,
+          message: candidate.message,
+          error: candidate.error,
+        });
+      } catch {
+        return "Erro não serializável";
+      }
+    }
+    return "Erro desconhecido";
+  };
+
   const loadStats = useCallback(async () => {
     if (!studio?.id) return;
     setIsLoadingStats(true);
@@ -84,6 +118,27 @@ export function DashboardStats() {
         }
         return false;
       };
+      const isUnauthorizedAccess = (reason: unknown) => {
+        if (!reason) return false;
+        if (typeof reason === "object" && reason !== null) {
+          const status = (reason as { status?: number }).status;
+          const message = (reason as { message?: string }).message;
+          if (status === 401 || status === 403) return true;
+          if (
+            typeof message === "string" &&
+            message.includes("Unauthorized access to this company's appointments")
+          ) {
+            return true;
+          }
+        }
+        if (
+          reason instanceof Error &&
+          reason.message.includes("Unauthorized access to this company's appointments")
+        ) {
+          return true;
+        }
+        return false;
+      };
       const hasBillingBlock =
         (appointmentsResult.status === "rejected" &&
           isBillingRequired(appointmentsResult.reason)) ||
@@ -93,17 +148,33 @@ export function DashboardStats() {
         setBillingError(true);
         return;
       }
-      const appointments =
+      let appointments =
         appointmentsResult.status === "fulfilled"
           ? appointmentsResult.value
           : [];
+
+      // Fallback para manter o dashboard funcional em caso de falha temporária na rota admin.
+      if (appointmentsResult.status === "rejected") {
+        try {
+          const publicAppointments = await appointmentService.listByCompany(studio.id);
+          appointments = Array.isArray(publicAppointments) ? publicAppointments : [];
+        } catch (fallbackError) {
+          console.error(
+            "Dashboard: fallback público também falhou:",
+            describeError(fallbackError),
+          );
+        }
+      }
       const settings =
         settingsResult.status === "fulfilled" ? settingsResult.value : null;
       if (appointmentsResult.status === "rejected") {
-        console.error(
-          "Dashboard: Falha ao carregar agendamentos:",
-          appointmentsResult.reason,
-        );
+        const unauthorized = isUnauthorizedAccess(appointmentsResult.reason);
+        if (!unauthorized) {
+          console.error(
+            "Dashboard: Falha ao carregar agendamentos:",
+            describeError(appointmentsResult.reason),
+          );
+        }
       }
       if (settingsResult.status === "rejected") {
         console.warn(

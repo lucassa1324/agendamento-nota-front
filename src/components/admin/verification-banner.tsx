@@ -21,9 +21,13 @@ export function VerificationBanner() {
 
     setLoading(true);
     try {
+      const callbackURL =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/admin/email-verified`
+          : "/admin/email-verified";
       await sendVerificationEmail({
         email: session.user.email,
-        callbackURL: "/email-verified", // Página de sucesso após verificação (pode ser customizada)
+        callbackURL,
       });
 
       toast({

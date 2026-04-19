@@ -86,7 +86,7 @@ class AppointmentService {
 
   private async handleResponse(response: Response) {
     if (!response.ok) {
-      let errorData: { code?: string; message?: string } = {};
+      let errorData: { code?: string; message?: string; error?: string } = {};
       const contentType = response.headers.get("content-type");
 
       try {
@@ -113,7 +113,11 @@ class AppointmentService {
         statusText: response.statusText,
         url: response.url,
         code: errorData.code || "UNKNOWN_ERROR",
-        message: errorData.message || "Ocorreu um erro inesperado",
+        message:
+          errorData.message ||
+          errorData.error ||
+          response.statusText ||
+          "Ocorreu um erro inesperado",
         raw: errorData,
       };
     }
