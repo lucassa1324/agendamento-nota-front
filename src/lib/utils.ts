@@ -1,24 +1,35 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { API_BASE_URL } from "./auth-client";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+function maybeFixMojibake(value: string): string {
+  if (!value) return value;
+  if (!/[ÃÂ�]/.test(value)) return value;
+  try {
+    const bytes = Uint8Array.from(value, (char) => char.charCodeAt(0));
+    const decoded = new TextDecoder("utf-8").decode(bytes);
+    const score = (text: string) => {
+      const accents = (text.match(/[áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]/g) || []).length;
+      const mojibake = (text.match(/[ÃÂ]/g) || []).length;
+      const replacement = (text.match(/�/g) || []).length;
+      return accents * 2 - mojibake - replacement;
+    };
+    return score(decoded) > score(value) ? decoded : value;
+  } catch {
+    return value;
+  }
+}
+
 /**
- * Converte um caminho de imagem (relativo ou absoluto) em uma URL completa válida.
- * Útil para exibir imagens que vêm do backend.
+ * Converte um caminho de imagem em uma URL completa válida.
+ * Atualmente prioriza URLs absolutas ou assets locais do frontend.
+ * O backend não serve mais arquivos da pasta /public.
  */
 export function getFullImageUrl(path: string | undefined | null) {
   if (!path) return "";
-
-  const isStoragePath = (pathname: string) => pathname.startsWith("/api/storage/");
-
-  const toProxyStorageUrl = (pathname: string, search = "", hash = "") => {
-    const normalizedPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
-    return `/api-proxy${normalizedPath}${search}${hash}`;
-  };
 
   // Se já for uma URL completa (http/https) ou base64, retorna como está
   if (
@@ -26,37 +37,55 @@ export function getFullImageUrl(path: string | undefined | null) {
     path.startsWith("https://") ||
     path.startsWith("data:")
   ) {
-    try {
-      const parsed = new URL(path);
-      // Evita depender do domínio direto do backend (.vercel.app), usando o proxy do frontend.
-      if (isStoragePath(parsed.pathname)) {
-        return toProxyStorageUrl(parsed.pathname, parsed.search, parsed.hash);
-      }
-    } catch {
-      // Se falhar o parse, mantém o valor original.
-    }
     return path;
   }
-
-  const baseUrl = API_BASE_URL.endsWith("/")
-    ? API_BASE_URL.slice(0, -1)
-    : API_BASE_URL;
 
   // Se começa com /, assume-se que é um asset local do FRONTEND (pasta public/ do Next.js)
   if (path.startsWith("/")) {
-    if (isStoragePath(path)) {
-      return toProxyStorageUrl(path);
-    }
     return path;
   }
 
-  // Garante que o path comece com /
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  // Caminhos relativos sem / não são mais suportados pelo backend (/public desativado)
+  console.warn(
+    `[getFullImageUrl] Caminho relativo detectado: "${path}". O backend não serve mais arquivos locais. Use o upload para o armazenamento em nuvem.`,
+  );
 
-  // Se o path não começa com /public, nós adicionamos (exigência do backend)
-  const finalPath = cleanPath.startsWith("/public")
-    ? cleanPath
-    : `/public${cleanPath}`;
+  return path;
+}
 
-  return `${baseUrl}${finalPath}`;
+/**
+ * Renderiza texto de forma segura, tratando objetos vindos do backend
+ * que deveriam ser strings.
+ */
+export function renderSafeText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return maybeFixMojibake(value);
+
+  if (typeof value === "object") {
+    // Se for o formato { text, color, font, size }
+    if ("text" in value) {
+      return maybeFixMojibake(String((value as { text?: string }).text || ""));
+    }
+
+    // Se for o formato { span: "texto" } ou similar que causa o erro do usuário
+    if ("span" in value) {
+      return maybeFixMojibake(String((value as { span?: string }).span || ""));
+    }
+
+    // Fallback: se for um objeto mas não tiver .text, tenta stringify ou retorna vazio
+    try {
+      console.warn("[renderSafeText] Objeto inesperado recebido como texto:", value);
+      // Se tiver propriedades, talvez uma delas seja o texto? 
+      // Mas para evitar "span" ou "[object Object]", retornamos vazio ou stringify seguro
+      const keys = Object.keys(value);
+      if (keys.length === 1 && typeof (value as any)[keys[0]] === 'string') {
+        return maybeFixMojibake((value as any)[keys[0]]);
+      }
+      return "";
+    } catch (_e) {
+      return "";
+    }
+  }
+
+  return String(value);
 }
