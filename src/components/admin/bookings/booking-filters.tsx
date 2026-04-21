@@ -34,33 +34,33 @@ export function BookingFilters({
   onRefresh,
 }: BookingFiltersProps) {
   return (
-    <Card className="bg-card/50">
-      <CardContent className="p-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+    <Card className="rounded-[1.35rem] border-0 bg-white/90 shadow-sm backdrop-blur-sm">
+      <CardContent className="p-5 md:p-6">
+        <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-3 lg:grid-cols-6">
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">
+            <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Data inicial
             </Label>
             <Input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="bg-background h-10"
+              className="h-11 rounded-xl border-0 bg-muted/40 shadow-none ring-1 ring-border/30 focus-visible:ring-2 focus-visible:ring-primary/40"
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">
+            <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Data final
             </Label>
             <Input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="bg-background h-10"
+              className="h-11 rounded-xl border-0 bg-muted/40 shadow-none ring-1 ring-border/30 focus-visible:ring-2 focus-visible:ring-primary/40"
             />
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">
+            <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Filtrar por dia
             </Label>
             <div className="relative">
@@ -69,12 +69,12 @@ export function BookingFilters({
                 type="date"
                 value={filterDay}
                 onChange={(e) => setFilterDay(e.target.value)}
-                className="pl-9 bg-background h-10"
+                className="h-11 rounded-xl border-0 bg-muted/40 pl-9 shadow-none ring-1 ring-border/30 focus-visible:ring-2 focus-visible:ring-primary/40"
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">
+            <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Filtrar por nome
             </Label>
             <div className="relative">
@@ -83,12 +83,12 @@ export function BookingFilters({
                 placeholder="Ex.: Maria"
                 value={filterName}
                 onChange={(e) => setFilterName(e.target.value)}
-                className="pl-9 bg-background h-10"
+                className="h-11 rounded-xl border-0 bg-muted/40 pl-9 shadow-none ring-1 ring-border/30 focus-visible:ring-2 focus-visible:ring-primary/40"
               />
             </div>
           </div>
           <div className="space-y-2">
-            <Label className="text-xs font-semibold uppercase text-muted-foreground">
+            <Label className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               Filtrar por horário
             </Label>
             <div className="relative">
@@ -97,14 +97,14 @@ export function BookingFilters({
                 placeholder="HH:MM"
                 value={filterTime}
                 onChange={(e) => setFilterTime(e.target.value)}
-                className="pl-9 bg-background h-10"
+                className="h-11 rounded-xl border-0 bg-muted/40 pl-9 shadow-none ring-1 ring-border/30 focus-visible:ring-2 focus-visible:ring-primary/40"
               />
             </div>
           </div>
           <div className="flex gap-2">
             <Button
               onClick={onRefresh}
-              className="w-full bg-primary text-primary-foreground hover:bg-primary/90 h-10"
+              className="h-11 w-full rounded-xl bg-linear-to-r from-primary to-primary/80 text-primary-foreground shadow-sm transition-all duration-200 hover:brightness-105"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Atualizar

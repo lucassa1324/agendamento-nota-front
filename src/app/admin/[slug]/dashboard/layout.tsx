@@ -1,6 +1,7 @@
 "use client";
 
 import { Menu } from "lucide-react";
+import { Nunito } from "next/font/google";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, Suspense, use, useEffect, useState } from "react";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
@@ -19,6 +20,13 @@ import { SidebarProvider } from "@/context/sidebar-context";
 import { StudioProvider, useStudio } from "@/context/studio-context";
 import { getSession, signOut, useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
+
+const dashboardRoundedFont = Nunito({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-dashboard-rounded",
+  display: "swap",
+});
 
 function MobileNav({
   isPersonalizacao,
@@ -193,7 +201,9 @@ function AdminLayoutContent({
     (isLoadingStudio && !isMaster)
   ) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div
+        className={`${dashboardRoundedFont.variable} dashboard-rounded-headings min-h-screen flex items-center justify-center bg-background`}
+      >
         <div className="flex flex-col items-center gap-4">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
           <p className="text-muted-foreground animate-pulse">
@@ -216,7 +226,9 @@ function AdminLayoutContent({
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col lg:flex-row">
+    <div
+      className={`${dashboardRoundedFont.variable} dashboard-rounded-headings min-h-screen bg-background flex flex-col lg:flex-row`}
+    >
       {!isPersonalizacao && (
         <div className="lg:hidden p-4 border-b border-border flex items-center justify-between bg-card shrink-0">
           <div />

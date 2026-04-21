@@ -2,7 +2,14 @@
 "use client";
 
 import { format, parseISO } from "date-fns";
-import { Loader2 } from "lucide-react";
+import {
+  CalendarCheck2,
+  Loader2,
+  Sparkles,
+  TrendingUp,
+  Users2,
+} from "lucide-react";
+import { Nunito, Plus_Jakarta_Sans } from "next/font/google";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertDialog,
@@ -111,6 +118,18 @@ const mapStatusToApi = (status: BookingStatus): AppointmentStatus => {
   };
   return map[status] || "PENDING";
 };
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  display: "swap",
+});
+
+const nunitoRounded = Nunito({
+  subsets: ["latin"],
+  weight: ["700", "800"],
+  display: "swap",
+});
 
 export function BookingsManager() {
   const { studio } = useStudio();
@@ -279,6 +298,27 @@ export function BookingsManager() {
     return counts;
   }, [bookingsAfterFilters]);
 
+  const overviewMetrics = useMemo(() => {
+    const total = filteredBookings.length;
+    const confirmed = filteredBookings.filter(
+      (b) => b.status === "confirmado",
+    ).length;
+    const completed = filteredBookings.filter((b) => b.status === "concluído");
+    const completedCount = completed.length;
+    const expectedRevenue = filteredBookings
+      .filter((b) => b.status !== "cancelado")
+      .reduce((sum, booking) => sum + Number(booking.servicePrice || 0), 0);
+    const completionRate =
+      total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+    return {
+      total,
+      confirmed,
+      expectedRevenue,
+      completionRate,
+    };
+  }, [filteredBookings]);
+
   // Paginação
   const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
   const paginatedBookings = filteredBookings.slice(
@@ -379,53 +419,125 @@ export function BookingsManager() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold tracking-tight">
-          Gerenciar Agendamentos
-        </h2>
-        <p className="text-muted-foreground">
-          Integração direta com Google Agenda: filtro por datas, status e
-          edição.
-        </p>
-      </div>
+    <div className={`${plusJakarta.className} space-y-6`}>
+      <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-primary/20 via-background to-background p-6 md:p-8">
+        <div className="pointer-events-none absolute -top-16 -right-10 h-48 w-48 rounded-full bg-primary/15 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 left-10 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+        <div className="relative flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div className="max-w-2xl space-y-2">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary/90">
+              <Sparkles className="h-3.5 w-3.5" />
+              Agenda premium
+            </div>
+            <h2
+              className={`${nunitoRounded.className} text-3xl font-extrabold tracking-[-0.02em] text-foreground md:text-4xl`}
+            >
+              Visão inteligente dos seus agendamentos
+            </h2>
+            <p className="text-sm text-muted-foreground md:text-base">
+              Controle sua agenda com foco em ritmo do dia, previsibilidade de
+              receita e acompanhamento de status em tempo real.
+            </p>
+          </div>
+          <div className="inline-flex items-center gap-2 rounded-2xl bg-background/80 px-4 py-2 text-sm text-muted-foreground backdrop-blur-sm">
+            <CalendarCheck2 className="h-4 w-4 text-primary" />
+            Experiencia otimizada para operação diária
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-border/40">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Total no período
+          </p>
+          <p className="mt-2 text-3xl font-extrabold tracking-[-0.02em]">
+            {overviewMetrics.total}
+          </p>
+          <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Users2 className="h-3.5 w-3.5" />
+            Agendamentos filtrados
+          </div>
+        </div>
+        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-border/40">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Confirmados
+          </p>
+          <p className="mt-2 text-3xl font-extrabold tracking-[-0.02em]">
+            {overviewMetrics.confirmed}
+          </p>
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+            Prontos para atendimento
+          </div>
+        </div>
+        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-border/40">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Receita prevista
+          </p>
+          <p className="mt-2 text-3xl font-extrabold tracking-[-0.02em]">
+            R$ {overviewMetrics.expectedRevenue.toFixed(2)}
+          </p>
+          <div className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <TrendingUp className="h-3.5 w-3.5" />
+            Exclui cancelados
+          </div>
+        </div>
+        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-border/40">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Taxa de conclusão
+          </p>
+          <p className="mt-2 text-3xl font-extrabold tracking-[-0.02em]">
+            {overviewMetrics.completionRate}%
+          </p>
+          <div className="mt-2 h-2 rounded-full bg-muted/70">
+            <div
+              className="h-2 rounded-full bg-linear-to-r from-primary to-primary/60 transition-all"
+              style={{ width: `${overviewMetrics.completionRate}%` }}
+            />
+          </div>
+        </div>
+      </section>
 
       {/* Filtros */}
-      <BookingFilters
-        startDate={startDate}
-        setStartDate={setStartDate}
-        endDate={endDate}
-        setEndDate={setEndDate}
-        filterDay={filterDay}
-        setFilterDay={setFilterDay}
-        filterName={filterName}
-        setFilterName={setFilterName}
-        filterTime={filterTime}
-        setFilterTime={setFilterTime}
-        onRefresh={loadBookings}
-      />
+      <div className="rounded-3xl bg-linear-to-br from-primary/10 via-white to-white p-1">
+        <BookingFilters
+          startDate={startDate}
+          setStartDate={setStartDate}
+          endDate={endDate}
+          setEndDate={setEndDate}
+          filterDay={filterDay}
+          setFilterDay={setFilterDay}
+          filterName={filterName}
+          setFilterName={setFilterName}
+          filterTime={filterTime}
+          setFilterTime={setFilterTime}
+          onRefresh={loadBookings}
+        />
+      </div>
 
       {/* Tabs de Status */}
-      <BookingStatusTabs
-        statusFilter={statusFilter}
-        setStatusFilter={(status) => {
-          setStatusFilter(status);
-          setCurrentPage(1);
-        }}
-        statusCounts={statusCounts}
-      />
+      <div className="space-y-4 rounded-3xl bg-muted/25 p-4 md:p-5">
+        <BookingStatusTabs
+          statusFilter={statusFilter}
+          setStatusFilter={(status) => {
+            setStatusFilter(status);
+            setCurrentPage(1);
+          }}
+          statusCounts={statusCounts}
+        />
 
-      {/* Paginação Superior */}
-      <BookingPagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        setCurrentPage={setCurrentPage}
-      />
+        {/* Paginação Superior */}
+        <BookingPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          setCurrentPage={setCurrentPage}
+        />
+      </div>
 
       {/* Lista de Agendamentos */}
       <div className="space-y-4">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground bg-muted/20 rounded-lg border-2 border-dashed">
+          <div className="flex flex-col items-center justify-center rounded-3xl bg-white py-20 text-muted-foreground shadow-sm ring-1 ring-border/40">
             <Loader2 className="w-10 h-10 animate-spin mb-4" />
             <p className="text-lg font-medium">Carregando agendamentos...</p>
           </div>

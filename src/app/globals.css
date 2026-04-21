@@ -130,3 +130,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .dashboard-rounded-headings h1,
+  .dashboard-rounded-headings [class*="font-bold"],
+  .dashboard-rounded-headings [class*="font-extrabold"] {
+    font-family:
+      var(--font-dashboard-rounded),
+      var(--font-sans),
+      "Arial Rounded MT Bold",
+      "Segoe UI",
+      sans-serif;
+  }
+}

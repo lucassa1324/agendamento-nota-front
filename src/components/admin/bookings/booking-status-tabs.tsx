@@ -46,8 +46,10 @@ export function BookingStatusTabs({
           key={tab.id}
           variant={statusFilter === tab.id ? "default" : "outline"}
           onClick={() => setStatusFilter(tab.id as BookingStatus | "todos")}
-          className={`h-9 px-4 rounded-full border-none transition-all ${
-            statusFilter === tab.id ? "" : "bg-secondary/50 hover:bg-secondary"
+          className={`h-10 rounded-full border-0 px-4 transition-all duration-200 ${
+            statusFilter === tab.id
+              ? "bg-linear-to-r from-primary to-primary/85 text-primary-foreground shadow-sm"
+              : "bg-white text-foreground/80 ring-1 ring-border/40 hover:bg-muted/60"
           }`}
         >
           <span className="mr-2">{tab.label}</span>

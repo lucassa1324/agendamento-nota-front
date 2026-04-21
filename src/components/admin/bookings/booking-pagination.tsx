@@ -20,11 +20,11 @@ export function BookingPagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-center gap-1">
+    <div className="flex items-center justify-center gap-1.5 rounded-2xl bg-white p-2 shadow-sm ring-1 ring-border/40">
       <Button
         variant="outline"
         size="icon"
-        className="h-8 w-8"
+        className="h-8 w-8 rounded-xl border-0 bg-muted/40 hover:bg-muted"
         disabled={currentPage === 1}
         onClick={() => setCurrentPage(1)}
       >
@@ -33,7 +33,7 @@ export function BookingPagination({
       <Button
         variant="outline"
         size="icon"
-        className="h-8 w-8"
+        className="h-8 w-8 rounded-xl border-0 bg-muted/40 hover:bg-muted"
         disabled={currentPage === 1}
         onClick={() => setCurrentPage((prev) => prev - 1)}
       >
@@ -44,7 +44,11 @@ export function BookingPagination({
         <Button
           key={page}
           variant={currentPage === page ? "default" : "outline"}
-          className="h-8 w-8"
+          className={`h-8 w-8 rounded-xl border-0 ${
+            currentPage === page
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted/40 hover:bg-muted"
+          }`}
           onClick={() => setCurrentPage(page)}
         >
           {page}
@@ -54,7 +58,7 @@ export function BookingPagination({
       <Button
         variant="outline"
         size="icon"
-        className="h-8 w-8"
+        className="h-8 w-8 rounded-xl border-0 bg-muted/40 hover:bg-muted"
         disabled={currentPage === totalPages}
         onClick={() => setCurrentPage((prev) => prev + 1)}
       >
@@ -63,7 +67,7 @@ export function BookingPagination({
       <Button
         variant="outline"
         size="icon"
-        className="h-8 w-8"
+        className="h-8 w-8 rounded-xl border-0 bg-muted/40 hover:bg-muted"
         disabled={currentPage === totalPages}
         onClick={() => setCurrentPage(totalPages)}
       >

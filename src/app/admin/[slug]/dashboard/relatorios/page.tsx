@@ -1,17 +1,16 @@
+import { BarChart3 } from "lucide-react";
 import { Reports } from "@/components/admin/reports";
+import { DashboardPageShell } from "@/components/admin/dashboard-page-shell";
 
 export default function RelatoriosPage() {
   return (
-    <div className="mx-auto max-w-7xl space-y-6">
-      <div>
-        <h2 className="font-sans text-3xl font-bold mb-2 text-primary">
-          Relatórios
-        </h2>
-        <p className="text-muted-foreground">
-          Analise o desempenho do seu negócio
-        </p>
-      </div>
+    <DashboardPageShell
+      title="Relatórios"
+      subtitle="Analise o desempenho do seu negócio com um painel mais moderno"
+      icon={BarChart3}
+      badge="Insights"
+    >
       <Reports />
-    </div>
+    </DashboardPageShell>
   );
 }

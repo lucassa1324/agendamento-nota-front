@@ -11,7 +11,12 @@ export default function OverviewPage() {
           Acompanhe o desempenho do seu negócio
         </p>
       </div>
-      <DashboardStats />
+      <section aria-label="Indicadores principais">
+        <h3 className="text-sm font-medium text-muted-foreground mb-3">
+          Indicadores principais
+        </h3>
+        <DashboardStats />
+      </section>
     </div>
   );
 }

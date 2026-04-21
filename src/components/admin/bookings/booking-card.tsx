@@ -1,6 +1,7 @@
 "use client";
 
 import { Calendar, Clock, Edit2, Loader2, Package } from "lucide-react";
+import { Nunito, Plus_Jakarta_Sans } from "next/font/google";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,18 @@ interface BookingCardProps {
   onReschedule: (booking: Booking) => void;
   onEdit: (booking: Booking) => void;
 }
+
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  display: "swap",
+});
+
+const nunitoRounded = Nunito({
+  subsets: ["latin"],
+  weight: ["700", "800"],
+  display: "swap",
+});
 
 export function BookingCard({
   booking,
@@ -64,7 +77,9 @@ export function BookingCard({
   };
 
   return (
-    <Card className="overflow-hidden border-none shadow-sm bg-card/50 hover:shadow-md transition-shadow">
+    <Card
+      className={`${plusJakarta.className} overflow-hidden rounded-3xl border-0 bg-white/95 shadow-sm ring-1 ring-border/40 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}
+    >
       <CardContent className="p-0">
         <div className="p-6">
           <div className="flex flex-col gap-4">
@@ -73,11 +88,13 @@ export function BookingCard({
                 <Badge
                   className={`${getStatusBadge(
                     booking.status,
-                  )} uppercase text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-sm border`}
+                  )} rounded-md border uppercase px-2 py-0.5 text-[10px] font-bold tracking-wider`}
                 >
                   {booking.status}
                 </Badge>
-                <h3 className="text-xl font-bold text-foreground">
+                <h3
+                  className={`${nunitoRounded.className} text-xl font-bold tracking-[-0.01em] text-foreground`}
+                >
                   {booking.clientName}
                 </h3>
                 <div className="text-sm font-medium text-primary/80 mb-1">
@@ -103,7 +120,7 @@ export function BookingCard({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm text-muted-foreground bg-secondary/10 p-4 rounded-lg border border-border/50">
+            <div className="grid grid-cols-1 gap-x-8 gap-y-2 rounded-2xl bg-muted/30 p-4 text-sm text-muted-foreground ring-1 ring-border/30 md:grid-cols-2">
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground/60 w-16">
@@ -156,7 +173,7 @@ export function BookingCard({
                   </span>
                 </div>
               </div>
-              <div className="md:col-span-2 mt-2 pt-2 border-t border-border/50">
+              <div className="md:col-span-2 mt-2 border-t border-border/30 pt-2">
                 <p className="text-xs italic">[status: {booking.status}]</p>
                 <p className="text-xs">
                   Agendamento criado automaticamente pelo sistema.
@@ -164,7 +181,7 @@ export function BookingCard({
               </div>
 
               {aggregatedResources.length > 0 && (
-                <div className="md:col-span-2 mt-2 pt-2 border-t border-border/50">
+                <div className="md:col-span-2 mt-2 border-t border-border/30 pt-2">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <Package className="w-3 h-3 text-muted-foreground" />
                     <p className="text-xs font-semibold text-muted-foreground">
@@ -210,7 +227,7 @@ export function BookingCard({
                 size="sm"
                 onClick={() => onStatusChange("confirmar", "confirmado")}
                 disabled={!!loadingAction}
-                className="h-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium disabled:opacity-50"
+                className="h-8 rounded-full bg-blue-50/80 px-3 text-blue-700 hover:bg-blue-100 hover:text-blue-800 disabled:opacity-50"
               >
                 {loadingAction === "confirmar" ? (
                   <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
@@ -222,7 +239,7 @@ export function BookingCard({
                 size="sm"
                 onClick={() => onStatusChange("concluir", "concluído")}
                 disabled={!!loadingAction}
-                className="h-8 text-green-600 hover:text-green-700 hover:bg-green-50 font-medium disabled:opacity-50"
+                className="h-8 rounded-full bg-green-50/80 px-3 text-green-700 hover:bg-green-100 hover:text-green-800 disabled:opacity-50"
               >
                 {loadingAction === "concluir" ? (
                   <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
@@ -234,7 +251,7 @@ export function BookingCard({
                 size="sm"
                 onClick={() => onStatusChange("pendente", "pendente")}
                 disabled={!!loadingAction}
-                className="h-8 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 font-medium disabled:opacity-50"
+                className="h-8 rounded-full bg-yellow-50/80 px-3 text-yellow-700 hover:bg-yellow-100 hover:text-yellow-800 disabled:opacity-50"
               >
                 {loadingAction === "pendente" ? (
                   <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
@@ -246,7 +263,7 @@ export function BookingCard({
                 size="sm"
                 onClick={() => onStatusChange("cancelar", "cancelado")}
                 disabled={!!loadingAction}
-                className="h-8 text-red-400 hover:text-red-500 hover:bg-red-50 font-medium disabled:opacity-50"
+                className="h-8 rounded-full bg-red-50/80 px-3 text-red-500 hover:bg-red-100 hover:text-red-600 disabled:opacity-50"
               >
                 {loadingAction === "cancelar" ? (
                   <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
@@ -259,7 +276,7 @@ export function BookingCard({
                   size="sm"
                   onClick={() => onReschedule(booking)}
                   disabled={!!loadingAction}
-                  className="h-8 text-muted-foreground hover:bg-secondary font-medium disabled:opacity-50"
+                  className="h-8 rounded-full border-0 bg-muted/50 text-muted-foreground hover:bg-muted disabled:opacity-50"
                 >
                   Adiar
                 </Button>
@@ -269,7 +286,7 @@ export function BookingCard({
                 size="sm"
                 onClick={() => onEdit(booking)}
                 disabled={!!loadingAction}
-                className="h-8 text-primary hover:bg-primary/5 font-medium disabled:opacity-50"
+                className="h-8 rounded-full border-0 bg-primary/10 text-primary hover:bg-primary/15 disabled:opacity-50"
               >
                 <Edit2 className="w-3 h-3 mr-1.5" />
                 Editar
@@ -279,7 +296,7 @@ export function BookingCard({
                 size="sm"
                 onClick={onDelete}
                 disabled={!!loadingAction}
-                className="h-8 font-medium disabled:opacity-50"
+                className="h-8 rounded-full bg-destructive/90 px-4 font-medium hover:bg-destructive disabled:opacity-50"
               >
                 {loadingAction === "delete" ? (
                   <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
