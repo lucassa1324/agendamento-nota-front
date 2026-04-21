@@ -12,7 +12,9 @@ import {
   ZoomOut,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { TutorialContextualLink } from "@/components/admin/tutorial-reminder";
 import { Button } from "@/components/ui/button";
+import { useStudio } from "@/context/studio-context";
 import { cn } from "@/lib/utils";
 
 interface HeaderControlsProps {
@@ -50,7 +52,8 @@ export function HeaderControls({
   }, [currentScale]);
 
   const handleZoomCommit = () => {
-    let value = parseInt(zoomInputValue.replace(/\D/g, ""), 10);
+    const valueStr = zoomInputValue.replace(/\D/g, "");
+    let value = parseInt(valueStr, 10);
     if (Number.isNaN(value)) {
       value = Math.round(currentScale * 100);
     }
@@ -61,12 +64,25 @@ export function HeaderControls({
     setZoomInputValue(value.toString());
   };
 
+  const { refreshData } = useStudio();
+
+  const handleReload = async () => {
+    // 1. Recarregar dados do Studio (lateral/dashboard)
+    if (refreshData) {
+      console.log(">>> [HEADER_CONTROLS] Recarregando dados do Studio...");
+      await Promise.resolve(refreshData());
+    }
+
+    // 2. Recarregar o iframe (preview)
+    reloadPreview();
+  };
+
   return (
-    <div className="flex items-center bg-muted/50 rounded-full p-1 gap-1 ml-2 shrink-0">
+    <div className="flex items-center bg-muted/50 rounded-full p-0.5 sm:p-1 gap-0.5 sm:gap-1 ml-1 sm:ml-2 shrink-0">
       <div
         className={cn(
-          "flex items-center gap-0.5 mr-1 lg:mr-2",
-          !isMobile && "hidden md:flex",
+          "flex items-center gap-0.5 mr-0.5 sm:mr-1 lg:mr-2",
+          isMobile ? "hidden sm:flex" : "hidden md:flex",
         )}
       >
         <Button
@@ -82,10 +98,10 @@ export function HeaderControls({
         >
           <ZoomOut className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
         </Button>
-        <div className="relative flex items-center justify-center min-w-12">
+        <div className="relative flex items-center justify-center min-w-10 sm:min-w-12">
           <input
             type="text"
-            className="w-full bg-transparent text-center text-[9px] sm:text-[10px] lg:text-xs font-bold focus:outline-none focus:ring-1 focus:ring-ring rounded px-0.5 py-0.5"
+            className="w-full bg-transparent text-center text-[8px] sm:text-[10px] lg:text-xs font-bold focus:outline-none focus:ring-1 focus:ring-ring rounded px-0.5 py-0.5"
             value={zoomInputValue}
             onChange={(e) => setZoomInputValue(e.target.value)}
             onBlur={handleZoomCommit}
@@ -95,7 +111,7 @@ export function HeaderControls({
               }
             }}
           />
-          <span className="absolute right-0 text-[9px] sm:text-[10px] lg:text-xs font-bold pointer-events-none opacity-50">
+          <span className="absolute right-0 text-[8px] sm:text-[10px] lg:text-xs font-bold pointer-events-none opacity-50">
             %
           </span>
         </div>
@@ -127,9 +143,14 @@ export function HeaderControls({
         </Button>
       </div>
 
-      <div className="w-px h-4 bg-border mx-1" />
+      <div
+        className={cn(
+          "w-px h-3 sm:h-4 bg-border mx-0.5 sm:mx-1",
+          isMobile ? "hidden sm:block" : "hidden md:block",
+        )}
+      />
 
-      <div className="flex items-center gap-1 px-1">
+      <div className="flex items-center gap-0.5 sm:gap-1 px-0.5">
         {!isMobile && (
           <Button
             type="button"
@@ -168,18 +189,22 @@ export function HeaderControls({
         </Button>
       </div>
 
-      <div className="w-px h-4 bg-border mx-1" />
+      <div className="w-px h-3 sm:h-4 bg-border mx-0.5 sm:mx-1" />
 
       <Button
         type="button"
         variant="ghost"
         size="icon"
         className="rounded-full w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8"
-        onClick={reloadPreview}
-        title="Recarregar Preview"
+        onClick={handleReload}
+        title="Recarregar Visualização"
       >
         <RotateCcw className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4" />
       </Button>
+
+      <div className="hidden sm:block ml-2">
+        <TutorialContextualLink />
+      </div>
     </div>
   );
 }

@@ -9,7 +9,13 @@ import { TeamSection } from "@/components/team-section";
 import { TestimonialsSection } from "@/components/testimonials-section";
 import { ValuesSection } from "@/components/values-section";
 import { useStudio } from "@/context/studio-context";
-import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
+import {
+  getPageVisibility,
+  getPageVisibilityFromConfig,
+  getVisibleSections,
+  getVisibleSectionsFromConfig,
+  SECTION_IDS,
+} from "@/lib/booking-data";
 
 export default function SobrePage({
   searchParams: searchParamsPromise,
@@ -33,15 +39,17 @@ export default function SobrePage({
   useEffect(() => {
     if (studio?.config) {
       const config = studio.config as unknown as SiteConfigData;
+      const configVisibleSections = getVisibleSectionsFromConfig(config);
+      const configPageVisibility = getPageVisibilityFromConfig(config);
 
       if (!isPreview) {
-        if (config.visibleSections) {
-          setVisibleSections(config.visibleSections);
+        if (configVisibleSections) {
+          setVisibleSections(configVisibleSections);
         }
 
-        if (config.pageVisibility) {
+        if (configPageVisibility) {
           // Reaproveita a lógica de checkVisibility do useEffect principal
-          if (config.pageVisibility.sobre === false) {
+          if (configPageVisibility.sobre === false) {
             setIsVisible(false);
             router.push("/");
           } else {
@@ -73,10 +81,10 @@ export default function SobrePage({
 
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
-        checkVisibility(event.data.visibility);
+        checkVisibility(event.data.settings || {});
       }
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
-        setVisibleSections(event.data.sections);
+        setVisibleSections(event.data.settings || {});
       }
       if (event.data?.type === "SET_ISOLATED_SECTION") {
         setIsolatedSection(event.data.sectionId);
@@ -100,7 +108,13 @@ export default function SobrePage({
   }, [router, isPreview]);
 
   const isSectionVisible = (sectionId: string) => {
-    // Exceção: 'typography' e 'colors' mostram a página inteira
+    // Se a seção estiver explicitamente escondida, ela NUNCA deve aparecer
+    if (visibleSections[sectionId] === false) {
+      return false;
+    }
+
+    // Se houver uma seção isolada (modo preview de seção específica),
+    // apenas essa seção deve ser visível.
     if (
       isolatedSection &&
       isolatedSection !== "typography" &&
@@ -108,7 +122,9 @@ export default function SobrePage({
     ) {
       return isolatedSection === sectionId;
     }
-    return visibleSections[sectionId] !== false;
+
+    // Caso contrário, usamos o array de visibilidade vindo do banco ou do editor.
+    return true;
   };
 
   if (isVisible === null) return null;
@@ -116,11 +132,19 @@ export default function SobrePage({
 
   return (
     <main>
-      {isSectionVisible("about-hero") && <AboutHero />}
-      {isSectionVisible("story") && <StorySection />}
-      {isSectionVisible("values") && <ValuesSection />}
-      {isSectionVisible("team") && <TeamSection />}
-      {isSectionVisible("testimonials") && <TestimonialsSection />}
+      {isSectionVisible(SECTION_IDS.aboutHero) && <AboutHero />}
+      {isSectionVisible(SECTION_IDS.homeStory) && <StorySection />}
+      {isSectionVisible(SECTION_IDS.aboutValues) && (
+        <ValuesSection
+          source="about"
+          settings={
+            (studio?.config as unknown as SiteConfigData)
+              ?.aboutUsValuesSettings
+          }
+        />
+      )}
+      {isSectionVisible(SECTION_IDS.homeTeam) && <TeamSection />}
+      {isSectionVisible(SECTION_IDS.homeTestimonials) && <TestimonialsSection />}
     </main>
   );
 }

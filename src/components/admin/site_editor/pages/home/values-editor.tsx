@@ -16,6 +16,7 @@ import {
   Heart,
   ImageIcon,
   Laptop,
+  Loader2,
   Medal,
   Moon,
   Music,
@@ -37,6 +38,7 @@ import {
   Utensils,
   Wind,
 } from "lucide-react";
+import { useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -54,10 +56,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { ValueItem, ValuesSettings } from "@/lib/booking-data";
+import { defaultValuesSettings, type ValueItem, type ValuesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
 import { BackgroundEditor } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { ResetSectionVisuals } from "../../components/ResetSectionVisuals";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
@@ -93,11 +96,28 @@ const icons = [
   { name: "Wind", icon: Wind },
 ];
 
+const isVisualKey = (key: string) => {
+  const value = key.toLowerCase();
+  return (
+    value.includes("color") ||
+    value.includes("font") ||
+    value.includes("bg") ||
+    value.includes("opacity") ||
+    value.includes("scale") ||
+    value.includes("image") ||
+    value.includes("icon") ||
+    value.includes("shadow") ||
+    value.includes("radius") ||
+    value === "appearance"
+  );
+};
+
 interface ValuesEditorProps {
   settings: ValuesSettings;
   onUpdate: (updates: Partial<ValuesSettings>) => void;
   onSave?: () => void;
   hasChanges?: boolean;
+  isSaving?: boolean;
 }
 
 export function ValuesEditor({
@@ -105,9 +125,37 @@ export function ValuesEditor({
   onUpdate,
   onSave: externalOnSave,
   hasChanges,
+  isSaving: externalIsSaving,
 }: ValuesEditorProps) {
-  const handleSave = () => {
-    if (externalOnSave) externalOnSave();
+  const [localIsSaving, setLocalIsSaving] = useState(false);
+  const isLoading = externalIsSaving || localIsSaving;
+
+  if (!settings) return null;
+
+  const handleSave = async () => {
+    if (!externalOnSave || isLoading) return;
+    setLocalIsSaving(true);
+    try {
+      await externalOnSave();
+    } finally {
+      setLocalIsSaving(false);
+    }
+  };
+
+  const handleResetVisuals = () => {
+    const updates: Partial<ValuesSettings> = {};
+    for (const [key, value] of Object.entries(defaultValuesSettings)) {
+      if (isVisualKey(key)) {
+        (updates as Record<string, unknown>)[key] = value;
+      }
+    }
+
+    updates.appearance = {
+      backgroundColor: defaultValuesSettings.bgColor,
+      backgroundImageUrl: "",
+    };
+
+    onUpdate(updates);
   };
 
   const addItem = () => {
@@ -138,6 +186,11 @@ export function ValuesEditor({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+      <ResetSectionVisuals
+        label="Resetar Estilo dos Valores"
+        description="Restaura cores, fontes, fundo e estilo dos cards sem alterar os textos."
+        onReset={handleResetVisuals}
+      />
       <Accordion
         type="multiple"
         defaultValue={["title"]}
@@ -245,7 +298,9 @@ export function ValuesEditor({
                       value={settings.cardBgColor || "#ffffff"}
                       className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
                       onChange={(e) =>
-                        onUpdate({ cardBgColor: e.target.value })
+                        onUpdate({
+                          cardBgColor: e.target.value,
+                        })
                       }
                     />
                     <Input
@@ -253,7 +308,9 @@ export function ValuesEditor({
                       placeholder="Transparente"
                       className="h-8 text-[10px] flex-1 uppercase"
                       onChange={(e) =>
-                        onUpdate({ cardBgColor: e.target.value })
+                        onUpdate({
+                          cardBgColor: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -488,9 +545,22 @@ export function ValuesEditor({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <BackgroundEditor
-              settings={settings}
-              onUpdate={(updates) => onUpdate({ ...updates })}
-              sectionId="values"
+              settings={{
+                bgType: settings.bgType,
+                bgColor: settings.bgColor,
+                bgImage: settings.bgImage,
+                imageOpacity: settings.imageOpacity,
+                overlayOpacity: settings.overlayOpacity,
+                imageScale: settings.imageScale,
+                imageX: settings.imageX,
+                imageY: settings.imageY,
+                appearance: settings.appearance,
+              }}
+              sectionId="home-values"
+              onUpdate={(updates) => {
+                onUpdate(updates as Partial<ValuesSettings>);
+              }}
+              section="values"
             />
           </AccordionContent>
         </AccordionItem>
@@ -534,7 +604,7 @@ export function ValuesEditor({
                         Ícone
                       </Label>
                       <Select
-                        value={item.icon}
+                        value={item.icon || ""}
                         onValueChange={(v) => updateItem(item.id, { icon: v })}
                       >
                         <SelectTrigger className="h-8 w-12 px-2">
@@ -560,7 +630,7 @@ export function ValuesEditor({
                         Título
                       </Label>
                       <Input
-                        value={item.title}
+                        value={item.title || ""}
                         onChange={(e) =>
                           updateItem(item.id, { title: e.target.value })
                         }
@@ -574,7 +644,7 @@ export function ValuesEditor({
                       Descrição
                     </Label>
                     <Textarea
-                      value={item.description}
+                      value={item.description || ""}
                       onChange={(e) =>
                         updateItem(item.id, { description: e.target.value })
                       }
@@ -603,16 +673,27 @@ export function ValuesEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
+          disabled={!hasChanges || isLoading}
           onClick={handleSave}
           className={cn(
-            "w-full h-11 text-sm font-bold transition-all duration-300",
-            hasChanges
+            "w-full h-11 text-sm font-bold transition-all duration-300 relative",
+            hasChanges && !isLoading
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? "Aplicar Alterações" : "Nenhuma alteração"}
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : hasChanges ? (
+              "Salvar Alterações"
+            ) : (
+              <span className="opacity-50">Nenhuma alteração</span>
+            )}
+          </div>
         </Button>
       </div>
     </div>

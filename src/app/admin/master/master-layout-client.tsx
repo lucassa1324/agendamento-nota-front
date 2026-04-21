@@ -2,7 +2,7 @@
 
 import { Loader2, Menu } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MasterSidebar } from "@/components/admin/master-sidebar";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,20 @@ export function MasterLayoutClient({
   const router = useRouter();
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const hasRedirectedRef = useRef(false);
+
+  const redirectToLogin = () => {
+    if (hasRedirectedRef.current) return;
+    hasRedirectedRef.current = true;
+    router.replace("/admin");
+
+    // Fallback hard redirect para evitar spinner infinito
+    setTimeout(() => {
+      if (typeof window !== "undefined") {
+        window.location.href = "/admin";
+      }
+    }, 120);
+  };
 
   useEffect(() => {
     // Isola completamente o painel master de qualquer contexto de estúdio anterior
@@ -36,7 +50,7 @@ export function MasterLayoutClient({
         console.warn(
           ">>> [MASTER_LAYOUT] Sem sessão ativa. Redirecionando para login.",
         );
-        router.push("/admin");
+        redirectToLogin();
         return;
       }
 
@@ -46,6 +60,7 @@ export function MasterLayoutClient({
         console.warn(
           ">>> [MASTER_LAYOUT] Sessão existe mas usuário é undefined.",
         );
+        redirectToLogin();
         return;
       }
 
@@ -58,13 +73,26 @@ export function MasterLayoutClient({
           ">>> [MASTER_LAYOUT] Acesso negado. Usuário não é SUPER_ADMIN:",
           user.email,
         );
-        router.push("/admin"); // Redireciona para o login administrativo comum
+        redirectToLogin(); // Redireciona para o login administrativo comum
         return;
       }
 
       setIsAuthorized(true);
     }
   }, [session, isPending, router]);
+
+  useEffect(() => {
+    if (!isPending) return;
+
+    const timeoutId = setTimeout(() => {
+      console.warn(
+        ">>> [MASTER_LAYOUT] Timeout ao validar sessão. Redirecionando para login.",
+      );
+      redirectToLogin();
+    }, 5000);
+
+    return () => clearTimeout(timeoutId);
+  }, [isPending]);
 
   const handleLogout = async () => {
     await signOut();
@@ -80,8 +108,8 @@ export function MasterLayoutClient({
   }
 
   const adminUser = {
-    name: session?.user.name || "Super Admin",
-    username: session?.user.email || "master",
+    name: session?.user?.name || "Super Admin",
+    username: session?.user?.email || "master",
   };
 
   return (

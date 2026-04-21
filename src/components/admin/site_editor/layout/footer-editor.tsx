@@ -1,6 +1,6 @@
 "use client";
 
-import { Layout, Palette, RotateCcw, Type } from "lucide-react";
+import { Layout, Loader2, Palette, RotateCcw, Type } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -25,13 +25,15 @@ interface FooterEditorProps {
   onUpdate: (updates: Partial<FooterSettings>) => void;
   hasChanges?: boolean;
   onSave?: () => void;
+  isSaving?: boolean;
 }
 
 export function FooterEditor({
   settings,
   onUpdate,
   hasChanges,
-  onSave,
+  onSave: externalOnSave,
+  isSaving,
 }: FooterEditorProps) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
@@ -245,7 +247,7 @@ export function FooterEditor({
 
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase text-muted-foreground font-medium">
-                  Fonte do Corpo
+                  Fonte dos Textos
                 </Label>
                 <Select
                   value={settings.bodyFont || "default"}
@@ -282,15 +284,24 @@ export function FooterEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
-          onClick={onSave}
+          disabled={!hasChanges || isSaving}
+          onClick={externalOnSave}
           className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
             hasChanges
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
           }`}
         >
-          {hasChanges ? "Aplicar Rodapé" : "Nenhuma alteração"}
+          {isSaving ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Salvando...</span>
+            </div>
+          ) : hasChanges ? (
+            "Salvar Alterações"
+          ) : (
+            <span className="opacity-50">Nenhuma alteração</span>
+          )}
         </Button>
       </div>
     </div>

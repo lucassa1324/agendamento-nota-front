@@ -1,8 +1,17 @@
 "use client";
 
 import { differenceInDays } from "date-fns";
-import { Calendar, Clock, DollarSign, TrendingUp, Users } from "lucide-react";
+import {
+  Calendar,
+  Clock,
+  DollarSign,
+  Loader2,
+  TrendingUp,
+  Users,
+} from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import Joyride, { type CallBackProps, STATUS, type Step } from "react-joyride";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import { appointmentService } from "@/lib/api-appointments";
@@ -14,12 +23,15 @@ import {
 import { businessService } from "@/lib/business-service";
 
 export function DashboardStats() {
+  const pathname = usePathname();
   const { studio } = useStudio();
   const { data: session } = useSession();
+  const [isTourRunning, setIsTourRunning] = useState(false);
   const [sessionData, setSessionData] = useState<
     typeof authClient.$Infer.Session | null
   >(null);
   const [billingError, setBillingError] = useState(false);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [stats, setStats] = useState({
     totalBookings: 0,
     todayBookings: 0,
@@ -27,8 +39,43 @@ export function DashboardStats() {
     agendaStatus: true,
   });
 
+  const describeError = (reason: unknown) => {
+    if (reason instanceof Error) {
+      return reason.message || reason.toString();
+    }
+    if (typeof reason === "string") {
+      return reason;
+    }
+    if (typeof reason === "object" && reason !== null) {
+      const candidate = reason as {
+        message?: unknown;
+        error?: unknown;
+        status?: unknown;
+        code?: unknown;
+      };
+      if (typeof candidate.message === "string" && candidate.message.trim()) {
+        return candidate.message;
+      }
+      if (typeof candidate.error === "string" && candidate.error.trim()) {
+        return candidate.error;
+      }
+      try {
+        return JSON.stringify({
+          status: candidate.status,
+          code: candidate.code,
+          message: candidate.message,
+          error: candidate.error,
+        });
+      } catch {
+        return "Erro não serializável";
+      }
+    }
+    return "Erro desconhecido";
+  };
+
   const loadStats = useCallback(async () => {
     if (!studio?.id) return;
+    setIsLoadingStats(true);
     try {
       setBillingError(false);
       const now = new Date();
@@ -49,17 +96,85 @@ export function DashboardStats() {
         appointmentService.listByCompanyAdmin(studio.id, firstDay, lastDay),
         businessService.getSettings(studio.id),
       ]);
-      const appointments =
+      const isBillingRequired = (reason: unknown) => {
+        if (!reason) return false;
+        if (typeof reason === "object" && reason !== null) {
+          const status = (reason as { status?: number }).status;
+          const code = (reason as { code?: string }).code;
+          const message = (reason as { message?: string }).message;
+          if (status === 402 || code === "BILLING_REQUIRED") return true;
+          if (
+            typeof message === "string" &&
+            message.includes("BILLING_REQUIRED")
+          ) {
+            return true;
+          }
+        }
+        if (
+          reason instanceof Error &&
+          reason.message.includes("BILLING_REQUIRED")
+        ) {
+          return true;
+        }
+        return false;
+      };
+      const isUnauthorizedAccess = (reason: unknown) => {
+        if (!reason) return false;
+        if (typeof reason === "object" && reason !== null) {
+          const status = (reason as { status?: number }).status;
+          const message = (reason as { message?: string }).message;
+          if (status === 401 || status === 403) return true;
+          if (
+            typeof message === "string" &&
+            message.includes("Unauthorized access to this company's appointments")
+          ) {
+            return true;
+          }
+        }
+        if (
+          reason instanceof Error &&
+          reason.message.includes("Unauthorized access to this company's appointments")
+        ) {
+          return true;
+        }
+        return false;
+      };
+      const hasBillingBlock =
+        (appointmentsResult.status === "rejected" &&
+          isBillingRequired(appointmentsResult.reason)) ||
+        (settingsResult.status === "rejected" &&
+          isBillingRequired(settingsResult.reason));
+      if (hasBillingBlock) {
+        setBillingError(true);
+        return;
+      }
+      let appointments =
         appointmentsResult.status === "fulfilled"
           ? appointmentsResult.value
           : [];
+
+      // Fallback para manter o dashboard funcional em caso de falha temporária na rota admin.
+      if (appointmentsResult.status === "rejected") {
+        try {
+          const publicAppointments = await appointmentService.listByCompany(studio.id);
+          appointments = Array.isArray(publicAppointments) ? publicAppointments : [];
+        } catch (fallbackError) {
+          console.error(
+            "Dashboard: fallback público também falhou:",
+            describeError(fallbackError),
+          );
+        }
+      }
       const settings =
         settingsResult.status === "fulfilled" ? settingsResult.value : null;
       if (appointmentsResult.status === "rejected") {
-        console.error(
-          "Dashboard: Falha ao carregar agendamentos:",
-          appointmentsResult.reason,
-        );
+        const unauthorized = isUnauthorizedAccess(appointmentsResult.reason);
+        if (!unauthorized) {
+          console.error(
+            "Dashboard: Falha ao carregar agendamentos:",
+            describeError(appointmentsResult.reason),
+          );
+        }
       }
       if (settingsResult.status === "rejected") {
         console.warn(
@@ -125,12 +240,31 @@ export function DashboardStats() {
         monthRevenue: 0,
         agendaStatus: settings.agendaAberta,
       });
+    } finally {
+      setIsLoadingStats(false);
     }
   }, [studio?.id]);
 
   useEffect(() => {
     loadStats();
   }, [loadStats]);
+
+  useEffect(() => {
+    if (!pathname?.includes("/dashboard/overview")) return;
+    const hasSeenOverviewTour = localStorage.getItem("tour_overview_v1");
+    if (hasSeenOverviewTour === "true") return;
+    const timer = window.setTimeout(() => {
+      setIsTourRunning(true);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [pathname]);
+
+  const handleTourCallback = (data: CallBackProps) => {
+    if (data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED) {
+      localStorage.setItem("tour_overview_v1", "true");
+      setIsTourRunning(false);
+    }
+  };
 
   // Busca dados atualizados da sessão para garantir que temos o status mais recente (Igual ao TrialBanner)
   useEffect(() => {
@@ -153,18 +287,21 @@ export function DashboardStats() {
       value: billingError ? "---" : stats.todayBookings,
       icon: Calendar,
       color: billingError ? "text-muted-foreground" : "text-blue-500",
+      tourTarget: "overview-card-today",
     },
     {
       title: "Total de Agendamentos",
       value: billingError ? "---" : stats.totalBookings,
       icon: Users,
       color: billingError ? "text-muted-foreground" : "text-green-500",
+      tourTarget: "overview-card-total",
     },
     {
       title: "Faturamento do Mês",
       value: billingError ? "---" : `R$ ${stats.monthRevenue.toFixed(2)}`,
       icon: DollarSign,
       color: billingError ? "text-muted-foreground" : "text-accent",
+      tourTarget: "overview-card-revenue",
     },
     {
       title: "Status da Agenda",
@@ -175,6 +312,7 @@ export function DashboardStats() {
         : stats.agendaStatus
           ? "text-green-500"
           : "text-red-500",
+      tourTarget: "overview-card-status",
     },
   ];
 
@@ -222,27 +360,92 @@ export function DashboardStats() {
       value: `${daysLeft} dias`,
       icon: Clock,
       color: daysLeft <= 3 ? "text-red-500" : "text-blue-500",
+      tourTarget: "overview-card-trial",
     });
   }
 
+  if (isLoadingStats) {
+    return (
+      <div className="rounded-lg border bg-card p-8 flex items-center justify-center gap-2 text-muted-foreground">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        Carregando indicadores...
+      </div>
+    );
+  }
+
   return (
-    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {statCards.map((stat) => {
-        const Icon = stat.icon;
-        return (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <Icon className={`w-5 h-5 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
-        );
-      })}
+    <div className="space-y-4">
+      <Joyride
+        run={isTourRunning}
+        continuous
+        showProgress
+        showSkipButton
+        disableOverlayClose
+        callback={handleTourCallback}
+        locale={{
+          back: "Voltar",
+          close: "Fechar",
+          last: "Concluir",
+          next: "Próximo",
+          skip: "Pular",
+        }}
+        steps={
+          [
+            {
+              target: '[data-tour="overview-title"]',
+              content:
+                "Aqui você acompanha o resumo geral do seu negócio em tempo real.",
+              placement: "bottom",
+            },
+            {
+              target: '[data-tour="overview-card-today"]',
+              content:
+                "Este card mostra quantos agendamentos você tem hoje para organizar sua operação.",
+            },
+            {
+              target: '[data-tour="overview-card-revenue"]',
+              content:
+                "Aqui você vê o faturamento do mês com base nos atendimentos concluídos.",
+            },
+            {
+              target: '[data-tour="overview-card-status"]',
+              content:
+                "Use este indicador para conferir se a agenda está aberta ou fechada.",
+            },
+          ] satisfies Step[]
+        }
+        styles={{
+          options: {
+            zIndex: 10000,
+          },
+        }}
+      />
+      {stats.totalBookings === 0 && !billingError && (
+        <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+          Você ainda não tem agendamentos neste período.
+        </div>
+      )}
+      <div
+        className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
+        data-tour="overview-grid"
+      >
+        {statCards.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.title} data-tour={stat.tourTarget}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {stat.title}
+                </CardTitle>
+                <Icon className={`w-5 h-5 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

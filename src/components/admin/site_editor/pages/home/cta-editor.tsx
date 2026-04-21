@@ -2,10 +2,12 @@
 
 import {
   Image as ImageIcon,
+  Loader2,
   MousePointer2,
   RotateCcw,
   Type,
 } from "lucide-react";
+import { useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -22,7 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CTASettings } from "@/lib/booking-data";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { cn } from "@/lib/utils";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
@@ -30,17 +33,34 @@ import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 interface CTAEditorProps {
   settings: CTASettings;
   onUpdate: (updates: Partial<CTASettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSave?: () => void;
   hasChanges?: boolean;
+  isSaving?: boolean;
 }
 
 export function CTAEditor({
   settings,
   onUpdate,
-  onSave,
+  onUpdateBackground,
+  onSave: externalOnSave,
   hasChanges,
+  isSaving,
 }: CTAEditorProps) {
+  const [localIsSaving, setLocalIsSaving] = useState(false);
+  const isLoading = isSaving || localIsSaving;
+
   if (!settings) return null;
+
+  const handleSave = async () => {
+    if (!externalOnSave || isLoading) return;
+    setLocalIsSaving(true);
+    try {
+      await externalOnSave();
+    } finally {
+      setLocalIsSaving(false);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
@@ -130,7 +150,7 @@ export function CTAEditor({
                 Texto do Botão
               </legend>
               <Input
-                value={settings.buttonText}
+                value={settings.buttonText || ""}
                 onChange={(e) => onUpdate({ buttonText: e.target.value })}
                 className="h-8 text-xs"
               />
@@ -166,6 +186,36 @@ export function CTAEditor({
                         <span style={{ fontFamily: f.name }}>{f.name}</span>
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </fieldset>
+
+              <fieldset
+                className="space-y-1.5 border-none p-0 m-0"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                  Formato do Botão
+                </legend>
+                <Select
+                  value={settings.buttonShape || "pill"}
+                  onValueChange={(v) =>
+                    onUpdate({ buttonShape: v as "pill" | "square" | "sharp" })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Selecione o formato" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pill" className="text-xs">
+                      Arredondado
+                    </SelectItem>
+                    <SelectItem value="square" className="text-xs">
+                      Cantos Suaves
+                    </SelectItem>
+                    <SelectItem value="sharp" className="text-xs">
+                      Totalmente Quadrado
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </fieldset>
@@ -270,52 +320,46 @@ export function CTAEditor({
                 imageScale: settings.imageScale,
                 imageX: settings.imageX,
                 imageY: settings.imageY,
+                appearance: settings.appearance,
               }}
-              onUpdate={(updates) =>
-                onUpdate({
-                  ...(updates.bgType !== undefined && {
-                    bgType: updates.bgType,
-                  }),
-                  ...(updates.bgColor !== undefined && {
-                    bgColor: updates.bgColor,
-                  }),
-                  ...(updates.bgImage !== undefined && {
-                    bgImage: updates.bgImage,
-                  }),
-                  ...(updates.imageOpacity !== undefined && {
-                    imageOpacity: updates.imageOpacity,
-                  }),
-                  ...(updates.overlayOpacity !== undefined && {
-                    overlayOpacity: updates.overlayOpacity,
-                  }),
-                  ...(updates.imageScale !== undefined && {
-                    imageScale: updates.imageScale,
-                  }),
-                  ...(updates.imageX !== undefined && {
-                    imageX: updates.imageX,
-                  }),
-                  ...(updates.imageY !== undefined && {
-                    imageY: updates.imageY,
-                  }),
-                })
-              }
+              onUpdate={(updates) => {
+                if (onUpdateBackground) {
+                  onUpdateBackground(updates, "cta");
+                } else {
+                  onUpdate(updates);
+                }
+              }}
+              section="cta"
             />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
 
-      {/* Botão de Aplicar (Sincronizar com o Preview) */}
-      <div className="pt-4 border-t border-border/50">
+      <div className="pt-2">
         <Button
-          onClick={onSave}
-          disabled={!hasChanges}
-          className="w-full bg-primary/10 hover:bg-primary/20 text-primary border-none h-10 font-medium"
+          type="button"
+          disabled={!hasChanges || isLoading}
+          onClick={handleSave}
+          className={cn(
+            "w-full h-11 text-sm font-bold transition-all duration-300 relative",
+            hasChanges && !isLoading
+              ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
+              : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
+          )}
         >
-          {hasChanges ? "Aplicar Alterações" : "Sem Alterações"}
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : hasChanges ? (
+              "Salvar Alterações"
+            ) : (
+              <span className="opacity-50">Nenhuma alteração</span>
+            )}
+          </div>
         </Button>
-        <p className="text-[10px] text-center text-muted-foreground mt-2">
-          As alterações serão refletidas no preview lateral
-        </p>
       </div>
     </div>
   );

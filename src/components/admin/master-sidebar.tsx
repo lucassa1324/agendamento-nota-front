@@ -1,7 +1,16 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, LogOut, Store, User, Users } from "lucide-react";
+import {
+  BarChart3,
+  Bug,
+  Code2,
+  LayoutGrid,
+  LogOut,
+  Store,
+  User,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -28,6 +37,11 @@ const MASTER_NAVIGATION: MasterNavGroup[] = [
         icon: Users,
       },
       {
+        title: "Feedbacks",
+        href: "/admin/master/bug-reports",
+        icon: Bug,
+      },
+      {
         title: "Empresas",
         href: "/admin/master/businesses",
         icon: Store,
@@ -41,6 +55,16 @@ const MASTER_NAVIGATION: MasterNavGroup[] = [
         title: "Possíveis Clientes",
         href: "/admin/master/leads",
         icon: Users,
+      },
+      {
+        title: "Templates",
+        href: "/admin/master/templates",
+        icon: LayoutGrid,
+      },
+      {
+        title: "Área do Desenvolvedor",
+        href: "/admin/master/dev",
+        icon: Code2,
       },
     ],
   },
@@ -73,7 +97,7 @@ export function MasterSidebar({
           <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
             <span className="text-lg">B</span>
           </div>
-          <span>Brow Studio</span>
+          <span>Aura Sistema</span>
         </div>
       </div> */}
       <div className="h-16 border-b border-border bg-sidebar-accent/10"></div>

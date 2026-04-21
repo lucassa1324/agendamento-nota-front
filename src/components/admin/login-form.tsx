@@ -1,9 +1,9 @@
 "use client";
 
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,7 +14,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getSession, signIn } from "@/lib/auth-client";
+import {
+  getSession,
+  signIn,
+  LANDING_PAGE_URL,
+  sendVerificationEmail,
+} from "@/lib/auth-client";
+import { useToast } from "@/hooks/use-toast";
 
 interface AuthUser {
   id?: string;
@@ -22,6 +28,7 @@ interface AuthUser {
   slug?: string;
   role?: string;
   businessId?: string;
+  emailVerified?: boolean;
   business?: {
     slug?: string;
   };
@@ -34,6 +41,21 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const hasCheckedSession = useRef(false);
+  const lastAutoVerificationEmailAt = useRef(0);
+
+  const isVerified = searchParams.get("verified") === "true";
+
+  const getSessionWithTimeout = useCallback(async () => {
+    return await Promise.race([
+      getSession(),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("SESSION_TIMEOUT")), 6000);
+      }),
+    ]);
+  }, []);
 
   // Função auxiliar para redirecionar baseada na role (Regra de Ouro)
   const handleRoleRedirection = useCallback(
@@ -44,12 +66,66 @@ export function LoginForm() {
           email: user.email,
           role: user.role,
           slug: user.slug,
+          emailVerified: user.emailVerified,
           businessSlug: user?.business?.slug,
         },
       );
 
+      // 1º Lugar: Verificação de E-mail (exceto se for Super Admin logado manualmente)
+      if (
+        user.emailVerified === false &&
+        user.role !== "SUPER_ADMIN" &&
+        user.email !== "lucassa1324@gmail.com"
+      ) {
+        console.log(">>> [LOGIN_FLOW] E-mail consta como não verificado. Fazendo check final antes de redirecionar...");
+        
+        // Check final para evitar loops se a sessão estiver levemente desatualizada
+        getSession().then(({ data }) => {
+          if (data?.user?.emailVerified) {
+             console.log(">>> [LOGIN_FLOW] Check final revelou e-mail JÁ VERIFICADO. Prosseguindo...");
+             handleRoleRedirection(data.user as AuthUser);
+          } else {
+             console.log(">>> [LOGIN_FLOW] E-mail realmente não verificado. Redirecionando para pendência.");
+             const targetEmail = user.email || data?.user?.email;
+             const now = Date.now();
+             const canAutoSend =
+               !!targetEmail &&
+               now - lastAutoVerificationEmailAt.current > 60000;
+
+             if (canAutoSend) {
+               lastAutoVerificationEmailAt.current = now;
+               const callbackURL =
+                 typeof window !== "undefined"
+                   ? `${window.location.origin}/admin/email-verified`
+                   : "/admin/email-verified";
+
+               void sendVerificationEmail({
+                 email: targetEmail,
+                 callbackURL,
+               }).then(() => {
+                 console.log(">>> [LOGIN_FLOW] E-mail de verificação disparado automaticamente no login.");
+               }).catch((verificationError) => {
+                 console.warn(
+                   ">>> [LOGIN_FLOW] Falha ao disparar e-mail automático no login:",
+                   verificationError,
+                 );
+               });
+             }
+
+             localStorage.setItem("pending_verification_email", user.email || "");
+             router.push("/admin/pending-verification");
+          }
+        });
+        return true;
+      }
+
+      // Se verificou agora, limpa o localStorage
+      if (user.emailVerified) {
+        localStorage.removeItem("pending_verification_email");
+      }
+
       // PRIORIDADE MÁXIMA: SUPER_ADMIN ou Email do Proprietário (Lucas)
-      // Usamos um "Hard Redirect" para limpar contextos de estúdio/tenant
+      // Usamos um "Hard Redirect" para limpar contextos de negócio/tenant
       if (
         user.role === "SUPER_ADMIN" ||
         user.email === "lucassa1324@gmail.com"
@@ -61,7 +137,7 @@ export function LoginForm() {
         return true;
       }
 
-      // 2º Lugar: Verificação de Administrador de Estúdio (Multi-tenant)
+      // 2º Lugar: Verificação de Administrador de Negócio (Multi-tenant)
       const businessSlug = user?.slug || user?.business?.slug;
       if (user.role?.toLowerCase() === "admin" && businessSlug) {
         console.log(
@@ -71,7 +147,7 @@ export function LoginForm() {
         return true;
       }
 
-      // 3º Lugar: Usuário sem estúdio ou sem role definida (Fallback)
+      // 3º Lugar: Usuário sem negócio ou sem role definida (Fallback)
       console.warn(
         ">>> [LOGIN_FLOW] Usuário sem role ADMIN/SUPER_ADMIN ou sem slug.",
       );
@@ -82,9 +158,21 @@ export function LoginForm() {
 
   // Verifica se já existe sessão ao carregar a página
   useEffect(() => {
+    if (hasCheckedSession.current) {
+      return;
+    }
+    hasCheckedSession.current = true;
+
     const checkSession = async () => {
+      if (isVerified) {
+        toast({
+          title: "E-mail confirmado!",
+          description: "Sua conta foi verificada com sucesso.",
+        });
+      }
+
       try {
-        const { data } = await getSession();
+        const { data } = await getSessionWithTimeout();
         if (data?.session) {
           console.log(
             ">>> [LOGIN_FORM] Sessão ativa encontrada. Redirecionando...",
@@ -97,11 +185,15 @@ export function LoginForm() {
           }
         }
       } catch (err) {
+        if (err instanceof Error && err.message === "SESSION_TIMEOUT") {
+          console.warn(">>> [ADMIN_WARN] Timeout ao verificar sessão.");
+          return;
+        }
         console.warn(">>> [ADMIN_WARN] Erro ao verificar sessão:", err);
       }
     };
     checkSession();
-  }, [handleRoleRedirection]);
+  }, [getSessionWithTimeout, handleRoleRedirection, isVerified, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,31 +214,14 @@ export function LoginForm() {
         email: normalizedEmail,
       });
 
-      console.log(">>> [LOGIN_PAYLOAD] Enviando para Back-end (DETALHADO):", {
-        url: "/api/auth/sign-in/email",
-        method: "POST",
-        body: {
-          email: normalizedEmail,
-          password: normalizedPassword, // SENHA EXPOSTA PARA DEBUG - REMOVER EM PRODUÇÃO
-        },
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-      });
-
       const result = await signIn.email({
         email: normalizedEmail,
         password: normalizedPassword,
       });
 
-      console.log(">>> [LOGIN_FLOW] Resposta do signIn recebida:", result);
-      console.dir(result); // Debug profundo para ver campos ocultos
-
       const { data, error: authError } = result;
 
       if (authError) {
-        console.warn(">>> [ADMIN_WARN] Erro no signIn:", authError);
         setError(authError.message || "Email ou senha incorretos.");
         setIsLoading(false);
         return;
@@ -155,12 +230,24 @@ export function LoginForm() {
       const userData = data?.user as AuthUser;
 
       if (userData?.id) {
+        let resolvedUser = userData;
+        if (typeof userData.emailVerified === "undefined") {
+          try {
+            const { data: sessionData } = await getSessionWithTimeout();
+            if (sessionData?.user) {
+              resolvedUser = sessionData.user as AuthUser;
+            }
+          } catch (sessionError) {
+            console.warn(">>> [LOGIN_FLOW] Falha ao buscar sessão pós-login:", sessionError);
+          }
+        }
+
         console.log(
           ">>> [LOGIN_FLOW] Login bem-sucedido. Payload recebido:",
-          userData,
+          resolvedUser,
         );
 
-        if (!handleRoleRedirection(userData)) {
+        if (!handleRoleRedirection(resolvedUser)) {
           console.warn(">>> [LOGIN_FLOW] Sem slug ou role vinculados.");
           setError(
             "Sua conta não possui as permissões necessárias ou um estúdio vinculado.",
@@ -258,14 +345,20 @@ export function LoginForm() {
             <p className="text-sm text-muted-foreground">
               Não tem uma conta?{" "}
               <Button
+                type="button"
                 variant="link"
                 className="p-0 h-auto"
-                onClick={() =>
-                  router.push(
-                    process.env.NEXT_PUBLIC_LANDING_PAGE_URL ||
-                      "/admin/register",
-                  )
-                }
+                onClick={() => {
+                  const url = LANDING_PAGE_URL 
+                    ? `${LANDING_PAGE_URL}/register`
+                    : "/admin/register";
+                  
+                  if (url.startsWith("http")) {
+                    window.location.href = url;
+                  } else {
+                    router.push(url);
+                  }
+                }}
               >
                 Cadastre-se
               </Button>

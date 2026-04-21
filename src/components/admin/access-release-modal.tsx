@@ -71,11 +71,15 @@ export function AccessReleaseModal({
         remainingDays = diff > 0 ? diff : 0;
       }
 
+      const isTrialStatus =
+        company.subscriptionStatus === "trial" ||
+        company.subscriptionStatus === "trialing";
+
       // Lógica de Pré-seleção Baseada no Estado Atual
       if (company.accessType === "manual") {
         setSelectedOption("manual_custom_days");
         setManualDays(remainingDays > 0 ? remainingDays : 30);
-      } else if (company.accessType === "extended_trial") {
+      } else if (company.accessType === "extended_trial" || isTrialStatus) {
         setSelectedOption("extend_trial_custom");
         setTrialDays(remainingDays > 0 ? remainingDays : 14);
       } else {
@@ -89,10 +93,13 @@ export function AccessReleaseModal({
   const today = new Date();
 
   // Cálculos de datas dinâmicos baseados nos inputs
-  const dateManualDays = addDays(today, manualDays || 0);
+  const dateManualDays = addDays(today, Number.isFinite(manualDays) ? manualDays : 0);
 
   // No novo modelo, "Adiar Teste" define o novo vencimento a partir de HOJE + dias inputados
-  const dateExtendTrialDays = addDays(today, trialDays || 0);
+  const dateExtendTrialDays = addDays(
+    today,
+    Number.isFinite(trialDays) ? trialDays : 0,
+  );
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -135,21 +142,38 @@ export function AccessReleaseModal({
         },
       );
 
-      // Tratamento específico para erro 402 (Pagamento Obrigatório / Bloqueio)
       if (response.status === 402) {
-        window.location.href = "/acesso-suspenso";
+        toast({
+          title: "Pagamento pendente",
+          description:
+            "Não foi possível liberar o acesso porque o status da assinatura exige regularização.",
+          variant: "destructive",
+        });
         return;
       }
 
+      const data = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Falha ao atualizar assinatura");
+        throw new Error(data.error || "Falha ao atualizar assinatura");
       }
 
-      toast({
-        title: "Sucesso",
-        description: "Acesso da empresa atualizado com sucesso.",
-      });
+      if (selectedOption === "automatic") {
+        const isStillPending = data.message?.includes("past_due") || data.status === "past_due";
+        
+        toast({
+          title: isStillPending ? "Aguardando Pagamento" : "Sucesso",
+          description: isStillPending 
+            ? "A empresa foi movida para o modo automático, mas ainda não foi identificado um pagamento confirmado no Asaas."
+            : "Acesso da empresa atualizado e pagamento confirmado com sucesso.",
+          variant: isStillPending ? "destructive" : "default",
+        });
+      } else {
+        toast({
+          title: "Sucesso",
+          description: "Acesso da empresa atualizado com sucesso.",
+        });
+      }
 
       onSuccess();
       onClose();
@@ -281,10 +305,10 @@ export function AccessReleaseModal({
                   <Input
                     id="trial_days_input"
                     type="number"
-                    min={1}
+                    min={0}
                     value={trialDays}
                     onChange={(e) =>
-                      setTrialDays(parseInt(e.target.value, 10) || 0)
+                      setTrialDays(Number(e.target.value) || 0)
                     }
                     className="h-8 w-24 text-sm bg-background text-foreground"
                   />

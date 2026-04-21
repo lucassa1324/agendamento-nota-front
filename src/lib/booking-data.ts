@@ -1,4 +1,62 @@
+import { format } from "date-fns";
 import { inventoryService } from "./inventory-service";
+import {
+  BookingStepSchema,
+  SectionSchema,
+} from "./schemas/site-customization-schema";
+import type { SiteConfigData } from "./site-config-types";
+import type { HeroTemplateTitleSize } from "@/components/admin/site_editor/editor";
+
+// --- Sincronização Global entre Abas via LocalStorage ---
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (event) => {
+    if (!event.key) return;
+
+    // Mapa de chaves para eventos customizados correspondentes
+    const keyToEvent: Record<string, string> = {
+      heroSettings: "heroSettingsUpdated",
+      aboutHeroSettings: "aboutHeroSettingsUpdated",
+      storySettings: "storySettingsUpdated",
+      homeValuesSettings: "homeValuesSettingsUpdated",
+      aboutUsValuesSettings: "aboutUsValuesSettingsUpdated",
+      valuesSettings: "valuesSettingsUpdated",
+      servicesSettings: "servicesSettingsUpdated",
+      fontSettings: "fontSettingsUpdated",
+      gallerySettings: "gallerySettingsUpdated",
+      galleryPageSettings: "galleryPageSettingsUpdated",
+      ctaSettings: "ctaSettingsUpdated",
+      teamSettings: "teamSettingsUpdated",
+      testimonialsSettings: "testimonialsSettingsUpdated",
+      headerSettings: "headerSettingsUpdated",
+      footerSettings: "footerSettingsUpdated",
+      colorSettings: "colorSettingsUpdated",
+      pageVisibility: "pageVisibilityUpdated",
+      visibleSections: "visibleSectionsUpdated",
+      siteProfile: "siteProfileUpdated",
+      services: "servicesUpdated",
+      bookingServiceSettings: "bookingServiceSettingsUpdated",
+      bookingDateSettings: "bookingDateSettingsUpdated",
+      bookingTimeSettings: "bookingTimeSettingsUpdated",
+      bookingFormSettings: "bookingFormSettingsUpdated",
+      bookingConfirmationSettings: "bookingConfirmationSettingsUpdated",
+    };
+
+    // Remove o prefixo do adminId se existir
+    const currentAdminId = localStorage.getItem("current_admin_id");
+    let baseKey = event.key;
+    if (currentAdminId && event.key.startsWith(`${currentAdminId}_`)) {
+      baseKey = event.key.substring(currentAdminId.length + 1);
+    }
+
+    const eventToDispatch = keyToEvent[baseKey];
+    if (eventToDispatch) {
+      console.log(
+        `>>> [STORAGE_SYNC] Disparando ${eventToDispatch} devido a mudança em ${event.key}`,
+      );
+      window.dispatchEvent(new Event(eventToDispatch));
+    }
+  });
+}
 
 export type ServiceResource = {
   inventoryId: string;
@@ -21,15 +79,15 @@ export type Service = {
   conflictingServiceIds?: string[];
   conflicting_service_ids?: string[];
   advanced_rules?:
-    | {
-        conflicts?: string[];
-      }
-    | string[];
+  | {
+    conflicts?: string[];
+  }
+  | string[];
   advancedRules?:
-    | {
-        conflicts?: string[];
-      }
-    | string[];
+  | {
+    conflicts?: string[];
+  }
+  | string[];
   resources?: ServiceResource[];
   // Mantido para compatibilidade temporária com componentes legados
   products?: {
@@ -124,17 +182,1233 @@ export type DaySchedule = {
   lunchEnd: string;
   closeTime: string;
   interval: number;
+  minimumBookingLeadMinutes?: number;
 };
 
 export type WeekSchedule = DaySchedule[];
 
 // Helper para isolamento de dados por usuário
+export const sanitizeColor = (color: unknown): string | undefined => {
+  if (!color) return undefined;
+
+  // Se for um objeto, tenta extrair a string de cor (caso comum em alguns componentes de UI)
+  if (typeof color === "object" && color !== null) {
+    const colorObj = color as Record<string, unknown>;
+    if (typeof colorObj.hex === "string") return colorObj.hex;
+    if (typeof colorObj.text === "string") return colorObj.text;
+    if (typeof colorObj.color === "string") return colorObj.color;
+    if (typeof colorObj.rgb === "string") return colorObj.rgb;
+    // Se não encontrar nada óbvio, tenta converter para string e ver o que acontece
+    try {
+      const str = String(color);
+      if (str.startsWith("[object")) return undefined;
+      return sanitizeColor(str);
+    } catch (_e) {
+      return undefined;
+    }
+  }
+
+  if (typeof color !== "string") return undefined;
+
+  const trimmed = color.trim();
+  if (
+    trimmed.startsWith("#") ||
+    trimmed.startsWith("rgb") ||
+    trimmed.startsWith("hsl") ||
+    trimmed.startsWith("var")
+  ) {
+    return trimmed;
+  }
+  // Se for apenas hex sem #, adiciona #
+  if (/^[0-9A-Fa-f]{3,6}$/.test(trimmed)) {
+    return `#${trimmed}`;
+  }
+  return trimmed;
+};
+
+export const sanitizeFont = (font: unknown): string | undefined => {
+  if (!font) return undefined;
+  if (typeof font === "string") {
+    const trimmed = font.trim();
+    if (trimmed && trimmed !== "{}" && trimmed !== "[]") return trimmed;
+  }
+  if (typeof font === "object" && font !== null) {
+    const fontObj = font as Record<string, unknown>;
+    if (typeof fontObj.family === "string") return fontObj.family;
+    if (typeof fontObj.name === "string") return fontObj.name;
+    if (typeof fontObj.value === "string") return fontObj.value;
+  }
+  return undefined;
+};
+
+/**
+ * Função de utilidade que limpa o objeto de configurações antes de qualquer operação
+ * de persistência ou renderização, garantindo que "lixo" de UI não chegue ao estado global.
+ * Implementa normalização recursiva para chaves de cores.
+ */
+export const normalizePersistenceData = (data: unknown): unknown => {
+  if (!data || typeof data !== "object") return data;
+
+  // Se for um array, processa cada item
+  if (Array.isArray(data)) {
+    return data.map((item) => normalizePersistenceData(item));
+  }
+
+  const cleanData: Record<string, unknown> = {
+    ...(data as Record<string, unknown>),
+  };
+
+  Object.keys(cleanData).forEach((key) => {
+    const value = cleanData[key];
+
+    // 1. Se o valor for um objeto que parece uma cor (ex: ColorPicker), sanitiza
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const v = value as Record<string, unknown>;
+      if (v.hex || v.color || v.rgb) {
+        cleanData[key] = sanitizeColor(value);
+      }
+      // 2. Se for um objeto aninhado (não nulo), limpa recursivamente
+      else if (!(value instanceof Date)) {
+        cleanData[key] = normalizePersistenceData(value);
+      }
+    }
+  });
+
+  return cleanData;
+};
+
+export const sanitizeSection = (
+  currentData: unknown,
+  fallbackData: unknown,
+): Record<string, unknown> => {
+  const fallback =
+    fallbackData &&
+      typeof fallbackData === "object" &&
+      !Array.isArray(fallbackData)
+      ? (fallbackData as Record<string, unknown>)
+      : {};
+
+  if (typeof currentData === "string") {
+    const trimmed = currentData.trim();
+    const fallbackContent = fallback.content;
+    const fallbackUsesContent =
+      fallbackContent !== undefined ||
+      (fallback.title === undefined && fallback.subtitle === undefined);
+    if (
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          return { ...fallback, ...(parsed as Record<string, unknown>) };
+        }
+      } catch (_e) {
+        return fallbackUsesContent
+          ? { ...fallback, content: currentData }
+          : { ...fallback, title: currentData };
+      }
+    }
+    return fallbackUsesContent
+      ? { ...fallback, content: currentData }
+      : { ...fallback, title: currentData };
+  }
+
+  if (
+    !currentData ||
+    typeof currentData !== "object" ||
+    Array.isArray(currentData)
+  ) {
+    return { ...fallback };
+  }
+
+  const record = currentData as Record<string, unknown>;
+
+  // PILAR: Limpeza de Objeto - Evitar acumular "lixo" de configurações antigas
+  // Em vez de fazer merge cego (...fallback, ...record), vamos construir o objeto
+  // priorizando o que vem do registro novo.
+  // Somente adicionamos do fallback o que for estritamente necessário (whitelist de campos padrão)
+  const mergedRoot: Record<string, unknown> = {
+    ...record,
+  };
+
+  const WHITELIST_FIELDS = [
+    "title",
+    "subtitle",
+    "description",
+    "visible",
+    "showTitle",
+    "showSubtitle",
+    "bgType",
+    "bgColor",
+    "backgroundColor",
+    "bg_color",
+    "background_color",
+    "titleColor",
+    "subtitleColor",
+    "titleFont",
+    "subtitleFont",
+    "contentFont",
+    "cardBgColor",
+    "cardTitleColor",
+    "cardDescriptionColor",
+    "cardPriceColor",
+    "cardIconColor",
+    "cardTitleFont",
+    "cardDescriptionFont",
+    "cardPriceFont",
+  ];
+
+  // Só adicionamos do fallback o que for estritamente necessário e não estiver no record
+  Object.entries(fallback).forEach(([key, value]) => {
+    // Se a chave não está no record, verificamos se ela é "lixo" ou campo padrão
+    if (mergedRoot[key] === undefined || mergedRoot[key] === null) {
+      // Se for um campo padrão conhecido, mantemos do fallback
+      if (
+        WHITELIST_FIELDS.includes(key) ||
+        key === "appearance" ||
+        key === "content"
+      ) {
+        mergedRoot[key] = value;
+      }
+      // Caso contrário, ignoramos para evitar acumular propriedades obsoletas
+    }
+  });
+
+  const recordAppearance =
+    record.appearance &&
+      typeof record.appearance === "object" &&
+      !Array.isArray(record.appearance)
+      ? (record.appearance as Record<string, unknown>)
+      : {};
+
+  const recordContent =
+    record.content &&
+      typeof record.content === "object" &&
+      !Array.isArray(record.content)
+      ? (record.content as Record<string, unknown>)
+      : {};
+  const recordContentString =
+    typeof record.content === "string" ? record.content : undefined;
+
+  // Se o recordContent ou recordAppearance tiverem valores, eles devem estar no root para compatibilidade.
+  // Importante: nunca sobrescrever valores explícitos já presentes no root (ex.: title/subtitle recém-digitados).
+  for (const [key, value] of Object.entries(recordContent)) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      (mergedRoot[key] === undefined || mergedRoot[key] === null)
+    ) {
+      mergedRoot[key] = value;
+    }
+  }
+
+  for (const [key, value] of Object.entries(recordAppearance)) {
+    if (
+      value !== undefined &&
+      value !== null &&
+      (mergedRoot[key] === undefined || mergedRoot[key] === null)
+    ) {
+      mergedRoot[key] = value;
+    }
+  }
+
+  const fallbackAppearance =
+    fallback.appearance &&
+      typeof fallback.appearance === "object" &&
+      !Array.isArray(fallback.appearance)
+      ? (fallback.appearance as Record<string, unknown>)
+      : {};
+
+  const fallbackContent =
+    fallback.content &&
+      typeof fallback.content === "object" &&
+      !Array.isArray(fallback.content)
+      ? (fallback.content as Record<string, unknown>)
+      : {};
+  const fallbackContentString =
+    typeof fallback.content === "string" ? fallback.content : undefined;
+
+  const finalAppearance: Record<string, unknown> = { ...recordAppearance };
+  Object.entries(fallbackAppearance).forEach(([key, value]) => {
+    if (finalAppearance[key] === undefined || finalAppearance[key] === null) {
+      finalAppearance[key] = value;
+    }
+  });
+
+  const finalContent: Record<string, unknown> = { ...recordContent };
+  Object.entries(fallbackContent).forEach(([key, value]) => {
+    if (finalContent[key] === undefined || finalContent[key] === null) {
+      finalContent[key] = value;
+    }
+  });
+
+  const resolvedContent =
+    recordContentString !== undefined
+      ? recordContentString
+      : typeof mergedRoot.content === "string"
+        ? (mergedRoot.content as string)
+        : fallbackContentString !== undefined
+          ? fallbackContentString
+          : Object.keys(finalContent).length > 0
+            ? finalContent
+            : mergedRoot.content;
+
+  return {
+    ...mergedRoot,
+    appearance: finalAppearance,
+    ...(resolvedContent !== undefined ? { content: resolvedContent } : {}),
+  };
+};
+
+export type SectionConfig = Record<string, unknown>;
+export type SectionsMap = Record<string, SectionConfig>;
+
+export const SECTION_IDS = {
+  homeHero: "home-hero",
+  aboutHero: "about-hero",
+  homeStory: "home-story",
+  homeTeam: "home-team",
+  homeTestimonials: "home-testimonials",
+  homeServices: "home-services",
+  homeValues: "home-values",
+  aboutValues: "about-values",
+  homeGallery: "home-gallery",
+  pageGallery: "page-gallery",
+  homeCta: "home-cta",
+  layoutHeader: "layout-header",
+  layoutFooter: "layout-footer",
+  bookingService: "booking-service",
+  bookingDate: "booking-date",
+  bookingTime: "booking-time",
+  bookingForm: "booking-form",
+  bookingConfirmation: "booking-confirmation",
+  booking: "booking",
+} as const;
+
+export type SectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
+
+const normalizeSectionConfig = <T extends Record<string, unknown>>(
+  raw: T | string | undefined,
+  defaults: T,
+) => {
+  // Se não tem dados brutos, retorna o padrão
+  if (!raw) return defaults;
+
+  // Se o dado bruto for uma string, tentamos converter para objeto
+  let actualRaw: Record<string, unknown>;
+
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))
+    ) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          actualRaw = parsed as Record<string, unknown>;
+        } else {
+          actualRaw = { content: raw };
+        }
+      } catch (_e) {
+        actualRaw = { content: raw };
+      }
+    } else {
+      // Se for uma string pura, assumimos que é o conteúdo principal
+      actualRaw = { content: raw };
+    }
+  } else {
+    actualRaw = raw as Record<string, unknown>;
+  }
+
+  // PILAR: Prioridade Invertida e Limpeza
+  // O que vem do "raw" (banco ou editor) deve ter prioridade TOTAL sobre o defaults.
+  // Começamos com raw e preenchemos apenas o estritamente necessário dos defaults.
+  const merged: Record<string, unknown> = {
+    ...actualRaw,
+  };
+
+  const CORE_FIELDS = [
+    "title",
+    "subtitle",
+    "description",
+    "visible",
+    "showTitle",
+    "showSubtitle",
+  ];
+
+  // Preenche campos principais se estiverem ausentes ou forem strings vazias/lixo
+  CORE_FIELDS.forEach((field) => {
+    const val = merged[field];
+    const isEmpty =
+      val === undefined ||
+      val === null ||
+      (typeof val === "string" &&
+        (val.trim() === "" || val.trim() === "{}" || val.trim() === "[]"));
+
+    if (isEmpty) {
+      merged[field] = defaults[field];
+    }
+  });
+
+  // O mesmo para content
+  const rawContent = actualRaw.content;
+  let normalizedContent: Record<string, unknown> | undefined;
+
+  if (typeof rawContent === "string") {
+    const trimmed = rawContent.trim();
+    if (trimmed && trimmed !== "{}" && trimmed !== "[]") {
+      if (
+        (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+        (trimmed.startsWith("[") && trimmed.endsWith("]"))
+      ) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            normalizedContent = parsed as Record<string, unknown>;
+          } else {
+            normalizedContent = { text: rawContent };
+          }
+        } catch (_e) {
+          normalizedContent = { text: rawContent };
+        }
+      } else {
+        normalizedContent = { text: rawContent };
+      }
+    }
+  } else if (
+    rawContent &&
+    typeof rawContent === "object" &&
+    !Array.isArray(rawContent) &&
+    Object.keys(rawContent).length > 0
+  ) {
+    normalizedContent = rawContent as Record<string, unknown>;
+  }
+
+  const isDefaultContentString = typeof defaults.content === "string";
+
+  if (normalizedContent) {
+    if (isDefaultContentString) {
+      // Se o default é string, tentamos manter como string se for um objeto {text: ...} ou {value: ...}
+      merged.content =
+        normalizedContent.text ||
+        normalizedContent.value ||
+        (Object.keys(normalizedContent).length === 0 ? "" : normalizedContent);
+    } else {
+      const safeDefaultContent =
+        defaults.content &&
+          typeof defaults.content === "object" &&
+          !Array.isArray(defaults.content)
+          ? (defaults.content as Record<string, unknown>)
+          : {};
+
+      merged.content = {
+        ...safeDefaultContent,
+        ...normalizedContent,
+      };
+    }
+  } else if (defaults.content !== undefined) {
+    merged.content = defaults.content;
+  }
+
+  // Só forçamos objeto se o default NÃO for string
+  if (!isDefaultContentString) {
+    if (typeof merged.content === "string") {
+      const trimmed = (merged.content as string).trim();
+      if (!trimmed || trimmed === "{}" || trimmed === "[]") {
+        delete merged.content;
+      } else if (
+        (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+        (trimmed.startsWith("[") && trimmed.endsWith("]"))
+      ) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            merged.content = parsed as Record<string, unknown>;
+          } else {
+            merged.content = { text: merged.content };
+          }
+        } catch (_e) {
+          merged.content = { text: merged.content };
+        }
+      } else {
+        merged.content = { text: merged.content };
+      }
+    } else if (Array.isArray(merged.content)) {
+      merged.content = { items: merged.content };
+    } else if (
+      merged.content &&
+      typeof merged.content !== "object" &&
+      merged.content !== null
+    ) {
+      merged.content = { value: merged.content };
+    }
+  }
+
+  // O mesmo para appearance
+  const rawAppearance = actualRaw.appearance;
+  let normalizedAppearance: Record<string, unknown> | undefined;
+
+  if (typeof rawAppearance === "string") {
+    const trimmed = rawAppearance.trim();
+    if (trimmed && trimmed !== "{}" && trimmed !== "[]") {
+      if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            normalizedAppearance = parsed as Record<string, unknown>;
+          }
+        } catch (_e) { }
+      }
+    }
+  } else if (
+    rawAppearance &&
+    typeof rawAppearance === "object" &&
+    !Array.isArray(rawAppearance) &&
+    Object.keys(rawAppearance).length > 0
+  ) {
+    normalizedAppearance = rawAppearance as Record<string, unknown>;
+  }
+
+  const isDefaultAppearanceString = typeof defaults.appearance === "string";
+
+  if (normalizedAppearance) {
+    if (isDefaultAppearanceString) {
+      merged.appearance = normalizedAppearance;
+    } else {
+      const safeDefaultAppearance =
+        defaults.appearance &&
+          typeof defaults.appearance === "object" &&
+          !Array.isArray(defaults.appearance)
+          ? (defaults.appearance as Record<string, unknown>)
+          : {};
+
+      merged.appearance = {
+        ...safeDefaultAppearance,
+        ...normalizedAppearance,
+      };
+    }
+  } else if (defaults.appearance !== undefined) {
+    merged.appearance = defaults.appearance;
+  }
+
+  if (!isDefaultAppearanceString) {
+    if (typeof merged.appearance === "string") {
+      const trimmed = (merged.appearance as string).trim();
+      if (trimmed && trimmed !== "{}" && trimmed !== "[]") {
+        if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (
+              parsed &&
+              typeof parsed === "object" &&
+              !Array.isArray(parsed)
+            ) {
+              merged.appearance = parsed as Record<string, unknown>;
+            } else {
+              delete merged.appearance;
+            }
+          } catch (_e) {
+            delete merged.appearance;
+          }
+        } else {
+          delete merged.appearance;
+        }
+      } else {
+        delete merged.appearance;
+      }
+    } else if (Array.isArray(merged.appearance)) {
+      delete merged.appearance;
+    } else if (
+      merged.appearance &&
+      typeof merged.appearance !== "object" &&
+      merged.appearance !== null
+    ) {
+      delete merged.appearance;
+    }
+  }
+
+  // 1. Pilar 3: Reidratação de Cores (Recuperar de qualquer chave possível)
+  const sectionBgColor = sanitizeColor(
+    merged.bgColor ||
+    merged.backgroundColor ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.backgroundColor ||
+    (merged.appearance as Record<string, unknown> | undefined)?.bgColor ||
+    (raw as Record<string, unknown>).bgColor ||
+    (raw as Record<string, unknown>).backgroundColor ||
+    (raw as Record<string, unknown>).bg_color ||
+    (raw as Record<string, unknown>).background_color,
+  );
+
+  const sectionCardBgColor = sanitizeColor(
+    merged.cardBgColor ||
+    merged.cardBackgroundColor ||
+    (merged.appearance as Record<string, unknown> | undefined)?.cardBgColor ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.cardBackgroundColor ||
+    (merged.content as Record<string, unknown> | undefined)?.cardBgColor ||
+    (merged.content as Record<string, unknown> | undefined)
+      ?.cardBackgroundColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.cardBgColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.cardBackgroundColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.backgroundColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.card_bg_color ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.background_color ||
+    (raw as Record<string, unknown>).cardBgColor ||
+    (raw as Record<string, unknown>).cardBackgroundColor ||
+    (raw as Record<string, unknown>).card_bg_color ||
+    (raw as Record<string, unknown>).card_background_color ||
+    (raw as Record<string, unknown>).card_background ||
+    (raw as Record<string, unknown>).card_background_color,
+  );
+
+  if (sectionBgColor) {
+    merged.bgColor = sectionBgColor;
+    merged.backgroundColor = sectionBgColor;
+    merged.bg_color = sectionBgColor;
+    merged.background_color = sectionBgColor;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).backgroundColor =
+        sectionBgColor;
+      (merged.appearance as Record<string, unknown>).bgColor = sectionBgColor;
+      (merged.appearance as Record<string, unknown>).bg_color = sectionBgColor;
+      (merged.appearance as Record<string, unknown>).background_color =
+        sectionBgColor;
+    }
+  }
+
+  if (sectionCardBgColor) {
+    merged.cardBgColor = sectionCardBgColor;
+    merged.cardBackgroundColor = sectionCardBgColor;
+    merged.card_bg_color = sectionCardBgColor;
+    merged.card_background_color = sectionCardBgColor;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).cardBgColor =
+        sectionCardBgColor;
+      (merged.appearance as Record<string, unknown>).cardBackgroundColor =
+        sectionCardBgColor;
+      (merged.appearance as Record<string, unknown>).card_bg_color =
+        sectionCardBgColor;
+      (merged.appearance as Record<string, unknown>).card_background_color =
+        sectionCardBgColor;
+    }
+  }
+
+  const sectionCardIconColor = sanitizeColor(
+    merged.cardIconColor ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.cardIconColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.cardIconColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.iconColor ||
+    (raw as Record<string, unknown>).cardIconColor ||
+    (raw as Record<string, unknown>).card_icon_color ||
+    (raw as Record<string, unknown>).iconColor,
+  );
+
+  const sectionCardTitleColor = sanitizeColor(
+    merged.cardTitleColor ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.cardTitleColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.cardTitleColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.titleColor ||
+    (raw as Record<string, unknown>).cardTitleColor ||
+    (raw as Record<string, unknown>).card_title_color,
+  );
+
+  const sectionCardDescriptionColor = sanitizeColor(
+    merged.cardDescriptionColor ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.cardDescriptionColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.cardDescriptionColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.descriptionColor ||
+    (raw as Record<string, unknown>).cardDescriptionColor ||
+    (raw as Record<string, unknown>).card_description_color,
+  );
+
+  const sectionCardPriceColor = sanitizeColor(
+    merged.cardPriceColor ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.cardPriceColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.cardPriceColor ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.priceColor ||
+    (raw as Record<string, unknown>).cardPriceColor ||
+    (raw as Record<string, unknown>).card_price_color,
+  );
+
+  // 2. Pilar 2: Sincronização Multiponto (Injetar em todas as chaves)
+  if (sectionBgColor) {
+    merged.bgColor = sectionBgColor;
+    merged.backgroundColor = sectionBgColor;
+    merged.bg_color = sectionBgColor;
+    merged.background_color = sectionBgColor;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).backgroundColor =
+        sectionBgColor;
+      (merged.appearance as Record<string, unknown>).bgColor = sectionBgColor;
+      (merged.appearance as Record<string, unknown>).bg_color = sectionBgColor;
+      (merged.appearance as Record<string, unknown>).background_color =
+        sectionBgColor;
+    }
+  }
+
+  const cardConfig: Record<string, unknown> =
+    (merged.cardConfig as Record<string, unknown>) || {};
+
+  if (sectionCardBgColor) {
+    merged.cardBgColor = sectionCardBgColor;
+    merged.cardBackgroundColor = sectionCardBgColor;
+    cardConfig.cardBgColor = sectionCardBgColor;
+    cardConfig.cardBackgroundColor = sectionCardBgColor;
+    cardConfig.backgroundColor = sectionCardBgColor;
+    cardConfig.background_color = sectionCardBgColor;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).cardBgColor =
+        sectionCardBgColor;
+      (merged.appearance as Record<string, unknown>).cardBackgroundColor =
+        sectionCardBgColor;
+    }
+  }
+
+  if (sectionCardIconColor) {
+    merged.cardIconColor = sectionCardIconColor;
+    cardConfig.cardIconColor = sectionCardIconColor;
+    cardConfig.iconColor = sectionCardIconColor;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).cardIconColor =
+        sectionCardIconColor;
+    }
+  }
+
+  if (sectionCardTitleColor) {
+    merged.cardTitleColor = sectionCardTitleColor;
+    cardConfig.cardTitleColor = sectionCardTitleColor;
+    cardConfig.titleColor = sectionCardTitleColor;
+  }
+
+  if (sectionCardDescriptionColor) {
+    merged.cardDescriptionColor = sectionCardDescriptionColor;
+    cardConfig.cardDescriptionColor = sectionCardDescriptionColor;
+    cardConfig.descriptionColor = sectionCardDescriptionColor;
+  }
+
+  if (sectionCardPriceColor) {
+    merged.cardPriceColor = sectionCardPriceColor;
+    cardConfig.cardPriceColor = sectionCardPriceColor;
+    cardConfig.priceColor = sectionCardPriceColor;
+  }
+
+  // Reidratação de Fontes
+  const sectionTitleFont = sanitizeFont(
+    merged.titleFont ||
+    (merged.appearance as Record<string, unknown> | undefined)?.titleFont ||
+    (merged.content as Record<string, unknown> | undefined)?.titleFont ||
+    (raw as Record<string, unknown>).titleFont ||
+    (raw as Record<string, unknown>).title_font,
+  );
+
+  const sectionContentFont = sanitizeFont(
+    merged.contentFont ||
+    (merged.appearance as Record<string, unknown> | undefined)?.contentFont ||
+    (merged.content as Record<string, unknown> | undefined)?.contentFont ||
+    (raw as Record<string, unknown>).contentFont ||
+    (raw as Record<string, unknown>).content_font,
+  );
+
+  if (sectionTitleFont) {
+    merged.titleFont = sectionTitleFont;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).titleFont =
+        sectionTitleFont;
+    }
+    if (merged.content && typeof merged.content === "object") {
+      (merged.content as Record<string, unknown>).titleFont = sectionTitleFont;
+    }
+  }
+
+  if (sectionContentFont) {
+    merged.contentFont = sectionContentFont;
+    if (merged.appearance && typeof merged.appearance === "object") {
+      (merged.appearance as Record<string, unknown>).contentFont =
+        sectionContentFont;
+    }
+    if (merged.content && typeof merged.content === "object") {
+      (merged.content as Record<string, unknown>).contentFont =
+        sectionContentFont;
+    }
+  }
+
+  const sectionCardTitleFont = sanitizeFont(
+    merged.cardTitleFont ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.cardTitleFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.cardTitleFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.titleFont ||
+    (raw as Record<string, unknown>).cardTitleFont ||
+    (raw as Record<string, unknown>).card_title_font,
+  );
+
+  const sectionCardDescriptionFont = sanitizeFont(
+    merged.cardDescriptionFont ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.cardDescriptionFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.cardDescriptionFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.descriptionFont ||
+    (raw as Record<string, unknown>).cardDescriptionFont ||
+    (raw as Record<string, unknown>).card_description_font,
+  );
+
+  const sectionCardPriceFont = sanitizeFont(
+    merged.cardPriceFont ||
+    (merged.appearance as Record<string, unknown> | undefined)
+      ?.cardPriceFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)
+      ?.cardPriceFont ||
+    (merged.cardConfig as Record<string, unknown> | undefined)?.priceFont ||
+    (raw as Record<string, unknown>).cardPriceFont ||
+    (raw as Record<string, unknown>).card_price_font,
+  );
+
+  if (sectionCardTitleFont) {
+    merged.cardTitleFont = sectionCardTitleFont;
+    cardConfig.cardTitleFont = sectionCardTitleFont;
+    cardConfig.titleFont = sectionCardTitleFont;
+  }
+
+  if (sectionCardDescriptionFont) {
+    merged.cardDescriptionFont = sectionCardDescriptionFont;
+    cardConfig.cardDescriptionFont = sectionCardDescriptionFont;
+    cardConfig.descriptionFont = sectionCardDescriptionFont;
+  }
+
+  if (sectionCardPriceFont) {
+    merged.cardPriceFont = sectionCardPriceFont;
+    cardConfig.cardPriceFont = sectionCardPriceFont;
+    cardConfig.priceFont = sectionCardPriceFont;
+  }
+
+  if (Object.keys(cardConfig).length > 0) {
+    merged.cardConfig = cardConfig;
+  }
+
+  // 3. PILAR 1: Validar e Limpar via Schema (Zod)
+  // Isso garante que cores em formatos estranhos sejam convertidas e campos obrigatórios existam.
+  try {
+    // Verificação de segurança: Se o SectionSchema por algum motivo for undefined ou inválido,
+    // não chamamos o parse para evitar que o erro interno do Zod pare o editor.
+    if (SectionSchema && typeof SectionSchema.parse === "function") {
+      const validated = SectionSchema.parse(merged);
+      return normalizePersistenceData(validated) as T;
+    }
+    console.warn(
+      ">>> [SCHEMA_WARNING] SectionSchema não disponível para validação.",
+    );
+    return normalizePersistenceData(merged) as T;
+  } catch (e) {
+    console.error(">>> [SCHEMA_VALIDATION_ERROR] Erro ao validar seção:", e);
+    return normalizePersistenceData(merged) as T;
+  }
+};
+
+const getPayloadRoot = (config: SiteConfigData | null | undefined) => {
+  if (!config || typeof config !== "object") return {};
+  return (config.siteCustomization ||
+    config.site_customization ||
+    config) as SiteConfigData;
+};
+
+export const normalizePayload = (config: SiteConfigData | null | undefined) => {
+  const safeConfig = (config || {}) as SiteConfigData;
+  const root = getPayloadRoot(safeConfig);
+
+  const layoutGlobal = (root.layoutGlobal || root.layout_global) as
+    | Record<string, unknown>
+    | undefined;
+  const home = root.home as Record<string, unknown> | undefined;
+  const about = root.about as Record<string, unknown> | undefined;
+  const rootSections = root.sections as Record<string, unknown> | undefined;
+  const gallerySection = rootSections?.gallery as
+    | Record<string, unknown>
+    | undefined;
+  const galleryStyles = gallerySection?.styles as
+    | Record<string, unknown>
+    | undefined;
+  const galleryBackgroundColor =
+    typeof galleryStyles?.backgroundColor === "string"
+      ? galleryStyles.backgroundColor
+      : undefined;
+  const gallerySectionWithAppearance = gallerySection
+    ? {
+      ...gallerySection,
+      bgColor:
+        (gallerySection.bgColor as string | undefined) ||
+        galleryBackgroundColor,
+      appearance: {
+        ...((gallerySection.appearance as Record<string, unknown>) || {}),
+        backgroundColor:
+          (gallerySection.appearance as Record<string, unknown> | undefined)
+            ?.backgroundColor || galleryBackgroundColor,
+      },
+    }
+    : undefined;
+
+  const sections: SectionsMap = {
+    // 1. Preservar seções existentes para não perder nada novo
+    ...(rootSections || {}),
+    [SECTION_IDS.homeHero]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeHero] ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeHero
+      ] ||
+      (root.hero as SectionConfig | undefined) ||
+      (layoutGlobal?.hero as SectionConfig | undefined) ||
+      (home?.heroSection as SectionConfig | undefined) ||
+      (home?.hero as SectionConfig | undefined),
+      defaultHeroSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.aboutHero]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.aboutHero] ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.aboutHero
+      ] ||
+      (root.aboutHero as SectionConfig | undefined) ||
+      (layoutGlobal?.aboutHero as SectionConfig | undefined) ||
+      (about?.heroSection as SectionConfig | undefined) ||
+      (about?.hero as SectionConfig | undefined),
+      defaultAboutHeroSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeStory]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeStory] ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeStory
+      ] ||
+      (home?.storySection as SectionConfig | undefined) ||
+      (home?.story as SectionConfig | undefined) ||
+      (layoutGlobal?.story as SectionConfig | undefined) ||
+      (root.story as SectionConfig | undefined),
+      defaultStorySettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeTeam]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeTeam] ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeTeam
+      ] ||
+      (home?.teamSection as SectionConfig | undefined) ||
+      (home?.team as SectionConfig | undefined) ||
+      (layoutGlobal?.team as SectionConfig | undefined) ||
+      (root.team as SectionConfig | undefined),
+      defaultTeamSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeTestimonials]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeTestimonials
+      ] ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeTestimonials
+      ] ||
+      (home?.testimonialsSection as SectionConfig | undefined) ||
+      (home?.testimonials as SectionConfig | undefined) ||
+      (layoutGlobal?.testimonials as SectionConfig | undefined) ||
+      (root.testimonials as SectionConfig | undefined),
+      defaultTestimonialsSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeServices]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeServices] ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeServices
+      ] ||
+      (home?.servicesSection as SectionConfig | undefined) ||
+      (home?.services as SectionConfig | undefined) ||
+      (layoutGlobal?.services as SectionConfig | undefined) ||
+      (root.services as SectionConfig | undefined),
+      defaultServicesSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeValues]: normalizeSectionConfig(
+      (() => {
+        const raw =
+          (root.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeValues
+          ] ||
+          (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.homeValues
+          ] ||
+          (home?.homeValuesSettings as SectionConfig | undefined) ||
+          (home?.valuesSection as SectionConfig | undefined) ||
+          (home?.values as SectionConfig | undefined) ||
+          (layoutGlobal?.homeValuesSettings as SectionConfig | undefined) ||
+          (root.homeValuesSettings as SectionConfig | undefined) ||
+          (root.values as SectionConfig | undefined) ||
+          (root.valuesSection as SectionConfig | undefined);
+        if (!raw) return raw;
+        const legacyBgColor =
+          sanitizeColor(
+            raw.values_bg ||
+            raw.about_values_bg ||
+            root.values_bg ||
+            root.valuesBg,
+          ) || "";
+        if (!raw.bgColor && legacyBgColor) {
+          return {
+            ...raw,
+            bgColor: legacyBgColor,
+            backgroundColor: legacyBgColor,
+          };
+        }
+        return raw as SectionConfig;
+      })(),
+      defaultValuesSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.aboutValues]: normalizeSectionConfig(
+      (() => {
+        const raw =
+          (root.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.aboutValues
+          ] ||
+          (layoutGlobal?.sections as SectionsMap | undefined)?.[
+          SECTION_IDS.aboutValues
+          ] ||
+          (root.aboutUsValuesSettings as SectionConfig | undefined) ||
+          (root.aboutUsValues as SectionConfig | undefined) ||
+          (about?.aboutUsValuesSettings as SectionConfig | undefined) ||
+          (about?.aboutUsValues as SectionConfig | undefined) ||
+          (about?.valuesSection as SectionConfig | undefined) ||
+          (about?.values as SectionConfig | undefined) ||
+          (layoutGlobal?.aboutUsValuesSettings as SectionConfig | undefined) ||
+          (layoutGlobal?.aboutUsValues as SectionConfig | undefined) ||
+          (root.about_us_values as SectionConfig | undefined);
+        if (!raw) return raw;
+        const legacyBgColor =
+          sanitizeColor(
+            raw.about_values_bg ||
+            raw.values_bg ||
+            root.about_values_bg ||
+            root.aboutValuesBg,
+          ) || "";
+        if (!raw.bgColor && legacyBgColor) {
+          return {
+            ...raw,
+            bgColor: legacyBgColor,
+            backgroundColor: legacyBgColor,
+          };
+        }
+        return raw as SectionConfig;
+      })(),
+      defaultValuesSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeGallery]: normalizeSectionConfig(
+      (home?.galleryPreview as SectionConfig | undefined) ||
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeGallery] ||
+      (gallerySectionWithAppearance as SectionConfig | undefined) ||
+      ((root.sections as Record<string, unknown> | undefined)
+        ?.galleryPreview as SectionConfig | undefined) ||
+      ((root.sections as Record<string, unknown> | undefined)
+        ?.galleryPreviewSettings as SectionConfig | undefined) ||
+      ((root.sections as Record<string, unknown> | undefined)
+        ?.gallerySection as SectionConfig | undefined) ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeGallery
+      ] ||
+      (root.galleryPreviewSettings as SectionConfig | undefined) ||
+      (layoutGlobal?.galleryPreview as SectionConfig | undefined) ||
+      (layoutGlobal?.gallerySection as SectionConfig | undefined) ||
+      (home?.gallerySection as SectionConfig | undefined),
+      defaultGallerySettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.pageGallery]: normalizeSectionConfig(
+      (root.gallery as SectionConfig | undefined) ||
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.pageGallery] ||
+      ((root.sections as Record<string, unknown> | undefined)
+        ?.galleryPageSettings as SectionConfig | undefined) ||
+      ((root.sections as Record<string, unknown> | undefined)?.gallery as
+        | SectionConfig
+        | undefined) ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.pageGallery
+      ] ||
+      (root.galleryPageSettings as SectionConfig | undefined) ||
+      (layoutGlobal?.gallery as SectionConfig | undefined),
+      defaultGallerySettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.homeCta]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.homeCta] ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.homeCta
+      ] ||
+      (home?.ctaSection as SectionConfig | undefined) ||
+      (home?.cta as SectionConfig | undefined) ||
+      (layoutGlobal?.cta as SectionConfig | undefined) ||
+      (root.cta as SectionConfig | undefined),
+      defaultCTASettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.layoutHeader]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.layoutHeader] ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.layoutHeader
+      ] ||
+      (root.header as SectionConfig | undefined) ||
+      (layoutGlobal?.header as SectionConfig | undefined),
+      defaultHeaderSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.layoutFooter]: normalizeSectionConfig(
+      (root.sections as SectionsMap | undefined)?.[SECTION_IDS.layoutFooter] ||
+      (layoutGlobal?.sections as SectionsMap | undefined)?.[
+      SECTION_IDS.layoutFooter
+      ] ||
+      (root.footer as SectionConfig | undefined) ||
+      (layoutGlobal?.footer as SectionConfig | undefined),
+      defaultFooterSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.bookingService]: normalizeSectionConfig(
+      ((root.sections as SectionsMap | undefined)?.[
+        SECTION_IDS.bookingService
+      ] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+        SECTION_IDS.bookingService
+        ] ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)
+          ?.service as SectionConfig | undefined) ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.service ||
+        ((root.bookingSteps as Record<string, unknown> | undefined)?.service as
+          | SectionConfig
+          | undefined) ||
+        (root.bookingService as SectionConfig | undefined)) as
+      | SectionConfig
+      | undefined,
+      defaultBookingServiceSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.bookingDate]: normalizeSectionConfig(
+      ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingDate] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+        SECTION_IDS.bookingDate
+        ] ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.date as
+          | SectionConfig
+          | undefined) ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.date ||
+        ((root.bookingSteps as Record<string, unknown> | undefined)?.date as
+          | SectionConfig
+          | undefined) ||
+        (root.bookingDate as SectionConfig | undefined)) as
+      | SectionConfig
+      | undefined,
+      defaultBookingDateSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.bookingTime]: normalizeSectionConfig(
+      ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingTime] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+        SECTION_IDS.bookingTime
+        ] ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.time as
+          | SectionConfig
+          | undefined) ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.time ||
+        ((root.bookingSteps as Record<string, unknown> | undefined)?.time as
+          | SectionConfig
+          | undefined) ||
+        (root.bookingTime as SectionConfig | undefined)) as
+      | SectionConfig
+      | undefined,
+      defaultBookingTimeSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.bookingForm]: normalizeSectionConfig(
+      ((root.sections as SectionsMap | undefined)?.[SECTION_IDS.bookingForm] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+        SECTION_IDS.bookingForm
+        ] ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)?.form as
+          | SectionConfig
+          | undefined) ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.form ||
+        ((root.bookingSteps as Record<string, unknown> | undefined)?.form as
+          | SectionConfig
+          | undefined) ||
+        (root.bookingForm as SectionConfig | undefined)) as
+      | SectionConfig
+      | undefined,
+      defaultBookingFormSettings as unknown as SectionConfig,
+    ),
+    [SECTION_IDS.bookingConfirmation]: normalizeSectionConfig(
+      ((root.sections as SectionsMap | undefined)?.[
+        SECTION_IDS.bookingConfirmation
+      ] ||
+        (layoutGlobal?.sections as SectionsMap | undefined)?.[
+        SECTION_IDS.bookingConfirmation
+        ] ||
+        ((root.appointmentFlow as Record<string, unknown> | undefined)
+          ?.confirmation as SectionConfig | undefined) ||
+        (
+          (root.appointmentFlow as Record<string, unknown> | undefined)
+            ?.steps as Record<string, unknown> | undefined
+        )?.confirmation ||
+        ((root.bookingSteps as Record<string, unknown> | undefined)
+          ?.confirmation as SectionConfig | undefined) ||
+        (root.bookingConfirmation as SectionConfig | undefined)) as
+      | SectionConfig
+      | undefined,
+      defaultBookingConfirmationSettings as unknown as SectionConfig,
+    ),
+  };
+
+  const normalizedRoot = {
+    ...root,
+    sections,
+  };
+
+  return {
+    ...safeConfig,
+    siteCustomization: normalizedRoot,
+    site_customization: normalizedRoot,
+    sections,
+  } as SiteConfigData;
+};
+
 export function getStorageKey(key: string): string {
   if (typeof window === "undefined") return key;
   const userId = localStorage.getItem("current_admin_id");
   const result = userId ? `${userId}_${key}` : key;
-  // console.log(`>>> [getStorageKey] key: ${key} -> result: ${result}`);
   return result;
+}
+
+export function updateDraftTimestamp(): void {
+  if (typeof window === "undefined") return;
+  const timestamp = new Date().toISOString();
+  localStorage.setItem(getStorageKey("last_draft_update"), timestamp);
+  console.log(`>>> [booking-data] Draft timestamp atualizado: ${timestamp}`);
+
+  // Dispara evento para o editor saber que houve mudança e salvar no banco
+  window.dispatchEvent(
+    new CustomEvent("local_draft_changed", { detail: { timestamp } }),
+  );
+}
+
+export function getDraftTimestamp(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(getStorageKey("last_draft_update"));
 }
 
 export type NotificationSettings = {
@@ -224,16 +1498,62 @@ export const defaultFooterSettings: FooterSettings = {
   bodyFont: "Inter",
 };
 
+export type AppearanceSettings = {
+  backgroundColor?: string;
+  bgColor?: string;
+  backgroundImageUrl?: string;
+  primaryColor?: string;
+  accentColor?: string;
+  titleColor?: string;
+  subtitleColor?: string;
+  titleFont?: string;
+  subtitleFont?: string;
+  cardBgColor?: string;
+  cardBackgroundColor?: string;
+  cardTitleColor?: string;
+  cardDescriptionColor?: string;
+  cardPriceColor?: string;
+  cardIconColor?: string;
+  cardTitleFont?: string;
+  cardDescriptionFont?: string;
+  badgeColor?: string;
+  badgeTextColor?: string;
+  primaryButtonColor?: string;
+  secondaryButtonColor?: string;
+  primaryButtonTextColor?: string;
+  secondaryButtonTextColor?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+  cardBorderRadius?: number;
+  cardBorderWidth?: number;
+  cardBorderColor?: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
+  bgType?: string;
+  overlay?: {
+    color: string;
+    opacity: number;
+  };
+  imageOpacity?: number;
+  imageScale?: number;
+  imageX?: number;
+  imageY?: number;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
+};
+
 export type HeroSettings = {
   badge: string;
   showBadge: boolean;
+  title: string;
+  subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
+  primaryButton: string;
+  secondaryButton: string;
   badgeIcon: string;
   badgeColor: string;
   badgeTextColor: string;
-  title: string;
-  subtitle: string;
-  primaryButton: string;
-  secondaryButton: string;
   bgType: "color" | "image";
   bgColor: string;
   bgImage: string;
@@ -243,20 +1563,29 @@ export type HeroSettings = {
   imageX: number;
   imageY: number;
   titleFont: string;
+  titleSize?: HeroTemplateTitleSize;
   subtitleFont: string;
   badgeFont: string;
   primaryButtonColor: string;
   secondaryButtonColor: string;
   primaryButtonTextColor: string;
+  primaryButtonTransparent?: boolean;
   secondaryButtonTextColor: string;
+  secondaryButtonTransparent?: boolean;
   titleColor: string;
   subtitleColor: string;
   primaryButtonFont: string;
   secondaryButtonFont: string;
+  primaryButtonLink?: string;
+  secondaryButtonLink?: string;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
+  appearance?: AppearanceSettings;
 };
 
 export type StorySettings = {
   title: string;
+  showTitle?: boolean;
   titleColor: string;
   titleFont: string;
   content: string;
@@ -271,6 +1600,8 @@ export type StorySettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  buttonShape?: "pill" | "square" | "sharp";
+  appearance?: AppearanceSettings;
 };
 
 export type ValueItem = {
@@ -283,6 +1614,8 @@ export type ValueItem = {
 export type ValuesSettings = {
   title: string;
   subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
   titleColor: string;
   subtitleColor: string;
   titleFont: string;
@@ -295,6 +1628,9 @@ export type ValuesSettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
+  appearance?: AppearanceSettings;
   // Card specific styles
   cardBgColor: string;
   cardTitleColor: string;
@@ -302,12 +1638,18 @@ export type ValuesSettings = {
   cardIconColor: string;
   cardTitleFont: string;
   cardDescriptionFont: string;
+  cardTextColor?: string;
+  iconColor?: string;
+  borderRadius?: string;
+  backgroundColor?: string;
   items: ValueItem[];
 };
 
 export type ServicesSettings = {
   title: string;
   subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
   titleColor: string;
   subtitleColor: string;
   titleFont: string;
@@ -320,6 +1662,7 @@ export type ServicesSettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  appearance?: AppearanceSettings;
   // Card specific styles
   cardBgColor: string;
   cardTitleColor: string;
@@ -332,28 +1675,32 @@ export type ServicesSettings = {
   cardBorderRadius?: string;
   cardBorderWidth?: string;
   cardBorderColor?: string;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
 };
 
 export const defaultServicesSettings: ServicesSettings = {
   title: "Nossos Serviços",
   subtitle: "Tratamentos especializados para realçar seu olhar",
-  titleColor: "",
-  subtitleColor: "",
+  showTitle: true,
+  showSubtitle: true,
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.5,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  cardBgColor: "",
-  cardTitleColor: "",
-  cardDescriptionColor: "",
-  cardPriceColor: "",
-  cardIconColor: "",
+  cardBgColor: "#FFFFFF",
+  cardTitleColor: "#000000",
+  cardDescriptionColor: "#000000",
+  cardPriceColor: "#000000",
+  cardIconColor: "#000000",
   cardTitleFont: "",
   cardDescriptionFont: "",
   cardPriceFont: "",
@@ -361,45 +1708,55 @@ export const defaultServicesSettings: ServicesSettings = {
 
 export const defaultStorySettings: StorySettings = {
   title: "Nossa História",
-  titleColor: "",
+  titleColor: "#000000",
   titleFont: "",
   content:
-    "O Brow Studio nasceu da paixão por realçar a beleza natural de cada pessoa através do design de sobrancelhas. Com mais de 10 anos de experiência no mercado, nos especializamos em técnicas avançadas que valorizam a individualidade de cada cliente.\n\nNossa missão é proporcionar não apenas um serviço de qualidade, mas uma experiência transformadora. Acreditamos que sobrancelhas bem feitas têm o poder de elevar a autoestima e destacar a beleza única de cada pessoa.\n\nInvestimos constantemente em capacitação e nas melhores técnicas do mercado para garantir resultados excepcionais e a satisfação total de nossas clientes.",
-  contentColor: "",
+    "A Aura Sistema nasceu da paixão por realçar a beauty natural de cada pessoa através do design de sobrancelhas. Com mais de 10 anos de experiência no mercado, nos especializamos em técnicas avançadas que valorizam a individualidade de cada cliente.\n\nNossa missão é proporcionar não apenas um serviço de qualidade, mas uma experiência transformadora. Acreditamos que sobrancelhas bem feitas têm o poder de elevar a autoestima e destacar a beleza única de cada pessoa.\n\nInvestimos constantemente em capacitação e nas melhores técnicas do mercado para garantir resultados excepcionais e a satisfação total de nossas clientes.",
+  contentColor: "#000000",
   contentFont: "",
   image: "/professional-eyebrow-artist-at-work.jpg",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
+  appearance: {
+    backgroundColor: "#FFFFFF",
+    backgroundImageUrl: "",
+  },
 };
 
 export const defaultValuesSettings: ValuesSettings = {
   title: "Nossos Valores",
   subtitle:
     "Os princípios que guiam nosso trabalho e relacionamento com cada cliente",
-  titleColor: "",
-  subtitleColor: "",
+  showTitle: true,
+  showSubtitle: true,
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.5,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  cardBgColor: "",
-  cardTitleColor: "",
-  cardDescriptionColor: "",
-  cardIconColor: "",
+  cardBgColor: "#FFFFFF",
+  cardTitleColor: "#000000",
+  cardDescriptionColor: "#000000",
+  cardIconColor: "#000000",
   cardTitleFont: "",
   cardDescriptionFont: "",
+  cardTextColor: "#000000",
+  iconColor: "#000000",
+  borderRadius: "8px",
+  backgroundColor: "#FFFFFF",
   items: [
     {
       id: "1",
@@ -429,12 +1786,21 @@ export const defaultValuesSettings: ValuesSettings = {
       description:
         "Sempre atualizadas com as últimas tendências e técnicas do mercado de beleza.",
     },
+    {
+      id: "5",
+      icon: "Medal",
+      title: "Biossegurança e Higiene",
+      description:
+        "Seguimos rigorosos protocolos de esterilização e materiais descartáveis para sua total segurança.",
+    },
   ],
 };
 
 export type GallerySettings = {
   title: string;
   subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
   buttonText: string;
   titleColor: string;
   subtitleColor: string;
@@ -443,6 +1809,7 @@ export type GallerySettings = {
   titleFont: string;
   subtitleFont: string;
   buttonFont: string;
+  buttonLink?: string;
   layout: "grid" | "carousel";
   bgType: "color" | "image";
   bgColor: string;
@@ -452,6 +1819,20 @@ export type GallerySettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  appearance?: AppearanceSettings;
+  // Estruturas conforme contrato
+  gridConfig?: {
+    columns: number;
+    gap: string;
+  };
+  displayLogic?: {
+    photoCount: number;
+  };
+  photoStyle?: {
+    borderRadius: string;
+  };
+  // Card specific styles
+  cardBgColor?: string;
 };
 
 export const defaultGallerySettings: GallerySettings = {
@@ -459,27 +1840,40 @@ export const defaultGallerySettings: GallerySettings = {
   subtitle:
     "Veja alguns dos resultados incríveis que alcançamos com nossas clientes",
   buttonText: "Ver Galeria Completa",
-  titleColor: "",
-  subtitleColor: "",
-  buttonColor: "",
-  buttonTextColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#666666",
+  buttonColor: "#000000",
+  buttonTextColor: "#FFFFFF",
   titleFont: "",
   subtitleFont: "",
   buttonFont: "",
   layout: "grid",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.5,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
+  cardBgColor: "transparent",
+  gridConfig: {
+    columns: 3,
+    gap: "16px",
+  },
+  displayLogic: {
+    photoCount: 6,
+  },
+  photoStyle: {
+    borderRadius: "8px",
+  },
 };
 
 export type CTASettings = {
   title: string;
   subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
   buttonText: string;
   titleColor: string;
   subtitleColor: string;
@@ -488,6 +1882,7 @@ export type CTASettings = {
   titleFont: string;
   subtitleFont: string;
   buttonFont: string;
+  buttonLink?: string;
   bgType: "color" | "image";
   bgColor: string;
   bgImage: string;
@@ -496,11 +1891,15 @@ export type CTASettings = {
   imageScale: number;
   imageX: number;
   imageY: number;
+  buttonShape?: "pill" | "square" | "sharp";
+  appearance?: AppearanceSettings;
 };
 
 export type BookingStepSettings = {
   title: string;
   subtitle: string;
+  showTitle?: boolean;
+  showSubtitle?: boolean;
   titleColor: string;
   subtitleColor: string;
   titleFont: string;
@@ -517,112 +1916,211 @@ export type BookingStepSettings = {
   cardBgColor?: string;
   interval?: string | number;
   slotInterval?: string | number;
+  minimumBookingLeadMinutes?: number;
   step3Times?: {
     interval?: string | number;
+    minimumBookingLeadMinutes?: number;
   };
+  buttonColor?: string;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
+  appearance?: AppearanceSettings;
 };
 
 export const defaultBookingServiceSettings: BookingStepSettings = {
   title: "Escolha seus Serviços",
   subtitle: "Selecione um ou mais serviços para o seu agendamento",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "",
-  cardBgColor: "",
+  accentColor: "#000000",
+  cardBgColor: "#FFFFFF",
+  minimumBookingLeadMinutes: 0,
+  step3Times: {
+    minimumBookingLeadMinutes: 0,
+  },
+  appearance: {
+    backgroundImageUrl: "",
+  },
 };
 
 export const defaultBookingDateSettings: BookingStepSettings = {
   title: "Escolha a Data",
   subtitle: "Selecione o dia de sua preferência",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "",
-  cardBgColor: "",
+  accentColor: "#000000",
+  cardBgColor: "#FFFFFF",
+  appearance: {
+    backgroundImageUrl: "",
+  },
 };
 
 export const defaultBookingTimeSettings: BookingStepSettings = {
   title: "Escolha o Horário",
   subtitle: "Selecione o melhor horário disponível",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "",
-  cardBgColor: "",
+  accentColor: "#000000",
+  cardBgColor: "#FFFFFF",
+  appearance: {
+    backgroundImageUrl: "",
+  },
 };
 
 export const defaultBookingFormSettings: BookingStepSettings = {
   title: "Seus Dados",
   subtitle: "Preencha suas informações para finalizar o agendamento",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "",
-  cardBgColor: "",
+  accentColor: "#000000",
+  cardBgColor: "#FFFFFF",
+  appearance: {
+    backgroundImageUrl: "",
+  },
 };
 
 export const defaultBookingConfirmationSettings: BookingStepSettings = {
   title: "Agendamento Confirmado!",
   subtitle: "Tudo pronto! Você receberá um e-mail com os detalhes.",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  accentColor: "",
-  cardBgColor: "",
+  accentColor: "#000000",
+  cardBgColor: "#FFFFFF",
+  appearance: {
+    backgroundImageUrl: "",
+  },
 };
 
-export function getBookingServiceSettings(): BookingStepSettings {
-  if (typeof window === "undefined") return defaultBookingServiceSettings;
-  const settings = localStorage.getItem(
-    getStorageKey("bookingServiceSettings"),
-  );
-  return settings ? JSON.parse(settings) : defaultBookingServiceSettings;
+export interface BookingConfig {
+  appointmentFlow?: {
+    steps?: {
+      service?: BookingStepSettings;
+      date?: BookingStepSettings;
+      time?: BookingStepSettings;
+      form?: BookingStepSettings;
+      confirmation?: BookingStepSettings;
+    };
+    service?: BookingStepSettings;
+    date?: BookingStepSettings;
+    time?: BookingStepSettings;
+    form?: BookingStepSettings;
+    confirmation?: BookingStepSettings;
+  };
+  appointment_flow?: BookingConfig["appointmentFlow"];
+  bookingSteps?: {
+    service?: BookingStepSettings;
+    date?: BookingStepSettings;
+    time?: BookingStepSettings;
+    form?: BookingStepSettings;
+    confirmation?: BookingStepSettings;
+  };
+}
+
+export function getBookingServiceSettings(
+  studio?: Record<string, unknown>,
+): BookingStepSettings {
+  const flow = (studio?.appointmentFlow || studio?.appointment_flow) as
+    | Record<string, unknown>
+    | undefined;
+  const step1 = (flow?.step1Services ||
+    flow?.step1_services ||
+    flow?.step1_service ||
+    (studio?.bookingSteps as Record<string, unknown> | undefined)?.service ||
+    {}) as Record<string, unknown>;
+
+  let normalized = normalizeStepSettings(step1, defaultBookingServiceSettings);
+
+  if (
+    normalized.bgColor &&
+    normalized.bgColor !== "transparent" &&
+    !normalized.bgImage
+  ) {
+    normalized.bgType = "color";
+  }
+
+  // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(
+      getStorageKey("bookingServiceSettings"),
+    );
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        normalized = normalizeStepSettings(saved, normalized);
+
+        if (
+          normalized.bgColor &&
+          normalized.bgColor !== "transparent" &&
+          !normalized.bgImage
+        ) {
+          normalized.bgType = "color";
+        }
+      } catch (e) {
+        console.error("Erro ao parsear bookingServiceSettings:", e);
+      }
+    }
+  }
+
+  return {
+    ...normalized,
+    title: normalized.title || "Escolha seus Serviços",
+    subtitle:
+      normalized.subtitle ||
+      "Selecione um ou mais serviços para o seu agendamento",
+    bgColor: normalized.bgColor || "#ffffff",
+    cardBgColor: normalized.cardBgColor || "rgba(255,255,255,0.6)",
+    accentColor: normalized.accentColor || "#000000",
+  };
 }
 
 export function saveBookingServiceSettings(
@@ -632,15 +2130,53 @@ export function saveBookingServiceSettings(
     getStorageKey("bookingServiceSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingServiceSettingsUpdated"));
   }
 }
 
-export function getBookingDateSettings(): BookingStepSettings {
-  if (typeof window === "undefined") return defaultBookingDateSettings;
-  const settings = localStorage.getItem(getStorageKey("bookingDateSettings"));
-  return settings ? JSON.parse(settings) : defaultBookingDateSettings;
+export function getBookingDateSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
+  const stepConfig =
+    (config?.bookingSteps?.date as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.steps?.date as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointment_flow?.steps?.date as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointmentFlow?.date as Record<string, unknown> | undefined) ||
+    (config?.appointment_flow?.date as Record<string, unknown> | undefined);
+
+  let base = normalizeStepSettings(
+    stepConfig as Record<string, unknown> | undefined,
+    defaultBookingDateSettings,
+  );
+
+  if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+    base.bgType = "color";
+  }
+
+  // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingDateSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = normalizeStepSettings(saved, base);
+
+        if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+          base.bgType = "color";
+        }
+      } catch (e) {
+        console.error("Erro ao parsear bookingDateSettings:", e);
+      }
+    }
+  }
+
+  return base;
 }
 
 export function saveBookingDateSettings(settings: BookingStepSettings): void {
@@ -648,15 +2184,53 @@ export function saveBookingDateSettings(settings: BookingStepSettings): void {
     getStorageKey("bookingDateSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingDateSettingsUpdated"));
   }
 }
 
-export function getBookingTimeSettings(): BookingStepSettings {
-  if (typeof window === "undefined") return defaultBookingTimeSettings;
-  const settings = localStorage.getItem(getStorageKey("bookingTimeSettings"));
-  return settings ? JSON.parse(settings) : defaultBookingTimeSettings;
+export function getBookingTimeSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
+  const stepConfig =
+    (config?.bookingSteps?.time as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.steps?.time as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointment_flow?.steps?.time as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointmentFlow?.time as Record<string, unknown> | undefined) ||
+    (config?.appointment_flow?.time as Record<string, unknown> | undefined);
+
+  let base = normalizeStepSettings(
+    stepConfig as Record<string, unknown> | undefined,
+    defaultBookingTimeSettings,
+  );
+
+  if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+    base.bgType = "color";
+  }
+
+  // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingTimeSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = normalizeStepSettings(saved, base);
+
+        if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+          base.bgType = "color";
+        }
+      } catch (e) {
+        console.error("Erro ao parsear bookingTimeSettings:", e);
+      }
+    }
+  }
+
+  return base;
 }
 
 export function saveBookingTimeSettings(settings: BookingStepSettings): void {
@@ -664,15 +2238,53 @@ export function saveBookingTimeSettings(settings: BookingStepSettings): void {
     getStorageKey("bookingTimeSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingTimeSettingsUpdated"));
   }
 }
 
-export function getBookingFormSettings(): BookingStepSettings {
-  if (typeof window === "undefined") return defaultBookingFormSettings;
-  const settings = localStorage.getItem(getStorageKey("bookingFormSettings"));
-  return settings ? JSON.parse(settings) : defaultBookingFormSettings;
+export function getBookingFormSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
+  const stepConfig =
+    (config?.bookingSteps?.form as Record<string, unknown> | undefined) ||
+    (config?.appointmentFlow?.steps?.form as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointment_flow?.steps?.form as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointmentFlow?.form as Record<string, unknown> | undefined) ||
+    (config?.appointment_flow?.form as Record<string, unknown> | undefined);
+
+  let base = normalizeStepSettings(
+    stepConfig as Record<string, unknown> | undefined,
+    defaultBookingFormSettings,
+  );
+
+  if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+    base.bgType = "color";
+  }
+
+  // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(getStorageKey("bookingFormSettings"));
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = normalizeStepSettings(saved, base);
+
+        if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+          base.bgType = "color";
+        }
+      } catch (e) {
+        console.error("Erro ao parsear bookingFormSettings:", e);
+      }
+    }
+  }
+
+  return base;
 }
 
 export function saveBookingFormSettings(settings: BookingStepSettings): void {
@@ -680,17 +2292,61 @@ export function saveBookingFormSettings(settings: BookingStepSettings): void {
     getStorageKey("bookingFormSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingFormSettingsUpdated"));
   }
 }
 
-export function getBookingConfirmationSettings(): BookingStepSettings {
-  if (typeof window === "undefined") return defaultBookingConfirmationSettings;
-  const settings = localStorage.getItem(
-    getStorageKey("bookingConfirmationSettings"),
+export function getBookingConfirmationSettings(
+  config?: BookingConfig,
+): BookingStepSettings {
+  const stepConfig =
+    (config?.bookingSteps?.confirmation as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointmentFlow?.steps?.confirmation as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointment_flow?.steps?.confirmation as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointmentFlow?.confirmation as
+      | Record<string, unknown>
+      | undefined) ||
+    (config?.appointment_flow?.confirmation as
+      | Record<string, unknown>
+      | undefined);
+
+  let base = normalizeStepSettings(
+    stepConfig as Record<string, unknown> | undefined,
+    defaultBookingConfirmationSettings,
   );
-  return settings ? JSON.parse(settings) : defaultBookingConfirmationSettings;
+
+  if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+    base.bgType = "color";
+  }
+
+  // Tenta carregar do localStorage (Sobrescreve config se houver rascunho local)
+  if (typeof window !== "undefined") {
+    const settings = localStorage.getItem(
+      getStorageKey("bookingConfirmationSettings"),
+    );
+    if (settings) {
+      try {
+        const saved = JSON.parse(settings);
+        base = normalizeStepSettings(saved, base);
+
+        if (base.bgColor && base.bgColor !== "transparent" && !base.bgImage) {
+          base.bgType = "color";
+        }
+      } catch (e) {
+        console.error("Erro ao parsear bookingConfirmationSettings:", e);
+      }
+    }
+  }
+
+  return base;
 }
 
 export function saveBookingConfirmationSettings(
@@ -700,9 +2356,56 @@ export function saveBookingConfirmationSettings(
     getStorageKey("bookingConfirmationSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("bookingConfirmationSettingsUpdated"));
   }
+}
+
+export function clearAllCustomizationCache(): void {
+  if (typeof window === "undefined") return;
+
+  const keysToClear = [
+    "heroSettings",
+    "aboutHeroSettings",
+    "storySettings",
+    "teamSettings",
+    "testimonialsSettings",
+    "fontSettings",
+    "colorSettings",
+    "servicesSettings",
+    "valuesSettings",
+    "homeValuesSettings",
+    "aboutUsValuesSettings",
+    "gallerySettings",
+    "ctaSettings",
+    "headerSettings",
+    "footerSettings",
+    "bookingServiceSettings",
+    "bookingDateSettings",
+    "bookingTimeSettings",
+    "bookingFormSettings",
+    "bookingConfirmationSettings",
+    "pageVisibility",
+    "visibleSections",
+    "layoutGlobal",
+    "siteProfile",
+    "studio_data",
+    "studio_last_slug",
+    "last_draft_update",
+    "services",
+    "studioSettings",
+  ];
+
+  keysToClear.forEach((key) => {
+    localStorage.removeItem(getStorageKey(key));
+    // Também limpa a versão sem o prefixo do usuário, por precaução
+    localStorage.removeItem(key);
+    localStorage.removeItem(`aura_${key}`);
+    localStorage.removeItem(`booking_${key}`);
+  });
+
+  console.log(">>> [booking-data] Todo o cache de customização foi limpo.");
 }
 
 export type TeamMember = {
@@ -735,6 +2438,9 @@ export type TeamSettings = {
   cardTitleFont: string;
   cardRoleFont: string;
   cardDescriptionFont: string;
+  buttonShape?: "pill" | "square" | "sharp";
+  badgeShape?: "pill" | "square" | "sharp";
+  appearance?: AppearanceSettings;
   members: TeamMember[];
 };
 
@@ -743,6 +2449,7 @@ export type Testimonial = {
   name: string;
   text: string;
   rating: number;
+  image?: string;
 };
 
 export type TestimonialsSettings = {
@@ -766,6 +2473,7 @@ export type TestimonialsSettings = {
   cardTextColor: string;
   cardNameFont: string;
   cardTextFont: string;
+  appearance?: AppearanceSettings;
   testimonials: Testimonial[];
 };
 
@@ -774,15 +2482,15 @@ export const defaultCTASettings: CTASettings = {
   subtitle:
     "Agende seu horário agora e descubra como sobrancelhas bem feitas podem realçar toda sua beleza",
   buttonText: "Agendar Agora",
-  titleColor: "",
-  subtitleColor: "",
-  buttonColor: "",
-  buttonTextColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
+  buttonColor: "#000000",
+  buttonTextColor: "#FFFFFF",
   titleFont: "",
   subtitleFont: "",
   buttonFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.1,
@@ -794,22 +2502,22 @@ export const defaultCTASettings: CTASettings = {
 export const defaultTeamSettings: TeamSettings = {
   title: "Nossa Equipe",
   subtitle: "Conheça as profissionais especialistas que cuidarão do seu olhar",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.5,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  cardBgColor: "",
-  cardTitleColor: "",
-  cardRoleColor: "",
-  cardDescriptionColor: "",
+  cardBgColor: "#FFFFFF",
+  cardTitleColor: "#000000",
+  cardRoleColor: "#000000",
+  cardDescriptionColor: "#000000",
   cardTitleFont: "",
   cardRoleFont: "",
   cardDescriptionFont: "",
@@ -834,24 +2542,24 @@ export const defaultTeamSettings: TeamSettings = {
 };
 
 export const defaultTestimonialsSettings: TestimonialsSettings = {
-  starColor: "",
+  starColor: "#000000",
   title: "O Que Dizem Nossas Clientes",
   subtitle: "A satisfação de nossas clientes é nossa maior conquista",
-  titleColor: "",
-  subtitleColor: "",
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   titleFont: "",
   subtitleFont: "",
   bgType: "color",
-  bgColor: "",
+  bgColor: "#FFFFFF",
   bgImage: "",
   imageOpacity: 1,
   overlayOpacity: 0.5,
   imageScale: 1,
   imageX: 50,
   imageY: 50,
-  cardBgColor: "",
-  cardNameColor: "",
-  cardTextColor: "",
+  cardBgColor: "#FFFFFF",
+  cardNameColor: "#000000",
+  cardTextColor: "#000000",
   cardNameFont: "",
   cardTextFont: "",
   testimonials: [
@@ -885,67 +2593,198 @@ export type Expense = {
   isFixed: boolean;
 };
 
-export type ColorSettings = {
+export type GlobalColors = {
   primary: string;
   secondary: string;
   background: string;
   text: string;
-  accent?: string;
-  buttonText?: string;
+  accent: string;
+  buttonText: string;
+  specialtyBadge: {
+    background: string;
+    text: string;
+    borderRadius: string;
+  };
 };
+
+export const defaultGlobalColors: GlobalColors = {
+  primary: "#000000",
+  secondary: "#000000",
+  background: "#FFFFFF",
+  text: "#000000",
+  accent: "#000000",
+  buttonText: "#FFFFFF",
+  specialtyBadge: {
+    background: "#000000",
+    text: "#FFFFFF",
+    borderRadius: "8px",
+  },
+};
+
+export type ColorSettings = GlobalColors;
 
 export const services: Service[] = [];
-
-// Helper para sanitizar cores
-export const sanitizeColor = (
-  color: string | undefined,
-): string | undefined => {
-  if (!color) return undefined;
-  const trimmed = color.trim();
-  if (
-    trimmed.startsWith("#") ||
-    trimmed.startsWith("rgb") ||
-    trimmed.startsWith("hsl")
-  ) {
-    return trimmed;
-  }
-  return `#${trimmed}`;
-};
 
 // Helper para normalizar configurações (usado tanto no load inicial quanto no preview)
 export const normalizeStepSettings = (
   stepData: Record<string, unknown> | undefined,
+  defaults?: BookingStepSettings,
 ): BookingStepSettings => {
-  if (!stepData) return {} as BookingStepSettings;
+  if (!stepData && !defaults) return {} as BookingStepSettings;
+  if (!stepData) return defaults as BookingStepSettings;
 
   // 1. Resolver cor do CARD
-  // Prioridade para configurações específicas de card, com fallback para backgroundColor legado
+  const cardConfig = (stepData.cardConfig ||
+    stepData.card_config ||
+    {}) as Record<string, unknown>;
+  const appearanceRaw = (stepData.appearance || {}) as Record<string, unknown>;
+  const content = (stepData.content || {}) as Record<string, unknown>;
+  const itemsStyle = (stepData.itemsStyle ||
+    stepData.items_style ||
+    {}) as Record<string, unknown>;
+
   const rawCardColor =
     (stepData.cardBgColor as string) ||
     (stepData.card_bg_color as string) ||
-    ((stepData.cardConfig as Record<string, unknown>)
-      ?.backgroundColor as string) ||
-    ((stepData.card_config as Record<string, unknown>)
-      ?.background_color as string) ||
+    (stepData.cardBackgroundColor as string) ||
+    (stepData.card_background_color as string) ||
+    (cardConfig.cardBgColor as string) ||
+    (cardConfig.card_bg_color as string) ||
+    (cardConfig.cardBackgroundColor as string) ||
+    (cardConfig.backgroundColor as string) ||
+    (cardConfig.card_background_color as string) ||
+    (cardConfig.background_color as string) ||
+    (appearanceRaw.cardBgColor as string) ||
+    (appearanceRaw.cardBackgroundColor as string) ||
+    (appearanceRaw.card_bg_color as string) ||
+    (appearanceRaw.card_background_color as string) ||
+    (content.cardBgColor as string) ||
+    (content.card_bg_color as string) ||
+    (itemsStyle.itemBackgroundColor as string) ||
+    (itemsStyle.item_background_color as string) ||
     (stepData.backgroundColor as string);
 
   const finalCardColor = sanitizeColor(rawCardColor);
 
+  // Criar um cardConfig unificado para evitar perdas
+  const unifiedCardConfig = {
+    ...cardConfig,
+    ...(finalCardColor
+      ? {
+        cardBgColor: finalCardColor,
+        card_bg_color: finalCardColor,
+        cardBackgroundColor: finalCardColor,
+        card_background_color: finalCardColor,
+        backgroundColor: finalCardColor,
+        background_color: finalCardColor,
+      }
+      : {}),
+  };
+
   // 2. Resolver cor do FUNDO DA SEÇÃO
-  // NÃO usar rawCardColor como fallback para evitar que a cor do card pinte o fundo
-  const rawBgColor = stepData.bgColor as string;
+  const rawBgColor =
+    (stepData.bgColor as string) ||
+    (stepData.bg_color as string) ||
+    (appearanceRaw.backgroundColor as string) ||
+    (appearanceRaw.background_color as string) ||
+    (stepData.backgroundColor as string);
   const finalBgColor = sanitizeColor(rawBgColor);
 
-  // Garante que o fallback seja aplicado apenas se o valor for undefined/null
-  // permitindo cores claras válidas renderizarem imediatamente
-  const resolvedCardColor =
-    finalCardColor !== undefined ? finalCardColor : "#FFFFFF";
+  // 3. Resolver Appearance (Source of Truth do banco)
+  const appearance = (stepData.appearance as Record<string, unknown>) || {
+    backgroundImageUrl:
+      (stepData.bgImage as string) || (stepData.bg_image as string) || "",
+  };
 
-  return {
-    ...stepData,
-    cardBgColor: resolvedCardColor,
-    bgColor: finalBgColor || "transparent",
-  } as BookingStepSettings;
+  // 4. Blindagem: Se o stepData já tiver propriedades que o normalizeStepSettings não conhece, preserve-as!
+  const final = {
+    ...defaults, // Inicia com defaults se fornecido
+    ...stepData, // Spread do original (sobrescreve defaults)
+    titleColor:
+      sanitizeColor(
+        (stepData.titleColor as string) ||
+        (appearanceRaw.titleColor as string) ||
+        (defaults?.titleColor as string),
+      ) || "",
+    subtitleColor:
+      sanitizeColor(
+        (stepData.subtitleColor as string) ||
+        (appearanceRaw.subtitleColor as string) ||
+        (defaults?.subtitleColor as string),
+      ) || "",
+    accentColor:
+      sanitizeColor(
+        (stepData.accentColor as string) ||
+        (appearanceRaw.accentColor as string) ||
+        (defaults?.accentColor as string),
+      ) || "",
+    cardBgColor: finalCardColor || defaults?.cardBgColor || "",
+    card_bg_color:
+      finalCardColor ||
+      ((defaults as Record<string, unknown> | undefined)?.card_bg_color as
+        | string
+        | undefined) ||
+      "",
+    cardBackgroundColor:
+      finalCardColor ||
+      ((defaults as Record<string, unknown> | undefined)?.cardBackgroundColor as
+        | string
+        | undefined) ||
+      "",
+    card_background_color:
+      finalCardColor ||
+      ((defaults as Record<string, unknown> | undefined)
+        ?.card_background_color as string | undefined) ||
+      "",
+    cardConfig: unifiedCardConfig,
+    bgColor:
+      finalBgColor ||
+      sanitizeColor(
+        (stepData.bgColor as string) ||
+        (stepData.bg_color as string) ||
+        (defaults?.bgColor as string),
+      ) ||
+      "transparent",
+    appearance: {
+      ...(defaults?.appearance || {}),
+      ...appearance,
+      cardBgColor:
+        finalCardColor ||
+        ((defaults?.appearance as Record<string, unknown> | undefined)
+          ?.cardBgColor as string | undefined) ||
+        "",
+      cardBackgroundColor:
+        finalCardColor ||
+        ((defaults?.appearance as Record<string, unknown> | undefined)
+          ?.cardBackgroundColor as string | undefined) ||
+        "",
+      cardConfig: unifiedCardConfig,
+      backgroundColor:
+        (appearance.backgroundColor as string) ||
+        (appearance.background_color as string) ||
+        finalBgColor ||
+        "",
+      backgroundImageUrl:
+        (appearance.backgroundImageUrl as string) ||
+        (stepData.bgImage as string) ||
+        (stepData.bg_image as string) ||
+        "",
+    },
+  };
+
+  // 5. PILAR 1: Validar e Limpar via Schema (Zod)
+  // Isso converte objetos de cor do Picker para strings e garante tipos mínimos.
+  try {
+    if (BookingStepSchema && typeof BookingStepSchema.parse === "function") {
+      const validated = BookingStepSchema.parse(final);
+      return validated as BookingStepSettings;
+    }
+    console.warn(">>> [SCHEMA_WARNING] BookingStepSchema não disponível.");
+    return final as BookingStepSettings;
+  } catch (e) {
+    console.error(">>> [SCHEMA_VALIDATION_ERROR] Erro ao validar Step:", e);
+    return final as BookingStepSettings;
+  }
 };
 
 export const defaultScheduleSettings: ScheduleSettings = {
@@ -968,6 +2807,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 1,
@@ -978,6 +2818,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 2,
@@ -988,6 +2829,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 3,
@@ -998,6 +2840,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 4,
@@ -1008,6 +2851,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 5,
@@ -1018,6 +2862,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "18:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
   {
     dayOfWeek: 6,
@@ -1028,6 +2873,7 @@ export const defaultWeekSchedule: WeekSchedule = [
     lunchEnd: "13:00",
     closeTime: "17:00",
     interval: 30,
+    minimumBookingLeadMinutes: 0,
   },
 ];
 
@@ -1072,14 +2918,14 @@ export const defaultHeroSettings: HeroSettings = {
   badge: "Especialistas em Design de Sobrancelhas",
   showBadge: true,
   badgeIcon: "Sparkles",
-  badgeColor: "",
-  badgeTextColor: "",
+  badgeColor: "#000000",
+  badgeTextColor: "#FFFFFF",
   title: "Realce Sua Beleza Natural",
   subtitle:
     "Especialistas em design de sobrancelhas, dedicados a realçar sua beleza natural.",
   primaryButton: "Agendar Horário",
   secondaryButton: "Ver Trabalhos",
-  bgType: "image",
+  bgType: "color",
   bgColor: "#ffffff",
   bgImage: "",
   imageOpacity: 0.2,
@@ -1088,14 +2934,17 @@ export const defaultHeroSettings: HeroSettings = {
   imageX: 50,
   imageY: 50,
   titleFont: "",
+  titleSize: "md",
   subtitleFont: "",
   badgeFont: "",
-  primaryButtonColor: "",
+  primaryButtonColor: "#000000",
   secondaryButtonColor: "",
-  primaryButtonTextColor: "",
+  primaryButtonTextColor: "#FFFFFF",
+  primaryButtonTransparent: false,
   secondaryButtonTextColor: "",
-  titleColor: "",
-  subtitleColor: "",
+  secondaryButtonTransparent: true,
+  titleColor: "#000000",
+  subtitleColor: "#000000",
   primaryButtonFont: "",
   secondaryButtonFont: "",
 };
@@ -1106,12 +2955,7 @@ export const defaultFontSettings: FontSettings = {
   bodyFont: "Inter",
 };
 
-export const defaultColorSettings: ColorSettings = {
-  primary: "#111827", // slate-900
-  secondary: "#4b5563", // slate-600
-  background: "#ffffff",
-  text: "#111827",
-};
+export const defaultColorSettings: ColorSettings = defaultGlobalColors;
 
 export function getColorSettings(): ColorSettings {
   if (typeof window === "undefined") return defaultColorSettings;
@@ -1124,6 +2968,7 @@ export function saveColorSettings(settings: ColorSettings): void {
     getStorageKey("colorSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("colorSettingsUpdated"));
   }
@@ -1230,6 +3075,15 @@ export function getAvailableTimeSlots(
     (b: Booking) => b.date === date && b.status !== "cancelado",
   );
 
+  const nowInSaoPaulo = new Date(
+    new Date().toLocaleString("en-US", {
+      timeZone: "America/Sao_Paulo",
+    }),
+  );
+  const nowDateKey = format(nowInSaoPaulo, "yyyy-MM-dd");
+  const nowMinutes = nowInSaoPaulo.getHours() * 60 + nowInSaoPaulo.getMinutes();
+  const minimumLeadMinutes = daySchedule.minimumBookingLeadMinutes || 0;
+
   return allSlots.map((time) => {
     const available = isTimeSlotAvailable(
       time,
@@ -1238,7 +3092,18 @@ export function getAvailableTimeSlots(
       daySchedule,
       dayBlocks,
     );
-    return { time, available };
+
+    // Se o slot estiver disponível, verificar a antecedência mínima se for para hoje
+    let finalAvailable = available;
+    if (available && date === nowDateKey) {
+      const [slotHour, slotMinute] = time.split(":").map(Number);
+      const slotMinutes = slotHour * 60 + slotMinute;
+      if (slotMinutes - nowMinutes < minimumLeadMinutes) {
+        finalAvailable = false;
+      }
+    }
+
+    return { time, available: finalAvailable };
   });
 }
 
@@ -1301,7 +3166,6 @@ function isTimeSlotAvailable(
   const lunchStartMinutes = timeToMinutes(daySchedule.lunchStart);
   const lunchEndMinutes = timeToMinutes(daySchedule.lunchEnd);
 
-  // Se lunchStart === lunchEnd, não há almoço
   if (lunchStartMinutes !== lunchEndMinutes) {
     if (startMinutes < lunchEndMinutes && endMinutes > lunchStartMinutes) {
       console.log(
@@ -1355,77 +3219,61 @@ const minutesToTime = (minutes: number) => {
 };
 
 export function getBookingsFromStorage(): Booking[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const bookings = localStorage.getItem(getStorageKey("bookings"));
-    if (!bookings || bookings === "undefined") return [];
-    const parsed = JSON.parse(bookings);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.warn(">>> [STORAGE_WARN] Erro ao ler agendamentos:", error);
-    return [];
-  }
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return [];
 }
 
-export function saveBookingToStorage(booking: Booking): void {
-  const bookings = getBookingsFromStorage();
-  bookings.push(booking);
-  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(bookings));
+export function saveBookingToStorage(_booking: Booking): void {
+  // const bookings = getBookingsFromStorage();
+  // bookings.push(booking);
+  // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(bookings));
 }
 
-export function saveBookingsToStorage(newBookings: Booking[]): void {
-  const bookings = getBookingsFromStorage();
-  const updated = [...bookings, ...newBookings];
-  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
+export function saveBookingsToStorage(_newBookings: Booking[]): void {
+  // const bookings = getBookingsFromStorage();
+  // const updated = [...bookings, ...newBookings];
+  // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function updateBookingStatus(
-  bookingId: string,
-  status: BookingStatus,
+  _bookingId: string,
+  _status: BookingStatus,
 ): void {
-  const bookings = getBookingsFromStorage();
-  const updated = bookings.map((b) =>
-    b.id === bookingId ? { ...b, status } : b,
-  );
-  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
+  // const bookings = getBookingsFromStorage();
+  // const updated = bookings.map((b) =>
+  //   b.id === bookingId ? { ...b, status } : b,
+  // );
+  // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
-export function updateBooking(updatedBooking: Booking): void {
-  const bookings = getBookingsFromStorage();
-  const updated = bookings.map((b) =>
-    b.id === updatedBooking.id ? updatedBooking : b,
-  );
-  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
+export function updateBooking(_updatedBooking: Booking): void {
+  // const bookings = getBookingsFromStorage();
+  // const updated = bookings.map((b) =>
+  //   b.id === updatedBooking.id ? updatedBooking : b,
+  // );
+  // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function markNotificationsSent(
-  bookingId: string,
-  type: "email" | "whatsapp",
+  _bookingId: string,
+  _type: "email" | "whatsapp",
 ): void {
-  const bookings = getBookingsFromStorage();
-  const updated = bookings.map((b) =>
-    b.id === bookingId
-      ? { ...b, notificationsSent: { ...b.notificationsSent, [type]: true } }
-      : b,
-  );
-  localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
+  // const bookings = getBookingsFromStorage();
+  // const updated = bookings.map((b) =>
+  //   b.id === bookingId
+  //     ? { ...b, notificationsSent: { ...b.notificationsSent, [type]: true } }
+  //     : b,
+  // );
+  // localStorage.setItem(getStorageKey("bookings"), JSON.stringify(updated));
 }
 
 export function getInventoryFromStorage(): InventoryItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const inventory = localStorage.getItem(getStorageKey("inventory"));
-    if (!inventory || inventory === "undefined") return [];
-    const parsed = JSON.parse(inventory);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.warn(">>> [STORAGE_WARN] Erro ao ler inventário:", error);
-    return [];
-  }
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return [];
 }
 
-export function saveInventoryToStorage(inventory: InventoryItem[]): void {
-  localStorage.setItem(getStorageKey("inventory"), JSON.stringify(inventory));
+export function saveInventoryToStorage(_inventory: InventoryItem[]): void {
+  // localStorage.setItem(getStorageKey("inventory"), JSON.stringify(inventory));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("inventoryUpdated"));
   }
@@ -1467,10 +3315,10 @@ export async function subtractInventoryForServiceAsync(
       // Priorizar 'resources' (novo formato) sobre 'products' (legado)
       const itemsToSubtract = service.resources?.length
         ? service.resources.map((r) => ({
-            productId: r.inventoryId,
-            quantity: r.quantity,
-            useSecondaryUnit: r.useSecondaryUnit,
-          }))
+          productId: r.inventoryId,
+          quantity: r.quantity,
+          useSecondaryUnit: r.useSecondaryUnit,
+        }))
         : service.products || [];
 
       if (itemsToSubtract.length === 0) continue;
@@ -1598,10 +3446,10 @@ export function subtractInventoryForService(serviceIds: string | string[]): {
     // Priorizar 'resources' (novo formato) sobre 'products' (legado)
     const itemsToSubtract = service.resources?.length
       ? service.resources.map((r) => ({
-          productId: r.inventoryId,
-          quantity: r.quantity,
-          useSecondaryUnit: r.useSecondaryUnit,
-        }))
+        productId: r.inventoryId,
+        quantity: r.quantity,
+        useSecondaryUnit: r.useSecondaryUnit,
+      }))
       : service.products || [];
 
     if (itemsToSubtract.length === 0) continue;
@@ -1674,6 +3522,10 @@ export function getSettingsFromStorage(): StudioSettings {
     scheduleSettings: defaultScheduleSettings,
   };
 
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultValue;
+
+  /* 
   if (typeof window === "undefined") return defaultValue;
 
   try {
@@ -1691,13 +3543,14 @@ export function getSettingsFromStorage(): StudioSettings {
     );
     return defaultValue;
   }
+  */
 }
 
-export function saveSettingsToStorage(settings: StudioSettings): void {
-  localStorage.setItem(
-    getStorageKey("studioSettings"),
-    JSON.stringify(settings),
-  );
+export function saveSettingsToStorage(_settings: StudioSettings): void {
+  // localStorage.setItem(
+  //   getStorageKey("studioSettings"),
+  //   JSON.stringify(settings),
+  // );
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("studioSettingsUpdated"));
   }
@@ -1709,13 +3562,17 @@ export function getScheduleSettings(): ScheduleSettings {
 }
 
 export function getWeekSchedule(): WeekSchedule {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultWeekSchedule;
+  /*
   if (typeof window === "undefined") return defaultWeekSchedule;
   const settings = localStorage.getItem(getStorageKey("weekSchedule"));
   return settings ? JSON.parse(settings) : defaultWeekSchedule;
+  */
 }
 
-export function saveWeekSchedule(schedule: WeekSchedule): void {
-  localStorage.setItem(getStorageKey("weekSchedule"), JSON.stringify(schedule));
+export function saveWeekSchedule(_schedule: WeekSchedule): void {
+  // localStorage.setItem(getStorageKey("weekSchedule"), JSON.stringify(schedule));
 }
 
 export type GalleryImage = {
@@ -1728,22 +3585,30 @@ export type GalleryImage = {
 };
 
 export function getGalleryImages(): GalleryImage[] {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return [];
+  /*
   if (typeof window === "undefined") return [];
   const images = localStorage.getItem(getStorageKey("galleryImages"));
   return images ? JSON.parse(images) : [];
+  */
 }
 
-export function saveGalleryImages(images: GalleryImage[]): void {
-  localStorage.setItem(getStorageKey("galleryImages"), JSON.stringify(images));
+export function saveGalleryImages(_images: GalleryImage[]): void {
+  // localStorage.setItem(getStorageKey("galleryImages"), JSON.stringify(images));
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("galleryUpdated"));
   }
 }
 
 export function getBlockedPeriods(): BlockedPeriod[] {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return [];
+  /*
   if (typeof window === "undefined") return [];
   const blocked = localStorage.getItem(getStorageKey("blockedPeriods"));
   return blocked ? JSON.parse(blocked) : [];
+  */
 }
 
 export function getServices(): Service[] {
@@ -1753,7 +3618,8 @@ export function getServices(): Service[] {
     : services;
 }
 
-export function saveServices(newServices: Service[]): void {
+export function saveServices(_newServices: Service[]): void {
+  /*
   const settings = getSettingsFromStorage();
   settings.services = newServices;
   localStorage.setItem(
@@ -1761,68 +3627,79 @@ export function saveServices(newServices: Service[]): void {
     JSON.stringify(settings),
   );
   localStorage.setItem(getStorageKey("services"), JSON.stringify(newServices));
+  */
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("studioSettingsUpdated"));
     window.dispatchEvent(new Event("servicesUpdated"));
   }
 }
 
-export function saveBlockedPeriods(blocked: BlockedPeriod[]): void {
-  localStorage.setItem(
-    getStorageKey("blockedPeriods"),
-    JSON.stringify(blocked),
-  );
+export function saveBlockedPeriods(_blocked: BlockedPeriod[]): void {
+  // localStorage.setItem(
+  //   getStorageKey("blockedPeriods"),
+  //   JSON.stringify(blocked),
+  // );
 }
 
 export function getNotificationSettings(): NotificationSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultNotificationSettings;
+  /*
   if (typeof window === "undefined") return defaultNotificationSettings;
   const settings = localStorage.getItem(getStorageKey("notificationSettings"));
   return settings ? JSON.parse(settings) : defaultNotificationSettings;
+  */
 }
 
-export function saveNotificationSettings(settings: NotificationSettings): void {
-  localStorage.setItem(
-    getStorageKey("notificationSettings"),
-    JSON.stringify(settings),
-  );
+export function saveNotificationSettings(
+  _settings: NotificationSettings,
+): void {
+  // localStorage.setItem(
+  //   getStorageKey("notificationSettings"),
+  //   JSON.stringify(settings),
+  // );
 }
 
 export function getGoogleCalendarSettings(): GoogleCalendarSettings {
+  // O Banco de Dados é a única fonte da verdade no F5.
+  return defaultGoogleCalendarSettings;
+  /*
   if (typeof window === "undefined") return defaultGoogleCalendarSettings;
   const settings = localStorage.getItem(
     getStorageKey("googleCalendarSettings"),
   );
   return settings ? JSON.parse(settings) : defaultGoogleCalendarSettings;
+  */
 }
 
 export function saveGoogleCalendarSettings(
-  settings: GoogleCalendarSettings,
+  _settings: GoogleCalendarSettings,
 ): void {
-  localStorage.setItem(
-    getStorageKey("googleCalendarSettings"),
-    JSON.stringify(settings),
-  );
+  // localStorage.setItem(
+  //   getStorageKey("googleCalendarSettings"),
+  //   JSON.stringify(settings),
+  // );
 }
 
 export function getSiteProfile(): SiteProfile {
   if (typeof window === "undefined") return defaultSiteProfile;
   const profile = localStorage.getItem(getStorageKey("siteProfile"));
-  return profile
-    ? { ...defaultSiteProfile, ...JSON.parse(profile) }
-    : defaultSiteProfile;
+  if (!profile) return defaultSiteProfile;
+  try {
+    const parsed = JSON.parse(profile);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return { ...defaultSiteProfile, ...(parsed as Record<string, unknown>) };
+    }
+  } catch (_e) { }
+  return defaultSiteProfile;
 }
 
 export function saveSiteProfile(profile: SiteProfile): void {
+  if (typeof window === "undefined") return;
   const storageKey = getStorageKey("siteProfile");
-  console.log(
-    `>>> [booking-data] Salvando siteProfile em ${storageKey}:`,
-    profile,
-  );
   localStorage.setItem(storageKey, JSON.stringify(profile));
-  // Dispatch custom event so components can update immediately
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("siteProfileUpdated"));
-  }
+  updateDraftTimestamp();
+  window.dispatchEvent(new Event("siteProfileUpdated"));
 }
 
 export function getHeroSettings(): HeroSettings {
@@ -1844,6 +3721,7 @@ export function saveHeroSettings(settings: HeroSettings): void {
     settings,
   );
   localStorage.setItem(storageKey, JSON.stringify(settings));
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("heroSettingsUpdated"));
   }
@@ -1870,6 +3748,7 @@ export function saveAboutHeroSettings(settings: HeroSettings): void {
     getStorageKey("aboutHeroSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("aboutHeroSettingsUpdated"));
   }
@@ -1886,8 +3765,132 @@ export function saveStorySettings(settings: StorySettings): void {
     getStorageKey("storySettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("storySettingsUpdated"));
+  }
+}
+
+export function getHomeValuesSettings(data?: unknown): ValuesSettings {
+  const root =
+    data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const values =
+    (root.homeValues as Record<string, unknown> | undefined) ||
+    (root.home_values as Record<string, unknown> | undefined) ||
+    {};
+  const appearance = values.appearance as Record<string, unknown> | undefined;
+  const title =
+    typeof values.title === "string" ? values.title : "Nossos Valores";
+  const subtitle = typeof values.subtitle === "string" ? values.subtitle : "";
+  const items = Array.isArray(values.items)
+    ? values.items
+    : defaultValuesSettings.items || [];
+  const backgroundColor =
+    (typeof values.backgroundColor === "string" && values.backgroundColor) ||
+    (typeof values.bgColor === "string" && values.bgColor) ||
+    (typeof appearance?.backgroundColor === "string" &&
+      appearance.backgroundColor) ||
+    "transparent";
+  const bgColor =
+    (typeof values.bgColor === "string" && values.bgColor) ||
+    (typeof values.backgroundColor === "string" && values.backgroundColor) ||
+    "transparent";
+  const cardBgColor =
+    (typeof values.cardBgColor === "string" && values.cardBgColor) ||
+    (typeof values.cardBackgroundColor === "string" &&
+      values.cardBackgroundColor) ||
+    "#ffffff";
+  const cardTextColor =
+    (typeof values.cardTextColor === "string" && values.cardTextColor) ||
+    "#000000";
+  const iconColor =
+    (typeof values.iconColor === "string" && values.iconColor) || "#000000";
+  const borderRadius =
+    (typeof values.borderRadius === "string" && values.borderRadius) ||
+    "0.5rem";
+
+  return {
+    ...defaultValuesSettings,
+    title,
+    subtitle,
+    items,
+    backgroundColor,
+    bgColor,
+    cardBgColor,
+    cardTextColor,
+    iconColor,
+    borderRadius,
+  };
+}
+
+export function saveHomeValuesSettings(settings: ValuesSettings): void {
+  localStorage.setItem(
+    getStorageKey("homeValuesSettings"),
+    JSON.stringify(settings),
+  );
+  updateDraftTimestamp();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("homeValuesSettingsUpdated"));
+  }
+}
+
+export function getAboutUsValuesSettings(data?: unknown): ValuesSettings {
+  const root =
+    data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const values =
+    (root.aboutUsValues as Record<string, unknown> | undefined) ||
+    (root.about_us_values as Record<string, unknown> | undefined) ||
+    {};
+  const title =
+    typeof values.title === "string" ? values.title : "Nossos Valores";
+  const subtitle = typeof values.subtitle === "string" ? values.subtitle : "";
+  const items = Array.isArray(values.items)
+    ? values.items
+    : defaultValuesSettings.items || [];
+  const backgroundColor =
+    (typeof values.backgroundColor === "string" && values.backgroundColor) ||
+    (typeof values.bgColor === "string" && values.bgColor) ||
+    "transparent";
+  const bgColor =
+    (typeof values.bgColor === "string" && values.bgColor) ||
+    (typeof values.backgroundColor === "string" && values.backgroundColor) ||
+    "transparent";
+  const cardBgColor =
+    (typeof values.cardBgColor === "string" && values.cardBgColor) ||
+    (typeof values.cardBackgroundColor === "string" &&
+      values.cardBackgroundColor) ||
+    "#ffffff";
+  const cardTextColor =
+    (typeof values.cardTextColor === "string" && values.cardTextColor) ||
+    "#000000";
+  const iconColor =
+    (typeof values.iconColor === "string" && values.iconColor) || "#000000";
+  const borderRadius =
+    (typeof values.borderRadius === "string" && values.borderRadius) ||
+    "0.5rem";
+
+  return {
+    ...defaultValuesSettings,
+    title,
+    subtitle,
+    items,
+    backgroundColor,
+    bgColor,
+    cardBgColor,
+    cardTextColor,
+    iconColor,
+    borderRadius,
+  };
+}
+
+export function saveAboutUsValuesSettings(settings: ValuesSettings): void {
+  localStorage.setItem(
+    getStorageKey("aboutUsValuesSettings"),
+    JSON.stringify(settings),
+  );
+  updateDraftTimestamp();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("aboutUsValuesSettingsUpdated"));
   }
 }
 
@@ -1902,6 +3905,7 @@ export function saveValuesSettings(settings: ValuesSettings): void {
     getStorageKey("valuesSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("valuesSettingsUpdated"));
   }
@@ -1918,6 +3922,7 @@ export function saveServicesSettings(settings: ServicesSettings): void {
     getStorageKey("servicesSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("servicesSettingsUpdated"));
   }
@@ -1931,6 +3936,7 @@ export function getFontSettings(): FontSettings {
 
 export function saveFontSettings(settings: FontSettings): void {
   localStorage.setItem(getStorageKey("fontSettings"), JSON.stringify(settings));
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("fontSettingsUpdated"));
   }
@@ -1947,8 +3953,26 @@ export function saveGallerySettings(settings: GallerySettings): void {
     getStorageKey("gallerySettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("gallerySettingsUpdated"));
+  }
+}
+
+export function getGalleryPageSettings(): GallerySettings {
+  if (typeof window === "undefined") return defaultGallerySettings;
+  const settings = localStorage.getItem(getStorageKey("galleryPageSettings"));
+  return settings ? JSON.parse(settings) : defaultGallerySettings;
+}
+
+export function saveGalleryPageSettings(settings: GallerySettings): void {
+  localStorage.setItem(
+    getStorageKey("galleryPageSettings"),
+    JSON.stringify(settings),
+  );
+  updateDraftTimestamp();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("galleryPageSettingsUpdated"));
   }
 }
 
@@ -1960,6 +3984,7 @@ export function getCTASettings(): CTASettings {
 
 export function saveCTASettings(settings: CTASettings): void {
   localStorage.setItem(getStorageKey("ctaSettings"), JSON.stringify(settings));
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("ctaSettingsUpdated"));
   }
@@ -1973,6 +3998,7 @@ export function getTeamSettings(): TeamSettings {
 
 export function saveTeamSettings(settings: TeamSettings): void {
   localStorage.setItem(getStorageKey("teamSettings"), JSON.stringify(settings));
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("teamSettingsUpdated"));
   }
@@ -1989,6 +4015,7 @@ export function saveTestimonialsSettings(settings: TestimonialsSettings): void {
     getStorageKey("testimonialsSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("testimonialsSettingsUpdated"));
   }
@@ -2005,6 +4032,7 @@ export function saveHeaderSettings(settings: HeaderSettings): void {
     getStorageKey("headerSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("headerSettingsUpdated"));
   }
@@ -2021,29 +4049,27 @@ export function saveFooterSettings(settings: FooterSettings): void {
     getStorageKey("footerSettings"),
     JSON.stringify(settings),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("footerSettingsUpdated"));
   }
 }
 
 export function getPageVisibility(): Record<string, boolean> {
-  if (typeof window === "undefined") {
-    return {
-      inicio: true,
-      galeria: true,
-      sobre: true,
-      agendar: true,
-    };
-  }
-  const visibility = localStorage.getItem(getStorageKey("pageVisibility"));
-  if (visibility) return JSON.parse(visibility);
-
-  return {
+  const defaultVisibility = {
     inicio: true,
     galeria: true,
     sobre: true,
     agendar: true,
   };
+
+  if (typeof window === "undefined") {
+    return defaultVisibility;
+  }
+  const visibility = localStorage.getItem(getStorageKey("pageVisibility"));
+  if (visibility) return JSON.parse(visibility);
+
+  return defaultVisibility;
 }
 
 export function savePageVisibility(visibility: Record<string, boolean>): void {
@@ -2051,43 +4077,105 @@ export function savePageVisibility(visibility: Record<string, boolean>): void {
     getStorageKey("pageVisibility"),
     JSON.stringify(visibility),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("pageVisibilityUpdated"));
   }
 }
 
-export function getVisibleSections(): Record<string, boolean> {
-  if (typeof window === "undefined") {
-    return {
-      header: true,
-      footer: true,
-      hero: true,
-      story: true,
-      services: true,
-      values: true,
-      "gallery-preview": true,
-      cta: true,
-      "gallery-grid": true,
-      "about-hero": true,
-      booking: true,
-    };
-  }
-  const sections = localStorage.getItem(getStorageKey("visibleSections"));
-  if (sections) return JSON.parse(sections);
+const toRecord = (value: unknown): Record<string, unknown> | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+};
 
-  return {
+const resolveConfigRoot = (config: unknown): Record<string, unknown> => {
+  const root = toRecord(config);
+  if (!root) return {};
+
+  const hasDirectConfig =
+    "layoutGlobal" in root ||
+    "layout_global" in root ||
+    "home" in root ||
+    "aboutUs" in root ||
+    "appointmentFlow" in root;
+
+  if (hasDirectConfig) return root;
+
+  return (
+    toRecord(root.siteCustomization) ||
+    toRecord(root.site_customization) ||
+    root
+  );
+};
+
+const normalizeBooleanRecord = (
+  value: Record<string, unknown> | null,
+): Record<string, boolean> | undefined => {
+  if (!value) return undefined;
+  const normalized: Record<string, boolean> = {};
+
+  for (const [key, raw] of Object.entries(value)) {
+    if (typeof raw === "boolean") {
+      normalized[key] = raw;
+    }
+  }
+
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+};
+
+export function getPageVisibilityFromConfig(
+  config: unknown,
+): Record<string, boolean> | undefined {
+  const root = resolveConfigRoot(config);
+  const layoutGlobal =
+    toRecord(root.layoutGlobal) || toRecord(root.layout_global);
+
+  return normalizeBooleanRecord(
+    toRecord(root.pageVisibility) ||
+      toRecord(root.page_visibility) ||
+      toRecord(layoutGlobal?.pageVisibility) ||
+      toRecord(layoutGlobal?.page_visibility),
+  );
+}
+
+export function getVisibleSectionsFromConfig(
+  config: unknown,
+): Record<string, boolean> | undefined {
+  const root = resolveConfigRoot(config);
+  const layoutGlobal =
+    toRecord(root.layoutGlobal) || toRecord(root.layout_global);
+
+  return normalizeBooleanRecord(
+    toRecord(root.visibleSections) ||
+      toRecord(root.visible_sections) ||
+      toRecord(layoutGlobal?.visibleSections) ||
+      toRecord(layoutGlobal?.visible_sections),
+  );
+}
+
+export function getVisibleSections(): Record<string, boolean> {
+  const defaultSections = {
     header: true,
     footer: true,
     hero: true,
     story: true,
     services: true,
     values: true,
+    "about-values": true,
     "gallery-preview": true,
     cta: true,
     "gallery-grid": true,
     "about-hero": true,
     booking: true,
   };
+
+  if (typeof window === "undefined") {
+    return defaultSections;
+  }
+  const sections = localStorage.getItem(getStorageKey("visibleSections"));
+  if (sections) return JSON.parse(sections);
+
+  return defaultSections;
 }
 
 export function saveVisibleSections(sections: Record<string, boolean>): void {
@@ -2095,6 +4183,7 @@ export function saveVisibleSections(sections: Record<string, boolean>): void {
     getStorageKey("visibleSections"),
     JSON.stringify(sections),
   );
+  updateDraftTimestamp();
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("visibleSectionsUpdated"));
   }
@@ -2137,12 +4226,9 @@ async function sendWhatsAppNotification(
   markNotificationsSent(booking.id, "whatsapp");
 }
 
-export interface BusinessConfig {
-  hero?: HeroSettings;
-  typography?: FontSettings;
+export interface BusinessConfig extends SiteConfigData {
   interval?: string | number;
   slotInterval?: string | number;
-  [key: string]: unknown;
 }
 
 export interface Business {
@@ -2304,10 +4390,10 @@ export async function returnInventoryForServiceAsync(
 
       const itemsToReturn = service.resources?.length
         ? service.resources.map((r) => ({
-            productId: r.inventoryId,
-            quantity: r.quantity,
-            useSecondaryUnit: r.useSecondaryUnit,
-          }))
+          productId: r.inventoryId,
+          quantity: r.quantity,
+          useSecondaryUnit: r.useSecondaryUnit,
+        }))
         : service.products || [];
 
       if (itemsToReturn.length === 0) continue;
@@ -2417,10 +4503,10 @@ export async function calculateInventoryReturn(
 
     const itemsToReturn = service.resources?.length
       ? service.resources.map((r) => ({
-          productId: r.inventoryId,
-          quantity: r.quantity,
-          useSecondaryUnit: r.useSecondaryUnit,
-        }))
+        productId: r.inventoryId,
+        quantity: r.quantity,
+        useSecondaryUnit: r.useSecondaryUnit,
+      }))
       : service.products || [];
 
     for (const req of itemsToReturn) {

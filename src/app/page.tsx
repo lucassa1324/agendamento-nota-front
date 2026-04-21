@@ -9,8 +9,13 @@ import { HeroSection } from "@/components/hero-section";
 import { ServicesSection } from "@/components/services-section";
 import { ValuesSection } from "@/components/values-section";
 import { useStudio } from "@/context/studio-context";
-import { LANDING_PAGE_URL } from "@/lib/auth-client";
-import { getPageVisibility, getVisibleSections } from "@/lib/booking-data";
+import { BASE_DOMAIN, LANDING_PAGE_URL } from "@/lib/auth-client";
+import {
+  getPageVisibility,
+  getPageVisibilityFromConfig,
+  getVisibleSections,
+  getVisibleSectionsFromConfig,
+} from "@/lib/booking-data";
 
 export default function Home({
   searchParams,
@@ -28,37 +33,75 @@ export default function Home({
   const [pageVisibility, setPageVisibility] = useState<Record<string, boolean>>(
     {},
   );
+  const [publishVersion, setPublishVersion] = useState(0);
   const [isolatedSection, setIsolatedSection] = useState<string | null>(
     initialOnly || null,
   );
 
   // Sincronização com os dados vindos do StudioContext (Banco de Dados)
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const handlePublishSuccess = () => {
+        console.log(
+          ">>> [HOME] Sinal de publicação recebido. Incrementando versão para forçar remontagem.",
+        );
+        setPublishVersion((prev) => prev + 1);
+      };
+      window.addEventListener("site-published-success", handlePublishSuccess);
+      return () =>
+        window.removeEventListener(
+          "site-published-success",
+          handlePublishSuccess,
+        );
+    }
+  }, []);
+
+  useEffect(() => {
     if (studio?.config) {
       const config = studio.config as unknown as SiteConfigData;
+      const configVisibleSections = getVisibleSectionsFromConfig(config);
+      const configPageVisibility = getPageVisibilityFromConfig(config);
 
       // Priorizamos os dados do banco, mas permitimos que o preview (message) sobrescreva
       if (!isPreview) {
-        if (config.visibleSections) {
-          setVisibleSections(config.visibleSections);
+        if (configVisibleSections) {
+          setVisibleSections(configVisibleSections);
         }
-        if (config.pageVisibility) {
-          setPageVisibility(config.pageVisibility);
+        if (configPageVisibility) {
+          setPageVisibility(configPageVisibility);
         }
       }
     }
   }, [studio, isPreview]);
 
   useEffect(() => {
-    // Se não houver slug e não estiver carregando, redireciona para a landing page externa
-    // EXCETO se estivermos no modo preview do editor
-    if (!studioLoading && !slug && LANDING_PAGE_URL && !isPreview) {
-      if (typeof window !== "undefined") {
+    if (studioLoading || slug || isPreview) return;
+
+    if (typeof window !== "undefined") {
+      const hostname = window.location.hostname;
+      // Se for o subdomínio 'app' do domínio base ou localhost, redireciona para /admin
+      const isAppSubdomain =
+        hostname === `app.${BASE_DOMAIN}` ||
+        hostname === "app.localhost" ||
+        (hostname.startsWith("app.") && hostname.includes(".localhost"));
+
+      if (isAppSubdomain) {
+        console.log(
+          ">>> [HOME] Subdomínio 'app' detectado. Redirecionando para /admin.",
+        );
+        router.replace("/admin");
+        return;
+      }
+
+      if (LANDING_PAGE_URL) {
         console.log("Redirecting to landing page:", LANDING_PAGE_URL);
         window.location.replace(LANDING_PAGE_URL);
+        return;
       }
     }
-  }, [slug, studioLoading, isPreview]);
+
+    router.replace("/admin");
+  }, [slug, studioLoading, isPreview, router]);
 
   useEffect(() => {
     // Se a página inicial estiver desativada, redireciona para agendamento
@@ -89,9 +132,9 @@ export default function Home({
 
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
-        setVisibleSections(event.data.sections);
+        setVisibleSections(event.data.settings || {});
       } else if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
-        setPageVisibility(event.data.visibility);
+        setPageVisibility(event.data.settings || {});
       } else if (event.data?.type === "UPDATE_HEADER_SETTINGS") {
         // Notifica o sistema de eventos global para o Header no LayoutClientWrapper
         window.dispatchEvent(
@@ -132,8 +175,14 @@ export default function Home({
   }, []);
 
   const isVisible = (id: string) => {
-    // Se houver uma seção isolada, apenas ela deve aparecer
-    // Exceção: 'typography' e 'colors' mostram a página inteira
+    // Se a seção estiver explicitamente escondida, ela NUNCA deve aparecer
+    // Isso garante que o botão 'Ocultar seção' funcione mesmo durante o isolamento (edição)
+    if (visibleSections[id] === false) {
+      return false;
+    }
+
+    // Se houver uma seção isolada (modo de edição focada), apenas ela deve aparecer
+    // Exceção: 'typography' e 'colors' mostram a página inteira para visualização global
     if (
       isolatedSection &&
       isolatedSection !== "typography" &&
@@ -141,13 +190,14 @@ export default function Home({
     ) {
       return isolatedSection === id;
     }
-    // Caso contrário, verificamos se a seção está marcada como visível (default é true)
-    return visibleSections[id] !== false;
+
+    // Caso contrário, a seção é visível por padrão
+    return true;
   };
 
   // Se estiver carregando o studio ou redirecionando, mostramos um estado neutro
   // No modo preview, permitimos renderizar mesmo sem slug para evitar o loading infinito no editor
-  if ((studioLoading || !slug) && !isPreview) {
+  if ((studioLoading || (!slug && !!LANDING_PAGE_URL)) && !isPreview) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -162,12 +212,12 @@ export default function Home({
   }
 
   return (
-    <main>
-      {isVisible("hero") && <HeroSection />}
-      {isVisible("services") && <ServicesSection />}
-      {isVisible("values") && <ValuesSection />}
-      {isVisible("gallery-preview") && <GalleryPreview />}
-      {isVisible("cta") && <CTASection />}
+    <main key={publishVersion}>
+      {isVisible("home-hero") && <HeroSection />}
+      {isVisible("home-services") && <ServicesSection />}
+      {isVisible("home-values") && <ValuesSection source="home" />}
+      {isVisible("home-gallery") && <GalleryPreview />}
+      {isVisible("home-cta") && <CTASection />}
     </main>
   );
 }

@@ -3,11 +3,12 @@
 import { Menu } from "lucide-react";
 import { Nunito } from "next/font/google";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, Suspense, use, useEffect, useState } from "react";
+import { type ReactNode, Suspense, use, useEffect, useRef, useState } from "react";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { BackendTrigger } from "@/components/admin/BackendTrigger";
 import { SubscriptionBlockScreen } from "@/components/admin/subscription-block-screen";
 import { TrialBanner } from "@/components/admin/trial-banner";
-import { VerificationBanner } from "@/components/admin/verification-banner";
+import { TutorialReminder } from "@/components/admin/tutorial-reminder";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,8 +38,9 @@ function MobileNav({
   adminUser: { name: string; username: string } | null;
   handleLogout: () => void;
 }) {
+  const [open, setOpen] = useState(false);
   return (
-    <Sheet>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
         <Button
           id="mobile-menu-btn"
@@ -54,7 +56,10 @@ function MobileNav({
       </SheetTrigger>
       <SheetContent side="left" className="p-0 w-64 border-r-0">
         <SheetTitle className="hidden">Menu de Navegação</SheetTitle>
-        <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
+        <AdminSidebar
+          adminUser={adminUser}
+          handleLogout={handleLogout}
+        />
       </SheetContent>
     </Sheet>
   );
@@ -65,10 +70,13 @@ interface AuthUser {
   email: string;
   slug?: string;
   role?: string;
+  emailVerified?: boolean;
   business?: {
+    id?: string;
     slug?: string;
     subscriptionStatus?: string;
   };
+  businessId?: string;
 }
 
 function AdminLayoutContent({
@@ -83,106 +91,221 @@ function AdminLayoutContent({
   const slug = propSlug;
 
   const { data: session, isPending: isLoadingSession } = useSession();
-  const { isLoading: isLoadingStudio } = useStudio();
+  const user = session?.user as AuthUser | undefined;
+  const businessId = user?.business?.id || user?.businessId;
+
+  const {
+    studio,
+    isLoading: isLoadingStudio,
+    error: studioError,
+    setBusinessId: setRootBusinessId,
+    businessId: currentBusinessId,
+  } = useStudio();
+
+  // Sincroniza o businessId da sessão com o StudioProvider raiz se necessário
+  useEffect(() => {
+    if (businessId && businessId !== currentBusinessId) {
+      console.log(">>> [DASHBOARD_LAYOUT] Sincronizando businessId com Provider raiz:", businessId);
+      setRootBusinessId(businessId);
+    }
+  }, [businessId, currentBusinessId, setRootBusinessId]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [adminUser, setAdminUser] = useState<{
     username: string;
     name: string;
   } | null>(null);
+  const [billingRequiredDetected, setBillingRequiredDetected] = useState(false);
+  const isOnboarding = pathname?.includes("/dashboard/onboarding");
+  const redirectInFlightRef = useRef<string | null>(null);
+
+  const safeRedirect = (targetPath: string) => {
+    if (!targetPath || pathname === targetPath) return;
+    if (redirectInFlightRef.current === targetPath) return;
+    redirectInFlightRef.current = targetPath;
+    router.replace(targetPath);
+
+    // Fallback para evitar tela de verificação infinita se a navegação SPA falhar
+    setTimeout(() => {
+      if (typeof window !== "undefined" && window.location.pathname !== targetPath) {
+        window.location.href = targetPath;
+      }
+    }, 150);
+  };
 
   useEffect(() => {
-    // Só age quando o loading inicial do better-auth terminar
-    if (!isLoadingSession) {
-      console.log(">>> [DASHBOARD_LAYOUT] Estado da sessão:", {
-        hasSession: !!session,
-        sessionData: session,
-        currentSlug: slug,
-      });
+    let cancelled = false;
+    let sessionFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
-      // Diagnóstico adicional: verifica se os cookies estão sendo enviados para o backend
-      const checkBackendAuth = async () => {
-        try {
-          console.log(">>> [DASHBOARD_LAYOUT] Tentando getSession() manual...");
-          const manualSession = await getSession();
-          console.log(
-            ">>> [DASHBOARD_LAYOUT] Resultado getSession() manual:",
-            manualSession,
-          );
+    const runAccessValidation = async () => {
+      // Só age quando o loading inicial do better-auth terminar
+      if (!isLoadingSession) {
+        console.log(">>> [DASHBOARD_LAYOUT] Estado da sessão:", {
+          hasSession: !!session,
+          sessionData: session,
+          currentSlug: slug,
+        });
 
-          // Usando customFetch para o diagnóstico
-          // Comentado para evitar erros de console quando o backend está offline
-          /* 
-          const diagRes = await customFetch(
-            `${API_BASE_URL}/diagnostics/headers`,
-            {
-              credentials: "include",
-            },
-          );
-          if (diagRes.ok) {
-            const diagData = await diagRes.json();
+        // Diagnóstico adicional: verifica se os cookies estão sendo enviados para o backend
+        const checkBackendAuth = async () => {
+          try {
+            console.log(">>> [DASHBOARD_LAYOUT] Tentando getSession() manual...");
+            const manualSession = await getSession();
             console.log(
-              ">>> [DASHBOARD_LAYOUT] Diagnóstico do Backend:",
-              diagData,
+              ">>> [DASHBOARD_LAYOUT] Resultado getSession() manual:",
+              manualSession,
             );
+
+            // Usando customFetch para o diagnóstico
+            // Comentado para evitar erros de console quando o backend está offline
+            /* 
+            const diagRes = await customFetch(
+              `${API_BASE_URL}/diagnostics/headers`,
+              {
+                credentials: "include",
+              },
+            );
+            if (diagRes.ok) {
+              const diagData = await diagRes.json();
+              console.log(
+                ">>> [DASHBOARD_LAYOUT] Diagnóstico do Backend:",
+                diagData,
+              );
+            }
+            */
+          } catch (e) {
+            console.warn(">>> [ADMIN_WARN] Erro ao buscar diagnóstico:", e);
           }
-          */
-        } catch (e) {
-          console.warn(">>> [ADMIN_WARN] Erro ao buscar diagnóstico:", e);
+        };
+
+        if (!session) {
+          checkBackendAuth();
+          // Pequeno delay para evitar falsos negativos em transições rápidas
+          sessionFallbackTimer = setTimeout(() => {
+            if (cancelled) return;
+            console.warn(
+              ">>> [DASHBOARD_LAYOUT] Redirecionando por falta de sessão.",
+            );
+            safeRedirect("/admin");
+          }, 1000); // Aumentado para 1s para dar mais tempo ao diagnóstico
+          return;
         }
-      };
 
-      if (!session) {
-        checkBackendAuth();
-        // Pequeno delay para evitar falsos negativos em transições rápidas
-        const timer = setTimeout(() => {
+        let user = session.user as AuthUser;
+
+        // PROTEÇÃO CONTRA UNDEFINED: Garante que user existe antes de acessar propriedades
+        if (!user) {
           console.warn(
-            ">>> [DASHBOARD_LAYOUT] Redirecionando por falta de sessão.",
+            ">>> [DASHBOARD_LAYOUT] Sessão existe mas usuário é undefined.",
           );
-          router.push("/admin");
-        }, 1000); // Aumentado para 1s para dar mais tempo ao diagnóstico
-        return () => clearTimeout(timer);
-      }
+          safeRedirect("/admin");
+          return;
+        }
 
-      const user = session.user as AuthUser;
+        // NOVO: BLOQUEIO DE E-MAIL NÃO VERIFICADO
+        // Bloqueamos acesso ao dashboard se o e-mail não estiver verificado
+        // Exceção: Super Admin ou e-mail do proprietário
+        if (
+          user.emailVerified === false &&
+          user.role !== "SUPER_ADMIN" &&
+          user.email !== "lucassa1324@gmail.com"
+        ) {
+          try {
+            const latestSession = await getSession();
+            const latestUser = latestSession?.data?.user as AuthUser | undefined;
 
-      // PROTEÇÃO CONTRA UNDEFINED: Garante que user existe antes de acessar propriedades
-      if (!user) {
-        console.warn(
-          ">>> [DASHBOARD_LAYOUT] Sessão existe mas usuário é undefined.",
+            if (latestUser?.emailVerified) {
+              console.log(
+                ">>> [DASHBOARD_LAYOUT] Sessão atualizada detectou e-mail verificado. Prosseguindo no dashboard.",
+              );
+              user = {
+                ...user,
+                ...latestUser,
+                business: latestUser.business || user.business,
+              };
+            } else {
+              console.warn(
+                ">>> [DASHBOARD_LAYOUT] E-mail não verificado. Bloqueando acesso ao dashboard.",
+              );
+              localStorage.setItem("pending_verification_email", user.email || "");
+              safeRedirect("/admin/pending-verification");
+              return;
+            }
+          } catch {
+            // Em caso de falha de rede, mantém comportamento seguro e evita liberar dashboard indevidamente
+            localStorage.setItem("pending_verification_email", user.email || "");
+            safeRedirect("/admin/pending-verification");
+            return;
+          }
+        }
+
+        // Se for um Super Admin tentando acessar um dashboard de estúdio, permitimos?
+        // Pela regra de negócio, o Super Admin deve ir para /admin/master.
+        if (user.role === "SUPER_ADMIN") {
+          console.warn(
+            ">>> [DASHBOARD_LAYOUT] Super Admin acessando rota de estúdio. Redirecionando para Master.",
+          );
+          safeRedirect("/admin/master");
+          return;
+        }
+
+        const businessSlug = user?.business?.slug || user?.slug;
+
+        const hasCompletedOnboarding = Boolean(
+          (session.user as { hasCompletedOnboarding?: boolean })
+            ?.hasCompletedOnboarding,
         );
-        return;
+
+        if (!hasCompletedOnboarding && !isOnboarding && businessSlug) {
+          safeRedirect(`/admin/${businessSlug}/dashboard/onboarding`);
+          return;
+        }
+
+        if (hasCompletedOnboarding && isOnboarding && businessSlug) {
+          safeRedirect(`/admin/${businessSlug}/dashboard/overview`);
+          return;
+        }
+
+        if (businessSlug && businessSlug !== slug) {
+          console.warn(
+            `>>> [DASHBOARD_LAYOUT] Acesso negado. Redirecionando para o slug correto: ${businessSlug}`,
+          );
+          safeRedirect(`/admin/${businessSlug}/dashboard/overview`);
+          return;
+        }
+
+        console.log(">>> [DASHBOARD_LAYOUT] Sessão validada com sucesso.");
+        setIsAuthenticated(true);
+        setAdminUser({
+          name: user.name || "Administrador",
+          username: user.email,
+        });
+        setIsCheckingSession(false);
       }
+    };
 
-      // Se for um Super Admin tentando acessar um dashboard de estúdio, permitimos?
-      // Pela regra de negócio, o Super Admin deve ir para /admin/master.
-      if (user.role === "SUPER_ADMIN") {
-        console.warn(
-          ">>> [DASHBOARD_LAYOUT] Super Admin acessando rota de estúdio. Redirecionando para Master.",
-        );
-        router.push("/admin/master");
-        return;
+    runAccessValidation();
+
+    return () => {
+      cancelled = true;
+      if (sessionFallbackTimer) {
+        clearTimeout(sessionFallbackTimer);
       }
+    };
+  }, [session, isLoadingSession, slug, isOnboarding, pathname, router]);
 
-      const businessSlug = user?.business?.slug || user?.slug;
+  useEffect(() => {
+    if (!isLoadingSession) return;
 
-      if (businessSlug && businessSlug !== slug) {
-        console.warn(
-          `>>> [DASHBOARD_LAYOUT] Acesso negado. Redirecionando para o slug correto: ${businessSlug}`,
-        );
-        router.push(`/admin/${businessSlug}/dashboard/overview`);
-        return;
-      }
+    const timeoutId = setTimeout(() => {
+      console.warn(
+        ">>> [DASHBOARD_LAYOUT] Timeout ao validar sessão. Redirecionando para login.",
+      );
+      safeRedirect("/admin");
+    }, 5000);
 
-      console.log(">>> [DASHBOARD_LAYOUT] Sessão validada com sucesso.");
-      setIsAuthenticated(true);
-      setAdminUser({
-        name: user.name || "Administrador",
-        username: user.email,
-      });
-      setIsCheckingSession(false);
-    }
-  }, [session, isLoadingSession, slug, router]);
+    return () => clearTimeout(timeoutId);
+  }, [isLoadingSession, pathname, router]);
 
   const handleLogout = async () => {
     await signOut();
@@ -191,6 +314,64 @@ function AdminLayoutContent({
 
   const isPersonalizacao = pathname?.includes("/personalizacao");
   const isMaster = pathname?.startsWith("/admin/master");
+  const isMinhaConta = pathname?.includes("/dashboard/minha-conta");
+
+  // Tratamento de erro de carregamento do estúdio
+  // EXCEÇÃO: Se for erro 402 (Pagamento Necessário), deixamos o layout renderizar para mostrar a tela de bloqueio com link de pagamento
+  const isBillingError = studioError?.includes("(402)");
+
+  const subscriptionStatus =
+    user?.business?.subscriptionStatus ||
+    studio?.subscriptionStatus ||
+    (isBillingError ? "past_due" : undefined);
+
+  const isSubscriptionBlocked =
+    subscriptionStatus === "past_due" ||
+    subscriptionStatus === "unpaid" ||
+    subscriptionStatus === "canceled";
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleBillingRequired = () => {
+      setBillingRequiredDetected(true);
+    };
+    window.addEventListener("billing-required", handleBillingRequired);
+    return () => {
+      window.removeEventListener("billing-required", handleBillingRequired);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isMinhaConta || !isSubscriptionBlocked) {
+      setBillingRequiredDetected(false);
+    }
+  }, [isMinhaConta, isSubscriptionBlocked]);
+
+  const shouldBlockAccess =
+    !isMinhaConta && (isSubscriptionBlocked || billingRequiredDetected);
+  const blockStatus = subscriptionStatus || "past_due";
+
+  if (studioError && !isMaster && !isBillingError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4 text-center">
+        <h2 className="text-2xl font-bold text-destructive mb-2">
+          Erro ao carregar estúdio
+        </h2>
+        <p className="text-muted-foreground mb-6">
+          {studioError === "Studio não encontrado"
+            ? "O estúdio especificado na URL não foi encontrado."
+            : `Houve um problema ao carregar os dados: ${studioError}`}
+        </p>
+        <button
+          type="button"
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-opacity"
+        >
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   // Enquanto estiver carregando ou validando, mostra o loading
   // Também aguarda o carregamento do estúdio (exceto para rota master)
@@ -214,17 +395,6 @@ function AdminLayoutContent({
     );
   }
 
-  const user = session?.user as AuthUser | undefined;
-  const subscriptionStatus = user?.business?.subscriptionStatus;
-
-  if (
-    subscriptionStatus === "past_due" ||
-    subscriptionStatus === "unpaid" ||
-    subscriptionStatus === "canceled"
-  ) {
-    return <SubscriptionBlockScreen status={subscriptionStatus} />;
-  }
-
   return (
     <div
       className={`${dashboardRoundedFont.variable} dashboard-rounded-headings min-h-screen bg-background flex flex-col lg:flex-row`}
@@ -241,9 +411,11 @@ function AdminLayoutContent({
       )}
 
       {/* Sidebar Desktop */}
-      <div className="hidden lg:block">
-        <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
-      </div>
+      {!isPersonalizacao && (
+        <div className="hidden lg:block shrink-0">
+          <AdminSidebar adminUser={adminUser} handleLogout={handleLogout} />
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
@@ -253,9 +425,14 @@ function AdminLayoutContent({
             isPersonalizacao ? "p-0 h-dvh overflow-hidden" : "p-4 lg:p-6",
           )}
         >
-          <VerificationBanner />
-          {!isPersonalizacao && <TrialBanner />}
-          {children}
+          <BackendTrigger />
+          <TrialBanner />
+          <TutorialReminder />
+          {shouldBlockAccess ? (
+            <SubscriptionBlockScreen status={blockStatus} />
+          ) : (
+            children
+          )}
           {!isPersonalizacao && <FeedbackWidget />}
         </main>
       </div>
@@ -271,6 +448,9 @@ export default function AdminLayout({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = use(paramsPromise);
+  const { data: session } = useSession();
+  const user = session?.user as AuthUser | undefined;
+  const businessId = user?.business?.id || user?.businessId;
 
   // Mover o check de autenticação para o topo se possível, ou garantir que hooks sejam estáveis
   return (
@@ -281,11 +461,9 @@ export default function AdminLayout({
         </div>
       }
     >
-      <StudioProvider initialSlug={slug}>
-        <SidebarProvider>
-          <AdminLayoutContent slug={slug}>{children}</AdminLayoutContent>
-        </SidebarProvider>
-      </StudioProvider>
+      <SidebarProvider>
+        <AdminLayoutContent slug={slug}>{children}</AdminLayoutContent>
+      </SidebarProvider>
     </Suspense>
   );
 }

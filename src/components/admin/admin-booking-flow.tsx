@@ -75,9 +75,27 @@ export function AdminBookingFlow({
         ? initialBooking.serviceId
         : [initialBooking.serviceId];
 
-      const selected = allServices.filter((s) =>
+      let selected = allServices.filter((s) =>
         bookingServiceIds.includes(s.id),
       );
+
+      // Fallback para agendamentos antigos/migrados:
+      // quando o serviço não existe mais no storage local, ainda precisamos
+      // renderizar o fluxo de adiamento com os snapshots do próprio agendamento.
+      if (selected.length === 0) {
+        selected = [
+          {
+            id: bookingServiceIds.join(","),
+            name: initialBooking.serviceName || "Serviço",
+            description: initialBooking.serviceName || "Serviço",
+            duration:
+              Number(initialBooking.serviceDuration) > 0
+                ? Number(initialBooking.serviceDuration)
+                : 30,
+            price: Number(initialBooking.servicePrice || 0),
+          },
+        ];
+      }
       setSelectedServices(selected);
       setSelectedDate(initialBooking.date);
       setSelectedTime(initialBooking.time);
@@ -454,6 +472,7 @@ export function AdminBookingFlow({
               onConfirm={handleBookingConfirm}
               onBack={() => setCurrentStep("calendar")}
               initialBooking={initialBooking}
+              mode={mode}
             />
           </div>
         )}
@@ -461,7 +480,6 @@ export function AdminBookingFlow({
       {currentStep === "confirmation" && confirmedBooking && totalService && (
         <BookingConfirmation
           booking={confirmedBooking}
-          service={totalService}
           onReset={onComplete || handleReset}
           isUpdate={!!initialBooking}
           backToHomeHref={slug ? `/admin/${slug}/dashboard/agendamentos` : "/"}

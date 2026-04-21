@@ -42,7 +42,7 @@ export interface SectionItem {
 export const sections: Record<string, SectionItem[]> = {
   layout: [
     {
-      id: "header",
+      id: "layout-header",
       name: "Cabeçalho",
       description: "Logo e menu de navegação",
     },
@@ -57,41 +57,41 @@ export const sections: Record<string, SectionItem[]> = {
       description: "Esquema de cores global",
     },
     {
-      id: "footer",
+      id: "layout-footer",
       name: "Rodapé",
       description: "Informações de contato e links",
     },
   ],
   inicio: [
     {
-      id: "hero",
+      id: "home-hero",
       name: "Banner Principal",
       description: "Primeira dobra com logo e botão de agendar",
     },
     {
-      id: "services",
+      id: "home-services",
       name: "Nossos Serviços",
       description: "Lista de serviços em destaque",
     },
     {
-      id: "values",
+      id: "home-values",
       name: "Nossos Valores",
       description: "Diferenciais e pilares do atendimento",
     },
     {
-      id: "gallery-preview",
+      id: "home-gallery",
       name: "Prévia da Galeria",
       description: "Alguns trabalhos recentes",
     },
     {
-      id: "cta",
+      id: "home-cta",
       name: "Chamada para Ação",
       description: "Botão final para incentivar o agendamento",
     },
   ],
   galeria: [
     {
-      id: "gallery-grid",
+      id: "page-gallery",
       name: "Grid de Fotos",
       description: "Todas as fotos do portfólio",
     },
@@ -103,18 +103,22 @@ export const sections: Record<string, SectionItem[]> = {
       description: "Título e introdução da página",
     },
     {
-      id: "story",
+      id: "home-story",
       name: "Nossa História",
-      description: "Trajetória detalhada",
+      description: "Trajetóra detalhada",
     },
-    { id: "values", name: "Nossos Valores", description: "Pilares do studio" },
     {
-      id: "team",
+      id: "about-values",
+      name: "Nossos Valores",
+      description: "Pilares do studio",
+    },
+    {
+      id: "home-team",
       name: "Nossa Equipe",
       description: "Profissionais do studio",
     },
     {
-      id: "testimonials",
+      id: "home-testimonials",
       name: "O que dizem nossas clientes",
       description: "Depoimentos e avaliações",
     },
@@ -157,6 +161,9 @@ export const EDITOR_FONTS = [
   { name: "Inter", type: "sans" },
   { name: "Montserrat", type: "sans" },
   { name: "Poppins", type: "sans" },
+  { name: "Syne", type: "sans" },
+  { name: "Bebas Neue", type: "sans" },
+  { name: "Space Grotesk", type: "sans" },
   { name: "Roboto", type: "sans" },
   { name: "Open Sans", type: "sans" },
 ];

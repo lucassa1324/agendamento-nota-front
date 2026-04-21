@@ -8,7 +8,7 @@ import type { Booking, BookingStepSettings, Service } from "@/lib/booking-data";
 
 type BookingConfirmationProps = {
   booking: Booking;
-  service: Service;
+  service?: Service;
   onReset: () => void;
   isUpdate?: boolean;
   settings?: BookingStepSettings;
@@ -18,13 +18,22 @@ type BookingConfirmationProps = {
 
 export function BookingConfirmation({
   booking,
-  service,
   onReset,
   isUpdate = false,
   settings,
   backToHomeHref = "/",
   backToHomeLabel = "Voltar para Início",
 }: BookingConfirmationProps) {
+  const appearance = settings?.appearance || {};
+  
+  // Prioridade: Custom Setting > Global Appearance > Default Fallback
+  const accentColor = settings?.accentColor || appearance.accentColor || "var(--primary)";
+  const cardBgColor = settings?.cardBgColor || appearance.cardBgColor || "#FFFFFF";
+  const titleColor = settings?.titleColor || appearance.titleColor || "var(--foreground)";
+  const subtitleColor = settings?.subtitleColor || appearance.subtitleColor || "var(--muted-foreground)";
+  const titleFont = settings?.titleFont || appearance.titleFont || "var(--font-title)";
+  const subtitleFont = settings?.subtitleFont || appearance.subtitleFont || "var(--font-subtitle)";
+
   const formattedDate = new Date(`${booking.date}T00:00:00`).toLocaleDateString(
     "pt-BR",
     {
@@ -41,21 +50,19 @@ export function BookingConfirmation({
         <div
           className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4"
           style={{
-            backgroundColor: settings?.accentColor
-              ? `${settings.accentColor}1a`
-              : "var(--muted)",
+            backgroundColor: accentColor ? `${accentColor}1a` : "var(--muted)",
           }}
         >
           <CheckCircle2
             className="w-10 h-10"
-            style={{ color: settings?.accentColor || "var(--primary)" }}
+            style={{ color: accentColor }}
           />
         </div>
         <h2
           className="text-3xl font-bold mb-2"
           style={{
-            color: settings?.titleColor || "var(--foreground)",
-            fontFamily: settings?.titleFont || "var(--font-title)",
+            color: titleColor,
+            fontFamily: titleFont,
           }}
         >
           {settings?.title ||
@@ -64,8 +71,8 @@ export function BookingConfirmation({
         <p
           className="text-muted-foreground"
           style={{
-            color: settings?.subtitleColor || "var(--foreground)",
-            fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
+            color: subtitleColor,
+            fontFamily: subtitleFont,
           }}
         >
           {settings?.subtitle || "Enviamos uma confirmação para o seu e-mail"}
@@ -73,12 +80,10 @@ export function BookingConfirmation({
       </div>
 
       <Card
-        className="border-primary/20"
+        className="border-primary/20 shadow-lg"
         style={{
-          backgroundColor: settings?.cardBgColor || "#FFFFFF",
-          borderColor: settings?.accentColor
-            ? `${settings.accentColor}33`
-            : undefined,
+          backgroundColor: cardBgColor,
+          borderColor: accentColor ? `${accentColor}33` : undefined,
         }}
       >
         <CardContent className="p-6 space-y-6">
@@ -86,8 +91,8 @@ export function BookingConfirmation({
             <h3
               className="font-semibold mb-4"
               style={{
-                fontFamily: "var(--font-title)",
-                color: "var(--foreground)",
+                fontFamily: titleFont,
+                color: titleColor,
               }}
             >
               Detalhes do Agendamento
@@ -97,19 +102,25 @@ export function BookingConfirmation({
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                   style={{
-                    backgroundColor: settings?.accentColor
-                      ? `${settings.accentColor}1a`
-                      : "var(--muted)",
+                    backgroundColor: accentColor ? `${accentColor}1a` : "var(--muted)",
                   }}
                 >
                   <Calendar
                     className="w-5 h-5"
-                    style={{ color: settings?.accentColor || "var(--primary)" }}
+                    style={{ color: accentColor }}
                   />
                 </div>
                 <div>
-                  <div className="font-medium">{booking.serviceName}</div>
-                  <div className="text-sm text-muted-foreground capitalize">
+                  <div
+                    className="text-sm text-muted-foreground"
+                    style={{ color: subtitleColor }}
+                  >
+                    Data
+                  </div>
+                  <div
+                    className="font-medium"
+                    style={{ color: titleColor, fontFamily: subtitleFont }}
+                  >
                     {formattedDate}
                   </div>
                 </div>
@@ -119,19 +130,25 @@ export function BookingConfirmation({
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                   style={{
-                    backgroundColor: settings?.accentColor
-                      ? `${settings.accentColor}1a`
-                      : "var(--muted)",
+                    backgroundColor: accentColor ? `${accentColor}1a` : "var(--muted)",
                   }}
                 >
                   <Clock
                     className="w-5 h-5"
-                    style={{ color: settings?.accentColor || "var(--primary)" }}
+                    style={{ color: accentColor }}
                   />
                 </div>
                 <div>
-                  <div className="font-medium">Horário</div>
-                  <div className="text-sm text-muted-foreground">
+                  <div
+                    className="text-sm text-muted-foreground"
+                    style={{ color: subtitleColor }}
+                  >
+                    Horário
+                  </div>
+                  <div
+                    className="font-medium"
+                    style={{ color: titleColor, fontFamily: subtitleFont }}
+                  >
                     {booking.time}
                   </div>
                 </div>
@@ -141,19 +158,25 @@ export function BookingConfirmation({
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
                   style={{
-                    backgroundColor: settings?.accentColor
-                      ? `${settings.accentColor}1a`
-                      : "var(--muted)",
+                    backgroundColor: accentColor ? `${accentColor}1a` : "var(--muted)",
                   }}
                 >
                   <DollarSign
                     className="w-5 h-5"
-                    style={{ color: settings?.accentColor || "var(--primary)" }}
+                    style={{ color: accentColor }}
                   />
                 </div>
                 <div>
-                  <div className="font-medium">Valor</div>
-                  <div className="text-sm text-muted-foreground">
+                  <div
+                    className="text-sm text-muted-foreground"
+                    style={{ color: subtitleColor }}
+                  >
+                    Valor Estimado
+                  </div>
+                  <div
+                    className="font-medium"
+                    style={{ color: titleColor, fontFamily: subtitleFont }}
+                  >
                     R$ {Number(booking.servicePrice || 0).toFixed(2)}
                   </div>
                 </div>
@@ -161,50 +184,24 @@ export function BookingConfirmation({
             </div>
           </div>
 
-          <div className="border-t pt-6">
-            <h4 className="font-semibold mb-2">Seus Dados</h4>
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>{booking.clientName}</p>
-              <p>{booking.clientEmail}</p>
-              <p>{booking.clientPhone}</p>
-            </div>
-          </div>
-
-          <div
-            className="p-4 rounded-lg text-sm"
-            style={{
-              backgroundColor: settings?.accentColor
-                ? `${settings.accentColor}0d`
-                : "var(--muted)",
-            }}
-          >
-            <p className="text-muted-foreground">
-              Enviamos uma confirmação para o seu e-mail. Em caso de dúvidas,
-              entre em contato conosco.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 pt-4">
+          <div className="pt-6 border-t border-border">
             <Button
               asChild
-              className="flex-1 font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full h-12 text-lg font-semibold transition-all duration-300"
               style={{
-                backgroundColor: settings?.accentColor || "var(--primary)",
-                color: "#fff",
+                backgroundColor: accentColor,
+                fontFamily: titleFont,
               }}
             >
               <Link href={backToHomeHref}>{backToHomeLabel}</Link>
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={onReset}
-              className="flex-1 font-bold"
-              style={{
-                borderColor: settings?.accentColor || "var(--primary)",
-                color: settings?.accentColor || "var(--primary)",
-              }}
+              className="w-full mt-2"
+              style={{ color: subtitleColor, fontFamily: subtitleFont }}
             >
-              Novo Agendamento
+              Fazer outro agendamento
             </Button>
           </div>
         </CardContent>

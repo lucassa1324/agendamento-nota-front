@@ -15,19 +15,32 @@ import type {
 } from "@/lib/booking-data";
 
 export interface LayoutGlobalSettings {
+  sections?: Record<string, Record<string, unknown>>;
   siteColors?: ColorSettings;
   cores_base?: ColorSettings;
   fontes?: FontSettings;
+  typography?: FontSettings;
+  font?: FontSettings;
+  color?: ColorSettings;
   visibleSections?: Record<string, boolean>;
+  visible_sections?: Record<string, boolean>;
   pageVisibility?: Record<string, boolean>;
+  page_visibility?: Record<string, boolean>;
+  card_bg_color?: string;
   hero?: HeroSettings;
+  heroBanner?: HeroSettings;
   aboutHero?: HeroSettings;
   story?: StorySettings;
   team?: TeamSettings;
   testimonials?: TestimonialsSettings;
   services?: ServicesSettings;
   values?: ValuesSettings;
+  homeValuesSettings?: ValuesSettings;
+  aboutUsValuesSettings?: ValuesSettings;
+  galleryPreviewSettings?: GallerySettings;
+  galleryPageSettings?: GallerySettings;
   gallery?: GallerySettings;
+  galleryPage?: GallerySettings;
   cta?: CTASettings;
   header?: HeaderSettings;
   footer?: FooterSettings;
@@ -35,6 +48,13 @@ export interface LayoutGlobalSettings {
 
 export interface SiteConfigData {
   [key: string]: unknown;
+  home?: {
+    heroBanner?: HeroSettings;
+    galleryPreview?: GallerySettings;
+    valuesSection?: ValuesSettings;
+    [key: string]: unknown;
+  };
+  sections?: Record<string, Record<string, unknown>>;
   hero?: HeroSettings;
   aboutHero?: HeroSettings;
   story?: StorySettings;
@@ -45,14 +65,24 @@ export interface SiteConfigData {
   colors?: ColorSettings;
   services?: ServicesSettings;
   values?: ValuesSettings;
+  homeValuesSettings?: ValuesSettings;
+  aboutUsValuesSettings?: ValuesSettings;
   gallery?: GallerySettings;
   cta?: CTASettings;
   header?: HeaderSettings;
   footer?: FooterSettings;
   pageVisibility?: Record<string, boolean>;
   visibleSections?: Record<string, boolean>;
-  layoutGlobal?: LayoutGlobalSettings; // Suporte para estrutura aninhada do banco
-  layout_global?: LayoutGlobalSettings; // Suporte para snake_case do banco
+  siteCustomization?: {
+    layoutGlobal?: LayoutGlobalSettings;
+    layout_global?: LayoutGlobalSettings;
+    sections?: Record<string, Record<string, unknown>>;
+  };
+  site_customization?: {
+    layoutGlobal?: LayoutGlobalSettings;
+    layout_global?: LayoutGlobalSettings;
+    sections?: Record<string, Record<string, unknown>>;
+  };
   bookingSteps?: {
     service?: BookingStepSettings;
     date?: BookingStepSettings;
@@ -60,4 +90,19 @@ export interface SiteConfigData {
     form?: BookingStepSettings;
     confirmation?: BookingStepSettings;
   };
+  appointmentFlow?: {
+    steps?: {
+      service?: BookingStepSettings;
+      date?: BookingStepSettings;
+      time?: BookingStepSettings;
+      form?: BookingStepSettings;
+      confirmation?: BookingStepSettings;
+    };
+    service?: BookingStepSettings;
+    date?: BookingStepSettings;
+    time?: BookingStepSettings;
+    form?: BookingStepSettings;
+    confirmation?: BookingStepSettings;
+  };
+  updatedAt?: string;
 }

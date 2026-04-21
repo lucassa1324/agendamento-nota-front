@@ -96,7 +96,7 @@ export function SidebarNav({
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="block font-bold text-[11px] sm:text-xs xl:text-sm 2xl:text-base leading-tight truncate">
-                    {page.label}
+                    {typeof page.label === 'object' ? ((page.label as unknown as { text?: string }).text || "") : (page.label || "")}
                   </span>
                   <span className="text-[7px] sm:text-[8px] xl:text-[10px] text-muted-foreground uppercase tracking-widest font-medium">
                     {sections[page.id]?.length || 0} Seções
@@ -169,18 +169,17 @@ export function SidebarNav({
                             )}
                           />
                           <span className="truncate max-w-25 xl:max-w-none text-[9px] sm:text-[10px] xl:text-xs">
-                            {section.name}
+                            {typeof section.name === 'object' ? ((section.name as unknown as { text?: string }).text || "") : (section.name || "")}
                           </span>
                         </div>
 
                         <div className="flex items-center gap-0.5 xl:gap-1 relative z-10">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
+                          <div
+                            role="button"
+                            tabIndex={0}
                             title="Resetar seção"
                             className={cn(
-                              "h-5 w-5 sm:h-6 sm:w-6 xl:h-7 xl:w-7 rounded-lg transition-all",
+                              "h-5 w-5 sm:h-6 sm:w-6 xl:h-7 xl:w-7 rounded-lg transition-all inline-flex items-center justify-center cursor-pointer",
                               isSectionActive
                                 ? "text-primary-foreground hover:bg-white/20"
                                 : "text-muted-foreground hover:bg-background/80",
@@ -189,9 +188,16 @@ export function SidebarNav({
                               e.stopPropagation();
                               onSectionReset(section.id);
                             }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onSectionReset(section.id);
+                              }
+                            }}
                           >
                             <RotateCcw className="w-3 sm:w-3.5 h-3 sm:h-3.5 xl:w-4 xl:h-4" />
-                          </Button>
+                          </div>
                           <Button
                             type="button"
                             variant="ghost"

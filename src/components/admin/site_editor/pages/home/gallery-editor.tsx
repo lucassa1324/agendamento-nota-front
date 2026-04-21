@@ -3,11 +3,13 @@
 import {
   ImageIcon,
   LayoutGrid,
+  Loader2,
   MousePointer2,
   RotateCcw,
   SlidersHorizontal,
   Type,
 } from "lucide-react";
+import { useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -25,7 +27,7 @@ import {
 } from "@/components/ui/select";
 import type { GallerySettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
@@ -33,16 +35,38 @@ import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 interface GalleryEditorProps {
   settings: GallerySettings;
   onUpdate: (updates: Partial<GallerySettings>) => void;
-  onSave?: () => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
+  onSave?: () => Promise<void> | void;
+  isSaving?: boolean;
   hasChanges?: boolean;
+  sectionId?: string;
+  onReset?: () => void;
 }
 
 export function GalleryEditor({
   settings,
   onUpdate,
-  onSave,
+  onUpdateBackground,
+  onSave: externalOnSave,
+  isSaving,
   hasChanges,
+  sectionId,
+  onReset,
 }: GalleryEditorProps) {
+  const [localIsSaving, setLocalIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!externalOnSave) return;
+    setLocalIsSaving(true);
+    try {
+      await externalOnSave();
+    } finally {
+      setLocalIsSaving(false);
+    }
+  };
+
+  const isLoading = isSaving || localIsSaving;
+
   if (!settings) return null;
 
   return (
@@ -133,7 +157,7 @@ export function GalleryEditor({
                 Texto do Botão
               </legend>
               <Input
-                value={settings.buttonText}
+                value={settings.buttonText || ""}
                 onChange={(e) => onUpdate({ buttonText: e.target.value })}
                 className="h-8 text-xs"
               />
@@ -247,6 +271,39 @@ export function GalleryEditor({
                     />
                   </div>
                 </fieldset>
+
+                <fieldset
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+                    Cor do Card
+                    {settings.cardBgColor && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4 hover:text-primary"
+                        onClick={() => onUpdate({ cardBgColor: "" })}
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </legend>
+                  <div className="flex gap-2">
+                    <Input
+                      type="color"
+                      value={settings.cardBgColor || "#FFFFFF"}
+                      className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
+                      onChange={(e) => onUpdate({ cardBgColor: e.target.value })}
+                    />
+                    <Input
+                      value={settings.cardBgColor || ""}
+                      placeholder="Padrão"
+                      className="h-8 text-[10px] flex-1 uppercase"
+                      onChange={(e) => onUpdate({ cardBgColor: e.target.value })}
+                    />
+                  </div>
+                </fieldset>
               </div>
             </div>
           </AccordionContent>
@@ -311,27 +368,68 @@ export function GalleryEditor({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <BackgroundEditor
-              settings={settings}
-              onUpdate={(updates) => onUpdate(updates)}
-              sectionId="gallery"
+              settings={{
+                bgType: settings.bgType,
+                bgColor: settings.bgColor,
+                bgImage: settings.bgImage,
+                imageOpacity: settings.imageOpacity,
+                overlayOpacity: settings.overlayOpacity,
+                imageScale: settings.imageScale,
+                imageX: settings.imageX,
+                imageY: settings.imageY,
+                appearance: settings.appearance,
+              }}
+              onUpdate={(updates) => {
+                if (onUpdateBackground) {
+                    onUpdateBackground(updates, sectionId || "gallery-preview");
+                  } else {
+                    onUpdate(updates);
+                  }
+                }}
+              section={sectionId || "gallery-preview"}
+              sectionId={sectionId || "gallery-preview"}
             />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
 
-      <div className="pt-2">
+      <div className="pt-2 flex flex-col gap-3">
+        {onReset && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onReset}
+            className="w-full h-9 text-[10px] uppercase font-bold border-dashed hover:border-destructive hover:text-destructive transition-all"
+          >
+            <RotateCcw className="w-3 h-3 mr-2" />
+            Resetar Estilo da Seção
+          </Button>
+        )}
+
         <Button
           type="button"
-          disabled={!hasChanges}
-          onClick={onSave}
+          disabled={!hasChanges || isLoading}
+          onClick={handleSave}
           className={cn(
-            "w-full h-11 text-sm font-bold transition-all duration-300",
-            hasChanges
+            "w-full h-11 text-sm font-bold transition-all duration-300 relative",
+            hasChanges && !isLoading
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? "Aplicar Alterações" : "Nenhuma alteração"}
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : hasChanges ? (
+              "Salvar Alterações"
+            ) : (
+              <span className="opacity-50">Nenhuma alteração</span>
+            )}
+          </div>
         </Button>
       </div>
     </div>

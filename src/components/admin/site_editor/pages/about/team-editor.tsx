@@ -3,12 +3,15 @@
 import {
   CreditCard,
   ImageIcon,
+  Loader2,
   Plus,
   RotateCcw,
   Trash2,
   Type,
   UserPlus,
 } from "lucide-react";
+import { useState } from "react";
+import Image from "next/image";
 import {
   Accordion,
   AccordionContent,
@@ -26,28 +29,44 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useStudio } from "@/context/studio-context";
 import type { TeamMember, TeamSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { ImageUploader } from "../../components/ImageUploader";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
 interface TeamEditorProps {
   settings: TeamSettings;
   onUpdate: (updates: Partial<TeamSettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSave?: () => void;
   hasChanges?: boolean;
+  isSaving?: boolean;
 }
 
 export function TeamEditor({
   settings,
   onUpdate,
+  onUpdateBackground,
   onSave: externalOnSave,
   hasChanges,
+  isSaving,
 }: TeamEditorProps) {
-  const handleSave = () => {
-    if (externalOnSave) externalOnSave();
+  const { studio } = useStudio();
+  const [localIsSaving, setLocalIsSaving] = useState(false);
+  const isLoading = isSaving || localIsSaving;
+
+  const handleSave = async () => {
+    if (!externalOnSave || isLoading) return;
+    setLocalIsSaving(true);
+    try {
+      await externalOnSave();
+    } finally {
+      setLocalIsSaving(false);
+    }
   };
 
   const addItem = () => {
@@ -166,9 +185,25 @@ export function TeamEditor({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <BackgroundEditor
-              settings={settings}
-              onUpdate={(updates) => onUpdate({ ...updates })}
-              sectionId="team"
+              settings={{
+                bgType: settings.bgType,
+                bgColor: settings.bgColor,
+                bgImage: settings.bgImage,
+                imageOpacity: settings.imageOpacity,
+                overlayOpacity: settings.overlayOpacity,
+                imageScale: settings.imageScale,
+                imageX: settings.imageX,
+                imageY: settings.imageY,
+                appearance: settings.appearance,
+              }}
+              onUpdate={(updates) => {
+                if (onUpdateBackground) {
+                  onUpdateBackground(updates, "team");
+                } else {
+                  onUpdate(updates);
+                }
+              }}
+              section="team"
             />
           </AccordionContent>
         </AccordionItem>
@@ -225,8 +260,77 @@ export function TeamEditor({
                 </div>
               </fieldset>
 
-              <div className="space-y-4 border-t pt-4">
                 <Label className="text-[11px] font-bold uppercase text-primary tracking-wider">
+                  Estilo dos Cards
+                </Label>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                      Formato do Card
+                    </legend>
+                    <Select
+                      value={settings.buttonShape || "pill"}
+                      onValueChange={(v) =>
+                        onUpdate({
+                          buttonShape: v as "pill" | "square" | "sharp",
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Selecione o formato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pill" className="text-xs">
+                          Arredondado
+                        </SelectItem>
+                        <SelectItem value="square" className="text-xs">
+                          Cantos Suaves
+                        </SelectItem>
+                        <SelectItem value="sharp" className="text-xs">
+                          Totalmente Quadrado
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </fieldset>
+
+                  <fieldset
+                    className="space-y-1.5 border-none p-0 m-0"
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                      Formato do Ícone
+                    </legend>
+                    <Select
+                      value={settings.badgeShape || "pill"}
+                      onValueChange={(v) =>
+                        onUpdate({
+                          badgeShape: v as "pill" | "square" | "sharp",
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Selecione o formato" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pill" className="text-xs">
+                          Arredondado
+                        </SelectItem>
+                        <SelectItem value="square" className="text-xs">
+                          Cantos Suaves
+                        </SelectItem>
+                        <SelectItem value="sharp" className="text-xs">
+                          Totalmente Quadrado
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </fieldset>
+                </div>
+
+                <Label className="text-[11px] font-bold uppercase text-primary tracking-wider pt-2">
                   Textos do Card
                 </Label>
 
@@ -443,7 +547,6 @@ export function TeamEditor({
                   </div>
                 </div>
               </div>
-            </div>
           </AccordionContent>
         </AccordionItem>
 
@@ -485,7 +588,7 @@ export function TeamEditor({
                       Nome
                     </Label>
                     <Input
-                      value={member.name}
+                      value={member.name || ""}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                         updateItem(member.id, { name: e.target.value })
                       }
@@ -498,7 +601,7 @@ export function TeamEditor({
                       Cargo / Função
                     </Label>
                     <Input
-                      value={member.role}
+                      value={member.role || ""}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                         updateItem(member.id, { role: e.target.value })
                       }
@@ -508,15 +611,39 @@ export function TeamEditor({
 
                   <div className="space-y-1.5">
                     <Label className="text-[10px] uppercase text-muted-foreground">
-                      URL da Imagem
+                      Foto do Membro
                     </Label>
-                    <Input
-                      value={member.image}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        updateItem(member.id, { image: e.target.value })
-                      }
-                      className="h-8 text-[10px]"
-                    />
+                    <div className="flex gap-2 items-center">
+                      <ImageUploader
+                        businessId={studio?.id || ""}
+                        section="team-member"
+                        onUploadSuccess={(url) =>
+                          updateItem(member.id, { image: url })
+                        }
+                        className="w-full h-10"
+                      />
+                    </div>
+                    {member.image && (
+                      <div className="mt-2 relative group aspect-square w-20 rounded-md overflow-hidden border">
+                        <Image
+                          src={member.image}
+                          alt={member.name}
+                          className="object-cover"
+                          fill
+                          unoptimized
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-white"
+                            onClick={() => updateItem(member.id, { image: "" })}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -524,7 +651,7 @@ export function TeamEditor({
                       Descrição
                     </Label>
                     <Textarea
-                      value={member.description}
+                      value={member.description || ""}
                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                         updateItem(member.id, { description: e.target.value })
                       }
@@ -553,16 +680,27 @@ export function TeamEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
+          disabled={!hasChanges || isLoading}
           onClick={handleSave}
           className={cn(
-            "w-full h-11 text-sm font-bold transition-all duration-300",
-            hasChanges
+            "w-full h-11 text-sm font-bold transition-all duration-300 relative",
+            hasChanges && !isLoading
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? "Aplicar Alterações" : "Nenhuma alteração"}
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : hasChanges ? (
+              "Salvar Alterações"
+            ) : (
+              <span className="opacity-50">Nenhuma alteração</span>
+            )}
+          </div>
         </Button>
       </div>
     </div>

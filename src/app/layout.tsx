@@ -5,8 +5,7 @@ import { headers } from "next/headers";
 import type React from "react";
 import { FaviconUpdater } from "@/components/favicon-updater";
 import { LayoutClientWrapper } from "@/components/layout-client-wrapper";
-import { PreviewStyleManager } from "@/components/preview-style-manager";
-import { ThemeInjector } from "@/components/theme-injector";
+import { ThemeInjectorClient } from "@/components/theme-injector-client";
 import { Toaster } from "@/components/ui/toaster";
 import { StudioProvider } from "@/context/studio-context";
 import { API_BASE_URL } from "@/lib/auth-client";
@@ -30,8 +29,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
   if (!slug) {
     return {
-      title: "StudioManager | Gestão e Agendamentos",
-      description: "A plataforma completa para gestão do seu studio.",
+      title: "Aura Manager | Gestão e Agendamentos",
+      description: "A plataforma completa para gestão do seu negócio.",
     };
   }
 
@@ -53,7 +52,7 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 
   return {
-    title: "StudioManager | Agendamento Online",
+    title: "Aura Manager | Agendamento Online",
     description: "Agende seu horário e realce sua beleza natural.",
   };
 }
@@ -74,8 +73,7 @@ export default async function RootLayout({
     >
       <body className={`font-sans antialiased`} suppressHydrationWarning>
         <StudioProvider initialSlug={slug}>
-          <ThemeInjector />
-          <PreviewStyleManager />
+          <ThemeInjectorClient />
           <FaviconUpdater />
           <LayoutClientWrapper>{children}</LayoutClientWrapper>
           <Toaster />

@@ -1,16 +1,21 @@
-import { Settings2 } from "lucide-react";
 import { ServicesManager } from "@/components/admin/services-manager";
-import { DashboardPageShell } from "@/components/admin/dashboard-page-shell";
+import { TutorialContextualLink } from "@/components/admin/tutorial-reminder";
 
 export default function ServicosPage() {
   return (
-    <DashboardPageShell
-      title="Serviços"
-      subtitle="Configure os serviços oferecidos com uma experiência mais elegante"
-      icon={Settings2}
-      badge="Catálogo"
-    >
+    <div className="mx-auto max-w-7xl space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-sans text-3xl font-bold mb-2 text-primary">
+            Serviços
+          </h2>
+          <p className="text-muted-foreground">
+            Configure os serviços oferecidos
+          </p>
+        </div>
+        <TutorialContextualLink />
+      </div>
       <ServicesManager />
-    </DashboardPageShell>
+    </div>
   );
 }

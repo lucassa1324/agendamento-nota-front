@@ -27,8 +27,20 @@ export interface CreateAppointmentDTO {
   serviceDurationSnapshot: string; // formato HH:mm, ex: "01:00"
   customerId: string | null;
   notes?: string;
+  ignoreBusinessHoursValidation?: boolean;
   studioId?: string; // Mantido para compatibilidade se necessário
   items?: CreateAppointmentItemDTO[]; // Nova tabela appointment_items
+}
+
+export interface UpdateAppointmentDTO {
+  serviceId: string;
+  scheduledAt: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  servicePriceSnapshot: string;
+  notes?: string;
+  ignoreBusinessHoursValidation?: boolean;
 }
 
 export interface AppointmentItem {
@@ -74,9 +86,9 @@ class AppointmentService {
 
   private async handleResponse(response: Response) {
     if (!response.ok) {
-      let errorData: { code?: string; message?: string } = {};
+      let errorData: { code?: string; message?: string; error?: string } = {};
       const contentType = response.headers.get("content-type");
-      
+
       try {
         if (contentType?.includes("application/json")) {
           errorData = await response.json();
@@ -101,11 +113,15 @@ class AppointmentService {
         statusText: response.statusText,
         url: response.url,
         code: errorData.code || "UNKNOWN_ERROR",
-        message: errorData.message || "Ocorreu um erro inesperado",
+        message:
+          errorData.message ||
+          errorData.error ||
+          response.statusText ||
+          "Ocorreu um erro inesperado",
         raw: errorData,
       };
     }
-    
+
     const contentType = response.headers.get("content-type");
     if (contentType?.includes("application/json")) {
       return response.json();
@@ -149,6 +165,8 @@ class AppointmentService {
 
     const response = await customFetch(`${this.baseUrl}/company/${companyId}`, {
       method: "GET",
+      cache: "no-store",
+      next: { revalidate: 0 },
     });
     return this.handleResponse(response);
   }
@@ -168,6 +186,8 @@ class AppointmentService {
     const response = await customFetch(url, {
       method: "GET",
       credentials: "include",
+      cache: "no-store",
+      next: { revalidate: 0 },
     });
     return this.handleResponse(response);
   }
@@ -179,6 +199,24 @@ class AppointmentService {
     const response = await customFetch(`${this.baseUrl}/${id}/status`, {
       method: "PATCH",
       body: JSON.stringify({ status }),
+      credentials: "include",
+    });
+    return this.handleResponse(response);
+  }
+
+  async reschedule(id: string, scheduledAt: string): Promise<Appointment> {
+    const response = await customFetch(`${this.baseUrl}/${id}/schedule`, {
+      method: "PATCH",
+      body: JSON.stringify({ scheduledAt }),
+      credentials: "include",
+    });
+    return this.handleResponse(response);
+  }
+
+  async update(id: string, data: UpdateAppointmentDTO): Promise<Appointment> {
+    const response = await customFetch(`${this.baseUrl}/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
       credentials: "include",
     });
     return this.handleResponse(response);

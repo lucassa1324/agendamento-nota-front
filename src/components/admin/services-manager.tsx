@@ -290,10 +290,19 @@ export function ServicesManager() {
         // Opcional: manter localStorage sincronizado para compatibilidade legada
         saveInventoryToStorage(bookingInventoryData);
       } catch (error) {
-        console.error(
-          ">>> [SERVICES_MANAGER] Erro ao carregar estoque:",
-          error,
-        );
+        const isBillingRequired =
+          (error instanceof Error &&
+            error.message.includes("BILLING_REQUIRED")) ||
+          (typeof error === "object" &&
+            error !== null &&
+            "status" in error &&
+            (error as { status?: number }).status === 402);
+        if (!isBillingRequired) {
+          console.error(
+            ">>> [SERVICES_MANAGER] Erro ao carregar estoque:",
+            error,
+          );
+        }
         // Fallback para localStorage se a API falhar
         setAllProducts(getInventoryFromStorage());
       }
@@ -324,7 +333,9 @@ export function ServicesManager() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.warn(">>> [ADMIN_WARN] Erro na resposta:", errorData);
+        if (response.status !== 402) {
+          console.warn(">>> [ADMIN_WARN] Erro na resposta:", errorData);
+        }
         throw new Error(`Erro ao carregar serviços (${response.status})`);
       }
 
@@ -1008,27 +1019,8 @@ export function ServicesManager() {
       setServiceForProducts(null);
       setInnerProductSearch("");
 
-      // Recarregar lista do banco
+      // Recarregar lista do banco já com mapeamento normalizado (resources -> products)
       await loadServices();
-
-      // Sincronizar localStorage
-      const syncUrl = `${API_URL}/company/${studio?.id}`.replace(
-        /([^:]\/)\/+/g,
-        "$1",
-      );
-      const responseGet = await customFetch(syncUrl);
-      if (responseGet.ok) {
-        const latestData = await responseGet.json();
-        const formattedForStorage = latestData.map((s: BackendService) => ({
-          ...s,
-          price: typeof s.price === "string" ? parseFloat(s.price) : s.price,
-          duration:
-            typeof s.duration === "string"
-              ? parseInt(s.duration, 10)
-              : s.duration,
-        }));
-        saveSettings(formattedForStorage);
-      }
     } catch (error) {
       console.warn(">>> [ADMIN_WARN] Erro ao salvar produtos:", error);
       toast({

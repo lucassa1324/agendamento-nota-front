@@ -19,7 +19,7 @@ export default function EmailVerifiedPage() {
             todos os recursos.
           </p>
           <Button asChild className="w-full">
-            <Link href="/admin">Voltar para o Dashboard</Link>
+            <Link href="/admin">Ir para o Login</Link>
           </Button>
         </CardContent>
       </Card>

@@ -86,13 +86,18 @@ export function AdminMonthlyCalendar() {
       });
 
       setBookings(mappedBookings);
-    } catch (error) {
-      console.error("Erro ao carregar agendamentos:", error);
-      toast({
-        title: "Erro ao carregar",
-        description: "Não foi possível buscar os agendamentos no servidor.",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      // Silenciar se for erro de faturamento (402)
+      if (error?.status === 402) {
+        console.warn("AdminMonthlyCalendar: Agendamentos bloqueados por faturamento.");
+      } else {
+        console.error("Erro ao carregar agendamentos:", error);
+        toast({
+          title: "Erro ao carregar",
+          description: "Não foi possível buscar os agendamentos no servidor.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }

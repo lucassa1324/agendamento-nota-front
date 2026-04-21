@@ -1,136 +1,90 @@
 "use client";
 
-import imageCompression from "browser-image-compression";
-import { Loader2, RotateCcw, Upload } from "lucide-react";
-import { useRef, useState } from "react";
+import { RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
+import { useStudio } from "@/context/studio-context";
 import { cn } from "@/lib/utils";
+import { ImageUploader } from "./ImageUploader";
+import type { SectionBackgroundSettings } from "./SectionBackground";
 
-interface BackgroundSettings {
-  bgType: "color" | "image";
-  bgColor: string;
-  bgImage: string;
-  imageOpacity: number;
-  overlayOpacity: number;
-  imageScale: number;
-  imageX: number;
-  imageY: number;
-}
+export type BackgroundSettings = SectionBackgroundSettings;
 
-interface BackgroundEditorProps {
+export interface BackgroundEditorProps {
   settings: BackgroundSettings;
   onUpdate: (updates: Partial<BackgroundSettings>) => void;
   sectionId?: string;
+  section?: string;
 }
 
 export function BackgroundEditor({
   settings,
   onUpdate,
-  sectionId = "section",
+  section = "general",
 }: BackgroundEditorProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { studio } = useStudio();
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Normalização local: se bgImage estiver vazio mas appearance tiver a URL, usamos ela.
+  // Isso resolve o problema da imagem sumir no editor se os campos estiverem dessincronizados.
+  const currentBgImage =
+    settings.appearance?.backgroundImageUrl || settings.bgImage || "";
 
-    // Validações básicas
-    if (!file.type.startsWith("image/")) {
-      alert("Por favor, selecione um arquivo de imagem.");
-      return;
-    }
+  const hasValidImage = !!currentBgImage;
+  const effectiveBgType =
+    settings.bgType || (hasValidImage ? "image" : "color");
 
-    if (file.size > 10 * 1024 * 1024) {
-      alert("A imagem deve ter no máximo 10MB.");
-      return;
-    }
-
-    setIsUploading(true);
-
-    try {
-      // Compressão
-      const options = {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 1920,
-        useWebWorker: true,
-      };
-
-      const compressedFile = await imageCompression(file, options);
-
-      // Converter para Base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve, reject) => {
-        reader.onload = (event) => resolve(event.target?.result as string);
-        reader.onerror = (error) => reject(error);
-      });
-      reader.readAsDataURL(compressedFile);
-      const base64 = await base64Promise;
-
-      // Atualizar estado e mudar para tipo imagem automaticamente
-      onUpdate({ bgImage: base64, bgType: "image" });
-    } catch (error) {
-      console.error("Erro ao processar imagem:", error);
-      alert("Erro ao processar imagem. Tente novamente.");
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
+  if (section === "services") {
+    console.log(`[BackgroundEditor] Debug para 'services':`, {
+      bgImage: settings.bgImage,
+      appearanceUrl: settings.appearance?.backgroundImageUrl,
+      currentBgImage,
+    });
+  }
 
   return (
-    <fieldset
-      className="space-y-6 pt-2 border-none p-0 m-0"
-      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-      onKeyDown={(e: React.KeyboardEvent) => e.stopPropagation()}
-    >
-      <div>
-        <RadioGroup
-          value={settings.bgType}
-          onValueChange={(v: string) => onUpdate({ bgType: v as "color" | "image" })}
-          className="grid grid-cols-2 gap-2 bg-muted/50 p-1 rounded-md"
-        >
-          <div className="flex items-center justify-center">
-            <RadioGroupItem
-              value="color"
-              id={`${sectionId}-bg-color`}
-              className="sr-only"
-            />
-            <Label
-              htmlFor={`${sectionId}-bg-color`}
-              className={cn(
-                "flex-1 text-center py-1.5 rounded-sm text-[10px] font-bold uppercase cursor-pointer transition-all",
-                settings.bgType === "color"
-                  ? "bg-background shadow-sm text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Cor Sólida
-            </Label>
-          </div>
-          <div className="flex items-center justify-center">
-            <RadioGroupItem
-              value="image"
-              id={`${sectionId}-bg-image`}
-              className="sr-only"
-            />
-            <Label
-              htmlFor={`${sectionId}-bg-image`}
-              className={cn(
-                "flex-1 text-center py-1.5 rounded-sm text-[10px] font-bold uppercase cursor-pointer transition-all",
-                settings.bgType === "image"
-                  ? "bg-background shadow-sm text-primary"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Imagem
-            </Label>
-          </div>
-        </RadioGroup>
+    <div className="space-y-6 pt-2">
+      <div className="space-y-2">
+        <Label className="text-[10px] uppercase text-muted-foreground font-medium">
+          Tipo de Fundo
+        </Label>
+        <div className="grid grid-cols-2 gap-2 bg-muted/50 p-1 rounded-md">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log(">>> [BackgroundEditor] Clique em 'Cor Sólida'");
+              onUpdate({ bgType: "color" });
+            }}
+            className={cn(
+              "relative z-9999 text-center py-2 rounded-sm text-[10px] font-bold uppercase transition-all outline-none cursor-pointer",
+              effectiveBgType === "color"
+                ? "bg-background shadow-sm text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/20",
+            )}
+          >
+            Cor Sólida
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log(">>> [BackgroundEditor] Clique em 'Imagem'");
+              onUpdate({ bgType: "image" });
+            }}
+            className={cn(
+              "relative z-9999 text-center py-2 rounded-sm text-[10px] font-bold uppercase transition-all outline-none cursor-pointer",
+              effectiveBgType === "image"
+                ? "bg-background shadow-sm text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/20",
+            )}
+          >
+            Imagem
+          </button>
+        </div>
       </div>
 
       {settings.bgType === "color" ? (
@@ -142,7 +96,15 @@ export function BackgroundEditor({
                 variant="ghost"
                 size="icon"
                 className="h-4 w-4 hover:text-primary"
-                onClick={() => onUpdate({ bgColor: "" })}
+                onClick={() =>
+                  onUpdate({
+                    bgColor: "",
+                    appearance: {
+                      ...settings.appearance,
+                      backgroundColor: "",
+                    },
+                  })
+                }
               >
                 <RotateCcw className="w-3 h-3" />
               </Button>
@@ -153,57 +115,114 @@ export function BackgroundEditor({
               type="color"
               value={settings.bgColor || "#ffffff"}
               className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ bgColor: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value = e.target.value;
+                if (section === "services") {
+                  console.log(">>> [COLOR_PICKER_EMIT]", value, {
+                    bgColorBefore: settings.bgColor,
+                    appearanceBgBefore: settings.appearance?.backgroundColor,
+                  });
+                }
+                onUpdate({
+                  bgColor: value,
+                  appearance: {
+                    ...settings.appearance,
+                    backgroundColor: value,
+                  },
+                });
+              }}
             />
             <Input
               value={settings.bgColor || ""}
               placeholder="Padrão do Site"
               className="h-8 text-[10px] flex-1 uppercase"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ bgColor: e.target.value })}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                const value = e.target.value;
+                if (section === "services") {
+                  console.log(">>> [COLOR_PICKER_EMIT]", value, {
+                    bgColorBefore: settings.bgColor,
+                    appearanceBgBefore: settings.appearance?.backgroundColor,
+                  });
+                }
+                onUpdate({
+                  bgColor: value,
+                  appearance: {
+                    ...settings.appearance,
+                    backgroundColor: value,
+                  },
+                });
+              }}
             />
           </div>
         </fieldset>
       ) : (
         <div className="space-y-6">
           <fieldset className="space-y-1.5 border-none p-0 m-0">
-            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+              Upload de Imagem
+            </legend>
+            <ImageUploader
+              businessId={studio?.id || ""}
+              section={section}
+              onUploadSuccess={(url) => {
+                onUpdate({
+                  bgImage: url,
+                  appearance: {
+                    ...settings.appearance,
+                    backgroundImageUrl: url,
+                  },
+                });
+              }}
+              className="mb-4"
+            />
+          </fieldset>
+
+          <fieldset className="space-y-1.5 border-none p-0 m-0 pt-4 border-t border-border/30">
+            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
               URL da Imagem
+              {currentBgImage && (
+                <span className="text-[9px] lowercase font-mono opacity-70">
+                  ({currentBgImage.split("/").pop()?.split("?")[0]})
+                </span>
+              )}
             </legend>
             <div className="flex gap-2">
               <Input
-                value={settings.bgImage}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  onUpdate({ bgImage: e.target.value, bgType: "image" })
-                }
+                value={currentBgImage || ""}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const val = e.target.value;
+                  onUpdate({
+                    bgImage: val,
+                    appearance: {
+                      ...settings.appearance,
+                      backgroundImageUrl: val,
+                    },
+                  });
+                }}
                 className="h-8 text-xs flex-1"
                 placeholder="https://..."
               />
-            </div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              className="hidden"
-              accept="image/*"
-              onChange={handleImageUpload}
-              disabled={isUploading}
-            />
-            <Button
-              variant="outline"
-              className="w-full h-10 border-dashed text-xs gap-2"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-            >
-              {isUploading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />{" "}
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-3.5 h-3.5" /> Fazer Upload
-                </>
+              {currentBgImage && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    onUpdate({
+                      bgType: "color",
+                      bgImage: "",
+                      appearance: {
+                        ...settings.appearance,
+                        backgroundImageUrl: "",
+                      },
+                    });
+                  }}
+                  title="Remover Imagem"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
               )}
-            </Button>
+            </div>
           </fieldset>
 
           <fieldset className="space-y-1.5 border-none p-0 m-0">
@@ -220,7 +239,9 @@ export function BackgroundEditor({
               min={0}
               max={100}
               step={1}
-              onValueChange={([v]: number[]) => onUpdate({ imageOpacity: v / 100 })}
+              onValueChange={([v]: number[]) =>
+                onUpdate({ imageOpacity: v / 100 })
+              }
               className="py-2"
             />
           </fieldset>
@@ -320,14 +341,95 @@ export function BackgroundEditor({
           min={0}
           max={100}
           step={1}
-          onValueChange={([v]) => onUpdate({ overlayOpacity: v / 100 })}
+          onValueChange={([v]) =>
+            onUpdate({
+              overlayOpacity: v / 100,
+              appearance: {
+                ...settings.appearance,
+                overlay: {
+                  ...settings.appearance?.overlay,
+                  opacity: v / 100,
+                  color: settings.appearance?.overlay?.color || "",
+                },
+              },
+            })
+          }
         />
+
+        {/* Color Picker para Sobreposição - Só mostra se opacidade > 0 */}
+        {(settings.overlayOpacity || 0) > 0 && (
+          <div className="pt-3 space-y-1.5 animate-in fade-in slide-in-from-top-1">
+            <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5 flex justify-between items-center">
+              Cor da Sobreposição
+              {settings.appearance?.overlay?.color && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4 hover:text-primary"
+                  onClick={() =>
+                    onUpdate({
+                      appearance: {
+                        ...settings.appearance,
+                        overlay: {
+                          ...settings.appearance?.overlay,
+                          color: "",
+                          opacity: settings.overlayOpacity ?? 0,
+                        },
+                      },
+                    })
+                  }
+                >
+                  <RotateCcw className="w-3 h-3" />
+                </Button>
+              )}
+            </legend>
+            <div className="flex gap-2">
+              <Input
+                type="color"
+                value={settings.appearance?.overlay?.color || "#000000"}
+                className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = e.target.value;
+                  onUpdate({
+                    appearance: {
+                      ...settings.appearance,
+                      overlay: {
+                        ...settings.appearance?.overlay,
+                        color: value,
+                        opacity: settings.overlayOpacity ?? 0,
+                      },
+                    },
+                  });
+                }}
+              />
+              <Input
+                value={settings.appearance?.overlay?.color || ""}
+                placeholder="Padrão (Gradiente)"
+                className="h-8 text-[10px] flex-1 uppercase"
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = e.target.value;
+                  onUpdate({
+                    appearance: {
+                      ...settings.appearance,
+                      overlay: {
+                        ...settings.appearance?.overlay,
+                        color: value,
+                        opacity: settings.overlayOpacity ?? 0,
+                      },
+                    },
+                  });
+                }}
+              />
+            </div>
+          </div>
+        )}
+
         <p className="text-[9px] text-muted-foreground mt-1">
           {settings.bgType === "image"
             ? "Cria um degradê suave para melhorar a leitura do texto sobre a imagem."
             : "Aplica uma camada de cor extra sobre o fundo escolhido."}
         </p>
       </fieldset>
-    </fieldset>
+    </div>
   );
 }

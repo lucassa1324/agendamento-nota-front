@@ -110,7 +110,16 @@ export function InventoryManager() {
         console.log(">>> [INVENTORY] Dados recebidos do Back-end:", data);
         setInventory(data);
       } catch (error) {
-        console.error("Erro ao buscar estoque:", error);
+        const isBillingRequired =
+          (error instanceof Error &&
+            error.message.includes("BILLING_REQUIRED")) ||
+          (typeof error === "object" &&
+            error !== null &&
+            "status" in error &&
+            (error as { status?: number }).status === 402);
+        if (!isBillingRequired) {
+          console.error("Erro ao buscar estoque:", error);
+        }
         // Limpa a lista em caso de erro 500 ou outros erros de busca para evitar dados inconsistentes
         setInventory([]);
       } finally {
@@ -215,6 +224,58 @@ export function InventoryManager() {
     isShared: false,
   });
 
+  const normalizeProductName = (name: string) =>
+    name
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^\w\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const normalizedInputName = normalizeProductName(newItem.name || "");
+  const exactDuplicateItem =
+    normalizedInputName.length > 0
+      ? inventory.find(
+          (item) => normalizeProductName(item.name) === normalizedInputName,
+        ) || null
+      : null;
+  const isDuplicateBlocked = !!exactDuplicateItem;
+  const matchingItems = useMemo(() => {
+    if (normalizedInputName.length < 1) return [];
+    return inventory
+      .filter((item) =>
+        normalizeProductName(item.name).includes(normalizedInputName),
+      );
+  }, [inventory, normalizedInputName]);
+
+  const resetNewItemForm = () => {
+    setNewItem({
+      name: "",
+      quantity: "",
+      minQuantity: "",
+      unit: "un",
+      price: "",
+      secondaryUnit: "",
+      conversionFactor: "",
+      isShared: false,
+    });
+  };
+
+  const handleNewItemNameChange = (value: string) => {
+    setNewItem({ ...newItem, name: value });
+  };
+
+  const handleOpenQuickEntryFromDuplicate = (item: InventoryItem) => {
+    const parsedQuantity = Number(newItem.quantity);
+    setTransactionItem({ item, type: "entrada" });
+    setTransactionQuantity(
+      !Number.isNaN(parsedQuantity) && parsedQuantity > 0
+        ? String(parsedQuantity)
+        : "1",
+    );
+  };
+
   const handleAddItem = async () => {
     if (!newItem.name || !newItem.quantity || !newItem.price) {
       toast({
@@ -230,6 +291,16 @@ export function InventoryManager() {
         title: "Erro de identificação",
         description:
           "Não foi possível identificar sua empresa. Tente recarregar a página.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (isDuplicateBlocked) {
+      toast({
+        title: "Produto já existe",
+        description:
+          "Esse nome já está cadastrado. Use a opção de vincular item existente.",
         variant: "destructive",
       });
       return;
@@ -272,16 +343,7 @@ export function InventoryManager() {
         description: `${newItem.name} foi adicionado ao estoque.`,
       });
 
-      setNewItem({
-        name: "",
-        quantity: "",
-        minQuantity: "",
-        unit: "un",
-        price: "",
-        secondaryUnit: "",
-        conversionFactor: "",
-        isShared: false,
-      });
+      resetNewItemForm();
       setShowAddForm(false);
       fetchInventory(); // Atualiza a lista
     } catch (error) {
@@ -289,7 +351,12 @@ export function InventoryManager() {
       const message =
         error instanceof Error
           ? error.message
-          : "Ocorreu um erro ao tentar salvar o produto.";
+          : typeof error === "object" &&
+              error !== null &&
+              "message" in error &&
+              typeof (error as { message?: unknown }).message === "string"
+            ? (error as { message: string }).message
+            : "Ocorreu um erro ao tentar salvar o produto.";
       toast({
         title: "Erro ao adicionar",
         description: message,
@@ -630,8 +697,13 @@ export function InventoryManager() {
         <InventoryAddForm
           newItem={newItem}
           setNewItem={setNewItem}
+          onNameChange={handleNewItemNameChange}
           handleAddItem={handleAddItem}
           setShowAddForm={setShowAddForm}
+          matchingItems={matchingItems}
+          exactMatchItem={exactDuplicateItem}
+          onOpenQuickEntry={handleOpenQuickEntryFromDuplicate}
+          isDuplicateBlocked={isDuplicateBlocked}
           isLoading={isSaving}
         />
       )}
@@ -643,12 +715,12 @@ export function InventoryManager() {
               <Package className="w-3 h-3 sm:w-5 sm:h-5" />
               Inventário
             </CardTitle>
-            <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto">
+            <div className="flex flex-col sm:flex-row gap-2 w-full xl:w-auto items-end sm:items-center">
               <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2 top-2 h-3 w-3 text-muted-foreground" />
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Buscar..."
-                  className="pl-7 w-full h-7 text-[10px] sm:text-sm"
+                  className="pl-9 w-full h-7 sm:h-9 text-[10px] sm:text-sm"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -659,7 +731,7 @@ export function InventoryManager() {
                   setSortBy(value)
                 }
               >
-                <SelectTrigger className="w-full sm:w-48 h-7 text-[10px] sm:text-sm">
+                <SelectTrigger className="w-full sm:w-48 h-7 sm:h-9 text-[10px] sm:text-sm">
                   <SelectValue placeholder="Ordenar" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1278,6 +1350,7 @@ export function InventoryManager() {
                       <SelectItem value="un">Unidade (un)</SelectItem>
                       <SelectItem value="kg">Quilograma (kg)</SelectItem>
                       <SelectItem value="g">Grama (g)</SelectItem>
+                      <SelectItem value="mg">Miligrama (mg)</SelectItem>
                       <SelectItem value="lt">Litro (lt)</SelectItem>
                       <SelectItem value="ml">Mililitro (ml)</SelectItem>
                       <SelectItem value="pct">Pacote (pct)</SelectItem>
@@ -1318,6 +1391,7 @@ export function InventoryManager() {
                       <SelectItem value="un">Unidade (un)</SelectItem>
                       <SelectItem value="kg">Quilograma (kg)</SelectItem>
                       <SelectItem value="g">Grama (g)</SelectItem>
+                      <SelectItem value="mg">Miligrama (mg)</SelectItem>
                       <SelectItem value="lt">Litro (lt)</SelectItem>
                       <SelectItem value="ml">Mililitro (ml)</SelectItem>
                     </SelectContent>

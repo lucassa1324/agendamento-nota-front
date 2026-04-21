@@ -29,9 +29,7 @@ const getAbsoluteUrl = (path: string) => {
 };
 
 export const API_BASE_URL = getAbsoluteUrl(
-  (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api-proxy"
-  ).replace(/\/$/, ""),
+  (process.env.NEXT_PUBLIC_API_URL || "/api-proxy").replace(/\/$/, ""),
 );
 
 // Agora forçamos o prefixo /api/auth para alinhar com o proxy e o back-end.
@@ -48,7 +46,20 @@ console.log(">>> [AUTH_CLIENT] AUTH_BASE_URL configurada como:", AUTH_BASE_URL);
 export const LANDING_PAGE_URL = cleanUrl(
   process.env.NEXT_PUBLIC_LANDING_PAGE_URL,
 );
-export const BASE_DOMAIN = cleanUrl(process.env.NEXT_PUBLIC_BASE_DOMAIN);
+
+// Lógica inteligente para detectar o domínio base em produção
+const getBaseDomain = () => {
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    // Se estivermos no domínio oficial, forçamos o uso dele como base
+    if (host.endsWith("aurasistema.com.br")) {
+      return "aurasistema.com.br";
+    }
+  }
+  return process.env.NEXT_PUBLIC_BASE_DOMAIN || "localhost:3000";
+};
+
+export const BASE_DOMAIN = cleanUrl(getBaseDomain());
 export const ADMIN_URL = cleanUrl(process.env.NEXT_PUBLIC_ADMIN_URL);
 
 export const authClient = createAuthClient({
@@ -61,78 +72,45 @@ export const authClient = createAuthClient({
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onRequest: async (context: any) => {
-      console.log(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR START", {
-        hasContext: !!context,
-        hasOptions: !!context?.options,
-        url: context?.request?.url,
-      });
-
-      // PROTEÇÃO TOTAL CONTRA UNDEFINED - Solicitado pelo usuário
+      // PROTEÇÃO CONTRA UNDEFINED - Solicitado pelo usuário
+      // Mas se não houver context ou options, apenas retornamos para deixar o better-fetch seguir seu curso padrão
       if (!context || !context.options) {
-        console.warn(
-          ">>> [AUTH_CLIENT] REQUEST INTERCEPTOR ABORTED: Missing context or options",
-        );
         return;
       }
 
       // DEBUG CRÍTICO: Verificar se o body já foi stringify
-      const bodyIsString = typeof context?.options?.body === "string";
+      const bodyIsString = typeof context.options.body === "string";
 
       console.log(">>> [AUTH_CLIENT] REQUEST INTERCEPTOR BODY CHECK:", {
         url: context?.request?.url,
         method: context?.request?.method,
-        bodyType: typeof context?.options?.body,
+        bodyType: typeof context.options.body,
         bodyIsString,
         bodyContentSnippet: bodyIsString
-          ? context.options.body.substring(0, 50)
+          ? (context.options.body as string).substring(0, 50)
           : context.options.body
             ? "Object"
             : "Empty/Null",
-        hasJsonProp: !!(context?.options as { json?: unknown })?.json,
+        hasJsonProp: !!(context.options as { json?: unknown })?.json,
       });
 
-      // Se tiver propriedade 'json', o better-fetch vai serializar automaticamente depois deste interceptor
       if ((context?.options as { json?: unknown })?.json) {
         console.log(
           ">>> [AUTH_CLIENT] Propriedade 'json' detectada. Better-fetch cuidará da serialização.",
         );
-        return;
-      }
-
-      // Se o body for um objeto e o método não for GET/HEAD, forçamos o stringify
-      // Isso corrige o erro onde o browser envia [object Object]
-      if (
-        !bodyIsString &&
-        context?.options?.body &&
-        typeof context?.options?.body === "object" &&
-        !["GET", "HEAD"].includes(context?.request?.method || "")
-      ) {
-        console.warn(">>> [AUTH_CLIENT] FORÇANDO JSON.stringify NO BODY!");
-        try {
-          context.options.body = JSON.stringify(context.options.body);
-
-          // Garante o header Content-Type APENAS quando nós mesmos serializamos
-          context.options.headers = {
-            ...context.options.headers,
-            "Content-Type": "application/json",
-          };
-        } catch (e) {
-          console.error(
-            ">>> [AUTH_CLIENT] Erro ao fazer JSON.stringify do body:",
-            e,
-          );
-        }
       }
     },
     // biome-ignore lint/suspicious/noExplicitAny: Debugging purpose
     onResponse: async (context: any) => {
-      // try {
-      //   const clonedResponse = context.response.clone();
-      //   const text = await clonedResponse.text();
-      //   console.log(">>> [AUTH_CLIENT] RAW BACKEND RESPONSE:", text);
-      // } catch (e) {
-      //   console.error(">>> [AUTH_CLIENT] Erro ao ler resposta raw:", e);
-      // }
+      if (context.response.status >= 400) {
+        try {
+          const clonedResponse = context.response.clone();
+          const text = await clonedResponse.text();
+          console.error(`>>> [AUTH_CLIENT] ERROR RESPONSE (${context.response.status}):`, text);
+        } catch (e) {
+          console.error(">>> [AUTH_CLIENT] Erro ao ler resposta de erro:", e);
+        }
+      }
 
       console.log(">>> [AUTH_CLIENT] RESPONSE INTERCEPTOR:", {
         status: context?.response?.status,
@@ -143,13 +121,16 @@ export const authClient = createAuthClient({
   // O Better-Auth gerencia os cookies automaticamente
   session: {
     cookieCache: {
-      enabled: true, // Reabilitado para reduzir chamadas ao network e evitar ERR_ABORTED em paralelo
-      maxAge: 60, // Cache de 1 minuto
+      enabled: false, // Desabilitado para evitar que o usuário veja "não verificado" após clicar no link
+      maxAge: 0,
     },
   },
   // Tipagem para os campos customizados do usuário (slug, businessId, role)
   user: {
     additionalFields: {
+      cpfCnpj: {
+        type: "string",
+      },
       slug: {
         type: "string",
       },
@@ -164,6 +145,12 @@ export const authClient = createAuthClient({
       },
       hasCompletedOnboarding: {
         type: "boolean",
+      },
+      acceptedTerms: {
+        type: "boolean",
+      },
+      acceptedTermsAt: {
+        type: "string",
       },
     },
   },
@@ -190,6 +177,7 @@ let sessionPromise: Promise<string | null> | null = null;
 let lastToken: string | null = null;
 let lastFetchTime = 0;
 const CACHE_TTL = 30000; // 30 segundos
+const SESSION_FETCH_TIMEOUT_MS = 2500;
 
 export const getSessionToken = async (): Promise<string | null> => {
   const now = Date.now();
@@ -205,15 +193,29 @@ export const getSessionToken = async (): Promise<string | null> => {
   }
 
   // Iniciamos uma nova requisição
-  sessionPromise = (async () => {
+  const currentPromise = (async () => {
     try {
-      const resp = await fetch(`${AUTH_BASE_URL}/api-proxy/api/auth/session`, {
+      // No client-side, usamos URL relativa para evitar problemas de CORS em subdomínios
+      const fetchUrl = typeof window !== "undefined"
+        ? "/api-proxy/api/auth/session"
+        : `${AUTH_BASE_URL}/api-proxy/api/auth/session`;
+
+      console.log(`>>> [AUTH_CLIENT] Buscando sessão em: ${fetchUrl}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(
+        () => controller.abort(),
+        SESSION_FETCH_TIMEOUT_MS,
+      );
+
+      const resp = await fetch(fetchUrl, {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
         },
         credentials: "include",
-      });
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
 
       if (resp.ok) {
         try {
@@ -235,12 +237,16 @@ export const getSessionToken = async (): Promise<string | null> => {
       }
       return null;
     } catch (error) {
-      console.error("Erro ao obter sessão:", error);
+      if (error instanceof Error && error.name === "AbortError") {
+        return null;
+      }
+      console.error(">>> [AUTH_CLIENT] Erro CRÍTICO ao obter sessão:", error);
       return null;
     } finally {
       sessionPromise = null;
     }
   })();
 
-  return sessionPromise;
+  sessionPromise = currentPromise;
+  return currentPromise;
 };

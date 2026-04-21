@@ -16,6 +16,7 @@ import {
   Heart,
   ImageIcon,
   Laptop,
+  Loader2,
   Medal,
   Moon,
   Music,
@@ -36,6 +37,7 @@ import {
   Utensils,
   Wind,
 } from "lucide-react";
+import { useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -97,6 +99,7 @@ interface ValuesEditorProps {
   onUpdate: (updates: Partial<ValuesSettings>) => void;
   onSave?: () => void;
   hasChanges?: boolean;
+  isSaving?: boolean;
 }
 
 export function ValuesEditor({
@@ -104,9 +107,19 @@ export function ValuesEditor({
   onUpdate,
   onSave: externalOnSave,
   hasChanges,
+  isSaving: externalIsSaving,
 }: ValuesEditorProps) {
-  const handleSave = () => {
-    if (externalOnSave) externalOnSave();
+  const [localIsSaving, setLocalIsSaving] = useState(false);
+  const isLoading = externalIsSaving || localIsSaving;
+
+  const handleSave = async () => {
+    if (!externalOnSave || isLoading) return;
+    setLocalIsSaving(true);
+    try {
+      await externalOnSave();
+    } finally {
+      setLocalIsSaving(false);
+    }
   };
 
   const addItem = () => {
@@ -242,7 +255,9 @@ export function ValuesEditor({
                       value={settings.cardBgColor || "#ffffff"}
                       className="w-8 h-8 p-1 rounded-md bg-transparent border-border/50 cursor-pointer"
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        onUpdate({ cardBgColor: e.target.value })
+                        onUpdate({
+                          cardBgColor: e.target.value,
+                        })
                       }
                     />
                     <Input
@@ -250,7 +265,9 @@ export function ValuesEditor({
                       placeholder="#HEX"
                       className="h-8 text-[10px] flex-1 uppercase"
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                        onUpdate({ cardBgColor: e.target.value })
+                        onUpdate({
+                          cardBgColor: e.target.value,
+                        })
                       }
                     />
                   </div>
@@ -304,7 +321,7 @@ export function ValuesEditor({
                       Fonte
                     </legend>
                     <Select
-                      value={settings.cardTitleFont}
+                      value={settings.cardTitleFont || ""}
                       onValueChange={(v: string) =>
                         onUpdate({ cardTitleFont: v })
                       }
@@ -377,7 +394,7 @@ export function ValuesEditor({
                       Fonte
                     </legend>
                     <Select
-                      value={settings.cardDescriptionFont}
+                      value={settings.cardDescriptionFont || ""}
                       onValueChange={(v: string) =>
                         onUpdate({ cardDescriptionFont: v })
                       }
@@ -447,9 +464,21 @@ export function ValuesEditor({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <BackgroundEditor
-              settings={settings}
-              onUpdate={(updates) => onUpdate({ ...updates })}
-              sectionId="values"
+              settings={{
+                bgType: settings.bgType,
+                bgColor: settings.bgColor,
+                bgImage: settings.bgImage,
+                imageOpacity: settings.imageOpacity,
+                overlayOpacity: settings.overlayOpacity,
+                imageScale: settings.imageScale,
+                imageX: settings.imageX,
+                imageY: settings.imageY,
+                appearance: settings.appearance,
+              }}
+              onUpdate={(updates) => {
+                onUpdate(updates as Partial<ValuesSettings>);
+              }}
+              section="values"
             />
           </AccordionContent>
         </AccordionItem>
@@ -493,7 +522,7 @@ export function ValuesEditor({
                         Ícone
                       </Label>
                       <Select
-                        value={item.icon}
+                        value={item.icon || ""}
                         onValueChange={(v: string) =>
                           updateItem(item.id, { icon: v })
                         }
@@ -521,7 +550,7 @@ export function ValuesEditor({
                         Título
                       </Label>
                       <Input
-                        value={item.title}
+                        value={item.title || ""}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                           updateItem(item.id, { title: e.target.value })
                         }
@@ -535,7 +564,7 @@ export function ValuesEditor({
                       Descrição
                     </Label>
                     <Textarea
-                      value={item.description}
+                      value={item.description || ""}
                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                         updateItem(item.id, { description: e.target.value })
                       }
@@ -561,16 +590,27 @@ export function ValuesEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
+          disabled={!hasChanges || isLoading}
           onClick={handleSave}
           className={cn(
-            "w-full h-11 text-sm font-bold transition-all duration-300",
-            hasChanges
+            "w-full h-11 text-sm font-bold transition-all duration-300 relative",
+            hasChanges && !isLoading
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? "Aplicar Alterações" : "Nenhuma alteração"}
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : hasChanges ? (
+              "Salvar Alterações"
+            ) : (
+              <span className="opacity-50">Nenhuma alteração</span>
+            )}
+          </div>
         </Button>
       </div>
     </div>

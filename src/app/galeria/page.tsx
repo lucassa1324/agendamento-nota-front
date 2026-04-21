@@ -1,17 +1,24 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { use, useEffect, useState } from "react";
-import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
+import { use, useCallback, useEffect, useRef, useState } from "react";
+import {
+  SectionBackground,
+  type SectionBackgroundSettings,
+} from "@/components/admin/site_editor/components/SectionBackground";
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { GalleryGrid } from "@/components/gallery-grid";
 import { useStudio } from "@/context/studio-context";
 import {
   defaultGallerySettings,
   type GallerySettings,
-  getGallerySettings,
+  getGalleryPageSettings,
   getPageVisibility,
+  getPageVisibilityFromConfig,
   getVisibleSections,
+  getVisibleSectionsFromConfig,
+  SECTION_IDS,
+  sanitizeColor,
 } from "@/lib/booking-data";
 
 export default function GaleriaPage({
@@ -34,37 +41,100 @@ export default function GaleriaPage({
   const [gallerySettings, setGallerySettings] = useState<GallerySettings>(
     defaultGallerySettings,
   );
+  const hasLivePreviewUpdateRef = useRef(false);
+  const sanitizeGallerySettings = useCallback(
+    (incoming: Record<string, unknown>) => {
+      const incomingAppearance =
+        (incoming.appearance as Record<string, unknown>) || {};
+      const incomingContent =
+        (incoming.content as Record<string, unknown>) || {};
+      const merged = {
+        ...defaultGallerySettings,
+        ...(incoming as GallerySettings),
+      } as GallerySettings & Record<string, unknown>;
+
+      merged.bgColor =
+        sanitizeColor(
+          (merged.bgColor as string) ||
+            (incomingAppearance.backgroundColor as string),
+        ) || "";
+      merged.titleColor =
+        sanitizeColor(
+          (merged.titleColor as string) ||
+            (incomingAppearance.titleColor as string) ||
+            (incomingContent.titleColor as string),
+        ) || "";
+      merged.subtitleColor =
+        sanitizeColor(
+          (merged.subtitleColor as string) ||
+            (incomingAppearance.subtitleColor as string) ||
+            (incomingContent.subtitleColor as string),
+        ) || "";
+      merged.buttonColor =
+        sanitizeColor(
+          (merged.buttonColor as string) ||
+            (incomingAppearance.buttonColor as string) ||
+            (incomingContent.buttonColor as string),
+        ) || "";
+      merged.buttonTextColor =
+        sanitizeColor(
+          (merged.buttonTextColor as string) ||
+            (incomingAppearance.buttonTextColor as string) ||
+            (incomingContent.buttonTextColor as string),
+        ) || "";
+      merged.cardBgColor =
+        sanitizeColor(
+          (merged.cardBgColor as string) ||
+            (incomingAppearance.cardBgColor as string) ||
+            (incomingAppearance.cardBackgroundColor as string) ||
+            (incomingContent.cardBgColor as string),
+        ) || "";
+
+      if (merged.appearance) {
+        merged.appearance = {
+          ...merged.appearance,
+          backgroundColor: merged.bgColor,
+          cardBgColor: merged.cardBgColor,
+        };
+      }
+
+      return merged;
+    },
+    [],
+  );
 
   // Sincronização com os dados vindos do StudioContext (Banco de Dados)
   useEffect(() => {
     if (studio?.config) {
       const config = studio.config as unknown as SiteConfigData;
+      const configVisibleSections = getVisibleSectionsFromConfig(config);
+      const configPageVisibility = getPageVisibilityFromConfig(config);
 
-      if (!isPreview) {
-        if (config.visibleSections) {
-          setVisibleSections(config.visibleSections);
-        }
+      if (configVisibleSections) {
+        setVisibleSections(configVisibleSections);
+      }
 
-        if (config.pageVisibility) {
-          if (config.pageVisibility.galeria === false) {
-            setIsVisible(false);
-            router.push("/");
-          } else {
-            setIsVisible(true);
-          }
-        }
+      if (configPageVisibility?.galeria === false && !isPreview) {
+        setIsVisible(false);
+        router.push("/");
+      } else if (configPageVisibility) {
+        setIsVisible(true);
+      }
 
-        if (config.gallery) {
-          setGallerySettings(config.gallery);
-        }
+      const pageGallery = config.galleryPageSettings as
+        | Record<string, unknown>
+        | undefined;
+      if (pageGallery) {
+        setGallerySettings(sanitizeGallerySettings(pageGallery));
       }
     }
-  }, [studio, isPreview, router]);
+  }, [studio, isPreview, router, sanitizeGallerySettings]);
 
   useEffect(() => {
-    // Carregar configurações iniciais
-    setGallerySettings(getGallerySettings());
-  }, []);
+    if (!studio?.config) {
+      setGallerySettings(getGalleryPageSettings());
+    }
+  }, [studio?.config]);
 
   useEffect(() => {
     setIsolatedSection(initialOnly || null);
@@ -87,13 +157,36 @@ export default function GaleriaPage({
 
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
-        checkVisibility(event.data.visibility);
+        checkVisibility(event.data.settings || {});
       }
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
-        setVisibleSections(event.data.sections);
+        setVisibleSections(event.data.settings || {});
       }
-      if (event.data?.type === "UPDATE_GALLERY_SETTINGS") {
-        setGallerySettings(event.data.settings);
+      if (
+        (event.data?.type === "UPDATE_GALLERY_PAGE" ||
+          event.data?.type === "UPDATE_GALLERY_PAGE_SETTINGS") &&
+        event.data.settings
+      ) {
+        hasLivePreviewUpdateRef.current = true;
+        setGallerySettings(
+          sanitizeGallerySettings(event.data.settings as Record<string, unknown>),
+        );
+      }
+      if (
+        (event.data?.type === "UPDATE_SITE_DATA" ||
+          event.data?.type === "UPDATE_SITE_CONFIG") &&
+        event.data.data
+      ) {
+        if (isPreview && hasLivePreviewUpdateRef.current) {
+          return;
+        }
+        const siteData = event.data.data as Record<string, unknown>;
+        const configGallery = siteData.galleryPageSettings as
+          | Record<string, unknown>
+          | undefined;
+        if (configGallery) {
+          setGallerySettings(sanitizeGallerySettings(configGallery));
+        }
       }
       if (event.data?.type === "SET_ISOLATED_SECTION") {
         setIsolatedSection(event.data.sectionId);
@@ -103,9 +196,23 @@ export default function GaleriaPage({
     const handleSectionsUpdate = () => {
       setVisibleSections(getVisibleSections());
     };
+    const handleGalleryPageSettingsUpdate = () => {
+      if (isPreview && hasLivePreviewUpdateRef.current) {
+        return;
+      }
+      setGallerySettings(
+        sanitizeGallerySettings(
+          getGalleryPageSettings() as unknown as Record<string, unknown>,
+        ),
+      );
+    };
 
     window.addEventListener("message", handleMessage);
     window.addEventListener("visibleSectionsUpdated", handleSectionsUpdate);
+    window.addEventListener(
+      "galleryPageSettingsUpdated",
+      handleGalleryPageSettingsUpdate,
+    );
 
     return () => {
       window.removeEventListener("message", handleMessage);
@@ -113,8 +220,12 @@ export default function GaleriaPage({
         "visibleSectionsUpdated",
         handleSectionsUpdate,
       );
+      window.removeEventListener(
+        "galleryPageSettingsUpdated",
+        handleGalleryPageSettingsUpdate,
+      );
     };
-  }, [router, isPreview]);
+  }, [router, isPreview, sanitizeGallerySettings]);
 
   if (isVisible === false) return null;
   if (isVisible === null) return null; // Loading state
@@ -124,11 +235,21 @@ export default function GaleriaPage({
     return visibleSections[id] !== false;
   };
 
+  const background =
+    gallerySettings?.appearance?.backgroundColor ||
+    gallerySettings?.bgColor ||
+    "transparent";
+
   return (
     <main>
-      {isSectionVisible("gallery-grid") && (
-        <section className="relative py-20 md:py-32 overflow-hidden">
-          <SectionBackground settings={gallerySettings} />
+      {isSectionVisible(SECTION_IDS.pageGallery) && (
+        <section 
+          className="relative py-20 md:py-32 overflow-hidden"
+          style={{
+            backgroundColor: background,
+          }}
+        >
+          <SectionBackground settings={gallerySettings as SectionBackgroundSettings} />
 
           <div className="container mx-auto px-4 relative z-10">
             <div className="text-center mb-16">
@@ -154,7 +275,7 @@ export default function GaleriaPage({
               </p>
             </div>
 
-            <GalleryGrid />
+            <GalleryGrid settings={gallerySettings} />
           </div>
         </section>
       )}

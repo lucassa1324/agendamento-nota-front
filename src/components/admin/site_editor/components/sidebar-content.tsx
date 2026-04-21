@@ -5,7 +5,18 @@
  */
 
 import { ArrowLeft, Loader2, RotateCcw, Settings2 } from "lucide-react";
-import { memo } from "react";
+import { memo, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import type {
   BookingStepSettings,
@@ -38,6 +49,7 @@ import { GalleryEditor } from "../pages/home/gallery-editor";
 import { ServicesEditor } from "../pages/home/services-editor";
 import { ValuesEditor } from "../pages/home/values-editor";
 import { SidebarNav } from "../sidebar-nav";
+import type { BackgroundSettings } from "./BackgroundEditor";
 import type { PageItem, SectionItem } from "./editor-constants";
 
 interface SidebarContentProps {
@@ -53,8 +65,10 @@ interface SidebarContentProps {
   teamSettings: TeamSettings;
   testimonialsSettings: TestimonialsSettings;
   servicesSettings: ServicesSettings;
-  valuesSettings: ValuesSettings;
+  homeValuesSettings: ValuesSettings;
+  aboutUsValuesSettings: ValuesSettings;
   gallerySettings: GallerySettings;
+  galleryPageSettings: GallerySettings;
   ctaSettings: CTASettings;
   headerSettings: HeaderSettings;
   footerSettings: FooterSettings;
@@ -71,8 +85,10 @@ interface SidebarContentProps {
   onUpdateTeam: (updates: Partial<TeamSettings>) => void;
   onUpdateTestimonials: (updates: Partial<TestimonialsSettings>) => void;
   onUpdateServices: (updates: Partial<ServicesSettings>) => void;
-  onUpdateValues: (updates: Partial<ValuesSettings>) => void;
+  onUpdateHomeValues: (updates: Partial<ValuesSettings>) => void;
+  onUpdateAboutUsValues: (updates: Partial<ValuesSettings>) => void;
   onUpdateGallery: (updates: Partial<GallerySettings>) => void;
+  onUpdateGalleryPage: (updates: Partial<GallerySettings>) => void;
   onUpdateCTA: (updates: Partial<CTASettings>) => void;
   onUpdateHeader: (updates: Partial<HeaderSettings>) => void;
   onUpdateFooter: (updates: Partial<FooterSettings>) => void;
@@ -81,6 +97,7 @@ interface SidebarContentProps {
   onUpdateBookingTime: (updates: Partial<BookingStepSettings>) => void;
   onUpdateBookingForm: (updates: Partial<BookingStepSettings>) => void;
   onUpdateBookingConfirmation: (updates: Partial<BookingStepSettings>) => void;
+  onUpdateBackground: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onSaveFont: () => void;
   onSaveColors: () => void;
   onSaveHero: () => void;
@@ -89,7 +106,8 @@ interface SidebarContentProps {
   onSaveTeam: () => void;
   onSaveTestimonials: () => void;
   onSaveServices: () => void;
-  onSaveValues: () => void;
+  onSaveHomeValues: () => void;
+  onSaveAboutUsValues: () => void;
   onSaveGallery: () => void;
   onSaveCTA: () => void;
   onSaveHeader: () => void;
@@ -108,8 +126,10 @@ interface SidebarContentProps {
   hasTeamChanges: boolean;
   hasTestimonialsChanges: boolean;
   hasServicesChanges: boolean;
-  hasValuesChanges: boolean;
+  hasHomeValuesChanges: boolean;
+  hasAboutUsValuesChanges: boolean;
   hasGalleryChanges: boolean;
+  hasGalleryPageChanges: boolean;
   hasCTAChanges: boolean;
   hasHeaderChanges: boolean;
   hasFooterChanges: boolean;
@@ -130,6 +150,8 @@ interface SidebarContentProps {
   onPageVisibilityChange: (id: string, isVisible: boolean) => void;
   onSaveLocal: () => void;
   onSaveGlobal: (shouldReloadFromBank?: boolean) => void;
+  onPublish: () => void;
+  isPublishing?: boolean;
   hasUnsavedGlobalChanges: boolean;
   pages: PageItem[];
   sections: Record<string, SectionItem[]>;
@@ -149,8 +171,10 @@ export const SidebarContent = memo(
     teamSettings,
     testimonialsSettings,
     servicesSettings,
-    valuesSettings,
+    homeValuesSettings,
+    aboutUsValuesSettings,
     gallerySettings,
+    galleryPageSettings,
     ctaSettings,
     headerSettings,
     footerSettings,
@@ -167,8 +191,10 @@ export const SidebarContent = memo(
     onUpdateTeam,
     onUpdateTestimonials,
     onUpdateServices,
-    onUpdateValues,
+    onUpdateHomeValues,
+    onUpdateAboutUsValues,
     onUpdateGallery,
+    onUpdateGalleryPage,
     onUpdateCTA,
     onUpdateHeader,
     onUpdateFooter,
@@ -177,6 +203,7 @@ export const SidebarContent = memo(
     onUpdateBookingTime,
     onUpdateBookingForm,
     onUpdateBookingConfirmation,
+    onUpdateBackground,
     onSaveFont,
     onSaveColors,
     onSaveHero,
@@ -185,7 +212,8 @@ export const SidebarContent = memo(
     onSaveTeam,
     onSaveTestimonials,
     onSaveServices,
-    onSaveValues,
+    onSaveHomeValues,
+    onSaveAboutUsValues,
     onSaveGallery,
     onSaveCTA,
     onSaveHeader,
@@ -204,8 +232,10 @@ export const SidebarContent = memo(
     hasTeamChanges,
     hasTestimonialsChanges,
     hasServicesChanges,
-    hasValuesChanges,
+    hasHomeValuesChanges,
+    hasAboutUsValuesChanges,
     hasGalleryChanges,
+    hasGalleryPageChanges,
     hasCTAChanges,
     hasHeaderChanges,
     hasFooterChanges,
@@ -225,7 +255,8 @@ export const SidebarContent = memo(
     pageVisibility,
     onPageVisibilityChange,
     onSaveLocal,
-    onSaveGlobal,
+    onPublish,
+    isPublishing,
     hasUnsavedGlobalChanges,
     pages,
     sections,
@@ -240,8 +271,10 @@ export const SidebarContent = memo(
       hasFontChanges ||
       hasColorChanges ||
       hasServicesChanges ||
-      hasValuesChanges ||
+      hasHomeValuesChanges ||
+      hasAboutUsValuesChanges ||
       hasGalleryChanges ||
+      hasGalleryPageChanges ||
       hasCTAChanges ||
       hasHeaderChanges ||
       hasFooterChanges ||
@@ -251,32 +284,75 @@ export const SidebarContent = memo(
       hasBookingFormChanges ||
       hasBookingConfirmationChanges;
 
+    const isGallerySection =
+      activeSection === "home-gallery" || activeSection === "page-gallery";
+    const isGalleryPage = activeSection === "page-gallery";
+    const currentGallerySettings = isGalleryPage
+      ? galleryPageSettings
+      : gallerySettings;
+    const currentGalleryUpdater = isGalleryPage
+      ? onUpdateGalleryPage
+      : onUpdateGallery;
+    const currentHasGalleryChanges = isGalleryPage
+      ? hasGalleryPageChanges
+      : hasGalleryChanges;
+    const isHomeValuesSection = activeSection === "home-values";
+    const isAboutValuesSection = activeSection === "about-values";
+
+    const [isResetOpen, setIsResetOpen] = useState(false);
+
     return (
       <div className="flex flex-col h-full text-[clamp(0.7rem,1vw,0.875rem)]">
         <div className="p-2 sm:p-3 xl:p-6 pb-2 sm:pb-3 border-b border-border/50 shrink-0">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2 pr-10 lg:pr-0">
             <div className="flex items-center gap-1.5 text-primary font-bold">
               <Settings2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 xl:w-5 xl:h-5" />
               <span className="text-[9px] sm:text-[10px] xl:text-sm tracking-wide uppercase">
                 Editor
               </span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={resetSettings}
-              className="h-6 sm:h-7 xl:h-8 px-2 sm:px-2.5 xl:px-3 gap-1 xl:gap-1.5 text-[8px] sm:text-[9px] xl:text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors shrink-0"
-            >
-              <RotateCcw className="w-2 sm:w-2.5 h-2 sm:h-2.5 xl:w-3 xl:h-3" />
-              <span>Resetar</span>
-            </Button>
+            <AlertDialog open={isResetOpen} onOpenChange={setIsResetOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-6 sm:h-7 xl:h-8 px-2 sm:px-2.5 xl:px-3 gap-1 xl:gap-1.5 text-[8px] sm:text-[9px] xl:text-xs text-muted-foreground hover:text-destructive hover:border-destructive transition-colors shrink-0"
+                >
+                  <RotateCcw className="w-2 sm:w-2.5 h-2 sm:h-2.5 xl:w-3 xl:h-3" />
+                  <span>Resetar</span>
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Resetar todas as cores do site?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Essa ação restaura as cores padrão de todas as seções. Isso
+                    não remove conteúdos, mas sobrescreve as cores atuais.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => {
+                      void resetSettings();
+                      setIsResetOpen(false);
+                    }}
+                  >
+                    Resetar cores
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-2 sm:p-3 xl:p-6 custom-scrollbar min-w-0">
           {activeSection ? (
             <div className="space-y-3 sm:space-y-4 xl:space-y-6">
-              <div className="flex items-center gap-2 mb-2 sm:mb-3 xl:mb-4">
+              <div className="flex items-center gap-2 mb-2 sm:mb-3 xl:mb-4 pr-10 lg:pr-0">
                 <Button
                   type="button"
                   variant="ghost"
@@ -294,33 +370,43 @@ export const SidebarContent = memo(
                 >
                   <ArrowLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5 xl:w-4 xl:h-4" />
                 </Button>
-                <div>
+                <div className="flex items-center gap-2">
                   <h3 className="text-[11px] sm:text-xs xl:text-sm font-bold text-primary truncate max-w-37.5 xl:max-w-none">
-                    {activeSectionData?.name}
+                    {activeSectionData?.name || "Seção"}
                   </h3>
-                  <p className="text-[8px] sm:text-[9px] xl:text-[10px] text-muted-foreground">
-                    Editando seção
-                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onSectionReset(activeSection)}
+                    className="h-5 w-5 sm:h-6 sm:w-6 xl:h-7 xl:w-7 rounded-lg transition-all text-muted-foreground hover:bg-background/80"
+                    title="Resetar seção"
+                  >
+                    <RotateCcw className="w-3 sm:w-3.5 h-3 sm:h-3.5 xl:w-4 xl:h-4" />
+                  </Button>
                 </div>
               </div>
 
               <div className="space-y-2 sm:space-y-3 xl:space-y-4 p-2 sm:p-3 xl:p-4 rounded-xl bg-muted/30 border border-border">
-                {activeSection === "header" && (
-                  <HeaderEditor
-                    settings={headerSettings}
-                    onUpdate={onUpdateHeader}
-                    hasChanges={hasHeaderChanges}
-                    onSave={onSaveHeader}
-                  />
-                )}
-                {activeSection === "footer" && (
-                  <FooterEditor
-                    settings={footerSettings}
-                    onUpdate={onUpdateFooter}
-                    hasChanges={hasFooterChanges}
-                    onSave={onSaveFooter}
-                  />
-                )}
+                {activeSection === "layout-header" && (
+          <HeaderEditor
+            settings={headerSettings}
+            onUpdate={onUpdateHeader}
+            hasChanges={hasHeaderChanges}
+            onSave={onSaveHeader}
+            isSaving={isSaving}
+          />
+        )}
+
+        {activeSection === "layout-footer" && (
+          <FooterEditor
+            settings={footerSettings}
+            onUpdate={onUpdateFooter}
+            hasChanges={hasFooterChanges}
+            onSave={onSaveFooter}
+            isSaving={isSaving}
+          />
+        )}
                 {activeSection === "typography" && (
                   <TypographyEditor
                     settings={fontSettings}
@@ -328,102 +414,127 @@ export const SidebarContent = memo(
                     onHighlight={onHighlight}
                     hasChanges={hasFontChanges}
                     onSave={onSaveFont}
+                    isSaving={isSaving}
                   />
                 )}
                 {activeSection === "colors" && (
-                  <ColorEditor
-                    settings={colorSettings}
-                    onUpdate={onUpdateColors}
-                    hasChanges={hasColorChanges}
-                    onSave={onSaveColors}
-                  />
-                )}
+                    <ColorEditor
+                      settings={colorSettings}
+                      onUpdate={onUpdateColors}
+                      hasChanges={hasColorChanges}
+                      onSave={onSaveColors}
+                      isSaving={isSaving}
+                    />
+                  )}
 
-                {activeSection === "hero" && (
+                {activeSection === "home-hero" && (
                   <HeroEditor
                     settings={heroSettings}
                     onUpdate={onUpdateHero}
+                    onUpdateBackground={(updates) => onUpdateBackground(updates, "home-hero")}
                     onHighlight={onHighlight}
+                    onReset={() => onSectionReset("home-hero")}
                     hasChanges={hasHeroChanges}
                     onSave={onSaveHero}
+                    isSaving={isSaving}
+                    showTemplateSelector
                   />
                 )}
                 {activeSection === "about-hero" && (
                   <HeroEditor
                     settings={aboutHeroSettings}
                     onUpdate={onUpdateAboutHero}
+                    onUpdateBackground={(updates) => onUpdateBackground(updates, "about-hero")}
                     onHighlight={onHighlight}
+                    onReset={() => onSectionReset("about-hero")}
                     hasChanges={hasAboutHeroChanges}
                     onSave={onSaveAboutHero}
+                    isSaving={isSaving}
                   />
                 )}
-                {activeSection === "story" && (
+                {activeSection === "home-story" && (
                   <HistoryEditor
                     settings={storySettings}
                     onUpdate={onUpdateStory}
+                    onUpdateBackground={onUpdateBackground}
                     hasChanges={hasStoryChanges}
                     onSave={onSaveStory}
+                    isSaving={isSaving}
                   />
                 )}
-                {activeSection === "services" && (
+                {activeSection === "home-services" && (
                   <ServicesEditor
                     settings={servicesSettings}
                     onUpdate={onUpdateServices}
+                    onUpdateBackground={onUpdateBackground}
+                    onReset={() => onSectionReset("home-services")}
                     hasChanges={hasServicesChanges}
                     onSave={onSaveServices}
+                    isSaving={isSaving}
                   />
                 )}
-                {activeSection === "values" &&
-                  (activePage === "sobre" ? (
+                {(isHomeValuesSection || isAboutValuesSection) &&
+                  (activePage === "sobre" || isAboutValuesSection ? (
                     <AboutValuesEditor
-                      settings={valuesSettings}
-                      onUpdate={onUpdateValues}
-                      onSave={onSaveValues}
-                      hasChanges={hasValuesChanges}
+                      settings={aboutUsValuesSettings}
+                      onUpdate={onUpdateAboutUsValues}
+                      onSave={onSaveAboutUsValues}
+                      hasChanges={hasAboutUsValuesChanges}
+                      isSaving={isSaving}
                     />
                   ) : (
                     <ValuesEditor
-                      settings={valuesSettings}
-                      onUpdate={onUpdateValues}
-                      onSave={onSaveValues}
-                      hasChanges={hasValuesChanges}
+                      settings={homeValuesSettings}
+                      onUpdate={onUpdateHomeValues}
+                      onSave={onSaveHomeValues}
+                      hasChanges={hasHomeValuesChanges}
+                      isSaving={isSaving}
                     />
                   ))}
 
-                {activeSection === "team" && (
+                {activeSection === "home-team" && (
                   <TeamEditor
                     settings={teamSettings}
                     onUpdate={onUpdateTeam}
-                    onSave={onSaveTeam}
+                    onUpdateBackground={onUpdateBackground}
                     hasChanges={hasTeamChanges}
+                    onSave={onSaveTeam}
+                    isSaving={isSaving}
                   />
                 )}
 
-                {activeSection === "testimonials" && (
+                {activeSection === "home-testimonials" && (
                   <TestimonialsEditor
                     settings={testimonialsSettings}
                     onUpdate={onUpdateTestimonials}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveTestimonials}
                     hasChanges={hasTestimonialsChanges}
+                    isSaving={isSaving}
                   />
                 )}
 
-                {(activeSection === "gallery-preview" ||
-                  activeSection === "gallery-grid") && (
+                {isGallerySection && (
                   <GalleryEditor
-                    settings={gallerySettings}
-                    onUpdate={onUpdateGallery}
+                    settings={currentGallerySettings}
+                    onUpdate={currentGalleryUpdater}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveGallery}
-                    hasChanges={hasGalleryChanges}
+                    onReset={() => activeSection && onSectionReset(activeSection)}
+                    hasChanges={currentHasGalleryChanges}
+                    sectionId={activeSection || undefined}
+                    isSaving={isSaving}
                   />
                 )}
 
-                {activeSection === "cta" && (
+                {activeSection === "home-cta" && (
                   <CTAEditor
                     settings={ctaSettings}
                     onUpdate={onUpdateCTA}
-                    onSave={onSaveCTA}
+                    onUpdateBackground={onUpdateBackground}
                     hasChanges={hasCTAChanges}
+                    onSave={onSaveCTA}
+                    isSaving={isSaving}
                   />
                 )}
 
@@ -432,9 +543,11 @@ export const SidebarContent = memo(
                     title="Passo 1: Serviços"
                     settings={bookingServiceSettings}
                     onUpdate={onUpdateBookingService}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveBookingService}
                     hasChanges={hasBookingServiceChanges}
                     onHighlight={onHighlight}
+                    isSaving={isSaving}
                   />
                 )}
 
@@ -443,9 +556,11 @@ export const SidebarContent = memo(
                     title="Passo 2: Data"
                     settings={bookingDateSettings}
                     onUpdate={onUpdateBookingDate}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveBookingDate}
                     hasChanges={hasBookingDateChanges}
                     onHighlight={onHighlight}
+                    isSaving={isSaving}
                   />
                 )}
 
@@ -454,9 +569,11 @@ export const SidebarContent = memo(
                     title="Passo 3: Horário"
                     settings={bookingTimeSettings}
                     onUpdate={onUpdateBookingTime}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveBookingTime}
                     hasChanges={hasBookingTimeChanges}
                     onHighlight={onHighlight}
+                    isSaving={isSaving}
                   />
                 )}
 
@@ -465,9 +582,11 @@ export const SidebarContent = memo(
                     title="Passo 4: Dados do Cliente"
                     settings={bookingFormSettings}
                     onUpdate={onUpdateBookingForm}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveBookingForm}
                     hasChanges={hasBookingFormChanges}
                     onHighlight={onHighlight}
+                    isSaving={isSaving}
                   />
                 )}
 
@@ -476,26 +595,29 @@ export const SidebarContent = memo(
                     title="Passo 5: Confirmação"
                     settings={bookingConfirmationSettings}
                     onUpdate={onUpdateBookingConfirmation}
+                    onUpdateBackground={onUpdateBackground}
                     onSave={onSaveBookingConfirmation}
                     hasChanges={hasBookingConfirmationChanges}
                     onHighlight={onHighlight}
+                    isSaving={isSaving}
                   />
                 )}
 
                 {![
-                  "header",
-                  "footer",
+                  "layout-header",
+                  "layout-footer",
                   "typography",
-                  "hero",
+                  "home-hero",
                   "about-hero",
-                  "story",
-                  "team",
-                  "testimonials",
-                  "services",
-                  "values",
-                  "gallery-preview",
-                  "gallery-grid",
-                  "cta",
+                  "home-story",
+                  "home-team",
+                  "home-testimonials",
+                  "home-services",
+                  "home-values",
+                  "about-values",
+                  "home-gallery",
+                  "page-gallery",
+                  "home-cta",
                   "booking-service",
                   "booking-date",
                   "booking-time",
@@ -530,83 +652,34 @@ export const SidebarContent = memo(
           )}
         </div>
 
-        <div className="p-6 pt-4 border-t border-border bg-background">
+        <div className="p-2 sm:p-3 xl:p-6 pt-2 sm:pt-3 xl:pt-4 border-t border-border bg-background">
           <Button
             type="button"
-            disabled={
-              isSaving ||
-              (!hasUnsavedGlobalChanges &&
-                !hasHeroChanges &&
-                !hasAboutHeroChanges &&
-                !hasStoryChanges &&
-                !hasTeamChanges &&
-                !hasTestimonialsChanges &&
-                !hasFontChanges &&
-                !hasServicesChanges &&
-                !hasValuesChanges &&
-                !hasGalleryChanges &&
-                !hasCTAChanges &&
-                !hasHeaderChanges &&
-                !hasFooterChanges &&
-                !hasBookingServiceChanges &&
-                !hasBookingDateChanges &&
-                !hasBookingTimeChanges &&
-                !hasBookingFormChanges &&
-                !hasBookingConfirmationChanges)
-            }
-            onClick={() => onSaveGlobal()}
+            disabled={isSaving || isPublishing || (!hasUnsavedGlobalChanges && !shouldSaveLocal)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log(">>> [SidebarContent] Botão Publicar clicado");
+              onPublish();
+            }}
             className={cn(
-              "w-full font-bold py-6 rounded-xl transition-all duration-300",
-              isSaving
+              "w-full h-8 sm:h-9 xl:h-11 font-bold rounded-lg xl:rounded-xl text-[10px] sm:text-xs xl:text-sm transition-all duration-300",
+              isPublishing
                 ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : hasUnsavedGlobalChanges ||
-                    hasHeroChanges ||
-                    hasAboutHeroChanges ||
-                    hasStoryChanges ||
-                    hasTeamChanges ||
-                    hasTestimonialsChanges ||
-                    hasFontChanges ||
-                    hasServicesChanges ||
-                    hasValuesChanges ||
-                    hasGalleryChanges ||
-                    hasCTAChanges ||
-                    hasHeaderChanges ||
-                    hasFooterChanges ||
-                    hasBookingServiceChanges ||
-                    hasBookingDateChanges ||
-                    hasBookingTimeChanges ||
-                    hasBookingFormChanges ||
-                    hasBookingConfirmationChanges
+                : (hasUnsavedGlobalChanges || shouldSaveLocal)
                   ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
                   : "bg-muted text-muted-foreground cursor-not-allowed",
             )}
           >
-            {isSaving ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
+            {isPublishing ? (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
                 <span>Publicando...</span>
               </div>
-            ) : hasUnsavedGlobalChanges ||
-              hasHeroChanges ||
-              hasAboutHeroChanges ||
-              hasStoryChanges ||
-              hasTeamChanges ||
-              hasTestimonialsChanges ||
-              hasFontChanges ||
-              hasServicesChanges ||
-              hasValuesChanges ||
-              hasGalleryChanges ||
-              hasCTAChanges ||
-              hasHeaderChanges ||
-              hasFooterChanges ||
-              hasBookingServiceChanges ||
-              hasBookingDateChanges ||
-              hasBookingTimeChanges ||
-              hasBookingFormChanges ||
-              hasBookingConfirmationChanges ? (
+            ) : (hasUnsavedGlobalChanges || shouldSaveLocal) ? (
               "Publicar Site"
             ) : (
-              "Tudo Atualizado"
+              <span className="opacity-50">Site Publicado</span>
             )}
           </Button>
         </div>

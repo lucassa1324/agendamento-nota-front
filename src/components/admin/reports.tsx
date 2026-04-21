@@ -292,7 +292,10 @@ export function Reports() {
         topServices,
         financialMovements: allMovements,
       });
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.status === 401 || error?.status === 402) {
+        return;
+      }
       console.error("Erro ao gerar relatórios:", error);
     } finally {
       setIsLoading(false);

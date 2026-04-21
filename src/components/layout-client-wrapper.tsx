@@ -10,6 +10,7 @@ import {
   getVisibleSections,
   type HeaderSettings,
 } from "@/lib/booking-data";
+import { captureAppError } from "@/lib/error-monitoring";
 import type { SiteConfigData } from "@/lib/site-config-types";
 
 export function LayoutClientWrapper({
@@ -54,18 +55,79 @@ export function LayoutClientWrapper({
   }, [pathname]);
 
   useEffect(() => {
-    // Inicializa visibilidade local
+    if (window.self !== window.top) {
+      window.parent.postMessage({ type: "IFRAME_READY" }, "*");
+    }
+  }, []);
+
+  useEffect(() => {
+    const onWindowError = (event: ErrorEvent) => {
+      const fallbackMessage =
+        event.error instanceof Error
+          ? event.error.message
+          : typeof event.error === "string"
+            ? event.error
+            : "Erro global de execução";
+
+      captureAppError({
+        message: event.message || fallbackMessage,
+        source: event.filename,
+        stack: event.error?.stack,
+        metadata: {
+          pathname,
+          line: event.lineno,
+          column: event.colno,
+        },
+      });
+    };
+
+    const onUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason =
+        typeof event.reason === "string"
+          ? event.reason
+          : event.reason?.message || "Promise rejeitada sem mensagem";
+      captureAppError({
+        message: reason,
+        source: "unhandledrejection",
+        stack: event.reason?.stack,
+        metadata: { pathname },
+      });
+    };
+
+    window.addEventListener("error", onWindowError);
+    window.addEventListener("unhandledrejection", onUnhandledRejection);
+
+    return () => {
+      window.removeEventListener("error", onWindowError);
+      window.removeEventListener("unhandledrejection", onUnhandledRejection);
+    };
+  }, [pathname]);
+
+  useEffect(() => {
     setVisibleSections(getVisibleSections());
 
     const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type) {
+        console.log(
+          ">>> [RECEIVE_POST_MESSAGE]",
+          event.data.type,
+          event.data.settings || event.data.payload,
+        );
+      }
+
       if (event.data?.type === "UPDATE_HEADER_SETTINGS") {
         setHeaderSettings(event.data.settings);
       }
       if (event.data?.type === "UPDATE_FOOTER_SETTINGS") {
         setFooterSettings(event.data.settings);
       }
+      if (event.data?.type === "UPDATE_SERVICES_SETTINGS") {
+        console.log(
+          ">>> [LayoutWrapper] Detectado UPDATE_SERVICES_SETTINGS no iframe.",
+        );
+      }
       if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
-        setVisibleSections(event.data.sections);
+        setVisibleSections(event.data.settings || {});
       }
       if (event.data?.type === "SET_ISOLATED_SECTION") {
         requestAnimationFrame(() => {
@@ -90,19 +152,20 @@ export function LayoutClientWrapper({
 
   const isSectionVisible = (id: string) => {
     if (isolatedSection) return isolatedSection === id || isGlobalEdit;
+    if (!visibleSections) return true;
     return visibleSections[id] !== false;
   };
 
   // REGRAS ESTRITAS PARA OCULTAR HEADER/FOOTER
   const showHeader =
-    isSectionVisible("header") &&
+    isSectionVisible("layout-header") &&
     !isAdminRoute &&
     !isLandingPage &&
     pathname !== "/acesso-suspenso" &&
     pathname !== "/admin/master"; // Garantia extra para a rota master
 
   const showFooter =
-    isSectionVisible("footer") &&
+    isSectionVisible("layout-footer") &&
     !isAdminRoute &&
     !isLandingPage &&
     pathname !== "/acesso-suspenso" &&

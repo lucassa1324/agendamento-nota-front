@@ -1,6 +1,6 @@
 "use client";
 
-import { Layout, MousePointer2, RotateCcw, Type } from "lucide-react";
+import { Layout, Loader2, MousePointer2, RotateCcw, Type } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -26,13 +26,15 @@ interface HeaderEditorProps {
   onUpdate: (updates: Partial<HeaderSettings>) => void;
   hasChanges?: boolean;
   onSave?: () => void;
+  isSaving?: boolean;
 }
 
 export function HeaderEditor({
   settings,
   onUpdate,
   hasChanges,
-  onSave,
+  onSave: externalOnSave,
+  isSaving,
 }: HeaderEditorProps) {
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -331,15 +333,24 @@ export function HeaderEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
-          onClick={onSave}
+          disabled={!hasChanges || isSaving}
+          onClick={externalOnSave}
           className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
             hasChanges
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
           }`}
         >
-          {hasChanges ? "Aplicar Cabeçalho" : "Nenhuma alteração"}
+          {isSaving ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Salvando...</span>
+            </div>
+          ) : hasChanges ? (
+            "Salvar Alterações"
+          ) : (
+            <span className="opacity-50">Nenhuma alteração</span>
+          )}
         </Button>
       </div>
     </div>

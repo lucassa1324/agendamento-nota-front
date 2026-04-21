@@ -1,7 +1,7 @@
 "use client";
 
-import { Palette, RotateCcw, Type } from "lucide-react";
-import type { ChangeEvent } from "react";
+import { Loader2, Palette, RotateCcw, Type } from "lucide-react";
+import { useState, type ChangeEvent } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -14,29 +14,42 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { BookingStepSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
 
 interface BookingStepEditorProps {
   settings: BookingStepSettings;
   onUpdate: (updates: Partial<BookingStepSettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
   onHighlight?: (sectionId: string) => void;
   hasChanges?: boolean;
   onSave?: () => void;
+  isSaving?: boolean;
   title: string;
 }
 
 export function BookingStepEditor({
   settings,
   onUpdate,
+  onUpdateBackground,
   onHighlight,
   hasChanges,
-  onSave,
+  onSave: externalOnSave,
+  isSaving: externalIsSaving,
   title,
 }: BookingStepEditorProps) {
-  const handleSave = () => {
-    if (onSave) onSave();
+  const [localIsSaving, setLocalIsSaving] = useState(false);
+  const isLoading = externalIsSaving || localIsSaving;
+
+  const handleSave = async () => {
+    if (!externalOnSave || isLoading) return;
+    setLocalIsSaving(true);
+    try {
+      await externalOnSave();
+    } finally {
+      setLocalIsSaving(false);
+    }
   };
 
   const handleAccordionChange = (values: string | string[]) => {
@@ -103,7 +116,7 @@ export function BookingStepEditor({
               <AccordionContent className="pt-0 pb-4 space-y-4">
                 <div className="space-y-1.5">
                   <Input
-                    value={settings.title}
+                    value={settings.title || ""}
                     className="h-8 text-sm"
                     placeholder="Ex: Escolha o Serviço"
                     onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -130,7 +143,7 @@ export function BookingStepEditor({
               <AccordionContent className="pt-0 pb-4 space-y-4">
                 <div className="space-y-1.5">
                   <Input
-                    value={settings.subtitle}
+                    value={settings.subtitle || ""}
                     className="h-8 text-sm"
                     placeholder="Ex: Selecione o procedimento desejado"
                     onChange={(e: ChangeEvent<HTMLInputElement>) =>
@@ -233,7 +246,27 @@ export function BookingStepEditor({
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pt-0 pb-4 space-y-4 border-t border-border/50 mt-2">
-                <BackgroundEditor settings={settings} onUpdate={onUpdate} />
+                <BackgroundEditor
+                  settings={{
+                    bgType: settings.bgType,
+                    bgColor: settings.bgColor,
+                    bgImage: settings.bgImage,
+                    imageOpacity: settings.imageOpacity,
+                    overlayOpacity: settings.overlayOpacity,
+                    imageScale: settings.imageScale,
+                    imageX: settings.imageX,
+                    imageY: settings.imageY,
+                    appearance: settings.appearance,
+                  }}
+                  onUpdate={(updates) => {
+                    if (onUpdateBackground) {
+                      onUpdateBackground(updates, activeSection || "booking-service");
+                    } else {
+                      onUpdate(updates);
+                    }
+                  }}
+                  section={activeSection || "booking-service"}
+                />
               </AccordionContent>
             </AccordionItem>
 
@@ -336,16 +369,27 @@ export function BookingStepEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
+          disabled={!hasChanges || isLoading}
           onClick={handleSave}
           className={cn(
-            "w-full h-11 text-sm font-bold transition-all duration-300",
-            hasChanges
+            "w-full h-11 text-sm font-bold transition-all duration-300 relative",
+            hasChanges && !isLoading
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? "Salvar Alterações" : "Tudo Atualizado"}
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : hasChanges ? (
+              "Salvar Alterações"
+            ) : (
+              <span className="opacity-50">Nenhuma alteração</span>
+            )}
+          </div>
         </Button>
       </div>
     </div>

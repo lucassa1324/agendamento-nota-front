@@ -141,6 +141,15 @@ export function ProfileManager() {
     }
   }, [fetchProfile, companyId]);
 
+  useEffect(() => {
+    if (!companyId) return;
+    if (isLoading) return;
+    const timeout = window.setTimeout(() => {
+      saveSiteProfile(profile);
+    }, 150);
+    return () => window.clearTimeout(timeout);
+  }, [companyId, isLoading, profile]);
+
   const handleSave = async () => {
     if (!companyId) {
       toast({
@@ -489,7 +498,7 @@ export function ProfileManager() {
               id="site-name"
               value={profile.name || ""}
               onChange={(e) => updateField("name", e.target.value)}
-              placeholder="Ex: Brow Studio"
+              placeholder="Ex: Aura Sistema"
               autoComplete="off"
             />
           </div>

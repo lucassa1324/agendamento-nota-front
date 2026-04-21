@@ -4,12 +4,14 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3,
   Bell,
+  BookOpen,
   Briefcase,
   CalendarDays,
   CalendarIcon,
   CalendarPlus,
   Clock,
   ExternalLink,
+  Globe,
   ImageIcon,
   LayoutDashboard,
   ListTodo,
@@ -19,14 +21,16 @@ import {
   PieChart,
   // Plug,
   User,
+  X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { PushNotificationsButton } from "@/components/admin/push-notifications-button";
+import { SystemNotifications } from "@/components/admin/system-notifications";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
-import { BASE_DOMAIN } from "@/lib/auth-client";
+import { BASE_DOMAIN, LANDING_PAGE_URL } from "@/lib/auth-client";
 import { cn, getFullImageUrl } from "@/lib/utils";
 
 interface AdminNavItem {
@@ -124,17 +128,34 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
         href: "/admin/dashboard/personalizacao",
         icon: Palette,
       },
+      {
+        title: "Domínio Customizado",
+        href: "/admin/dashboard/dns",
+        icon: Globe,
+      },
       { title: "Galeria", href: "/admin/dashboard/galeria", icon: ImageIcon },
+    ],
+  },
+  {
+    group: "Ajuda e Suporte",
+    items: [
+      {
+        title: "Tutoriais",
+        href: `${LANDING_PAGE_URL}/tutorials`,
+        icon: BookOpen,
+      },
     ],
   },
 ];
 
+
 interface AdminSidebarProps {
   adminUser: { name: string; username: string } | null;
   handleLogout: () => void;
+  onClose?: () => void;
 }
 
-export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
+export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const params = useParams();
   const { studio } = useStudio();
@@ -167,7 +188,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
           <div className="relative w-full max-w-45 h-15 flex items-center justify-center">
             <Image
               src={getFullImageUrl(studio.logoUrl)}
-              alt="Logo do Studio"
+              alt="Logo do Negócio"
               fill
               className="object-contain rounded-none"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -178,18 +199,21 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
 
       {/* User Profile */}
       <div className="p-4 border-b border-border space-y-4">
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-            <User className="w-4 h-4" />
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <User className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold truncate text-foreground">
+                {adminUser?.name || "Administrador"}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">
+                @{adminUser?.username || "admin"}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold truncate text-foreground">
-              {adminUser?.name || "Administrador"}
-            </p>
-            <p className="text-xs text-muted-foreground truncate">
-              @{adminUser?.username || "admin"}
-            </p>
-          </div>
+          <SystemNotifications />
         </div>
 
         <a
@@ -205,7 +229,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
       </div>
 
       {/* Sidebar Navigation */}
-      <nav className="flex-1 p-4 space-y-6 overflow-y-auto">
+      <nav className="flex-1 p-4 pb-24 space-y-6 overflow-y-auto">
         {ADMIN_NAVIGATION.map((group) => (
           <div key={group.group} className="space-y-1">
             <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">
@@ -213,6 +237,30 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
             </p>
             {group.items.map((item) => {
               const dynamicHref = getDynamicHref(item.href);
+              const isExternal = item.href.startsWith("http");
+              
+              const content = (
+                <>
+                  <item.icon className="w-4 h-4" />
+                  {item.title}
+                  {isExternal && <ExternalLink className="w-3 h-3 ml-auto opacity-50" />}
+                </>
+              );
+
+              if (isExternal) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                  >
+                    {content}
+                  </a>
+                );
+              }
+
               return (
                 <Link
                   key={item.href}
@@ -224,8 +272,7 @@ export function AdminSidebar({ adminUser, handleLogout }: AdminSidebarProps) {
                       : "text-foreground hover:bg-accent hover:text-accent-foreground",
                   )}
                 >
-                  <item.icon className="w-4 h-4" />
-                  {item.title}
+                  {content}
                 </Link>
               );
             })}

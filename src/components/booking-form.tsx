@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, Loader2 } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -38,13 +38,41 @@ export function BookingForm({
   settings,
 }: BookingFormProps) {
   const { studio } = useStudio();
+  const appearance = settings?.appearance || {};
+  
+  // Prioridade: Custom Setting > Global Appearance > Default Fallback
+  const accentColor = settings?.accentColor || appearance.accentColor || "var(--primary)";
+  const cardBgColor = settings?.cardBgColor || appearance.cardBgColor || "#FFFFFF";
+  const titleColor = settings?.titleColor || appearance.titleColor || "var(--foreground)";
+  const subtitleColor = settings?.subtitleColor || appearance.subtitleColor || "var(--muted-foreground)";
+  const titleFont = settings?.titleFont || appearance.titleFont || "var(--font-title)";
+  const subtitleFont = settings?.subtitleFont || appearance.subtitleFont || "var(--font-subtitle)";
+
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const submitLockRef = useRef(false);
   const [formData, setFormData] = useState({
     name: initialBooking?.clientName || "",
     email: initialBooking?.clientEmail || "",
     phone: initialBooking?.clientPhone || "",
   });
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+
+  const validatePhone = (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    const hasValidLength = digits.length === 10 || digits.length === 11;
+    const allDigitsEqual = digits.length > 0 && /^(\d)\1+$/.test(digits);
+
+    if (!hasValidLength) {
+      return "Informe um telefone com DDD válido.";
+    }
+
+    if (allDigitsEqual) {
+      return "Informe um telefone real. Não use números repetidos.";
+    }
+
+    return null;
+  };
 
   const formattedDate = new Date(`${date}T00:00:00`).toLocaleDateString(
     "pt-BR",
@@ -64,14 +92,36 @@ export function BookingForm({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!studio?.id) return;
+    if (!studio?.id || isLoading || submitLockRef.current) return;
 
+    const phoneValidationError = validatePhone(formData.phone);
+    if (phoneValidationError) {
+      setPhoneError(phoneValidationError);
+      toast({
+        title: "Telefone inválido",
+        description: phoneValidationError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    submitLockRef.current = true;
     setIsLoading(true);
 
     try {
-      const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
+      const [year, month, day] = date.split("-").map(Number);
+      const [hours, minutes] = time.split(":").map(Number);
+      const localDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
 
-      // Cálculo de snapshots individuais e agregados
+      if (Number.isNaN(localDate.getTime())) {
+        throw {
+          status: 400,
+          message: "Data ou horário inválido para agendamento.",
+        } as ApiError;
+      }
+
+      const scheduledAt = localDate.toISOString();
+
       const items = services.map((s) => ({
         serviceId: s.id,
         serviceNameSnapshot: s.name,
@@ -95,21 +145,19 @@ export function BookingForm({
 
       const appointmentData = {
         companyId: studio.id,
-        serviceId: serviceIds, // String de IDs separados por vírgula
+        serviceId: serviceIds,
         scheduledAt,
         customerName: formData.name,
         customerEmail: formData.email,
         customerPhone: formData.phone,
-        serviceNameSnapshot: serviceNames, // Nomes concatenados
-        servicePriceSnapshot: priceSnapshot, // Soma dos preços
-        serviceDurationSnapshot: durationHHmm, // Soma das durações
+        serviceNameSnapshot: serviceNames,
+        servicePriceSnapshot: priceSnapshot,
+        serviceDurationSnapshot: durationHHmm,
         customerId: null,
         notes: "",
         studioId: studio.id,
-        items, // Nova tabela appointment_items
+        items,
       };
-
-      console.log(">>> [SITE_DEBUG] Enviando agendamento:", appointmentData);
 
       const result = await appointmentService.create(appointmentData);
 
@@ -134,7 +182,6 @@ export function BookingForm({
 
       saveBookingToStorage(booking);
       
-      // Enviar notificações de forma assíncrona sem travar a UI
       sendBookingNotifications(booking).catch(err => 
         console.error(">>> [SITE_ERROR] Falha ao enviar notificações:", err)
       );
@@ -156,6 +203,9 @@ export function BookingForm({
       ) {
         errorMessage =
           "O horário selecionado e a duração total dos serviços ultrapassam o horário de fechamento. Por favor, escolha um horário mais cedo ou selecione menos serviços.";
+      } else if (apiError.status === 408 || apiError.code === "TIMEOUT") {
+        errorMessage =
+          "A conexão demorou para responder. Verifique sua internet e tente novamente.";
       } else if (apiError.status === 401) {
         errorMessage =
           "O sistema não permitiu o agendamento (Não Autorizado). Por favor, entre em contato com o estúdio.";
@@ -167,6 +217,7 @@ export function BookingForm({
         variant: "destructive",
       });
     } finally {
+      submitLockRef.current = false;
       setIsLoading(false);
     }
   };
@@ -191,39 +242,43 @@ export function BookingForm({
         <Card
           className="border-primary/20 p-4"
           style={{
-            backgroundColor: settings?.cardBgColor || "var(--muted)",
-            borderColor: settings?.accentColor
-              ? `${settings.accentColor}33`
-              : undefined,
+            backgroundColor: cardBgColor,
+            borderColor: accentColor ? `${accentColor}33` : undefined,
           }}
         >
           <div className="text-sm space-y-1">
             <div
               className="font-semibold"
               style={{
-                color: settings?.titleColor || "var(--foreground)",
-                fontFamily: settings?.titleFont || "var(--font-title)",
+                color: titleColor,
+                fontFamily: titleFont,
               }}
             >
               {services.map((s) => s.name).join(", ")}
             </div>
-            <div className="text-muted-foreground capitalize">
+            <div
+              className="text-muted-foreground capitalize"
+              style={{ color: subtitleColor }}
+            >
               {formattedDate}
             </div>
             <div
               className="font-bold"
               style={{
-                color: settings?.accentColor || "var(--primary)",
+                color: accentColor,
               }}
             >
               {time}
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div
+              className="text-xs text-muted-foreground"
+              style={{ color: subtitleColor }}
+            >
               Duração Total: {durationHHmm}
             </div>
             <div
               className="font-semibold"
-              style={{ color: settings?.accentColor || "var(--primary)" }}
+              style={{ color: accentColor }}
             >
               R$ {totalPrice.toFixed(2)}
             </div>
@@ -233,7 +288,7 @@ export function BookingForm({
 
       <h2
         className="text-2xl font-bold mb-6 text-center"
-        style={{ fontFamily: "var(--font-title)", color: "var(--foreground)" }}
+        style={{ fontFamily: titleFont, color: titleColor }}
       >
         Seus Dados
       </h2>
@@ -241,16 +296,19 @@ export function BookingForm({
       <Card
         className="border-primary/20"
         style={{
-          backgroundColor: settings?.cardBgColor || "#FFFFFF",
-          borderColor: settings?.accentColor
-            ? `${settings.accentColor}33`
-            : undefined,
+          backgroundColor: cardBgColor,
+          borderColor: accentColor ? `${accentColor}33` : undefined,
         }}
       >
         <CardContent className="p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome Completo *</Label>
+              <Label
+                htmlFor="name"
+                style={{ color: titleColor, fontFamily: subtitleFont }}
+              >
+                Nome Completo *
+              </Label>
               <Input
                 id="name"
                 type="text"
@@ -263,15 +321,20 @@ export function BookingForm({
                 className="focus-visible:ring-accent"
                 style={
                   {
-                    "--tw-ring-color":
-                      settings?.accentColor || "var(--primary)",
+                    "--tw-ring-color": accentColor,
+                    fontFamily: subtitleFont,
                   } as React.CSSProperties
                 }
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
+              <Label
+                htmlFor="email"
+                style={{ color: titleColor, fontFamily: subtitleFont }}
+              >
+                E-mail
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -283,52 +346,66 @@ export function BookingForm({
                 className="focus-visible:ring-accent"
                 style={
                   {
-                    "--tw-ring-color":
-                      settings?.accentColor || "var(--primary)",
+                    "--tw-ring-color": accentColor,
+                    fontFamily: subtitleFont,
                   } as React.CSSProperties
                 }
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Telefone / WhatsApp *</Label>
+              <Label
+                htmlFor="phone"
+                style={{ color: titleColor, fontFamily: subtitleFont }}
+              >
+                Telefone / WhatsApp *
+              </Label>
               <Input
                 id="phone"
                 type="tel"
                 required
                 value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                placeholder="(11) 99999-9999"
-                className="focus-visible:ring-accent"
+                onChange={(e) => {
+                  setFormData({ ...formData, phone: e.target.value });
+                  if (phoneError) {
+                    setPhoneError(null);
+                  }
+                }}
+                onBlur={() => {
+                  setPhoneError(validatePhone(formData.phone));
+                }}
+                placeholder="(00) 00000-0000"
+                className={`focus-visible:ring-accent ${phoneError ? "border-red-500 focus-visible:ring-red-500" : ""}`}
+                aria-invalid={!!phoneError}
                 style={
                   {
-                    "--tw-ring-color":
-                      settings?.accentColor || "var(--primary)",
+                    "--tw-ring-color": accentColor,
+                    fontFamily: subtitleFont,
                   } as React.CSSProperties
                 }
               />
+              {phoneError && (
+                <p className="text-sm text-red-600">{phoneError}</p>
+              )}
             </div>
 
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-12 text-lg font-bold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full h-12 text-lg font-semibold transition-all duration-300"
               style={{
-                backgroundColor: settings?.accentColor || "var(--primary)",
+                backgroundColor: accentColor,
                 color: "#fff",
+                fontFamily: titleFont,
               }}
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Processando...
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Salvando...
                 </>
-              ) : initialBooking ? (
-                "Salvar Alterações"
               ) : (
-                "Confirmar Agendamento"
+                "Finalizar Agendamento"
               )}
             </Button>
           </form>

@@ -1,6 +1,7 @@
 "use client";
 
-import { CreditCard, ImageIcon, RotateCcw, Type } from "lucide-react";
+import { CreditCard, ImageIcon, Loader2, RotateCcw, Type } from "lucide-react";
+import { useState } from "react";
 import {
   Accordion,
   AccordionContent,
@@ -17,34 +18,83 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ServicesSettings } from "@/lib/booking-data";
+import { defaultServicesSettings, type ServicesSettings } from "@/lib/booking-data";
 import { cn } from "@/lib/utils";
-import { BackgroundEditor } from "../../components/BackgroundEditor";
+import { BackgroundEditor, type BackgroundSettings } from "../../components/BackgroundEditor";
 import { EDITOR_FONTS } from "../../components/editor-constants";
+import { ResetSectionVisuals } from "../../components/ResetSectionVisuals";
 import { SectionSubtitleEditor } from "../../components/SectionSubtitleEditor";
 import { SectionTitleEditor } from "../../components/SectionTitleEditor";
+
+const isVisualKey = (key: string) => {
+  const k = key.toLowerCase();
+  return (
+    k.includes("color") ||
+    k.includes("font") ||
+    k.includes("bg") ||
+    k.includes("opacity") ||
+    k.includes("scale") ||
+    k.includes("image") ||
+    k.includes("icon") ||
+    k.includes("shadow") ||
+    k.includes("radius") ||
+    k === "appearance"
+  );
+};
 
 interface ServicesEditorProps {
   settings: ServicesSettings;
   onUpdate: (updates: Partial<ServicesSettings>) => void;
+  onUpdateBackground?: (updates: Partial<BackgroundSettings>, sectionId?: string) => void;
+  onReset?: () => void;
   onSave?: () => void;
   hasChanges?: boolean;
+  isSaving?: boolean;
 }
 
 export function ServicesEditor({
   settings,
   onUpdate,
+  onUpdateBackground,
+  onReset,
   onSave: externalOnSave,
   hasChanges,
+  isSaving,
 }: ServicesEditorProps) {
-  const handleSave = () => {
-    if (externalOnSave) externalOnSave();
-  };
+  const [localIsSaving, setLocalIsSaving] = useState(false);
+  const isLoading = isSaving || localIsSaving;
 
   if (!settings) return null;
 
+  const handleSave = async () => {
+    if (!externalOnSave || isLoading) return;
+    setLocalIsSaving(true);
+    try {
+      await externalOnSave();
+    } finally {
+      setLocalIsSaving(false);
+    }
+  };
+
+  const handleResetVisuals = () => {
+    const updates: Partial<ServicesSettings> = {};
+    for (const [key, value] of Object.entries(defaultServicesSettings)) {
+      if (isVisualKey(key)) {
+        (updates as Record<string, unknown>)[key] = value;
+      }
+    }
+    onUpdate(updates);
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 pb-10">
+      {onReset && (
+        <ResetSectionVisuals
+          label="Resetar Estilo dos Serviços"
+          description="Restaura cores, fontes, fundo e estilo dos cards sem alterar os textos."
+          onReset={handleResetVisuals}
+        />
+      )}
       <Accordion
         type="multiple"
         defaultValue={["title"]}
@@ -203,6 +253,72 @@ export function ServicesEditor({
                       }
                     />
                   </div>
+                </fieldset>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <fieldset
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                    Formato do Card
+                  </legend>
+                  <Select
+                    value={settings.buttonShape || "square"}
+                    onValueChange={(v) =>
+                      onUpdate({
+                        buttonShape: v as "pill" | "square" | "sharp",
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Selecione o formato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pill" className="text-xs">
+                        Arredondado
+                      </SelectItem>
+                      <SelectItem value="square" className="text-xs">
+                        Cantos Suaves
+                      </SelectItem>
+                      <SelectItem value="sharp" className="text-xs">
+                        Totalmente Quadrado
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </fieldset>
+
+                <fieldset
+                  className="space-y-1.5 border-none p-0 m-0"
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <legend className="text-[10px] uppercase text-muted-foreground font-medium mb-1.5">
+                    Formato do Ícone
+                  </legend>
+                  <Select
+                    value={settings.badgeShape || "square"}
+                    onValueChange={(v) =>
+                      onUpdate({
+                        badgeShape: v as "pill" | "square" | "sharp",
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder="Selecione o formato" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pill" className="text-xs">
+                        Arredondado
+                      </SelectItem>
+                      <SelectItem value="square" className="text-xs">
+                        Cantos Suaves
+                      </SelectItem>
+                      <SelectItem value="sharp" className="text-xs">
+                        Totalmente Quadrado
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </fieldset>
               </div>
 
@@ -478,9 +594,25 @@ export function ServicesEditor({
           </AccordionTrigger>
           <AccordionContent className="pb-4">
             <BackgroundEditor
-              settings={settings}
-              onUpdate={(updates) => onUpdate(updates)}
-              sectionId="services"
+              settings={{
+                bgType: settings.bgType,
+                bgColor: settings.bgColor,
+                bgImage: settings.bgImage,
+                imageOpacity: settings.imageOpacity,
+                overlayOpacity: settings.overlayOpacity,
+                imageScale: settings.imageScale,
+                imageX: settings.imageX,
+                imageY: settings.imageY,
+                appearance: settings.appearance,
+              }}
+              onUpdate={(updates) => {
+                if (onUpdateBackground) {
+                  onUpdateBackground(updates, "services");
+                } else {
+                  onUpdate(updates as Partial<ServicesSettings>);
+                }
+              }}
+              section="services"
             />
           </AccordionContent>
         </AccordionItem>
@@ -489,16 +621,27 @@ export function ServicesEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
+          disabled={!hasChanges || isLoading}
           onClick={handleSave}
           className={cn(
-            "w-full h-11 text-sm font-bold transition-all duration-300",
-            hasChanges
+            "w-full h-11 text-sm font-bold transition-all duration-300 relative",
+            hasChanges && !isLoading
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50",
           )}
         >
-          {hasChanges ? "Aplicar Alterações" : "Nenhuma alteração"}
+          <div className="flex items-center justify-center gap-2">
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Salvando...</span>
+              </>
+            ) : hasChanges ? (
+              "Salvar Alterações"
+            ) : (
+              <span className="opacity-50">Nenhuma alteração</span>
+            )}
+          </div>
         </Button>
       </div>
     </div>

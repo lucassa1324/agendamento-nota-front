@@ -4,7 +4,7 @@ import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import { ADMIN_URL } from "@/lib/auth-client";
@@ -12,10 +12,13 @@ import {
   defaultHeaderSettings,
   getHeaderSettings,
   getPageVisibility,
+  getPageVisibilityFromConfig,
   getSiteProfile,
   getVisibleSections,
+  getVisibleSectionsFromConfig,
   type HeaderSettings,
   type SiteProfile,
+  SECTION_IDS,
 } from "@/lib/booking-data";
 import { getFullImageUrl } from "@/lib/utils";
 
@@ -45,7 +48,52 @@ export function Navigation({
     Record<string, boolean>
   >({});
 
+  const hasLivePreviewUpdateRef = useRef(false);
+  const [isInsideIframe, setIsInsideIframe] = useState(false);
+
   const only = searchParams.get("only");
+
+  const studioId = studio?.id;
+  const studioName = studio?.name;
+  const studioLogoUrl = studio?.logoUrl;
+  const studioHeaderConfig = (studio?.config as any)?.sections?.[SECTION_IDS.layoutHeader] || studio?.config?.header;
+
+  const loadData = useCallback(() => {
+    // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
+    const baseProfile = getSiteProfile();
+    if (studioId) {
+      setProfile({
+        ...baseProfile,
+        name: studioName || baseProfile.name,
+        logoUrl: studioLogoUrl || baseProfile.logoUrl,
+      });
+    } else {
+      setProfile(baseProfile);
+    }
+
+    const configPageVisibility = getPageVisibilityFromConfig(studio?.config);
+    const configVisibleSections = getVisibleSectionsFromConfig(studio?.config);
+    setPageVisibility(configPageVisibility || getPageVisibility());
+    setVisibleSections(configVisibleSections || getVisibleSections());
+
+    if (!externalHeaderSettings) {
+      if (studioHeaderConfig) {
+        setHeaderSettings(studioHeaderConfig as HeaderSettings);
+      } else {
+        setHeaderSettings(getHeaderSettings());
+      }
+    }
+  }, [
+    studioId,
+    studioName,
+    studioLogoUrl,
+    studioHeaderConfig,
+    externalHeaderSettings,
+  ]);
+
+  useEffect(() => {
+    setIsInsideIframe(window.self !== window.top);
+  }, []);
 
   useEffect(() => {
     if (externalHeaderSettings) {
@@ -54,28 +102,8 @@ export function Navigation({
   }, [externalHeaderSettings]);
 
   useEffect(() => {
-    // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
-    const baseProfile = getSiteProfile();
-    if (studio) {
-      setProfile({
-        ...baseProfile,
-        name: studio.name || baseProfile.name,
-        logoUrl: studio.logoUrl || baseProfile.logoUrl,
-      });
-    } else {
-      setProfile(baseProfile);
-    }
-
-    setPageVisibility(getPageVisibility());
-    setVisibleSections(getVisibleSections());
-
-    if (!externalHeaderSettings) {
-      if (studio?.config?.header) {
-        setHeaderSettings(studio.config.header as HeaderSettings);
-      } else {
-        setHeaderSettings(getHeaderSettings());
-      }
-    }
+    // Sempre carrega os dados iniciais para garantir sincronia
+    loadData();
 
     // Notificar o pai (admin) que o componente de navegação está pronto
     if (window.self !== window.top) {
@@ -86,32 +114,72 @@ export function Navigation({
     }
 
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
-        setPageVisibility(event.data.visibility);
+      if (!event.data || typeof event.data !== "object") return;
+
+      if (event.data.type === "UPDATE_PAGE_VISIBILITY") {
+        setPageVisibility(event.data.settings || {});
       }
-      if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
-        setVisibleSections(event.data.sections);
+      if (event.data.type === "UPDATE_VISIBLE_SECTIONS") {
+        setVisibleSections(event.data.settings || {});
       }
-      if (event.data?.type === "UPDATE_HEADER_SETTINGS") {
-        console.log(
-          "Header: Recebendo novas configurações",
-          event.data.settings,
-        );
-        setHeaderSettings(event.data.settings);
+      if (
+        event.data.type === "UPDATE_HEADER_SETTINGS" ||
+        event.data.type === "UPDATE_SITE_DATA" ||
+        event.data.type === "UPDATE_SITE_CONFIG"
+      ) {
+        hasLivePreviewUpdateRef.current = true;
+
+        let rawHeader: Record<string, unknown> | undefined;
+
+        if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+          const siteData = event.data.data as Record<string, unknown>;
+          const sections = (siteData as any).sections as Record<string, unknown> | undefined;
+          rawHeader = (sections?.[SECTION_IDS.layoutHeader] || siteData.header) as Record<string, unknown>;
+        } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
+          const siteConfig = event.data.config as Record<string, unknown>;
+          const sections = (siteConfig as any).sections as Record<string, unknown> | undefined;
+          rawHeader = (sections?.[SECTION_IDS.layoutHeader] || siteConfig.header) as Record<string, unknown>;
+        } else {
+          rawHeader = event.data.settings as Record<string, unknown>;
+        }
+
+        if (rawHeader && typeof rawHeader === "object" && !Array.isArray(rawHeader)) {
+          const appearance = (rawHeader.appearance && typeof rawHeader.appearance === "object" && !Array.isArray(rawHeader.appearance)
+            ? (rawHeader.appearance as Record<string, unknown>)
+            : {}) as Record<string, unknown>;
+          const normalizedHeader = {
+            ...rawHeader,
+            ...appearance,
+            bgColor:
+              (rawHeader.bgColor as string) ||
+              (rawHeader.backgroundColor as string) ||
+              (appearance.backgroundColor as string) ||
+              "",
+            textColor:
+              (rawHeader.textColor as string) ||
+              (appearance.textColor as string) ||
+              "",
+            buttonBgColor:
+              (rawHeader.buttonBgColor as string) ||
+              (appearance.buttonBgColor as string) ||
+              "",
+            buttonTextColor:
+              (rawHeader.buttonTextColor as string) ||
+              (appearance.buttonTextColor as string) ||
+              "",
+          };
+
+          setHeaderSettings((prev) =>
+            prev
+              ? { ...prev, ...normalizedHeader }
+              : (normalizedHeader as HeaderSettings),
+          );
+        }
       }
     };
 
-    window.addEventListener("message", handleMessage);
-
-    // Se estivermos no admin propriamente dito, não precisamos dos outros listeners
-    if (pathname?.startsWith("/admin")) {
-      return () => {
-        window.removeEventListener("message", handleMessage);
-      };
-    }
-
-    const handleProfileUpdate = () => {
-      setProfile(getSiteProfile());
+    const handleHeaderUpdate = () => {
+      setHeaderSettings(getHeaderSettings());
     };
 
     const handleVisibilityUpdate = () => {
@@ -122,17 +190,19 @@ export function Navigation({
       setVisibleSections(getVisibleSections());
     };
 
-    const handleHeaderUpdate = () => {
-      setHeaderSettings(getHeaderSettings());
+    const handleDataReady = () => {
+      loadData();
     };
 
-    window.addEventListener("siteProfileUpdated", handleProfileUpdate);
+    window.addEventListener("message", handleMessage);
+    window.addEventListener("headerSettingsUpdated", handleHeaderUpdate);
     window.addEventListener("pageVisibilityUpdated", handleVisibilityUpdate);
     window.addEventListener("visibleSectionsUpdated", handleSectionsUpdate);
-    window.addEventListener("headerSettingsUpdated", handleHeaderUpdate);
+    window.addEventListener("DataReady", handleDataReady);
 
     return () => {
-      window.removeEventListener("siteProfileUpdated", handleProfileUpdate);
+      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("headerSettingsUpdated", handleHeaderUpdate);
       window.removeEventListener(
         "pageVisibilityUpdated",
         handleVisibilityUpdate,
@@ -141,16 +211,15 @@ export function Navigation({
         "visibleSectionsUpdated",
         handleSectionsUpdate,
       );
-      window.removeEventListener("headerSettingsUpdated", handleHeaderUpdate);
-      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [pathname, externalHeaderSettings, studio]);
+  }, [isInsideIframe, loadData]);
 
   // Se estivermos isolando algo que não seja o header, escondemos o navigation
-  if (only && only !== "header") return null;
+  if (only && only !== SECTION_IDS.layoutHeader) return null;
 
   // Se o header estiver desativado nas seções visíveis, e não estivermos isolando ele
-  if (!only && visibleSections.header === false) return null;
+  if (!only && visibleSections[SECTION_IDS.layoutHeader] === false) return null;
 
   const isActive = (path: string) => pathname === path;
 
@@ -165,7 +234,7 @@ export function Navigation({
     (link) => pageVisibility[link.id] !== false,
   );
 
-  const siteName = profile?.name || "Brow Studio";
+  const siteName = profile?.name || "Aura Sistema";
 
   // Estilos dinâmicos para o Glassmorphism
   const headerStyle = {
@@ -201,7 +270,7 @@ export function Navigation({
 
   return (
     <nav
-      id="header"
+      id={SECTION_IDS.layoutHeader}
       className="sticky top-0 z-50 border-b border-border/50 transition-all duration-300"
       style={headerStyle}
     >
@@ -242,7 +311,7 @@ export function Navigation({
               </Link>
             ))}
             <Link
-              href={ADMIN_URL}
+              href={ADMIN_URL || "/admin"}
               className="text-xs lg:text-sm font-medium opacity-70 transition-colors hover:opacity-100 whitespace-nowrap"
               style={linksStyle}
             >
@@ -290,7 +359,7 @@ export function Navigation({
                 </Link>
               ))}
               <Link
-                href={ADMIN_URL}
+                href={ADMIN_URL || "/admin"}
                 className="text-lg font-medium opacity-70"
                 style={linksStyle}
                 onClick={() => setMobileMenuOpen(false)}

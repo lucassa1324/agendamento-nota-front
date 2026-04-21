@@ -24,10 +24,18 @@ export function BookingCalendar({
   settings,
 }: Omit<BookingCalendarProps, "service">) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const weekSchedule = getWeekSchedule();
-  const blockedPeriods = getBlockedPeriods();
+  const appearance = settings?.appearance || {};
+  
+  // Prioridade: Custom Setting > Global Appearance > Default Fallback
+  const accentColor = settings?.accentColor || appearance.accentColor || "var(--primary)";
+  const cardBgColor = settings?.cardBgColor || appearance.cardBgColor || "#FFFFFF";
+  const titleColor = settings?.titleColor || appearance.titleColor || "var(--foreground)";
+  const titleFont = settings?.titleFont || appearance.titleFont || "var(--font-title)";
+ 
+   const weekSchedule = getWeekSchedule();
+   const blockedPeriods = getBlockedPeriods();
 
-  const getDaysInMonth = (date: Date) => {
+   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -109,8 +117,8 @@ export function BookingCalendar({
       <h2
         className="text-3xl font-bold text-center mb-8"
         style={{
-          color: settings?.titleColor || "var(--foreground)",
-          fontFamily: settings?.titleFont || "var(--font-title)",
+          color: titleColor,
+          fontFamily: titleFont,
         }}
       >
         {settings?.title || "Escolha a Data"}
@@ -119,9 +127,9 @@ export function BookingCalendar({
       <Card
         className="border-primary/20 overflow-hidden"
         style={{
-          backgroundColor: settings?.cardBgColor || "#FFFFFF",
-          borderColor: settings?.accentColor
-            ? `${settings.accentColor}33`
+          backgroundColor: cardBgColor,
+          borderColor: accentColor
+            ? `${accentColor}33`
             : undefined,
         }}
       >
@@ -134,8 +142,8 @@ export function BookingCalendar({
             <h3
               className="font-semibold text-lg"
               style={{
-                color: settings?.titleColor || "var(--foreground)",
-                fontFamily: settings?.titleFont || "var(--font-title)",
+                color: titleColor,
+                fontFamily: titleFont,
               }}
             >
               {monthNames[month]} {year}
@@ -180,21 +188,19 @@ export function BookingCalendar({
                   style={{
                     backgroundColor: !disabled ? "transparent" : undefined,
                     color: !disabled
-                      ? settings?.accentColor || "var(--primary)"
+                      ? accentColor
                       : undefined,
                   }}
                   onMouseEnter={(e) => {
                     if (!disabled) {
-                      e.currentTarget.style.backgroundColor =
-                        settings?.accentColor || "var(--primary)";
+                      e.currentTarget.style.backgroundColor = accentColor;
                       e.currentTarget.style.color = "#fff";
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!disabled) {
                       e.currentTarget.style.backgroundColor = "transparent";
-                      e.currentTarget.style.color =
-                        settings?.accentColor || "var(--primary)";
+                      e.currentTarget.style.color = accentColor;
                     }
                   }}
                 >

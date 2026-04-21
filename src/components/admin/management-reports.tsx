@@ -75,7 +75,12 @@ export function ManagementReports() {
     try {
       const data = await expensesService.list(studio.id);
       setExpenses(data);
-    } catch (error) {
+    } catch (error: any) {
+      // Se for erro de faturamento, silenciamos para evitar logs desnecessários
+      if (error?.status === 402) {
+        console.warn("ManagementReports: Acesso aos gastos bloqueado por faturamento.");
+        return;
+      }
       console.error("Erro ao carregar gastos:", error);
       toast.error("Erro ao carregar lista de gastos.");
     } finally {
@@ -89,7 +94,11 @@ export function ManagementReports() {
     try {
       const data = await expensesService.getProfitReport(studio.id);
       setReport(data);
-    } catch (error) {
+    } catch (error: any) {
+      // Se for erro de faturamento, silenciamos
+      if (error?.status === 402) {
+        return;
+      }
       console.error("Erro ao carregar relatório:", error);
     } finally {
       setIsLoadingReport(false);

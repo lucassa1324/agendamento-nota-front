@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -27,6 +27,7 @@ interface TypographyEditorProps {
   onHighlight?: (id: string) => void;
   hasChanges?: boolean;
   onSave?: () => void;
+  isSaving?: boolean;
 }
 
 export function TypographyEditor({
@@ -34,7 +35,8 @@ export function TypographyEditor({
   onUpdate,
   onHighlight,
   hasChanges,
-  onSave,
+  onSave: externalOnSave,
+  isSaving,
 }: TypographyEditorProps) {
   const handleAccordionChange = (values: string | string[]) => {
     if (onHighlight) {
@@ -58,6 +60,9 @@ export function TypographyEditor({
     { value: "Montserrat", label: "Montserrat" },
     { value: "Inter", label: "Inter" },
     { value: "Lora", label: "Lora" },
+    { value: "Syne", label: "Syne" },
+    { value: "Bebas Neue", label: "Bebas Neue" },
+    { value: "Space Grotesk", label: "Space Grotesk" },
     { value: "Poppins", label: "Poppins" },
     { value: "Merriweather", label: "Merriweather" },
     { value: "Roboto", label: "Roboto" },
@@ -97,7 +102,7 @@ export function TypographyEditor({
                 Selecione a fonte principal
               </legend>
               <Select
-                value={settings.headingFont}
+                value={typeof settings.headingFont === 'object' ? ((settings.headingFont as unknown as { text?: string, value?: string }).text || (settings.headingFont as unknown as { text?: string, value?: string }).value || "") : (settings.headingFont || "")}
                 onValueChange={(val) => onUpdate({ headingFont: val })}
               >
                 <SelectTrigger className="h-9 text-sm bg-background">
@@ -139,7 +144,7 @@ export function TypographyEditor({
                 Selecione a fonte para subtítulos
               </legend>
               <Select
-                value={settings.subtitleFont}
+                value={typeof settings.subtitleFont === 'object' ? ((settings.subtitleFont as unknown as { text?: string, value?: string }).text || (settings.subtitleFont as unknown as { text?: string, value?: string }).value || "") : (settings.subtitleFont || "")}
                 onValueChange={(val) => onUpdate({ subtitleFont: val })}
               >
                 <SelectTrigger className="h-9 text-sm bg-background">
@@ -181,7 +186,7 @@ export function TypographyEditor({
                 Selecione a fonte para textos
               </legend>
               <Select
-                value={settings.bodyFont}
+                value={typeof settings.bodyFont === 'object' ? ((settings.bodyFont as unknown as { text?: string, value?: string }).text || (settings.bodyFont as unknown as { text?: string, value?: string }).value || "") : (settings.bodyFont || "")}
                 onValueChange={(val) => onUpdate({ bodyFont: val })}
               >
                 <SelectTrigger className="h-9 text-sm bg-background">
@@ -229,15 +234,24 @@ export function TypographyEditor({
       <div className="pt-2">
         <Button
           type="button"
-          disabled={!hasChanges}
-          onClick={onSave}
+          disabled={!hasChanges || isSaving}
+          onClick={externalOnSave}
           className={`w-full h-11 text-sm font-bold transition-all duration-300 ${
             hasChanges
               ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
               : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
           }`}
         >
-          {hasChanges ? "Aplicar Fontes" : "Nenhuma alteração"}
+          {isSaving ? (
+            <div className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Salvando...</span>
+            </div>
+          ) : hasChanges ? (
+            "Salvar Alterações"
+          ) : (
+            <span className="opacity-50">Nenhuma alteração</span>
+          )}
         </Button>
       </div>
     </div>

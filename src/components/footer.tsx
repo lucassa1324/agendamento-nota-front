@@ -12,7 +12,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useStudio } from "@/context/studio-context";
 import {
   defaultFooterSettings,
@@ -20,9 +20,13 @@ import {
   type FooterSettings,
   getFooterSettings,
   getPageVisibility,
+  getPageVisibilityFromConfig,
   getSiteProfile,
   getVisibleSections,
+  getVisibleSectionsFromConfig,
+  sanitizeColor,
   type SiteProfile,
+  SECTION_IDS,
 } from "@/lib/booking-data";
 import { getFullImageUrl } from "@/lib/utils";
 
@@ -49,13 +53,140 @@ export function Footer({
   );
   const [visibleSections, setVisibleSections] = useState<
     Record<string, boolean>
-  >({ footer: true });
+  >({ [SECTION_IDS.layoutFooter]: true });
   const [mounted, setMounted] = useState(false);
+
+  const hasLivePreviewUpdateRef = useRef(false);
+  const [isInsideIframe, setIsInsideIframe] = useState(false);
 
   const only = searchParams.get("only");
 
+  const studioId = studio?.id;
+  const studioName = studio?.name;
+  const studioSiteName = studio?.siteName;
+  const studioDescription = studio?.description;
+  const studioPhone = studio?.phone;
+  const studioEmail = studio?.email;
+  const studioAddress = studio?.address;
+  const studioContact = studio?.contact;
+  const studioFooterConfig = (studio?.config as any)?.sections?.[SECTION_IDS.layoutFooter] || studio?.config?.footer;
+    const studioInstagram = studio?.instagram;
+  const studioFacebook = studio?.facebook;
+  const studioWhatsapp = studio?.whatsapp;
+  const studioTiktok = studio?.tiktok;
+  const studioLinkedin = studio?.linkedin;
+  const studioX = studio?.x;
+  const studioLogoUrl = studio?.logoUrl;
+  const studioTitleSuffix = studio?.titleSuffix;
+  const studioShowInstagram = studio?.showInstagram;
+  const studioShowFacebook = studio?.showFacebook;
+  const studioShowWhatsapp = studio?.showWhatsapp;
+  const studioShowTiktok = studio?.showTiktok;
+  const studioShowLinkedin = studio?.showLinkedin;
+  const studioShowX = studio?.showX;
+
+  const loadData = useCallback(() => {
+    // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
+    const baseProfile = getSiteProfile();
+
+    if (studioId) {
+      // Função auxiliar para validar se um dado é útil (não nulo, não vazio, não apenas espaços)
+      const isValid = (val: unknown): val is string =>
+        val !== null && val !== undefined && String(val).trim() !== "";
+
+      const mergedProfile: SiteProfile = {
+        ...baseProfile,
+        name: isValid(studioSiteName)
+          ? studioSiteName
+          : isValid(studioName)
+            ? studioName
+            : baseProfile.name,
+        description: isValid(studioDescription)
+          ? studioDescription
+          : baseProfile.description,
+        phone: isValid(studioPhone) ? studioPhone : baseProfile.phone,
+        email: isValid(studioContact?.email)
+          ? studioContact.email
+          : isValid(studioEmail)
+            ? studioEmail
+            : "contato@estudio.com",
+        address: isValid(studioAddress) ? studioAddress : baseProfile.address,
+        instagram: isValid(studioInstagram)
+          ? studioInstagram
+          : baseProfile.instagram,
+        facebook: isValid(studioFacebook)
+          ? studioFacebook
+          : baseProfile.facebook,
+        whatsapp: isValid(studioWhatsapp)
+          ? studioWhatsapp
+          : baseProfile.whatsapp,
+        tiktok: isValid(studioTiktok) ? studioTiktok : baseProfile.tiktok,
+        linkedin: isValid(studioLinkedin)
+          ? studioLinkedin
+          : baseProfile.linkedin,
+        x: isValid(studioX) ? studioX : baseProfile.x,
+        logoUrl: isValid(studioLogoUrl) ? studioLogoUrl : baseProfile.logoUrl,
+        titleSuffix: studioTitleSuffix || baseProfile.titleSuffix || "",
+
+        // Para booleanos, garantimos que se o dado vier do banco como true/false, usamos ele.
+        // Se vier nulo/undefined, usamos o que está no localStorage.
+        showInstagram: studioShowInstagram ?? baseProfile.showInstagram ?? true,
+        showFacebook: studioShowFacebook ?? baseProfile.showFacebook ?? true,
+        showWhatsapp: studioShowWhatsapp ?? baseProfile.showWhatsapp ?? true,
+        showTiktok: studioShowTiktok ?? baseProfile.showTiktok ?? false,
+        showLinkedin: studioShowLinkedin ?? baseProfile.showLinkedin ?? false,
+        showX: studioShowX ?? baseProfile.showX ?? false,
+      };
+      setProfile(mergedProfile);
+    } else {
+      setProfile(baseProfile);
+    }
+
+    const configPageVisibility = getPageVisibilityFromConfig(studio?.config);
+    setPageVisibility(configPageVisibility || getPageVisibility());
+
+    // Forçar visibilidade do footer para teste
+    const currentVisible =
+      getVisibleSectionsFromConfig(studio?.config) || getVisibleSections();
+    setVisibleSections({ ...currentVisible, [SECTION_IDS.layoutFooter]: true });
+
+    if (!externalFooterSettings) {
+      if (studioFooterConfig) {
+        setFooterSettings(studioFooterConfig as FooterSettings);
+      } else {
+        setFooterSettings(getFooterSettings());
+      }
+    }
+  }, [
+    studioId,
+    studioName,
+    studioSiteName,
+    studioDescription,
+    studioPhone,
+    studioEmail,
+    studioAddress,
+    studioContact,
+    studioFooterConfig,
+    studioInstagram,
+    studioFacebook,
+    studioWhatsapp,
+    studioTiktok,
+    studioLinkedin,
+    studioX,
+    studioLogoUrl,
+    studioTitleSuffix,
+    studioShowInstagram,
+    studioShowFacebook,
+    studioShowWhatsapp,
+    studioShowTiktok,
+    studioShowLinkedin,
+    studioShowX,
+    externalFooterSettings,
+  ]);
+
   useEffect(() => {
     setMounted(true);
+    setIsInsideIframe(window.self !== window.top);
   }, []);
 
   useEffect(() => {
@@ -65,83 +196,8 @@ export function Footer({
   }, [externalFooterSettings]);
 
   useEffect(() => {
-    // Sempre buscamos o perfil e visibilidade, independente do pathname para manter a ordem dos hooks
-    const baseProfile = getSiteProfile();
-
-    if (studio) {
-      // Função auxiliar para validar se um dado é útil (não nulo, não vazio, não apenas espaços)
-      const isValid = (val: unknown): val is string =>
-        val !== null && val !== undefined && String(val).trim() !== "";
-
-      // LOG DE DIAGNÓSTICO DO ESTÚDIO
-      console.log(">>> [FOOTER] Objeto Studio Recebido:", {
-        contact: studio.contact,
-        email_root: studio.email,
-        phone: studio.phone,
-        address: studio.address,
-      });
-
-      const mergedProfile: SiteProfile = {
-        ...baseProfile,
-        name: isValid(studio.siteName)
-          ? studio.siteName
-          : isValid(studio.name)
-            ? studio.name
-            : baseProfile.name,
-        description: isValid(studio.description)
-          ? studio.description
-          : baseProfile.description,
-        phone: isValid(studio.phone) ? studio.phone : baseProfile.phone,
-        email: isValid(studio.contact?.email)
-          ? studio.contact.email
-          : isValid(studio.email)
-            ? studio.email
-            : "contato@estudio.com",
-        address: isValid(studio.address) ? studio.address : baseProfile.address,
-        instagram: isValid(studio.instagram)
-          ? studio.instagram
-          : baseProfile.instagram,
-        facebook: isValid(studio.facebook)
-          ? studio.facebook
-          : baseProfile.facebook,
-        whatsapp: isValid(studio.whatsapp)
-          ? studio.whatsapp
-          : baseProfile.whatsapp,
-        tiktok: isValid(studio.tiktok) ? studio.tiktok : baseProfile.tiktok,
-        linkedin: isValid(studio.linkedin)
-          ? studio.linkedin
-          : baseProfile.linkedin,
-        x: isValid(studio.x) ? studio.x : baseProfile.x,
-        logoUrl: isValid(studio.logoUrl) ? studio.logoUrl : baseProfile.logoUrl,
-        titleSuffix: studio.titleSuffix || baseProfile.titleSuffix || "",
-
-        // Para booleanos, garantimos que se o dado vier do banco como true/false, usamos ele.
-        // Se vier nulo/undefined, usamos o que está no localStorage.
-        showInstagram:
-          studio.showInstagram ?? baseProfile.showInstagram ?? true,
-        showFacebook: studio.showFacebook ?? baseProfile.showFacebook ?? true,
-        showWhatsapp: studio.showWhatsapp ?? baseProfile.showWhatsapp ?? true,
-        showTiktok: studio.showTiktok ?? baseProfile.showTiktok ?? false,
-        showLinkedin: studio.showLinkedin ?? baseProfile.showLinkedin ?? false,
-        showX: studio.showX ?? baseProfile.showX ?? false,
-      };
-      setProfile(mergedProfile);
-    } else {
-      setProfile(baseProfile);
-    }
-
-    setPageVisibility(getPageVisibility());
-    // Forçar visibilidade do footer para teste
-    const currentVisible = getVisibleSections();
-    setVisibleSections({ ...currentVisible, footer: true });
-
-    if (!externalFooterSettings) {
-      if (studio?.config?.footer) {
-        setFooterSettings(studio.config.footer as FooterSettings);
-      } else {
-        setFooterSettings(getFooterSettings());
-      }
-    }
+    // Sempre carrega os dados iniciais para garantir sincronia
+    loadData();
 
     // Notificar o pai (admin) que o componente de rodapé está pronto
     if (window.self !== window.top) {
@@ -152,27 +208,86 @@ export function Footer({
     }
 
     const handleMessage = (event: MessageEvent) => {
-      if (event.data?.type === "UPDATE_PAGE_VISIBILITY") {
-        setPageVisibility(event.data.visibility);
+      if (!event.data || typeof event.data !== "object") return;
+
+      if (event.data.type === "UPDATE_PAGE_VISIBILITY") {
+        setPageVisibility(event.data.settings || {});
       }
-      if (event.data?.type === "UPDATE_VISIBLE_SECTIONS") {
-        setVisibleSections(event.data.sections);
+      if (event.data.type === "UPDATE_VISIBLE_SECTIONS") {
+        setVisibleSections(event.data.settings || {});
       }
-      if (event.data?.type === "UPDATE_FOOTER_SETTINGS") {
-        console.log(
-          "Footer: Recebendo novas configurações",
-          event.data.settings,
-        );
-        setFooterSettings(event.data.settings);
+      if (
+        event.data.type === "UPDATE_FOOTER_SETTINGS" ||
+        event.data.type === "UPDATE_SITE_DATA" ||
+        event.data.type === "UPDATE_SITE_CONFIG"
+      ) {
+        hasLivePreviewUpdateRef.current = true;
+
+        let rawFooter: Record<string, unknown> | undefined;
+
+        if (event.data.type === "UPDATE_SITE_DATA" && event.data.data) {
+          const siteData = event.data.data as Record<string, unknown>;
+          const sections = (siteData as any).sections as Record<string, unknown> | undefined;
+          rawFooter = (sections?.[SECTION_IDS.layoutFooter] || siteData.footer) as Record<string, unknown>;
+        } else if (event.data.type === "UPDATE_SITE_CONFIG" && event.data.config) {
+          const siteConfig = event.data.config as Record<string, unknown>;
+          const sections = (siteConfig as any).sections as Record<string, unknown> | undefined;
+          rawFooter = (sections?.[SECTION_IDS.layoutFooter] || siteConfig.footer) as Record<string, unknown>;
+        } else {
+          rawFooter = event.data.settings as Record<string, unknown>;
+        }
+
+        if (rawFooter && typeof rawFooter === "object" && !Array.isArray(rawFooter)) {
+          const appearance = (rawFooter.appearance && typeof rawFooter.appearance === "object" && !Array.isArray(rawFooter.appearance)
+            ? (rawFooter.appearance as Record<string, unknown>)
+            : {}) as Record<string, unknown>;
+          const normalizedFooter = {
+            ...rawFooter,
+            ...appearance,
+            bgColor: sanitizeColor(
+              (rawFooter.bgColor as string) ||
+                (rawFooter.backgroundColor as string) ||
+                (appearance.backgroundColor as string) ||
+                "",
+            ),
+            titleColor: sanitizeColor(
+              (rawFooter.titleColor as string) ||
+                (appearance.titleColor as string) ||
+                "",
+            ),
+            textColor: sanitizeColor(
+              (rawFooter.textColor as string) ||
+                (appearance.textColor as string) ||
+                "",
+            ),
+            iconColor: sanitizeColor(
+              (rawFooter.iconColor as string) ||
+                (appearance.iconColor as string) ||
+                "",
+            ),
+          };
+
+          setFooterSettings((prev) =>
+            prev
+              ? ({ ...prev, ...normalizedFooter } as FooterSettings)
+              : (normalizedFooter as FooterSettings),
+          );
+        }
       }
     };
 
+    const handleDataReady = () => {
+      loadData();
+    };
+
     window.addEventListener("message", handleMessage);
+    window.addEventListener("DataReady", handleDataReady);
 
     // Se estivermos no admin propriamente dito, não precisamos dos outros listeners
     if (pathname?.startsWith("/admin")) {
       return () => {
         window.removeEventListener("message", handleMessage);
+        window.removeEventListener("DataReady", handleDataReady);
       };
     }
 
@@ -209,14 +324,15 @@ export function Footer({
       );
       window.removeEventListener("footerSettingsUpdated", handleFooterUpdate);
       window.removeEventListener("message", handleMessage);
+      window.removeEventListener("DataReady", handleDataReady);
     };
-  }, [pathname, externalFooterSettings, studio]);
+  }, [pathname, isInsideIframe, loadData]);
 
   // Se estivermos isolando algo que não seja o footer, escondemos o footer
-  if (only && only !== "footer") return null;
+  if (only && only !== SECTION_IDS.layoutFooter) return null;
 
   // TRAVAS DE RENDERIZAÇÃO
-  if (!only && visibleSections.footer === false) return null;
+  if (!only && visibleSections[SECTION_IDS.layoutFooter] === false) return null;
 
   // Para evitar erro de hidratação, no primeiro render (SSR e primeira batida do client)
   // usamos o defaultSiteProfile. Após o mount, usamos o profile real.
@@ -311,7 +427,7 @@ export function Footer({
 
   return (
     <footer
-      id="footer"
+      id={SECTION_IDS.layoutFooter}
       className={`relative z-50 border-t border-border transition-colors duration-300 ${!footerSettings.bgColor ? "bg-secondary/30" : ""}`}
       style={footerStyle}
     >

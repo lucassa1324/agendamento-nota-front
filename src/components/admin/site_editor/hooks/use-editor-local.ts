@@ -16,6 +16,7 @@ import type {
 } from "@/lib/booking-data";
 import {
   getAboutHeroSettings,
+  getAboutUsValuesSettings,
   getBookingConfirmationSettings,
   getBookingDateSettings,
   getBookingFormSettings,
@@ -23,20 +24,23 @@ import {
   getBookingTimeSettings,
   getColorSettings,
   getCTASettings,
+  getDraftTimestamp,
   getFontSettings,
   getFooterSettings,
+  getGalleryPageSettings,
   getGallerySettings,
   getHeaderSettings,
   getHeroSettings,
+  getHomeValuesSettings,
   getPageVisibility,
   getServicesSettings,
   getStorageKey,
   getStorySettings,
   getTeamSettings,
   getTestimonialsSettings,
-  getValuesSettings,
   getVisibleSections,
   saveAboutHeroSettings,
+  saveAboutUsValuesSettings,
   saveBookingConfirmationSettings,
   saveBookingDateSettings,
   saveBookingFormSettings,
@@ -46,15 +50,16 @@ import {
   saveCTASettings,
   saveFontSettings,
   saveFooterSettings,
+  saveGalleryPageSettings,
   saveGallerySettings,
   saveHeaderSettings,
   saveHeroSettings,
+  saveHomeValuesSettings,
   savePageVisibility,
   saveServicesSettings,
   saveStorySettings,
   saveTeamSettings,
   saveTestimonialsSettings,
-  saveValuesSettings,
   saveVisibleSections,
 } from "@/lib/booking-data";
 
@@ -67,8 +72,10 @@ export type EditorLocalDrafts = {
   fontSettings: FontSettings;
   colorSettings: ColorSettings;
   servicesSettings: ServicesSettings;
-  valuesSettings: ValuesSettings;
+  homeValuesSettings: ValuesSettings;
+  aboutUsValuesSettings: ValuesSettings;
   gallerySettings: GallerySettings;
+  galleryPageSettings: GallerySettings;
   ctaSettings: CTASettings;
   headerSettings: HeaderSettings;
   footerSettings: FooterSettings;
@@ -79,17 +86,24 @@ export type EditorLocalDrafts = {
   bookingConfirmationSettings: BookingStepSettings;
   pageVisibility: Record<string, boolean>;
   visibleSections: Record<string, boolean>;
+  draftTimestamp?: number;
+  [key: string]: unknown;
 };
 
 export function useEditorLocal() {
   const hasLocalDraft = useCallback((key: string) => {
-    return (
-      typeof window !== "undefined" &&
-      localStorage.getItem(getStorageKey(key)) !== null
-    );
+    if (!key) return false;
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem(getStorageKey(key)) !== null;
   }, []);
 
   const loadLocalDrafts = useCallback((): EditorLocalDrafts => {
+    const rawDraftTimestamp = getDraftTimestamp();
+    const parsedDraftTimestamp = rawDraftTimestamp
+      ? /^\d+$/.test(rawDraftTimestamp)
+        ? Number(rawDraftTimestamp)
+        : Date.parse(rawDraftTimestamp)
+      : 0;
     return {
       heroSettings: getHeroSettings(),
       aboutHeroSettings: getAboutHeroSettings(),
@@ -99,8 +113,10 @@ export function useEditorLocal() {
       fontSettings: getFontSettings(),
       colorSettings: getColorSettings(),
       servicesSettings: getServicesSettings(),
-      valuesSettings: getValuesSettings(),
+      homeValuesSettings: getHomeValuesSettings(),
+      aboutUsValuesSettings: getAboutUsValuesSettings(),
       gallerySettings: getGallerySettings(),
+      galleryPageSettings: getGalleryPageSettings(),
       ctaSettings: getCTASettings(),
       headerSettings: getHeaderSettings(),
       footerSettings: getFooterSettings(),
@@ -111,6 +127,9 @@ export function useEditorLocal() {
       bookingConfirmationSettings: getBookingConfirmationSettings(),
       pageVisibility: getPageVisibility(),
       visibleSections: getVisibleSections(),
+      draftTimestamp: Number.isFinite(parsedDraftTimestamp)
+        ? parsedDraftTimestamp
+        : 0,
     };
   }, []);
 
@@ -123,8 +142,10 @@ export function useEditorLocal() {
     saveFontSettings(drafts.fontSettings);
     saveColorSettings(drafts.colorSettings);
     saveServicesSettings(drafts.servicesSettings);
-    saveValuesSettings(drafts.valuesSettings);
+    saveHomeValuesSettings(drafts.homeValuesSettings);
+    saveAboutUsValuesSettings(drafts.aboutUsValuesSettings);
     saveGallerySettings(drafts.gallerySettings);
+    saveGalleryPageSettings(drafts.galleryPageSettings);
     saveCTASettings(drafts.ctaSettings);
     saveHeaderSettings(drafts.headerSettings);
     saveFooterSettings(drafts.footerSettings);
@@ -138,6 +159,7 @@ export function useEditorLocal() {
   }, []);
 
   const clearLocalDrafts = useCallback(() => {
+    if (typeof window === "undefined") return;
     const keys = [
       "heroSettings",
       "aboutHeroSettings",
@@ -147,8 +169,10 @@ export function useEditorLocal() {
       "fontSettings",
       "colorSettings",
       "servicesSettings",
-      "valuesSettings",
+      "homeValuesSettings",
+      "aboutUsValuesSettings",
       "gallerySettings",
+      "galleryPageSettings",
       "ctaSettings",
       "headerSettings",
       "footerSettings",
@@ -159,6 +183,7 @@ export function useEditorLocal() {
       "bookingTimeSettings",
       "bookingFormSettings",
       "bookingConfirmationSettings",
+      "last_draft_update",
     ];
 
     for (const key of keys) {
@@ -167,11 +192,18 @@ export function useEditorLocal() {
     console.log(">>> [useEditorLocal] Rascunhos locais limpos.");
   }, []);
 
+  const forceClearSectionDraft = useCallback((key: string) => {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem(getStorageKey(key));
+    console.log(">>> [LOCAL_STORAGE] Limpeza forçada executada para:", key);
+  }, []);
+
   return {
     hasLocalDraft,
     loadLocalDrafts,
     saveLocalDrafts,
     clearLocalDrafts,
+    forceClearSectionDraft,
     saveHeroSettings,
     saveAboutHeroSettings,
     saveStorySettings,
@@ -180,8 +212,10 @@ export function useEditorLocal() {
     saveFontSettings,
     saveColorSettings,
     saveServicesSettings,
-    saveValuesSettings,
+    saveHomeValuesSettings,
+    saveAboutUsValuesSettings,
     saveGallerySettings,
+    saveGalleryPageSettings,
     saveCTASettings,
     saveHeaderSettings,
     saveFooterSettings,

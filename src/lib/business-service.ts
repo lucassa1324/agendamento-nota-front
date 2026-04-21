@@ -27,7 +27,41 @@ type SettingsPayload = {
   slotInterval?: string; // Adicionado para suportar o campo que o backend retorna
   weekly: WeekdaySchedulePayload[];
   agendaAberta?: boolean; // Adicionado para refletir o status da agenda no Dashboard
+  minimumBookingLeadMinutes?: number;
 };
+
+type ServiceHttpError = Error & {
+  status?: number;
+  code?: string;
+};
+
+async function buildHttpError(
+  response: Response,
+  fallbackMessage: string,
+): Promise<ServiceHttpError> {
+  const raw = await response.text().catch(() => "");
+  let message = raw || fallbackMessage;
+  let code: string | undefined;
+
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as { error?: string; message?: string };
+      if (parsed.error) {
+        code = parsed.error;
+        message = parsed.error;
+      } else if (parsed.message) {
+        message = parsed.message;
+      }
+    } catch { }
+  }
+
+  const error = new Error(message) as ServiceHttpError;
+  error.status = response.status;
+  if (code) {
+    error.code = code;
+  }
+  return error;
+}
 
 class BusinessService {
   private baseUrl = `${API_BASE_URL}/api/business/settings`;
@@ -48,9 +82,9 @@ class BusinessService {
     });
 
     if (!response.ok) {
-      const msg = await response.text().catch(() => "");
-      throw new Error(
-        msg || `Falha ao salvar configurações (${response.status})`,
+      throw await buildHttpError(
+        response,
+        `Falha ao salvar configurações (${response.status})`,
       );
     }
 
@@ -64,6 +98,8 @@ class BusinessService {
       method: "GET",
       // Removido credentials para permitir chamadas públicas se o backend suportar
       credentials: "include", // customFetch gerencia Authorization
+      cache: "no-store",
+      next: { revalidate: 0 },
     });
 
     if (!response.ok) {
@@ -74,9 +110,9 @@ class BusinessService {
         );
         return null;
       }
-      const msg = await response.text().catch(() => "");
-      throw new Error(
-        msg || `Falha ao buscar configurações (${response.status})`,
+      throw await buildHttpError(
+        response,
+        `Falha ao buscar configurações (${response.status})`,
       );
     }
 
@@ -96,6 +132,8 @@ class BusinessService {
     const response = await customFetch(url, {
       method: "GET",
       credentials: "include",
+      cache: "no-store",
+      next: { revalidate: 0 },
     });
 
     if (!response.ok) {
@@ -105,8 +143,10 @@ class BusinessService {
         );
         return [];
       }
-      const msg = await response.text().catch(() => "");
-      throw new Error(msg || `Falha ao buscar bloqueios (${response.status})`);
+      throw await buildHttpError(
+        response,
+        `Falha ao buscar bloqueios (${response.status})`,
+      );
     }
 
     const data = await response.json();

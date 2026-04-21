@@ -1,23 +1,83 @@
 import { API_BASE_URL, getSessionToken } from "./auth-client";
 
+let billingGuardActive = false;
+const SESSION_TOKEN_TIMEOUT_MS = 2500;
+
+async function getSessionTokenWithTimeout() {
+  try {
+    return await Promise.race([
+      getSessionToken(),
+      new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), SESSION_TOKEN_TIMEOUT_MS),
+      ),
+    ]);
+  } catch {
+    return null;
+  }
+}
+
+function createBillingRequiredResponse() {
+  return new Response(
+    JSON.stringify({
+      error: "BILLING_REQUIRED",
+    }),
+    {
+      status: 402,
+      headers: { "Content-Type": "application/json" },
+    },
+  );
+}
+
 /**
  * Utilitário global para fetch com interceptação de erros específicos
  * como BUSINESS_SUSPENDED (403).
  */
 export async function customFetch(url: string, options: RequestInit = {}) {
-  const sessionToken = await getSessionToken();
+  if (typeof window !== "undefined") {
+    const isDashboardRoute = window.location.pathname.includes("/dashboard");
+    const isMinhaContaRoute = window.location.pathname.includes(
+      "/dashboard/minha-conta",
+    );
+
+    if (billingGuardActive && (isMinhaContaRoute || !isDashboardRoute)) {
+      billingGuardActive = false;
+    }
+
+    if (billingGuardActive && isDashboardRoute && !isMinhaContaRoute) {
+      return createBillingRequiredResponse();
+    }
+  }
+
+  const sessionToken = await getSessionTokenWithTimeout();
 
   // Construir URL completa se for relativa
   let fullUrl = url;
   if (!url.startsWith("http") && !url.startsWith("//")) {
-    // Se a URL já começar com API_BASE_URL (ex: /api-proxy/...), não adiciona de novo
-    if (API_BASE_URL && !url.startsWith(API_BASE_URL)) {
-      // Garantir que não duplique a barra
-      const baseUrl = API_BASE_URL.endsWith("/")
-        ? API_BASE_URL.slice(0, -1)
-        : API_BASE_URL;
-      const path = url.startsWith("/") ? url : `/${url}`;
-      fullUrl = `${baseUrl}${path}`;
+    // Se a URL já começar com o prefixo do proxy (ex: /api-proxy/...), não adiciona API_BASE_URL novamente
+    const proxyPrefix = "/api-proxy";
+    const relativeProxyPrefix = "api-proxy";
+
+    if (
+      API_BASE_URL &&
+      !url.startsWith(API_BASE_URL) &&
+      !url.startsWith(proxyPrefix) &&
+      !url.startsWith(relativeProxyPrefix)
+    ) {
+      // No client-side, preferimos caminhos relativos para evitar problemas de CORS com subdomínios
+      if (
+        typeof window !== "undefined" &&
+        API_BASE_URL.includes(window.location.origin)
+      ) {
+        const path = url.startsWith("/") ? url : `/${url}`;
+        fullUrl = `/api-proxy${path}`;
+      } else {
+        // Garantir que não duplique a barra
+        const baseUrl = API_BASE_URL.endsWith("/")
+          ? API_BASE_URL.slice(0, -1)
+          : API_BASE_URL;
+        const path = url.startsWith("/") ? url : `/${url}`;
+        fullUrl = `${baseUrl}${path}`;
+      }
     }
   }
 
@@ -83,7 +143,9 @@ export async function customFetch(url: string, options: RequestInit = {}) {
       headers,
     });
   } catch (error: unknown) {
-    // Tratamento de erro de rede ou CORS (Failed to fetch)
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
+    }
     const errorMessage =
       error instanceof Error ? error.message : "Erro desconhecido";
     console.error(
@@ -112,15 +174,18 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     throw error;
   }
 
-  // Interceptar erro 403 (Acesso Negado / Suspensão) ou 402 (Pagamento Necessário)
-  if (response.status === 403 || response.status === 402) {
-    // Se for uma rota de API e não estivermos no Master Admin, redirecionar imediatamente
+  // Interceptar erro 403 (Acesso Negado / Suspensão)
+  if (response.status === 403) {
+    // Se for uma rota pública, redirecionar imediatamente
+    // EXCEÇÃO: Não redirecionar se o usuário estiver tentando acessar a página de pagamento/conta
     if (
       typeof window !== "undefined" &&
-      !window.location.pathname.startsWith("/admin/master")
+      !window.location.pathname.startsWith("/admin") &&
+      !window.location.pathname.includes("/dashboard/minha-conta") &&
+      !window.location.pathname.startsWith("/acesso-suspenso")
     ) {
       console.error(
-        `>>> [FRONT_API] ${response.status} detectado. Redirecionando via window.location para quebrar loop...`,
+        `>>> [FRONT_API] 403 detectado em ${window.location.pathname}. Redirecionando via window.location para quebrar loop...`,
       );
 
       // Força o redirecionamento total para a página de suspensão
@@ -128,13 +193,57 @@ export async function customFetch(url: string, options: RequestInit = {}) {
 
       // Retorna uma promessa que nunca resolve para "congelar" a execução atual
       // e impedir que o restante do código (como .then ou try/catch da UI) execute
-      return new Promise<Response>(() => {});
+      return new Promise<Response>(() => { });
     }
+  }
+
+  // Erro 402 (Pagamento Necessário) não redireciona para /acesso-suspenso.
+  // Deixamos o erro passar para que os componentes (como o dashboard layout)
+  // possam tratar exibindo a tela de bloqueio com opção de pagamento.
+  if (response.status === 402) {
+    if (typeof window !== "undefined") {
+      const isDashboardRoute = window.location.pathname.includes("/dashboard");
+      const isMinhaContaRoute = window.location.pathname.includes(
+        "/dashboard/minha-conta",
+      );
+
+      if (isDashboardRoute && !isMinhaContaRoute) {
+        if (!billingGuardActive) {
+          billingGuardActive = true;
+          window.dispatchEvent(
+            new CustomEvent("billing-required", {
+              detail: { url: fullUrl },
+            }),
+          );
+        }
+        return createBillingRequiredResponse();
+      }
+    }
+    console.warn(
+      `>>> [FRONT_API] 402 detectado em ${url}. Deixando componente tratar.`,
+    );
   }
 
   // Interceptar erro 401 para fallback de cache
   if (response.status === 401) {
     if (typeof window !== "undefined") {
+      const isDashboardRoute = window.location.pathname.includes("/dashboard");
+      const isMinhaContaRoute = window.location.pathname.includes(
+        "/dashboard/minha-conta",
+      );
+
+      if (isDashboardRoute && !isMinhaContaRoute) {
+        if (!billingGuardActive) {
+          billingGuardActive = true;
+          window.dispatchEvent(
+            new CustomEvent("billing-required", {
+              detail: { url: fullUrl, sourceStatus: 401 },
+            }),
+          );
+        }
+        return createBillingRequiredResponse();
+      }
+
       const cachedStudio = localStorage.getItem("studio_data");
       if (cachedStudio && url.includes("/studio/")) {
         return new Response(cachedStudio, {

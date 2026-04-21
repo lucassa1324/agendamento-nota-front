@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Clock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
@@ -30,13 +30,44 @@ export function ServiceSelector({
   const { studio } = useStudio();
   const [services, setServices] = useState<Service[]>([]);
   const [selected, setSelected] = useState<Service[]>(initialSelected);
+  const onSelectRef = useRef(onSelect);
+
+  const haveSameServiceIds = (a: Service[], b: Service[]) => {
+    if (a.length !== b.length) return false;
+    const aIds = a.map((s) => String(s.id)).sort();
+    const bIds = b.map((s) => String(s.id)).sort();
+    return aIds.every((id, index) => id === bIds[index]);
+  };
 
   useEffect(() => {
-    // Sincroniza o estado interno se initialSelected mudar (importante para reset)
-    setSelected(initialSelected);
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
+
+  useEffect(() => {
+    // Sincroniza o estado interno apenas quando houver mudança real de seleção.
+    setSelected((prev) =>
+      haveSameServiceIds(prev, initialSelected) ? prev : initialSelected,
+    );
   }, [initialSelected]);
 
   useEffect(() => {
+    // Sincroniza os serviços se mudarem no studio
+    if (studio?.services) {
+      setServices(studio.services);
+    }
+  }, [studio?.services]);
+
+  useEffect(() => {
+    // Se settings for passado via props (modo preview), usamos ele diretamente.
+    // O pai BookingFlow já gerencia a prioridade entre rascunho local e studio context.
+    if (settings) {
+      console.log(
+        ">>> [SERVICE_SELECTOR] Usando settings via props (Prioridade Preview):",
+        settings.title,
+      );
+      return;
+    }
+
     // No flow do cliente, preferimos sempre os dados do studio vindos do context,
     // que são buscados da API com cache: 'no-store'.
     if (studio?.services && studio.services.length > 0) {
@@ -56,7 +87,7 @@ export function ServiceSelector({
         setServices(settings.services);
       }
     }
-  }, [studio]);
+  }, [studio, settings]);
 
   const extractConflicts = (s: Service): string[] => {
     let list: (string | number)[] = [];
@@ -117,6 +148,10 @@ export function ServiceSelector({
 
     const serviceConflicts = extractConflicts(service);
 
+    console.log(`>>> [CHECK_CONFLICT] Verificando: ${service.name} (ID: ${serviceId}, Group: ${serviceGroupId})`);
+    console.log(`>>> [CHECK_CONFLICT] Conflitos do serviço:`, serviceConflicts);
+    console.log(`>>> [CHECK_CONFLICT] Serviços selecionados:`, currentSelected.map(s => s.name));
+
     for (const s of currentSelected) {
       const selectedId = s.id.toString();
       const selectedGroupId = (
@@ -130,16 +165,22 @@ export function ServiceSelector({
         selectedGroupId &&
         serviceGroupId === selectedGroupId
       ) {
-        return `O serviço "${service.name}" conflita com "${s.name}" (mesmo grupo: ${serviceGroupId})`;
+        const msg = `O serviço "${service.name}" conflita com "${s.name}" (mesmo grupo: ${serviceGroupId})`;
+        console.warn(`>>> [CHECK_CONFLICT] Conflito de GRUPO detectado:`, msg);
+        return msg;
       }
 
       // 2. Conflito individual (Bidirecional)
       if (serviceConflicts.includes(selectedId)) {
-        return `O serviço "${service.name}" bloqueia o serviço "${s.name}"`;
+        const msg = `O serviço "${service.name}" bloqueia o serviço "${s.name}"`;
+        console.warn(`>>> [CHECK_CONFLICT] Conflito INDIVIDUAL (A bloqueia B) detectado:`, msg);
+        return msg;
       }
 
       if (selectedConflicts.includes(serviceId)) {
-        return `O serviço "${s.name}" bloqueia o serviço "${service.name}"`;
+        const msg = `O serviço "${s.name}" bloqueia o serviço "${service.name}"`;
+        console.warn(`>>> [CHECK_CONFLICT] Conflito INDIVIDUAL (B bloqueia A) detectado:`, msg);
+        return msg;
       }
     }
     return null;
@@ -177,8 +218,8 @@ export function ServiceSelector({
   };
 
   useEffect(() => {
-    onSelect(selected);
-  }, [selected, onSelect]);
+    onSelectRef.current(selected);
+  }, [selected]);
 
   const totalPrice = selected.reduce((acc, s) => acc + Number(s.price || 0), 0);
   const totalDuration = selected.reduce(
@@ -186,20 +227,44 @@ export function ServiceSelector({
     0,
   );
 
+  const appearance = settings?.appearance || {};
+  const settingsRecord = settings as Record<string, unknown> | undefined;
+
+  // Normalização de buttonShape e badgeShape
+  const buttonShape = settings?.buttonShape || appearance.buttonShape || "pill";
+  const badgeShape = settings?.badgeShape || appearance.badgeShape || "pill";
+
+  // Prioridade: Custom Setting > Global Appearance > Default Fallback
+  const accentColor =
+    settings?.accentColor || appearance.accentColor || "var(--primary)";
+  const cardBgColor =
+    (settings?.cardBgColor as string) ||
+    (settingsRecord?.cardBackgroundColor as string) ||
+    (appearance.cardBgColor as string) ||
+    ((appearance as Record<string, unknown>)?.cardBackgroundColor as string) ||
+    "#ffffff";
+  const titleColor = settings?.titleColor || appearance.titleColor || "var(--foreground)";
+  const subtitleColor = settings?.subtitleColor || appearance.subtitleColor || "var(--muted-foreground)";
+  const titleFont = settings?.titleFont || appearance.titleFont || "var(--font-title)";
+  const subtitleFont = settings?.subtitleFont || appearance.subtitleFont || "var(--font-subtitle)";
+
   console.log(">>> [SERVICE_SELECTOR] Renderizando com settings:", {
     title: settings?.title,
-    cardBgColor: settings?.cardBgColor,
-    accentColor: settings?.accentColor,
+    cardBgColor,
+    accentColor,
+    bgColor: settings?.bgColor,
+    fullSettings: settings,
   });
 
   return (
-    <div className="space-y-6">
+    <div className="w-full bg-transparent">
+      <div className="space-y-6 p-4 transition-colors duration-300">
       <div className="text-center">
         <h2
           className="text-2xl font-bold mb-2 transition-all duration-300"
           style={{
-            color: settings?.titleColor || "var(--foreground)",
-            fontFamily: settings?.titleFont || "var(--font-title)",
+            color: titleColor,
+            fontFamily: titleFont,
           }}
         >
           {settings?.title || "Escolha os Serviços"}
@@ -207,8 +272,8 @@ export function ServiceSelector({
         <p
           className="text-muted-foreground transition-all duration-300"
           style={{
-            color: settings?.subtitleColor || "var(--foreground)",
-            fontFamily: settings?.subtitleFont || "var(--font-subtitle)",
+            color: subtitleColor,
+            fontFamily: subtitleFont,
           }}
         >
           {settings?.subtitle || "Você pode selecionar mais de um serviço"}
@@ -259,40 +324,43 @@ export function ServiceSelector({
                   : `service-select-${index}`
               }
               className={cn(
-                "border-border cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden bg-transparent shadow-none",
+                "border-border cursor-pointer transition-all hover:border-primary/50 relative overflow-hidden shadow-none bg-transparent",
+                buttonShape === "pill" && "rounded-[2rem]",
+                buttonShape === "square" && "rounded-xl",
+                buttonShape === "sharp" && "rounded-none",
                 isSelected && "ring-1",
                 isConflicting &&
                   "opacity-40 grayscale cursor-not-allowed border-dashed pointer-events-none",
               )}
-              style={{
-                borderColor:
-                  isSelected && settings?.accentColor
-                    ? settings.accentColor
-                    : isConflicting
-                      ? "var(--muted)"
-                      : undefined,
-                backgroundColor: settings?.cardBgColor || undefined,
-              }}
+              style={
+                {
+                  borderColor: isSelected ? accentColor : undefined,
+                  backgroundColor: cardBgColor,
+                } as React.CSSProperties
+              }
               onClick={() => !isConflicting && toggleService(service)}
             >
-              {isSelected && (
-                <div
-                  className="absolute top-0 right-0 p-1"
-                  style={{
-                    backgroundColor: settings?.accentColor || "var(--primary)",
-                    color: "#fff",
-                  }}
-                >
-                  <Check className="w-3 h-3" />
-                </div>
-              )}
+              <div
+                style={{
+                  backgroundColor: isSelected ? accentColor : "transparent",
+                }}
+                className={cn(
+                  "absolute top-0 right-0 p-1",
+                  badgeShape === "pill" && "rounded-full",
+                  badgeShape === "square" && "rounded-md",
+                  badgeShape === "sharp" && "rounded-none",
+                  isSelected ? "text-white" : "border",
+                )}
+              >
+                <Check className="w-4 h-4" />
+              </div>
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-2">
                   <h3
                     className="font-bold text-lg"
                     style={{
-                      color: settings?.titleColor || "var(--foreground)",
-                      fontFamily: settings?.titleFont || "var(--font-title)",
+                      color: titleColor,
+                      fontFamily: titleFont,
                     }}
                   >
                     {service.name}
@@ -300,7 +368,7 @@ export function ServiceSelector({
                   <div
                     className="font-bold"
                     style={{
-                      color: settings?.accentColor || "var(--primary)",
+                      color: accentColor,
                     }}
                   >
                     R$ {service.price}
@@ -323,54 +391,63 @@ export function ServiceSelector({
 
       {selected.length > 0 && (
         <Card
-          className="border-primary/20 sticky bottom-4 z-10 shadow-lg"
+          className="border-primary/20 sticky bottom-4 z-20 shadow-xl mx-4 sm:mx-0"
           style={{
-            backgroundColor: settings?.cardBgColor || "var(--background)",
-            borderColor: settings?.accentColor
-              ? `${settings.accentColor}33`
+            backgroundColor: cardBgColor !== "transparent" ? cardBgColor : "var(--background)",
+            borderColor: accentColor
+              ? `${accentColor}40`
               : undefined,
           }}
         >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="flex flex-col">
-              <span
-                className="text-xs text-muted-foreground uppercase font-bold tracking-wider"
-                style={{ fontFamily: "var(--font-body)" }}
-              >
-                Total Selecionado
-              </span>
-              <div className="flex items-center gap-3">
+          <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center justify-between w-full sm:w-auto sm:justify-start gap-6">
+              <div className="flex flex-col">
                 <span
-                  className="text-lg font-bold"
-                  style={{
-                    color: "var(--foreground)",
-                    fontFamily: "var(--font-title)",
-                  }}
+                  className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1"
+                  style={{ fontFamily: "var(--font-body)" }}
                 >
-                  R${" "}
-                  {totalPrice.toLocaleString("pt-BR", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  Total Selecionado
                 </span>
-                <span className="text-muted-foreground text-sm flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {totalDuration} min
-                </span>
+                <div className="flex items-baseline gap-3">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-sm font-medium text-muted-foreground">R$</span>
+                    <span
+                      className="text-2xl font-bold tracking-tight"
+                      style={{
+                        color: "var(--foreground)",
+                        fontFamily: "var(--font-title)",
+                      }}
+                    >
+                      {totalPrice.toLocaleString("pt-BR", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted/50 text-muted-foreground text-xs font-medium">
+                    <Clock className="w-3 h-3" />
+                    <span>{totalDuration} min</span>
+                  </div>
+                </div>
               </div>
             </div>
             <Button
-              onClick={() => (onConfirm ? onConfirm() : onSelect(selected))}
-              className="px-8 font-bold shadow-md transition-all hover:scale-105 active:scale-95"
-              style={{
-                backgroundColor: settings?.accentColor || "var(--primary)",
-                color: "#fff",
-              }}
+              onClick={onConfirm}
+              style={{ backgroundColor: accentColor }}
+              className={cn(
+                "w-full sm:w-auto min-w-50 h-12 px-8 text-base font-bold shadow-lg hover:brightness-110 transition-all active:scale-[0.98] shrink-0",
+                buttonShape === "pill" && "rounded-full",
+                buttonShape === "square" && "rounded-xl",
+                buttonShape === "sharp" && "rounded-none",
+                !accentColor && "bg-primary",
+              )}
             >
-              Confirmar
+              Confirmar Seleção
             </Button>
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }
