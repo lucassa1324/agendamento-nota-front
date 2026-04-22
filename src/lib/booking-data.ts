@@ -488,6 +488,43 @@ export const SECTION_IDS = {
 
 export type SectionId = (typeof SECTION_IDS)[keyof typeof SECTION_IDS];
 
+const toSafeString = (value: unknown): string | undefined => {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const preferredKeys = [
+      "text",
+      "span",
+      "title",
+      "subtitle",
+      "description",
+      "value",
+      "label",
+      "name",
+    ];
+
+    for (const key of preferredKeys) {
+      const candidate = record[key];
+      if (typeof candidate === "string") return candidate;
+      if (typeof candidate === "number" || typeof candidate === "boolean") {
+        return String(candidate);
+      }
+    }
+
+    for (const candidate of Object.values(record)) {
+      if (typeof candidate === "string") return candidate;
+      if (typeof candidate === "number" || typeof candidate === "boolean") {
+        return String(candidate);
+      }
+    }
+  }
+  return undefined;
+};
+
 const normalizeSectionConfig = <T extends Record<string, unknown>>(
   raw: T | string | undefined,
   defaults: T,
@@ -549,6 +586,22 @@ const normalizeSectionConfig = <T extends Record<string, unknown>>(
 
     if (isEmpty) {
       merged[field] = defaults[field];
+    }
+  });
+
+  // Corrige campos textuais que podem vir como objeto ({ text: "..." }, { span: "..." }, etc.).
+  // Isso evita ZodError quando title/subtitle/description são serializados de forma inconsistente.
+  const TEXT_CORE_FIELDS = ["title", "subtitle", "description"] as const;
+  TEXT_CORE_FIELDS.forEach((field) => {
+    const normalized = toSafeString(merged[field]);
+    if (normalized !== undefined) {
+      merged[field] = normalized;
+      return;
+    }
+
+    const fallback = toSafeString(defaults[field]);
+    if (fallback !== undefined) {
+      merged[field] = fallback;
     }
   });
 
@@ -2771,6 +2824,16 @@ export const normalizeStepSettings = (
         "",
     },
   };
+
+  // Blindagem para payloads legados onde título/subtítulo chegam como objeto.
+  final.title =
+    toSafeString(final.title) ||
+    toSafeString(defaults?.title) ||
+    "Agendamento";
+  final.subtitle =
+    toSafeString(final.subtitle) ||
+    toSafeString(defaults?.subtitle) ||
+    "";
 
   // 5. PILAR 1: Validar e Limpar via Schema (Zod)
   // Isso converte objetos de cor do Picker para strings e garante tipos mínimos.

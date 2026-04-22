@@ -34,19 +34,37 @@ const readEnvFallback = async (key: string) => {
   return "";
 };
 
-const wait = (ms: number) =>
-  new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-
-type AsaasPayment = {
-  status?: string;
-  invoiceUrl?: string;
-  bankSlipUrl?: string;
+type AsaasPaymentLink = {
+  url?: string;
+  paymentLinkUrl?: string;
+  shortUrl?: string;
+  errors?: Array<{ description?: string }>;
 };
 
-const isPayableStatus = (status?: string) =>
-  status === "PENDING" || status === "OVERDUE";
+class AsaasApiError extends Error {
+  asaasData?: unknown;
+  status?: number;
+
+  constructor(message: string, options?: { asaasData?: unknown; status?: number }) {
+    super(message);
+    this.name = "AsaasApiError";
+    this.asaasData = options?.asaasData;
+    this.status = options?.status;
+  }
+}
+
+const formatDateToYmd = (date: Date) => date.toISOString().split("T")[0];
+
+const resolveAsaasErrorMessage = (payload: unknown, fallback: string) => {
+  if (typeof payload === "object" && payload) {
+    const asaasPayload = payload as { errors?: Array<{ description?: string }> };
+    const firstError = asaasPayload.errors?.[0]?.description;
+    if (firstError) {
+      return firstError;
+    }
+  }
+  return fallback;
+};
 
 export async function POST(req: Request) {
   try {
@@ -211,145 +229,81 @@ export async function POST(req: Request) {
       }
     }
 
-    // 4. Criar Assinatura (Subscription)
-    // Verifica se já tem assinatura ativa para evitar duplicidade
-    const subscriptionsResponse = await fetch(
-      `${asaasApiUrl}/subscriptions?customer=${customerId}&status=ACTIVE`,
-      {
-        headers: { access_token: asaasApiKey },
-      },
-    );
-    const subscriptions = await subscriptionsResponse.json();
-
-    let subscriptionId = subscriptions.data?.[0]?.id;
-
-    if (!subscriptionId) {
-      const createSubscriptionResponse = await fetch(
-        `${asaasApiUrl}/subscriptions`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            access_token: asaasApiKey,
-            "x-forwarded-for": clientIp,
-          },
-          body: JSON.stringify({
-            customer: customerId,
-            billingType: "UNDEFINED", // Permite ao usuário escolher (Boleto/Pix/Cartão) na tela de pagamento
-            value: subscriptionValue,
-            nextDueDate: new Date(Date.now() + 24 * 60 * 60 * 1000)
-              .toISOString()
-              .split("T")[0], // Vence amanhã
-            cycle: "MONTHLY",
-            description: planName
-              ? `Assinatura Plano ${planName} - Aura Sistema`
-              : "Assinatura Plano Pro - Aura Sistema",
-            externalReference: businessId,
-            remoteIp: clientIp,
-          }),
-        },
+    subscriptionValue = Number(subscriptionValue);
+    if (!Number.isFinite(subscriptionValue) || subscriptionValue <= 0) {
+      return NextResponse.json(
+        { error: "Valor do plano inválido para gerar cobrança recorrente." },
+        { status: 400 },
       );
-
-      const newSubscription = await createSubscriptionResponse.json();
-      if (newSubscription.errors) {
-        throw new Error(newSubscription.errors[0].description);
-      }
-      subscriptionId = newSubscription.id;
     }
 
-    const findPayableInvoiceUrl = async () => {
-      for (let attempt = 0; attempt < 4; attempt++) {
-        const pendingResponse = await fetch(
-          `${asaasApiUrl}/payments?subscription=${subscriptionId}&status=PENDING&limit=10`,
-          {
-            headers: { access_token: asaasApiKey },
-          },
-        );
-        const pendingPayload = (await pendingResponse.json()) as {
-          data?: AsaasPayment[];
-        };
-        const pendingPayment = pendingPayload.data?.find((payment) =>
-          isPayableStatus(payment?.status || "PENDING"),
-        );
-        const pendingUrl = pendingPayment?.invoiceUrl || pendingPayment?.bankSlipUrl;
-        if (pendingUrl) {
-          return pendingUrl;
-        }
-
-        const overdueResponse = await fetch(
-          `${asaasApiUrl}/payments?subscription=${subscriptionId}&status=OVERDUE&limit=10`,
-          {
-            headers: { access_token: asaasApiKey },
-          },
-        );
-        const overduePayload = (await overdueResponse.json()) as {
-          data?: AsaasPayment[];
-        };
-        const overduePayment = overduePayload.data?.find((payment) =>
-          isPayableStatus(payment?.status || "OVERDUE"),
-        );
-        const overdueUrl = overduePayment?.invoiceUrl || overduePayment?.bankSlipUrl;
-        if (overdueUrl) {
-          return overdueUrl;
-        }
-
-        await wait(1200);
-      }
-      return "";
+    const recurringPaymentLinkPayload = {
+      name: planName
+        ? `Assinatura ${planName} - ${customerName}`
+        : `Assinatura Pro - ${customerName}`,
+      description: planName
+        ? `Assinatura recorrente (${planName}) - Aura Sistema`
+        : "Assinatura recorrente Pro - Aura Sistema",
+      billingType: "CREDIT_CARD",
+      chargeType: "RECURRENT",
+      period: "MONTHLY",
+      subscriptionCycle: "MONTHLY",
+      value: subscriptionValue,
+      dueDateLimitDays: 1,
+      endDate: formatDateToYmd(
+        new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      ),
+      externalReference: businessId,
     };
 
-    const payableUrl = await findPayableInvoiceUrl();
-    if (payableUrl) {
-      return NextResponse.json({ url: payableUrl });
-    }
-
-    const createPaymentResponse = await fetch(`${asaasApiUrl}/payments`, {
+    const paymentLinkResponse = await fetch(`${asaasApiUrl}/paymentLinks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         access_token: asaasApiKey,
         "x-forwarded-for": clientIp,
       },
-      body: JSON.stringify({
-        customer: customerId,
-        billingType: "UNDEFINED",
-        value: subscriptionValue,
-        dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split("T")[0],
-        description: planName
-          ? `Assinatura Plano ${planName} - Aura Sistema`
-          : "Assinatura Plano Pro - Aura Sistema",
-        externalReference: businessId,
-        remoteIp: clientIp,
-      }),
+      body: JSON.stringify(recurringPaymentLinkPayload),
     });
-    const newPayment = await createPaymentResponse.json();
-    if (newPayment?.errors) {
-      throw new Error(
-        newPayment.errors?.[0]?.description ||
-        "Erro ao criar nova cobrança no Asaas",
+
+    const paymentLinkData = (await paymentLinkResponse.json()) as AsaasPaymentLink;
+    const checkoutUrl =
+      paymentLinkData?.url ||
+      paymentLinkData?.paymentLinkUrl ||
+      paymentLinkData?.shortUrl;
+
+    if (!paymentLinkResponse.ok || !checkoutUrl) {
+      throw new AsaasApiError(
+        resolveAsaasErrorMessage(
+          paymentLinkData,
+          "Falha ao gerar link de pagamento recorrente no Asaas",
+        ),
+        {
+          asaasData: paymentLinkData,
+          status: paymentLinkResponse.status,
+        },
       );
     }
-    const fallbackUrl = newPayment?.invoiceUrl || newPayment?.bankSlipUrl;
 
-    if (fallbackUrl) {
-      return NextResponse.json({ url: fallbackUrl });
-    }
-
-    return NextResponse.json(
-      {
-        error:
-          "Não foi possível gerar o link de pagamento neste momento. Tente novamente em instantes.",
-      },
-      { status: 500 },
-    );
+    return NextResponse.json({ url: checkoutUrl });
   } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Erro desconhecido";
+    const err = error as
+      | (Error & { response?: { data?: unknown }; asaasData?: unknown })
+      | undefined;
+    const errorMessage = err?.message || "Erro desconhecido";
+    const rawAsaasError = err?.response?.data || err?.asaasData || err?.message;
+    try {
+      console.log(JSON.stringify(rawAsaasError));
+    } catch {
+      console.log(String(rawAsaasError));
+    }
+    console.error("ERRO ASAAS:", rawAsaasError);
     console.error("Erro na integração com Asaas:", errorMessage);
     return NextResponse.json(
-      { error: errorMessage || "Erro ao processar pagamento" },
+      {
+        error: errorMessage || "Erro ao processar pagamento",
+        asaasError: rawAsaasError || null,
+      },
       { status: 500 },
     );
   }
