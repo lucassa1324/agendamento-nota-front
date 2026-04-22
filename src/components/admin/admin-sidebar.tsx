@@ -19,6 +19,7 @@ import {
   Package,
   Palette,
   PieChart,
+  Users,
   // Plug,
   User,
   X,
@@ -79,6 +80,11 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
         title: "Gerenciamento",
         href: "/admin/dashboard/gerenciamento",
         icon: PieChart,
+      },
+      {
+        title: "Time e Permissões",
+        href: "/admin/dashboard/time",
+        icon: Users,
       },
       { title: "Estoque", href: "/admin/dashboard/estoque", icon: Package },
       {

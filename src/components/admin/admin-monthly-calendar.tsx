@@ -33,6 +33,14 @@ export function AdminMonthlyCalendar() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const { toast } = useToast();
 
+  const describeError = (error: unknown) => {
+    if (error instanceof Error) return error.message;
+    if (typeof error === "object" && error && "message" in error) {
+      return String((error as { message?: string }).message || "Erro desconhecido");
+    }
+    return "Erro desconhecido";
+  };
+
   const loadBookings = useCallback(async () => {
     if (!studio?.id) return;
 
@@ -91,10 +99,10 @@ export function AdminMonthlyCalendar() {
       if (error?.status === 402) {
         console.warn("AdminMonthlyCalendar: Agendamentos bloqueados por faturamento.");
       } else {
-        console.error("Erro ao carregar agendamentos:", error);
+        console.error("Erro ao carregar agendamentos:", describeError(error), error);
         toast({
           title: "Erro ao carregar",
-          description: "Não foi possível buscar os agendamentos no servidor.",
+          description: describeError(error),
           variant: "destructive",
         });
       }

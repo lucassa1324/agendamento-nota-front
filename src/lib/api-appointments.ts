@@ -81,8 +81,33 @@ export interface ApiError {
   raw?: unknown;
 }
 
+type RichError = Error & {
+  status?: number;
+  statusText?: string;
+  url?: string;
+  code?: string;
+  raw?: unknown;
+};
+
 class AppointmentService {
   private baseUrl = `${API_BASE_URL}/api/appointments`;
+
+  private createError(payload: {
+    message: string;
+    status?: number;
+    statusText?: string;
+    url?: string;
+    code?: string;
+    raw?: unknown;
+  }): RichError {
+    const error = new Error(payload.message) as RichError;
+    error.status = payload.status;
+    error.statusText = payload.statusText;
+    error.url = payload.url;
+    error.code = payload.code;
+    error.raw = payload.raw;
+    return error;
+  }
 
   private async handleResponse(response: Response) {
     if (!response.ok) {
@@ -108,7 +133,7 @@ class AppointmentService {
         });
       }
 
-      throw {
+      throw this.createError({
         status: response.status,
         statusText: response.statusText,
         url: response.url,
@@ -119,7 +144,7 @@ class AppointmentService {
           response.statusText ||
           "Ocorreu um erro inesperado",
         raw: errorData,
-      };
+      });
     }
 
     const contentType = response.headers.get("content-type");
@@ -145,12 +170,12 @@ class AppointmentService {
       });
       return await this.handleResponse(response);
     } catch (error: unknown) {
-      if (error && typeof error === 'object' && 'name' in error && error.name === "AbortError") {
-        throw {
+      if (error && typeof error === "object" && "name" in error && error.name === "AbortError") {
+        throw this.createError({
           status: 408,
           code: "TIMEOUT",
           message: "O servidor demorou muito para responder. Tente novamente.",
-        };
+        });
       }
       throw error;
     } finally {
@@ -229,11 +254,11 @@ class AppointmentService {
     });
     if (!response.ok) {
       const errorData: { code?: string; message?: string } = await response.json().catch(() => ({}));
-      throw {
+      throw this.createError({
         status: response.status,
         code: errorData.code || "UNKNOWN_ERROR",
         message: errorData.message || "Erro ao excluir agendamento",
-      };
+      });
     }
   }
 }
