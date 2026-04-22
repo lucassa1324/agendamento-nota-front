@@ -181,16 +181,16 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
   };
 
   return (
-    <aside className="w-64 bg-card border-r border-border flex flex-col h-screen lg:sticky lg:top-0 z-50 shadow-xl">
+    <aside className="w-64 bg-linear-to-b from-background via-background to-muted/20 border-r border-border/70 flex flex-col h-screen lg:sticky lg:top-0 z-50 shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
       {/* Sidebar Header - Logo do Cliente ou Placeholder */}
       {studio?.logoUrl && (
-        <div className="p-4 border-b border-border flex justify-center items-center bg-white/50">
-          <div className="relative w-full max-w-45 h-15 flex items-center justify-center">
+        <div className="px-4 pt-4 pb-3 border-b border-border/60 flex justify-center items-center">
+          <div className="relative w-full max-w-45 h-15 flex items-center justify-center rounded-xl bg-background/70 ring-1 ring-border/40">
             <Image
               src={getFullImageUrl(studio.logoUrl)}
               alt="Logo do Negócio"
               fill
-              className="object-contain rounded-none"
+              className="object-contain rounded-none p-2"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           </div>
@@ -198,10 +198,11 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
       )}
 
       {/* User Profile */}
-      <div className="p-4 border-b border-border space-y-4">
-        <div className="flex items-center justify-between px-2">
+      <div className="p-4 border-b border-border/60 space-y-3">
+        <div className="rounded-2xl bg-card/80 backdrop-blur-sm ring-1 ring-border/60 px-3 py-3 shadow-sm">
+          <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 ring-1 ring-primary/20">
               <User className="w-4 h-4" />
             </div>
             <div className="min-w-0">
@@ -215,24 +216,25 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
           </div>
           <SystemNotifications />
         </div>
+        </div>
 
         <a
           href={getSiteUrl()}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors group"
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground bg-muted/55 hover:bg-muted transition-colors group ring-1 ring-border/50"
         >
-          <ExternalLink className="w-4 h-4 group-hover:text-primary transition-colors" />
+          <ExternalLink className="w-4 h-4 text-primary group-hover:scale-105 transition-transform" />
           Ir para o site
         </a>
         <PushNotificationsButton />
       </div>
 
       {/* Sidebar Navigation */}
-      <nav className="flex-1 p-4 pb-24 space-y-6 overflow-y-auto">
+      <nav className="flex-1 p-4 pb-24 space-y-5 overflow-y-auto">
         {ADMIN_NAVIGATION.map((group) => (
-          <div key={group.group} className="space-y-1">
-            <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-2">
+          <div key={group.group} className="space-y-1.5">
+            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70 mb-2">
               {group.group}
             </p>
             {group.items.map((item) => {
@@ -254,7 +256,7 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
                     href={item.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground/90 hover:bg-muted/70 transition-colors"
                   >
                     {content}
                   </a>
@@ -266,25 +268,26 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
                   key={item.href}
                   href={dynamicHref}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                     isActive(item.href)
-                      ? "bg-primary text-primary-foreground"
-                      : "text-foreground hover:bg-accent hover:text-accent-foreground",
+                      ? "bg-primary text-primary-foreground shadow-[0_6px_18px_rgba(119,82,83,0.35)]"
+                      : "text-foreground/90 hover:bg-muted/70 hover:text-foreground",
                   )}
                 >
                   {content}
                 </Link>
               );
             })}
+            <div className="h-px bg-linear-to-r from-transparent via-border/70 to-transparent mt-3" />
           </div>
         ))}
 
         {/* Sair do Painel */}
-        <div className="pt-4 border-t border-border">
+        <div className="pt-3">
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
+            className="w-full justify-start rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
             onClick={handleLogout}
           >
             <LogOut className="w-4 h-4 mr-2" />
