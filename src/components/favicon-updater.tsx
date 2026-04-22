@@ -12,6 +12,38 @@ export function FaviconUpdater() {
   const pathname = usePathname();
 
   useEffect(() => {
+    const getIconTypeFromUrl = (url: string) => {
+      const cleanUrl = url.split("?")[0].toLowerCase();
+      if (cleanUrl.endsWith(".svg")) return "image/svg+xml";
+      if (cleanUrl.endsWith(".png")) return "image/png";
+      if (cleanUrl.endsWith(".jpg") || cleanUrl.endsWith(".jpeg")) return "image/jpeg";
+      if (cleanUrl.endsWith(".webp")) return "image/webp";
+      if (cleanUrl.endsWith(".gif")) return "image/gif";
+      if (cleanUrl.endsWith(".ico")) return "image/x-icon";
+      return undefined;
+    };
+
+    const upsertIconLink = (
+      selector: string,
+      rel: string,
+      href: string,
+      type?: string,
+    ) => {
+      const existing = document.querySelector<HTMLLinkElement>(selector);
+      const link = existing || document.createElement("link");
+      link.dataset.dynamicFavicon = "true";
+      link.rel = rel;
+      link.href = href;
+      if (type) {
+        link.type = type;
+      } else {
+        link.removeAttribute("type");
+      }
+      if (!existing) {
+        document.head.appendChild(link);
+      }
+    };
+
     const updateFavicon = () => {
       // Remover apenas ícones dinâmicos criados anteriormente por este componente
       const dynamicIcons = document.querySelectorAll(
@@ -43,29 +75,33 @@ export function FaviconUpdater() {
 
       if (logoUrl) {
         const fullLogoUrl = getFullImageUrl(logoUrl);
-        // 1. Standard Icon
-        const link = document.createElement("link");
-        link.dataset.dynamicFavicon = "true";
-        link.rel = "icon";
-        link.type = logoUrl.startsWith("data:image/svg")
-          ? "image/svg+xml"
-          : "image/x-icon";
-        link.href = fullLogoUrl;
-        document.head.appendChild(link);
+        const iconType =
+          logoUrl.startsWith("data:image/svg") || fullLogoUrl.startsWith("data:image/svg")
+            ? "image/svg+xml"
+            : getIconTypeFromUrl(fullLogoUrl);
 
-        // 2. Shortcut Icon (Older browsers)
-        const shortcutLink = document.createElement("link");
-        shortcutLink.dataset.dynamicFavicon = "true";
-        shortcutLink.rel = "shortcut icon";
-        shortcutLink.href = fullLogoUrl;
-        document.head.appendChild(shortcutLink);
+        // Cache bust para evitar manter favicon antigo da Aura.
+        const separator = fullLogoUrl.includes("?") ? "&" : "?";
+        const versionedLogoUrl = `${fullLogoUrl}${separator}v=${Date.now()}`;
 
-        // 3. Apple Touch Icon
-        const appleLink = document.createElement("link");
-        appleLink.dataset.dynamicFavicon = "true";
-        appleLink.rel = "apple-touch-icon";
-        appleLink.href = fullLogoUrl;
-        document.head.appendChild(appleLink);
+        upsertIconLink(
+          "link[rel='icon']",
+          "icon",
+          versionedLogoUrl,
+          iconType,
+        );
+        upsertIconLink(
+          "link[rel='shortcut icon']",
+          "shortcut icon",
+          versionedLogoUrl,
+          iconType,
+        );
+        upsertIconLink(
+          "link[rel='apple-touch-icon']",
+          "apple-touch-icon",
+          versionedLogoUrl,
+          iconType,
+        );
       }
 
       // Update Page Title

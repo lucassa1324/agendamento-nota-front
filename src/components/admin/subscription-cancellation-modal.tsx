@@ -60,6 +60,13 @@ export function SubscriptionCancellationModal({
   // Step 3: Confirmation
   const [confirmationChecked, setConfirmationChecked] = useState(false);
 
+  const buildSubscriptionPayload = () => {
+    const trimmed =
+      typeof subscriptionId === "string" ? subscriptionId.trim() : "";
+
+    return trimmed ? { subscriptionId: trimmed } : {};
+  };
+
   const resetModal = () => {
     setStep(1);
     setReason(null);
@@ -129,17 +136,29 @@ export function SubscriptionCancellationModal({
   const handleAcceptOffer = async () => {
     setIsLoading(true);
     try {
+      const payload = buildSubscriptionPayload();
       const res = await customFetch(
         `${API_BASE_URL}/api/account/accept-offer`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscriptionId }),
+          body: JSON.stringify(payload),
         },
       );
 
       if (!res.ok) {
-        throw new Error("Falha ao aceitar oferta");
+        let detail = "";
+        try {
+          const errorData = await res.clone().json();
+          detail = errorData?.message || errorData?.detail || "";
+        } catch {
+          detail = await res.text().catch(() => "");
+        }
+        throw new Error(
+          detail
+            ? `Falha ao aceitar oferta: ${detail}`
+            : "Falha ao aceitar oferta",
+        );
       }
 
       toast({
@@ -171,10 +190,11 @@ export function SubscriptionCancellationModal({
 
     setIsLoading(true);
     try {
+      const payload = buildSubscriptionPayload();
       const res = await customFetch(`${API_BASE_URL}/api/account/terminate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -183,8 +203,9 @@ export function SubscriptionCancellationModal({
 
       const result = await res.json().catch(() => null);
       const refundMessage =
+        result?.message ||
         result?.refundPolicy?.message ||
-        "Sua assinatura foi cancelada com sucesso.";
+        "Cancelamento agendado com sucesso. Seu acesso permanece ativo até o fim do ciclo pago.";
 
       toast({
         title: "Conta Encerrada",
@@ -221,7 +242,7 @@ export function SubscriptionCancellationModal({
             {step === 2 &&
               "Temos uma proposta especial para você continuar conosco."}
             {step === 3 &&
-              "Esta ação é irreversível e o acesso será bloqueado imediatamente."}
+              "Esta ação é irreversível. O cancelamento fica agendado e o acesso segue até o fim do ciclo pago."}
           </DialogDescription>
         </DialogHeader>
 
@@ -304,8 +325,8 @@ export function SubscriptionCancellationModal({
                 <p className="font-semibold mb-1">Aviso Crítico</p>
                 <p>
                   Seus dados serão mantidos por 365 dias para fins legais (LGPD)
-                  e depois excluídos permanentemente. O acesso ao painel será
-                  revogado agora.
+                  e depois excluídos permanentemente. O acesso ao painel
+                  permanece ativo até o fim do período já pago.
                 </p>
               </div>
             </div>
