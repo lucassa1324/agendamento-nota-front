@@ -3,6 +3,7 @@
 import {
   AlertTriangle,
   Clock,
+  CreditCard,
   History,
   Loader2,
   Mail,
@@ -42,6 +43,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Table,
   TableBody,
   TableCell,
@@ -61,6 +68,7 @@ interface CompanyMasterData {
   active: boolean;
   subscriptionStatus: string;
   accessType: string;
+  asaasSubscriptionId?: string | null;
   ownerId: string;
   ownerEmail: string;
 }
@@ -99,6 +107,51 @@ interface RouteDiagnostic {
   errorMessage: string | null;
   errorLocation: string;
   responsePreview: string | null;
+}
+
+interface BillingFlowDebugResponse {
+  success: boolean;
+  localBillingType?: string | null;
+  company: {
+    id: string;
+    name: string;
+    slug: string;
+    ownerEmail: string;
+    ownerActive: boolean;
+    subscriptionStatus: string;
+    accessType: string;
+    trialEndsAt: string | null;
+    billingGraceEndsAt: string | null;
+    asaasSubscriptionId: string | null;
+    lastRetentionDiscountAt: string | null;
+  };
+  asaas: {
+    id: string | null;
+    status: string | null;
+    billingType: string | null;
+    value: number | null;
+    nextDueDate: string | null;
+    cycle: string | null;
+    discount: unknown;
+    dateCreated: string | null;
+  } | null;
+  payments: {
+    total: number;
+    confirmedCount: number;
+    pendingCount: number;
+    latest: {
+      id: string | null;
+      status: string | null;
+      dueDate: string | null;
+      paymentDate: string | null;
+      value: number | null;
+    } | null;
+  };
+  diagnostic: {
+    canAutoCharge: boolean;
+    reasons: string[];
+    recommendedNextStep: string;
+  };
 }
 
 const extractString = (value: unknown) =>
@@ -154,49 +207,70 @@ export default function MasterDeveloperAreaPage() {
       label: "Sync (Asaas)",
       icon: RefreshCw,
       color: "text-slate-600",
+      help: "Sincroniza a empresa com o Asaas para atualizar status de pagamento e liberar/bloquear acesso conforme retorno real.",
     },
     {
       id: "vencer",
       label: "Vencer (Auto)",
       icon: AlertTriangle,
       color: "text-orange-600",
+      help: "Simula empresa vencida no modo automático (`past_due`) para validar fluxo de bloqueio por inadimplência.",
     },
     {
       id: "carencia",
       label: "Carência (Auto)",
       icon: Clock,
       color: "text-emerald-600",
+      help: "Coloca em carência (`grace_period`), mantendo acesso ativo por prazo curto mesmo sem pagamento.",
     },
     {
       id: "transicao",
       label: "Transição (Expira)",
       icon: Clock,
       color: "text-blue-600",
+      help: "Força expiração de modo manual para testar transição e retorno ao modo automático no próximo acesso.",
     },
-    { id: "email", label: "Reset E-mail", icon: Mail, color: "text-cyan-600" },
+    {
+      id: "email",
+      label: "Reset E-mail",
+      icon: Mail,
+      color: "text-cyan-600",
+      help: "Marca o e-mail do dono como não verificado para testar validação e onboarding.",
+    },
     {
       id: "onboarding",
       label: "Reset 1º Acesso",
       icon: Wrench,
       color: "text-violet-600",
+      help: "Reinicia o fluxo de primeiro acesso/onboarding da empresa.",
     },
     {
       id: "dados",
       label: "Reset Dados",
       icon: Trash2,
       color: "text-amber-600",
+      help: "Apaga dados de teste da empresa (agendamentos e, opcionalmente, serviços).",
     },
     {
       id: "bloquear",
       label: "Bloquear",
       icon: ShieldBan,
       color: "text-red-600",
+      help: "Executa bloqueio completo da empresa e do dono, incluindo invalidação de sessões.",
     },
     {
       id: "reset-billing-lock",
       label: "Reset Trava Cobrança",
       icon: RefreshCw,
       color: "text-purple-600",
+      help: "Remove a trava de 3 meses para permitir alterar dia de cobrança imediatamente.",
+    },
+    {
+      id: "fluxo-cobranca",
+      label: "Fluxo Cobrança",
+      icon: CreditCard,
+      color: "text-indigo-600",
+      help: "Abre diagnóstico guiado de cobrança, desconto e autocobrança com ações rápidas.",
     },
   ];
 
@@ -243,6 +317,21 @@ export default function MasterDeveloperAreaPage() {
   const [vencendoId, setVencendoId] = useState<string | null>(null);
   const [carenciaId, setCarenciaId] = useState<string | null>(null);
   const [resettingLockId, setResettingLockId] = useState<string | null>(null);
+  const [isBillingFlowOpen, setIsBillingFlowOpen] = useState(false);
+  const [selectedCompanyForBillingFlow, setSelectedCompanyForBillingFlow] =
+    useState<CompanyMasterData | null>(null);
+  const [billingFlowDebug, setBillingFlowDebug] =
+    useState<BillingFlowDebugResponse | null>(null);
+  const [isBillingFlowLoading, setIsBillingFlowLoading] = useState(false);
+  const [billingFlowActionLoading, setBillingFlowActionLoading] = useState<
+    | "offer"
+    | "past-due"
+    | "sync"
+    | "auto-debit"
+    | "create-subscription"
+    | "create-subscription-card"
+    | null
+  >(null);
 
   // Estados para o diálogo de reset
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
@@ -652,6 +741,154 @@ export default function MasterDeveloperAreaPage() {
       });
     } finally {
       setResettingLockId(null);
+    }
+  };
+
+  const fetchBillingFlowDebug = useCallback(
+    async (companyId: string) => {
+      setIsBillingFlowLoading(true);
+      try {
+        const response = await customFetch(
+          `${API_BASE_URL}/api/admin/master/companies/${companyId}/billing-flow-debug`,
+          {
+            credentials: "include",
+          },
+        );
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.error || "Falha ao carregar diagnóstico");
+        }
+
+        setBillingFlowDebug(data as BillingFlowDebugResponse);
+      } catch (error) {
+        console.error("Erro ao carregar diagnóstico de cobrança:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível carregar o diagnóstico de cobrança.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsBillingFlowLoading(false);
+      }
+    },
+    [toast],
+  );
+
+  const openBillingFlow = async (company: CompanyMasterData) => {
+    setSelectedCompanyForBillingFlow(company);
+    setIsBillingFlowOpen(true);
+    setBillingFlowDebug(null);
+    await fetchBillingFlowDebug(company.id);
+  };
+
+  const runBillingFlowAction = async (
+    action:
+      | "offer"
+      | "past-due"
+      | "sync"
+      | "auto-debit"
+      | "create-subscription"
+      | "create-subscription-card",
+  ) => {
+    if (!selectedCompanyForBillingFlow) return;
+    const companyId = selectedCompanyForBillingFlow.id;
+
+    setBillingFlowActionLoading(action);
+    try {
+      let response: Response;
+      if (action === "offer") {
+        response = await customFetch(
+          `${API_BASE_URL}/api/admin/master/companies/${companyId}/test-retention-offer`,
+          {
+            method: "POST",
+            credentials: "include",
+          },
+        );
+      } else if (action === "past-due") {
+        response = await customFetch(
+          `${API_BASE_URL}/api/admin/master/companies/${companyId}/simulate-past-due`,
+          {
+            method: "POST",
+            credentials: "include",
+          },
+        );
+      } else if (action === "auto-debit") {
+        response = await customFetch(
+          `${API_BASE_URL}/api/admin/master/companies/${companyId}/test-auto-debit`,
+          {
+            method: "POST",
+            credentials: "include",
+          },
+        );
+      } else if (action === "create-subscription") {
+        response = await customFetch(
+          `${API_BASE_URL}/api/admin/master/companies/${companyId}/create-test-subscription`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ billingType: "PIX" }),
+          },
+        );
+      } else if (action === "create-subscription-card") {
+        response = await customFetch(
+          `${API_BASE_URL}/api/admin/master/companies/${companyId}/create-test-subscription`,
+          {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              billingType: "CREDIT_CARD",
+              creditCard: {
+                number: "4012001038443335",
+                holderName: "Teste Asaas",
+                expiryMonth: "12",
+                expiryYear: "2030",
+                ccv: "123",
+              },
+            }),
+          },
+        );
+      } else {
+        response = await customFetch(
+          `${API_BASE_URL}/api/admin/master/companies/${companyId}/sync`,
+          {
+            method: "POST",
+            credentials: "include",
+          },
+        );
+      }
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Falha ao executar ação");
+      }
+
+      toast({
+        title: "Ação executada",
+        description: data?.warning || data?.message || "Fluxo atualizado.",
+        variant: data?.warning ? "destructive" : "default",
+      });
+
+      await Promise.all([
+        fetchCompanies(),
+        fetchLogs(),
+        fetchBillingFlowDebug(companyId),
+      ]);
+    } catch (error) {
+      console.error("Erro ao executar ação do fluxo de cobrança:", error);
+      const detail =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível executar a ação do fluxo de cobrança.";
+      toast({
+        title: "Erro",
+        description: detail,
+        variant: "destructive",
+      });
+    } finally {
+      setBillingFlowActionLoading(null);
     }
   };
 
@@ -1564,6 +1801,25 @@ export default function MasterDeveloperAreaPage() {
                                 </Button>
                               )}
 
+                              {pinnedActions.includes("fluxo-cobranca") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 px-2 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                  title="Modo de teste do fluxo de cobrança"
+                                  onClick={() => openBillingFlow(company)}
+                                  disabled={
+                                    syncingId === company.id ||
+                                    simulatingId === company.id ||
+                                    vencendoId === company.id ||
+                                    expiringId === company.id
+                                  }
+                                >
+                                  <CreditCard className="w-3.5 h-3.5 mr-1" />
+                                  Fluxo
+                                </Button>
+                              )}
+
                               {/* Menu "+" para as ações não pinned */}
                               {pinnedActions.length < ALL_ACTIONS.length && (
                                 <DropdownMenu>
@@ -1781,6 +2037,22 @@ export default function MasterDeveloperAreaPage() {
                                         Reset Trava Cobrança
                                       </DropdownMenuItem>
                                     )}
+
+                                    {!pinnedActions.includes("fluxo-cobranca") && (
+                                      <DropdownMenuItem
+                                        onClick={() => openBillingFlow(company)}
+                                        disabled={
+                                          syncingId === company.id ||
+                                          simulatingId === company.id ||
+                                          vencendoId === company.id ||
+                                          expiringId === company.id
+                                        }
+                                        className="text-indigo-600 focus:text-indigo-600"
+                                      >
+                                        <CreditCard className="w-4 h-4 mr-2" />
+                                        Modo Fluxo Cobrança
+                                      </DropdownMenuItem>
+                                    )}
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               )}
@@ -1836,6 +2108,14 @@ export default function MasterDeveloperAreaPage() {
                   <div>
                     <strong>Reset Trava:</strong> Libera a alteração do dia de
                     cobrança imediatamente, sem esperar 3 meses.
+                  </div>
+                </div>
+                <div className="p-3 rounded-md border border-indigo-200 bg-indigo-50 text-indigo-900 text-sm flex items-start gap-2">
+                  <CreditCard className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    <strong>Fluxo Cobrança:</strong> Abre diagnóstico completo
+                    da assinatura (Asaas + status local), com botões guiados
+                    para aplicar oferta, simular vencimento e sincronizar.
                   </div>
                 </div>
               </div>
@@ -2055,6 +2335,195 @@ export default function MasterDeveloperAreaPage() {
         </CardContent>
       </Card>
 
+      <Dialog open={isBillingFlowOpen} onOpenChange={setIsBillingFlowOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-indigo-600" />
+              Modo Fluxo de Cobrança
+            </DialogTitle>
+            <DialogDescription>
+              Empresa:{" "}
+              <strong>{selectedCompanyForBillingFlow?.name || "-"}</strong>.
+              Use as ações guiadas para validar desconto e cobrança automática.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                onClick={() =>
+                  selectedCompanyForBillingFlow &&
+                  fetchBillingFlowDebug(selectedCompanyForBillingFlow.id)
+                }
+                disabled={
+                  isBillingFlowLoading ||
+                  billingFlowActionLoading !== null ||
+                  !selectedCompanyForBillingFlow
+                }
+              >
+                {isBillingFlowLoading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Recarregar Diagnóstico
+              </Button>
+              <Button
+                variant="outline"
+                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                onClick={() => runBillingFlowAction("offer")}
+                disabled={
+                  isBillingFlowLoading || billingFlowActionLoading !== null
+                }
+              >
+                {billingFlowActionLoading === "offer" ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <CreditCard className="w-4 h-4 mr-2" />
+                )}
+                Aplicar Oferta 20% (3 ciclos)
+              </Button>
+              <Button
+                variant="outline"
+                className="border-teal-200 text-teal-700 hover:bg-teal-50"
+                onClick={() => runBillingFlowAction("create-subscription")}
+                disabled={
+                  isBillingFlowLoading || billingFlowActionLoading !== null
+                }
+              >
+                {billingFlowActionLoading === "create-subscription" ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4 mr-2" />
+                )}
+                Criar Assinatura Teste (PIX)
+              </Button>
+              <Button
+                variant="outline"
+                className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                onClick={() => runBillingFlowAction("create-subscription-card")}
+                disabled={
+                  isBillingFlowLoading || billingFlowActionLoading !== null
+                }
+              >
+                {billingFlowActionLoading === "create-subscription-card" ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <CreditCard className="w-4 h-4 mr-2" />
+                )}
+                Criar Assinatura Teste (CARTÃO)
+              </Button>
+              <Button
+                variant="outline"
+                className="border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                onClick={() => runBillingFlowAction("auto-debit")}
+                disabled={
+                  isBillingFlowLoading || billingFlowActionLoading !== null
+                }
+              >
+                {billingFlowActionLoading === "auto-debit" ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <CreditCard className="w-4 h-4 mr-2" />
+                )}
+                Simular Débito Automático
+              </Button>
+              <Button
+                variant="outline"
+                className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                onClick={() => runBillingFlowAction("past-due")}
+                disabled={
+                  isBillingFlowLoading || billingFlowActionLoading !== null
+                }
+              >
+                {billingFlowActionLoading === "past-due" ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                )}
+                Simular Vencido
+              </Button>
+              <Button
+                variant="outline"
+                className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                onClick={() => runBillingFlowAction("sync")}
+                disabled={
+                  isBillingFlowLoading || billingFlowActionLoading !== null
+                }
+              >
+                {billingFlowActionLoading === "sync" ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                Sync Asaas
+              </Button>
+            </div>
+
+            <div className="rounded-md border p-3 text-sm space-y-2">
+              {!billingFlowDebug && !isBillingFlowLoading && (
+                <p className="text-muted-foreground">
+                  Abra o diagnóstico para visualizar os dados da assinatura.
+                </p>
+              )}
+              {billingFlowDebug && (
+                <>
+                  <p>
+                    <strong>Local:</strong>{" "}
+                    status={billingFlowDebug.company.subscriptionStatus} | acesso=
+                    {billingFlowDebug.company.accessType} | dono ativo=
+                    {billingFlowDebug.company.ownerActive ? "sim" : "não"}
+                  </p>
+                  <p>
+                    <strong>Asaas:</strong>{" "}
+                    {billingFlowDebug.asaas
+                      ? `status=${billingFlowDebug.asaas.status || "-"} | billingType=${billingFlowDebug.asaas.billingType || "-"} | próximo vencimento=${billingFlowDebug.asaas.nextDueDate || "-"}`
+                      : "assinatura não encontrada"}
+                  </p>
+                  <p>
+                    <strong>Tipo Local (Banco):</strong>{" "}
+                    {billingFlowDebug.localBillingType || "-"}
+                  </p>
+                  <p>
+                    <strong>Pagamentos:</strong>{" "}
+                    total={billingFlowDebug.payments.total} | confirmados=
+                    {billingFlowDebug.payments.confirmedCount} | pendentes=
+                    {billingFlowDebug.payments.pendingCount}
+                  </p>
+                  <p>
+                    <strong>Desconto:</strong>{" "}
+                    {billingFlowDebug.asaas?.discount
+                      ? JSON.stringify(billingFlowDebug.asaas.discount)
+                      : "nenhum desconto ativo retornado"}
+                  </p>
+                  <p>
+                    <strong>Autocobrança pronta:</strong>{" "}
+                    {billingFlowDebug.diagnostic.canAutoCharge ? "SIM" : "NÃO"}
+                  </p>
+                  {!billingFlowDebug.diagnostic.canAutoCharge &&
+                    billingFlowDebug.diagnostic.reasons.length > 0 && (
+                      <p className="text-red-700">
+                        <strong>Bloqueios:</strong>{" "}
+                        {billingFlowDebug.diagnostic.reasons.join(" | ")}
+                      </p>
+                    )}
+                  <p className="text-muted-foreground">
+                    {billingFlowDebug.diagnostic.recommendedNextStep}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Roteiro recomendado: Criar Assinatura Teste (CARTÃO),
+                    depois Simular Debito Automatico, aguardar 1-3 minutos e por fim
+                    Sync Asaas para confirmar nova cobranca/pagamento.
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Diálogo de Reset de Dados */}
       <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -2142,32 +2611,50 @@ export default function MasterDeveloperAreaPage() {
               ficarão dentro do menu "+".
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {ALL_ACTIONS.map((action) => (
-              <div key={action.id} className="flex items-center space-x-3">
-                <Checkbox
-                  id={`action-${action.id}`}
-                  checked={pinnedActions.includes(action.id)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setPinnedActions([...pinnedActions, action.id]);
-                    } else {
-                      setPinnedActions(
-                        pinnedActions.filter((id) => id !== action.id),
-                      );
-                    }
-                  }}
-                />
-                <Label
-                  htmlFor={`action-${action.id}`}
-                  className="flex items-center gap-2 cursor-pointer flex-1"
-                >
-                  <action.icon className={`h-4 w-4 ${action.color}`} />
-                  <span>{action.label}</span>
-                </Label>
-              </div>
-            ))}
-          </div>
+          <TooltipProvider delayDuration={120}>
+            <div className="grid gap-4 py-4">
+              {ALL_ACTIONS.map((action) => (
+                <div key={action.id} className="flex items-center space-x-3">
+                  <Checkbox
+                    id={`action-${action.id}`}
+                    checked={pinnedActions.includes(action.id)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setPinnedActions([...pinnedActions, action.id]);
+                      } else {
+                        setPinnedActions(
+                          pinnedActions.filter((id) => id !== action.id),
+                        );
+                      }
+                    }}
+                  />
+                  <Label
+                    htmlFor={`action-${action.id}`}
+                    className="flex items-center gap-2 cursor-pointer flex-1"
+                  >
+                    <action.icon className={`h-4 w-4 ${action.color}`} />
+                    <span>{action.label}</span>
+                  </Label>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={`Ajuda: ${action.label}`}
+                        className="h-6 w-6 rounded-full border border-muted-foreground/40 text-muted-foreground text-xs font-bold hover:bg-muted"
+                      >
+                        ?
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-80 text-sm leading-relaxed">
+                      <p>
+                        <strong>{action.label}:</strong> {action.help}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              ))}
+            </div>
+          </TooltipProvider>
           <DialogFooter>
             <Button onClick={() => setIsActionsConfigOpen(false)}>
               Pronto

@@ -60,6 +60,13 @@ export function SubscriptionCancellationModal({
   // Step 3: Confirmation
   const [confirmationChecked, setConfirmationChecked] = useState(false);
 
+  const buildSubscriptionPayload = () => {
+    const trimmed =
+      typeof subscriptionId === "string" ? subscriptionId.trim() : "";
+
+    return trimmed ? { subscriptionId: trimmed } : {};
+  };
+
   const resetModal = () => {
     setStep(1);
     setReason(null);
@@ -129,17 +136,29 @@ export function SubscriptionCancellationModal({
   const handleAcceptOffer = async () => {
     setIsLoading(true);
     try {
+      const payload = buildSubscriptionPayload();
       const res = await customFetch(
         `${API_BASE_URL}/api/account/accept-offer`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ subscriptionId }),
+          body: JSON.stringify(payload),
         },
       );
 
       if (!res.ok) {
-        throw new Error("Falha ao aceitar oferta");
+        let detail = "";
+        try {
+          const errorData = await res.clone().json();
+          detail = errorData?.message || errorData?.detail || "";
+        } catch {
+          detail = await res.text().catch(() => "");
+        }
+        throw new Error(
+          detail
+            ? `Falha ao aceitar oferta: ${detail}`
+            : "Falha ao aceitar oferta",
+        );
       }
 
       toast({
@@ -171,10 +190,11 @@ export function SubscriptionCancellationModal({
 
     setIsLoading(true);
     try {
+      const payload = buildSubscriptionPayload();
       const res = await customFetch(`${API_BASE_URL}/api/account/terminate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionId }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
