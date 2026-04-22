@@ -203,8 +203,9 @@ export function SubscriptionCancellationModal({
 
       const result = await res.json().catch(() => null);
       const refundMessage =
+        result?.message ||
         result?.refundPolicy?.message ||
-        "Sua assinatura foi cancelada com sucesso.";
+        "Cancelamento agendado com sucesso. Seu acesso permanece ativo até o fim do ciclo pago.";
 
       toast({
         title: "Conta Encerrada",
@@ -241,7 +242,7 @@ export function SubscriptionCancellationModal({
             {step === 2 &&
               "Temos uma proposta especial para você continuar conosco."}
             {step === 3 &&
-              "Esta ação é irreversível e o acesso será bloqueado imediatamente."}
+              "Esta ação é irreversível. O cancelamento fica agendado e o acesso segue até o fim do ciclo pago."}
           </DialogDescription>
         </DialogHeader>
 
@@ -324,8 +325,8 @@ export function SubscriptionCancellationModal({
                 <p className="font-semibold mb-1">Aviso Crítico</p>
                 <p>
                   Seus dados serão mantidos por 365 dias para fins legais (LGPD)
-                  e depois excluídos permanentemente. O acesso ao painel será
-                  revogado agora.
+                  e depois excluídos permanentemente. O acesso ao painel
+                  permanece ativo até o fim do período já pago.
                 </p>
               </div>
             </div>
