@@ -25,7 +25,6 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { PushNotificationsButton } from "@/components/admin/push-notifications-button";
 import { SystemNotifications } from "@/components/admin/system-notifications";
@@ -270,9 +269,10 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
               }
 
               return (
-                <Link
+                <a
                   key={item.href}
                   href={dynamicHref}
+                  onClick={onClose}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                     isActive(item.href)
@@ -281,7 +281,7 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
                   )}
                 >
                   {content}
-                </Link>
+                </a>
               );
             })}
             <div className="h-px bg-linear-to-r from-transparent via-border/70 to-transparent mt-3" />

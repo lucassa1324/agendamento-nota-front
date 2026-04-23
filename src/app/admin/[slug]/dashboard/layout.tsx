@@ -59,6 +59,7 @@ function MobileNav({
         <AdminSidebar
           adminUser={adminUser}
           handleLogout={handleLogout}
+          onClose={() => setOpen(false)}
         />
       </SheetContent>
     </Sheet>
@@ -124,13 +125,6 @@ function AdminLayoutContent({
     if (redirectInFlightRef.current === targetPath) return;
     redirectInFlightRef.current = targetPath;
     router.replace(targetPath);
-
-    // Fallback para evitar tela de verificação infinita se a navegação SPA falhar
-    setTimeout(() => {
-      if (typeof window !== "undefined" && window.location.pathname !== targetPath) {
-        window.location.href = targetPath;
-      }
-    }, 150);
   };
 
   useEffect(() => {
@@ -292,7 +286,7 @@ function AdminLayoutContent({
         clearTimeout(sessionFallbackTimer);
       }
     };
-  }, [session, isLoadingSession, slug, isOnboarding, pathname, router]);
+  }, [session, isLoadingSession, slug, isOnboarding]);
 
   useEffect(() => {
     if (!isLoadingSession) return;
@@ -305,11 +299,11 @@ function AdminLayoutContent({
     }, 5000);
 
     return () => clearTimeout(timeoutId);
-  }, [isLoadingSession, pathname, router]);
+  }, [isLoadingSession]);
 
   const handleLogout = async () => {
     await signOut();
-    router.push("/admin");
+    window.location.assign("/admin");
   };
 
   const isPersonalizacao = pathname?.includes("/personalizacao");
