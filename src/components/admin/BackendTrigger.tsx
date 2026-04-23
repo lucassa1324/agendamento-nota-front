@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
+import { useSession } from "@/lib/auth-client";
 import {
   defaultHeroSettings,
   getStorageKey,
@@ -13,9 +14,13 @@ import { siteCustomizerService } from "@/lib/site-customizer-service";
 export function BackendTrigger() {
   const { businessId } = useStudio();
   const { toast } = useToast();
+  const { data: session } = useSession();
   const [triggered, setTriggered] = useState(false);
+  const role = (session?.user as { role?: string } | undefined)?.role?.toLowerCase();
+  const isStaffUser = role === "user";
 
   useEffect(() => {
+    if (isStaffUser) return;
     if (!businessId || triggered) return;
 
     // Verificar se já existe um rascunho de hero no localStorage ou se já foi disparado nesta sessão
@@ -115,7 +120,7 @@ export function BackendTrigger() {
     }
 
     runTrigger();
-  }, [businessId, triggered, toast]);
+  }, [businessId, triggered, toast, isStaffUser]);
 
   return null; // Componente invisível
 }

@@ -27,7 +27,6 @@ import {
 import Image from "next/image";
 import { useParams, usePathname } from "next/navigation";
 import { PushNotificationsButton } from "@/components/admin/push-notifications-button";
-import { SystemNotifications } from "@/components/admin/system-notifications";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
 import { BASE_DOMAIN, LANDING_PAGE_URL, useSession } from "@/lib/auth-client";
@@ -240,7 +239,7 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
               </p>
             </div>
           </div>
-          <SystemNotifications />
+          {/* Mitigação temporária: remove popover/portal de notificações para evitar erro de unmount (removeChild) durante navegação */}
         </div>
         </div>
 

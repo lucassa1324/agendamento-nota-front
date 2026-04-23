@@ -323,9 +323,24 @@ class SiteCustomizerService {
     }
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error(">>> [SiteCustomizerService] Erro no upload:", errorData);
-      throw new Error(errorData.message || "Erro ao fazer upload da imagem.");
+      const rawText = await response.text().catch(() => "");
+      let parsedError: Record<string, unknown> | null = null;
+      try {
+        parsedError = rawText ? (JSON.parse(rawText) as Record<string, unknown>) : null;
+      } catch {
+        parsedError = null;
+      }
+
+      const message =
+        (parsedError?.message as string | undefined) ||
+        (parsedError?.error as string | undefined) ||
+        rawText ||
+        `Erro ao fazer upload da imagem (status ${response.status}).`;
+
+      console.error(
+        `>>> [SiteCustomizerService] Erro no upload (status ${response.status} ${response.statusText}): ${message}`,
+      );
+      throw new Error(message);
     }
 
     const data = await response.json();

@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { useStudio } from "@/context/studio-context";
 import { customFetch } from "@/lib/api-client";
@@ -190,8 +189,33 @@ export function TeamRbacManager() {
       });
 
       if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
         toast.warning(
-          "Convite adicionado localmente. Endpoint de convite ainda não respondeu com sucesso.",
+          (errorData as { error?: string })?.error ||
+            "Convite adicionado localmente. Endpoint de convite ainda não respondeu com sucesso.",
+        );
+        return;
+      }
+
+      const data = (await response.json().catch(() => ({}))) as {
+        emailSent?: boolean;
+        inviteUrl?: string;
+        emailError?: string;
+        temporaryPassword?: string | null;
+      };
+
+      if (data.emailSent === false) {
+        const inviteUrl = data.inviteUrl || "";
+        if (inviteUrl && typeof navigator !== "undefined" && navigator.clipboard) {
+          await navigator.clipboard.writeText(inviteUrl).catch(() => {});
+        }
+        const tempPasswordHint = data.temporaryPassword
+          ? ` Senha temporária: ${data.temporaryPassword}.`
+          : "";
+        toast.warning(
+          data.emailError
+            ? `Colaborador criado, mas o e-mail não foi enviado (${data.emailError}). Link de convite copiado para a área de transferência.${tempPasswordHint}`
+            : `Colaborador criado, mas o e-mail não foi enviado. Link de convite copiado para a área de transferência.${tempPasswordHint}`,
         );
         return;
       }
@@ -436,7 +460,7 @@ export function TeamRbacManager() {
             <CardTitle className="text-base">Membros</CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-96 pr-2">
+            <div className="h-96 overflow-y-auto pr-2">
               <div className="space-y-2">
                 {members.length === 0 && (
                   <p className="text-sm text-muted-foreground">
@@ -465,7 +489,7 @@ export function TeamRbacManager() {
                   </button>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           </CardContent>
         </Card>
 

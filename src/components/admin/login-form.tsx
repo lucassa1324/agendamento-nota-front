@@ -47,6 +47,13 @@ export function LoginForm() {
   const lastAutoVerificationEmailAt = useRef(0);
 
   const isVerified = searchParams.get("verified") === "true";
+  const rawRedirectPath = searchParams.get("redirect");
+  const redirectPath =
+    rawRedirectPath &&
+    rawRedirectPath.startsWith("/") &&
+    !rawRedirectPath.startsWith("//")
+      ? rawRedirectPath
+      : null;
 
   const getSessionWithTimeout = useCallback(async () => {
     return await Promise.race([
@@ -124,6 +131,11 @@ export function LoginForm() {
         localStorage.removeItem("pending_verification_email");
       }
 
+      if (redirectPath) {
+        router.push(redirectPath);
+        return true;
+      }
+
       // PRIORIDADE MÁXIMA: SUPER_ADMIN ou Email do Proprietário (Lucas)
       // Usamos um "Hard Redirect" para limpar contextos de negócio/tenant
       if (
@@ -153,7 +165,7 @@ export function LoginForm() {
       );
       return false;
     },
-    [router],
+    [redirectPath, router],
   );
 
   // Verifica se já existe sessão ao carregar a página

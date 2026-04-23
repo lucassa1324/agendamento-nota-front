@@ -489,7 +489,9 @@ export default function AdminLayout({
       }
     >
       <SidebarProvider>
-        <AdminLayoutContent slug={slug}>{children}</AdminLayoutContent>
+        <StudioProvider initialSlug={slug} initialId={businessId}>
+          <AdminLayoutContent slug={slug}>{children}</AdminLayoutContent>
+        </StudioProvider>
       </SidebarProvider>
     </Suspense>
   );
