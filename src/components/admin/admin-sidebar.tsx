@@ -2,6 +2,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
+  ArrowRightLeft,
   BarChart3,
   Bell,
   BookOpen,
@@ -22,7 +23,6 @@ import {
   Users,
   // Plug,
   User,
-  X,
 } from "lucide-react";
 import Image from "next/image";
 import { useParams, usePathname } from "next/navigation";
@@ -56,6 +56,11 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
         title: "Agendamentos",
         href: "/admin/dashboard/agendamentos",
         icon: ListTodo,
+      },
+      {
+        title: "Encaminhamentos",
+        href: "/admin/dashboard/encaminhamentos",
+        icon: ArrowRightLeft,
       },
       {
         title: "Calendário",
@@ -163,7 +168,6 @@ const STAFF_RESTRICTED_PATHS = new Set([
   "/admin/dashboard/galeria",
 ]);
 
-
 interface AdminSidebarProps {
   adminUser: { name: string; username: string } | null;
   handleLogout: () => void;
@@ -207,7 +211,6 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
 
   return (
     <aside className="w-64 bg-linear-to-b from-background via-background to-muted/20 border-r border-border/70 flex flex-col h-screen lg:sticky lg:top-0 z-50 shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
-      {/* Sidebar Header - Logo do Cliente ou Placeholder */}
       {studio?.logoUrl && (
         <div className="px-4 pt-4 pb-3 border-b border-border/60 flex justify-center items-center">
           <div className="relative w-full max-w-45 h-15 flex items-center justify-center rounded-xl bg-background/70 ring-1 ring-border/40">
@@ -222,25 +225,23 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
         </div>
       )}
 
-      {/* User Profile */}
       <div className="p-4 border-b border-border/60 space-y-3">
         <div className="rounded-2xl bg-card/80 backdrop-blur-sm ring-1 ring-border/60 px-3 py-3 shadow-sm">
           <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 ring-1 ring-primary/20">
-              <User className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold truncate text-foreground">
-                {adminUser?.name || "Administrador"}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                @{adminUser?.username || "admin"}
-              </p>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 ring-1 ring-primary/20">
+                <User className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate text-foreground">
+                  {adminUser?.name || "Administrador"}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  @{adminUser?.username || "admin"}
+                </p>
+              </div>
             </div>
           </div>
-          {/* Mitigação temporária: remove popover/portal de notificações para evitar erro de unmount (removeChild) durante navegação */}
-        </div>
         </div>
 
         <a
@@ -255,22 +256,21 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
         <PushNotificationsButton />
       </div>
 
-      {/* Sidebar Navigation */}
       <nav className="flex-1 p-4 pb-24 space-y-5 overflow-y-auto">
         {visibleNavigation.map((group) => (
           <div key={group.group} className="space-y-1.5">
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70 mb-2">
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
               {group.group}
             </p>
             {group.items.map((item) => {
               const dynamicHref = getDynamicHref(item.href);
               const isExternal = item.href.startsWith("http");
-              
+
               const content = (
                 <>
                   <item.icon className="w-4 h-4" />
                   {item.title}
-                  {isExternal && <ExternalLink className="w-3 h-3 ml-auto opacity-50" />}
+                  {isExternal && <ExternalLink className="ml-auto w-3 h-3 opacity-50" />}
                 </>
               );
 
@@ -304,11 +304,10 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
                 </a>
               );
             })}
-            <div className="h-px bg-linear-to-r from-transparent via-border/70 to-transparent mt-3" />
+            <div className="mt-3 h-px bg-linear-to-r from-transparent via-border/70 to-transparent" />
           </div>
         ))}
 
-        {/* Sair do Painel */}
         <div className="pt-3">
           <Button
             variant="ghost"
@@ -316,7 +315,7 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
             className="w-full justify-start rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
             onClick={handleLogout}
           >
-            <LogOut className="w-4 h-4 mr-2" />
+            <LogOut className="mr-2 w-4 h-4" />
             Sair do Painel
           </Button>
         </div>

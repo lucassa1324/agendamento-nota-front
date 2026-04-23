@@ -8,7 +8,7 @@ import { useStudio } from "@/context/studio-context";
 import { appointmentService } from "@/lib/api-appointments";
 import { useSession } from "@/lib/auth-client";
 
-export default function AgendaPage() {
+export default function EncaminhamentosPage() {
   const { data: session } = useSession();
   const { studio } = useStudio();
   const role = (session?.user as { role?: string } | undefined)?.role?.toLowerCase();
@@ -49,7 +49,7 @@ export default function AgendaPage() {
   }, [studio?.id, isAdminUser, isStaffUser]);
 
   const title = useMemo(() => {
-    if (hasManagerAccess) return "Calendário de Agendamentos";
+    if (hasManagerAccess) return "Painel de Encaminhamentos";
     return "Minha Agenda";
   }, [hasManagerAccess]);
 
@@ -60,7 +60,7 @@ export default function AgendaPage() {
           <h2 className="mb-2 font-sans text-3xl font-bold text-primary">{title}</h2>
           <p className="text-muted-foreground">
             {hasManagerAccess
-              ? "Acompanhe o mês inteiro com uma legenda de cores por funcionária e pendências em destaque."
+              ? "Secretaria/Admin: faça encaminhamento manual, valide sugestões automáticas e distribua a agenda por funcionária."
               : "Acompanhe seu próximo cliente e assuma oportunidades compatíveis com suas skills."}
           </p>
         </div>
@@ -69,10 +69,10 @@ export default function AgendaPage() {
 
       {isCheckingManagerAccess ? (
         <div className="rounded-xl border bg-card p-10 text-center text-sm text-muted-foreground">
-          Carregando calendário...
+          Carregando encaminhamentos...
         </div>
       ) : hasManagerAccess || isAdminUser ? (
-        <AdminAssignmentBoard mode="calendar" />
+        <AdminAssignmentBoard mode="assignment" />
       ) : (
         <EmployeeAgendaView />
       )}
