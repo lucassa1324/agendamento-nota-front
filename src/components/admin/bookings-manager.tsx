@@ -184,10 +184,39 @@ export function BookingsManager() {
     try {
       const items = await inventoryService.list(studio.id, true);
       setInventory(items);
-    } catch (error: any) {
-      if (error?.status !== 402) {
-        console.error("Erro ao carregar estoque:", error);
+    } catch (error: unknown) {
+      const status =
+        typeof error === "object" &&
+        error !== null &&
+        "status" in error &&
+        typeof (error as { status?: unknown }).status === "number"
+          ? (error as { status: number }).status
+          : undefined;
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" &&
+              error !== null &&
+              "message" in error &&
+              typeof (error as { message?: unknown }).message === "string"
+            ? (error as { message: string }).message
+            : "Falha inesperada ao carregar estoque.";
+
+      const shouldSilence =
+        status === 401 ||
+        status === 402 ||
+        status === 403 ||
+        message.includes("BILLING_REQUIRED");
+
+      if (!shouldSilence) {
+        console.error(
+          `Erro ao carregar estoque (status ${status ?? "desconhecido"}): ${message}`,
+        );
       }
+
+      // Em erro, evita exibir dados possivelmente defasados.
+      setInventory([]);
     }
   };
 

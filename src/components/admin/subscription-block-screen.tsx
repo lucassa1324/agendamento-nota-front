@@ -28,6 +28,9 @@ export function SubscriptionBlockScreen({
   status,
 }: SubscriptionBlockScreenProps) {
   const { data: session } = useSession();
+  if ((session?.user as { role?: string } | undefined)?.role?.toLowerCase() === "user") {
+    return null;
+  }
   const params = useParams();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);

@@ -6,6 +6,7 @@ import {
   MailPlus,
   Save,
   ShieldCheck,
+  Trash2,
   UserCog,
   Users,
   XCircle,
@@ -62,6 +63,9 @@ export function TeamRbacManager() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
   const [isStaffEndpointAvailable, setIsStaffEndpointAvailable] = useState(true);
+  const [financialPassword, setFinancialPassword] = useState("");
+  const [memberPassword, setMemberPassword] = useState("");
+  const [isProcessingSecurity, setIsProcessingSecurity] = useState(false);
 
   const selectedMember = useMemo(
     () => members.find((member) => member.id === selectedId) ?? null,
@@ -234,6 +238,131 @@ export function TeamRbacManager() {
       );
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleConfigureFinancialPassword = async () => {
+    if (!studio?.id) return;
+    if (financialPassword.trim().length < 4) {
+      toast.error("A senha financeira deve ter ao menos 4 caracteres.");
+      return;
+    }
+
+    setIsProcessingSecurity(true);
+    try {
+      const response = await customFetch(
+        `${STAFF_ENDPOINT}/company/${studio.id}/financial-password`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            password: financialPassword.trim(),
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(
+          (errorData as { error?: string })?.error ||
+            "Não foi possível configurar a senha financeira.",
+        );
+        return;
+      }
+
+      setSecurityState({ hasFinancialPassword: true });
+      setFinancialPassword("");
+      toast.success("Senha financeira configurada com sucesso.");
+    } catch {
+      toast.error("Falha ao configurar a senha financeira.");
+    } finally {
+      setIsProcessingSecurity(false);
+    }
+  };
+
+  const handleResetMemberPassword = async () => {
+    if (!selectedMember || !studio?.id) return;
+    if (selectedMember.id.startsWith("temp-")) {
+      toast.error("Salve o colaborador antes de redefinir a senha.");
+      return;
+    }
+    if (memberPassword.trim().length < 6) {
+      toast.error("A nova senha deve ter ao menos 6 caracteres.");
+      return;
+    }
+
+    setIsProcessingSecurity(true);
+    try {
+      const response = await customFetch(
+        `${STAFF_ENDPOINT}/${selectedMember.id}/reset-password`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            companyId: studio.id,
+            password: memberPassword.trim(),
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(
+          (errorData as { error?: string })?.error ||
+            "Não foi possível redefinir a senha do colaborador.",
+        );
+        return;
+      }
+
+      setMemberPassword("");
+      toast.success("Senha de acesso do colaborador redefinida com sucesso.");
+    } catch {
+      toast.error("Falha ao redefinir a senha do colaborador.");
+    } finally {
+      setIsProcessingSecurity(false);
+    }
+  };
+
+  const handleDeleteMember = async () => {
+    if (!selectedMember || !studio?.id) return;
+    if (!confirm(`Deseja excluir o colaborador ${selectedMember.name}?`)) return;
+
+    if (selectedMember.id.startsWith("temp-")) {
+      setMembers((current) => current.filter((member) => member.id !== selectedMember.id));
+      setSelectedId((current) => (current === selectedMember.id ? null : current));
+      toast.success("Colaborador removido da lista local.");
+      return;
+    }
+
+    setIsProcessingSecurity(true);
+    try {
+      const response = await customFetch(
+        `${STAFF_ENDPOINT}/${selectedMember.id}?companyId=${encodeURIComponent(studio.id)}`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(
+          (errorData as { error?: string })?.error ||
+            "Não foi possível excluir o colaborador.",
+        );
+        return;
+      }
+
+      const deletedId = selectedMember.id;
+      setMembers((current) => {
+        const remaining = current.filter((member) => member.id !== deletedId);
+        setSelectedId((currentSelected) =>
+          currentSelected === deletedId ? (remaining[0]?.id ?? null) : currentSelected,
+        );
+        return remaining;
+      });
+      toast.success("Colaborador excluído com sucesso.");
+    } catch {
+      toast.error("Falha ao excluir colaborador.");
+    } finally {
+      setIsProcessingSecurity(false);
     }
   };
 
@@ -458,23 +587,68 @@ export function TeamRbacManager() {
                       Segurança Financeira
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm">
-                      {securityState.hasFinancialPassword ? (
-                        <>
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          Senha financeira configurada
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="h-4 w-4 text-amber-500" />
-                          Senha financeira não configurada
-                        </>
-                      )}
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        {securityState.hasFinancialPassword ? (
+                          <>
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            Senha financeira configurada
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="h-4 w-4 text-amber-500" />
+                            Senha financeira não configurada
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <Button variant="outline" size="sm">
-                      Configurar senha
-                    </Button>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Input
+                        type="password"
+                        placeholder="Nova senha financeira"
+                        value={financialPassword}
+                        onChange={(event) => setFinancialPassword(event.target.value)}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleConfigureFinancialPassword}
+                        disabled={isProcessingSecurity}
+                      >
+                        Configurar senha
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-border/70">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <KeyRound className="h-4 w-4" />
+                      Senha de Acesso do Colaborador
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Input
+                        type="password"
+                        placeholder="Nova senha de login"
+                        value={memberPassword}
+                        onChange={(event) => setMemberPassword(event.target.value)}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleResetMemberPassword}
+                        disabled={isProcessingSecurity || !selectedMember}
+                      >
+                        Redefinir senha
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Use ao menos 6 caracteres. Esta ação atualiza o acesso do colaborador imediatamente.
+                    </p>
                   </CardContent>
                 </Card>
 
@@ -490,7 +664,16 @@ export function TeamRbacManager() {
                   </ul>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    variant="destructive"
+                    onClick={handleDeleteMember}
+                    disabled={isSaving || isProcessingSecurity}
+                    className="gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Excluir colaborador
+                  </Button>
                   <Button onClick={handleSaveMember} disabled={isSaving} className="gap-2">
                     <Save className="h-4 w-4" />
                     {isSaving ? "Salvando..." : "Salvar permissões"}

@@ -30,7 +30,7 @@ import { PushNotificationsButton } from "@/components/admin/push-notifications-b
 import { SystemNotifications } from "@/components/admin/system-notifications";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
-import { BASE_DOMAIN, LANDING_PAGE_URL } from "@/lib/auth-client";
+import { BASE_DOMAIN, LANDING_PAGE_URL, useSession } from "@/lib/auth-client";
 import { cn, getFullImageUrl } from "@/lib/utils";
 
 interface AdminNavItem {
@@ -153,6 +153,17 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
   },
 ];
 
+const STAFF_RESTRICTED_PATHS = new Set([
+  "/admin/dashboard/gerenciamento",
+  "/admin/dashboard/time",
+  "/admin/dashboard/estoque",
+  "/admin/dashboard/relatorios",
+  "/admin/dashboard/perfil",
+  "/admin/dashboard/personalizacao",
+  "/admin/dashboard/dns",
+  "/admin/dashboard/galeria",
+]);
+
 
 interface AdminSidebarProps {
   adminUser: { name: string; username: string } | null;
@@ -164,6 +175,9 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
   const pathname = usePathname();
   const params = useParams();
   const { studio } = useStudio();
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string } | undefined)?.role?.toLowerCase();
+  const isStaffUser = role === "user";
 
   const slug = (params?.slug as string) || studio?.slug || "";
 
@@ -184,6 +198,13 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
     }
     return `/${slug}`;
   };
+
+  const visibleNavigation = ADMIN_NAVIGATION.map((group) => ({
+    ...group,
+    items: group.items.filter((item) =>
+      isStaffUser ? !STAFF_RESTRICTED_PATHS.has(item.href) : true,
+    ),
+  })).filter((group) => group.items.length > 0);
 
   return (
     <aside className="w-64 bg-linear-to-b from-background via-background to-muted/20 border-r border-border/70 flex flex-col h-screen lg:sticky lg:top-0 z-50 shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
@@ -237,7 +258,7 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
 
       {/* Sidebar Navigation */}
       <nav className="flex-1 p-4 pb-24 space-y-5 overflow-y-auto">
-        {ADMIN_NAVIGATION.map((group) => (
+        {visibleNavigation.map((group) => (
           <div key={group.group} className="space-y-1.5">
             <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70 mb-2">
               {group.group}
