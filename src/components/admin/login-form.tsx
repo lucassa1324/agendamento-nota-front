@@ -149,11 +149,15 @@ export function LoginForm() {
         return true;
       }
 
-      // 2º Lugar: Verificação de Administrador de Negócio (Multi-tenant)
+      // 2º Lugar: Verificação de acesso ao negócio (owner/admin/staff)
       const businessSlug = user?.slug || user?.business?.slug;
-      if (user.role?.toLowerCase() === "admin" && businessSlug) {
+      const normalizedRole = user.role?.toLowerCase();
+      if (
+        businessSlug &&
+        (normalizedRole === "admin" || normalizedRole === "user")
+      ) {
         console.log(
-          `>>> [LOGIN_FLOW] ADMIN detectado. Redirecionando para /admin/${businessSlug}/dashboard/overview`,
+          `>>> [LOGIN_FLOW] Usuário com vínculo de negócio detectado (${normalizedRole}). Redirecionando para /admin/${businessSlug}/dashboard/overview`,
         );
         router.push(`/admin/${businessSlug}/dashboard/overview`);
         return true;

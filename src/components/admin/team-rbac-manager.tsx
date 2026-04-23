@@ -65,6 +65,11 @@ export function TeamRbacManager() {
   const [financialPassword, setFinancialPassword] = useState("");
   const [memberPassword, setMemberPassword] = useState("");
   const [isProcessingSecurity, setIsProcessingSecurity] = useState(false);
+  const [isResendingInvite, setIsResendingInvite] = useState(false);
+  const [memberPasswordFeedback, setMemberPasswordFeedback] = useState<{
+    type: "success" | "error" | "loading";
+    message: string;
+  } | null>(null);
 
   const selectedMember = useMemo(
     () => members.find((member) => member.id === selectedId) ?? null,
@@ -198,17 +203,30 @@ export function TeamRbacManager() {
       }
 
       const data = (await response.json().catch(() => ({}))) as {
+        staffId?: string;
         emailSent?: boolean;
         inviteUrl?: string;
         emailError?: string;
         temporaryPassword?: string | null;
       };
 
+      const inviteUrl = data.inviteUrl || "";
+      if (inviteUrl && typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(inviteUrl).catch(() => {});
+      }
+
+      if (data.staffId) {
+        setMembers((current) =>
+          current.map((member) =>
+            member.id === optimisticMember.id
+              ? { ...member, id: data.staffId as string }
+              : member,
+          ),
+        );
+        setSelectedId(data.staffId);
+      }
+
       if (data.emailSent === false) {
-        const inviteUrl = data.inviteUrl || "";
-        if (inviteUrl && typeof navigator !== "undefined" && navigator.clipboard) {
-          await navigator.clipboard.writeText(inviteUrl).catch(() => {});
-        }
         const tempPasswordHint = data.temporaryPassword
           ? ` Senha temporária: ${data.temporaryPassword}.`
           : "";
@@ -220,7 +238,13 @@ export function TeamRbacManager() {
         return;
       }
 
-      toast.success("Convite enviado com sucesso.");
+      if (data.temporaryPassword) {
+        toast.success(
+          `Convite enviado. Link copiado para a área de transferência. Senha de primeiro acesso: ${data.temporaryPassword}`,
+        );
+      } else {
+        toast.success("Convite enviado. Link copiado para a área de transferência.");
+      }
     } catch {
       toast.warning(
         "Convite adicionado localmente. Endpoint de convite ainda não está disponível.",
@@ -306,14 +330,26 @@ export function TeamRbacManager() {
   const handleResetMemberPassword = async () => {
     if (!selectedMember || !studio?.id) return;
     if (selectedMember.id.startsWith("temp-")) {
+      setMemberPasswordFeedback({
+        type: "error",
+        message: "Salve ou reabra o colaborador antes de redefinir a senha.",
+      });
       toast.error("Salve o colaborador antes de redefinir a senha.");
       return;
     }
     if (memberPassword.trim().length < 6) {
+      setMemberPasswordFeedback({
+        type: "error",
+        message: "A nova senha deve ter no mínimo 6 caracteres.",
+      });
       toast.error("A nova senha deve ter ao menos 6 caracteres.");
       return;
     }
 
+    setMemberPasswordFeedback({
+      type: "loading",
+      message: "Redefinindo senha...",
+    });
     setIsProcessingSecurity(true);
     try {
       const response = await customFetch(
@@ -329,16 +365,30 @@ export function TeamRbacManager() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        toast.error(
+        const message =
           (errorData as { error?: string })?.error ||
-            "Não foi possível redefinir a senha do colaborador.",
+          "Não foi possível redefinir a senha do colaborador.";
+        setMemberPasswordFeedback({
+          type: "error",
+          message,
+        });
+        toast.error(
+          message,
         );
         return;
       }
 
       setMemberPassword("");
+      setMemberPasswordFeedback({
+        type: "success",
+        message: "Senha redefinida com sucesso.",
+      });
       toast.success("Senha de acesso do colaborador redefinida com sucesso.");
     } catch {
+      setMemberPasswordFeedback({
+        type: "error",
+        message: "Falha ao redefinir a senha do colaborador.",
+      });
       toast.error("Falha ao redefinir a senha do colaborador.");
     } finally {
       setIsProcessingSecurity(false);
@@ -387,6 +437,67 @@ export function TeamRbacManager() {
       toast.error("Falha ao excluir colaborador.");
     } finally {
       setIsProcessingSecurity(false);
+    }
+  };
+
+  const handleResendInvite = async () => {
+    if (!selectedMember || !studio?.id) return;
+    if (selectedMember.id.startsWith("temp-")) {
+      toast.error("Salve o colaborador antes de reenviar o convite.");
+      return;
+    }
+
+    setIsResendingInvite(true);
+    try {
+      const response = await customFetch(`${STAFF_ENDPOINT}/invite/resend`, {
+        method: "POST",
+        body: JSON.stringify({
+          companyId: studio.id,
+          email: selectedMember.email.trim(),
+        }),
+      });
+
+      const data = (await response.json().catch(() => ({}))) as {
+        emailSent?: boolean;
+        inviteUrl?: string;
+        emailError?: string;
+        temporaryPassword?: string | null;
+      };
+
+      if (!response.ok) {
+        toast.error(
+          data.emailError ||
+            (data as { error?: string })?.error ||
+            "Não foi possível reenviar o convite.",
+        );
+        return;
+      }
+
+      const inviteUrl = data.inviteUrl || "";
+      if (inviteUrl && typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(inviteUrl).catch(() => {});
+      }
+
+      const tempPasswordHint = data.temporaryPassword
+        ? ` Senha de primeiro acesso: ${data.temporaryPassword}.`
+        : "";
+
+      if (data.emailSent === false) {
+        toast.warning(
+          data.emailError
+            ? `Não foi possível enviar o e-mail (${data.emailError}). Link de convite copiado para a área de transferência.${tempPasswordHint}`
+            : `E-mail não enviado. Link de convite copiado para a área de transferência.${tempPasswordHint}`,
+        );
+        return;
+      }
+
+      toast.success(
+        `Convite reenviado. Link copiado para a área de transferência.${tempPasswordHint}`,
+      );
+    } catch {
+      toast.error("Falha ao reenviar convite.");
+    } finally {
+      setIsResendingInvite(false);
     }
   };
 
@@ -673,6 +784,19 @@ export function TeamRbacManager() {
                     <p className="text-xs text-muted-foreground">
                       Use ao menos 6 caracteres. Esta ação atualiza o acesso do colaborador imediatamente.
                     </p>
+                    {memberPasswordFeedback && (
+                      <p
+                        className={cn(
+                          "text-xs",
+                          memberPasswordFeedback.type === "success" && "text-green-600",
+                          memberPasswordFeedback.type === "error" && "text-red-600",
+                          memberPasswordFeedback.type === "loading" &&
+                            "text-muted-foreground",
+                        )}
+                      >
+                        {memberPasswordFeedback.message}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -689,6 +813,15 @@ export function TeamRbacManager() {
                 </div>
 
                 <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleResendInvite}
+                    disabled={isResendingInvite || isSaving || isProcessingSecurity}
+                    className="gap-2"
+                  >
+                    <MailPlus className="h-4 w-4" />
+                    {isResendingInvite ? "Reenviando..." : "Reenviar convite"}
+                  </Button>
                   <Button
                     variant="destructive"
                     onClick={handleDeleteMember}

@@ -26,6 +26,8 @@ export function DashboardStats() {
   const pathname = usePathname();
   const { studio } = useStudio();
   const { data: session } = useSession();
+  const isStaffUser = ((session?.user as { role?: string } | undefined)?.role || "")
+    .toLowerCase() === "user";
   const [isTourRunning, setIsTourRunning] = useState(false);
   const [sessionData, setSessionData] = useState<
     typeof authClient.$Infer.Session | null
@@ -250,6 +252,7 @@ export function DashboardStats() {
   }, [loadStats]);
 
   useEffect(() => {
+    if (isStaffUser) return;
     if (!pathname?.includes("/dashboard/overview")) return;
     const hasSeenOverviewTour = localStorage.getItem("tour_overview_v1");
     if (hasSeenOverviewTour === "true") return;
@@ -257,7 +260,7 @@ export function DashboardStats() {
       setIsTourRunning(true);
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [pathname]);
+  }, [pathname, isStaffUser]);
 
   const handleTourCallback = (data: CallBackProps) => {
     if (data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED) {
@@ -375,51 +378,53 @@ export function DashboardStats() {
 
   return (
     <div className="space-y-4">
-      <Joyride
-        run={isTourRunning}
-        continuous
-        showProgress
-        showSkipButton
-        disableOverlayClose
-        callback={handleTourCallback}
-        locale={{
-          back: "Voltar",
-          close: "Fechar",
-          last: "Concluir",
-          next: "Próximo",
-          skip: "Pular",
-        }}
-        steps={
-          [
-            {
-              target: '[data-tour="overview-title"]',
-              content:
-                "Aqui você acompanha o resumo geral do seu negócio em tempo real.",
-              placement: "bottom",
+      {!isStaffUser && (
+        <Joyride
+          run={isTourRunning}
+          continuous
+          showProgress
+          showSkipButton
+          disableOverlayClose
+          callback={handleTourCallback}
+          locale={{
+            back: "Voltar",
+            close: "Fechar",
+            last: "Concluir",
+            next: "Próximo",
+            skip: "Pular",
+          }}
+          steps={
+            [
+              {
+                target: '[data-tour="overview-title"]',
+                content:
+                  "Aqui você acompanha o resumo geral do seu negócio em tempo real.",
+                placement: "bottom",
+              },
+              {
+                target: '[data-tour="overview-card-today"]',
+                content:
+                  "Este card mostra quantos agendamentos você tem hoje para organizar sua operação.",
+              },
+              {
+                target: '[data-tour="overview-card-revenue"]',
+                content:
+                  "Aqui você vê o faturamento do mês com base nos atendimentos concluídos.",
+              },
+              {
+                target: '[data-tour="overview-card-status"]',
+                content:
+                  "Use este indicador para conferir se a agenda está aberta ou fechada.",
+              },
+            ] satisfies Step[]
+          }
+          styles={{
+            options: {
+              zIndex: 10000,
             },
-            {
-              target: '[data-tour="overview-card-today"]',
-              content:
-                "Este card mostra quantos agendamentos você tem hoje para organizar sua operação.",
-            },
-            {
-              target: '[data-tour="overview-card-revenue"]',
-              content:
-                "Aqui você vê o faturamento do mês com base nos atendimentos concluídos.",
-            },
-            {
-              target: '[data-tour="overview-card-status"]',
-              content:
-                "Use este indicador para conferir se a agenda está aberta ou fechada.",
-            },
-          ] satisfies Step[]
-        }
-        styles={{
-          options: {
-            zIndex: 10000,
-          },
-        }}
-      />
+          }}
+        />
+      )}
       {stats.totalBookings === 0 && !billingError && (
         <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
           Você ainda não tem agendamentos neste período.
