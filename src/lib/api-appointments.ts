@@ -43,6 +43,12 @@ export interface UpdateAppointmentDTO {
   ignoreBusinessHoursValidation?: boolean;
 }
 
+export interface OverrideAssignmentDTO {
+  professionalId?: string | null;
+  scheduledAt?: string;
+  expectedVersion: number;
+}
+
 export interface AppointmentItem {
   id: string;
   appointmentId: string;
@@ -60,6 +66,10 @@ export interface Appointment {
   serviceId: string;
   scheduledAt: string;
   status: AppointmentStatus;
+  assignedBy?: "system" | "staff";
+  validationStatus?: "suggested" | "confirmed";
+  version?: number;
+  staffId?: string | null;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -242,6 +252,69 @@ class AppointmentService {
     const response = await customFetch(`${this.baseUrl}/${id}`, {
       method: "PATCH",
       body: JSON.stringify(data),
+      credentials: "include",
+    });
+    return this.handleResponse(response);
+  }
+
+  async listUnassigned(companyId: string): Promise<Appointment[]> {
+    const response = await customFetch(
+      `${this.baseUrl}/admin/company/${companyId}/unassigned`,
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      },
+    );
+    return this.handleResponse(response);
+  }
+
+  async listMyDaily(companyId: string, date?: string): Promise<Appointment[]> {
+    const params = new URLSearchParams();
+    if (date) params.set("date", date);
+    const response = await customFetch(
+      `${this.baseUrl}/my/company/${companyId}/daily${params.toString() ? `?${params.toString()}` : ""}`,
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      },
+    );
+    return this.handleResponse(response);
+  }
+
+  async listMyOpportunities(companyId: string): Promise<Appointment[]> {
+    const response = await customFetch(
+      `${this.baseUrl}/my/company/${companyId}/opportunities`,
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      },
+    );
+    return this.handleResponse(response);
+  }
+
+  async overrideAssignment(
+    id: string,
+    data: OverrideAssignmentDTO,
+  ): Promise<Appointment> {
+    const response = await customFetch(`${this.baseUrl}/${id}/assignment`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+      credentials: "include",
+    });
+    return this.handleResponse(response);
+  }
+
+  async claimOpportunity(
+    id: string,
+    companyId: string,
+    expectedVersion: number,
+  ): Promise<Appointment> {
+    const response = await customFetch(`${this.baseUrl}/${id}/claim`, {
+      method: "POST",
+      body: JSON.stringify({ companyId, expectedVersion }),
       credentials: "include",
     });
     return this.handleResponse(response);
