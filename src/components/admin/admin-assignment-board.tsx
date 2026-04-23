@@ -49,16 +49,16 @@ type AdminAssignmentBoardProps = {
 };
 
 const STAFF_COLOR_PALETTE = [
-  "#3b82f6",
-  "#22c55e",
-  "#f59e0b",
-  "#a855f7",
-  "#ef4444",
-  "#06b6d4",
-  "#84cc16",
-  "#f97316",
+  "#2563eb",
+  "#dc2626",
+  "#16a34a",
+  "#9333ea",
+  "#ea580c",
+  "#0891b2",
+  "#ca8a04",
+  "#db2777",
 ];
-const PENDING_COLOR = "#94a3b8";
+const PENDING_COLOR = "#64748b";
 
 const isSystemSuggested = (appointment: Appointment) =>
   appointment.assignedBy === "system" &&
@@ -66,11 +66,12 @@ const isSystemSuggested = (appointment: Appointment) =>
 
 const getCardStyle = (color: string, suggested?: boolean) => ({
   borderColor: color,
-  backgroundColor: `${color}1A`,
+  backgroundColor: `${color}26`,
+  boxShadow: `inset 0 0 0 1px ${color}33`,
   ...(suggested
     ? {
         backgroundImage:
-          "repeating-linear-gradient(-45deg, rgba(255,255,255,0.14), rgba(255,255,255,0.14) 8px, transparent 8px, transparent 16px)",
+          "repeating-linear-gradient(-45deg, rgba(255,255,255,0.18), rgba(255,255,255,0.18) 8px, transparent 8px, transparent 16px)",
       }
     : {}),
 });
@@ -131,6 +132,17 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
           appointmentService.listByCompanyAdmin(studio.id, monthStart, monthEnd),
           customFetch(`/api/staff/company/${studio.id}`, { method: "GET" }),
         ]);
+
+      if (!staffResponse.ok) {
+        const staffError = await staffResponse
+          .json()
+          .catch(() => ({ error: "Não foi possível carregar as funcionárias." }));
+        throw new Error(
+          typeof staffError?.error === "string"
+            ? staffError.error
+            : "Não foi possível carregar as funcionárias.",
+        );
+      }
 
       const rawStaffPayload = (await staffResponse.json().catch(() => [])) as
         | StaffMember[]
@@ -305,6 +317,16 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
         error instanceof Error
           ? error.message
           : "Não foi possível encaminhar este agendamento.";
+
+      const errorStatus =
+        typeof error === "object" && error && "status" in error
+          ? Number((error as { status?: number }).status)
+          : undefined;
+
+      if (errorStatus === 409) {
+        await loadBoard();
+      }
+
       toast({
         title: "Falha ao encaminhar",
         description: message,

@@ -32,6 +32,7 @@ type StaffMember = {
   isAdmin: boolean;
   isSecretary: boolean;
   isProfessional: boolean;
+  calendarColor: string;
   commissionRate: number;
   serviceIds: string[];
 };
@@ -48,6 +49,23 @@ type CompanySecurityState = {
 const STAFF_ENDPOINT = `${API_BASE_URL}/api/staff`;
 const SERVICES_ENDPOINT = `${API_BASE_URL}/api/services`;
 const BUSINESS_ENDPOINT = `${API_BASE_URL}/api/business`;
+const STAFF_COLOR_OPTIONS = [
+  "#2563EB",
+  "#DC2626",
+  "#16A34A",
+  "#9333EA",
+  "#EA580C",
+  "#0891B2",
+  "#CA8A04",
+  "#DB2777",
+];
+const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
+
+const normalizeMemberColor = (value: unknown, fallback: string) => {
+  if (typeof value !== "string") return fallback;
+  const normalized = value.trim().toUpperCase();
+  return HEX_COLOR_REGEX.test(normalized) ? normalized : fallback;
+};
 
 export function TeamRbacManager() {
   const { studio } = useStudio();
@@ -90,7 +108,7 @@ export function TeamRbacManager() {
 
         if (staffResult.status === "fulfilled" && staffResult.value.ok) {
           const data = (await staffResult.value.json()) as Array<Partial<StaffMember>>;
-          const normalized = data.map((item) => ({
+          const normalized = data.map((item, index) => ({
             id: item.id || crypto.randomUUID(),
             name: item.name || "Colaborador",
             email: item.email || "",
@@ -98,6 +116,10 @@ export function TeamRbacManager() {
             isAdmin: item.isAdmin ?? false,
             isSecretary: item.isSecretary ?? false,
             isProfessional: item.isProfessional ?? false,
+            calendarColor: normalizeMemberColor(
+              item.calendarColor,
+              STAFF_COLOR_OPTIONS[index % STAFF_COLOR_OPTIONS.length],
+            ),
             commissionRate: Number(item.commissionRate ?? 0),
             serviceIds: Array.isArray(item.serviceIds) ? item.serviceIds : [],
           }));
@@ -172,6 +194,7 @@ export function TeamRbacManager() {
       isAdmin: false,
       isSecretary: false,
       isProfessional: true,
+      calendarColor: STAFF_COLOR_OPTIONS[members.length % STAFF_COLOR_OPTIONS.length],
       commissionRate: 0,
       serviceIds: [],
     };
@@ -267,6 +290,7 @@ export function TeamRbacManager() {
           isAdmin: selectedMember.isAdmin,
           isSecretary: selectedMember.isSecretary,
           isProfessional: selectedMember.isProfessional,
+          calendarColor: selectedMember.calendarColor,
           commissionRate: selectedMember.commissionRate,
           serviceIds: selectedMember.serviceIds,
         }),
@@ -591,7 +615,13 @@ export function TeamRbacManager() {
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium text-sm">{member.name}</p>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-3 w-3 rounded-full border border-border/60"
+                          style={{ backgroundColor: member.calendarColor }}
+                        />
+                        <p className="font-medium text-sm">{member.name}</p>
+                      </div>
                       <Badge variant={member.isActive ? "default" : "secondary"}>
                         {member.isActive ? "Ativo" : "Inativo"}
                       </Badge>
@@ -671,19 +701,62 @@ export function TeamRbacManager() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label>Comissão (%)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={selectedMember.commissionRate}
-                    onChange={(event) =>
-                      updateSelectedMember({
-                        commissionRate: Number(event.target.value || 0),
-                      })
-                    }
-                  />
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_220px]">
+                  <div className="space-y-2">
+                    <Label>Comissão (%)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={selectedMember.commissionRate}
+                      onChange={(event) =>
+                        updateSelectedMember({
+                          commissionRate: Number(event.target.value || 0),
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cor no calendário</Label>
+                    <div className="flex items-center gap-3">
+                      <Input
+                        type="color"
+                        value={selectedMember.calendarColor}
+                        onChange={(event) =>
+                          updateSelectedMember({
+                            calendarColor: normalizeMemberColor(
+                              event.target.value,
+                              STAFF_COLOR_OPTIONS[0],
+                            ),
+                          })
+                        }
+                        className="h-10 w-16 cursor-pointer p-1"
+                      />
+                      <Input
+                        value={selectedMember.calendarColor}
+                        readOnly
+                        className="font-mono uppercase"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {STAFF_COLOR_OPTIONS.map((color) => {
+                        const isSelected = selectedMember.calendarColor === color;
+                        return (
+                          <button
+                            key={color}
+                            type="button"
+                            aria-label={`Selecionar cor ${color}`}
+                            onClick={() => updateSelectedMember({ calendarColor: color })}
+                            className={cn(
+                              "h-7 w-7 rounded-full border-2 transition-transform hover:scale-105",
+                              isSelected ? "border-foreground" : "border-transparent",
+                            )}
+                            style={{ backgroundColor: color }}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-3 rounded-xl border p-4">
