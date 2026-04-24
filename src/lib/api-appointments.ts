@@ -75,6 +75,13 @@ export interface Appointment {
   priorityScore?: number;
   version?: number;
   staffId?: string | null;
+  calendarColor?: string | null;
+  assignedStaffName?: string | null;
+  assignedStaff?: {
+    id: string;
+    name: string;
+    calendarColor?: string | null;
+  } | null;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -94,6 +101,18 @@ export interface ApiError {
   code: string;
   message: string;
   raw?: unknown;
+}
+
+export interface RedistributeSummary {
+  scanned: number;
+  reassigned: number;
+  unchanged: number;
+  skipped: number;
+}
+
+export interface RedistributeResponse {
+  success: boolean;
+  summary: RedistributeSummary;
 }
 
 type RichError = Error & {
@@ -269,6 +288,25 @@ class AppointmentService {
         method: "GET",
         credentials: "include",
         cache: "no-store",
+      },
+    );
+    return this.handleResponse(response);
+  }
+
+  async redistribute(
+    companyId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<RedistributeResponse> {
+    const response = await customFetch(
+      `${this.baseUrl}/admin/company/${companyId}/redistribute`,
+      {
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({
+          startDate,
+          endDate,
+        }),
       },
     );
     return this.handleResponse(response);

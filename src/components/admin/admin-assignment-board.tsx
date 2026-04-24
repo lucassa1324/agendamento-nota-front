@@ -38,6 +38,7 @@ import { customFetch } from "@/lib/api-client";
 
 type StaffMember = {
   id: string;
+  userId?: string | null;
   name: string;
   isProfessional: boolean;
   isActive: boolean;
@@ -63,6 +64,15 @@ const STAFF_COLOR_PALETTE = [
 ];
 const PENDING_COLOR = "#64748b";
 const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
+const AUTO_RELOAD_STORAGE_KEY = "admin_assignment_auto_reload_ms";
+const AUTO_RELOAD_ENABLED_STORAGE_KEY = "admin_assignment_auto_reload_enabled";
+const AUTO_RELOAD_OPTIONS = [
+  { label: "5s", value: 5000 },
+  { label: "10s", value: 10000 },
+  { label: "15s", value: 15000 },
+  { label: "30s", value: 30000 },
+  { label: "60s", value: 60000 },
+];
 
 const isSystemSuggested = (appointment: Appointment) =>
   appointment.assignedBy === "system" &&
@@ -72,6 +82,16 @@ const normalizeStaffColor = (value: unknown, fallback: string) => {
   if (typeof value !== "string") return fallback;
   const normalized = value.trim();
   return HEX_COLOR_REGEX.test(normalized) ? normalized : fallback;
+};
+
+const normalizeLookupKey = (value: unknown) => {
+  if (typeof value !== "string") return "";
+  return value.trim().toLowerCase();
+};
+
+const withAlpha = (hexColor: string, alphaHex: string) => {
+  const normalized = normalizeStaffColor(hexColor, PENDING_COLOR);
+  return `${normalized}${alphaHex}`;
 };
 
 const getCardStyle = (color: string, suggested?: boolean) => ({
@@ -96,8 +116,10 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [monthAppointments, setMonthAppointments] = useState<Appointment[]>([]);
   const [unassigned, setUnassigned] = useState<Appointment[]>([]);
+  const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [professionals, setProfessionals] = useState<StaffMember[]>([]);
   const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [redistributing, setRedistributing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [assignByAppointment, setAssignByAppointment] = useState<AssignState>({});
   const [calendarMonth, setCalendarMonth] = useState(
@@ -105,6 +127,21 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
   );
   const [selectedCalendarAppointment, setSelectedCalendarAppointment] =
     useState<Appointment | null>(null);
+  const [autoReloadEnabled, setAutoReloadEnabled] = useState(true);
+  const [autoReloadMs, setAutoReloadMs] = useState(15000);
+
+  const getResolvedStaffId = useCallback(
+    (appointment: Appointment | null) => {
+      if (!appointment) return "";
+      return (
+        assignByAppointment[appointment.id] ||
+        appointment.assignedStaff?.id ||
+        appointment.staffId ||
+        ""
+      );
+    },
+    [assignByAppointment],
+  );
 
   useEffect(() => {
     const nextMonth = new Date(`${selectedDate}T12:00:00`);
@@ -115,6 +152,41 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
       setCalendarMonth(nextMonth);
     }
   }, [calendarMonth, selectedDate]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedEnabled = window.localStorage.getItem(
+      AUTO_RELOAD_ENABLED_STORAGE_KEY,
+    );
+    const storedMs = window.localStorage.getItem(AUTO_RELOAD_STORAGE_KEY);
+
+    if (storedEnabled === "false") {
+      setAutoReloadEnabled(false);
+    }
+
+    if (storedMs) {
+      const parsed = Number(storedMs);
+      if (
+        Number.isFinite(parsed) &&
+        AUTO_RELOAD_OPTIONS.some((option) => option.value === parsed)
+      ) {
+        setAutoReloadMs(parsed);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      AUTO_RELOAD_ENABLED_STORAGE_KEY,
+      String(autoReloadEnabled),
+    );
+  }, [autoReloadEnabled]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(AUTO_RELOAD_STORAGE_KEY, String(autoReloadMs));
+  }, [autoReloadMs]);
 
   const dayLabel = useMemo(() => {
     const date = new Date(`${selectedDate}T12:00:00`);
@@ -135,13 +207,15 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
       const monthStart = startOfMonth(calendarMonth).toISOString();
       const monthEnd = endOfMonth(calendarMonth).toISOString();
 
-      const [allAppointments, unassignedRows, monthRows, staffResponse] =
-        await Promise.all([
-          appointmentService.listByCompanyAdmin(studio.id, start, end),
-          appointmentService.listUnassigned(studio.id),
-          appointmentService.listByCompanyAdmin(studio.id, monthStart, monthEnd),
-          customFetch(`/api/staff/company/${studio.id}`, { method: "GET" }),
-        ]);
+      const [unassignedRows, staffResponse] = await Promise.all([
+        appointmentService.listUnassigned(studio.id),
+        customFetch(`/api/staff/company/${studio.id}`, { method: "GET" }),
+      ]);
+
+      const [allAppointments, monthRows] = await Promise.all([
+        appointmentService.listByCompanyAdmin(studio.id, start, end),
+        appointmentService.listByCompanyAdmin(studio.id, monthStart, monthEnd),
+      ]);
 
       if (!staffResponse.ok) {
         const staffError = await staffResponse
@@ -165,12 +239,12 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
             ? rawStaffPayload.members
             : [];
 
-      const professionalRows = staffPayload.filter(
-        (member) => member.isActive && member.isProfessional,
-      );
+      const activeRows = staffPayload.filter((member) => member.isActive);
+      const professionalRows = activeRows.filter((member) => member.isProfessional);
 
       setAppointments(allAppointments);
       setMonthAppointments(monthRows);
+      setStaffMembers(activeRows);
       setProfessionals(professionalRows);
       setUnassigned(
         unassignedRows.filter((item) => item.scheduledAt.startsWith(selectedDate)),
@@ -201,6 +275,36 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
     loadBoard();
   }, [loadBoard]);
 
+  useEffect(() => {
+    if (!selectedCalendarAppointment) return;
+    const freshAppointment = monthAppointments.find(
+      (item) => item.id === selectedCalendarAppointment.id,
+    );
+    if (freshAppointment) {
+      setSelectedCalendarAppointment(freshAppointment);
+    }
+  }, [monthAppointments, selectedCalendarAppointment]);
+
+  useEffect(() => {
+    if (!autoReloadEnabled) return;
+    const intervalId = window.setInterval(() => {
+      loadBoard();
+    }, autoReloadMs);
+
+    const handleWindowFocus = () => {
+      loadBoard();
+    };
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleWindowFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleWindowFocus);
+    };
+  }, [autoReloadEnabled, autoReloadMs, loadBoard]);
+
   const groupedByProfessional = useMemo(() => {
     const map = new Map<string, Appointment[]>();
     for (const professional of professionals) {
@@ -222,43 +326,83 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
 
   const staffColorMap = useMemo(() => {
     const map = new Map<string, string>();
-    professionals.forEach((professional, index) => {
-      map.set(
-        professional.id,
-        normalizeStaffColor(
-          professional.calendarColor,
-          STAFF_COLOR_PALETTE[index % STAFF_COLOR_PALETTE.length],
-        ),
+    staffMembers.forEach((member, index) => {
+      const color = normalizeStaffColor(
+        member.calendarColor,
+        STAFF_COLOR_PALETTE[index % STAFF_COLOR_PALETTE.length],
       );
+      map.set(member.id, color);
+      map.set(normalizeLookupKey(member.id), color);
+      if (member.userId) {
+        map.set(member.userId, color);
+        map.set(normalizeLookupKey(member.userId), color);
+      }
     });
     return map;
-  }, [professionals]);
+  }, [staffMembers]);
 
   const calendarLegend = useMemo(
     () => [
       { id: "pending", label: "Pendente", color: PENDING_COLOR },
-      ...professionals.map((professional) => ({
-        id: professional.id,
-        label: professional.name,
-        color: staffColorMap.get(professional.id) || PENDING_COLOR,
+      ...staffMembers.map((member) => ({
+        id: member.id,
+        label: member.name,
+        color: staffColorMap.get(member.id) || PENDING_COLOR,
       })),
     ],
-    [professionals, staffColorMap],
+    [staffMembers, staffColorMap],
   );
 
   const staffNameMap = useMemo(() => {
     const map = new Map<string, string>();
-    professionals.forEach((professional) => {
-      map.set(professional.id, professional.name);
+    staffMembers.forEach((member) => {
+      map.set(member.id, member.name);
+      map.set(normalizeLookupKey(member.id), member.name);
+      if (member.userId) {
+        map.set(member.userId, member.name);
+        map.set(normalizeLookupKey(member.userId), member.name);
+      }
     });
     return map;
-  }, [professionals]);
+  }, [staffMembers]);
 
   const calendarYear = calendarMonth.getFullYear();
   const calendarMonthIndex = calendarMonth.getMonth();
   const calendarDaysInMonth = getDaysInMonth(calendarMonth);
   const calendarStartDayOfWeek = getDay(startOfMonth(calendarMonth));
   const calendarDayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
+
+  const getAppointmentResolvedColor = useCallback(
+    (appointment: Appointment) => {
+      const extended = appointment as Appointment & {
+        color?: string | null;
+        calendarColor?: string | null;
+        staffColor?: string | null;
+      };
+
+      const byAssignedStaffObject = appointment.assignedStaff?.calendarColor;
+
+      const byStaffId = appointment.staffId
+        ? staffColorMap.get(appointment.staffId) ||
+          staffColorMap.get(normalizeLookupKey(appointment.staffId))
+        : undefined;
+
+      const persistedColor =
+        byAssignedStaffObject ||
+        extended.color ||
+        extended.calendarColor ||
+        extended.staffColor;
+
+      const baseColor = byStaffId || persistedColor || PENDING_COLOR;
+      const normalizedColor = normalizeStaffColor(baseColor, PENDING_COLOR);
+
+      return {
+        color: withAlpha(normalizedColor, "26"),
+        borderColor: normalizedColor,
+      };
+    },
+    [staffColorMap],
+  );
 
   const getAppointmentsForCalendarDay = useCallback(
     (day: number) => {
@@ -270,9 +414,13 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
         .sort(
           (a, b) =>
             new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
-        );
+        )
+        .map((appointment) => ({
+          appointment,
+          resolvedColor: getAppointmentResolvedColor(appointment),
+        }));
     },
-    [calendarMonthIndex, calendarYear, monthAppointments],
+    [calendarMonthIndex, calendarYear, getAppointmentResolvedColor, monthAppointments],
   );
 
   const handleAssign = async (
@@ -351,6 +499,38 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
     }
   };
 
+  const handleRedistribute = async () => {
+    if (!studio?.id) return;
+    setRedistributing(true);
+    try {
+      const monthStart = startOfMonth(calendarMonth).toISOString();
+      const monthEnd = endOfMonth(calendarMonth).toISOString();
+      const response = await appointmentService.redistribute(
+        studio.id,
+        monthStart,
+        monthEnd,
+      );
+      const summary = response.summary;
+      toast({
+        title: "Redistribuição concluída",
+        description: `${summary.reassigned} redistribuídos, ${summary.unchanged} mantidos e ${summary.skipped} sem elegibilidade.`,
+      });
+      await loadBoard();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível redistribuir os agendamentos.";
+      toast({
+        title: "Falha na redistribuição",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setRedistributing(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <Card>
@@ -375,6 +555,32 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
               onChange={(event) => setSelectedDate(event.target.value)}
               className="h-9 rounded-md border px-3 text-sm"
             />
+            <select
+              className="h-9 rounded-md border px-2 text-sm"
+              value={String(autoReloadMs)}
+              onChange={(event) => setAutoReloadMs(Number(event.target.value))}
+              disabled={!autoReloadEnabled}
+              aria-label="Intervalo de autoatualização"
+            >
+              {AUTO_RELOAD_OPTIONS.map((option) => (
+                <option key={option.value} value={String(option.value)}>
+                  Auto {option.label}
+                </option>
+              ))}
+            </select>
+            <Button
+              variant={autoReloadEnabled ? "default" : "outline"}
+              onClick={() => setAutoReloadEnabled((current) => !current)}
+            >
+              {autoReloadEnabled ? "Auto ON" : "Auto OFF"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleRedistribute}
+              disabled={loading || redistributing}
+            >
+              {redistributing ? "Redistribuindo..." : "Redistribuir"}
+            </Button>
             <Button variant="outline" onClick={loadBoard} disabled={loading}>
               Atualizar
             </Button>
@@ -490,17 +696,18 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
                       </button>
 
                       <div className="space-y-1">
-                        {dayAppointments.slice(0, 3).map((appointment) => {
-                          const color = appointment.staffId
-                            ? staffColorMap.get(appointment.staffId) || PENDING_COLOR
-                            : PENDING_COLOR;
+                        {dayAppointments.slice(0, 3).map(({ appointment, resolvedColor }) => {
                           return (
                             <button
                               key={appointment.id}
                               type="button"
                               onClick={() => setSelectedCalendarAppointment(appointment)}
                               className="w-full truncate rounded border px-1.5 py-1 text-left text-[10px]"
-                              style={getCardStyle(color, isSystemSuggested(appointment))}
+                              style={{
+                                ...getCardStyle(resolvedColor.borderColor, isSystemSuggested(appointment)),
+                                backgroundColor: resolvedColor.color,
+                                borderColor: resolvedColor.borderColor,
+                              }}
                             >
                               {format(parseISO(appointment.scheduledAt), "HH:mm")}{" "}
                               {appointment.customerName}
@@ -707,8 +914,12 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
                   </p>
                   <p className="text-muted-foreground">
                     <span className="font-medium text-foreground">Responsável:</span>{" "}
-                    {selectedCalendarAppointment.staffId
-                      ? staffNameMap.get(selectedCalendarAppointment.staffId) ||
+                    {getResolvedStaffId(selectedCalendarAppointment)
+                      ? selectedCalendarAppointment.assignedStaff?.name ||
+                        selectedCalendarAppointment.assignedStaffName ||
+                        staffNameMap.get(
+                          getResolvedStaffId(selectedCalendarAppointment),
+                        ) ||
                         "Profissional"
                       : "Pendente"}
                   </p>
@@ -730,9 +941,7 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
                     id="calendar-appointment-assignee"
                     className="h-10 w-full rounded-md border px-3 text-sm"
                     value={
-                      assignByAppointment[selectedCalendarAppointment.id] ||
-                      selectedCalendarAppointment.staffId ||
-                      ""
+                      getResolvedStaffId(selectedCalendarAppointment)
                     }
                     onChange={(event) =>
                       setAssignByAppointment((current) => ({
@@ -763,9 +972,7 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
                     onClick={() =>
                       handleAssign(
                         selectedCalendarAppointment,
-                        assignByAppointment[selectedCalendarAppointment.id] ||
-                          selectedCalendarAppointment.staffId ||
-                          "",
+                        getResolvedStaffId(selectedCalendarAppointment),
                       )
                     }
                   >
