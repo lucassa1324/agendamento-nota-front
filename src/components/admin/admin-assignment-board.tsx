@@ -39,6 +39,7 @@ type StaffMember = {
   name: string;
   isProfessional: boolean;
   isActive: boolean;
+  calendarColor?: string | null;
 };
 
 type AssignState = Record<string, string>;
@@ -59,10 +60,17 @@ const STAFF_COLOR_PALETTE = [
   "#db2777",
 ];
 const PENDING_COLOR = "#64748b";
+const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 
 const isSystemSuggested = (appointment: Appointment) =>
   appointment.assignedBy === "system" &&
   appointment.validationStatus === "suggested";
+
+const normalizeStaffColor = (value: unknown, fallback: string) => {
+  if (typeof value !== "string") return fallback;
+  const normalized = value.trim();
+  return HEX_COLOR_REGEX.test(normalized) ? normalized : fallback;
+};
 
 const getCardStyle = (color: string, suggested?: boolean) => ({
   borderColor: color,
@@ -215,7 +223,10 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
     professionals.forEach((professional, index) => {
       map.set(
         professional.id,
-        STAFF_COLOR_PALETTE[index % STAFF_COLOR_PALETTE.length],
+        normalizeStaffColor(
+          professional.calendarColor,
+          STAFF_COLOR_PALETTE[index % STAFF_COLOR_PALETTE.length],
+        ),
       );
     });
     return map;
