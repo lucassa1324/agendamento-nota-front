@@ -50,7 +50,12 @@ export interface OverrideAssignmentDTO {
   professionalId?: string | null;
   force_staff_id?: string | null;
   scheduledAt?: string;
-  expectedVersion: number;
+  expectedVersion?: number;
+}
+
+export interface SetAssignmentModeDTO {
+  mode: "manual" | "automatic";
+  expectedVersion?: number;
 }
 
 export interface AppointmentItem {
@@ -379,6 +384,18 @@ class AppointmentService {
         message: errorData.message || "Erro ao excluir agendamento",
       });
     }
+  }
+
+  async setAssignmentMode(
+    id: string,
+    data: SetAssignmentModeDTO,
+  ): Promise<Appointment> {
+    const response = await customFetch(`${this.baseUrl}/${id}/assignment-mode`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+      credentials: "include",
+    });
+    return this.handleResponse(response);
   }
 }
 

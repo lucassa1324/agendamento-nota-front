@@ -129,6 +129,7 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
     useState<Appointment | null>(null);
   const [autoReloadEnabled, setAutoReloadEnabled] = useState(true);
   const [autoReloadMs, setAutoReloadMs] = useState(15000);
+  const [modeUpdatingId, setModeUpdatingId] = useState<string | null>(null);
 
   const getResolvedStaffId = useCallback(
     (appointment: Appointment | null) => {
@@ -438,13 +439,33 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
 
     setAssigningId(appointment.id);
     try {
-      const updatedAppointment = await appointmentService.overrideAssignment(
-        appointment.id,
-        {
-        professionalId,
-        expectedVersion: appointment.version ?? 1,
-        },
-      );
+      let updatedAppointment: Appointment;
+      try {
+        updatedAppointment = await appointmentService.overrideAssignment(
+          appointment.id,
+          {
+            professionalId,
+            expectedVersion: appointment.version ?? 1,
+          },
+        );
+      } catch (firstError: unknown) {
+        const firstErrorStatus =
+          typeof firstError === "object" && firstError && "status" in firstError
+            ? Number((firstError as { status?: number }).status)
+            : undefined;
+
+        if (firstErrorStatus !== 409) {
+          throw firstError;
+        }
+
+        // Conflito de versão: reaplica a alteração manual sem expectedVersion.
+        updatedAppointment = await appointmentService.overrideAssignment(
+          appointment.id,
+          {
+            professionalId,
+          },
+        );
+      }
 
       setAppointments((current) =>
         current.map((item) =>
@@ -528,6 +549,80 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
       });
     } finally {
       setRedistributing(false);
+    }
+  };
+
+  const handleToggleAssignmentMode = async (
+    appointment: Appointment,
+    mode: "manual" | "automatic",
+  ) => {
+    setModeUpdatingId(appointment.id);
+    try {
+      let updatedAppointment: Appointment;
+      try {
+        updatedAppointment = await appointmentService.setAssignmentMode(
+          appointment.id,
+          {
+            mode,
+            expectedVersion: appointment.version ?? 1,
+          },
+        );
+      } catch (firstError: unknown) {
+        const firstErrorStatus =
+          typeof firstError === "object" && firstError && "status" in firstError
+            ? Number((firstError as { status?: number }).status)
+            : undefined;
+        if (firstErrorStatus !== 409) {
+          throw firstError;
+        }
+        updatedAppointment = await appointmentService.setAssignmentMode(
+          appointment.id,
+          {
+            mode,
+          },
+        );
+      }
+
+      setAppointments((current) =>
+        current.map((item) =>
+          item.id === updatedAppointment.id ? updatedAppointment : item,
+        ),
+      );
+      setMonthAppointments((current) =>
+        current.map((item) =>
+          item.id === updatedAppointment.id ? updatedAppointment : item,
+        ),
+      );
+      setUnassigned((current) =>
+        current.map((item) =>
+          item.id === updatedAppointment.id ? updatedAppointment : item,
+        ),
+      );
+      setSelectedCalendarAppointment((current) =>
+        current?.id === updatedAppointment.id ? updatedAppointment : current,
+      );
+
+      toast({
+        title: mode === "automatic" ? "Modo automático ativado" : "Modo manual ativado",
+        description:
+          mode === "automatic"
+            ? "Este agendamento pode entrar na redistribuição."
+            : "Este agendamento ficou fixo e não será redistribuído.",
+      });
+      await loadBoard();
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Não foi possível alterar o modo de atribuição.";
+      toast({
+        title: "Falha ao alterar modo",
+        description: message,
+        variant: "destructive",
+      });
+      await loadBoard();
+    } finally {
+      setModeUpdatingId(null);
     }
   };
 
@@ -695,8 +790,8 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
                         {day}
                       </button>
 
-                      <div className="space-y-1">
-                        {dayAppointments.slice(0, 3).map(({ appointment, resolvedColor }) => {
+                      <div className="max-h-24 space-y-1 overflow-y-auto pr-1">
+                        {dayAppointments.map(({ appointment, resolvedColor }) => {
                           return (
                             <button
                               key={appointment.id}
@@ -714,11 +809,6 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
                             </button>
                           );
                         })}
-                        {dayAppointments.length > 3 && (
-                          <p className="text-[10px] text-muted-foreground">
-                            +{dayAppointments.length - 3} agend.
-                          </p>
-                        )}
                       </div>
                     </div>
                   );
@@ -887,7 +977,7 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
           if (!open) setSelectedCalendarAppointment(null);
         }}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           {selectedCalendarAppointment && (
             <>
               <DialogHeader>
@@ -899,6 +989,19 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
 
               <div className="space-y-4">
                 <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+                  {(() => {
+                    const isAutomatic = selectedCalendarAppointment.assignedBy === "system";
+                    return (
+                      <div className="mb-2 flex flex-wrap items-center gap-2 text-[12px] font-medium">
+                        <span className="rounded-full border px-2 py-0.5 text-foreground">
+                          Origem: {isAutomatic ? "Automática (Sistema)" : "Manual"}
+                        </span>
+                        <span className="rounded-full border px-2 py-0.5 text-foreground">
+                          {isAutomatic ? "Redistribuível" : "Fixo (fora da redistribuição)"}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <p className="font-semibold text-foreground">
                     {selectedCalendarAppointment.customerName}
                   </p>
@@ -930,7 +1033,7 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="min-w-0 space-y-2">
                   <label
                     htmlFor="calendar-appointment-assignee"
                     className="text-sm font-medium"
@@ -959,30 +1062,53 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
                   </select>
                 </div>
 
-                <div className="flex justify-end gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <Button
                     variant="outline"
-                    onClick={() => setSelectedCalendarAppointment(null)}
-                  >
-                    Fechar
-                  </Button>
-                  <Button
-                    className="gap-2"
-                    disabled={assigningId === selectedCalendarAppointment.id}
+                    disabled={modeUpdatingId === selectedCalendarAppointment.id}
+                    className="w-full sm:w-auto"
                     onClick={() =>
-                      handleAssign(
+                      handleToggleAssignmentMode(
                         selectedCalendarAppointment,
-                        getResolvedStaffId(selectedCalendarAppointment),
+                        selectedCalendarAppointment.assignedBy === "system"
+                          ? "manual"
+                          : "automatic",
                       )
                     }
                   >
-                    {assigningId === selectedCalendarAppointment.id ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <ArrowRightLeft className="h-3.5 w-3.5" />
-                    )}
-                    Salvar atribuição
+                    {modeUpdatingId === selectedCalendarAppointment.id ? (
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    ) : null}
+                    {selectedCalendarAppointment.assignedBy === "system"
+                      ? "Fixar manual"
+                      : "Colocar em automático"}
                   </Button>
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      onClick={() => setSelectedCalendarAppointment(null)}
+                    >
+                      Fechar
+                    </Button>
+                    <Button
+                      className="w-full gap-2 sm:w-auto"
+                      disabled={assigningId === selectedCalendarAppointment.id}
+                      onClick={() =>
+                        handleAssign(
+                          selectedCalendarAppointment,
+                          getResolvedStaffId(selectedCalendarAppointment),
+                        )
+                      }
+                    >
+                      {assigningId === selectedCalendarAppointment.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ArrowRightLeft className="h-3.5 w-3.5" />
+                      )}
+                      Salvar atribuição
+                    </Button>
+                  </div>
                 </div>
               </div>
             </>
