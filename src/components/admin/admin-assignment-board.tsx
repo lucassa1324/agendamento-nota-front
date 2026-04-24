@@ -325,6 +325,7 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
         description: "A agenda foi confirmada manualmente pela secretaria/admin.",
       });
       setSelectedCalendarAppointment(null);
+      await loadBoard();
     } catch (error: unknown) {
       const message =
         error instanceof Error
@@ -406,6 +407,119 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
         </div>
       ) : mode === "calendar" ? (
         <div className="space-y-4">
+          <Card>
+            <CardHeader className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <CardTitle className="text-base">Calendário mensal</CardTitle>
+                  <p className="text-sm text-muted-foreground capitalize">
+                    {monthLabel}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCalendarMonth((prev) => subMonths(prev, 1))}
+                    aria-label="Mês anterior"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setCalendarMonth(new Date(`${selectedDate}T12:00:00`))
+                    }
+                  >
+                    Ir para dia selecionado
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCalendarMonth((prev) => addMonths(prev, 1))}
+                    aria-label="Próximo mês"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-7 gap-2 text-center text-xs font-semibold text-muted-foreground">
+                {calendarDayNames.map((day) => (
+                  <span key={day}>{day}</span>
+                ))}
+              </div>
+              <div className="mt-2 grid grid-cols-7 gap-2">
+                {Array.from({ length: calendarStartDayOfWeek }).map((_, index) => (
+                  <div
+                    key={`calendar-start-empty-${index}`}
+                    className="min-h-24 rounded-md border border-dashed bg-muted/10"
+                  />
+                ))}
+
+                {Array.from({ length: calendarDaysInMonth }).map((_, index) => {
+                  const day = index + 1;
+                  const date = new Date(calendarYear, calendarMonthIndex, day);
+                  const dateIso = format(date, "yyyy-MM-dd");
+                  const dayAppointments = getAppointmentsForCalendarDay(day);
+                  const isSelected = dateIso === selectedDate;
+                  const isToday = isSameDay(date, new Date());
+
+                  return (
+                    <div
+                      key={`calendar-day-${dateIso}`}
+                      className={`min-h-24 rounded-md border p-2 ${
+                        isSelected
+                          ? "border-primary bg-primary/5"
+                          : "border-border bg-background"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        className={`mb-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${
+                          isToday
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-foreground"
+                        }`}
+                        onClick={() => setSelectedDate(dateIso)}
+                        aria-label={`Selecionar dia ${dateIso}`}
+                      >
+                        {day}
+                      </button>
+
+                      <div className="space-y-1">
+                        {dayAppointments.slice(0, 3).map((appointment) => {
+                          const color = appointment.staffId
+                            ? staffColorMap.get(appointment.staffId) || PENDING_COLOR
+                            : PENDING_COLOR;
+                          return (
+                            <button
+                              key={appointment.id}
+                              type="button"
+                              onClick={() => setSelectedCalendarAppointment(appointment)}
+                              className="w-full truncate rounded border px-1.5 py-1 text-left text-[10px]"
+                              style={getCardStyle(color, isSystemSuggested(appointment))}
+                            >
+                              {format(parseISO(appointment.scheduledAt), "HH:mm")}{" "}
+                              {appointment.customerName}
+                            </button>
+                          );
+                        })}
+                        {dayAppointments.length > 3 && (
+                          <p className="text-[10px] text-muted-foreground">
+                            +{dayAppointments.length - 3} agend.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="space-y-3">
               <CardTitle className="text-base">God View - Timeline diária</CardTitle>
