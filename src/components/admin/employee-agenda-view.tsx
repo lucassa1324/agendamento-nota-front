@@ -245,7 +245,8 @@ export function EmployeeAgendaView() {
                 )
                 .map((appointment) => {
                   const canCheckIn = appointment.status === "PENDING" || appointment.status === "CONFIRMED";
-                  const canComplete = appointment.status === "ONGOING";
+                  const canComplete =
+                    appointment.status !== "COMPLETED" && appointment.status !== "CANCELLED";
 
                   return (
                     <Card

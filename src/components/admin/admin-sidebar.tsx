@@ -26,9 +26,12 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useParams, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { PushNotificationsButton } from "@/components/admin/push-notifications-button";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
+import { appointmentService } from "@/lib/api-appointments";
+import { customFetch } from "@/lib/api-client";
 import { BASE_DOMAIN, LANDING_PAGE_URL, useSession } from "@/lib/auth-client";
 import { cn, getFullImageUrl } from "@/lib/utils";
 
@@ -168,6 +171,16 @@ const STAFF_ALLOWED_PATHS = new Set([
   "/admin/dashboard/minha-conta",
 ]);
 
+const SECRETARY_ALLOWED_PATHS = new Set([
+  "/admin/dashboard/overview",
+  "/admin/dashboard/agendamentos",
+  "/admin/dashboard/encaminhamentos",
+  "/admin/dashboard/agenda",
+  "/admin/dashboard/calendario",
+  "/admin/dashboard/my-agenda",
+  "/admin/dashboard/minha-conta",
+]);
+
 interface AdminSidebarProps {
   adminUser: { name: string; username: string } | null;
   handleLogout: () => void;
@@ -180,7 +193,77 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
   const { studio } = useStudio();
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role?.toLowerCase();
+  const isAdminUser = role === "admin" || role === "super_admin";
   const isStaffUser = role === "user";
+  const [accessTier, setAccessTier] = useState<"admin" | "secretary" | "staff">(
+    isAdminUser ? "admin" : "staff",
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolveAccessTier = async () => {
+      if (isAdminUser) {
+        if (!cancelled) setAccessTier("admin");
+        return;
+      }
+      if (!isStaffUser || !studio?.id) {
+        if (!cancelled) setAccessTier("staff");
+        return;
+      }
+
+      try {
+        const response = await customFetch(`/api/staff/company/${studio.id}`, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+        const payload = response.ok ? await response.json().catch(() => []) : [];
+        const rows = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+
+        const userId = (session?.user as { id?: string } | undefined)?.id;
+        const userEmail = (session?.user as { email?: string } | undefined)?.email?.toLowerCase();
+        const membership = rows.find(
+          (member: {
+            userId?: string;
+            email?: string;
+            isActive?: boolean;
+            isAdmin?: boolean;
+            isSecretary?: boolean;
+          }) =>
+            member.isActive &&
+            ((userId && member.userId === userId) ||
+              (userEmail && member.email?.toLowerCase() === userEmail)),
+        );
+
+        if (membership?.isAdmin) {
+          if (!cancelled) setAccessTier("admin");
+          return;
+        }
+        if (membership?.isSecretary) {
+          if (!cancelled) setAccessTier("secretary");
+          return;
+        }
+
+        if (!cancelled) setAccessTier("staff");
+      } catch {
+        try {
+          await appointmentService.listUnassigned(studio.id);
+          if (!cancelled) setAccessTier("secretary");
+        } catch {
+          if (!cancelled) setAccessTier("staff");
+        }
+      }
+    };
+
+    resolveAccessTier();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdminUser, isStaffUser, studio?.id, session?.user]);
 
   const slug = (params?.slug as string) || studio?.slug || "";
 
@@ -204,9 +287,11 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
 
   const visibleNavigation = ADMIN_NAVIGATION.map((group) => ({
     ...group,
-    items: group.items.filter((item) =>
-      isStaffUser ? STAFF_ALLOWED_PATHS.has(item.href) : true,
-    ),
+    items: group.items.filter((item) => {
+      if (accessTier === "admin") return true;
+      if (accessTier === "secretary") return SECRETARY_ALLOWED_PATHS.has(item.href);
+      return STAFF_ALLOWED_PATHS.has(item.href);
+    }),
   })).filter((group) => group.items.length > 0);
 
   return (

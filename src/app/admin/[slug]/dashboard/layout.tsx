@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/sheet";
 import { SidebarProvider } from "@/context/sidebar-context";
 import { StudioProvider, useStudio } from "@/context/studio-context";
+import { appointmentService } from "@/lib/api-appointments";
+import { customFetch } from "@/lib/api-client";
 import { getSession, signOut, useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -67,6 +69,7 @@ function MobileNav({
 }
 
 interface AuthUser {
+  id?: string;
   name: string;
   email: string;
   slug?: string;
@@ -82,6 +85,16 @@ interface AuthUser {
 
 const STAFF_ALLOWED_DASHBOARD_SEGMENTS = [
   "/dashboard/overview",
+  "/dashboard/my-agenda",
+  "/dashboard/minha-conta",
+];
+
+const SECRETARY_ALLOWED_DASHBOARD_SEGMENTS = [
+  "/dashboard/overview",
+  "/dashboard/agendamentos",
+  "/dashboard/encaminhamentos",
+  "/dashboard/agenda",
+  "/dashboard/calendario",
   "/dashboard/my-agenda",
   "/dashboard/minha-conta",
 ];
@@ -321,11 +334,97 @@ function AdminLayoutContent({
   const isPersonalizacao = pathname?.includes("/personalizacao");
   const isMaster = pathname?.startsWith("/admin/master");
   const isMinhaConta = pathname?.includes("/dashboard/minha-conta");
+  const isAdminUser =
+    user?.role?.toLowerCase() === "admin" ||
+    user?.role?.toLowerCase() === "super_admin";
   const isStaffUser = user?.role?.toLowerCase() === "user";
-  const isStaffBlockedPath =
-    isStaffUser &&
+  const [accessTier, setAccessTier] = useState<"admin" | "secretary" | "staff">(
+    isAdminUser ? "admin" : "staff",
+  );
+  const [isAccessTierResolved, setIsAccessTierResolved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolveAccessTier = async () => {
+      if (isAdminUser) {
+        if (!cancelled) {
+          setAccessTier("admin");
+          setIsAccessTierResolved(true);
+        }
+        return;
+      }
+      if (!isStaffUser || !studio?.id) {
+        if (!cancelled) {
+          setAccessTier("staff");
+          setIsAccessTierResolved(true);
+        }
+        return;
+      }
+
+      try {
+        const response = await customFetch(`/api/staff/company/${studio.id}`, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+        const payload = response.ok ? await response.json().catch(() => []) : [];
+        const rows = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+
+        const userId = user?.id;
+        const userEmail = user?.email?.toLowerCase();
+        const membership = rows.find(
+          (member: {
+            userId?: string;
+            email?: string;
+            isActive?: boolean;
+            isAdmin?: boolean;
+            isSecretary?: boolean;
+          }) =>
+            member.isActive &&
+            ((userId && member.userId === userId) ||
+              (userEmail && member.email?.toLowerCase() === userEmail)),
+        );
+
+        if (membership?.isAdmin) {
+          if (!cancelled) setAccessTier("admin");
+        } else if (membership?.isSecretary) {
+          if (!cancelled) setAccessTier("secretary");
+        } else {
+          if (!cancelled) setAccessTier("staff");
+        }
+      } catch {
+        try {
+          await appointmentService.listUnassigned(studio.id);
+          if (!cancelled) setAccessTier("secretary");
+        } catch {
+          if (!cancelled) setAccessTier("staff");
+        }
+      } finally {
+        if (!cancelled) setIsAccessTierResolved(true);
+      }
+    };
+
+    setIsAccessTierResolved(false);
+    resolveAccessTier();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdminUser, isStaffUser, studio?.id, user?.id, user?.email]);
+
+  const isCollaborator = accessTier === "staff" || accessTier === "secretary";
+  const allowedSegmentsForTier =
+    accessTier === "secretary"
+      ? SECRETARY_ALLOWED_DASHBOARD_SEGMENTS
+      : STAFF_ALLOWED_DASHBOARD_SEGMENTS;
+  const isCollaboratorBlockedPath =
+    isCollaborator &&
+    isAccessTierResolved &&
     Boolean(pathname?.includes("/dashboard/")) &&
-    !STAFF_ALLOWED_DASHBOARD_SEGMENTS.some((segment) => pathname?.includes(segment));
+    !allowedSegmentsForTier.some((segment) => pathname?.includes(segment));
 
   // Tratamento de erro de carregamento do estúdio
   // EXCEÇÃO: Se for erro 402 (Pagamento Necessário), deixamos o layout renderizar para mostrar a tela de bloqueio com link de pagamento
@@ -359,13 +458,19 @@ function AdminLayoutContent({
   }, [isMinhaConta, isSubscriptionBlocked]);
 
   const shouldBlockAccess =
-    !isStaffUser && !isMinhaConta && (isSubscriptionBlocked || billingRequiredDetected);
+    !isCollaborator &&
+    !isMinhaConta &&
+    (isSubscriptionBlocked || billingRequiredDetected);
   const blockStatus = subscriptionStatus || "past_due";
 
   useEffect(() => {
-    if (!isStaffBlockedPath || !slug) return;
-    safeRedirect(`/admin/${slug}/dashboard/my-agenda`);
-  }, [isStaffBlockedPath, slug]);
+    if (!isCollaboratorBlockedPath || !slug) return;
+    const fallbackPath =
+      accessTier === "secretary"
+        ? `/admin/${slug}/dashboard/agenda`
+        : `/admin/${slug}/dashboard/my-agenda`;
+    safeRedirect(fallbackPath);
+  }, [isCollaboratorBlockedPath, slug, accessTier]);
 
   if (studioError && !isMaster && !isBillingError) {
     return (
@@ -446,14 +551,22 @@ function AdminLayoutContent({
           <TutorialReminder />
           {shouldBlockAccess ? (
             <SubscriptionBlockScreen status={blockStatus} />
-          ) : isStaffBlockedPath ? (
+          ) : isCollaboratorBlockedPath ? (
             <div className="mx-auto my-10 max-w-2xl rounded-xl border border-yellow-300 bg-yellow-50 p-6 text-yellow-900">
               <h3 className="text-lg font-semibold">Acesso restrito para esta conta</h3>
               <p className="mt-2 text-sm">
-                Esta área está disponível apenas para administradores. Redirecionando para sua agenda.
+                Esta área não está disponível para seu perfil. Redirecionando para a área operacional.
               </p>
               <Button asChild className="mt-4" size="sm">
-                <a href={`/admin/${slug}/dashboard/my-agenda`}>Ir para minha agenda</a>
+                <a
+                  href={
+                    accessTier === "secretary"
+                      ? `/admin/${slug}/dashboard/agenda`
+                      : `/admin/${slug}/dashboard/my-agenda`
+                  }
+                >
+                  Ir para área permitida
+                </a>
               </Button>
             </div>
           ) : (

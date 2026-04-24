@@ -12,7 +12,13 @@ import {
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Joyride, { type CallBackProps, STATUS, type Step } from "react-joyride";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import { appointmentService, type Appointment } from "@/lib/api-appointments";
 import { authClient, useSession } from "@/lib/auth-client";
@@ -42,42 +48,12 @@ export function DashboardStats() {
     monthRevenue: 0,
     commissionAccrued: 0,
     avgDurationMinutes: 0,
+    completedCount: 0,
+    ongoingCount: 0,
+    pendingCount: 0,
+    topServiceName: "-",
     agendaStatus: true,
   });
-
-  const describeError = (reason: unknown) => {
-    if (reason instanceof Error) {
-      return reason.message || reason.toString();
-    }
-    if (typeof reason === "string") {
-      return reason;
-    }
-    if (typeof reason === "object" && reason !== null) {
-      const candidate = reason as {
-        message?: unknown;
-        error?: unknown;
-        status?: unknown;
-        code?: unknown;
-      };
-      if (typeof candidate.message === "string" && candidate.message.trim()) {
-        return candidate.message;
-      }
-      if (typeof candidate.error === "string" && candidate.error.trim()) {
-        return candidate.error;
-      }
-      try {
-        return JSON.stringify({
-          status: candidate.status,
-          code: candidate.code,
-          message: candidate.message,
-          error: candidate.error,
-        });
-      } catch {
-        return "Erro não serializável";
-      }
-    }
-    return "Erro desconhecido";
-  };
 
   const loadStats = useCallback(async () => {
     if (!studio?.id) return;
@@ -145,6 +121,21 @@ export function DashboardStats() {
         const completedMonth = monthAppointments.filter(
           (item) => item.status?.toUpperCase() === "COMPLETED",
         );
+        const ongoingCount = monthAppointments.filter(
+          (item) => item.status?.toUpperCase() === "ONGOING",
+        ).length;
+        const pendingCount = monthAppointments.filter((item) => {
+          const status = item.status?.toUpperCase();
+          return status === "PENDING" || status === "CONFIRMED";
+        }).length;
+
+        const serviceCounter = new Map<string, number>();
+        completedMonth.forEach((item) => {
+          const key = item.serviceNameSnapshot || "Serviço";
+          serviceCounter.set(key, (serviceCounter.get(key) || 0) + 1);
+        });
+        const topServiceName =
+          [...serviceCounter.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
 
         const productionValue = completedMonth.reduce((sum, item) => {
           const price = Number(item.servicePriceSnapshot ?? 0);
@@ -173,6 +164,10 @@ export function DashboardStats() {
           monthRevenue: productionValue,
           commissionAccrued,
           avgDurationMinutes,
+          completedCount: completedMonth.length,
+          ongoingCount,
+          pendingCount,
+          topServiceName,
           agendaStatus: true,
         });
         return;
@@ -226,6 +221,13 @@ export function DashboardStats() {
         monthRevenue,
         commissionAccrued: 0,
         avgDurationMinutes: 0,
+        completedCount: appointments.filter((app) => app.status.toUpperCase() === "COMPLETED").length,
+        ongoingCount: appointments.filter((app) => app.status.toUpperCase() === "ONGOING").length,
+        pendingCount: appointments.filter((app) => {
+          const status = app.status.toUpperCase();
+          return status === "PENDING" || status === "CONFIRMED";
+        }).length,
+        topServiceName: "-",
         agendaStatus: settings?.agendaAberta ?? true,
       });
     } catch (error: unknown) {
@@ -251,6 +253,10 @@ export function DashboardStats() {
         monthRevenue: 0,
         commissionAccrued: 0,
         avgDurationMinutes: 0,
+        completedCount: 0,
+        ongoingCount: 0,
+        pendingCount: 0,
+        topServiceName: "-",
         agendaStatus: settings.agendaAberta,
       });
     } finally {
@@ -494,6 +500,35 @@ export function DashboardStats() {
           );
         })}
       </div>
+
+      {isStaffUser && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Relatório Resumido do Período</CardTitle>
+            <CardDescription>
+              Panorama da sua execução com base nos atendimentos da agenda.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Concluídos</p>
+              <p className="text-xl font-semibold">{stats.completedCount}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Em Atendimento</p>
+              <p className="text-xl font-semibold">{stats.ongoingCount}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Aguardando</p>
+              <p className="text-xl font-semibold">{stats.pendingCount}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Serviço Mais Realizado</p>
+              <p className="text-sm font-semibold truncate">{stats.topServiceName}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
