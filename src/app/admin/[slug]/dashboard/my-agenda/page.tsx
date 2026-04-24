@@ -6,7 +6,7 @@ export default function MyAgendaPage() {
       <div>
         <h2 className="mb-2 font-sans text-3xl font-bold text-primary">Minha Agenda</h2>
         <p className="text-muted-foreground">
-          Acompanhe seu fluxo de execução em Hoje/Semana e assuma oportunidades.
+          Timeline diária de execução com check-in, conclusão e notas técnicas do atendimento.
         </p>
       </div>
       <EmployeeAgendaView />

@@ -162,15 +162,10 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
   },
 ];
 
-const STAFF_RESTRICTED_PATHS = new Set([
-  "/admin/dashboard/gerenciamento",
-  "/admin/dashboard/time",
-  "/admin/dashboard/estoque",
-  "/admin/dashboard/relatorios",
-  "/admin/dashboard/perfil",
-  "/admin/dashboard/personalizacao",
-  "/admin/dashboard/dns",
-  "/admin/dashboard/galeria",
+const STAFF_ALLOWED_PATHS = new Set([
+  "/admin/dashboard/overview",
+  "/admin/dashboard/my-agenda",
+  "/admin/dashboard/minha-conta",
 ]);
 
 interface AdminSidebarProps {
@@ -210,7 +205,7 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
   const visibleNavigation = ADMIN_NAVIGATION.map((group) => ({
     ...group,
     items: group.items.filter((item) =>
-      isStaffUser ? !STAFF_RESTRICTED_PATHS.has(item.href) : true,
+      isStaffUser ? STAFF_ALLOWED_PATHS.has(item.href) : true,
     ),
   })).filter((group) => group.items.length > 0);
 

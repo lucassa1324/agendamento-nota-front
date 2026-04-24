@@ -80,15 +80,10 @@ interface AuthUser {
   businessId?: string;
 }
 
-const STAFF_RESTRICTED_DASHBOARD_SEGMENTS = [
-  "/dashboard/gerenciamento",
-  "/dashboard/time",
-  "/dashboard/estoque",
-  "/dashboard/relatorios",
-  "/dashboard/perfil",
-  "/dashboard/personalizacao",
-  "/dashboard/dns",
-  "/dashboard/galeria",
+const STAFF_ALLOWED_DASHBOARD_SEGMENTS = [
+  "/dashboard/overview",
+  "/dashboard/my-agenda",
+  "/dashboard/minha-conta",
 ];
 
 function AdminLayoutContent({
@@ -327,11 +322,10 @@ function AdminLayoutContent({
   const isMaster = pathname?.startsWith("/admin/master");
   const isMinhaConta = pathname?.includes("/dashboard/minha-conta");
   const isStaffUser = user?.role?.toLowerCase() === "user";
-  const isStaffRestrictedPath =
+  const isStaffBlockedPath =
     isStaffUser &&
-    STAFF_RESTRICTED_DASHBOARD_SEGMENTS.some((segment) =>
-      pathname?.includes(segment),
-    );
+    Boolean(pathname?.includes("/dashboard/")) &&
+    !STAFF_ALLOWED_DASHBOARD_SEGMENTS.some((segment) => pathname?.includes(segment));
 
   // Tratamento de erro de carregamento do estúdio
   // EXCEÇÃO: Se for erro 402 (Pagamento Necessário), deixamos o layout renderizar para mostrar a tela de bloqueio com link de pagamento
@@ -367,6 +361,11 @@ function AdminLayoutContent({
   const shouldBlockAccess =
     !isStaffUser && !isMinhaConta && (isSubscriptionBlocked || billingRequiredDetected);
   const blockStatus = subscriptionStatus || "past_due";
+
+  useEffect(() => {
+    if (!isStaffBlockedPath || !slug) return;
+    safeRedirect(`/admin/${slug}/dashboard/my-agenda`);
+  }, [isStaffBlockedPath, slug]);
 
   if (studioError && !isMaster && !isBillingError) {
     return (
@@ -447,14 +446,14 @@ function AdminLayoutContent({
           <TutorialReminder />
           {shouldBlockAccess ? (
             <SubscriptionBlockScreen status={blockStatus} />
-          ) : isStaffRestrictedPath ? (
+          ) : isStaffBlockedPath ? (
             <div className="mx-auto my-10 max-w-2xl rounded-xl border border-yellow-300 bg-yellow-50 p-6 text-yellow-900">
               <h3 className="text-lg font-semibold">Acesso restrito para esta conta</h3>
               <p className="mt-2 text-sm">
-                Esta área está disponível apenas para administradores. Você pode continuar usando as áreas operacionais.
+                Esta área está disponível apenas para administradores. Redirecionando para sua agenda.
               </p>
               <Button asChild className="mt-4" size="sm">
-                <a href={`/admin/${slug}/dashboard/overview`}>Ir para visão geral</a>
+                <a href={`/admin/${slug}/dashboard/my-agenda`}>Ir para minha agenda</a>
               </Button>
             </div>
           ) : (

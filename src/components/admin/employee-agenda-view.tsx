@@ -3,7 +3,7 @@
 import { addDays, format, parseISO, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, Sparkles, UserCheck } from "lucide-react";
+import { CheckCircle2, Loader2, PlayCircle, Save, Sparkles, UserCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { BadgeStatus } from "@/components/admin/badge-status";
 import { Button } from "@/components/ui/button";
@@ -11,14 +11,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { useAppointments } from "@/hooks/use-appointments";
-import type { Appointment } from "@/lib/api-appointments";
+import { appointmentService, type Appointment, type AppointmentStatus } from "@/lib/api-appointments";
 
 type ViewMode = "day" | "week";
 
 const statusLabel = (appointment: Appointment) => {
-  if (appointment.status === "ONGOING") return "In Progress";
-  if (appointment.status === "COMPLETED") return "Done";
-  return "Waiting";
+  if (appointment.status === "ONGOING") return "Em atendimento";
+  if (appointment.status === "COMPLETED") return "Concluído";
+  return "Aguardando";
 };
 
 const statusClassName = (appointment: Appointment) => {
@@ -40,6 +40,7 @@ export function EmployeeAgendaView() {
     prefetchNextDays,
     claimOpportunity,
     claimInFlightId,
+    refetch,
   } = useAppointments({
     companyId: studio?.id,
     viewMode,
@@ -47,6 +48,9 @@ export function EmployeeAgendaView() {
     includeOpportunities: viewMode === "day",
     audience: "employee",
   });
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
+  const [savingNotesId, setSavingNotesId] = useState<string | null>(null);
 
   useEffect(() => {
     prefetchNextDays(2);
@@ -73,6 +77,22 @@ export function EmployeeAgendaView() {
     [appointments],
   );
 
+  useEffect(() => {
+    setNotesDraft((current) => {
+      let changed = false;
+      const next = { ...current };
+
+      appointments.forEach((appointment) => {
+        if (!(appointment.id in next)) {
+          next[appointment.id] = appointment.notes ?? "";
+          changed = true;
+        }
+      });
+
+      return changed ? next : current;
+    });
+  }, [appointments]);
+
   const handleClaim = async (appointment: Appointment) => {
     try {
       await claimOpportunity({
@@ -93,6 +113,60 @@ export function EmployeeAgendaView() {
         description: message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleStatusUpdate = async (appointment: Appointment, status: AppointmentStatus) => {
+    try {
+      setStatusUpdatingId(appointment.id);
+      await appointmentService.updateStatus(appointment.id, status);
+      await refetch();
+      toast({
+        title: status === "COMPLETED" ? "Atendimento concluído" : "Check-in realizado",
+        description:
+          status === "COMPLETED"
+            ? "O atendimento foi finalizado com sucesso."
+            : "Atendimento marcado como em execução.",
+      });
+    } catch (error) {
+      toast({
+        title: "Não foi possível atualizar o status",
+        description:
+          error instanceof Error ? error.message : "Tente novamente em instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
+  const handleSaveNotes = async (appointment: Appointment) => {
+    const value = notesDraft[appointment.id] ?? "";
+    try {
+      setSavingNotesId(appointment.id);
+      await appointmentService.update(appointment.id, {
+        serviceId: appointment.serviceId,
+        scheduledAt: appointment.scheduledAt,
+        customerName: appointment.customerName,
+        customerEmail: appointment.customerEmail,
+        customerPhone: appointment.customerPhone,
+        servicePriceSnapshot: appointment.servicePriceSnapshot,
+        notes: value,
+      });
+      await refetch();
+      toast({
+        title: "Notas salvas",
+        description: "As observações técnicas foram atualizadas.",
+      });
+    } catch (error) {
+      toast({
+        title: "Falha ao salvar notas",
+        description:
+          error instanceof Error ? error.message : "Não foi possível salvar as notas.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNotesId(null);
     }
   };
 
@@ -169,32 +243,105 @@ export function EmployeeAgendaView() {
                     new Date(a.scheduledAt).getTime() -
                     new Date(b.scheduledAt).getTime(),
                 )
-                .map((appointment) => (
-                  <Card key={`${appointment.id}-${appointment.version ?? 1}`}>
-                    <CardContent className="flex items-center justify-between gap-4 pt-6">
-                      <div className="space-y-1">
-                        <p className="font-medium">{appointment.customerName}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {appointment.serviceNameSnapshot} •{" "}
-                          {format(parseISO(appointment.scheduledAt), "dd/MM HH:mm", {
-                            locale: ptBR,
-                          })}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <BadgeStatus
-                            assignedBy={appointment.assignedBy}
-                            validationStatus={appointment.validationStatus}
-                          />
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClassName(appointment)}`}
-                          >
-                            {statusLabel(appointment)}
-                          </span>
+                .map((appointment) => {
+                  const canCheckIn = appointment.status === "PENDING" || appointment.status === "CONFIRMED";
+                  const canComplete = appointment.status === "ONGOING";
+
+                  return (
+                    <Card
+                      key={`${appointment.id}-${appointment.version ?? 1}`}
+                      className="border-l-4"
+                      style={{ borderLeftColor: appointment.assignedStaff?.calendarColor ?? "#d97706" }}
+                    >
+                      <CardContent className="space-y-3 pt-6">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <p className="font-medium">{appointment.customerName}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {appointment.serviceNameSnapshot} •{" "}
+                              {format(parseISO(appointment.scheduledAt), "dd/MM HH:mm", {
+                                locale: ptBR,
+                              })}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <BadgeStatus
+                                assignedBy={appointment.assignedBy}
+                                validationStatus={appointment.validationStatus}
+                              />
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClassName(appointment)}`}
+                              >
+                                {statusLabel(appointment)}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-medium text-muted-foreground" htmlFor={`note-${appointment.id}`}>
+                            Observações técnicas
+                          </label>
+                          <textarea
+                            id={`note-${appointment.id}`}
+                            className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+                            value={notesDraft[appointment.id] ?? ""}
+                            onChange={(event) =>
+                              setNotesDraft((current) => ({
+                                ...current,
+                                [appointment.id]: event.target.value,
+                              }))
+                            }
+                            placeholder="Ex.: cliente tem sensibilidade na pele."
+                          />
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!canCheckIn || statusUpdatingId === appointment.id}
+                            onClick={() => handleStatusUpdate(appointment, "ONGOING")}
+                            className="gap-2"
+                          >
+                            {statusUpdatingId === appointment.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <PlayCircle className="h-4 w-4" />
+                            )}
+                            Check-in
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={!canComplete || statusUpdatingId === appointment.id}
+                            onClick={() => handleStatusUpdate(appointment, "COMPLETED")}
+                            className="gap-2"
+                          >
+                            {statusUpdatingId === appointment.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="h-4 w-4" />
+                            )}
+                            Concluir atendimento
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={savingNotesId === appointment.id}
+                            onClick={() => handleSaveNotes(appointment)}
+                            className="gap-2"
+                          >
+                            {savingNotesId === appointment.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Save className="h-4 w-4" />
+                            )}
+                            Salvar notas
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               <div className="space-y-3 rounded-xl border p-3">
                 <h3 className="text-sm font-semibold">Mural de Oportunidades</h3>
                 {opportunities.length === 0 && (
