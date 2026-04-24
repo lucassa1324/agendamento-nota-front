@@ -20,6 +20,8 @@ import {
   Users,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AdminResourceTimeline } from "@/components/admin/admin-resource-timeline";
+import { SuggestedAppointmentCard } from "@/components/admin/suggested-appointment-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -403,117 +405,45 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
       ) : mode === "calendar" ? (
-        <Card>
-          <CardHeader className="space-y-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">
-                Visão mensal de todos os agendamentos
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCalendarMonth((prev) => subMonths(prev, 1))}
-                >
-                  <ChevronLeft className="h-3.5 w-3.5" />
-                </Button>
-                <span className="min-w-42.5 text-center text-sm font-medium capitalize">
-                  {monthLabel}
-                </span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setCalendarMonth((prev) => addMonths(prev, 1))}
-                >
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-7 border-b border-r">
-              {calendarDayNames.map((dayName) => (
-                <div
-                  key={dayName}
-                  className="border-l border-t bg-muted/30 py-2 text-center text-xs font-semibold uppercase text-muted-foreground"
-                >
-                  {dayName}
-                </div>
-              ))}
-
-              {Array.from({ length: calendarStartDayOfWeek }).map((_, idx) => (
-                <div
-                  key={`start-empty-${idx}`}
-                  className="h-32 border-l border-t bg-muted/10"
-                />
-              ))}
-
-              {Array.from({ length: calendarDaysInMonth }).map((_, idx) => {
-                const day = idx + 1;
-                const rows = getAppointmentsForCalendarDay(day);
-                const isToday = isSameDay(
-                  new Date(calendarYear, calendarMonthIndex, day),
-                  new Date(),
-                );
-                return (
-                  <div
-                    key={day}
-                    className={`h-32 overflow-y-auto border-l border-t p-1.5 ${isToday ? "bg-primary/5" : ""}`}
-                  >
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-xs font-semibold">{day}</span>
-                      {rows.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          {rows.length}
-                        </span>
-                      )}
-                    </div>
-                    <div className="space-y-1">
-                      {rows.slice(0, 4).map((appointment) => {
-                        const color = appointment.staffId
-                          ? staffColorMap.get(appointment.staffId) || PENDING_COLOR
-                          : PENDING_COLOR;
-                        const assignedLabel = appointment.staffId
-                          ? staffNameMap.get(appointment.staffId) || "Profissional"
-                          : "Pendente";
-                        return (
-                          <button
-                            key={appointment.id}
-                            type="button"
-                            title={assignedLabel}
-                            className="w-full rounded border px-1.5 py-1 text-left text-[10px] transition hover:brightness-95"
-                            style={getCardStyle(color, isSystemSuggested(appointment))}
-                            onClick={() => setSelectedCalendarAppointment(appointment)}
-                          >
-                            <p className="font-semibold">
-                              {format(parseISO(appointment.scheduledAt), "HH:mm")} •{" "}
-                              {appointment.customerName}
-                            </p>
-                          </button>
-                        );
-                      })}
-                      {rows.length > 4 && (
-                        <p className="text-[10px] text-muted-foreground">
-                          + {rows.length - 4} agendamentos
-                        </p>
-                      )}
-                    </div>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader className="space-y-3">
+              <CardTitle className="text-base">God View - Timeline diária</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Arraste um card para outro profissional para aplicar override manual.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {unassigned.length > 0 && (
+                <div className="mb-4 space-y-2">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground">
+                    Backlog sem profissional
+                  </p>
+                  <div className="grid gap-2 md:grid-cols-3">
+                    {unassigned.map((appointment) => (
+                      <SuggestedAppointmentCard
+                        key={`${appointment.id}-${appointment.version ?? 1}`}
+                        appointment={appointment}
+                        timeLabel={format(parseISO(appointment.scheduledAt), "HH:mm")}
+                      />
+                    ))}
                   </div>
-                );
-              })}
-
-              {Array.from({
-                length:
-                  (7 - ((calendarStartDayOfWeek + calendarDaysInMonth) % 7)) % 7,
-              }).map((_, idx) => (
-                <div
-                  key={`end-empty-${idx}`}
-                  className="h-32 border-l border-t bg-muted/10"
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                </div>
+              )}
+              <AdminResourceTimeline
+                date={selectedDate}
+                professionals={professionals.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                }))}
+                appointments={appointments}
+                onDropAssignment={async (appointment, staffId) => {
+                  await handleAssign(appointment, staffId);
+                }}
+              />
+            </CardContent>
+          </Card>
+        </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-12">
           <Card className="lg:col-span-4">

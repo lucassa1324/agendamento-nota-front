@@ -783,6 +783,14 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
         root.style.setProperty("--secondary-foreground", colors.buttonText);
       }
 
+      // Cores operacionais do dashboard híbrido
+      root.style.setProperty("--suggested-bg", "#eef6ff");
+      root.style.setProperty("--suggested-border", "#7aa2d8");
+      root.style.setProperty("--suggested-text", "#1d4f91");
+      root.style.setProperty("--confirmed-bg", "#edf7ef");
+      root.style.setProperty("--confirmed-border", "#74b281");
+      root.style.setProperty("--confirmed-text", "#1f5f2f");
+
       // Section Specific Styles
       Object.entries(sectionStyles).forEach(([key, value]) => {
         root.style.setProperty(key, value);
@@ -862,6 +870,12 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
           ${colors.secondary ? `--secondary: ${colors.secondary}; --accent: ${colors.secondary}; --muted: ${colors.secondary}1a;` : ""}
           ${colors.background ? `--background: ${colors.background}; --card: ${colors.background}; --card-bg: ${colors.background}; --popover: ${colors.background};` : ""}
           ${colors.text ? `--foreground: ${colors.text}; --card-foreground: ${colors.text}; --popover-foreground: ${colors.text}; --muted-foreground: ${colors.text}cc;` : ""}
+          --suggested-bg: #eef6ff;
+          --suggested-border: #7aa2d8;
+          --suggested-text: #1d4f91;
+          --confirmed-bg: #edf7ef;
+          --confirmed-border: #74b281;
+          --confirmed-text: #1f5f2f;
           
           /* Section Specific Styles */
           ${Object.entries(sectionStyles)

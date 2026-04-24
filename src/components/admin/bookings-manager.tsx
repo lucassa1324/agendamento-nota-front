@@ -69,6 +69,7 @@ const mapApiToBooking = (api: Appointment): Booking => {
     const map: Record<AppointmentStatus, BookingStatus> = {
       PENDING: "pendente",
       CONFIRMED: "confirmado",
+      ONGOING: "confirmado",
       COMPLETED: "concluído",
       CANCELLED: "cancelado",
       POSTPONED: "pendente", // Ou criar um novo status se necessário

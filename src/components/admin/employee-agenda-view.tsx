@@ -1,84 +1,88 @@
 "use client";
 
-import { format, parseISO } from "date-fns";
+import { addDays, format, parseISO, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Sparkles, UserCheck } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { BadgeStatus } from "@/components/admin/badge-status";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
-import { type Appointment, appointmentService } from "@/lib/api-appointments";
+import { useAppointments } from "@/hooks/use-appointments";
+import type { Appointment } from "@/lib/api-appointments";
 
-type TabMode = "daily" | "pool";
+type ViewMode = "day" | "week";
+
+const statusLabel = (appointment: Appointment) => {
+  if (appointment.status === "ONGOING") return "In Progress";
+  if (appointment.status === "COMPLETED") return "Done";
+  return "Waiting";
+};
+
+const statusClassName = (appointment: Appointment) => {
+  if (appointment.status === "ONGOING") return "bg-amber-100 text-amber-700";
+  if (appointment.status === "COMPLETED") return "bg-emerald-100 text-emerald-700";
+  if (appointment.validationStatus === "suggested") return "bg-blue-100 text-blue-700";
+  return "bg-zinc-100 text-zinc-700";
+};
 
 export function EmployeeAgendaView() {
   const { studio } = useStudio();
   const { toast } = useToast();
-  const [tab, setTab] = useState<TabMode>("daily");
-  const [daily, setDaily] = useState<Appointment[]>([]);
-  const [opportunities, setOpportunities] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [claimingId, setClaimingId] = useState<string | null>(null);
-
-  const loadData = useCallback(async () => {
-    if (!studio?.id) return;
-
-    setLoading(true);
-    try {
-      const [dailyRows, opportunitiesRows] = await Promise.all([
-        appointmentService.listMyDaily(studio.id),
-        appointmentService.listMyOpportunities(studio.id),
-      ]);
-      setDaily(dailyRows);
-      setOpportunities(opportunitiesRows);
-    } catch (error) {
-      console.error("Erro ao carregar agenda do funcionário:", error);
-      toast({
-        title: "Erro ao carregar agenda",
-        description: "Não foi possível atualizar sua visão de execução.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [studio?.id, toast]);
+  const [viewMode, setViewMode] = useState<ViewMode>("day");
+  const [baseDate, setBaseDate] = useState(() => startOfDay(new Date()));
+  const {
+    appointments,
+    opportunities,
+    isLoading,
+    prefetchNextDays,
+    claimOpportunity,
+    claimInFlightId,
+  } = useAppointments({
+    companyId: studio?.id,
+    viewMode,
+    date: baseDate,
+    includeOpportunities: viewMode === "day",
+    audience: "employee",
+  });
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      loadData();
-    }, 7000);
-    return () => clearInterval(interval);
-  }, [loadData]);
+    prefetchNextDays(2);
+  }, [prefetchNextDays]);
 
   const nextClient = useMemo(() => {
     const now = Date.now();
-    return [...daily]
+    return [...appointments]
       .filter((item) => new Date(item.scheduledAt).getTime() >= now)
       .sort(
         (a, b) =>
           new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
       )[0];
-  }, [daily]);
+  }, [appointments]);
+
+  const groupedByDay = useMemo(
+    () =>
+      appointments.reduce<Record<string, Appointment[]>>((acc, item) => {
+        const key = format(parseISO(item.scheduledAt), "yyyy-MM-dd");
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(item);
+        return acc;
+      }, {}),
+    [appointments],
+  );
 
   const handleClaim = async (appointment: Appointment) => {
-    if (!studio?.id) return;
-    setClaimingId(appointment.id);
     try {
-      await appointmentService.claimOpportunity(
-        appointment.id,
-        studio.id,
-        appointment.version ?? 1,
-      );
+      await claimOpportunity({
+        id: appointment.id,
+        expectedVersion: appointment.version ?? 1,
+      });
       toast({
         title: "Serviço assumido",
         description: "O agendamento foi atribuído à sua agenda com sucesso.",
       });
-      await loadData();
     } catch (error: unknown) {
       const message =
         error instanceof Error
@@ -89,8 +93,6 @@ export function EmployeeAgendaView() {
         description: message,
         variant: "destructive",
       });
-    } finally {
-      setClaimingId(null);
     }
   };
 
@@ -117,100 +119,172 @@ export function EmployeeAgendaView() {
 
       <div className="flex gap-2">
         <Button
-          variant={tab === "daily" ? "default" : "outline"}
-          onClick={() => setTab("daily")}
+          variant={viewMode === "day" ? "default" : "outline"}
+          onClick={() => setViewMode("day")}
         >
-          Agenda diária
+          Hoje
         </Button>
         <Button
-          variant={tab === "pool" ? "default" : "outline"}
-          onClick={() => setTab("pool")}
+          variant={viewMode === "week" ? "default" : "outline"}
+          onClick={() => setViewMode("week")}
         >
-          Oportunidades
+          Semana
+        </Button>
+        <Button variant="outline" onClick={() => setBaseDate(startOfDay(new Date()))}>
+          Hoje (reset)
+        </Button>
+        <Button variant="outline" onClick={() => setBaseDate((current) => addDays(current, -1))}>
+          -1 dia
+        </Button>
+        <Button variant="outline" onClick={() => setBaseDate((current) => addDays(current, 1))}>
+          +1 dia
         </Button>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="flex items-center justify-center rounded-xl border bg-card p-10">
           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
         </div>
-      ) : tab === "daily" ? (
-        <div className="space-y-3">
-          {daily.length === 0 && (
-            <Card>
-              <CardContent className="pt-6 text-sm text-muted-foreground">
-                Nenhum agendamento atribuído para hoje.
-              </CardContent>
-            </Card>
-          )}
-          {daily
-            .slice()
-            .sort(
-              (a, b) =>
-                new Date(a.scheduledAt).getTime() -
-                new Date(b.scheduledAt).getTime(),
-            )
-            .map((appointment) => (
-              <Card key={appointment.id}>
-                <CardContent className="flex items-center justify-between pt-6">
-                  <div>
-                    <p className="font-medium">{appointment.customerName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {appointment.serviceNameSnapshot} •{" "}
-                      {format(parseISO(appointment.scheduledAt), "dd/MM HH:mm", {
-                        locale: ptBR,
-                      })}
-                    </p>
-                  </div>
-                  <span className="text-xs uppercase text-muted-foreground">
-                    {appointment.status}
-                  </span>
-                </CardContent>
-              </Card>
-            ))}
-        </div>
       ) : (
-        <div className="space-y-3">
-          {opportunities.length === 0 && (
-            <Card>
-              <CardContent className="pt-6 text-sm text-muted-foreground">
-                Sem oportunidades disponíveis para suas skills.
-              </CardContent>
-            </Card>
-          )}
-          {opportunities.map((appointment) => (
-            <Card key={appointment.id}>
-              <CardContent className="flex items-center justify-between gap-4 pt-6">
-                <div className="space-y-1">
-                  <p className="font-medium">{appointment.serviceNameSnapshot}</p>
+        <AnimatePresence mode="wait">
+          {viewMode === "day" ? (
+            <motion.div
+              key="day-view"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="space-y-3"
+            >
+              {appointments.length === 0 && (
+                <Card>
+                  <CardContent className="pt-6 text-sm text-muted-foreground">
+                    Nenhum agendamento atribuído para hoje.
+                  </CardContent>
+                </Card>
+              )}
+              {appointments
+                .slice()
+                .sort(
+                  (a, b) =>
+                    new Date(a.scheduledAt).getTime() -
+                    new Date(b.scheduledAt).getTime(),
+                )
+                .map((appointment) => (
+                  <Card key={`${appointment.id}-${appointment.version ?? 1}`}>
+                    <CardContent className="flex items-center justify-between gap-4 pt-6">
+                      <div className="space-y-1">
+                        <p className="font-medium">{appointment.customerName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {appointment.serviceNameSnapshot} •{" "}
+                          {format(parseISO(appointment.scheduledAt), "dd/MM HH:mm", {
+                            locale: ptBR,
+                          })}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <BadgeStatus
+                            assignedBy={appointment.assignedBy}
+                            validationStatus={appointment.validationStatus}
+                          />
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusClassName(appointment)}`}
+                          >
+                            {statusLabel(appointment)}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              <div className="space-y-3 rounded-xl border p-3">
+                <h3 className="text-sm font-semibold">Mural de Oportunidades</h3>
+                {opportunities.length === 0 && (
                   <p className="text-sm text-muted-foreground">
-                    {appointment.customerName} •{" "}
-                    {format(parseISO(appointment.scheduledAt), "dd/MM HH:mm", {
-                      locale: ptBR,
-                    })}
+                    Sem oportunidades disponíveis para suas skills.
                   </p>
-                </div>
-                <Button
-                  onClick={() => handleClaim(appointment)}
-                  disabled={claimingId === appointment.id}
-                  className="gap-2"
-                >
-                  {claimingId === appointment.id ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Assumindo...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      Assumir serviço
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                )}
+                {opportunities.map((appointment) => (
+                  <Card key={`${appointment.id}-${appointment.version ?? 1}`}>
+                    <CardContent className="flex items-center justify-between gap-4 pt-6">
+                      <div className="space-y-1">
+                        <p className="font-medium">{appointment.serviceNameSnapshot}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {appointment.customerName} •{" "}
+                          {format(parseISO(appointment.scheduledAt), "dd/MM HH:mm", {
+                            locale: ptBR,
+                          })}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => handleClaim(appointment)}
+                        disabled={claimInFlightId === appointment.id}
+                        className="gap-2"
+                      >
+                        {claimInFlightId === appointment.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Assumindo...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4" />
+                            Assumir atendimento
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="week-view"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              className="space-y-3"
+            >
+              {Object.keys(groupedByDay).length === 0 && (
+                <Card>
+                  <CardContent className="pt-6 text-sm text-muted-foreground">
+                    Nenhum agendamento encontrado na semana selecionada.
+                  </CardContent>
+                </Card>
+              )}
+              {Object.entries(groupedByDay)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([day, rows]) => (
+                  <Card key={day}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">
+                        {format(parseISO(`${day}T12:00:00`), "EEEE, dd/MM", { locale: ptBR })}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 pt-0">
+                      {rows.map((appointment) => (
+                        <div
+                          key={`${appointment.id}-${appointment.version ?? 1}`}
+                          className="flex items-center justify-between rounded-lg border p-2"
+                        >
+                          <div>
+                            <p className="text-sm font-medium">{appointment.customerName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(parseISO(appointment.scheduledAt), "HH:mm")} •{" "}
+                              {appointment.serviceNameSnapshot}
+                            </p>
+                          </div>
+                          <BadgeStatus
+                            assignedBy={appointment.assignedBy}
+                            validationStatus={appointment.validationStatus}
+                          />
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       )}
     </div>
   );

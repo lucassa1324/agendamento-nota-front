@@ -68,6 +68,11 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
         icon: CalendarDays,
       },
       {
+        title: "Minha Agenda",
+        href: "/admin/dashboard/my-agenda",
+        icon: CalendarDays,
+      },
+      {
         title: "Novo Agendamento",
         href: "/admin/dashboard/calendario",
         icon: CalendarPlus,

@@ -4,6 +4,7 @@ import { API_BASE_URL } from "./auth-client";
 export type AppointmentStatus =
   | "PENDING"
   | "CONFIRMED"
+  | "ONGOING"
   | "COMPLETED"
   | "CANCELLED"
   | "POSTPONED";
@@ -27,6 +28,8 @@ export interface CreateAppointmentDTO {
   serviceDurationSnapshot: string; // formato HH:mm, ex: "01:00"
   customerId: string | null;
   notes?: string;
+  auto_assign?: boolean;
+  force_staff_id?: string | null;
   ignoreBusinessHoursValidation?: boolean;
   studioId?: string; // Mantido para compatibilidade se necessário
   items?: CreateAppointmentItemDTO[]; // Nova tabela appointment_items
@@ -45,6 +48,7 @@ export interface UpdateAppointmentDTO {
 
 export interface OverrideAssignmentDTO {
   professionalId?: string | null;
+  force_staff_id?: string | null;
   scheduledAt?: string;
   expectedVersion: number;
 }
@@ -68,6 +72,7 @@ export interface Appointment {
   status: AppointmentStatus;
   assignedBy?: "system" | "staff";
   validationStatus?: "suggested" | "confirmed";
+  priorityScore?: number;
   version?: number;
   staffId?: string | null;
   customerName: string;
@@ -301,7 +306,10 @@ class AppointmentService {
   ): Promise<Appointment> {
     const response = await customFetch(`${this.baseUrl}/${id}/assignment`, {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        force_staff_id: data.force_staff_id ?? data.professionalId,
+      }),
       credentials: "include",
     });
     return this.handleResponse(response);
