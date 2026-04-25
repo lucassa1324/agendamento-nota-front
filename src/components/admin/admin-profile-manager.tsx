@@ -175,6 +175,9 @@ export function AdminProfileManager() {
     // phone: "", // Better-auth user object doesn't have phone by default unless customized
   });
 
+  const isStaffUser =
+    ((session?.user as { role?: string } | undefined)?.role || "").toLowerCase() === "user";
+
   const [passwords, setPasswords] = useState({
     current: "",
     new: "",
@@ -568,6 +571,7 @@ export function AdminProfileManager() {
         </CardContent>
       </Card>
 
+      {!isStaffUser && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -700,9 +704,10 @@ export function AdminProfileManager() {
           </form>
         </CardContent>
       </Card>
+      )}
 
       {/* Seção de Status da Assinatura e Pagamento */}
-      {session?.user && (
+      {!isStaffUser && session?.user && (
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -926,6 +931,7 @@ export function AdminProfileManager() {
       )}
 
       {/* Seção de Cancelamento de Assinatura */}
+      {!isStaffUser && (
       <Card className="md:col-span-2 border-red-200 bg-red-50/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-red-700">
@@ -956,7 +962,9 @@ export function AdminProfileManager() {
           </div>
         </CardContent>
       </Card>
+      )}
 
+      {!isStaffUser && (
       <SubscriptionCancellationModal
         isOpen={isCancellationModalOpen}
         onClose={() => setIsCancellationModalOpen(false)}
@@ -965,7 +973,9 @@ export function AdminProfileManager() {
             ?.subscriptionId
         }
       />
+      )}
 
+      {!isStaffUser && (
       <AlertDialog
         open={isBillingConfirmOpen}
         onOpenChange={setIsBillingConfirmOpen}
@@ -992,6 +1002,7 @@ export function AdminProfileManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      )}
     </div>
   );
 }

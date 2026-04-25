@@ -4,6 +4,7 @@ import { API_BASE_URL } from "./auth-client";
 export type AppointmentStatus =
   | "PENDING"
   | "CONFIRMED"
+  | "ONGOING"
   | "COMPLETED"
   | "CANCELLED"
   | "POSTPONED";
@@ -27,6 +28,8 @@ export interface CreateAppointmentDTO {
   serviceDurationSnapshot: string; // formato HH:mm, ex: "01:00"
   customerId: string | null;
   notes?: string;
+  auto_assign?: boolean;
+  force_staff_id?: string | null;
   ignoreBusinessHoursValidation?: boolean;
   studioId?: string; // Mantido para compatibilidade se necessário
   items?: CreateAppointmentItemDTO[]; // Nova tabela appointment_items
@@ -41,6 +44,18 @@ export interface UpdateAppointmentDTO {
   servicePriceSnapshot: string;
   notes?: string;
   ignoreBusinessHoursValidation?: boolean;
+}
+
+export interface OverrideAssignmentDTO {
+  professionalId?: string | null;
+  force_staff_id?: string | null;
+  scheduledAt?: string;
+  expectedVersion?: number;
+}
+
+export interface SetAssignmentModeDTO {
+  mode: "manual" | "automatic";
+  expectedVersion?: number;
 }
 
 export interface AppointmentItem {
@@ -60,6 +75,18 @@ export interface Appointment {
   serviceId: string;
   scheduledAt: string;
   status: AppointmentStatus;
+  assignedBy?: "system" | "staff";
+  validationStatus?: "suggested" | "confirmed";
+  priorityScore?: number;
+  version?: number;
+  staffId?: string | null;
+  calendarColor?: string | null;
+  assignedStaffName?: string | null;
+  assignedStaff?: {
+    id: string;
+    name: string;
+    calendarColor?: string | null;
+  } | null;
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -81,8 +108,45 @@ export interface ApiError {
   raw?: unknown;
 }
 
+export interface RedistributeSummary {
+  scanned: number;
+  reassigned: number;
+  unchanged: number;
+  skipped: number;
+}
+
+export interface RedistributeResponse {
+  success: boolean;
+  summary: RedistributeSummary;
+}
+
+type RichError = Error & {
+  status?: number;
+  statusText?: string;
+  url?: string;
+  code?: string;
+  raw?: unknown;
+};
+
 class AppointmentService {
   private baseUrl = `${API_BASE_URL}/api/appointments`;
+
+  private createError(payload: {
+    message: string;
+    status?: number;
+    statusText?: string;
+    url?: string;
+    code?: string;
+    raw?: unknown;
+  }): RichError {
+    const error = new Error(payload.message) as RichError;
+    error.status = payload.status;
+    error.statusText = payload.statusText;
+    error.url = payload.url;
+    error.code = payload.code;
+    error.raw = payload.raw;
+    return error;
+  }
 
   private async handleResponse(response: Response) {
     if (!response.ok) {
@@ -108,7 +172,7 @@ class AppointmentService {
         });
       }
 
-      throw {
+      throw this.createError({
         status: response.status,
         statusText: response.statusText,
         url: response.url,
@@ -119,7 +183,7 @@ class AppointmentService {
           response.statusText ||
           "Ocorreu um erro inesperado",
         raw: errorData,
-      };
+      });
     }
 
     const contentType = response.headers.get("content-type");
@@ -145,12 +209,12 @@ class AppointmentService {
       });
       return await this.handleResponse(response);
     } catch (error: unknown) {
-      if (error && typeof error === 'object' && 'name' in error && error.name === "AbortError") {
-        throw {
+      if (error && typeof error === "object" && "name" in error && error.name === "AbortError") {
+        throw this.createError({
           status: 408,
           code: "TIMEOUT",
           message: "O servidor demorou muito para responder. Tente novamente.",
-        };
+        });
       }
       throw error;
     } finally {
@@ -222,6 +286,91 @@ class AppointmentService {
     return this.handleResponse(response);
   }
 
+  async listUnassigned(companyId: string): Promise<Appointment[]> {
+    const response = await customFetch(
+      `${this.baseUrl}/admin/company/${companyId}/unassigned`,
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      },
+    );
+    return this.handleResponse(response);
+  }
+
+  async redistribute(
+    companyId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<RedistributeResponse> {
+    const response = await customFetch(
+      `${this.baseUrl}/admin/company/${companyId}/redistribute`,
+      {
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify({
+          startDate,
+          endDate,
+        }),
+      },
+    );
+    return this.handleResponse(response);
+  }
+
+  async listMyDaily(companyId: string, date?: string): Promise<Appointment[]> {
+    const params = new URLSearchParams();
+    if (date) params.set("date", date);
+    const response = await customFetch(
+      `${this.baseUrl}/my/company/${companyId}/daily${params.toString() ? `?${params.toString()}` : ""}`,
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      },
+    );
+    return this.handleResponse(response);
+  }
+
+  async listMyOpportunities(companyId: string): Promise<Appointment[]> {
+    const response = await customFetch(
+      `${this.baseUrl}/my/company/${companyId}/opportunities`,
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      },
+    );
+    return this.handleResponse(response);
+  }
+
+  async overrideAssignment(
+    id: string,
+    data: OverrideAssignmentDTO,
+  ): Promise<Appointment> {
+    const response = await customFetch(`${this.baseUrl}/${id}/assignment`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        ...data,
+        force_staff_id: data.force_staff_id ?? data.professionalId,
+      }),
+      credentials: "include",
+    });
+    return this.handleResponse(response);
+  }
+
+  async claimOpportunity(
+    id: string,
+    companyId: string,
+    expectedVersion: number,
+  ): Promise<Appointment> {
+    const response = await customFetch(`${this.baseUrl}/${id}/claim`, {
+      method: "POST",
+      body: JSON.stringify({ companyId, expectedVersion }),
+      credentials: "include",
+    });
+    return this.handleResponse(response);
+  }
+
   async delete(id: string): Promise<void> {
     const response = await customFetch(`${this.baseUrl}/${id}`, {
       method: "DELETE",
@@ -229,12 +378,24 @@ class AppointmentService {
     });
     if (!response.ok) {
       const errorData: { code?: string; message?: string } = await response.json().catch(() => ({}));
-      throw {
+      throw this.createError({
         status: response.status,
         code: errorData.code || "UNKNOWN_ERROR",
         message: errorData.message || "Erro ao excluir agendamento",
-      };
+      });
     }
+  }
+
+  async setAssignmentMode(
+    id: string,
+    data: SetAssignmentModeDTO,
+  ): Promise<Appointment> {
+    const response = await customFetch(`${this.baseUrl}/${id}/assignment-mode`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+      credentials: "include",
+    });
+    return this.handleResponse(response);
   }
 }
 

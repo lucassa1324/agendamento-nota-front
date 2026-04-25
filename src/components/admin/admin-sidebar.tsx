@@ -2,6 +2,7 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
+  ArrowRightLeft,
   BarChart3,
   Bell,
   BookOpen,
@@ -19,18 +20,19 @@ import {
   Package,
   Palette,
   PieChart,
+  Users,
   // Plug,
   User,
-  X,
 } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { PushNotificationsButton } from "@/components/admin/push-notifications-button";
-import { SystemNotifications } from "@/components/admin/system-notifications";
 import { Button } from "@/components/ui/button";
 import { useStudio } from "@/context/studio-context";
-import { BASE_DOMAIN, LANDING_PAGE_URL } from "@/lib/auth-client";
+import { appointmentService } from "@/lib/api-appointments";
+import { customFetch } from "@/lib/api-client";
+import { BASE_DOMAIN, LANDING_PAGE_URL, useSession } from "@/lib/auth-client";
 import { cn, getFullImageUrl } from "@/lib/utils";
 
 interface AdminNavItem {
@@ -59,8 +61,18 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
         icon: ListTodo,
       },
       {
+        title: "Encaminhamentos",
+        href: "/admin/dashboard/encaminhamentos",
+        icon: ArrowRightLeft,
+      },
+      {
         title: "Calendário",
         href: "/admin/dashboard/agenda",
+        icon: CalendarDays,
+      },
+      {
+        title: "Minha Agenda",
+        href: "/admin/dashboard/my-agenda",
         icon: CalendarDays,
       },
       {
@@ -79,6 +91,11 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
         title: "Gerenciamento",
         href: "/admin/dashboard/gerenciamento",
         icon: PieChart,
+      },
+      {
+        title: "Time e Permissões",
+        href: "/admin/dashboard/time",
+        icon: Users,
       },
       { title: "Estoque", href: "/admin/dashboard/estoque", icon: Package },
       {
@@ -148,6 +165,21 @@ const ADMIN_NAVIGATION: AdminNavGroup[] = [
   },
 ];
 
+const STAFF_ALLOWED_PATHS = new Set([
+  "/admin/dashboard/overview",
+  "/admin/dashboard/my-agenda",
+  "/admin/dashboard/minha-conta",
+]);
+
+const SECRETARY_ALLOWED_PATHS = new Set([
+  "/admin/dashboard/overview",
+  "/admin/dashboard/agendamentos",
+  "/admin/dashboard/encaminhamentos",
+  "/admin/dashboard/agenda",
+  "/admin/dashboard/calendario",
+  "/admin/dashboard/my-agenda",
+  "/admin/dashboard/minha-conta",
+]);
 
 interface AdminSidebarProps {
   adminUser: { name: string; username: string } | null;
@@ -159,6 +191,83 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
   const pathname = usePathname();
   const params = useParams();
   const { studio } = useStudio();
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string } | undefined)?.role?.toLowerCase();
+  const isAdminUser = role === "admin" || role === "super_admin";
+  const isSecretaryRole = role === "secretary";
+  const isStaffUser = role === "user";
+  const [accessTier, setAccessTier] = useState<"admin" | "secretary" | "staff">(
+    isAdminUser ? "admin" : "staff",
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolveAccessTier = async () => {
+      if (isAdminUser) {
+        if (!cancelled) setAccessTier("admin");
+        return;
+      }
+      if (!studio?.id) {
+        return;
+      }
+
+      try {
+        const response = await customFetch(`/api/staff/company/${studio.id}`, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+        const payload = response.ok ? await response.json().catch(() => []) : [];
+        const rows = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+
+        const userId = (session?.user as { id?: string } | undefined)?.id;
+        const userEmail = (session?.user as { email?: string } | undefined)?.email?.toLowerCase();
+        const membership = rows.find(
+          (member: {
+            userId?: string;
+            email?: string;
+            isActive?: boolean;
+            isAdmin?: boolean;
+            isSecretary?: boolean;
+          }) =>
+            member.isActive &&
+            ((userId && member.userId === userId) ||
+              (userEmail && member.email?.toLowerCase() === userEmail)),
+        );
+
+        if (membership?.isAdmin) {
+          if (!cancelled) setAccessTier("admin");
+          return;
+        }
+        if (membership?.isSecretary) {
+          if (!cancelled) setAccessTier("secretary");
+          return;
+        }
+
+        if (!cancelled) setAccessTier("staff");
+      } catch {
+        try {
+          if (isSecretaryRole) {
+            if (!cancelled) setAccessTier("secretary");
+            return;
+          }
+          await appointmentService.listUnassigned(studio.id);
+          if (!cancelled) setAccessTier("secretary");
+        } catch {
+          if (!cancelled) setAccessTier("staff");
+        }
+      }
+    };
+
+    resolveAccessTier();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdminUser, isSecretaryRole, studio?.id, session?.user]);
 
   const slug = (params?.slug as string) || studio?.slug || "";
 
@@ -180,9 +289,17 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
     return `/${slug}`;
   };
 
+  const visibleNavigation = ADMIN_NAVIGATION.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => {
+      if (accessTier === "admin") return true;
+      if (accessTier === "secretary") return SECRETARY_ALLOWED_PATHS.has(item.href);
+      return STAFF_ALLOWED_PATHS.has(item.href);
+    }),
+  })).filter((group) => group.items.length > 0);
+
   return (
     <aside className="w-64 bg-linear-to-b from-background via-background to-muted/20 border-r border-border/70 flex flex-col h-screen lg:sticky lg:top-0 z-50 shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
-      {/* Sidebar Header - Logo do Cliente ou Placeholder */}
       {studio?.logoUrl && (
         <div className="px-4 pt-4 pb-3 border-b border-border/60 flex justify-center items-center">
           <div className="relative w-full max-w-45 h-15 flex items-center justify-center rounded-xl bg-background/70 ring-1 ring-border/40">
@@ -197,25 +314,23 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
         </div>
       )}
 
-      {/* User Profile */}
       <div className="p-4 border-b border-border/60 space-y-3">
         <div className="rounded-2xl bg-card/80 backdrop-blur-sm ring-1 ring-border/60 px-3 py-3 shadow-sm">
           <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 ring-1 ring-primary/20">
-              <User className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold truncate text-foreground">
-                {adminUser?.name || "Administrador"}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                @{adminUser?.username || "admin"}
-              </p>
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0 ring-1 ring-primary/20">
+                <User className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate text-foreground">
+                  {adminUser?.name || "Administrador"}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  @{adminUser?.username || "admin"}
+                </p>
+              </div>
             </div>
           </div>
-          <SystemNotifications />
-        </div>
         </div>
 
         <a
@@ -230,22 +345,21 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
         <PushNotificationsButton />
       </div>
 
-      {/* Sidebar Navigation */}
       <nav className="flex-1 p-4 pb-24 space-y-5 overflow-y-auto">
-        {ADMIN_NAVIGATION.map((group) => (
+        {visibleNavigation.map((group) => (
           <div key={group.group} className="space-y-1.5">
-            <p className="px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70 mb-2">
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground/70">
               {group.group}
             </p>
             {group.items.map((item) => {
               const dynamicHref = getDynamicHref(item.href);
               const isExternal = item.href.startsWith("http");
-              
+
               const content = (
                 <>
                   <item.icon className="w-4 h-4" />
                   {item.title}
-                  {isExternal && <ExternalLink className="w-3 h-3 ml-auto opacity-50" />}
+                  {isExternal && <ExternalLink className="ml-auto w-3 h-3 opacity-50" />}
                 </>
               );
 
@@ -264,9 +378,10 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
               }
 
               return (
-                <Link
+                <a
                   key={item.href}
                   href={dynamicHref}
+                  onClick={onClose}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200",
                     isActive(item.href)
@@ -275,14 +390,13 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
                   )}
                 >
                   {content}
-                </Link>
+                </a>
               );
             })}
-            <div className="h-px bg-linear-to-r from-transparent via-border/70 to-transparent mt-3" />
+            <div className="mt-3 h-px bg-linear-to-r from-transparent via-border/70 to-transparent" />
           </div>
         ))}
 
-        {/* Sair do Painel */}
         <div className="pt-3">
           <Button
             variant="ghost"
@@ -290,7 +404,7 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
             className="w-full justify-start rounded-xl text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"
             onClick={handleLogout}
           >
-            <LogOut className="w-4 h-4 mr-2" />
+            <LogOut className="mr-2 w-4 h-4" />
             Sair do Painel
           </Button>
         </div>

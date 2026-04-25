@@ -65,6 +65,7 @@ import { appointmentService } from "@/lib/api-appointments";
 import type { InventoryItem, InventoryLog } from "@/lib/booking-data";
 import { expensesService } from "@/lib/expenses-service";
 import { inventoryService } from "@/lib/inventory-service";
+import { customFetch } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 
 type GlobalInventoryLog = InventoryLog & {
@@ -83,6 +84,18 @@ type FinancialMovement = {
   status: "completed" | "confirmed" | "pending" | "cancelled";
 };
 
+type EmployeeReportRow = {
+  staffId: string;
+  staffName: string;
+  commissionRate: number;
+  completedCount: number;
+  ongoingCount: number;
+  pendingCount: number;
+  avgDurationMinutes: number;
+  productionValue: number;
+  commissionValue: number;
+};
+
 export function Reports() {
   const { studio } = useStudio();
   const [isLoading, setIsLoading] = useState(true);
@@ -99,6 +112,7 @@ export function Reports() {
     lowStockCount: 0,
     topServices: [] as { name: string; count: number }[],
     financialMovements: [] as FinancialMovement[],
+    employeePerformance: [] as EmployeeReportRow[],
   });
 
   // Filtros da Tabela
@@ -112,10 +126,15 @@ export function Reports() {
     setIsLoading(true);
     try {
       // Buscar dados reais da API
-      const [appointments, inventoryRaw, expenses] = await Promise.all([
+      const [appointments, inventoryRaw, expenses, staffResponse] = await Promise.all([
         appointmentService.listByCompanyAdmin(studio.id),
         inventoryService.list(studio.id),
         expensesService.list(studio.id),
+        customFetch(`/api/staff/company/${studio.id}`, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        }),
       ]);
 
       const inventory = inventoryRaw as unknown as InventoryItem[];
@@ -278,6 +297,85 @@ export function Reports() {
         .sort((a, b) => b.count - a.count)
         .slice(0, 5);
 
+      const staffPayload = staffResponse.ok
+        ? await staffResponse.json().catch(() => [])
+        : [];
+      const staffRows = Array.isArray(staffPayload)
+        ? staffPayload
+        : Array.isArray(staffPayload?.data)
+          ? staffPayload.data
+          : [];
+
+      const staffMap = new Map<
+        string,
+        { id: string; name: string; commissionRate: number }
+      >();
+      staffRows.forEach((member: { id: string; userId?: string | null; name: string; commissionRate?: number }) => {
+        const row = {
+          id: member.id,
+          name: member.name,
+          commissionRate: Number(member.commissionRate ?? 0),
+        };
+        staffMap.set(member.id, row);
+        if (member.userId) staffMap.set(member.userId, row);
+      });
+
+      const employeeAggregates = new Map<string, EmployeeReportRow>();
+      appointments.forEach((appointment) => {
+        if (!appointment.staffId) return;
+        const staffMeta =
+          staffMap.get(appointment.staffId) ||
+          (appointment.assignedStaffName
+            ? {
+                id: appointment.staffId,
+                name: appointment.assignedStaffName,
+                commissionRate: 0,
+              }
+            : null);
+        if (!staffMeta) return;
+
+        const current =
+          employeeAggregates.get(staffMeta.id) ||
+          {
+            staffId: staffMeta.id,
+            staffName: staffMeta.name,
+            commissionRate: staffMeta.commissionRate,
+            completedCount: 0,
+            ongoingCount: 0,
+            pendingCount: 0,
+            avgDurationMinutes: 0,
+            productionValue: 0,
+            commissionValue: 0,
+          };
+
+        const status = appointment.status.toUpperCase();
+        if (status === "COMPLETED") {
+          current.completedCount += 1;
+          current.productionValue += Number(appointment.servicePriceSnapshot || 0);
+          const startedAt = new Date(appointment.scheduledAt).getTime();
+          const finishedAt = new Date(appointment.updatedAt).getTime();
+          if (Number.isFinite(startedAt) && Number.isFinite(finishedAt) && finishedAt > startedAt) {
+            const duration = Math.round((finishedAt - startedAt) / (1000 * 60));
+            current.avgDurationMinutes =
+              current.avgDurationMinutes === 0
+                ? duration
+                : Math.round((current.avgDurationMinutes + duration) / 2);
+          }
+        } else if (status === "ONGOING") {
+          current.ongoingCount += 1;
+        } else if (status === "PENDING" || status === "CONFIRMED") {
+          current.pendingCount += 1;
+        }
+
+        current.commissionValue =
+          current.productionValue * (current.commissionRate / 100);
+        employeeAggregates.set(staffMeta.id, current);
+      });
+
+      const employeePerformance = [...employeeAggregates.values()].sort(
+        (a, b) => b.productionValue - a.productionValue,
+      );
+
       setReportData({
         totalRevenue,
         monthlyRevenue,
@@ -291,6 +389,7 @@ export function Reports() {
         lowStockCount,
         topServices,
         financialMovements: allMovements,
+        employeePerformance,
       });
     } catch (error: any) {
       if (error?.status === 401 || error?.status === 402) {
@@ -1161,6 +1260,60 @@ export function Reports() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Relatório de Funcionárias</CardTitle>
+              <CardDescription>
+                Comissão, métricas de execução e produtividade por profissional.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Funcionária</TableHead>
+                    <TableHead className="text-right">Concluídos</TableHead>
+                    <TableHead className="text-right">Em atendimento</TableHead>
+                    <TableHead className="text-right">Aguardando</TableHead>
+                    <TableHead className="text-right">Tempo médio</TableHead>
+                    <TableHead className="text-right">Produção</TableHead>
+                    <TableHead className="text-right">Comissão</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reportData.employeePerformance.length > 0 ? (
+                    reportData.employeePerformance.map((row) => (
+                      <TableRow key={row.staffId}>
+                        <TableCell className="font-medium">{row.staffName}</TableCell>
+                        <TableCell className="text-right">{row.completedCount}</TableCell>
+                        <TableCell className="text-right">{row.ongoingCount}</TableCell>
+                        <TableCell className="text-right">{row.pendingCount}</TableCell>
+                        <TableCell className="text-right">{row.avgDurationMinutes} min</TableCell>
+                        <TableCell className="text-right">
+                          R$ {row.productionValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="text-xs text-muted-foreground">{row.commissionRate}%</span>
+                            <span className="font-semibold">
+                              R$ {row.commissionValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-20 text-center text-muted-foreground">
+                        Sem dados suficientes para montar relatório da equipe.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ABA ESTOQUE */}

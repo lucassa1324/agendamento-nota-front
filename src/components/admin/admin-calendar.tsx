@@ -837,17 +837,6 @@ export function AdminCalendar({
         </DialogContent>
       </Dialog>
 
-      <style jsx global>{`
-        @keyframes marquee {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
-        }
-        .animate-marquee {
-          display: inline-block;
-          padding-left: 100%;
-          animation: marquee 10s linear infinite;
-        }
-      `}</style>
     </Card>
   );
 }

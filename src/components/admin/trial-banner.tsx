@@ -54,7 +54,7 @@ export function TrialBanner() {
         };
       }
     | undefined;
-  if (user?.role === "SUPER_ADMIN") return null;
+  if (user?.role === "SUPER_ADMIN" || user?.role?.toLowerCase() === "user") return null;
 
   // Determina o status e data final usando a melhor fonte disponível (Sessão atualizada > Sessão cache > Contexto)
   const userBusiness = sessionData?.user?.business || user?.business;

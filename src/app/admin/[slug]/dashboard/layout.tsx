@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/sheet";
 import { SidebarProvider } from "@/context/sidebar-context";
 import { StudioProvider, useStudio } from "@/context/studio-context";
+import { appointmentService } from "@/lib/api-appointments";
+import { customFetch } from "@/lib/api-client";
 import { getSession, signOut, useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +61,7 @@ function MobileNav({
         <AdminSidebar
           adminUser={adminUser}
           handleLogout={handleLogout}
+          onClose={() => setOpen(false)}
         />
       </SheetContent>
     </Sheet>
@@ -66,6 +69,7 @@ function MobileNav({
 }
 
 interface AuthUser {
+  id?: string;
   name: string;
   email: string;
   slug?: string;
@@ -78,6 +82,22 @@ interface AuthUser {
   };
   businessId?: string;
 }
+
+const STAFF_ALLOWED_DASHBOARD_SEGMENTS = [
+  "/dashboard/overview",
+  "/dashboard/my-agenda",
+  "/dashboard/minha-conta",
+];
+
+const SECRETARY_ALLOWED_DASHBOARD_SEGMENTS = [
+  "/dashboard/overview",
+  "/dashboard/agendamentos",
+  "/dashboard/encaminhamentos",
+  "/dashboard/agenda",
+  "/dashboard/calendario",
+  "/dashboard/my-agenda",
+  "/dashboard/minha-conta",
+];
 
 function AdminLayoutContent({
   children,
@@ -124,13 +144,6 @@ function AdminLayoutContent({
     if (redirectInFlightRef.current === targetPath) return;
     redirectInFlightRef.current = targetPath;
     router.replace(targetPath);
-
-    // Fallback para evitar tela de verificação infinita se a navegação SPA falhar
-    setTimeout(() => {
-      if (typeof window !== "undefined" && window.location.pathname !== targetPath) {
-        window.location.href = targetPath;
-      }
-    }, 150);
   };
 
   useEffect(() => {
@@ -250,18 +263,24 @@ function AdminLayoutContent({
         }
 
         const businessSlug = user?.business?.slug || user?.slug;
+        const isStaffUserSession = user?.role?.toLowerCase() === "user";
 
         const hasCompletedOnboarding = Boolean(
           (session.user as { hasCompletedOnboarding?: boolean })
             ?.hasCompletedOnboarding,
         );
 
-        if (!hasCompletedOnboarding && !isOnboarding && businessSlug) {
+        if (isStaffUserSession && isOnboarding && businessSlug) {
+          safeRedirect(`/admin/${businessSlug}/dashboard/overview`);
+          return;
+        }
+
+        if (!isStaffUserSession && !hasCompletedOnboarding && !isOnboarding && businessSlug) {
           safeRedirect(`/admin/${businessSlug}/dashboard/onboarding`);
           return;
         }
 
-        if (hasCompletedOnboarding && isOnboarding && businessSlug) {
+        if (!isStaffUserSession && hasCompletedOnboarding && isOnboarding && businessSlug) {
           safeRedirect(`/admin/${businessSlug}/dashboard/overview`);
           return;
         }
@@ -292,7 +311,7 @@ function AdminLayoutContent({
         clearTimeout(sessionFallbackTimer);
       }
     };
-  }, [session, isLoadingSession, slug, isOnboarding, pathname, router]);
+  }, [session, isLoadingSession, slug, isOnboarding]);
 
   useEffect(() => {
     if (!isLoadingSession) return;
@@ -305,16 +324,108 @@ function AdminLayoutContent({
     }, 5000);
 
     return () => clearTimeout(timeoutId);
-  }, [isLoadingSession, pathname, router]);
+  }, [isLoadingSession]);
 
   const handleLogout = async () => {
     await signOut();
-    router.push("/admin");
+    window.location.assign("/admin");
   };
 
   const isPersonalizacao = pathname?.includes("/personalizacao");
   const isMaster = pathname?.startsWith("/admin/master");
   const isMinhaConta = pathname?.includes("/dashboard/minha-conta");
+  const isAdminUser =
+    user?.role?.toLowerCase() === "admin" ||
+    user?.role?.toLowerCase() === "super_admin";
+  const isSecretaryRole = user?.role?.toLowerCase() === "secretary";
+  const isStaffUser = user?.role?.toLowerCase() === "user";
+  const [accessTier, setAccessTier] = useState<"admin" | "secretary" | "staff">(
+    isAdminUser ? "admin" : "staff",
+  );
+  const [isAccessTierResolved, setIsAccessTierResolved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const resolveAccessTier = async () => {
+      if (isAdminUser) {
+        if (!cancelled) {
+          setAccessTier("admin");
+          setIsAccessTierResolved(true);
+        }
+        return;
+      }
+      if (!studio?.id) {
+        return;
+      }
+
+      try {
+        const response = await customFetch(`/api/staff/company/${studio.id}`, {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+        const payload = response.ok ? await response.json().catch(() => []) : [];
+        const rows = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+
+        const userId = user?.id;
+        const userEmail = user?.email?.toLowerCase();
+        const membership = rows.find(
+          (member: {
+            userId?: string;
+            email?: string;
+            isActive?: boolean;
+            isAdmin?: boolean;
+            isSecretary?: boolean;
+          }) =>
+            member.isActive &&
+            ((userId && member.userId === userId) ||
+              (userEmail && member.email?.toLowerCase() === userEmail)),
+        );
+
+        if (membership?.isAdmin) {
+          if (!cancelled) setAccessTier("admin");
+        } else if (membership?.isSecretary) {
+          if (!cancelled) setAccessTier("secretary");
+        } else {
+          if (!cancelled) setAccessTier("staff");
+        }
+      } catch {
+        try {
+          if (isSecretaryRole) {
+            if (!cancelled) setAccessTier("secretary");
+            return;
+          }
+          await appointmentService.listUnassigned(studio.id);
+          if (!cancelled) setAccessTier("secretary");
+        } catch {
+          if (!cancelled) setAccessTier("staff");
+        }
+      } finally {
+        if (!cancelled) setIsAccessTierResolved(true);
+      }
+    };
+
+    setIsAccessTierResolved(false);
+    resolveAccessTier();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdminUser, isSecretaryRole, studio?.id, user?.id, user?.email]);
+
+  const isCollaborator = accessTier === "staff" || accessTier === "secretary";
+  const allowedSegmentsForTier =
+    accessTier === "secretary"
+      ? SECRETARY_ALLOWED_DASHBOARD_SEGMENTS
+      : STAFF_ALLOWED_DASHBOARD_SEGMENTS;
+  const isCollaboratorBlockedPath =
+    isCollaborator &&
+    isAccessTierResolved &&
+    Boolean(pathname?.includes("/dashboard/")) &&
+    !allowedSegmentsForTier.some((segment) => pathname?.includes(segment));
 
   // Tratamento de erro de carregamento do estúdio
   // EXCEÇÃO: Se for erro 402 (Pagamento Necessário), deixamos o layout renderizar para mostrar a tela de bloqueio com link de pagamento
@@ -326,7 +437,7 @@ function AdminLayoutContent({
     (isBillingError ? "past_due" : undefined);
 
   const isSubscriptionBlocked =
-    subscriptionStatus === "past_due" ||
+    subscriptionStatus === "blocked" ||
     subscriptionStatus === "unpaid" ||
     subscriptionStatus === "canceled";
 
@@ -348,8 +459,19 @@ function AdminLayoutContent({
   }, [isMinhaConta, isSubscriptionBlocked]);
 
   const shouldBlockAccess =
-    !isMinhaConta && (isSubscriptionBlocked || billingRequiredDetected);
+    !isCollaborator &&
+    !isMinhaConta &&
+    (isSubscriptionBlocked || billingRequiredDetected);
   const blockStatus = subscriptionStatus || "past_due";
+
+  useEffect(() => {
+    if (!isCollaboratorBlockedPath || !slug) return;
+    const fallbackPath =
+      accessTier === "secretary"
+        ? `/admin/${slug}/dashboard/agenda`
+        : `/admin/${slug}/dashboard/my-agenda`;
+    safeRedirect(fallbackPath);
+  }, [isCollaboratorBlockedPath, slug, accessTier]);
 
   if (studioError && !isMaster && !isBillingError) {
     return (
@@ -430,6 +552,24 @@ function AdminLayoutContent({
           <TutorialReminder />
           {shouldBlockAccess ? (
             <SubscriptionBlockScreen status={blockStatus} />
+          ) : isCollaboratorBlockedPath ? (
+            <div className="mx-auto my-10 max-w-2xl rounded-xl border border-yellow-300 bg-yellow-50 p-6 text-yellow-900">
+              <h3 className="text-lg font-semibold">Acesso restrito para esta conta</h3>
+              <p className="mt-2 text-sm">
+                Esta área não está disponível para seu perfil. Redirecionando para a área operacional.
+              </p>
+              <Button asChild className="mt-4" size="sm">
+                <a
+                  href={
+                    accessTier === "secretary"
+                      ? `/admin/${slug}/dashboard/agenda`
+                      : `/admin/${slug}/dashboard/my-agenda`
+                  }
+                >
+                  Ir para área permitida
+                </a>
+              </Button>
+            </div>
           ) : (
             children
           )}
@@ -462,7 +602,9 @@ export default function AdminLayout({
       }
     >
       <SidebarProvider>
-        <AdminLayoutContent slug={slug}>{children}</AdminLayoutContent>
+        <StudioProvider initialSlug={slug} initialId={businessId}>
+          <AdminLayoutContent slug={slug}>{children}</AdminLayoutContent>
+        </StudioProvider>
       </SidebarProvider>
     </Suspense>
   );

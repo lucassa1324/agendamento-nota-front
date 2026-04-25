@@ -1,6 +1,6 @@
 "use client";
 
-import { differenceInDays } from "date-fns";
+import { addDays, differenceInDays, endOfDay, startOfDay } from "date-fns";
 import {
   Calendar,
   Clock,
@@ -12,10 +12,17 @@ import {
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import Joyride, { type CallBackProps, STATUS, type Step } from "react-joyride";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useStudio } from "@/context/studio-context";
-import { appointmentService } from "@/lib/api-appointments";
+import { appointmentService, type Appointment } from "@/lib/api-appointments";
 import { authClient, useSession } from "@/lib/auth-client";
+import { customFetch } from "@/lib/api-client";
 import {
   getBookingsFromStorage,
   getSettingsFromStorage,
@@ -26,6 +33,8 @@ export function DashboardStats() {
   const pathname = usePathname();
   const { studio } = useStudio();
   const { data: session } = useSession();
+  const isStaffUser = ((session?.user as { role?: string } | undefined)?.role || "")
+    .toLowerCase() === "user";
   const [isTourRunning, setIsTourRunning] = useState(false);
   const [sessionData, setSessionData] = useState<
     typeof authClient.$Infer.Session | null
@@ -35,43 +44,16 @@ export function DashboardStats() {
   const [stats, setStats] = useState({
     totalBookings: 0,
     todayBookings: 0,
+    weekBookings: 0,
     monthRevenue: 0,
+    commissionAccrued: 0,
+    avgDurationMinutes: 0,
+    completedCount: 0,
+    ongoingCount: 0,
+    pendingCount: 0,
+    topServiceName: "-",
     agendaStatus: true,
   });
-
-  const describeError = (reason: unknown) => {
-    if (reason instanceof Error) {
-      return reason.message || reason.toString();
-    }
-    if (typeof reason === "string") {
-      return reason;
-    }
-    if (typeof reason === "object" && reason !== null) {
-      const candidate = reason as {
-        message?: unknown;
-        error?: unknown;
-        status?: unknown;
-        code?: unknown;
-      };
-      if (typeof candidate.message === "string" && candidate.message.trim()) {
-        return candidate.message;
-      }
-      if (typeof candidate.error === "string" && candidate.error.trim()) {
-        return candidate.error;
-      }
-      try {
-        return JSON.stringify({
-          status: candidate.status,
-          code: candidate.code,
-          message: candidate.message,
-          error: candidate.error,
-        });
-      } catch {
-        return "Erro não serializável";
-      }
-    }
-    return "Erro desconhecido";
-  };
 
   const loadStats = useCallback(async () => {
     if (!studio?.id) return;
@@ -79,19 +61,120 @@ export function DashboardStats() {
     try {
       setBillingError(false);
       const now = new Date();
-      const firstDay = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        1,
-      ).toISOString();
-      const lastDay = new Date(
-        now.getFullYear(),
-        now.getMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-      ).toISOString();
+      const dayStart = startOfDay(now);
+      const dayEnd = endOfDay(now);
+
+      if (isStaffUser) {
+        const monthStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1));
+        const monthEnd = endOfDay(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+
+        const monthDays =
+          Math.floor((monthEnd.getTime() - monthStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+
+        const monthBatch = await Promise.all(
+          Array.from({ length: monthDays }, (_, index) =>
+            appointmentService.listMyDaily(studio.id, addDays(monthStart, index).toISOString()),
+          ),
+        );
+
+        const weekBatch = await Promise.all(
+          Array.from({ length: 7 }, (_, index) =>
+            appointmentService.listMyDaily(studio.id, addDays(dayStart, index).toISOString()),
+          ),
+        );
+
+        const monthAppointments = monthBatch.flat();
+        const weekAppointments = weekBatch.flat();
+        const todayAppointments = monthAppointments.filter((item) => {
+          const at = new Date(item.scheduledAt).getTime();
+          return at >= dayStart.getTime() && at <= dayEnd.getTime();
+        });
+
+        let commissionRate = 0;
+        try {
+          const staffResponse = await customFetch(`/api/staff/company/${studio.id}`, {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store",
+          });
+          if (staffResponse.ok) {
+            const payload = await staffResponse.json();
+            const rows = Array.isArray(payload)
+              ? payload
+              : Array.isArray(payload?.data)
+                ? payload.data
+                : [];
+            const userId = (session?.user as { id?: string } | undefined)?.id;
+            const userEmail = (session?.user as { email?: string } | undefined)?.email;
+            const staffRow = rows.find(
+              (member: { userId?: string; email?: string; isActive?: boolean }) =>
+                member.isActive &&
+                ((userId && member.userId === userId) ||
+                  (userEmail && member.email?.toLowerCase() === userEmail.toLowerCase())),
+            );
+            commissionRate = Number(staffRow?.commissionRate ?? 0);
+          }
+        } catch (error) {
+          console.warn("Dashboard staff: não foi possível resolver comissão.", error);
+        }
+
+        const completedMonth = monthAppointments.filter(
+          (item) => item.status?.toUpperCase() === "COMPLETED",
+        );
+        const ongoingCount = monthAppointments.filter(
+          (item) => item.status?.toUpperCase() === "ONGOING",
+        ).length;
+        const pendingCount = monthAppointments.filter((item) => {
+          const status = item.status?.toUpperCase();
+          return status === "PENDING" || status === "CONFIRMED";
+        }).length;
+
+        const serviceCounter = new Map<string, number>();
+        completedMonth.forEach((item) => {
+          const key = item.serviceNameSnapshot || "Serviço";
+          serviceCounter.set(key, (serviceCounter.get(key) || 0) + 1);
+        });
+        const topServiceName =
+          [...serviceCounter.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "-";
+
+        const productionValue = completedMonth.reduce((sum, item) => {
+          const price = Number(item.servicePriceSnapshot ?? 0);
+          return sum + (Number.isFinite(price) ? price : 0);
+        }, 0);
+
+        const commissionAccrued = productionValue * (commissionRate / 100);
+
+        const durationSamples = completedMonth
+          .map((item) => {
+            const start = new Date(item.scheduledAt).getTime();
+            const end = new Date(item.updatedAt).getTime();
+            if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+            return Math.round((end - start) / (1000 * 60));
+          })
+          .filter((value): value is number => typeof value === "number");
+
+        const avgDurationMinutes = durationSamples.length
+          ? Math.round(durationSamples.reduce((a, b) => a + b, 0) / durationSamples.length)
+          : 0;
+
+        setStats({
+          totalBookings: monthAppointments.length,
+          todayBookings: todayAppointments.length,
+          weekBookings: weekAppointments.length,
+          monthRevenue: productionValue,
+          commissionAccrued,
+          avgDurationMinutes,
+          completedCount: completedMonth.length,
+          ongoingCount,
+          pendingCount,
+          topServiceName,
+          agendaStatus: true,
+        });
+        return;
+      }
+
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
       const [appointmentsResult, settingsResult] = await Promise.allSettled([
         appointmentService.listByCompanyAdmin(studio.id, firstDay, lastDay),
         businessService.getSettings(studio.id),
@@ -103,129 +186,59 @@ export function DashboardStats() {
           const code = (reason as { code?: string }).code;
           const message = (reason as { message?: string }).message;
           if (status === 402 || code === "BILLING_REQUIRED") return true;
-          if (
-            typeof message === "string" &&
-            message.includes("BILLING_REQUIRED")
-          ) {
-            return true;
-          }
+          if (typeof message === "string" && message.includes("BILLING_REQUIRED")) return true;
         }
-        if (
-          reason instanceof Error &&
-          reason.message.includes("BILLING_REQUIRED")
-        ) {
-          return true;
-        }
-        return false;
-      };
-      const isUnauthorizedAccess = (reason: unknown) => {
-        if (!reason) return false;
-        if (typeof reason === "object" && reason !== null) {
-          const status = (reason as { status?: number }).status;
-          const message = (reason as { message?: string }).message;
-          if (status === 401 || status === 403) return true;
-          if (
-            typeof message === "string" &&
-            message.includes("Unauthorized access to this company's appointments")
-          ) {
-            return true;
-          }
-        }
-        if (
-          reason instanceof Error &&
-          reason.message.includes("Unauthorized access to this company's appointments")
-        ) {
-          return true;
-        }
-        return false;
+        return reason instanceof Error && reason.message.includes("BILLING_REQUIRED");
       };
       const hasBillingBlock =
-        (appointmentsResult.status === "rejected" &&
-          isBillingRequired(appointmentsResult.reason)) ||
-        (settingsResult.status === "rejected" &&
-          isBillingRequired(settingsResult.reason));
+        (appointmentsResult.status === "rejected" && isBillingRequired(appointmentsResult.reason)) ||
+        (settingsResult.status === "rejected" && isBillingRequired(settingsResult.reason));
       if (hasBillingBlock) {
         setBillingError(true);
         return;
       }
-      let appointments =
-        appointmentsResult.status === "fulfilled"
-          ? appointmentsResult.value
-          : [];
 
-      // Fallback para manter o dashboard funcional em caso de falha temporária na rota admin.
-      if (appointmentsResult.status === "rejected") {
-        try {
-          const publicAppointments = await appointmentService.listByCompany(studio.id);
-          appointments = Array.isArray(publicAppointments) ? publicAppointments : [];
-        } catch (fallbackError) {
-          console.error(
-            "Dashboard: fallback público também falhou:",
-            describeError(fallbackError),
-          );
-        }
-      }
-      const settings =
-        settingsResult.status === "fulfilled" ? settingsResult.value : null;
-      if (appointmentsResult.status === "rejected") {
-        const unauthorized = isUnauthorizedAccess(appointmentsResult.reason);
-        if (!unauthorized) {
-          console.error(
-            "Dashboard: Falha ao carregar agendamentos:",
-            describeError(appointmentsResult.reason),
-          );
-        }
-      }
-      if (settingsResult.status === "rejected") {
-        console.warn(
-          "Dashboard: Falha ao carregar configurações (usando padrões):",
-          settingsResult.reason,
-        );
-      }
-      const todayStr = now.toISOString().split("T")[0];
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-      const todayBookings = Array.isArray(appointments)
-        ? appointments.filter((app) => {
-            const date = new Date(app.scheduledAt).toISOString().split("T")[0];
-            return date === todayStr;
-          }).length
-        : 0;
-      const monthRevenue = Array.isArray(appointments)
-        ? appointments
-            .filter((app) => {
-              const date = new Date(app.scheduledAt);
-              return (
-                app.status.toUpperCase() === "COMPLETED" &&
-                date.getMonth() === currentMonth &&
-                date.getFullYear() === currentYear
-              );
-            })
-            .reduce((sum, app) => {
-              const price = app.servicePriceSnapshot
-                ? parseFloat(app.servicePriceSnapshot)
-                : 0;
-              return sum + price;
-            }, 0)
-        : 0;
+      const appointments: Appointment[] =
+        appointmentsResult.status === "fulfilled" ? appointmentsResult.value : [];
+      const settings = settingsResult.status === "fulfilled" ? settingsResult.value : null;
+      const todayBookings = appointments.filter((app) => {
+        const date = new Date(app.scheduledAt).getTime();
+        return date >= dayStart.getTime() && date <= dayEnd.getTime();
+      }).length;
+      const weekEnd = endOfDay(addDays(dayStart, 6));
+      const weekBookings = appointments.filter((app) => {
+        const date = new Date(app.scheduledAt).getTime();
+        return date >= dayStart.getTime() && date <= weekEnd.getTime();
+      }).length;
+      const monthRevenue = appointments
+        .filter((app) => app.status.toUpperCase() === "COMPLETED")
+        .reduce((sum, app) => sum + Number(app.servicePriceSnapshot || 0), 0);
+
       setStats({
-        totalBookings: Array.isArray(appointments) ? appointments.length : 0,
+        totalBookings: appointments.length,
         todayBookings,
+        weekBookings,
         monthRevenue,
+        commissionAccrued: 0,
+        avgDurationMinutes: 0,
+        completedCount: appointments.filter((app) => app.status.toUpperCase() === "COMPLETED").length,
+        ongoingCount: appointments.filter((app) => app.status.toUpperCase() === "ONGOING").length,
+        pendingCount: appointments.filter((app) => {
+          const status = app.status.toUpperCase();
+          return status === "PENDING" || status === "CONFIRMED";
+        }).length,
+        topServiceName: "-",
         agendaStatus: settings?.agendaAberta ?? true,
       });
     } catch (error: unknown) {
-      console.error(
-        "Erro crítico (inesperado) ao carregar estatísticas:",
-        error,
-      );
-      const isBillingError =
+      console.error("Erro crítico (inesperado) ao carregar estatísticas:", error);
+      const isBillingIssue =
         (typeof error === "object" &&
           error !== null &&
           "status" in error &&
           (error as { status: unknown }).status === 402) ||
         (error instanceof Error && error.message.includes("BILLING_REQUIRED"));
-      if (isBillingError) {
+      if (isBillingIssue) {
         setBillingError(true);
         return;
       }
@@ -234,22 +247,29 @@ export function DashboardStats() {
       setStats({
         totalBookings: bookings.length,
         todayBookings: bookings.filter(
-          (b: { date: string }) =>
-            b.date === new Date().toISOString().split("T")[0],
+          (b: { date: string }) => b.date === new Date().toISOString().split("T")[0],
         ).length,
+        weekBookings: 0,
         monthRevenue: 0,
+        commissionAccrued: 0,
+        avgDurationMinutes: 0,
+        completedCount: 0,
+        ongoingCount: 0,
+        pendingCount: 0,
+        topServiceName: "-",
         agendaStatus: settings.agendaAberta,
       });
     } finally {
       setIsLoadingStats(false);
     }
-  }, [studio?.id]);
+  }, [isStaffUser, session?.user, studio?.id]);
 
   useEffect(() => {
     loadStats();
   }, [loadStats]);
 
   useEffect(() => {
+    if (isStaffUser) return;
     if (!pathname?.includes("/dashboard/overview")) return;
     const hasSeenOverviewTour = localStorage.getItem("tour_overview_v1");
     if (hasSeenOverviewTour === "true") return;
@@ -257,7 +277,7 @@ export function DashboardStats() {
       setIsTourRunning(true);
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [pathname]);
+  }, [pathname, isStaffUser]);
 
   const handleTourCallback = (data: CallBackProps) => {
     if (data.status === STATUS.FINISHED || data.status === STATUS.SKIPPED) {
@@ -281,45 +301,77 @@ export function DashboardStats() {
     fetchSession();
   }, []);
 
-  const statCards = [
-    {
-      title: "Agendamentos Hoje",
-      value: billingError ? "---" : stats.todayBookings,
-      icon: Calendar,
-      color: billingError ? "text-muted-foreground" : "text-blue-500",
-      tourTarget: "overview-card-today",
-    },
-    {
-      title: "Total de Agendamentos",
-      value: billingError ? "---" : stats.totalBookings,
-      icon: Users,
-      color: billingError ? "text-muted-foreground" : "text-green-500",
-      tourTarget: "overview-card-total",
-    },
-    {
-      title: "Faturamento do Mês",
-      value: billingError ? "---" : `R$ ${stats.monthRevenue.toFixed(2)}`,
-      icon: DollarSign,
-      color: billingError ? "text-muted-foreground" : "text-accent",
-      tourTarget: "overview-card-revenue",
-    },
-    {
-      title: "Status da Agenda",
-      value: billingError ? "---" : stats.agendaStatus ? "Aberta" : "Fechada",
-      icon: TrendingUp,
-      color: billingError
-        ? "text-muted-foreground"
-        : stats.agendaStatus
-          ? "text-green-500"
-          : "text-red-500",
-      tourTarget: "overview-card-status",
-    },
-  ];
+  const statCards = isStaffUser
+    ? [
+        {
+          title: "Atendimentos Hoje",
+          value: stats.todayBookings,
+          icon: Calendar,
+          color: "text-blue-500",
+          tourTarget: "overview-card-today",
+        },
+        {
+          title: "Atendimentos na Semana",
+          value: stats.weekBookings,
+          icon: Users,
+          color: "text-green-500",
+          tourTarget: "overview-card-total",
+        },
+        {
+          title: "Comissão Acumulada",
+          value: `R$ ${stats.commissionAccrued.toFixed(2)}`,
+          icon: DollarSign,
+          color: "text-accent",
+          tourTarget: "overview-card-revenue",
+        },
+        {
+          title: "Tempo Médio (estimado)",
+          value: `${stats.avgDurationMinutes} min`,
+          icon: Clock,
+          color: "text-primary",
+          tourTarget: "overview-card-status",
+        },
+      ]
+    : [
+        {
+          title: "Agendamentos Hoje",
+          value: billingError ? "---" : stats.todayBookings,
+          icon: Calendar,
+          color: billingError ? "text-muted-foreground" : "text-blue-500",
+          tourTarget: "overview-card-today",
+        },
+        {
+          title: "Total de Agendamentos",
+          value: billingError ? "---" : stats.totalBookings,
+          icon: Users,
+          color: billingError ? "text-muted-foreground" : "text-green-500",
+          tourTarget: "overview-card-total",
+        },
+        {
+          title: "Faturamento do Mês",
+          value: billingError ? "---" : `R$ ${stats.monthRevenue.toFixed(2)}`,
+          icon: DollarSign,
+          color: billingError ? "text-muted-foreground" : "text-accent",
+          tourTarget: "overview-card-revenue",
+        },
+        {
+          title: "Status da Agenda",
+          value: billingError ? "---" : stats.agendaStatus ? "Aberta" : "Fechada",
+          icon: TrendingUp,
+          color: billingError
+            ? "text-muted-foreground"
+            : stats.agendaStatus
+              ? "text-green-500"
+              : "text-red-500",
+          tourTarget: "overview-card-status",
+        },
+      ];
 
   // Adiciona card de dias restantes se estiver em trial
   if (
-    studio?.subscriptionStatus === "trialing" ||
-    studio?.subscriptionStatus === "trial"
+    !isStaffUser &&
+    (studio?.subscriptionStatus === "trialing" ||
+      studio?.subscriptionStatus === "trial")
   ) {
     let daysLeft = 0;
 
@@ -375,51 +427,53 @@ export function DashboardStats() {
 
   return (
     <div className="space-y-4">
-      <Joyride
-        run={isTourRunning}
-        continuous
-        showProgress
-        showSkipButton
-        disableOverlayClose
-        callback={handleTourCallback}
-        locale={{
-          back: "Voltar",
-          close: "Fechar",
-          last: "Concluir",
-          next: "Próximo",
-          skip: "Pular",
-        }}
-        steps={
-          [
-            {
-              target: '[data-tour="overview-title"]',
-              content:
-                "Aqui você acompanha o resumo geral do seu negócio em tempo real.",
-              placement: "bottom",
+      {!isStaffUser && (
+        <Joyride
+          run={isTourRunning}
+          continuous
+          showProgress
+          showSkipButton
+          disableOverlayClose
+          callback={handleTourCallback}
+          locale={{
+            back: "Voltar",
+            close: "Fechar",
+            last: "Concluir",
+            next: "Próximo",
+            skip: "Pular",
+          }}
+          steps={
+            [
+              {
+                target: '[data-tour="overview-title"]',
+                content:
+                  "Aqui você acompanha o resumo geral do seu negócio em tempo real.",
+                placement: "bottom",
+              },
+              {
+                target: '[data-tour="overview-card-today"]',
+                content:
+                  "Este card mostra quantos agendamentos você tem hoje para organizar sua operação.",
+              },
+              {
+                target: '[data-tour="overview-card-revenue"]',
+                content:
+                  "Aqui você vê o faturamento do mês com base nos atendimentos concluídos.",
+              },
+              {
+                target: '[data-tour="overview-card-status"]',
+                content:
+                  "Use este indicador para conferir se a agenda está aberta ou fechada.",
+              },
+            ] satisfies Step[]
+          }
+          styles={{
+            options: {
+              zIndex: 10000,
             },
-            {
-              target: '[data-tour="overview-card-today"]',
-              content:
-                "Este card mostra quantos agendamentos você tem hoje para organizar sua operação.",
-            },
-            {
-              target: '[data-tour="overview-card-revenue"]',
-              content:
-                "Aqui você vê o faturamento do mês com base nos atendimentos concluídos.",
-            },
-            {
-              target: '[data-tour="overview-card-status"]',
-              content:
-                "Use este indicador para conferir se a agenda está aberta ou fechada.",
-            },
-          ] satisfies Step[]
-        }
-        styles={{
-          options: {
-            zIndex: 10000,
-          },
-        }}
-      />
+          }}
+        />
+      )}
       {stats.totalBookings === 0 && !billingError && (
         <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
           Você ainda não tem agendamentos neste período.
@@ -446,6 +500,35 @@ export function DashboardStats() {
           );
         })}
       </div>
+
+      {isStaffUser && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Relatório Resumido do Período</CardTitle>
+            <CardDescription>
+              Panorama da sua execução com base nos atendimentos da agenda.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Concluídos</p>
+              <p className="text-xl font-semibold">{stats.completedCount}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Em Atendimento</p>
+              <p className="text-xl font-semibold">{stats.ongoingCount}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Aguardando</p>
+              <p className="text-xl font-semibold">{stats.pendingCount}</p>
+            </div>
+            <div className="rounded-lg border p-3">
+              <p className="text-xs uppercase text-muted-foreground">Serviço Mais Realizado</p>
+              <p className="text-sm font-semibold truncate">{stats.topServiceName}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
