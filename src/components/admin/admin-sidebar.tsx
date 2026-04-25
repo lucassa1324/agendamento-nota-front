@@ -194,6 +194,7 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role?.toLowerCase();
   const isAdminUser = role === "admin" || role === "super_admin";
+  const isSecretaryRole = role === "secretary";
   const isStaffUser = role === "user";
   const [accessTier, setAccessTier] = useState<"admin" | "secretary" | "staff">(
     isAdminUser ? "admin" : "staff",
@@ -206,8 +207,7 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
         if (!cancelled) setAccessTier("admin");
         return;
       }
-      if (!isStaffUser || !studio?.id) {
-        if (!cancelled) setAccessTier("staff");
+      if (!studio?.id) {
         return;
       }
 
@@ -251,6 +251,10 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
         if (!cancelled) setAccessTier("staff");
       } catch {
         try {
+          if (isSecretaryRole) {
+            if (!cancelled) setAccessTier("secretary");
+            return;
+          }
           await appointmentService.listUnassigned(studio.id);
           if (!cancelled) setAccessTier("secretary");
         } catch {
@@ -263,7 +267,7 @@ export function AdminSidebar({ adminUser, handleLogout, onClose }: AdminSidebarP
     return () => {
       cancelled = true;
     };
-  }, [isAdminUser, isStaffUser, studio?.id, session?.user]);
+  }, [isAdminUser, isSecretaryRole, studio?.id, session?.user]);
 
   const slug = (params?.slug as string) || studio?.slug || "";
 

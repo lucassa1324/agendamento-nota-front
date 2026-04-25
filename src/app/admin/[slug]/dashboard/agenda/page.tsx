@@ -12,7 +12,10 @@ export default function AgendaPage() {
   const { data: session } = useSession();
   const { studio } = useStudio();
   const role = (session?.user as { role?: string } | undefined)?.role?.toLowerCase();
-  const [hasManagerAccess, setHasManagerAccess] = useState<boolean>(role === "admin");
+  const isSecretaryRole = role === "secretary";
+  const [hasManagerAccess, setHasManagerAccess] = useState<boolean>(
+    role === "admin" || role === "super_admin" || isSecretaryRole,
+  );
   const [isCheckingManagerAccess, setIsCheckingManagerAccess] = useState(false);
 
   const isStaffUser = role === "user";
@@ -23,6 +26,10 @@ export default function AgendaPage() {
     const probeManagerAccess = async () => {
       if (!studio?.id) return;
       if (isAdminUser) {
+        if (!cancelled) setHasManagerAccess(true);
+        return;
+      }
+      if (isSecretaryRole) {
         if (!cancelled) setHasManagerAccess(true);
         return;
       }
@@ -46,7 +53,7 @@ export default function AgendaPage() {
     return () => {
       cancelled = true;
     };
-  }, [studio?.id, isAdminUser, isStaffUser]);
+  }, [studio?.id, isAdminUser, isSecretaryRole, isStaffUser]);
 
   const title = useMemo(() => {
     if (hasManagerAccess) return "Calendário de Agendamentos";

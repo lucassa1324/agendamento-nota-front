@@ -337,6 +337,7 @@ function AdminLayoutContent({
   const isAdminUser =
     user?.role?.toLowerCase() === "admin" ||
     user?.role?.toLowerCase() === "super_admin";
+  const isSecretaryRole = user?.role?.toLowerCase() === "secretary";
   const isStaffUser = user?.role?.toLowerCase() === "user";
   const [accessTier, setAccessTier] = useState<"admin" | "secretary" | "staff">(
     isAdminUser ? "admin" : "staff",
@@ -353,11 +354,7 @@ function AdminLayoutContent({
         }
         return;
       }
-      if (!isStaffUser || !studio?.id) {
-        if (!cancelled) {
-          setAccessTier("staff");
-          setIsAccessTierResolved(true);
-        }
+      if (!studio?.id) {
         return;
       }
 
@@ -398,6 +395,10 @@ function AdminLayoutContent({
         }
       } catch {
         try {
+          if (isSecretaryRole) {
+            if (!cancelled) setAccessTier("secretary");
+            return;
+          }
           await appointmentService.listUnassigned(studio.id);
           if (!cancelled) setAccessTier("secretary");
         } catch {
@@ -413,7 +414,7 @@ function AdminLayoutContent({
     return () => {
       cancelled = true;
     };
-  }, [isAdminUser, isStaffUser, studio?.id, user?.id, user?.email]);
+  }, [isAdminUser, isSecretaryRole, studio?.id, user?.id, user?.email]);
 
   const isCollaborator = accessTier === "staff" || accessTier === "secretary";
   const allowedSegmentsForTier =
