@@ -23,13 +23,10 @@ export function FaviconUpdater() {
       return undefined;
     };
 
-    const upsertIconLink = (
-      selector: string,
-      rel: string,
-      href: string,
-      type?: string,
-    ) => {
-      const existing = document.querySelector<HTMLLinkElement>(selector);
+    const upsertIconLink = (rel: string, href: string, type?: string) => {
+      const existing = document.querySelector<HTMLLinkElement>(
+        `link[data-dynamic-favicon='true'][rel='${rel}']`,
+      );
       const link = existing || document.createElement("link");
       link.dataset.dynamicFavicon = "true";
       link.rel = rel;
@@ -84,24 +81,9 @@ export function FaviconUpdater() {
         const separator = fullLogoUrl.includes("?") ? "&" : "?";
         const versionedLogoUrl = `${fullLogoUrl}${separator}v=${Date.now()}`;
 
-        upsertIconLink(
-          "link[rel='icon']",
-          "icon",
-          versionedLogoUrl,
-          iconType,
-        );
-        upsertIconLink(
-          "link[rel='shortcut icon']",
-          "shortcut icon",
-          versionedLogoUrl,
-          iconType,
-        );
-        upsertIconLink(
-          "link[rel='apple-touch-icon']",
-          "apple-touch-icon",
-          versionedLogoUrl,
-          iconType,
-        );
+        upsertIconLink("icon", versionedLogoUrl, iconType);
+        upsertIconLink("shortcut icon", versionedLogoUrl, iconType);
+        upsertIconLink("apple-touch-icon", versionedLogoUrl, iconType);
       }
 
       // Update Page Title
