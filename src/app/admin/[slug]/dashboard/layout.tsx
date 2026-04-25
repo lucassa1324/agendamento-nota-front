@@ -437,7 +437,7 @@ function AdminLayoutContent({
     (isBillingError ? "past_due" : undefined);
 
   const isSubscriptionBlocked =
-    subscriptionStatus === "past_due" ||
+    subscriptionStatus === "blocked" ||
     subscriptionStatus === "unpaid" ||
     subscriptionStatus === "canceled";
 
