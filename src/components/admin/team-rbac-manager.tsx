@@ -84,6 +84,7 @@ export function TeamRbacManager() {
   const [memberPassword, setMemberPassword] = useState("");
   const [isProcessingSecurity, setIsProcessingSecurity] = useState(false);
   const [isResendingInvite, setIsResendingInvite] = useState(false);
+  const [isInviting, setIsInviting] = useState(false);
   const [memberPasswordFeedback, setMemberPasswordFeedback] = useState<{
     type: "success" | "error" | "loading";
     message: string;
@@ -186,33 +187,23 @@ export function TeamRbacManager() {
       return;
     }
 
-    const optimisticMember: StaffMember = {
-      id: `temp-${Date.now()}`,
-      name: inviteName.trim(),
-      email: inviteEmail.trim(),
-      isActive: true,
-      isAdmin: false,
-      isSecretary: false,
-      isProfessional: true,
-      calendarColor: STAFF_COLOR_OPTIONS[members.length % STAFF_COLOR_OPTIONS.length],
-      commissionRate: 0,
-      serviceIds: [],
-    };
+    if (!studio?.id) {
+      toast.error("Empresa não carregada. Reabra o dashboard e tente novamente.");
+      return;
+    }
 
-    setMembers((current) => [optimisticMember, ...current]);
-    setSelectedId(optimisticMember.id);
-    setInviteName("");
-    setInviteEmail("");
-
-    if (!studio?.id) return;
+    const name = inviteName.trim();
+    const email = inviteEmail.trim();
+    const optimisticId = `temp-${Date.now()}`;
+    setIsInviting(true);
 
     try {
       const response = await customFetch(`${STAFF_ENDPOINT}/invite`, {
         method: "POST",
         body: JSON.stringify({
           companyId: studio.id,
-          name: optimisticMember.name,
-          email: optimisticMember.email,
+          name,
+          email,
         }),
       });
 
@@ -220,10 +211,27 @@ export function TeamRbacManager() {
         const errorData = await response.json().catch(() => ({}));
         toast.warning(
           (errorData as { error?: string })?.error ||
-            "Convite adicionado localmente. Endpoint de convite ainda não respondeu com sucesso.",
+            "Não foi possível concluir o convite agora. Tente novamente em instantes.",
         );
         return;
       }
+
+      const createdMember: StaffMember = {
+        id: optimisticId,
+        name,
+        email,
+        isActive: true,
+        isAdmin: false,
+        isSecretary: false,
+        isProfessional: true,
+        calendarColor: STAFF_COLOR_OPTIONS[members.length % STAFF_COLOR_OPTIONS.length],
+        commissionRate: 0,
+        serviceIds: [],
+      };
+      setMembers((current) => [createdMember, ...current]);
+      setSelectedId(createdMember.id);
+      setInviteName("");
+      setInviteEmail("");
 
       const data = (await response.json().catch(() => ({}))) as {
         staffId?: string;
@@ -241,7 +249,7 @@ export function TeamRbacManager() {
       if (data.staffId) {
         setMembers((current) =>
           current.map((member) =>
-            member.id === optimisticMember.id
+            member.id === createdMember.id
               ? { ...member, id: data.staffId as string }
               : member,
           ),
@@ -270,8 +278,10 @@ export function TeamRbacManager() {
       }
     } catch {
       toast.warning(
-        "Convite adicionado localmente. Endpoint de convite ainda não está disponível.",
+        "Não foi possível concluir o convite agora. Verifique sua conexão e tente novamente.",
       );
+    } finally {
+      setIsInviting(false);
     }
   };
 
@@ -580,9 +590,9 @@ export function TeamRbacManager() {
                 placeholder="email@dominio.com"
                 className="w-52"
               />
-              <Button onClick={handleInvite} className="gap-2">
+              <Button onClick={handleInvite} className="gap-2" disabled={isInviting}>
                 <MailPlus className="h-4 w-4" />
-                Convidar Colaborador
+                {isInviting ? "Convidando..." : "Convidar Colaborador"}
               </Button>
             </div>
           </div>

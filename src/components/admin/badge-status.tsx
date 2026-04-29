@@ -4,7 +4,7 @@ import { Sparkles, UserCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 type BadgeStatusProps = {
-  assignedBy?: "system" | "staff";
+  assignedBy?: "system" | "staff" | "system_rescue";
   validationStatus?: "suggested" | "confirmed";
 };
 
@@ -15,7 +15,7 @@ export function BadgeStatus({ assignedBy, validationStatus }: BadgeStatusProps) 
     return (
       <Badge
         variant="outline"
-        className="border-[var(--suggested-border)] bg-[var(--suggested-bg)] text-[var(--suggested-text)]"
+        className="border-(--suggested-border) bg-(--suggested-bg) text-(--suggested-text)"
       >
         <Sparkles className="mr-1 h-3 w-3" />
         Sistema
@@ -26,7 +26,7 @@ export function BadgeStatus({ assignedBy, validationStatus }: BadgeStatusProps) 
   return (
     <Badge
       variant="outline"
-      className="border-[var(--confirmed-border)] bg-[var(--confirmed-bg)] text-[var(--confirmed-text)]"
+      className="border-(--confirmed-border) bg-(--confirmed-bg) text-(--confirmed-text)"
     >
       <UserCheck className="mr-1 h-3 w-3" />
       Manual

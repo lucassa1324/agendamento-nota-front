@@ -3,11 +3,21 @@
 import { addDays, format, parseISO, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, Loader2, PlayCircle, Save, Sparkles, UserCheck } from "lucide-react";
+import { CalendarOff, CheckCircle2, Loader2, PlayCircle, Save, Sparkles, UserCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { BadgeStatus } from "@/components/admin/badge-status";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { useAppointments } from "@/hooks/use-appointments";
@@ -51,6 +61,13 @@ export function EmployeeAgendaView() {
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
   const [savingNotesId, setSavingNotesId] = useState<string | null>(null);
+  const [absenceDialogOpen, setAbsenceDialogOpen] = useState(false);
+  const [reportingAbsence, setReportingAbsence] = useState(false);
+  const [absenceStartDate, setAbsenceStartDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [absenceStartTime, setAbsenceStartTime] = useState("08:00");
+  const [absenceEndDate, setAbsenceEndDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [absenceEndTime, setAbsenceEndTime] = useState("18:00");
+  const [absenceReason, setAbsenceReason] = useState("");
 
   useEffect(() => {
     prefetchNextDays(2);
@@ -170,6 +187,55 @@ export function EmployeeAgendaView() {
     }
   };
 
+  const handleReportAbsence = async () => {
+    if (!studio?.id) return;
+
+    const startTime = new Date(`${absenceStartDate}T${absenceStartTime}:00`);
+    const endTime = new Date(`${absenceEndDate}T${absenceEndTime}:00`);
+
+    if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+      toast({
+        title: "Período inválido",
+        description: "Preencha data e horário de início/fim corretamente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (startTime.getTime() >= endTime.getTime()) {
+      toast({
+        title: "Período inválido",
+        description: "O horário de início deve ser anterior ao horário final.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setReportingAbsence(true);
+      const result = await appointmentService.reportMyAbsence(studio.id, {
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        reason: absenceReason.trim() || undefined,
+      });
+      await refetch();
+      setAbsenceDialogOpen(false);
+      toast({
+        title: "Ausência aplicada",
+        description: `Realocados: ${result.summary.rescued} • Sem vaga: ${result.summary.orphaned}.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Não foi possível bloquear sua agenda",
+        description:
+          error instanceof Error ? error.message : "Tente novamente em instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setReportingAbsence(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -188,6 +254,16 @@ export function EmployeeAgendaView() {
               Sem próximos clientes no momento.
             </p>
           )}
+          <div>
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() => setAbsenceDialogOpen(true)}
+            >
+              <CalendarOff className="h-4 w-4" />
+              Bloquear minha agenda
+            </Button>
+          </div>
         </CardHeader>
       </Card>
 
@@ -434,6 +510,87 @@ export function EmployeeAgendaView() {
           )}
         </AnimatePresence>
       )}
+
+      <Dialog open={absenceDialogOpen} onOpenChange={setAbsenceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bloquear minha agenda</DialogTitle>
+            <DialogDescription>
+              Esse bloqueio afeta somente seus horários. A agenda da empresa continua aberta para os demais profissionais.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="absence-start-date">Data início</Label>
+                <Input
+                  id="absence-start-date"
+                  type="date"
+                  value={absenceStartDate}
+                  onChange={(event) => setAbsenceStartDate(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="absence-start-time">Hora início</Label>
+                <Input
+                  id="absence-start-time"
+                  type="time"
+                  value={absenceStartTime}
+                  onChange={(event) => setAbsenceStartTime(event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="absence-end-date">Data fim</Label>
+                <Input
+                  id="absence-end-date"
+                  type="date"
+                  value={absenceEndDate}
+                  onChange={(event) => setAbsenceEndDate(event.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="absence-end-time">Hora fim</Label>
+                <Input
+                  id="absence-end-time"
+                  type="time"
+                  value={absenceEndTime}
+                  onChange={(event) => setAbsenceEndTime(event.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="absence-reason">Motivo (opcional)</Label>
+              <Input
+                id="absence-reason"
+                value={absenceReason}
+                onChange={(event) => setAbsenceReason(event.target.value)}
+                placeholder="Ex.: consulta médica"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAbsenceDialogOpen(false)}
+              disabled={reportingAbsence}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleReportAbsence} disabled={reportingAbsence}>
+              {reportingAbsence ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Aplicando...
+                </>
+              ) : (
+                "Confirmar bloqueio"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

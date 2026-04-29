@@ -7,7 +7,8 @@ export type AppointmentStatus =
   | "ONGOING"
   | "COMPLETED"
   | "CANCELLED"
-  | "POSTPONED";
+  | "POSTPONED"
+  | "ORPHANED";
 
 export interface CreateAppointmentItemDTO {
   serviceId: string;
@@ -75,7 +76,7 @@ export interface Appointment {
   serviceId: string;
   scheduledAt: string;
   status: AppointmentStatus;
-  assignedBy?: "system" | "staff";
+  assignedBy?: "system" | "staff" | "system_rescue";
   validationStatus?: "suggested" | "confirmed";
   priorityScore?: number;
   version?: number;
@@ -118,6 +119,31 @@ export interface RedistributeSummary {
 export interface RedistributeResponse {
   success: boolean;
   summary: RedistributeSummary;
+}
+
+export interface StaffAbsenceDTO {
+  staffId: string;
+  startTime: string;
+  endTime: string;
+  reason?: string;
+}
+
+export interface MyStaffAbsenceDTO {
+  startTime: string;
+  endTime: string;
+  reason?: string;
+}
+
+export interface StaffAbsenceRescueSummary {
+  absenceId: string;
+  scanned: number;
+  rescued: number;
+  orphaned: number;
+}
+
+export interface StaffAbsenceRescueResponse {
+  success: boolean;
+  summary: StaffAbsenceRescueSummary;
 }
 
 type RichError = Error & {
@@ -312,6 +338,55 @@ class AppointmentService {
           startDate,
           endDate,
         }),
+      },
+    );
+    return this.handleResponse(response);
+  }
+
+  async reportStaffAbsence(
+    companyId: string,
+    data: StaffAbsenceDTO,
+  ): Promise<StaffAbsenceRescueResponse> {
+    const response = await customFetch(
+      `${this.baseUrl}/admin/company/${companyId}/staff-absences`,
+      {
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify(data),
+      },
+    );
+    return this.handleResponse(response);
+  }
+
+  async reportMyAbsence(
+    companyId: string,
+    data: MyStaffAbsenceDTO,
+  ): Promise<StaffAbsenceRescueResponse> {
+    const response = await customFetch(
+      `${this.baseUrl}/my/company/${companyId}/staff-absences`,
+      {
+        method: "POST",
+        credentials: "include",
+        body: JSON.stringify(data),
+      },
+    );
+    return this.handleResponse(response);
+  }
+
+  async listExceptions(
+    companyId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<Appointment[]> {
+    const params = new URLSearchParams();
+    if (startDate) params.set("startDate", startDate);
+    if (endDate) params.set("endDate", endDate);
+    const response = await customFetch(
+      `${this.baseUrl}/admin/company/${companyId}/exceptions${params.toString() ? `?${params.toString()}` : ""}`,
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
       },
     );
     return this.handleResponse(response);

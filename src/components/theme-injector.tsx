@@ -726,6 +726,28 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
         }
       }
 
+      // 1.1. Mantemos regras tipográficas em um <style> dinâmico no <head>,
+      // evitando nós JSX <link>/<style> que podem ser movidos pelo navegador.
+      let styleTag = doc.getElementById(
+        "dynamic-theme-overrides",
+      ) as HTMLStyleElement | null;
+      if (!styleTag) {
+        styleTag = doc.createElement("style");
+        styleTag.id = "dynamic-theme-overrides";
+        doc.head.appendChild(styleTag);
+      }
+      styleTag.textContent = `
+        h1, h2, .font-serif, .font-title {
+          font-family: ${fonts.headingFont ? `"${fonts.headingFont}", serif` : "inherit"};
+        }
+        h3, h4, .font-subtitle {
+          font-family: ${fonts.subtitleFont ? `"${fonts.subtitleFont}", sans-serif` : "inherit"};
+        }
+        body, p, span, li, button, .font-sans, .font-body {
+          font-family: ${fonts.bodyFont ? `"${fonts.bodyFont}", sans-serif` : "inherit"};
+        }
+      `;
+
       // Fonts Variables
       if (fonts.bodyFont) {
         root.style.setProperty(
@@ -826,77 +848,5 @@ export function ThemeInjector({ iframeRef }: ThemeInjectorProps) {
     }
   }, [colors, fonts, sectionStyles, isFixedColorPage, iframeRef]);
 
-  if (isFixedColorPage || !colors || !fonts) return null;
-
-  // Geramos as URLs do Google Fonts
-  const fontFamilies = new Set<string>();
-  const defaultFonts = ["Inter", "Playfair Display"];
-
-  if (fonts.headingFont && !defaultFonts.includes(fonts.headingFont))
-    fontFamilies.add(fonts.headingFont.replace(/\s+/g, "+"));
-  if (fonts.subtitleFont && !defaultFonts.includes(fonts.subtitleFont))
-    fontFamilies.add(fonts.subtitleFont.replace(/\s+/g, "+"));
-  if (fonts.bodyFont && !defaultFonts.includes(fonts.bodyFont))
-    fontFamilies.add(fonts.bodyFont.replace(/\s+/g, "+"));
-
-  // Adicionar fontes extras coletadas
-  if (fonts.extraFonts) {
-    fonts.extraFonts.forEach((font) => {
-      if (font && !defaultFonts.includes(font)) {
-        fontFamilies.add(font.replace(/\s+/g, "+"));
-      }
-    });
-  }
-
-  const familiesArray = Array.from(fontFamilies);
-  const googleFontsUrl =
-    familiesArray.length > 0
-      ? `https://fonts.googleapis.com/css2?${familiesArray.map((f) => `family=${f}:wght@400;500;600;700;800;900`).join("&")}&display=swap`
-      : "";
-
-  return (
-    <>
-      {googleFontsUrl && <link rel="stylesheet" href={googleFontsUrl} />}
-      <style>
-        {`
-        :root {
-          /* Fonts */
-          ${fonts.bodyFont ? `--font-body: "${fonts.bodyFont}", sans-serif; --font-sans: "${fonts.bodyFont}", sans-serif;` : ""}
-          ${fonts.headingFont ? `--font-title: "${fonts.headingFont}", serif; --font-serif: "${fonts.headingFont}", serif;` : ""}
-          ${fonts.subtitleFont ? `--font-subtitle: "${fonts.subtitleFont}", sans-serif;` : ""}
-          
-          /* Colors (Mapped to Shadcn/UI variables) */
-          ${colors.primary ? `--primary: ${colors.primary}; --ring: ${colors.primary};` : ""}
-          ${colors.secondary ? `--secondary: ${colors.secondary}; --accent: ${colors.secondary}; --muted: ${colors.secondary}1a;` : ""}
-          ${colors.background ? `--background: ${colors.background}; --card: ${colors.background}; --card-bg: ${colors.background}; --popover: ${colors.background};` : ""}
-          ${colors.text ? `--foreground: ${colors.text}; --card-foreground: ${colors.text}; --popover-foreground: ${colors.text}; --muted-foreground: ${colors.text}cc;` : ""}
-          --suggested-bg: #eef6ff;
-          --suggested-border: #7aa2d8;
-          --suggested-text: #1d4f91;
-          --confirmed-bg: #edf7ef;
-          --confirmed-border: #74b281;
-          --confirmed-text: #1f5f2f;
-          
-          /* Section Specific Styles */
-          ${Object.entries(sectionStyles)
-            .map(([key, value]) => `${key}: ${value};`)
-            .join("\n          ")}
-        }
-        
-        /* Font Family Overrides */
-        h1, h2, .font-serif, .font-title {
-          font-family: ${fonts.headingFont ? `"${fonts.headingFont}", serif` : "inherit"};
-        }
-
-        h3, h4, .font-subtitle {
-          font-family: ${fonts.subtitleFont ? `"${fonts.subtitleFont}", sans-serif` : "inherit"};
-        }
-        
-        body, p, span, li, button, .font-sans, .font-body {
-          font-family: ${fonts.bodyFont ? `"${fonts.bodyFont}", sans-serif` : "inherit"};
-        }
-      `}
-      </style>
-    </>
-  );
+  return null;
 }

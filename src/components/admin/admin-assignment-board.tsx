@@ -13,6 +13,7 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
+  AlertTriangle,
   ArrowRightLeft,
   ChevronLeft,
   ChevronRight,
@@ -116,6 +117,7 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [monthAppointments, setMonthAppointments] = useState<Appointment[]>([]);
   const [unassigned, setUnassigned] = useState<Appointment[]>([]);
+  const [exceptions, setExceptions] = useState<Appointment[]>([]);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [professionals, setProfessionals] = useState<StaffMember[]>([]);
   const [assigningId, setAssigningId] = useState<string | null>(null);
@@ -213,9 +215,10 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
         customFetch(`/api/staff/company/${studio.id}`, { method: "GET" }),
       ]);
 
-      const [allAppointments, monthRows] = await Promise.all([
+      const [allAppointments, monthRows, exceptionRows] = await Promise.all([
         appointmentService.listByCompanyAdmin(studio.id, start, end),
         appointmentService.listByCompanyAdmin(studio.id, monthStart, monthEnd),
+        appointmentService.listExceptions(studio.id, monthStart, monthEnd),
       ]);
 
       if (!staffResponse.ok) {
@@ -249,6 +252,14 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
       setProfessionals(professionalRows);
       setUnassigned(
         unassignedRows.filter((item) => item.scheduledAt.startsWith(selectedDate)),
+      );
+      setExceptions(
+        exceptionRows
+          .filter((item) => item.status === "ORPHANED")
+          .sort(
+            (a, b) =>
+              new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime(),
+          ),
       );
       setAssignByAppointment((current) => {
         const next: AssignState = { ...current };
@@ -699,6 +710,53 @@ export function AdminAssignmentBoard({ mode = "assignment" }: AdminAssignmentBoa
               </span>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-amber-300/70 bg-amber-50/40">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base text-amber-900">
+            <AlertTriangle className="h-4 w-4" />
+            Exceções - Remarcar Manualmente ({exceptions.length})
+          </CardTitle>
+          <p className="text-sm text-amber-900/80">
+            Agendamentos sem capacidade após ausência ficam aqui para ação da secretaria.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {exceptions.length === 0 && (
+            <p className="text-sm text-amber-900/80">
+              Nenhuma exceção no período selecionado.
+            </p>
+          )}
+          {exceptions.slice(0, 8).map((appointment) => (
+            <div
+              key={`exception-${appointment.id}`}
+              className="flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-white/80 p-2"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-amber-950">
+                  {appointment.customerName}
+                </p>
+                <p className="truncate text-xs text-amber-900/80">
+                  {appointment.serviceNameSnapshot} •{" "}
+                  {format(parseISO(appointment.scheduledAt), "dd/MM HH:mm")}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setSelectedCalendarAppointment(appointment)}
+              >
+                Tratar
+              </Button>
+            </div>
+          ))}
+          {exceptions.length > 8 && (
+            <p className="text-xs text-amber-900/80">
+              Mostrando 8 de {exceptions.length} exceções.
+            </p>
+          )}
         </CardContent>
       </Card>
 

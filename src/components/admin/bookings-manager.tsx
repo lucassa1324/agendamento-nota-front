@@ -73,6 +73,7 @@ const mapApiToBooking = (api: Appointment): Booking => {
       COMPLETED: "concluído",
       CANCELLED: "cancelado",
       POSTPONED: "pendente", // Ou criar um novo status se necessário
+      ORPHANED: "pendente",
     };
     return map[status] || "pendente";
   };
