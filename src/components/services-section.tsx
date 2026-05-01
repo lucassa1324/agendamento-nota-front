@@ -32,7 +32,7 @@ import {
   Utensils,
   Wind,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { SectionBackground } from "@/components/admin/site_editor/components/SectionBackground";
 import type { SiteConfigData } from "@/components/admin/site_editor/hooks/use-site-editor";
 import { Card, CardContent } from "@/components/ui/card";
@@ -124,6 +124,27 @@ export function ServicesSection() {
   const { studio, isLoading } = useStudio();
   const [isMounted, setIsMounted] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
+  // Determina quais serviços deverão ser mostrados na Home
+  const displayedServices = useMemo(() => {
+    // Primeiro tenta usar serviços explicitamente marcados
+    const marked = services?.filter((s) => s.showOnHome);
+    if (marked?.length) {
+      // Se houver serviços marcados, exibe todos (permite mais de 4)
+      return marked;
+    }
+    // Caso nenhum serviço esteja marcado, seleciona até 4 aleatórios
+    const list = [...services];
+    // Embaralha (Fisher‑Yates)
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    // Marca os aleatórios como exibidos (não persiste)
+    const randomSelection = list.slice(0, 4).map(s => ({ ...s, showOnHome: true }));
+    return randomSelection;
+  }, [services]);
+  // Não retorna mais null; a seção será exibida com até 4 serviços.
+
   const [settings, setSettings] = useState<ServicesSettings | null>(null);
   const [highlightedElement, setHighlightedElement] = useState<string | null>(
     null,
@@ -596,7 +617,7 @@ export function ServicesSection() {
         )}
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {services?.map((service: Service, index: number) => {
+          {displayedServices?.map((service: Service, index: number) => {
             // Usa o ícone definido no serviço ou tenta inferir pelo nome
             let Icon = Sparkles;
 

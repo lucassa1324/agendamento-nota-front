@@ -269,7 +269,11 @@ export function ServicesManager() {
   }>({ secondaryUnit: "", conversionFactor: 1 });
   const [formData, setFormData] = useState<Partial<Service>>({});
   const [errors, setErrors] = useState<Record<string, boolean>>({});
-  const [conflictSearch, setConflictSearch] = useState("");
+  const [serviceSearchTerm, setServiceSearchTerm] = useState<string>("");
+  const [conflictSearch, setConflictSearch] = useState<string>("");
+  const filteredServices = services.filter((s) =>
+    s.name?.toLowerCase().includes(serviceSearchTerm.toLowerCase())
+);
   const { toast } = useToast();
   const params = useParams();
   const { studio, isLoading: studioLoading } = useStudio();
@@ -1904,97 +1908,108 @@ export function ServicesManager() {
         </DialogContent>
       </Dialog>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {isLoading ? (
-          <div className="col-span-full py-12 text-center text-muted-foreground">
-            Carregando serviços...
-          </div>
-        ) : services.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-muted-foreground">
-            Nenhum serviço cadastrado.
-          </div>
-        ) : (
-          services.map((service, index) => (
-            <Card
-              key={service.id ? `${service.id}-${index}` : `service-${index}`}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="font-serif text-lg font-semibold mb-1">
-                      {service.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {service.description}
-                    </p>
-                    <div className="flex items-center gap-4 text-sm">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {service.duration} min
-                      </span>
-                      <span className="text-accent font-semibold">
-                        R${" "}
-                        {(typeof service.price === "string"
-                          ? parseFloat(service.price)
-                          : service.price
-                        ).toFixed(2)}
-                      </span>
+      <div className="flex flex-col space-y-4">
+        <div className="flex items-center space-x-2 w-full max-w-md">
+          <Search className="w-5 h-5 text-muted-foreground" />
+          <Input
+            placeholder="Pesquisar serviços..."
+            value={serviceSearchTerm}
+            onChange={(e) => setServiceSearchTerm(e.target.value)}
+            className="flex-1"
+          />
+        </div>
+        <div className="grid md:grid-cols-2 gap-4">
+          {isLoading ? (
+            <div className="col-span-full py-12 text-center text-muted-foreground">
+              Carregando serviços...
+            </div>
+          ) : services.length === 0 ? (
+            <div className="col-span-full py-12 text-center text-muted-foreground">
+              Nenhum serviço cadastrado.
+            </div>
+          ) : (
+            filteredServices.map((service, index) => (
+              <Card
+                key={service.id ? `${service.id}-${index}` : `service-${index}`}
+              >
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <h3 className="font-serif text-lg font-semibold mb-1">
+                        {service.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        {service.description}
+                      </p>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {service.duration} min
+                        </span>
+                        <span className="text-accent font-semibold">
+                          R${" "}
+                          {(typeof service.price === "string"
+                            ? parseFloat(service.price)
+                            : service.price
+                          ).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-muted-foreground hover:text-accent hover:bg-accent/10"
+                            >
+                              <HelpCircle className="w-4 h-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-62.5">
+                            <p className="text-xs">
+                              <strong>Configuração de Produtos:</strong> Defina
+                              quais itens do estoque são consumidos
+                              automaticamente ao concluir este serviço. Você pode
+                              configurar quantidades fracionadas (ex: gramas ou
+                              ml).
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleOpenProductModal(service)}
+                        className="text-accent hover:text-accent hover:bg-accent/10"
+                        title="Configurar Produtos"
+                      >
+                        <Package className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(service)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteClick(service)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-muted-foreground hover:text-accent hover:bg-accent/10"
-                          >
-                            <HelpCircle className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-62.5">
-                          <p className="text-xs">
-                            <strong>Configuração de Produtos:</strong> Defina
-                            quais itens do estoque são consumidos
-                            automaticamente ao concluir este serviço. Você pode
-                            configurar quantidades fracionadas (ex: gramas ou
-                            ml).
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleOpenProductModal(service)}
-                      className="text-accent hover:text-accent hover:bg-accent/10"
-                      title="Configurar Produtos"
-                    >
-                      <Package className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(service)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDeleteClick(service)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
     </div>
   );
