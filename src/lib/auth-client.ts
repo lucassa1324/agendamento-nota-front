@@ -52,6 +52,10 @@ const getBaseDomain = () => {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
     // Se estivermos no domínio oficial, forçamos o uso dele como base
+    // Suporte para staging e produção
+    if (host.endsWith("staging.aurasistema.com.br")) {
+      return "staging.aurasistema.com.br";
+    }
     if (host.endsWith("aurasistema.com.br")) {
       return "aurasistema.com.br";
     }
@@ -106,7 +110,10 @@ export const authClient = createAuthClient({
         try {
           const clonedResponse = context.response.clone();
           const text = await clonedResponse.text();
-          console.error(`>>> [AUTH_CLIENT] ERROR RESPONSE (${context.response.status}):`, text);
+          console.error(
+            `>>> [AUTH_CLIENT] ERROR RESPONSE (${context.response.status}):`,
+            text,
+          );
         } catch (e) {
           console.error(">>> [AUTH_CLIENT] Erro ao ler resposta de erro:", e);
         }
@@ -196,9 +203,10 @@ export const getSessionToken = async (): Promise<string | null> => {
   const currentPromise = (async () => {
     try {
       // No client-side, usamos URL relativa para evitar problemas de CORS em subdomínios
-      const fetchUrl = typeof window !== "undefined"
-        ? "/api-proxy/api/auth/session"
-        : `${AUTH_BASE_URL}/api-proxy/api/auth/session`;
+      const fetchUrl =
+        typeof window !== "undefined"
+          ? "/api-proxy/api/auth/session"
+          : `${AUTH_BASE_URL}/api-proxy/api/auth/session`;
 
       console.log(`>>> [AUTH_CLIENT] Buscando sessão em: ${fetchUrl}`);
 
