@@ -1,17 +1,36 @@
 import { type NextRequest, NextResponse } from "next/server";
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const host = request.headers.get("host") || "";
 
   // Define os domínios base que não devem ser tratados como slugs
   let baseDomain = process.env.NEXT_PUBLIC_BASE_DOMAIN || "localhost:3000";
 
   // Prioriza o domínio oficial em produção se o host atual terminar com ele
-  if (host.endsWith("aurasistema.com.br")) {
+  // Suporte para staging e produção
+  if (host.endsWith("staging.aurasistema.com.br")) {
+    baseDomain = "staging.aurasistema.com.br";
+  } else if (host.endsWith("aurasistema.com.br")) {
     baseDomain = "aurasistema.com.br";
   }
 
-  const baseDomains = [baseDomain, `www.${baseDomain}`, "app.aurasistema.com.br"];
+  const baseDomains = [
+    baseDomain,
+    `www.${baseDomain}`,
+    "app.aurasistema.com.br",
+    "app.staging.aurasistema.com.br",
+  ];
+
+  // Redirecionamento automático do subdomínio 'app' para /admin
+  if (
+    (host === "app.aurasistema.com.br" ||
+      host === "app.staging.aurasistema.com.br") &&
+    request.nextUrl.pathname === "/"
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/admin";
+    return NextResponse.redirect(url);
+  }
 
   // Verifica se o host atual é um dos domínios base
   const isBaseDomain = baseDomains.includes(host);

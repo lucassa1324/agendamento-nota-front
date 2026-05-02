@@ -82,6 +82,8 @@ export default function Home({
       // Se for o subdomínio 'app' do domínio base ou localhost, redireciona para /admin
       const isAppSubdomain =
         hostname === `app.${BASE_DOMAIN}` ||
+        hostname === "app.aurasistema.com.br" ||
+        hostname === "app.staging.aurasistema.com.br" ||
         hostname === "app.localhost" ||
         (hostname.startsWith("app.") && hostname.includes(".localhost"));
 
