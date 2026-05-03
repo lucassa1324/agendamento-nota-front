@@ -815,7 +815,7 @@ export function AdminCalendar({
                           isConflicting && "cursor-not-allowed",
                         )}
                       >
-                        {service.name} - R$ {service.price}
+                        {service.name} - R$ {Number(service.price || 0).toFixed(2).replace('.', ',')}
                         {isConflicting && (
                           <span className="text-[10px] text-destructive ml-2 font-normal">
                             (Conflito)

@@ -204,7 +204,7 @@ export function AdminBookingFlow({
     return {
       id: selectedServices.map((s) => s.id).join(", "), // Adicionado espaço após vírgula para consistência UUID
       name: selectedServices.map((s) => s.name).join(", "),
-      price: selectedServices.reduce((acc, s) => acc + s.price, 0),
+      price: selectedServices.reduce((acc, s) => acc + Number(s.price || 0), 0),
       duration: selectedServices.reduce(
         (acc, s) => acc + parseDuration(s.duration),
         0,
@@ -311,7 +311,7 @@ export function AdminBookingFlow({
                   <span className="font-semibold">{totalService.name}</span>
                   <span className="text-muted-foreground">
                     {" "}
-                    - R$ {totalService.price}
+                    - R$ {Number(totalService.price || 0).toFixed(2).replace('.', ',')}
                   </span>
                   <div className="text-xs text-muted-foreground mt-1">
                     Este procedimento ocupará{" "}
