@@ -3,10 +3,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   // reactCompiler: true,
+  distDir: ".next",
   async rewrites() {
     const configuredTargetUrl =
       process.env.API_PROXY_TARGET_URL || "http://localhost:3001";
     const targetUrl = configuredTargetUrl.replace("127.0.0.1", "localhost");
+    console.log(`>>> [NEXT_CONFIG] API_PROXY_TARGET_URL: ${targetUrl}`);
     return [
       // 0. Compatibilidade: alguns fluxos/auth clients podem bater direto em /api/auth/*
       // Mantemos o proxy para o backend de staging/produção.
