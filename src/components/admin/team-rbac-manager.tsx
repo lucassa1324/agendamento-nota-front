@@ -9,9 +9,8 @@ import {
   Trash2,
   UserCog,
   Users,
-  XCircle,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Loader2, XCircle } from "lucide-react";
 import { useStudio } from "@/context/studio-context";
 import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/auth-client";
@@ -89,6 +89,14 @@ export function TeamRbacManager() {
     type: "success" | "error" | "loading";
     message: string;
   } | null>(null);
+
+  // ── Estado de validação de e-mail ──────────────────────────────────────────
+  const [emailValidation, setEmailValidation] = useState<{
+    isValidating: boolean;
+    error?: string;
+    lastCheckedEmail?: string;
+  }>({ isValidating: false });
+  const emailValidationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedMember = useMemo(
     () => members.find((member) => member.id === selectedId) ?? null,
@@ -181,6 +189,71 @@ export function TeamRbacManager() {
     });
   };
 
+  // ── Validação de disponibilidade de e-mail ───────────────────────────────────
+  // Consulta o backend antes de enviar o convite para detectar:
+  //  - E-mail já vinculado a outro estúdio
+  //  - E-mail já cadastrado no mesmo estúdio
+  const validateEmailAvailability = async (
+    email: string,
+    companyId: string,
+    excludeStaffId?: string,
+  ): Promise<{
+    available: boolean;
+    errorCode?: "IN_USE_OTHER_STUDIO" | "IN_USE_SAME_STUDIO" | "INVALID_FORMAT";
+    message?: string;
+  }> => {
+    // Validação de formato no frontend (rápida, sem requisição)
+    const trimmedEmail = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      return {
+        available: false,
+        errorCode: "INVALID_FORMAT",
+        message: "Formato de e-mail inválido.",
+      };
+    }
+
+    try {
+      const normalizedEmail = trimmedEmail.toLowerCase();
+      const url = new URL(`${API_BASE_URL}/api/staff/validate-email`);
+      url.searchParams.set("email", normalizedEmail);
+      url.searchParams.set("companyId", companyId);
+      if (excludeStaffId) {
+        url.searchParams.set("excludeStaffId", excludeStaffId);
+      }
+
+      const response = await customFetch(url.toString(), { method: "GET" });
+
+      if (!response.ok) {
+        const errorData = (await response.json().catch(() => ({}))) as {
+          code?: string;
+          error?: string;
+          details?: string;
+        };
+
+        if (errorData.code === "EMAIL_ALREADY_IN_USE" || errorData.code === "EMAIL_ALREADY_EXISTS_IN_COMPANY") {
+          return {
+            available: false,
+            errorCode: errorData.code === "EMAIL_ALREADY_IN_USE" ? "IN_USE_OTHER_STUDIO" : "IN_USE_SAME_STUDIO",
+            message:
+              "Este e-mail já está cadastrado ou vinculado a outro estabelecimento. Por favor, utilize um endereço de e-mail diferente.",
+          };
+        }
+
+        // Outro erro de validação
+        return {
+          available: false,
+          message: errorData.error || "Não foi possível validar o e-mail.",
+        };
+      }
+
+      return { available: true };
+    } catch {
+      // Em caso de erro de rede, deixa o backend validar — assume disponível
+      return { available: true };
+    }
+  };
+
   const handleInvite = async () => {
     if (!inviteName.trim() || !inviteEmail.trim()) {
       toast.error("Preencha nome e e-mail do colaborador.");
@@ -194,6 +267,17 @@ export function TeamRbacManager() {
 
     const name = inviteName.trim();
     const email = inviteEmail.trim();
+
+    // ── Validação prévia de e-mail antes de enviar o convite ──────────────────
+    setEmailValidation({ isValidating: true });
+    const validation = await validateEmailAvailability(email, studio.id);
+    setEmailValidation({ isValidating: false });
+
+    if (!validation.available && validation.message) {
+      toast.error(validation.message);
+      return;
+    }
+
     const optimisticId = `temp-${Date.now()}`;
     setIsInviting(true);
 
@@ -283,6 +367,36 @@ export function TeamRbacManager() {
     } finally {
       setIsInviting(false);
     }
+  };
+
+  // Validação de e-mail em tempo real na edição do colaborador
+  const handleEmailChange = async (newEmail: string) => {
+    updateSelectedMember({ email: newEmail });
+
+    // Limpa o timer anterior (debounce)
+    if (emailValidationTimeoutRef.current) {
+      clearTimeout(emailValidationTimeoutRef.current);
+    }
+
+    // Se o e-mail não mudou (apenas espaços), não valida
+    if (!studio?.id || !selectedMember) return;
+
+    emailValidationTimeoutRef.current = setTimeout(async () => {
+      if (!studio?.id || !selectedMember) return;
+
+      setEmailValidation({ isValidating: true });
+      const validation = await validateEmailAvailability(
+        newEmail,
+        studio.id,
+        selectedMember.id.startsWith("temp-") ? undefined : selectedMember.id,
+      );
+
+      setEmailValidation({
+        isValidating: false,
+        error: validation.available ? undefined : validation.message,
+        lastCheckedEmail: newEmail,
+      });
+    }, 500); // 500ms de debounce
   };
 
   const handleSaveMember = async () => {
@@ -670,10 +784,28 @@ export function TeamRbacManager() {
                   </div>
                   <div className="space-y-2">
                     <Label>E-mail</Label>
-                    <Input
-                      value={selectedMember.email}
-                      onChange={(event) => updateSelectedMember({ email: event.target.value })}
-                    />
+                    <div className="relative">
+                      <Input
+                        value={selectedMember.email}
+                        onChange={(event) => handleEmailChange(event.target.value)}
+                        className={cn(
+                          emailValidation.error && "border-red-500 focus-visible:ring-red-500",
+                        )}
+                      />
+                      {emailValidation.isValidating && (
+                        <div className="absolute right-3 top-2.5">
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        </div>
+                      )}
+                      {emailValidation.error && !emailValidation.isValidating && (
+                        <div className="absolute right-3 top-2.5">
+                          <XCircle className="h-4 w-4 text-red-500" />
+                        </div>
+                      )}
+                    </div>
+                    {emailValidation.error && (
+                      <p className="text-xs text-red-500">{emailValidation.error}</p>
+                    )}
                   </div>
                 </div>
 

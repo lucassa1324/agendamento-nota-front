@@ -63,15 +63,23 @@ export async function customFetch(url: string, options: RequestInit = {}) {
       !url.startsWith(proxyPrefix) &&
       !url.startsWith(relativeProxyPrefix)
     ) {
-      // No client-side, preferimos caminhos relativos para evitar problemas de CORS com subdomínios
-      if (
-        typeof window !== "undefined" &&
-        API_BASE_URL.includes(window.location.origin)
-      ) {
-        const path = url.startsWith("/") ? url : `/${url}`;
-        fullUrl = `/api-proxy${path}`;
+      // No client-side, usar proxy para evitar CORS quando as origens forem diferentes
+      if (typeof window !== "undefined") {
+        const isSameOrigin = API_BASE_URL.includes(window.location.origin);
+        if (!isSameOrigin) {
+          // Origens diferentes: usar proxy do Next.js
+          const path = url.startsWith("/") ? url : `/${url}`;
+          fullUrl = `/api-proxy${path}`;
+        } else {
+          // Mesma origem: pode usar direto
+          const baseUrl = API_BASE_URL.endsWith("/")
+            ? API_BASE_URL.slice(0, -1)
+            : API_BASE_URL;
+          const path = url.startsWith("/") ? url : `/${url}`;
+          fullUrl = `${baseUrl}${path}`;
+        }
       } else {
-        // Garantir que não duplique a barra
+        // Server-side: usa a URL base diretamente
         const baseUrl = API_BASE_URL.endsWith("/")
           ? API_BASE_URL.slice(0, -1)
           : API_BASE_URL;

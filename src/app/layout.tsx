@@ -8,6 +8,7 @@ import { LayoutClientWrapper } from "@/components/layout-client-wrapper";
 import { QueryProvider } from "@/components/query-provider";
 import { ThemeInjectorClient } from "@/components/theme-injector-client";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "@/components/ui/sonner";
 import { StudioProvider } from "@/context/studio-context";
 import { API_BASE_URL } from "@/lib/auth-client";
 import "./globals.css";
@@ -79,6 +80,7 @@ export default async function RootLayout({
             <FaviconUpdater />
             <LayoutClientWrapper>{children}</LayoutClientWrapper>
             <Toaster />
+            <SonnerToaster />
             <Analytics />
           </QueryProvider>
         </StudioProvider>
