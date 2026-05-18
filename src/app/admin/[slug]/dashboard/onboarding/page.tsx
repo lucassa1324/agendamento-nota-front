@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL, useSession } from "@/lib/auth-client";
 import { businessService } from "@/lib/business-service";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const WEEK_DAYS = [
   { value: "1", label: "Segunda-feira" },
@@ -31,7 +32,7 @@ export default function OnboardingPage() {
   const [serviceName, setServiceName] = useState("Atendimento Padrão");
   const [servicePrice, setServicePrice] = useState("80");
   const [serviceDuration, setServiceDuration] = useState("60");
-  const [selectedDay, setSelectedDay] = useState("1");
+  const [selectedDays, setSelectedDays] = useState<string[]>(["1"]);
   const [openTime, setOpenTime] = useState("09:00");
   const [lunchStart, setLunchStart] = useState("12:00");
   const [lunchEnd, setLunchEnd] = useState("13:00");
@@ -83,7 +84,7 @@ export default function OnboardingPage() {
       }
 
       const weekly = WEEK_DAYS.map((day) =>
-        day.value === selectedDay
+        selectedDays.includes(day.value)
           ? {
               dayOfWeek: day.value,
               status: "OPEN" as const,
@@ -190,16 +191,6 @@ export default function OnboardingPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="service-price">Preço (R$)</Label>
-            <Input
-              id="service-price"
-              type="number"
-              min={1}
-              value={servicePrice}
-              onChange={(e) => setServicePrice(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
             <Label htmlFor="service-duration">Duração (min)</Label>
             <Input
               id="service-duration"
@@ -211,19 +202,37 @@ export default function OnboardingPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="selected-day">Dia principal</Label>
-            <select
-              id="selected-day"
-              value={selectedDay}
-              onChange={(e) => setSelectedDay(e.target.value)}
-              className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-            >
+            <Label htmlFor="service-price">Preço (R$)</Label>
+            <Input
+              id="service-price"
+              type="number"
+              min={1}
+              value={servicePrice}
+              onChange={(e) => setServicePrice(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2 md:col-span-3">
+            <Label>Dias de funcionamento</Label>
+            <div className="flex flex-wrap gap-2">
               {WEEK_DAYS.map((day) => (
-                <option key={day.value} value={day.value}>
+                <label
+                  key={day.value}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors text-sm"
+                >
+                  <Checkbox
+                    checked={selectedDays.includes(day.value)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedDays([...selectedDays, day.value]);
+                      } else {
+                        setSelectedDays(selectedDays.filter((d) => d !== day.value));
+                      }
+                    }}
+                  />
                   {day.label}
-                </option>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
         </CardContent>
       </Card>
