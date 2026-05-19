@@ -2,7 +2,7 @@
 
 import { CheckCircle2, Loader2, MailWarning, ShieldAlert, UserCheck } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,7 +38,7 @@ type InviteAcceptResponse = {
 
 const STAFF_ENDPOINT = `${API_BASE_URL}/api/staff`;
 
-export default function InviteCollaboratorPage() {
+function InviteCollaboratorPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, isPending } = useSession();
@@ -246,5 +246,17 @@ export default function InviteCollaboratorPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-muted/20 p-4 md:p-8 flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <InviteCollaboratorPage />
+    </Suspense>
   );
 }

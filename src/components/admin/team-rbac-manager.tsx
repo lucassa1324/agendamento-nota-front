@@ -21,7 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useStudio } from "@/context/studio-context";
 import { customFetch } from "@/lib/api-client";
-import { API_BASE_URL } from "@/lib/auth-client";
+import { API_BASE_URL, useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 type StaffMember = {
@@ -35,6 +35,7 @@ type StaffMember = {
   calendarColor: string;
   commissionRate: number;
   serviceIds: string[];
+  userId?: string;
 };
 
 type ServiceItem = {
@@ -69,6 +70,9 @@ const normalizeMemberColor = (value: unknown, fallback: string) => {
 
 export function TeamRbacManager() {
   const { studio } = useStudio();
+  const { data: session } = useSession();
+  const isOwnerAccount = (member: StaffMember) =>
+    !!member.userId && member.userId === studio?.ownerId;
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [members, setMembers] = useState<StaffMember[]>([]);
@@ -123,6 +127,7 @@ export function TeamRbacManager() {
             ),
             commissionRate: Number(item.commissionRate ?? 0),
             serviceIds: Array.isArray(item.serviceIds) ? item.serviceIds : [],
+            userId: item.userId,
           }));
           setMembers(normalized);
           setSelectedId(normalized[0]?.id ?? null);
@@ -194,7 +199,43 @@ export function TeamRbacManager() {
 
     const name = inviteName.trim();
     const email = inviteEmail.trim();
-    const optimisticId = `temp-${Date.now()}`;
+
+    // ── Validação prévia: e-mail já vinculado? ────────────────────────────
+    try {
+      const validationResponse = await customFetch(
+        `${STAFF_ENDPOINT}/validate-email?email=${encodeURIComponent(email)}&companyId=${encodeURIComponent(studio.id)}`,
+      );
+
+      if (!validationResponse.ok) {
+        const validationData = await validationResponse.json().catch(() => ({})) as {
+          error?: string;
+          code?: string;
+          details?: string;
+        };
+        
+        let errorMessage = "Este e-mail já está vinculado a um time ou estabelecimento.";
+        
+        if (validationData.code === "EMAIL_ALREADY_EXISTS") {
+          errorMessage = "Este e-mail já está cadastrado neste estabelecimento.";
+        } else if (validationData.code === "EMAIL_LINKED_TO_OTHER_BUSINESS") {
+          errorMessage = "Este e-mail já está vinculado a outro estabelecimento.";
+        } else if (validationData.error) {
+          errorMessage = validationData.error;
+        } else if (validationData.details) {
+          errorMessage = validationData.details;
+        }
+        
+        toast.error(errorMessage);
+        return;
+      }
+    } catch (error) {
+      console.error("Erro na validação de e-mail:", error);
+      toast.error(
+        "Não foi possível validar o e-mail. Verifique sua conexão e tente novamente.",
+      );
+      return;
+    }
+
     setIsInviting(true);
 
     try {
@@ -207,55 +248,69 @@ export function TeamRbacManager() {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        toast.warning(
-          (errorData as { error?: string })?.error ||
-            "Não foi possível concluir o convite agora. Tente novamente em instantes.",
-        );
-        return;
-      }
-
-      const createdMember: StaffMember = {
-        id: optimisticId,
-        name,
-        email,
-        isActive: true,
-        isAdmin: false,
-        isSecretary: false,
-        isProfessional: true,
-        calendarColor: STAFF_COLOR_OPTIONS[members.length % STAFF_COLOR_OPTIONS.length],
-        commissionRate: 0,
-        serviceIds: [],
-      };
-      setMembers((current) => [createdMember, ...current]);
-      setSelectedId(createdMember.id);
-      setInviteName("");
-      setInviteEmail("");
-
       const data = (await response.json().catch(() => ({}))) as {
         staffId?: string;
         emailSent?: boolean;
         inviteUrl?: string;
         emailError?: string;
         temporaryPassword?: string | null;
+        alreadyExisted?: boolean;
+        error?: string;
+        details?: string;
+        code?: string;
       };
+
+      if (!response.ok) {
+        let errorMsg = "Não foi possível concluir o convite agora. Tente novamente em instantes.";
+        
+        if (data.code === "EMAIL_ALREADY_EXISTS") {
+          errorMsg = "Este e-mail já está cadastrado neste estabelecimento.";
+        } else if (data.code === "EMAIL_LINKED_TO_OTHER_BUSINESS") {
+          errorMsg = "Este e-mail já está vinculado a outro estabelecimento.";
+        } else if (data.error) {
+          errorMsg = data.error;
+        } else if (data.details) {
+          errorMsg = data.details;
+        }
+        
+        toast.error(errorMsg);
+        return;
+      }
 
       const inviteUrl = data.inviteUrl || "";
       if (inviteUrl && typeof navigator !== "undefined" && navigator.clipboard) {
         await navigator.clipboard.writeText(inviteUrl).catch(() => {});
       }
 
-      if (data.staffId) {
-        setMembers((current) =>
-          current.map((member) =>
-            member.id === createdMember.id
-              ? { ...member, id: data.staffId as string }
-              : member,
-          ),
-        );
-        setSelectedId(data.staffId);
+      // Se o e-mail já existe no banco (backend atualizou em vez de criar), avisa o usuário
+      if (data.alreadyExisted) {
+        toast.info("E-mail já cadastrado neste estúdio. Registro atualizado com os novos dados.");
       }
+
+      // Atualiza ou adiciona o membro na lista local
+      setMembers((current) => {
+        if (data.staffId && current.some((m) => m.id === data.staffId)) {
+          return current.map((member) =>
+            member.id === data.staffId ? { ...member, name, email } : member,
+          );
+        }
+        const createdMember: StaffMember = {
+          id: data.staffId || `temp-${Date.now()}`,
+          name,
+          email,
+          isActive: true,
+          isAdmin: false,
+          isSecretary: false,
+          isProfessional: true,
+          calendarColor: STAFF_COLOR_OPTIONS[current.length % STAFF_COLOR_OPTIONS.length],
+          commissionRate: 0,
+          serviceIds: [],
+        };
+        return [createdMember, ...current];
+      });
+      setSelectedId(data.staffId || `temp-${Date.now()}`);
+      setInviteName("");
+      setInviteEmail("");
 
       if (data.emailSent === false) {
         const tempPasswordHint = data.temporaryPassword
@@ -276,8 +331,9 @@ export function TeamRbacManager() {
       } else {
         toast.success("Convite enviado. Link copiado para a área de transferência.");
       }
-    } catch {
-      toast.warning(
+    } catch (error) {
+      console.error("Erro ao enviar convite:", error);
+      toast.error(
         "Não foi possível concluir o convite agora. Verifique sua conexão e tente novamente.",
       );
     } finally {
@@ -307,9 +363,9 @@ export function TeamRbacManager() {
       });
 
       if (!response.ok) {
-        toast.warning(
-          "Alterações mantidas na interface, mas o endpoint de times ainda não confirmou o salvamento.",
-        );
+        const errorData = await response.json().catch(() => ({}));
+        const message = (errorData as { error?: string })?.error || "Não foi possível salvar as alterações.";
+        toast.warning(message);
         return;
       }
 
@@ -545,8 +601,11 @@ export function TeamRbacManager() {
     if (!selectedMember.isAdmin && !selectedMember.isSecretary) {
       permissions.push("Sem acesso a relatórios e configurações globais");
     }
+    if (isOwnerAccount(selectedMember)) {
+      permissions.push("Dono da conta — não pode ter seus privilégios removidos");
+    }
     return permissions;
-  }, [selectedMember]);
+  }, [selectedMember, studio?.ownerId]);
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Carregando times e permissões...</p>;
@@ -660,6 +719,14 @@ export function TeamRbacManager() {
 
             {selectedMember && (
               <>
+                {isOwnerAccount(selectedMember) && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-50/60 dark:bg-amber-950/20 px-4 py-3">
+                    <p className="text-sm text-amber-800 dark:text-amber-300">
+                      Este colaborador é o <strong>dono da conta</strong>. Não é possível desativá-lo,
+                      remover seus privilégios de administrador ou excluí-lo.
+                    </p>
+                  </div>
+                )}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Nome</Label>
@@ -681,10 +748,16 @@ export function TeamRbacManager() {
                   <p className="text-sm font-semibold">Perfis Híbridos</p>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Label className="flex items-center justify-between rounded-lg border px-3 py-2">
-                      Administrador
+                      <span className="flex items-center gap-2">
+                        Administrador
+                        {isOwnerAccount(selectedMember) && (
+                          <span className="text-xs text-amber-600">(dono da conta)</span>
+                        )}
+                      </span>
                       <Switch
                         checked={selectedMember.isAdmin}
                         onCheckedChange={(value) => updateSelectedMember({ isAdmin: value })}
+                        disabled={isOwnerAccount(selectedMember)}
                       />
                     </Label>
                     <Label className="flex items-center justify-between rounded-lg border px-3 py-2">
@@ -702,10 +775,16 @@ export function TeamRbacManager() {
                       />
                     </Label>
                     <Label className="flex items-center justify-between rounded-lg border px-3 py-2">
-                      Membro ativo
+                      <span className="flex items-center gap-2">
+                        Membro ativo
+                        {isOwnerAccount(selectedMember) && (
+                          <span className="text-xs text-amber-600">(dono da conta)</span>
+                        )}
+                      </span>
                       <Switch
                         checked={selectedMember.isActive}
                         onCheckedChange={(value) => updateSelectedMember({ isActive: value })}
+                        disabled={isOwnerAccount(selectedMember)}
                       />
                     </Label>
                   </div>
@@ -908,11 +987,11 @@ export function TeamRbacManager() {
                   <Button
                     variant="destructive"
                     onClick={handleDeleteMember}
-                    disabled={isSaving || isProcessingSecurity}
+                    disabled={isSaving || isProcessingSecurity || (selectedMember ? isOwnerAccount(selectedMember) : false)}
                     className="gap-2"
                   >
                     <Trash2 className="h-4 w-4" />
-                    Excluir colaborador
+                    {selectedMember && isOwnerAccount(selectedMember) ? "Dono da conta" : "Excluir colaborador"}
                   </Button>
                   <Button onClick={handleSaveMember} disabled={isSaving} className="gap-2">
                     <Save className="h-4 w-4" />

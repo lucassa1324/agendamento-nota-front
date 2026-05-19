@@ -4300,6 +4300,7 @@ export interface Business {
   slug: string;
   createdAt?: string;
   active?: boolean;
+  ownerId?: string;
   subscriptionStatus?: string;
   trialEndsAt?: string;
   daysLeft?: number;
