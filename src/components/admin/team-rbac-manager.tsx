@@ -93,6 +93,7 @@ export function TeamRbacManager() {
     type: "success" | "error" | "loading";
     message: string;
   } | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const selectedMember = useMemo(
     () => members.find((member) => member.id === selectedId) ?? null,
@@ -201,6 +202,8 @@ export function TeamRbacManager() {
     const email = inviteEmail.trim();
 
     // ── Validação prévia: e-mail já vinculado? ────────────────────────────
+    setEmailError(null);
+
     try {
       const validationResponse = await customFetch(
         `${STAFF_ENDPOINT}/validate-email?email=${encodeURIComponent(email)}&companyId=${encodeURIComponent(studio.id)}`,
@@ -212,27 +215,25 @@ export function TeamRbacManager() {
           code?: string;
           details?: string;
         };
-        
+
         let errorMessage = "Este e-mail já está vinculado a um time ou estabelecimento.";
-        
-        if (validationData.code === "EMAIL_ALREADY_EXISTS") {
+
+        if (validationData.code === "EMAIL_ALREADY_EXISTS_IN_COMPANY") {
           errorMessage = "Este e-mail já está cadastrado neste estabelecimento.";
-        } else if (validationData.code === "EMAIL_LINKED_TO_OTHER_BUSINESS") {
+        } else if (validationData.code === "EMAIL_ALREADY_IN_USE") {
           errorMessage = "Este e-mail já está vinculado a outro estabelecimento.";
         } else if (validationData.error) {
           errorMessage = validationData.error;
         } else if (validationData.details) {
           errorMessage = validationData.details;
         }
-        
-        toast.error(errorMessage);
+
+        setEmailError(errorMessage);
         return;
       }
     } catch (error) {
       console.error("Erro na validação de e-mail:", error);
-      toast.error(
-        "Não foi possível validar o e-mail. Verifique sua conexão e tente novamente.",
-      );
+      setEmailError("Não foi possível validar o e-mail. Verifique sua conexão e tente novamente.");
       return;
     }
 
@@ -345,6 +346,8 @@ export function TeamRbacManager() {
     if (!selectedMember || !studio?.id) return;
     setIsSaving(true);
 
+    const isOwner = isOwnerAccount(selectedMember);
+
     try {
       const response = await customFetch(`${STAFF_ENDPOINT}/${selectedMember.id}`, {
         method: "PATCH",
@@ -352,8 +355,8 @@ export function TeamRbacManager() {
           companyId: studio.id,
           name: selectedMember.name,
           email: selectedMember.email,
-          isActive: selectedMember.isActive,
-          isAdmin: selectedMember.isAdmin,
+          isActive: isOwner ? true : selectedMember.isActive,
+          isAdmin: isOwner ? true : selectedMember.isAdmin,
           isSecretary: selectedMember.isSecretary,
           isProfessional: selectedMember.isProfessional,
           calendarColor: selectedMember.calendarColor,
@@ -643,12 +646,22 @@ export function TeamRbacManager() {
                 placeholder="Nome"
                 className="w-40"
               />
-              <Input
-                value={inviteEmail}
-                onChange={(event) => setInviteEmail(event.target.value)}
-                placeholder="email@dominio.com"
-                className="w-52"
-              />
+              <div className="relative">
+                <Input
+                  value={inviteEmail}
+                  onChange={(event) => {
+                    setInviteEmail(event.target.value);
+                    if (emailError) setEmailError(null);
+                  }}
+                  placeholder="email@dominio.com"
+                  className={cn("w-52", emailError && "border-red-500 focus-visible:ring-red-500")}
+                />
+                {emailError && (
+                  <p className="absolute top-full mt-1 text-xs text-red-600 whitespace-nowrap">
+                    {emailError}
+                  </p>
+                )}
+              </div>
               <Button onClick={handleInvite} className="gap-2" disabled={isInviting}>
                 <MailPlus className="h-4 w-4" />
                 {isInviting ? "Convidando..." : "Convidar Colaborador"}
@@ -919,48 +932,50 @@ export function TeamRbacManager() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-border/70">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <KeyRound className="h-4 w-4" />
-                      Senha de Acesso do Colaborador
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Input
-                        type="password"
-                        placeholder="Nova senha de login"
-                        value={memberPassword}
-                        onChange={(event) => setMemberPassword(event.target.value)}
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleResetMemberPassword}
-                        disabled={isProcessingSecurity || !selectedMember}
-                      >
-                        Redefinir senha
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Use ao menos 6 caracteres. Esta ação atualiza o acesso do colaborador imediatamente.
-                    </p>
-                    {memberPasswordFeedback && (
-                      <p
-                        className={cn(
-                          "text-xs",
-                          memberPasswordFeedback.type === "success" && "text-green-600",
-                          memberPasswordFeedback.type === "error" && "text-red-600",
-                          memberPasswordFeedback.type === "loading" &&
-                            "text-muted-foreground",
-                        )}
-                      >
-                        {memberPasswordFeedback.message}
+                {!isOwnerAccount(selectedMember) && (
+                  <Card className="border-border/70">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <KeyRound className="h-4 w-4" />
+                        Senha de Acesso do Colaborador
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex flex-col gap-2 sm:flex-row">
+                        <Input
+                          type="password"
+                          placeholder="Nova senha de login"
+                          value={memberPassword}
+                          onChange={(event) => setMemberPassword(event.target.value)}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleResetMemberPassword}
+                          disabled={isProcessingSecurity || !selectedMember}
+                        >
+                          Redefinir senha
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Use ao menos 6 caracteres. Esta ação atualiza o acesso do colaborador imediatamente.
                       </p>
-                    )}
-                  </CardContent>
-                </Card>
+                      {memberPasswordFeedback && (
+                        <p
+                          className={cn(
+                            "text-xs",
+                            memberPasswordFeedback.type === "success" && "text-green-600",
+                            memberPasswordFeedback.type === "error" && "text-red-600",
+                            memberPasswordFeedback.type === "loading" &&
+                              "text-muted-foreground",
+                          )}
+                        >
+                          {memberPasswordFeedback.message}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
                 <div className="rounded-xl border p-4">
                   <p className="mb-2 text-sm font-semibold flex items-center gap-2">
