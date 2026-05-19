@@ -166,7 +166,7 @@ export function SubscriptionBlockScreen({
         console.warn("Falha ao obter IP público:", e);
       }
 
-      const response = await fetch("/api/asaas/create-payment-link", {
+      const response = await fetch("/api-proxy/api/payment/link", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
