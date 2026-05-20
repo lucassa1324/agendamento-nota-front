@@ -28,6 +28,8 @@ type SettingsPayload = {
   weekly: WeekdaySchedulePayload[];
   agendaAberta?: boolean; // Adicionado para refletir o status da agenda no Dashboard
   minimumBookingLeadMinutes?: number;
+  bookingWindowType?: "UNLIMITED" | "FIXED_DAYS";
+  bookingWindowDays?: number;
 };
 
 type ServiceHttpError = Error & {
