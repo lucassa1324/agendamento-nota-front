@@ -41,6 +41,10 @@ export function ScheduleManager() {
     useState<number>(0);
   const [initialMinimumBookingLeadMinutes, setInitialMinimumBookingLeadMinutes] =
     useState<number>(0);
+  const [bookingWindowType, setBookingWindowType] = useState<"UNLIMITED" | "FIXED_DAYS">("UNLIMITED");
+  const [bookingWindowDays, setBookingWindowDays] = useState<number>(30);
+  const [initialBookingWindowType, setInitialBookingWindowType] = useState<"UNLIMITED" | "FIXED_DAYS">("UNLIMITED");
+  const [initialBookingWindowDays, setInitialBookingWindowDays] = useState<number>(30);
   const [blockedPeriods, setBlockedPeriods] = useState<BlockedPeriod[]>([]);
   const [initialBlocked, setInitialBlocked] = useState<string>("");
   const [newBlocked, setNewBlocked] = useState<
@@ -148,6 +152,10 @@ export function ScheduleManager() {
         setInitialInterval(normalizedInterval);
         setMinimumBookingLeadMinutes(currentLead);
         setInitialMinimumBookingLeadMinutes(currentLead);
+        setBookingWindowType(settings.bookingWindowType ?? "UNLIMITED");
+        setInitialBookingWindowType(settings.bookingWindowType ?? "UNLIMITED");
+        setBookingWindowDays(settings.bookingWindowDays ?? 30);
+        setInitialBookingWindowDays(settings.bookingWindowDays ?? 30);
       } else {
         // 2. Fallback para LocalStorage se não houver dados no backend
         finalSchedule = getWeekSchedule();
@@ -184,6 +192,10 @@ export function ScheduleManager() {
       setInitialBlocked(JSON.stringify(blocked));
       setMinimumBookingLeadMinutes(0);
       setInitialMinimumBookingLeadMinutes(0);
+      setBookingWindowType("UNLIMITED");
+      setInitialBookingWindowType("UNLIMITED");
+      setBookingWindowDays(30);
+      setInitialBookingWindowDays(30);
 
       const firstOpenDay = schedule.find((d) => d.isOpen);
       if (firstOpenDay) {
@@ -222,6 +234,8 @@ export function ScheduleManager() {
         interval: minutesToHHmm(globalInterval),
         weekly: buildSchedulePayload(updatedSchedule),
         minimumBookingLeadMinutes,
+        bookingWindowType,
+        bookingWindowDays: bookingWindowType === 'FIXED_DAYS' ? bookingWindowDays : undefined,
       });
 
       saveWeekSchedule(updatedSchedule);
@@ -247,6 +261,37 @@ export function ScheduleManager() {
     }
   };
 
+  const saveBookingWindow = async () => {
+    if (!studio?.id) return;
+
+    try {
+      await businessService.saveSettings({
+        companyId: studio.id,
+        interval: minutesToHHmm(globalInterval),
+        weekly: buildSchedulePayload(weekSchedule),
+        bookingWindowType,
+        bookingWindowDays: bookingWindowType === 'FIXED_DAYS' ? bookingWindowDays : undefined,
+      });
+
+      setInitialBookingWindowType(bookingWindowType);
+      setInitialBookingWindowDays(bookingWindowDays);
+
+      toast({
+        title: "Limite de Antecedência Salvo!",
+        description: bookingWindowType === "FIXED_DAYS"
+          ? `Agendamentos liberados até ${bookingWindowDays} dias.`
+          : "Agendamentos sem limite de antecedência.",
+        className: "bg-blue-600 text-white border-none",
+      });
+    } catch (error: unknown) {
+      toast({
+        title: "Erro ao salvar limite",
+        description: getErrorMessage(error, "Não foi possível salvar o limite de antecedência."),
+        variant: "destructive",
+      });
+    }
+  };
+
   const saveSchedule = async () => {
     if (!studio?.id) return;
     if (weekSchedule.length !== 7) {
@@ -265,6 +310,8 @@ export function ScheduleManager() {
         interval: minutesToHHmm(globalInterval),
         weekly: buildSchedulePayload(weekSchedule),
         minimumBookingLeadMinutes,
+        bookingWindowType,
+        bookingWindowDays: bookingWindowType === 'FIXED_DAYS' ? bookingWindowDays : undefined,
       });
 
       saveWeekSchedule(weekSchedule);
@@ -305,6 +352,9 @@ export function ScheduleManager() {
   const isIntervalDirty =
     globalInterval !== initialInterval ||
     minimumBookingLeadMinutes !== initialMinimumBookingLeadMinutes;
+  const isBookingWindowDirty =
+    bookingWindowType !== initialBookingWindowType ||
+    bookingWindowDays !== initialBookingWindowDays;
   const isBlockedDirty = initialBlocked !== JSON.stringify(blockedPeriods);
 
   const handleCreateBlock = async () => {
@@ -574,6 +624,68 @@ export function ScheduleManager() {
                 <SelectItem value="120">120 min</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-8 bg-card/50 p-6 rounded-xl border border-border shadow-sm">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-2 h-6 bg-primary rounded-full" />
+          <span className="text-lg font-bold">Limite de Antecedência</span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
+          <div className="space-y-2">
+            <Label
+              htmlFor="booking-window-type"
+              className="text-sm font-medium text-muted-foreground"
+            >
+              Limite de Antecedência
+            </Label>
+            <Select
+              value={bookingWindowType}
+              onValueChange={(value) => setBookingWindowType(value as "UNLIMITED" | "FIXED_DAYS")}
+            >
+              <SelectTrigger id="booking-window-type" className="w-full">
+                <SelectValue placeholder="Selecione o limite de antecedência" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="UNLIMITED">Sempre aberta (Tempo indeterminado)</SelectItem>
+                <SelectItem value="FIXED_DAYS">Janela Fixa (Dias)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {bookingWindowType === 'FIXED_DAYS' && (
+            <div className="space-y-2">
+              <Label
+                htmlFor="booking-window-days"
+                className="text-sm font-medium text-muted-foreground"
+              >
+                Dias de antecedência
+              </Label>
+              <Input
+                id="booking-window-days"
+                type="number"
+                min={1}
+                max={365}
+                value={bookingWindowDays}
+                onChange={(e) => setBookingWindowDays(Number(e.target.value))}
+              />
+            </div>
+          )}
+          <div className="flex items-end">
+            <Button
+              onClick={saveBookingWindow}
+              disabled={!isBookingWindowDirty}
+              className={`transition-all duration-300 ${
+                isBookingWindowDirty
+                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+                  : "bg-muted text-muted-foreground opacity-50"
+              }`}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {isBookingWindowDirty ? "Salvar Limite" : "Salvo"}
+            </Button>
           </div>
         </div>
       </div>
