@@ -89,6 +89,12 @@ export function TimeSlotSelector({
 
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+  const [bookingWindowType, setBookingWindowType] = useState<string | null>(
+    null,
+  );
+  const [bookingWindowDays, setBookingWindowDays] = useState<number | null>(
+    null,
+  );
 
   // Buscar agendamentos do backend e atualizar slots
   const fetchBookingsAndSlots = useCallback(async () => {
@@ -167,6 +173,16 @@ export function TimeSlotSelector({
             setBackendInterval(currentDaySchedule.interval);
           }
         }
+      }
+
+      // Salvar configuração de janela de agendamento
+      if (settings) {
+        const s = settings as {
+          bookingWindowType?: string;
+          bookingWindowDays?: number;
+        };
+        setBookingWindowType(s.bookingWindowType ?? null);
+        setBookingWindowDays(s.bookingWindowDays ?? null);
       }
 
       // 2. Processar Agendamentos
@@ -317,6 +333,14 @@ export function TimeSlotSelector({
 
   const handleNextDay = () => {
     const nextDay = addDays(currentDate, 1);
+    if (
+      bookingWindowType === "FIXED_DAYS" &&
+      bookingWindowDays !== null &&
+      bookingWindowDays > 0
+    ) {
+      const maxDate = addDays(startOfDay(new Date()), bookingWindowDays);
+      if (startOfDay(nextDay) > maxDate) return;
+    }
     onDateChange(format(nextDay, "yyyy-MM-dd"));
   };
 

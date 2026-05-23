@@ -1,15 +1,17 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useStudio } from "@/context/studio-context";
 import {
   type BookingStepSettings,
   getBlockedPeriods,
   getWeekSchedule,
   type Service,
 } from "@/lib/booking-data";
+import { businessService } from "@/lib/business-service";
 
 type BookingCalendarProps = {
   service: Service;
@@ -23,19 +25,44 @@ export function BookingCalendar({
   onBack,
   settings,
 }: Omit<BookingCalendarProps, "service">) {
+  const { studio } = useStudio();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [bookingWindowType, setBookingWindowType] = useState<string | null>(
+    null,
+  );
+  const [bookingWindowDays, setBookingWindowDays] = useState<number | null>(
+    null,
+  );
   const appearance = settings?.appearance || {};
-  
-  // Prioridade: Custom Setting > Global Appearance > Default Fallback
-  const accentColor = settings?.accentColor || appearance.accentColor || "var(--primary)";
-  const cardBgColor = settings?.cardBgColor || appearance.cardBgColor || "#FFFFFF";
-  const titleColor = settings?.titleColor || appearance.titleColor || "var(--foreground)";
-  const titleFont = settings?.titleFont || appearance.titleFont || "var(--font-title)";
- 
-   const weekSchedule = getWeekSchedule();
-   const blockedPeriods = getBlockedPeriods();
 
-   const getDaysInMonth = (date: Date) => {
+  // Prioridade: Custom Setting > Global Appearance > Default Fallback
+  const accentColor =
+    settings?.accentColor || appearance.accentColor || "var(--primary)";
+  const cardBgColor =
+    settings?.cardBgColor || appearance.cardBgColor || "#FFFFFF";
+  const titleColor =
+    settings?.titleColor || appearance.titleColor || "var(--foreground)";
+  const titleFont =
+    settings?.titleFont || appearance.titleFont || "var(--font-title)";
+
+  const weekSchedule = getWeekSchedule();
+  const blockedPeriods = getBlockedPeriods();
+
+  // Buscar configuração de janela de agendamento da API
+  useEffect(() => {
+    if (!studio?.id) return;
+    businessService
+      .getSettings(studio.id)
+      .then((s) => {
+        if (s) {
+          setBookingWindowType(s.bookingWindowType ?? null);
+          setBookingWindowDays(s.bookingWindowDays ?? null);
+        }
+      })
+      .catch(() => {});
+  }, [studio?.id]);
+
+  const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -92,6 +119,17 @@ export function BookingCalendar({
 
     if (selected < today) return true;
 
+    // Verificar janela de agendamento (Booking Window)
+    if (
+      bookingWindowType === "FIXED_DAYS" &&
+      bookingWindowDays !== null &&
+      bookingWindowDays > 0
+    ) {
+      const maxDate = new Date(today);
+      maxDate.setDate(maxDate.getDate() + bookingWindowDays);
+      if (selected > maxDate) return true;
+    }
+
     const dateString = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
     // Verificar se a data está bloqueada totalmente
@@ -128,9 +166,7 @@ export function BookingCalendar({
         className="border-primary/20 overflow-hidden"
         style={{
           backgroundColor: cardBgColor,
-          borderColor: accentColor
-            ? `${accentColor}33`
-            : undefined,
+          borderColor: accentColor ? `${accentColor}33` : undefined,
         }}
       >
         <CardContent className="p-6">
@@ -187,9 +223,7 @@ export function BookingCalendar({
                   }`}
                   style={{
                     backgroundColor: !disabled ? "transparent" : undefined,
-                    color: !disabled
-                      ? accentColor
-                      : undefined,
+                    color: !disabled ? accentColor : undefined,
                   }}
                   onMouseEnter={(e) => {
                     if (!disabled) {
