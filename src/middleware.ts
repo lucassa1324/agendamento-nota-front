@@ -27,9 +27,12 @@ export function middleware(request: NextRequest) {
       host === "app.staging.aurasistema.com.br") &&
     request.nextUrl.pathname === "/"
   ) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/admin";
-    return NextResponse.redirect(url);
+    const isPreview = request.nextUrl.searchParams.get("preview") === "true";
+    if (!isPreview) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin";
+      return NextResponse.redirect(url);
+    }
   }
 
   // Verifica se o host atual é um dos domínios base
