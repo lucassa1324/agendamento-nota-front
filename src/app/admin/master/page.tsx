@@ -6,10 +6,12 @@ import {
   Calendar,
   CalendarDays,
   CheckCircle2,
+  Copy,
   CreditCard,
   ExternalLink,
   Info,
   KeyRound,
+  LinkIcon,
   Loader2,
   MoreHorizontal,
   Pencil,
@@ -159,10 +161,55 @@ export default function MasterDashboardPage() {
   const [userToReset, setUserToReset] = useState<UserMasterData | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
+  // Estados para Link Mágico
+  const [magicLinkUser, setMagicLinkUser] = useState<UserMasterData | null>(null);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [expirationHours, setExpirationHours] = useState("24");
+  const [singleUse, setSingleUse] = useState(true);
+
   // Estados para Detalhes (Raio-X)
   const [viewingUser, setViewingUser] = useState<UserMasterData | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
+  const handleGenerateMagicLink = async (user: UserMasterData) => {
+    setMagicLinkUser(user);
+    setGeneratedLink(null);
+    setIsGeneratingLink(true);
+    try {
+      const response = await customFetch(
+        `${API_BASE_URL}/api/users/magic-link`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            expirationHours: parseInt(expirationHours) || 24,
+            singleUse,
+          }),
+        },
+      );
+
+      if (response.status === 403) return handleForbidden();
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Falha ao gerar link");
+
+      const link = `${window.location.origin}/auth/magic-link?token=${result.rawToken}`;
+      setGeneratedLink(link);
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível gerar o link mágico.",
+        variant: "destructive",
+      });
+      setMagicLinkUser(null);
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
 
   const handleForbidden = useCallback(() => {
     toast({
@@ -988,6 +1035,19 @@ export default function MasterDashboardPage() {
                                   className="cursor-pointer"
                                   onSelect={(e) => {
                                     e.preventDefault();
+                                    setMagicLinkUser(user);
+                                    setGeneratedLink(null);
+                                    setExpirationHours("24");
+                                    setSingleUse(true);
+                                  }}
+                                >
+                                  <KeyRound className="mr-2 h-4 w-4" /> Gerar
+                                  Link Mágico
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="cursor-pointer"
+                                  onSelect={(e) => {
+                                    e.preventDefault();
                                     setUserToReset(user);
                                   }}
                                 >
@@ -1508,6 +1568,101 @@ export default function MasterDashboardPage() {
             >
               {isUpdatingEmail ? "Salvando..." : "Salvar Alteração"}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Link Mágico */}
+      <Dialog
+        open={!!magicLinkUser}
+        onOpenChange={(open) => !open && setMagicLinkUser(null)}
+      >
+        <DialogContent className="sm:max-w-md" style={{ zIndex: 100000 }}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LinkIcon className="h-5 w-5 text-blue-500" />
+              Link Mágico
+            </DialogTitle>
+            <DialogDescription>
+              Link de acesso para{" "}
+              <strong>{magicLinkUser?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {isGeneratingLink ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : generatedLink ? (
+              <div className="space-y-4">
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded-md text-sm text-blue-800 flex items-start gap-2">
+                  <Info className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>
+                    Este link expira em{" "}
+                    <strong>{expirationHours}h</strong>
+                    {singleUse ? " e só pode ser usado uma vez." : " e pode ser usado múltiplas vezes."}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={generatedLink}
+                    readOnly
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(generatedLink);
+                      toast({
+                        title: "Copiado!",
+                        description: "Link copiado para a área de transferência.",
+                      });
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="expiration">Horas de expiração</Label>
+                    <Input
+                      id="expiration"
+                      type="number"
+                      min={1}
+                      placeholder="24"
+                      value={expirationHours}
+                      onChange={(e) => setExpirationHours(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2 flex flex-col justify-end">
+                    <Label>Uso único</Label>
+                    <div className="flex items-center gap-2 pt-1">
+                      <Switch
+                        checked={singleUse}
+                        onCheckedChange={setSingleUse}
+                      />
+                      <span className="text-sm text-muted-foreground">
+                        {singleUse ? "Sim" : "Não"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMagicLinkUser(null)}>
+              {generatedLink ? "Fechar" : "Cancelar"}
+            </Button>
+            {!generatedLink && !isGeneratingLink && (
+              <Button onClick={() => magicLinkUser && handleGenerateMagicLink(magicLinkUser)}>
+                Gerar Link
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
