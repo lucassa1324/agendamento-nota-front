@@ -198,6 +198,9 @@ export function LoginForm() {
             console.warn(
               ">>> [LOGIN_FORM] Sessão encontrada mas sem slug ou role vinculados.",
             );
+            setError(
+              "Sua conta não possui um estúdio vinculado. Entre em contato com o administrador.",
+            );
           }
         }
       } catch (err) {
