@@ -186,11 +186,41 @@ let lastFetchTime = 0;
 const CACHE_TTL = 30000; // 30 segundos
 const SESSION_FETCH_TIMEOUT_MS = 2500;
 
+// O cookie de sessão é assinado como TOKEN.SIGNATURE. O token puro é a parte antes do último "."
+// (formato confirmado no better-call: getSignedCookie faz value.substring(0, value.lastIndexOf("."))).
+const readTokenFromCookie = (): string | null => {
+  if (typeof document === "undefined") return null;
+  const cookieNames = [
+    "__Secure-better-auth.session_token",
+    "better-auth.session_token",
+  ];
+  for (const name of cookieNames) {
+    const match = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith(`${name}=`));
+    if (match) {
+      const value = match.substring(name.length + 1);
+      const sigStart = value.lastIndexOf(".");
+      if (sigStart > 0) return value.substring(0, sigStart);
+      return value || null;
+    }
+  }
+  return null;
+};
+
 export const getSessionToken = async (): Promise<string | null> => {
   const now = Date.now();
 
   // Se tivermos um token válido e recente, retornamos ele
   if (lastToken && now - lastFetchTime < CACHE_TTL) {
+    return lastToken;
+  }
+
+  // No client-side, lemos o token direto do cookie: sem rede, sem timeout, sem cold start
+  const cookieToken = readTokenFromCookie();
+  if (cookieToken) {
+    lastToken = cookieToken;
+    lastFetchTime = Date.now();
     return lastToken;
   }
 
