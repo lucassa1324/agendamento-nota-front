@@ -1,4 +1,3 @@
-import { getSessionToken } from "./auth-client";
 
 // ==========================================
 // CONFIGURAÇÕES DE URL (Consolidado do antigo api-config)
@@ -72,6 +71,7 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     }
   }
 
+  const { getSessionToken } = await import("./auth-client");
   const sessionToken = await getSessionToken();
   const fullUrl = isAbsoluteUrl(url) || url.startsWith("//") ? url : buildApiUrl(url);
 
