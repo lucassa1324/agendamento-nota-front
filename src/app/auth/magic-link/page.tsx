@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buildApiUrl } from "@/lib/api-client";
 
 export default function MagicLinkPage() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function MagicLinkPage() {
     const validate = async () => {
       try {
         const response = await fetch(
-          `/api-proxy/api/users/magic-link/validate`,
+          buildApiUrl("/api/users/magic-link/validate"),
           {
             method: "POST",
             credentials: "include",

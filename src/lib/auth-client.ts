@@ -1,4 +1,12 @@
 import { createAuthClient } from "better-auth/react";
+import {
+  API_BASE_URL,
+  APP_BASE_URL,
+  AUTH_BASE_PATH,
+  buildAuthUrl,
+} from "./api-client";
+
+export { API_BASE_URL } from "./api-client";
 
 // Função para limpar e garantir que a URL seja absoluta
 const cleanUrl = (url?: string) => {
@@ -14,34 +22,11 @@ const cleanUrl = (url?: string) => {
   return cleaned;
 };
 
-// O Better-Auth EXIGE uma URL absoluta no baseURL para funcionar corretamente.
-const getAbsoluteUrl = (path: string) => {
-  if (path.startsWith("http")) return path;
-
-  // No client-side, window.location.origin resolve
-  if (typeof window !== "undefined") {
-    return `${window.location.origin}${path}`;
-  }
-
-  // No server-side (Next.js), precisamos de uma URL absoluta para o proxy
-  // Usamos localhost:3000 como fallback padrão de desenvolvimento
-  return `http://localhost:3000${path}`;
-};
-
-export const API_BASE_URL = getAbsoluteUrl(
-  (process.env.NEXT_PUBLIC_API_URL || "/api-proxy").replace(/\/$/, ""),
-);
-
-// Agora forçamos o prefixo /api/auth para alinhar com o proxy e o back-end.
-// Para o Better Auth funcionar corretamente com o proxy, o baseURL deve ser a origem (ex: http://localhost:3000)
-// e o basePath deve ser o caminho completo do proxy (ex: /api-proxy/api/auth).
-export const AUTH_BASE_URL =
-  typeof window !== "undefined"
-    ? window.location.origin
-    : process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+export const AUTH_BASE_URL = API_BASE_URL;
 
 console.log(">>> [AUTH_CLIENT] API_BASE_URL configurada como:", API_BASE_URL);
 console.log(">>> [AUTH_CLIENT] AUTH_BASE_URL configurada como:", AUTH_BASE_URL);
+console.log(">>> [AUTH_CLIENT] APP_BASE_URL configurada como:", APP_BASE_URL);
 
 export const LANDING_PAGE_URL = cleanUrl(
   process.env.NEXT_PUBLIC_LANDING_PAGE_URL,
@@ -68,7 +53,7 @@ export const ADMIN_URL = cleanUrl(process.env.NEXT_PUBLIC_ADMIN_URL);
 
 export const authClient = createAuthClient({
   baseURL: AUTH_BASE_URL,
-  basePath: "/api-proxy/api/auth",
+  basePath: AUTH_BASE_PATH,
   fetchOptions: {
     credentials: "include",
     headers: {
@@ -232,11 +217,7 @@ export const getSessionToken = async (): Promise<string | null> => {
   // Iniciamos uma nova requisição
   const currentPromise = (async () => {
     try {
-      // No client-side, usamos URL relativa para evitar problemas de CORS em subdomínios
-      const fetchUrl =
-        typeof window !== "undefined"
-          ? "/api-proxy/api/auth/session"
-          : `${AUTH_BASE_URL}/api-proxy/api/auth/session`;
+      const fetchUrl = buildAuthUrl("/session");
 
       console.log(`>>> [AUTH_CLIENT] Buscando sessão em: ${fetchUrl}`);
 
@@ -262,9 +243,11 @@ export const getSessionToken = async (): Promise<string | null> => {
             return null;
           }
           const data = JSON.parse(text);
-          // Em Better Auth, a sessão é gerenciada via cookies, mas podemos verificar se existe sessão ativa
           const token =
-            data?.session?.token || (data?.user ? "authenticated" : null);
+            typeof data?.session?.token === "string" &&
+            data.session.token.trim().length > 0
+              ? data.session.token
+              : null;
           lastToken = token;
           lastFetchTime = Date.now();
           return lastToken;

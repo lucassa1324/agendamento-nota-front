@@ -1,43 +1,67 @@
-import { API_BASE_URL, getSessionToken } from "./auth-client";
+import { getSessionToken } from "./auth-client";
+
+// ==========================================
+// CONFIGURAÇÕES DE URL (Consolidado do antigo api-config)
+// ==========================================
+
+const DEFAULT_BACKEND_URL = "http://localhost:3001";
+const DEFAULT_APP_URL = "http://localhost:3000";
+
+const stripTrailingSlash = (value: string) => value.replace(/\/+$/, "");
+const isAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
+
+const normalizeUrl = (value: string | undefined, fallback: string) => {
+  const trimmed = value?.trim();
+  if (!trimmed) return fallback;
+  if (isAbsoluteUrl(trimmed)) return stripTrailingSlash(trimmed);
+  return stripTrailingSlash(`https://${trimmed}`);
+};
+
+export const API_BASE_URL = normalizeUrl(
+  process.env.NEXT_PUBLIC_API_URL,
+  DEFAULT_BACKEND_URL,
+);
+
+export const APP_BASE_URL = normalizeUrl(
+  process.env.NEXT_PUBLIC_APP_URL,
+  DEFAULT_APP_URL,
+);
+
+export const AUTH_BASE_PATH = "/api/auth";
+
+export const buildApiUrl = (path: string) => {
+  if (isAbsoluteUrl(path)) return path;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE_URL}${normalizedPath}`;
+};
+
+export const buildAuthUrl = (path = "") => {
+  const normalizedPath = path ? (path.startsWith("/") ? path : `/${path}`) : "";
+  return `${API_BASE_URL}${AUTH_BASE_PATH}${normalizedPath}`;
+};
+
+// ==========================================
+// CLIENTE DE API E INTERCEPTORS
+// ==========================================
 
 let billingGuardActive = false;
-const SESSION_TOKEN_TIMEOUT_MS = 2500;
-
-async function getSessionTokenWithTimeout() {
-  try {
-    return await Promise.race([
-      getSessionToken(),
-      new Promise<null>((resolve) =>
-        setTimeout(() => resolve(null), SESSION_TOKEN_TIMEOUT_MS),
-      ),
-    ]);
-  } catch {
-    return null;
-  }
-}
 
 function createBillingRequiredResponse() {
-  return new Response(
-    JSON.stringify({
-      error: "BILLING_REQUIRED",
-    }),
-    {
-      status: 402,
-      headers: { "Content-Type": "application/json" },
-    },
-  );
+  return new Response(JSON.stringify({ error: "BILLING_REQUIRED" }), {
+    status: 402,
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 /**
  * Utilitário global para fetch com interceptação de erros específicos
- * como BUSINESS_SUSPENDED (403).
+ * como BUSINESS_SUSPENDED (403), BILLING_REQUIRED (402) e expiração de sessão (401).
  */
 export async function customFetch(url: string, options: RequestInit = {}) {
+  // Guard de cobrança no client-side
   if (typeof window !== "undefined") {
     const isDashboardRoute = window.location.pathname.includes("/dashboard");
-    const isMinhaContaRoute = window.location.pathname.includes(
-      "/dashboard/minha-conta",
-    );
+    const isMinhaContaRoute = window.location.pathname.includes("/dashboard/minha-conta");
 
     if (billingGuardActive && (isMinhaContaRoute || !isDashboardRoute)) {
       billingGuardActive = false;
@@ -48,204 +72,69 @@ export async function customFetch(url: string, options: RequestInit = {}) {
     }
   }
 
-  const sessionToken = await getSessionTokenWithTimeout();
-
-  // Construir URL completa se for relativa
-  let fullUrl = url;
-  if (!url.startsWith("http") && !url.startsWith("//")) {
-    // Se a URL já começar com o prefixo do proxy (ex: /api-proxy/...), não adiciona API_BASE_URL novamente
-    const proxyPrefix = "/api-proxy";
-    const relativeProxyPrefix = "api-proxy";
-
-    if (
-      API_BASE_URL &&
-      !url.startsWith(API_BASE_URL) &&
-      !url.startsWith(proxyPrefix) &&
-      !url.startsWith(relativeProxyPrefix)
-    ) {
-      // No client-side, preferimos caminhos relativos para evitar problemas de CORS com subdomínios
-      if (
-        typeof window !== "undefined" &&
-        API_BASE_URL.includes(window.location.origin)
-      ) {
-        const path = url.startsWith("/") ? url : `/${url}`;
-        fullUrl = `/api-proxy${path}`;
-      } else {
-        // Garantir que não duplique a barra
-        const baseUrl = API_BASE_URL.endsWith("/")
-          ? API_BASE_URL.slice(0, -1)
-          : API_BASE_URL;
-        const path = url.startsWith("/") ? url : `/${url}`;
-        fullUrl = `${baseUrl}${path}`;
-      }
-    }
-  }
-
-  // Tentar extrair businessId da URL ou do corpo da requisição
-  let businessId = "N/A";
-
-  // 1. Verificar na URL
-  if (fullUrl.includes("/api/business/")) {
-    const parts = fullUrl.split("/api/business/");
-    if (parts[1]) {
-      businessId = parts[1].split(/[/?#]/)[0];
-    }
-  } else if (fullUrl.includes("companyId=")) {
-    const match = fullUrl.match(/companyId=([^&]+)/);
-    if (match) businessId = match[1];
-  }
-
-  // 2. Se for POST/PATCH e ainda for N/A, tentar extrair do body
-  if (
-    businessId === "N/A" &&
-    options.body &&
-    typeof options.body === "string"
-  ) {
-    try {
-      const body = JSON.parse(options.body);
-      businessId = body.companyId || body.businessId || body.id || "N/A";
-    } catch {
-      // Body não é JSON ou erro ao parsear
-    }
-  }
-
-  // console.log(">>> [FRONT_API] Enviando ID:", businessId);
-  // console.log(`>>> [FRONT_API] Enviando para: ${fullUrl}`);
+  const sessionToken = await getSessionToken();
+  const fullUrl = isAbsoluteUrl(url) || url.startsWith("//") ? url : buildApiUrl(url);
 
   const headers = new Headers(options.headers || {});
+  const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
 
-  const isFormData =
-    typeof FormData !== "undefined" && options.body instanceof FormData;
-
-  // Garantir Content-Type para requisições com body
   if (options.body && !headers.has("Content-Type") && !isFormData) {
     headers.set("Content-Type", "application/json");
   }
 
-  // Com Better Auth e Proxy, o sessionToken (Bearer) pode ser desnecessário se usarmos cookies
-  // mas mantemos para compatibilidade se o backend esperar Authorization
   if (sessionToken && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${sessionToken}`);
   }
 
-  // DEBUG para identificar o erro de fetch
-  console.log(`>>> [FRONT_API] Chamando fetch para: ${fullUrl}`, {
-    method: options.method || "GET",
-    hasToken: !!sessionToken,
-    headers: Object.fromEntries(headers.entries()),
-  });
+  console.log(`>>> [FRONT_API] ${options.method || "GET"} -> ${fullUrl}`);
 
   let response: Response;
   try {
     response = await fetch(fullUrl, {
       ...options,
-      credentials: "include", // Equivale a withCredentials: true (força envio de cookies)
+      credentials: "include",
       headers,
     });
-  } catch (error: unknown) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw error;
-    }
-    const errorMessage =
-      error instanceof Error ? error.message : "Erro desconhecido";
-    console.error(
-      `>>> [FRONT_API] FALHA CRÍTICA NO FETCH para ${fullUrl}:`,
-      errorMessage,
-      error,
-    );
-
-    // Se falhar o fetch e não for erro de conexão local, tentamos verificar se a sessão expirou ou se é bloqueio CORS
-    if (typeof window !== "undefined") {
-      // Diagnóstico: Se estivermos em uma rota de dashboard, o erro de rede pode ser um bloqueio do navegador (CORS)
-      // causado por headers inválidos ou 403 mal formatado no backend.
-      if (
-        !window.location.pathname.startsWith("/admin/master") &&
-        window.location.pathname.includes("/dashboard")
-      ) {
-        console.warn(
-          ">>> [FRONT_API] Falha crítica na requisição. Tentando revalidar sessão ou redirecionar por segurança...",
-        );
-
-        // Em caso de erro de rede persistente em rota protegida, redirecionamos para evitar loops de UI
-        // mas damos uma chance para o usuário logar novamente se for apenas sessão expirada.
-        // Se o erro for recorrente, o window.location quebrará o loop.
-      }
-    }
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") throw error;
+    console.error(`>>> [FRONT_API] Falha crítica no fetch para ${fullUrl}:`, error);
     throw error;
   }
 
-  // Interceptar erro 403 (Acesso Negado / Suspensão)
-  if (response.status === 403) {
-    // Se for uma rota pública, redirecionar imediatamente
-    // EXCEÇÃO: Não redirecionar se o usuário estiver tentando acessar a página de pagamento/conta
+  // Interceptadores de status de resposta
+  if (typeof window !== "undefined") {
+    const isDashboardRoute = window.location.pathname.includes("/dashboard");
+    const isMinhaContaRoute = window.location.pathname.includes("/dashboard/minha-conta");
+
+    // 403: Acesso suspenso
     if (
-      typeof window !== "undefined" &&
+      response.status === 403 &&
       !window.location.pathname.startsWith("/admin") &&
-      !window.location.pathname.includes("/dashboard/minha-conta") &&
+      !isMinhaContaRoute &&
       !window.location.pathname.startsWith("/acesso-suspenso")
     ) {
-      console.error(
-        `>>> [FRONT_API] 403 detectado em ${window.location.pathname}. Redirecionando via window.location para quebrar loop...`,
-      );
-
-      // Força o redirecionamento total para a página de suspensão
+      console.error(`>>> [FRONT_API] 403 detectado. Redirecionando...`);
       window.location.href = "/acesso-suspenso";
-
-      // Retorna uma promessa que nunca resolve para "congelar" a execução atual
-      // e impedir que o restante do código (como .then ou try/catch da UI) execute
-      return new Promise<Response>(() => { });
+      return new Promise<Response>(() => {}); // Congela a execução atual para evitar loops
     }
-  }
 
-  // Erro 402 (Pagamento Necessário) não redireciona para /acesso-suspenso.
-  // Deixamos o erro passar para que os componentes (como o dashboard layout)
-  // possam tratar exibindo a tela de bloqueio com opção de pagamento.
-  if (response.status === 402) {
-    if (typeof window !== "undefined") {
-      const isDashboardRoute = window.location.pathname.includes("/dashboard");
-      const isMinhaContaRoute = window.location.pathname.includes(
-        "/dashboard/minha-conta",
-      );
-
-      if (isDashboardRoute && !isMinhaContaRoute) {
-        if (!billingGuardActive) {
-          billingGuardActive = true;
-          window.dispatchEvent(
-            new CustomEvent("billing-required", {
-              detail: { url: fullUrl },
-            }),
-          );
-        }
-        return createBillingRequiredResponse();
+    // 402 ou 401 no Dashboard (excluindo minha-conta)
+    if ((response.status === 402 || response.status === 401) && isDashboardRoute && !isMinhaContaRoute) {
+      if (!billingGuardActive) {
+        billingGuardActive = true;
+        window.dispatchEvent(
+          new CustomEvent("billing-required", {
+            detail: { url: fullUrl, sourceStatus: response.status },
+          })
+        );
       }
+      return createBillingRequiredResponse();
     }
-    console.warn(
-      `>>> [FRONT_API] 402 detectado em ${url}. Deixando componente tratar.`,
-    );
-  }
 
-  // Interceptar erro 401 para fallback de cache
-  if (response.status === 401) {
-    if (typeof window !== "undefined") {
-      const isDashboardRoute = window.location.pathname.includes("/dashboard");
-      const isMinhaContaRoute = window.location.pathname.includes(
-        "/dashboard/minha-conta",
-      );
-
-      if (isDashboardRoute && !isMinhaContaRoute) {
-        if (!billingGuardActive) {
-          billingGuardActive = true;
-          window.dispatchEvent(
-            new CustomEvent("billing-required", {
-              detail: { url: fullUrl, sourceStatus: 401 },
-            }),
-          );
-        }
-        return createBillingRequiredResponse();
-      }
-
+    // 401 fora do Dashboard (exemplo: cache do Studio)
+    if (response.status === 401 && url.includes("/studio/")) {
       const cachedStudio = localStorage.getItem("studio_data");
-      if (cachedStudio && url.includes("/studio/")) {
+      if (cachedStudio) {
         return new Response(cachedStudio, {
           status: 200,
           headers: { "Content-Type": "application/json" },

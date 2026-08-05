@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/popover";
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
-import { customFetch } from "@/lib/api-client";
+import { customFetch, buildAuthUrl } from "@/lib/api-client";
 import { signOut, updateUser, useSession } from "@/lib/auth-client";
 import { SubscriptionCancellationModal } from "./subscription-cancellation-modal";
 
@@ -128,7 +128,7 @@ export function AdminProfileManager() {
         console.warn("Falha ao obter IP público:", e);
       }
 
-      const response = await fetch("/api-proxy/api/payment/link", {
+      const response = await customFetch("/api/payment/link", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -353,10 +353,8 @@ export function AdminProfileManager() {
 
     try {
       // Substituindo changePassword do Better Auth por fetch manual para garantir o envio correto do body
-      // TESTE: Bypass de proxy recomendado pelo Backend Dev
-      // Usando variável de ambiente pública para apontar para o backend correto (local ou prod)
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const targetUrl = `${baseUrl}/api/auth/change-password`;
+      // Usando a URL absoluta do backend configurada no frontend
+      const targetUrl = buildAuthUrl("/change-password");
 
       console.log(
         ">>> [CHANGE_PASSWORD] Iniciando troca de senha via FETCH MANUAL (BYPASS PROXY)",
@@ -374,7 +372,7 @@ export function AdminProfileManager() {
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        credentials: "include", // Enviar cookies de sessão mesmo em requisições cross-origin (bypass proxy)
+        credentials: "include",
         body: JSON.stringify({
           newPassword: passwords.new,
           currentPassword: passwords.current,

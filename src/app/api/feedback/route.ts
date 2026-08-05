@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildApiUrl } from "@/lib/api-client";
 
 export async function POST(req: Request) {
   try {
@@ -12,16 +13,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const requestOrigin = new URL(req.url).origin;
-    const apiBase = (process.env.NEXT_PUBLIC_API_URL || "/api-proxy").replace(
-      /\/$/,
-      "",
-    );
-    const backendUrl = apiBase.startsWith("http")
-      ? apiBase
-      : `${requestOrigin}${apiBase}`;
-
-    const response = await fetch(`${backendUrl}/api/feedback`, {
+    const response = await fetch(buildApiUrl("/api/feedback"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

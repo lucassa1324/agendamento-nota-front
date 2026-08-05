@@ -43,6 +43,7 @@ import {
 import { useStudio } from "@/context/studio-context";
 import { useToast } from "@/hooks/use-toast";
 import { type Appointment, appointmentService } from "@/lib/api-appointments";
+import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL } from "@/lib/auth-client";
 import {
   type Booking,
@@ -131,49 +132,19 @@ export function AdminCalendar({
     serviceObjects: [] as Service[],
   });
 
-  const getAuthOptions = useCallback(() => {
-    const getCookie = (name: string) => {
-      if (typeof document === "undefined") return null;
-      const value = `; ${document.cookie}`;
-      const parts = value.split(`; ${name}=`);
-      if (parts.length === 2) return parts.pop()?.split(";").shift();
-      return null;
-    };
-
-    const sessionToken =
-      typeof window !== "undefined"
-        ? localStorage.getItem("better-auth.session_token") ||
-          localStorage.getItem("better-auth.access_token") ||
-          getCookie("better-auth.session_token")
-        : null;
-
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-
-    if (sessionToken) {
-      headers.Authorization = `Bearer ${sessionToken}`;
-    }
-
-    return {
-      headers,
-      credentials: "include" as const,
-    };
-  }, []);
-
   const dateStr = format(currentDate, "yyyy-MM-dd");
 
   const loadServicesFromAPI = useCallback(async () => {
     if (!studio?.id) return;
 
     try {
-      const authOptions = getAuthOptions();
-
       const timestamp = Date.now();
-      const response = await fetch(
+      const response = await customFetch(
         `${API_BASE_URL}/api/services/company/${studio.id}?t=${timestamp}`,
         {
-          ...authOptions,
+          headers: {
+            "Content-Type": "application/json",
+          },
           cache: "no-store",
         },
       );
@@ -192,7 +163,7 @@ export function AdminCalendar({
     } catch (error) {
       console.error("Erro ao carregar serviços no calendário:", error);
     }
-  }, [studio?.id, getAuthOptions]);
+  }, [studio?.id]);
 
   const loadAppointmentsFromAPI = useCallback(async () => {
     if (!studio?.id) return;

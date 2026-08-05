@@ -4,6 +4,7 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useStudio } from "@/context/studio-context";
+import { customFetch } from "@/lib/api-client";
 import { API_BASE_URL, authClient, useSession } from "@/lib/auth-client";
 
 interface SessionPayload {
@@ -76,16 +77,8 @@ export function TrialBanner() {
   const tryAutoSyncSubscription = useCallback(async () => {
     if (!session?.user?.email) return;
     try {
-      const sessionToken =
-        typeof window !== "undefined"
-          ? localStorage.getItem("better-auth.session_token")
-          : null;
-      const response = await fetch(`${API_BASE_URL}/api/business/sync`, {
+      const response = await customFetch(`${API_BASE_URL}/api/business/sync`, {
         method: "POST",
-        credentials: "include",
-        headers: sessionToken
-          ? { Authorization: `Bearer ${sessionToken}` }
-          : undefined,
       });
       const data = await response.json();
       if (data?.success) {
@@ -213,7 +206,7 @@ export function TrialBanner() {
         console.warn("Falha ao obter IP público:", e);
       }
 
-      const response = await fetch("/api-proxy/api/payment/link", {
+      const response = await customFetch("/api/payment/link", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

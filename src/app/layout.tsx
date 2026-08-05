@@ -9,7 +9,7 @@ import { QueryProvider } from "@/components/query-provider";
 import { ThemeInjectorClient } from "@/components/theme-injector-client";
 import { Toaster } from "@/components/ui/toaster";
 import { StudioProvider } from "@/context/studio-context";
-import { API_BASE_URL } from "@/lib/auth-client";
+import { API_BASE_URL } from "@/lib/api-client";
 import "./globals.css";
 
 const playfair = Playfair_Display({

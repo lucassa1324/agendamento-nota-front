@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { customFetch } from "@/lib/api-client";
 import {
   API_BASE_URL,
   authClient,
@@ -74,11 +75,8 @@ export function SubscriptionBlockScreen({
         ">>> [SUBSCRIPTION_BLOCK] Tentando sincronização automática...",
       );
       try {
-        const response = await fetch(`${API_BASE_URL}/api/business/sync`, {
+        const response = await customFetch(`${API_BASE_URL}/api/business/sync`, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("better-auth.session_token")}`,
-          },
         });
         const data = await response.json();
         if (data.success) {
@@ -166,7 +164,7 @@ export function SubscriptionBlockScreen({
         console.warn("Falha ao obter IP público:", e);
       }
 
-      const response = await fetch("/api-proxy/api/payment/link", {
+      const response = await customFetch("/api/payment/link", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -201,11 +199,8 @@ export function SubscriptionBlockScreen({
   const handleSync = async () => {
     setIsSyncing(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/business/sync`, {
+      const response = await customFetch(`${API_BASE_URL}/api/business/sync`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("better-auth.session_token")}`,
-        },
       });
       const data = await response.json();
 

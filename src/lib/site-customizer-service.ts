@@ -1,5 +1,4 @@
-import { customFetch } from "@/lib/api-client";
-import { API_BASE_URL } from "@/lib/auth-client";
+import { customFetch, buildApiUrl } from "@/lib/api-client";
 import type { SiteConfigData } from "@/lib/site-config-types";
 import {
   clearAllCustomizationCache,
@@ -40,23 +39,7 @@ const DEFAULT_SITE_CONFIG: SiteConfigData = {
 
 class SiteCustomizerService {
   private buildUrl(path: string) {
-    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-
-    if (typeof window !== "undefined" && API_BASE_URL.startsWith("http")) {
-      try {
-        const apiOrigin = new URL(API_BASE_URL).origin;
-        if (apiOrigin !== window.location.origin) {
-          return `/api-proxy${normalizedPath}`;
-        }
-      } catch {
-        return `/api-proxy${normalizedPath}`;
-      }
-    }
-
-    const base = API_BASE_URL.endsWith("/")
-      ? API_BASE_URL.slice(0, -1)
-      : API_BASE_URL;
-    return `${base}${normalizedPath}`;
+    return buildApiUrl(path);
   }
 
   private async handleResponse<T>(response: Response): Promise<T | null> {
